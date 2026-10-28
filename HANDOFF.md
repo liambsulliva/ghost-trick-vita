@@ -31,7 +31,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 ## 3. Inputs on this machine
 
 - **DS ROM:** `~/Developer/Ghost Trick - Phantom Detective (USA) (En,Fr,De,Es,It).nds` (SHA-1 `bcfe74e5592eef3255fd23758b772226960a1b0b`, game code `BGTE`).
-- **Remaster (Android repack):** the APK above. Its `assets/re_chunk_000.pak` and the `data01`/`data02` Play Asset Delivery packs (`re_chunk_001.pak`, split `re_chunk_002.pak`) are extracted to `extracted/remaster_apk/`. Only `re_chunk_000.pak` has been scanned.
+- **Remaster (Android repack):** the APK above. `re_chunk_000.pak` and the `data01`/`data02` Play Asset Delivery ZIP archives are under `extracted/remaster_apk/`. Pack 000 has a broad payload inventory. All three pack indexes and selected other animation payloads have now been checked. `data01` contains a complete 794,538,139-byte `re_chunk_002.pak` plus its partial `.pak.0` copy; `data02` contains complete `re_chunk_001.pak` and the `.pak.1` tail. Use the complete files inside the ZIP archives directly; there is no need to join the split copies or extract another large copy.
 - **Community file list:** `extracted/remaster_apk/GTPD_ANDROID_Release.list`, from Ekey/REE.PAK.Tool. Its license is unclear, so never commit it. A `GTPD_STM_Release.list` for Steam also exists upstream.
 - **PC reference video:** see section 8. It is downloading now.
 - **Disk:** about 43 GiB free at the continuation check. `extracted/` takes several GB. Be careful with big outputs.
@@ -111,7 +111,7 @@ Source of truth for verifying animation reproductions, as the user put it: https
 
 - **Format:** 398 (1280×720, 60 fps, AV1, about 1.45 GiB).
 - **Destination:** `extracted/reference/pc_longplay_720p60.mp4`. It's `.mp4.part` while downloading.
-- **Log:** `extracted/reference/download.log`. Progress: `rg '^\[download\]' extracted/reference/download.log | tail -1`. During the gap investigation on 2026-10-28 it was still advancing at about 62.5%, around 237 KiB/s, with roughly 40 minutes remaining. Check the live log rather than relying on that snapshot, and verify progress before starting another downloader.
+- **Log:** `extracted/reference/download.log`. Progress: `rg '^\[download\]' extracted/reference/download.log | tail -1`. During the broader alias and pack-index check on 2026-10-28 it was still advancing at about 85%, around 236 KiB/s, with roughly 16 minutes remaining. Check the live log rather than relying on that snapshot, and verify progress before starting another downloader.
 - **If it stopped** (the earlier session's background shell may die with that session), resume with the same command; yt-dlp continues the `.part` file:
   ```
   toolchain/yt-dlp-venv/bin/yt-dlp --no-playlist -f 398 --newline -o "extracted/reference/pc_longplay_720p60.%(ext)s" "https://www.youtube.com/watch?v=K6Z8QvgObFA" >> extracted/reference/download.log 2>&1
@@ -141,19 +141,22 @@ What it found (full detail in `docs/lmg_format.md`, summary in `docs/frame_mappi
 - **Fresh runtime check.** A new 40-second `trace_mtbl.py` run produced 28 starts, all resolved to decoded stage 1 tables, and zero watch hits. The previous trace is preserved locally as `extracted/trace/mtbl_starts.previous.tsv`. `DecompileFunctions.java` compiled and ran in the read-only Ghidra project with `thumb:2023fdc`. The audit passed and its self-test caught all 30 planted files. Live checks need access to the localhost GDB port; the sandbox blocks that connection.
 - **Gap investigation after commit `1452430`.** Motion calls now carry their enclosing object in `motion_uses.tsv`. `idle_candidates.tsv` proposes `_000` resources for matching `<object>_wait` or `stNN_<object>` labels. There are 339 candidate tables across 79 stems, covering 23 of the 63 naming gaps; 40 have no candidate under this rule. All candidate tables contain only frame 0 for four ticks, with one loop. Thirteen saved stage 1 starts use them. Candidates remain outside the confirmed 4,007/4,070 naming totals. The bicycle remaster `_000` resource has four textures, so the port needs a verified default pose instead of automatically playing the full timeline for a one-frame wait table. See `docs/lmg_format.md` for the evidence and code path.
 - **Zero targets classified, not solved.** All 75 unresolved motion targets are zero; none is an unknown nonzero offset. The VM converts zero into a pointer to the script header, not a null pointer, with no zero check before queueing it. Do not label these stop commands. Reachability and behavior in later scenes still need verification. Eighteen raw system `1LMG` files were also checked; they decode and add no new unique motion names. Seventeen synthetic tests pass after the report changes.
+- **Broader alias pass after commit `1f7b210`.** `alias_candidates.tsv` handles different script/art names, one-resource wait families, cross-stage waits, the `sr14` spelling and `_00a`/`_00b`/`_00c` primary variants. It keeps source calls, frame evidence and alternative animation names; it does not add confirmed mappings. `animation_gaps.tsv` classifies the 63 naming gaps as 23 stricter object-name candidates, 37 broader candidates and three without a candidate. The three are `st13_objeffect_neona_000`, `st13_objeffect_neonb_000` and `st14_scr_gyorai_000`. Each exists in pack 002 and references one texture; its DS draw path remains unknown. Cross-stage choices are ambiguous: a stage 13 guitar wait has both remaster guitar 000 and 999 as candidates, and guitar 999 has three textures. Confirmed coverage stays 4,007/4,070.
+- **Pack presence check.** `tools/re_pak_index.py` reads metadata from raw packs and complete `.pak` members of ZIP archives, checks entry bounds and ignores split copies. The three local indexes contain 22,595 entries and all 4,265 queried 2D `.user` paths from the Android file list. This is index presence, not full payload or visual validation. Output is `extracted/motion_map/pak_presence.tsv`; the command is in `docs/lmg_format.md`. Twenty-six synthetic tests pass after the alias and archive-index changes.
 
 New and changed files:
 - `docs/lmg_format.md`: the format write-up.
 - `docs/frame_mapping.md`: a new section on the mapping.
 - `tools/lmg_decode.py`: decodes every `.dec` into a text listing under `extracted/lmg/`. Message text and data blocks are omitted; only their byte counts appear.
-- `tools/map_motions.py`: writes `motions.tsv`, `unmatched_remaster.tsv`, `unresolved_plays.tsv`, `motion_uses.tsv` and `idle_candidates.tsv` under `extracted/motion_map/`. Generated data remains gitignored. Mapping rows can outnumber motion tables because a label can match multiple full folder paths.
+- `tools/map_motions.py`: writes `motions.tsv`, `unmatched_remaster.tsv`, `unresolved_plays.tsv`, `motion_uses.tsv`, `idle_candidates.tsv`, `alias_candidates.tsv` and `animation_gaps.tsv` under `extracted/motion_map/`. Generated data remains gitignored. Mapping rows can outnumber motion tables because a label can match multiple full folder paths.
+- `tools/re_pak_index.py`: checks named-resource presence without extracting pack contents. `tools/re_names.py` now has a main guard so the existing hash functions can be imported. `tests/test_re_pak_index.py` covers index bounds and ZIP-contained packs with split duplicates.
 - `tests/test_lmg_tools.py` and `.github/workflows/audit.yml`: synthetic regression checks, with no game data.
 - `tools/trace_lmg.py`: melonDS trace of the VM's pc, used to check opcode lengths.
 - `tools/trace_mtbl.py`: melonDS trace of motion-table starts.
 - `tools/ghidra/DecompileFunctions.java`: now takes `thumb:`/`arm:` address prefixes and disassembles and creates a function when none exists.
 
 Still open:
-- the 63 remaster animation stems without a confirmed name match: 23 have default-pose candidates, 40 do not
+- the 63 remaster animation stems without a confirmed name match: 23 have stricter default-pose candidates, 37 have broader alias candidates, and three have no named-table candidate
 - the runtime behavior and reachability of the 75 zero `0x117` targets, plus the 104 jumps to 0
 - the meaning of header field +0x04
 - full names for most opcodes
@@ -161,11 +164,11 @@ Still open:
 
 ## 10. Suggested next steps (offer these to the user as choices)
 
-1. Verify the 23 default-pose candidates and investigate the 40 other naming gaps. Keep default poses separate from full animation playback; `idle_candidates.tsv` gives source calls and frame evidence. The 75 zero motion targets need later-scene reachability checks before their semantics can be assigned.
+1. Verify default poses and the broader aliases. `animation_gaps.tsv` summarizes the remaining 63 confirmed gaps; `alias_candidates.tsv` keeps competing choices and their evidence. Find the DS draw path for the three scenery effects without named-table candidates. Keep one-frame defaults separate from full timeline playback. The 75 zero motion targets still need later-scene reachability checks.
 2. Finish verifying the video (section 8). Then calibrate the remaster timeline decode (tick rate, coordinate scale) against it and against the DS motion table's ticks and offsets for the same animation.
 3. Decode the main characters' sprite-set layout (`cicel`, `linne`).
 4. Fix `tools/cpac_unpack.py` for 4-byte-key blocks.
-5. Scan `re_chunk_001.pak` and `re_chunk_002.pak`, and get the Steam copy onto the Mac to recheck the remaster results against `GTPD_STM_Release.list` (prefix `natives/stm/`, with its own version table).
+5. Continue payload inspection of packs 001 and 002 (index presence is now checked), and get the Steam copy onto the Mac to recheck the remaster results against `GTPD_STM_Release.list` (prefix `natives/stm/`, with its own version table).
 6. Start the recompilation (phase 3 → recomp) or phase 4. That's the user's decision; phase 4 needs Metrowerks tools, so ask first.
 7. When the user re-enables the Vita: a first on-device viewer (vitaGL) that loads converted remaster frames and reports frame time and free memory.
 

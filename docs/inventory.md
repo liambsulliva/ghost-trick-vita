@@ -3,7 +3,7 @@
 What was examined:
 
 - DS ROM, USA release (`BGTE`), through `tools/nds_unpack.py`, `tools/nds_catalog.py` and `tools/cpac_unpack.py`.
-- Remaster, Android v1.0.0: only `assets/re_chunk_000.pak`, through `tools/re_pak_scan.py`. The two Play Asset Delivery archives (`data01`, `data02`, about 2 GB of further `.pak` and `.dat` files) were listed but not scanned.
+- Remaster, Android v1.0.0: broad payload inspection of `assets/re_chunk_000.pak` through `tools/re_pak_scan.py`. All three pack indexes have now been checked through `tools/re_pak_index.py`, including complete packs inside the Play Asset Delivery archives `data01` and `data02`. All 4,265 queried 2D `.user` paths from the Android file list were found. Only selected payloads in packs 001 and 002 were inspected; their broad content scan is still pending. Most counts below describe pack 000.
 - The Steam copy has not been examined. Everything said about the remaster below must be rechecked against it.
 
 All extracted output goes to `extracted/`, which is gitignored.
@@ -106,6 +106,7 @@ python3 -I tools/rom_audit.py --self-test
 python3 -I tools/rom_audit.py
 python3 -I tools/lmg_decode.py
 python3 -I tools/map_motions.py
+python3 -I tools/re_pak_index.py extracted/remaster_apk/GTPD_ANDROID_Release.list extracted/motion_map/pak_presence.tsv extracted/remaster_apk/re_chunk_000.pak extracted/remaster_apk/data01 extracted/remaster_apk/data02
 python3 -I -m unittest discover -s tests
 python3 -I tools/nds_loadmap.py "<your rom>.nds" extracted/nds
 python3 -I tools/nds_prove_bases.py extracted/nds
@@ -137,6 +138,6 @@ It needs the extract above in `extracted/dsd/extract`, the patched `dsd` in `too
 
 ## Not examined yet
 
-- `re_chunk_001.pak` and `re_chunk_002.pak`, the rest of the remaster, stored in the Play Asset Delivery archives `data01` and `data02` (about 2 GB)
+- Most payloads in `re_chunk_001.pak` and `re_chunk_002.pak`, stored in the Play Asset Delivery archives `data01` and `data02`; their indexes and selected animation resources have been inspected. `data01` contains a complete pack 002 alongside a partial split copy, so the full pack can be read directly.
 - The Steam copy
 - Most remaster per-animation `.user` files beyond the bicycle sample, `FBFO` (high entropy, maybe video or encrypted), the DS `bws` structures and character-specific `cpac` frame-layout records

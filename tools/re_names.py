@@ -180,4 +180,5 @@ def main():
         print("  " + tag.ljust(6) + " " + str(resolved.get(tag, 0)) + " / " + str(total[tag]))
 
 
-main()
+if __name__ == "__main__":
+    main()

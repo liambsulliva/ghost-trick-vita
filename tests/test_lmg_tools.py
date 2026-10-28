@@ -68,6 +68,30 @@ class DecoderTests(unittest.TestCase):
 
 
 class MappingTests(unittest.TestCase):
+    def test_wait_alias_can_have_a_different_script_object_name(self):
+        folders = {"st03_02dbox_000": set()}
+        self.assertEqual(map_motions.alias_candidates("st03", "02dbox_wait.mtbl.xml", folders), [("st03_02dbox_000", "wait_name")])
+
+    def test_single_resource_wait_can_have_a_nonzero_animation_id(self):
+        folders = {"st01_patolamp_010": set()}
+        self.assertEqual(map_motions.alias_candidates("st01", "patolamp_wait.mtbl.xml", folders), [("st01_patolamp_010", "single_animation_wait")])
+
+    def test_wait_alias_does_not_pick_between_multiple_numbered_resources(self):
+        folders = {"st01_patolamp_010": set(), "st01_patolamp_020": set()}
+        self.assertEqual(map_motions.alias_candidates("st01", "patolamp_wait.mtbl.xml", folders), [])
+
+    def test_cross_stage_wait_preserves_alternatives(self):
+        folders = {"st01_guitar_000": set(), "st01_guitar_999": set()}
+        self.assertEqual(map_motions.alias_candidates("st13", "guitar_wait.mtbl.xml", folders),
+                         [("st01_guitar_000", "cross_stage_wait"), ("st01_guitar_999", "cross_stage_wait")])
+
+    def test_stage_prefix_and_primary_letter_variants_are_only_candidates(self):
+        folders = {"st14_02lamp_000": set(), "st14_levlamp_000": set()}
+        self.assertEqual(map_motions.alias_candidates("st14", "sr14_02lamp_000.mtbl.xml", folders), [("st14_02lamp_000", "stage_prefix_spelling")])
+        self.assertEqual(map_motions.alias_candidates("st14", "st14_levlamp_00b.mtbl.xml", folders), [("st14_levlamp_000", "primary_letter_variant")])
+        self.assertEqual(map_motions.alias_candidates("st14", "st14_levlamp_01b.mtbl.xml", folders), [])
+        self.assertEqual(map_motions.alias_candidates("st14", "st14_02lamp_000.mtbl.xml", folders), [])
+
     def test_cli_reports_idle_candidates_without_promoting_them(self):
         code = struct.pack("<2HIH", 0x16, 0x22, 0x48, 0)
         code = code + struct.pack("<HIHH", 0x117, 0x52, 1, 0)
@@ -102,6 +126,10 @@ class MappingTests(unittest.TestCase):
             self.assertEqual(mappings[0]["remaster_folder"], "")
             with (out / "unmatched_remaster.tsv").open() as f:
                 self.assertEqual(len(list(csv.DictReader(f, delimiter="\t"))), 1)
+            with (out / "alias_candidates.tsv").open() as f:
+                aliases = list(csv.DictReader(f, delimiter="\t"))
+            self.assertEqual(aliases[0]["reason"], "wait_name")
+            self.assertEqual(aliases[0]["alternative_animations"], "st01_lamp_000")
 
     def test_motion_owner_ends_at_object_boundary(self):
         items = [(0x34, "op", 0x16, [0x22, 0x70, 0, 0]),
@@ -127,6 +155,7 @@ class MappingTests(unittest.TestCase):
     def test_plain_stage_object_name_is_an_idle_candidate(self):
         folders = {"st06_sofa_000": set()}
         self.assertEqual(map_motions.idle_candidates("st06", "st06_sofa.mtbl.xml", {"sofa": []}, folders), [("sofa", "st06_sofa_000")])
+        self.assertEqual(map_motions.alias_candidates("st06", "st06_sofa.mtbl.xml", folders), [("st06_sofa_000", "unnumbered_default")])
 
     def test_primary_animation_id_is_preserved(self):
         folders = {"st01_test_004": set()}

@@ -74,6 +74,35 @@ def idle_candidates(stage, name, owners, folders):
     return candidates
 
 
+def alias_candidates(stage, name, folders):
+    stem = name[:-len(".mtbl.xml")].lower()
+    if stem in folders:
+        return []
+    if stem.endswith("_wait"):
+        asset = stem[:-len("_wait")]
+        family = stage + "_" + asset
+        matches = sorted(folder for folder in folders if folder.rsplit("_", 1)[0] == family)
+        if family + "_000" in matches:
+            return [(family + "_000", "wait_name")]
+        if len(matches) == 1:
+            return [(matches[0], "single_animation_wait")]
+        if len(matches) == 0:
+            matches = sorted(folder for folder in folders if folder[5:].rsplit("_", 1)[0] == asset)
+            return [(folder, "cross_stage_wait") for folder in matches]
+    if stem.startswith(stage + "_") and stem + "_000" in folders:
+        return [(stem + "_000", "unnumbered_default")]
+    if stem.startswith("sr" + stage[2:] + "_"):
+        candidate = "st" + stem[2:]
+        if candidate in folders:
+            return [(candidate, "stage_prefix_spelling")]
+    match = re.fullmatch(r"(st\d{2}_.+_)00[a-z]", stem)
+    if match is not None:
+        candidate = match.group(1) + "000"
+        if candidate in folders:
+            return [(candidate, "primary_letter_variant")]
+    return []
+
+
 def main():
     source = os.path.join(REPO_DIR, "extracted", "nds_plain")
     file_list = os.path.join(REPO_DIR, "extracted", "remaster_apk", "GTPD_ANDROID_Release.list")
@@ -88,6 +117,7 @@ def main():
     rows = []
     uses_rows = []
     candidate_rows = []
+    alias_rows = []
     unresolved = []
     matched = set()
     exact = set()
@@ -146,6 +176,13 @@ def main():
                         calls = ",".join(hex(pos) for pos in owners[item[0]][owner])
                         for folder in sorted(folders[candidate]):
                             candidate_rows.append((relative, hex(item[0]), name, owner, candidate, folder, calls, frame_ids, ticks, loops, long_frames))
+                    calls = ",".join(hex(pos) for pos, target, owner in uses if target == item[0])
+                    object_names = ",".join(sorted(owner for owner in owners.get(item[0], {}) if owner != ""))
+                    aliases = alias_candidates(stage, name, folders)
+                    alternatives = ",".join(candidate for candidate, reason in aliases)
+                    for candidate, reason in aliases:
+                        for folder in sorted(folders[candidate]):
+                            alias_rows.append((relative, hex(item[0]), name, object_names, candidate, folder, reason, calls, frame_ids, ticks, loops, long_frames, alternatives))
         for item in items:
             if item[1] != "op":
                 continue
@@ -166,6 +203,7 @@ def main():
             uses_rows.append((relative, hex(pos), owner, hex(target), names, kind))
     if scripts == 0:
         raise ValueError("no 1LMG scripts found")
+    alias_rows = [row for row in alias_rows if row[4] not in matched]
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, "motions.tsv"), "w") as out:
         out.write("script\toffset\tmotion_label\tremaster_folder\tmatch\n")
@@ -188,13 +226,34 @@ def main():
         out.write("script\ttable_offset\tmotion_label\tobject\tanimation\tremaster_folder\tplay_offsets\tframe_ids\tframe_ticks\tloop\tlong_frame_commands\n")
         for row in candidate_rows:
             out.write("\t".join(row) + "\n")
+    with open(os.path.join(out_dir, "alias_candidates.tsv"), "w") as out:
+        out.write("script\ttable_offset\tmotion_label\tobjects\tanimation\tremaster_folder\treason\tplay_offsets\tframe_ids\tframe_ticks\tloop\tlong_frame_commands\talternative_animations\n")
+        for row in alias_rows:
+            out.write("\t".join(row) + "\n")
     candidate_stems = set(row[4] for row in candidate_rows)
+    alias_stems = set(row[4] for row in alias_rows)
+    with open(os.path.join(out_dir, "animation_gaps.tsv"), "w") as out:
+        out.write("animation\tremaster_folder\tstatus\tcandidate_reasons\tsource_stages\tmotion_labels\n")
+        for stem in sorted(set(folders) - matched):
+            rows_for_stem = [row for row in alias_rows if row[4] == stem]
+            reasons = ",".join(sorted(set(row[6] for row in rows_for_stem)))
+            stages = ",".join(sorted(set(row[0].split(os.sep)[0] for row in rows_for_stem)))
+            names = ",".join(sorted(set(row[2] for row in rows_for_stem)))
+            status = "no_candidate"
+            if stem in candidate_stems:
+                status = "object_name_candidate"
+            elif stem in alias_stems:
+                status = "alias_candidate"
+            for folder in sorted(folders[stem]):
+                out.write("\t".join((stem, folder, status, reasons, stages, names)) + "\n")
     print("scripts: " + str(scripts) + ", motion tables: " + str(table_count) + ", mapping rows: " + str(len(rows)))
     print("remaster animation stems: " + str(len(folders)) + ", matched: " + str(len(matched)) + ", unmatched: " + str(len(folders) - len(matched)))
     print("exact matches: " + str(len(exact)) + ", additional variant matches: " + str(len(matched - exact)))
     print("play-motion targets: " + str(resolved) + "/" + str(plays) + ", unresolved: " + str(len(unresolved)) + ", zero jumps: " + str(zero_jumps))
     print("unresolved zero motion targets: " + str(zero_motions) + ", unresolved nonzero targets: " + str(len(unresolved) - zero_motions))
     print("idle candidate stems: " + str(len(candidate_stems)) + ", additional unmatched stems with candidates: " + str(len(candidate_stems - matched)))
+    remaining = set(folders) - matched - candidate_stems - alias_stems
+    print("unmatched stems with alias candidates: " + str(len(alias_stems - matched)) + ", without any candidate: " + str(len(remaining)))
     print("written to " + out_dir)
 
 

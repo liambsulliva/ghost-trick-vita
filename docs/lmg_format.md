@@ -114,6 +114,31 @@ The 2026-10-28 gap investigation found 339 such tables across 79 remaster animat
 
 The static pose needs separate treatment from timeline playback. In the locally scanned Android pack, the guitar, light and telephone `_000` resources each reference one texture, but bicycle `_000` references four. A one-frame DS default table therefore does not justify playing a whole `_000` remaster timeline. The renderer needs a verified default pose or timeline segment. Keep stage and object context with the motion label when resolving these aliases, and check the pose against the reference video and Steam assets before promoting a candidate.
 
+### Broader alias candidates
+
+The next pass after commit `1f7b210` traces the remaining naming gaps without requiring the script object and art resource to have the same name. For example, `power_box` starts `02dbox_wait`, and `remote_stand` starts `r-stand_wait`. Other calls live in shared initializers: `microscope_wait` is started in `func_microscope_init`, which the microscope object calls with `0x2d`. A blank enclosing object in `motion_uses.tsv` does not mean that the table is unused.
+
+`alias_candidates.tsv` records broader proposals for currently unmatched animation stems. Every row keeps the source table, object scope where available, call offsets, frame words, reason and alternative animation names. The reasons are:
+
+- `wait_name`: `<asset>_wait` matches an existing `stNN_<asset>_000`, even if the script object has a different name.
+- `single_animation_wait`: the same family has one numbered resource, such as stage 1 `patolamp` animation 010 or stage 3 `02rench` animation 001.
+- `unnumbered_default`: a name such as `st06_sofa` has an existing `_000` folder.
+- `stage_prefix_spelling`: the DS label `sr14_02lamp_000` has the same remainder as remaster `st14_02lamp_000`.
+- `primary_letter_variant`: DS `st14_levlamp_00a`, `_00b` and `_00c` have a possible common remaster `_000` resource. The latter two DS tables contain six-frame sequences, so segment selection still needs verification. The rule is limited to `_00x`; other lettered numeric schemes are not inferred.
+- `cross_stage_wait`: the same asset name appears in another stage's resource folders. These can have multiple alternatives. For example, a stage 13 `guitar_wait` has both stage 1 guitar 000 and 999 as name candidates; the report preserves both and does not choose one.
+
+`animation_gaps.tsv` summarizes all 63 confirmed naming gaps. Twenty-three retain the stricter object-name candidate, 37 have only broader alias candidates, and three have none: `st13_objeffect_neona_000`, `st13_objeffect_neonb_000` and `st14_scr_gyorai_000`. The confirmed naming coverage remains 4,007/4,070. These candidate reports do not promote aliases into `motions.tsv`.
+
+All three effect resources are present in `re_chunk_002.pak` and each references one texture. Their relation to DS scenery or procedural rendering is still unknown; a single texture does not establish that the effect is static. Guitar 999 is present in `re_chunk_001.pak` and references three textures, which is another reason not to equate its whole timeline with a one-frame wait table.
+
+`tools/re_pak_index.py` checks named-resource hashes against raw `.pak` files and complete `.pak` members inside ZIP archives. It reads headers and entry tables, validates data bounds, and skips split `.pak.0`/`.pak.1` copies. The local `data01` archive contains a complete 794,538,139-byte `re_chunk_002.pak` as well as its partial `.0` copy; `data02` contains complete `re_chunk_001.pak` and the `.1` tail. No concatenation or additional large extraction was needed. A check of all three packs found all 4,265 queried `charfiles/2d` `.user` paths from the Android file list in 22,595 total pack entries. These 4,265 paths include names outside the narrower 4,070 numeric stage-animation stems. This verifies index presence, not the contents or visual correctness of every timeline.
+
+Reproduce the presence check with:
+
+```
+python3 -I tools/re_pak_index.py extracted/remaster_apk/GTPD_ANDROID_Release.list extracted/motion_map/pak_presence.tsv extracted/remaster_apk/re_chunk_000.pak extracted/remaster_apk/data01 extracted/remaster_apk/data02
+```
+
 ### Zero motion targets
 
 All 75 unresolved `0x117` targets are zero; there are no unresolved nonzero motion targets in this corpus. `unresolved_plays.tsv` now includes the enclosing object and a reason, `zero_target` or `unresolved`. This is classification, not resolution.
