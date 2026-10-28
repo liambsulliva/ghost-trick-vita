@@ -8,6 +8,9 @@ ext .dat
 ext .tex
 ext .mesh
 ext .gui
+ext .gpr
+ext .gzf
+ext .gbf
 magic 0 4b504b41 RE Engine pak
 magic 0 314c4d47 DS scene script
 magic 0 524e414e DS cell animation

@@ -3,6 +3,9 @@
 *.pak
 *.bin
 extracted/
+*.gpr
+*.rep/
+*.gzf
 out/
 build/
 __pycache__/
