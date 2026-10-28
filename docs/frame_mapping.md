@@ -152,3 +152,11 @@ The names line up with the remaster. A rerun on 2026-10-28 with `tools/map_motio
 So the hook for the port is opcode `0x117`, or `func_0205991c`, which it reaches. Drop `.mtbl.xml` and try the complete stem first. If no remaster folder matches, remove one additional `_NNN` or `_NNx` variant suffix after the primary animation number. Preserve that primary number: `st01_bicycle_004` stays unchanged; `st01_bicycle_006_00a` can use `st01_bicycle_006`. An exact split folder takes priority over folding. The earlier negative results stand: act numbers and record field `+0xee` are not animation IDs.
 
 Run `python3 -I tools/map_motions.py` to write the full mapping, unmatched folders and unresolved `0x117` targets under `extracted/motion_map/`. All generated data stays out of git. See `docs/lmg_format.md` for reproduced decoder totals and the limits of the runtime evidence.
+
+## Default poses need an additional lookup
+
+The next gap investigation found object-local labels such as `guitar_wait.mtbl.xml` and `door_wait.mtbl.xml`, plus names without a numeric suffix such as `st06_sofa.mtbl.xml`. The new `motion_uses.tsv` report records their calling objects. `idle_candidates.tsv` proposes an existing `stNN_<object>_000` resource only when the calling object and shorter table name agree. This identifies candidates for 23 of the 63 unmatched stems, leaving 40 without a candidate. The confirmed naming totals remain 4,007/4,070.
+
+These are default-pose candidates, not verified animation aliases. All 339 candidate tables contain just frame 0 for four ticks, and 13 starts in the saved stage 1 trace use them. The remaster's bicycle `_000` resource references four textures, so starting its whole timeline for the DS's one-frame `bicycle_wait` could introduce unwanted movement. The hook needs stage, object and label context, plus a verified way to select and hold the default pose. Check this against the video and Steam before promoting candidates.
+
+All 75 unresolved play-motion targets are zero. The VM turns zero into the script header pointer rather than a null pointer; its later-scene behavior remains unverified. See `docs/lmg_format.md` for the code path. The tool reports these explicitly as `zero_target` and does not turn them into mappings.

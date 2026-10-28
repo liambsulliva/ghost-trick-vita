@@ -111,7 +111,7 @@ Source of truth for verifying animation reproductions, as the user put it: https
 
 - **Format:** 398 (1280×720, 60 fps, AV1, about 1.45 GiB).
 - **Destination:** `extracted/reference/pc_longplay_720p60.mp4`. It's `.mp4.part` while downloading.
-- **Log:** `extracted/reference/download.log`. Progress: `rg '^\[download\]' extracted/reference/download.log | tail -1`. During the continuation review on 2026-10-28 it was still advancing at about 50%, around 239 KiB/s, with roughly 54 minutes remaining. Check the live log rather than relying on that snapshot, and verify progress before starting another downloader.
+- **Log:** `extracted/reference/download.log`. Progress: `rg '^\[download\]' extracted/reference/download.log | tail -1`. During the gap investigation on 2026-10-28 it was still advancing at about 62.5%, around 237 KiB/s, with roughly 40 minutes remaining. Check the live log rather than relying on that snapshot, and verify progress before starting another downloader.
 - **If it stopped** (the earlier session's background shell may die with that session), resume with the same command; yt-dlp continues the `.part` file:
   ```
   toolchain/yt-dlp-venv/bin/yt-dlp --no-playlist -f 398 --newline -o "extracted/reference/pc_longplay_720p60.%(ext)s" "https://www.youtube.com/watch?v=K6Z8QvgObFA" >> extracted/reference/download.log 2>&1
@@ -139,27 +139,29 @@ What it found (full detail in `docs/lmg_format.md`, summary in `docs/frame_mappi
 - **Verified coverage.** 929 files, 282,425 instructions, 15,914 motion tables, 19,813 message blocks, 2,147 inline blocks, 35 message-only files, and 21,495 of 21,570 `0x117` targets resolved. Header sizes match all files. The zero jump count is 104.
 - **Review fixes.** The decoder now rejects bad header sizes, truncated records and empty/failed CLI decodes. Tracers share a checked main-breakpoint/input-patch setup. Motion tracing excludes scheduled interrupts from watch-hit rows. The old auxiliary watch-hit rows are not evidence of memory accesses. The Ghidra helper recognizes unpadded mode-prefixed addresses. Twelve synthetic parser/mapping tests run locally and in CI. The refactored 10-second runtime oracle passed with 100% main/ITCM and overlay 5 matches.
 - **Fresh runtime check.** A new 40-second `trace_mtbl.py` run produced 28 starts, all resolved to decoded stage 1 tables, and zero watch hits. The previous trace is preserved locally as `extracted/trace/mtbl_starts.previous.tsv`. `DecompileFunctions.java` compiled and ran in the read-only Ghidra project with `thumb:2023fdc`. The audit passed and its self-test caught all 30 planted files. Live checks need access to the localhost GDB port; the sandbox blocks that connection.
+- **Gap investigation after commit `1452430`.** Motion calls now carry their enclosing object in `motion_uses.tsv`. `idle_candidates.tsv` proposes `_000` resources for matching `<object>_wait` or `stNN_<object>` labels. There are 339 candidate tables across 79 stems, covering 23 of the 63 naming gaps; 40 have no candidate under this rule. All candidate tables contain only frame 0 for four ticks, with one loop. Thirteen saved stage 1 starts use them. Candidates remain outside the confirmed 4,007/4,070 naming totals. The bicycle remaster `_000` resource has four textures, so the port needs a verified default pose instead of automatically playing the full timeline for a one-frame wait table. See `docs/lmg_format.md` for the evidence and code path.
+- **Zero targets classified, not solved.** All 75 unresolved motion targets are zero; none is an unknown nonzero offset. The VM converts zero into a pointer to the script header, not a null pointer, with no zero check before queueing it. Do not label these stop commands. Reachability and behavior in later scenes still need verification. Eighteen raw system `1LMG` files were also checked; they decode and add no new unique motion names. Seventeen synthetic tests pass after the report changes.
 
 New and changed files:
 - `docs/lmg_format.md`: the format write-up.
 - `docs/frame_mapping.md`: a new section on the mapping.
 - `tools/lmg_decode.py`: decodes every `.dec` into a text listing under `extracted/lmg/`. Message text and data blocks are omitted; only their byte counts appear.
-- `tools/map_motions.py`: writes `motions.tsv`, `unmatched_remaster.tsv` and `unresolved_plays.tsv` under `extracted/motion_map/`. Generated data remains gitignored. Mapping rows can outnumber motion tables because a label can match multiple full folder paths.
+- `tools/map_motions.py`: writes `motions.tsv`, `unmatched_remaster.tsv`, `unresolved_plays.tsv`, `motion_uses.tsv` and `idle_candidates.tsv` under `extracted/motion_map/`. Generated data remains gitignored. Mapping rows can outnumber motion tables because a label can match multiple full folder paths.
 - `tests/test_lmg_tools.py` and `.github/workflows/audit.yml`: synthetic regression checks, with no game data.
 - `tools/trace_lmg.py`: melonDS trace of the VM's pc, used to check opcode lengths.
 - `tools/trace_mtbl.py`: melonDS trace of motion-table starts.
 - `tools/ghidra/DecompileFunctions.java`: now takes `thumb:`/`arm:` address prefixes and disassembles and creates a function when none exists.
 
 Still open:
-- the remaining 63 remaster animation stems with no DS table match
-- the 75 unresolved `0x117` targets and the 104 jumps to 0
+- the 63 remaster animation stems without a confirmed name match: 23 have default-pose candidates, 40 do not
+- the runtime behavior and reachability of the 75 zero `0x117` targets, plus the 104 jumps to 0
 - the meaning of header field +0x04
 - full names for most opcodes
 - confirming the motion-command meanings beyond their lengths
 
 ## 10. Suggested next steps (offer these to the user as choices)
 
-1. Investigate the 63 unmatched remaster animation stems and 75 unresolved play-motion targets listed by `tools/map_motions.py`. The full mapping tool and initial re-verification are complete.
+1. Verify the 23 default-pose candidates and investigate the 40 other naming gaps. Keep default poses separate from full animation playback; `idle_candidates.tsv` gives source calls and frame evidence. The 75 zero motion targets need later-scene reachability checks before their semantics can be assigned.
 2. Finish verifying the video (section 8). Then calibrate the remaster timeline decode (tick rate, coordinate scale) against it and against the DS motion table's ticks and offsets for the same animation.
 3. Decode the main characters' sprite-set layout (`cicel`, `linne`).
 4. Fix `tools/cpac_unpack.py` for 4-byte-key blocks.

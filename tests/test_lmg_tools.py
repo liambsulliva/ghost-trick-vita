@@ -1,3 +1,4 @@
+import csv
 import io
 import struct
 import subprocess
@@ -67,6 +68,66 @@ class DecoderTests(unittest.TestCase):
 
 
 class MappingTests(unittest.TestCase):
+    def test_cli_reports_idle_candidates_without_promoting_them(self):
+        code = struct.pack("<2HIH", 0x16, 0x22, 0x48, 0)
+        code = code + struct.pack("<HIHH", 0x117, 0x52, 1, 0)
+        code = code + struct.pack("<HIHH", 0x117, 0, 1, 0)
+        code = code + struct.pack("<5H", 0xFFFD, 1, 0, 0x1000, 0xFFFE)
+        data = container(code, label_table("lamp_wait.mtbl.xml", 0x52), b"lamp\x00")
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source = root / "source"
+            (source / "st01").mkdir(parents=True)
+            (source / "st01" / "test.dec").write_bytes(data)
+            file_list = root / "files.list"
+            file_list.write_text("natives/android/charfiles/2d/group/st01/lamp/st01_lamp_000/st01_lamp_000.user.2\n")
+            out = root / "out"
+            command = [sys.executable, "-I", str(TOOLS_DIR / "map_motions.py"), str(source), str(file_list), str(out)]
+            result = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            with (out / "idle_candidates.tsv").open() as f:
+                candidates = list(csv.DictReader(f, delimiter="\t"))
+            self.assertEqual(len(candidates), 1)
+            self.assertEqual(candidates[0]["animation"], "st01_lamp_000")
+            self.assertEqual(candidates[0]["play_offsets"], "0x3e")
+            self.assertEqual(candidates[0]["frame_ids"], "0")
+            self.assertEqual(candidates[0]["frame_ticks"], "4")
+            with (out / "motion_uses.tsv").open() as f:
+                uses = list(csv.DictReader(f, delimiter="\t"))
+            self.assertEqual([row["object"] for row in uses], ["lamp", ""])
+            self.assertEqual([row["status"] for row in uses], ["motion", "zero_target"])
+            with (out / "motions.tsv").open() as f:
+                mappings = list(csv.DictReader(f, delimiter="\t"))
+            self.assertEqual(mappings[0]["match"], "unmatched")
+            self.assertEqual(mappings[0]["remaster_folder"], "")
+            with (out / "unmatched_remaster.tsv").open() as f:
+                self.assertEqual(len(list(csv.DictReader(f, delimiter="\t"))), 1)
+
+    def test_motion_owner_ends_at_object_boundary(self):
+        items = [(0x34, "op", 0x16, [0x22, 0x70, 0, 0]),
+                 (0x3E, "op", 0x117, [0x80, 0, 1, 0]),
+                 (0x70, "op", 0x117, [0, 0, 1, 0])]
+        self.assertEqual(map_motions.motion_uses(items, {0: "Lamp"}), [(0x3E, 0x80, "lamp"), (0x70, 0, "")])
+
+    def test_shared_motion_keeps_each_callers_owner(self):
+        items = [(0x34, "op", 0x16, [0x22, 0x70, 0, 0]),
+                 (0x3E, "op", 0x117, [0xB0, 0, 1, 0]),
+                 (0x70, "op", 0x16, [0x22, 0xA0, 0, 4]),
+                 (0x7A, "op", 0x117, [0xB0, 0, 1, 0])]
+        uses = map_motions.motion_uses(items, {0: "left", 4: "right"})
+        self.assertEqual([use[2] for use in uses], ["left", "right"])
+
+    def test_idle_candidate_requires_matching_owner_and_folder(self):
+        folders = {"st01_lamp_000": set()}
+        self.assertEqual(map_motions.idle_candidates("st01", "Lamp_wait.mtbl.xml", {"lamp": []}, folders), [("lamp", "st01_lamp_000")])
+        self.assertEqual(map_motions.idle_candidates("st01", "Lamp_wait.mtbl.xml", {"other": []}, folders), [])
+        self.assertEqual(map_motions.idle_candidates("st02", "Lamp_wait.mtbl.xml", {"lamp": []}, folders), [])
+        self.assertEqual(map_motions.idle_candidates("st01", "Lamp_wait.mtbl.xml", {"": []}, folders), [])
+
+    def test_plain_stage_object_name_is_an_idle_candidate(self):
+        folders = {"st06_sofa_000": set()}
+        self.assertEqual(map_motions.idle_candidates("st06", "st06_sofa.mtbl.xml", {"sofa": []}, folders), [("sofa", "st06_sofa_000")])
+
     def test_primary_animation_id_is_preserved(self):
         folders = {"st01_test_004": set()}
         self.assertEqual(map_motions.match_motion("st01_test_004.mtbl.xml", folders), ("st01_test_004", "exact"))

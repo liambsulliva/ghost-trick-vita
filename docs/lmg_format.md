@@ -104,4 +104,22 @@ The tool writes the full mapping, unmatched remaster folders and unresolved play
 
 The two runtime traces back this up: the 28 motion starts traced in stage 1 land on these tables, among them `bicycle_wait`, `st01_cbag_000` and `st01_linne_004`.
 
+### Default poses and shorter motion names
+
+The naming pass above does not cover every motion start. Many DS tables use an object-local name such as `guitar_wait.mtbl.xml`, `Light_wait.mtbl.xml` or `door_wait.mtbl.xml`. Another form omits the animation number, such as `st06_sofa.mtbl.xml`.
+
+`tools/map_motions.py` now writes `motion_uses.tsv`, which records the object enclosing each `0x117` call, its target and motion labels. Object scope ends at the block's end offset; a shared function outside an object block has no inferred owner. It also writes `idle_candidates.tsv`. A candidate requires a call on the matching object, either `<object>_wait` or `stNN_<object>` as the table name, and an existing `stNN_<object>_000` remaster folder. The report includes the call sites, DS frame words and loop flag. These candidates do not change `motions.tsv` or the confirmed naming totals.
+
+The 2026-10-28 gap investigation found 339 such tables across 79 remaster animation stems. Twenty-three of the 63 unmatched stems have candidates; 40 have none under this rule. All 339 tables have one frame word, frame 0 for four ticks; one also has a loop command. Thirteen starts in the saved stage 1 trace use these tables, including the bicycle, guitar, light and telephone. This confirms that the shorter names occur at runtime, while the association with remaster `_000` remains an inference from names and object ownership.
+
+The static pose needs separate treatment from timeline playback. In the locally scanned Android pack, the guitar, light and telephone `_000` resources each reference one texture, but bicycle `_000` references four. A one-frame DS default table therefore does not justify playing a whole `_000` remaster timeline. The renderer needs a verified default pose or timeline segment. Keep stage and object context with the motion label when resolving these aliases, and check the pose against the reference video and Steam assets before promoting a candidate.
+
+### Zero motion targets
+
+All 75 unresolved `0x117` targets are zero; there are no unresolved nonzero motion targets in this corpus. `unresolved_plays.tsv` now includes the enclosing object and a reason, `zero_target` or `unresolved`. This is classification, not resolution.
+
+The handler at `0x020254f0` computes `code_base + ((target - 0x34) & ~1)` at `0x0202550c`–`0x02025518`. Because `code_base` is file base plus 0x34, target zero becomes the file header address. If the current object passes the motion-capability check, `func_020280c8` passes `target >> 1` as the motion ID and `func_0205991c` queues the pointer at object `+0x148`. There is no zero-target check along that path. Object update `func_0205964c` consumes that queued pointer and then clears it. Zero cannot be classified as a stop or null-motion sentinel from this code. Whether these instructions execute in their scenes, and how they behave if reached, remains unverified. The port should not infer an animation folder from them.
+
+The 929-file coverage figures refer to the catalog's decompressed `.dec` corpus. Eighteen uncompressed `1LMG` system files in the ROM were checked separately: they decode without errors and add no new unique motion-table names. They do not explain the remaining stage animation gaps.
+
 See `docs/frame_mapping.md` for what this means for the port.
