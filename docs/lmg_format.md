@@ -1,0 +1,107 @@
+# The `1LMG` scene script format
+
+The DS scene scripts (`stNN/*_Expand.xml.lz`, `system/*`, `route.xml`, `chapter.xml` and so on) are not binary XML. They are compiled bytecode for a 16-bit virtual machine, plus a string table and a label table. The XML-like nesting comes from block opcodes that each carry a jump to the end of their block.
+
+`tools/lmg_decode.py` decodes every `.dec` file under `extracted/nds_plain` into an indented text listing under `extracted/lmg/`. Message text and inline data blocks are left out of the listing and shown only as byte counts.
+
+Confidence: **code** means read from the disassembly, **trace** means confirmed with melonDS, **data** means inferred from the files only.
+
+## File layout
+
+All values are little-endian.
+
+| Offset | Size | Contents | Confidence |
+|---|---|---|---|
+| 0x00 | 4 | magic `1LMG` | data |
+| 0x04 | 4 | unknown. Nonzero in scene scripts (stage 1 `game000`: 0x2fc), zero in language files | not decoded |
+| 0x08 | 4 | code size in bytes | code (`func_02027bec`, `func_02027c98`) |
+| 0x0c | 4 | string table size | code |
+| 0x10 | 4 | label table size | code |
+| 0x14 to 0x33 | | zero | data |
+| 0x34 | code size | bytecode, 16-bit words | code |
+| after code | string size | NUL-terminated strings | code |
+| after strings | label size | label table | code |
+
+The sizes add up exactly to the file size in every one of the 929 files.
+
+**Strings** (code). An operand that names a string is a u16 byte offset into the string table: `func_02027c28` returns `table_base + value`. Offset 0 is always `*`. The earlier attempt to read strings from 0x740a missed the table start (in stage 1 `game000` the table begins at 0x7408) and also read operands at the wrong boundaries.
+
+**Labels** (code, `func_02027c98`, lookup in `func_02027d4c`). A u32 count, then that many `(name_offset, target)` pairs, then a block of names. `name_offset` is relative to the start of the name block. `target` is a file offset into the code. The names are compiler labels (`_L$0004`), block names (`st01_game000`, `game`, `gameAct000`, `bicycle`, `bicycleAct010`), message IDs (`m01_0000`) and motion tables (`st01_bicycle_004.mtbl.xml`). Code looks labels up by name at runtime, for example to start an act.
+
+**Language files** (`*.en.xml`, `*.fr.xml` and so on) use the same container. Their code section holds only message blocks, labelled `mNN_NNNN`. The loader (`func_02051cd4`) loads the base script first and then the language file.
+
+## The virtual machine
+
+The interpreter is `func_02023fdc` (Thumb, 9.5 KB). Its machine object holds `+4` code base (file + 0x34), `+8` pc in halfwords, `+0xc` wait counter, `+0x1c/+0x20` a 4-deep call stack. It reads the u16 at `code[pc]`, rejects values above 0x16a, and dispatches through a 363-entry halfword jump table at `0x02024020`. Each handler advances pc by a fixed amount (code). Some handlers call virtual methods: the base vtable is at `0x020a4cb4`, and two subclasses at `0x020abe14` and `0x020abec4` change a few lengths. The table in the decoder uses the `0x020abe14` subclass, which is the one that runs scene scripts.
+
+**Opcode lengths** come from symbolically executing every handler in the disassembly and recording how much each path adds to pc. They were checked in three ways:
+1. A melonDS trace of 32,180 VM steps in stage 1 (`tools/trace_lmg.py`): every executed offset lands on an instruction boundary.
+2. Every jump target in all 929 files lands on an instruction boundary.
+3. Every file decodes to exactly the end of its code section.
+
+**Jumps** (code). `0x22` and `0x23` are goto, `0x2d` is call and `0x2e` is return. Goto and call take a u32 file offset; return has no operand. The jump handler computes `pc = (target - 0x34) / 2`. 104 jumps (goto or call) have target 0, presumably unresolved; the decoder does not treat them as errors.
+
+**Conditional skips** (code, trace). `0x33` and `0x34` are one word long. They either fall through to the next instruction, which is always a `0x22` goto, or skip over it (pc + 4). `0x15` is the same: it always skips the goto that follows it.
+
+**Block opcodes** (code, trace). Each one is followed by a goto to the end of its block, so a pass that walks the blocks executes only the headers.
+
+| Opcode | Layout (16-bit words) | Meaning |
+|---|---|---|
+| `0x15` | `15, 22, end:u32` | script root, named by the first label (`st01_game000`) |
+| `0x16` | `16, 22, end:u32, name:str` | object (`game`, `bicycle`, `cicel`) |
+| `0x19` | `19, 22, end:u32, name:str` | act (`bicycleAct010`). Registered by vtable `+0x20`, body at +5 words |
+| `0x1a` | `1a, 22, end:u32, sender:str, event:str` | event handler (`SYSTEM` `GAME START`, `core1` `action`, `EVENT` `shot`). Registered by `func_020511c0`, body at +6 words |
+
+Blocks end with `0x113` (handler), `0x112` (act) and `0x0000`. These ops do not advance and wait (code); what ends a block is not fully worked out.
+
+**Other opcodes worth knowing:**
+- `0x1d` `target:str, verb:str, arg:str` sends a message (`game EVENT next`).
+- `0x2f n` waits n frames.
+- `0x117` `mtbl:u32, a, b` plays a motion table on the current object. Its handler at `0x020254f0` calls `func_020280c8`, which calls `func_0205991c`, which stores the table pointer at object `+0x148`.
+- `0x12e` is followed by a goto over an inline data block. The block looks like Shift-JIS text and is probably a developer comment.
+
+String operand positions in the decoder come from tracking operands that flow into `func_02027c28` (35 opcodes). U32 operand positions come from tracking operands passed to the unaligned u32 reader `func_020265c4` (29 opcodes). For `0xb0` this probably picks up a pair of s16 values, not an offset. All other operands are shown as signed 16-bit numbers. Opcode names other than those above are not assigned.
+
+## Motion tables (`*.mtbl.xml`)
+
+Motion tables are data blocks inside the code section, each starting at a label named `<anim>.mtbl.xml`. The player is `func_02007cd4` (code): a record whose u16 is 0xfff0 or above is a command, and anything else is a frame word.
+
+- **Frame word:** `frame = v & 0x3ff`, `ticks = v >> 10`. One word long. The frame indexes the object's sprite set frame table.
+- **Commands** (length in words, including the tag):
+
+| Tag | Length | Use in the player |
+|---|---|---|
+| -3 | 3 | begin, `(a, b)`, via `func_02008734`. For example, `a` is 0xea7 to 0xead across the bicycle's tables |
+| -4 | 5 | box or two points; the start scan jumps here |
+| -12 | 3 | set object offset `(x, y)`, in pixels shifted by 12 |
+| -11 | 4 | set offset of layer `n` `(n, x, y)` |
+| -16 | 4 | `func_02059170(obj, a, b, c)` |
+| -5 | 3 | frame plus explicit duration |
+| -13, -10, -6 | 2 | set a single value |
+| -9 | 3 | sound or effect id |
+| -8 | 11 | spawn an effect, with a string at word 6 |
+| -7 | 4 | send a message (three strings) |
+| -2 | 1 | end |
+| -1 | 1 | loop back to word 3 |
+
+The tag meanings beyond those lengths are a first reading of the player code. The lengths parse all 15,914 tables exactly.
+
+## Coverage
+
+`python3 -I tools/lmg_decode.py` reads all 929 `1LMG` files without errors: 282,425 instructions, 15,914 motion tables, 19,813 message blocks and 2,147 inline blocks. 35 of the files hold only messages.
+
+These totals were rerun on 2026-10-28. The decoder checks the header sizes and instruction bounds and exits nonzero for decode errors or an empty input corpus. The saved stage 1 trace has 32,180 VM steps, all at decoded instruction boundaries with matching opcodes. Another 45 steps belong to earlier scripts whose saved memory headers were overwritten; they are outside that check. All 28 saved motion starts resolve to stage 1 motion tables. The old trace's auxiliary watch-hit rows included scheduled interrupts and are not evidence of memory accesses.
+
+## Animation mapping
+
+The DS names its animations exactly the way the remaster names its folders. Stage 1's script holds `st01_bicycle_004.mtbl.xml` through `st01_bicycle_009.mtbl.xml`, and the remaster has `st01_bicycle_004` through `_009`.
+
+`python3 -I tools/map_motions.py` reproduces the mapping from decoded DS labels and the local Android community file list. It considers stage animation folders under `charfiles/2d` with a same-named `.user` resource. There are 4,070 distinct folder stems: 3,757 match DS labels exactly, and 250 more match after removing one additional `_NNN` or `_NNx` variant suffix (x is a lowercase letter). That gives 4,007 matched stems and 63 unmatched. The earlier 3,670/3,852 count was not reproducible and is superseded by this explicit scope. This is file-list naming coverage; it does not verify that all listed assets exist in the scanned pack or prove the timing and visual equivalence of every variant. Steam still needs checking.
+
+Match the full stem first. Only if it has no remaster folder, try removing an additional variant after the primary animation number. For example, `st01_bicycle_004` stays unchanged and `st01_bicycle_006_00a` can match `st01_bicycle_006`. A split with its own exact remaster folder keeps that folder.
+
+The tool writes the full mapping, unmatched remaster folders and unresolved play-motion targets under gitignored `extracted/motion_map/`. Of the 21,570 `0x117` play-motion instructions, 21,495 point at a decoded motion table; 75 remain unresolved. The 104 zero jump targets were also reproduced.
+
+The two runtime traces back this up: the 28 motion starts traced in stage 1 land on these tables, among them `bicycle_wait`, `st01_cbag_000` and `st01_linne_004`.
+
+See `docs/frame_mapping.md` for what this means for the port.

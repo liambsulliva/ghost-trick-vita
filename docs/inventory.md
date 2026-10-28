@@ -21,21 +21,21 @@ No. Neither version uses skeletal animation for characters, so there is nothing 
 **Remaster.** Characters are high-resolution 2D, not rigged models.
 
 - The main pack has 15 meshes (0.4 MB in total). None of them contain bone names, and the pack has no motion or skeleton files.
-- Character art lives under `charfiles/2d/`, one folder per stage, then per character, then per animation. Each animation folder holds one texture per frame (`stNN_<character>_<anim>_<frame>_imlN.tex`) and one `.user` file, which probably holds the frame timing. The `.user` file has not been decoded.
+- Character art lives under `charfiles/2d/`, one folder per stage, then per character, then per animation. Each animation folder holds one texture per frame (`stNN_<character>_<anim>_<frame>_imlN.tex`) and one `.user` timeline. The bicycle animation 6 timeline has been decoded far enough to identify textures, timing and local positions; tick rate and scale still need calibration. See `docs/frame_mapping.md`.
 - `charfiles/3d/` is not 3D models. It holds face cut-ins, backlog, profiles, chapter cards, ending and effect images.
 - `SDF` (348 entries, 424 MB) is not animation. In the file list, `.sdf` and `.vsdf` live under `systems/`, so it is most likely shader data.
 
-**What this means for the port.** Swapping assets means swapping frames. When the DS code asks `cCellAnim` for animation A, frame F, the new renderer draws the remaster's frame for the same animation. The remaster's layout (stage, character, animation, frame) suggests the key. The DS ROM also groups content by stage. Whether the DS animation numbers match the remaster's is still unproven. There are no high-poly models to bring over. What the remaster adds is higher-resolution 2D art, Ogg audio and new UI layouts.
+**What this means for the port.** DS frame counts differ from the remaster's, so the renderer must start a whole remaster timeline when the DS starts a named motion table. The DS keeps world position and game logic. `tools/map_motions.py` matches 4,007 of 4,070 distinct animation stems in the Android file list, with 63 unmatched. These are naming matches; Steam assets and variant timing still need verification. See `docs/lmg_format.md` for the exact matching rule and coverage. What the remaster adds is higher-resolution 2D art, Ogg audio and new UI layouts.
 
 ## Blockers
 
 | Blocker | Evidence | Status |
 |---|---|---|
 | Recompiling the DS code | ARM9 is 728,888 bytes decompressed. The 7 overlays add 122 KB, and all of them load at `0x020d3a40`, so only one is resident at a time. The code is ARMv5TE, which the Vita's ARMv7 CPU mostly runs natively. | Feasible. Small for a DS game. |
-| Game logic | About 1,500 scene scripts in a binary format with the magic `1LMG`, one set per stage (`st01` to `st15`), plus 5 translations each. The interpreter is in ARM9. | Good sign: the logic is mostly data. |
+| Game logic | `tools/lmg_decode.py` decodes 929 `1LMG` files from the decompressed corpus as VM bytecode with strings and labels. The interpreter is in ARM9. | 282,425 instructions and 15,914 motion tables decoded without errors. See `docs/lmg_format.md`. |
 | Matching remaster files to DS files | The remaster references `.xml` files under stage folders named like the DS ones (902 references), so the scene structure looks shared. | Promising. Not proven. |
 | Remaster file names are hashed | Verified scheme: MurmurHash3 (seed `0xFFFFFFFF`) of the UTF-16LE path `natives/android/<path>.<ext>.<version>`, plus an optional language or platform suffix. The lowercase path gives one half of the hash and the uppercase path the other. Paths found inside the game data name 4,268 of the 6,478 entries in `re_chunk_000.pak`. Adding the community list `GTPD_ANDROID_Release.list` (REE.PAK.Tool) names 5,293. | Solved for the Android build. A Steam list (`GTPD_STM_Release.list`) also exists. |
-| Character frame mapping | The DS has 2,004 cell sequences. The remaster has a folder per animation with one texture per frame and one `.user` file. | The key looks like stage, character, animation, frame. The next step is decoding a remaster `.user` file and the DS animation index. This is the biggest open question. |
+| Character frame mapping | DS opcode `0x117` starts a named motion table; the remaster has matching animation folders with textures and a `.user` timeline. | Naming coverage is 4,007/4,070 Android file-list stems. Calibrate timing, inspect the 63 unmatched stems and verify Steam. |
 | Texture memory | 2,644 textures, 1.76 GB. Common sizes are 4096², 2048², 1920×1080 and 1440×1080. The format codes (1038, 1086, 1087) look like mobile ASTC. | The converter must re-encode to formats the Vita's GPU reads, at a size chosen per chapter. The Steam formats are not checked yet. |
 | UI | The remaster has 25 GUI layouts with numeric IDs (table below). The DS UI is drawn by code using `cpac_2d` graphics. | Each layout has to be identified, and its DS draw site found. |
 | Video | 17 Mobiclip `.mods` cutscenes on the DS. The remaster references 10 `.mov` files under `@GUI`. | FFmpeg includes a Mobiclip decoder. Re-encode offline for the Vita's hardware video decoder. |
@@ -104,6 +104,9 @@ python3 -I tools/re_pak_scan.py <remaster>/re_chunk_000.pak extracted/remaster/p
 python3 -I tools/re_names.py <remaster>/re_chunk_000.pak tools/re_versions_android.txt extracted/remaster/names.tsv [optional .list file]
 python3 -I tools/rom_audit.py --self-test
 python3 -I tools/rom_audit.py
+python3 -I tools/lmg_decode.py
+python3 -I tools/map_motions.py
+python3 -I -m unittest discover -s tests
 python3 -I tools/nds_loadmap.py "<your rom>.nds" extracted/nds
 python3 -I tools/nds_prove_bases.py extracted/nds
 ./tools/ghidra_build.sh
@@ -136,4 +139,4 @@ It needs the extract above in `extracted/dsd/extract`, the patched `dsd` in `too
 
 - `re_chunk_001.pak` and `re_chunk_002.pak`, the rest of the remaster, stored in the Play Asset Delivery archives `data01` and `data02` (about 2 GB)
 - The Steam copy
-- The remaster's per-animation `.user` files, `FBFO` (high entropy, maybe video or encrypted), the DS `bws` structures and the `cpac` frame-layout records
+- Most remaster per-animation `.user` files beyond the bicycle sample, `FBFO` (high entropy, maybe video or encrypted), the DS `bws` structures and character-specific `cpac` frame-layout records

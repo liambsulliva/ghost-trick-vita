@@ -1,52 +1,14 @@
 import sys
 import os
-import subprocess
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import gdb_remote
+import melonds
 
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MELONDS = os.path.join(REPO_DIR, "extracted", "melonds", "melonDS.app", "Contents", "MacOS", "melonDS")
 NDS_DIR = os.path.join(REPO_DIR, "extracted", "nds")
-
-
-CONFIG = os.path.join(REPO_DIR, "extracted", "melonds", "portable", "melonDS.toml")
-
-
-def make_default_config(rom_path):
-    os.makedirs(os.path.dirname(CONFIG), exist_ok=True)
-    log = open(os.path.join(REPO_DIR, "extracted", "melonds", "default_run.log"), "w")
-    process = subprocess.Popen([MELONDS, rom_path], stdout=log, stderr=log)
-    time.sleep(6)
-    process.send_signal(2)
-    process.wait(15)
-    log.close()
-
-
-def set_gdb_options():
-    f = open(CONFIG, "r")
-    lines = f.read().split("\n")
-    f.close()
-    section = ""
-    new_lines = []
-    for line in lines:
-        text = line.strip()
-        if text.startswith("["):
-            section = text
-        if section == "[Instance0.Gdb]" and text.startswith("Enabled"):
-            line = "Enabled = true"
-        if section == "[Instance0.Gdb.ARM9]" and text.startswith("BreakOnStartup"):
-            line = "BreakOnStartup = true"
-        if section == "[Instance0.Gdb.ARM7]" and text.startswith("BreakOnStartup"):
-            line = "BreakOnStartup = false"
-        if section == "[JIT]" and text.startswith("Enable "):
-            line = "Enable = false"
-        new_lines.append(line)
-    f = open(CONFIG, "w")
-    f.write("\n".join(new_lines))
-    f.close()
 
 
 def load_segments():
@@ -86,16 +48,9 @@ def main():
     if len(sys.argv) > 2:
         run_seconds = int(sys.argv[2])
     entry, segments = load_segments()
-    if not os.path.exists(CONFIG) or os.path.getsize(CONFIG) == 0:
-        make_default_config(rom_path)
-    set_gdb_options()
-
-    log = open(os.path.join(REPO_DIR, "extracted", "melonds", "oracle_run.log"), "w")
-    process = subprocess.Popen([MELONDS, rom_path], stdout=log, stderr=log)
-    sock = gdb_remote.connect(3333, 30)
+    process, sock, log = melonds.start(rom_path, "oracle_run.log")
     if sock is None:
         print("could not connect to the ARM9 GDB stub on port 3333")
-        process.terminate()
         sys.exit(1)
 
     passed = True
@@ -142,16 +97,7 @@ def main():
         line = line + ", next " + overlay_scores[1][1] + " " + str(round(overlay_scores[1][0] * 100, 1)) + "%"
     print(line)
 
-    gdb_remote.send_packet(sock, "k")
-    sock.close()
-    time.sleep(1)
-    process.send_signal(2)
-    try:
-        process.wait(10)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait(10)
-    log.close()
+    melonds.stop(process, sock, log)
     if not passed:
         sys.exit(1)
     print("runtime oracle passed")

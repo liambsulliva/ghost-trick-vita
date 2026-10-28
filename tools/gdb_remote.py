@@ -66,6 +66,8 @@ def interrupt(sock):
 def read_registers(sock):
     reply = command(sock, "g")
     registers = []
+    if reply is None or reply.startswith("E"):
+        return registers
     i = 0
     while i < 17 and (i + 1) * 8 <= len(reply):
         chunk = reply[i * 8:(i + 1) * 8]
@@ -73,6 +75,39 @@ def read_registers(sock):
         registers.append(value)
         i = i + 1
     return registers
+
+
+def write_memory(sock, address, data):
+    reply = command(sock, "M" + format(address, "x") + "," + format(len(data), "x") + ":" + data.hex())
+    return reply == "OK"
+
+
+def add_breakpoint(sock, address, thumb):
+    kind = 4
+    if thumb:
+        kind = 2
+    reply = command(sock, "Z0," + format(address, "x") + "," + str(kind))
+    return reply == "OK"
+
+
+def remove_breakpoint(sock, address, thumb):
+    kind = 4
+    if thumb:
+        kind = 2
+    reply = command(sock, "z0," + format(address, "x") + "," + str(kind))
+    return reply == "OK"
+
+
+def wait_for_stop(sock, seconds):
+    previous_timeout = sock.gettimeout()
+    sock.settimeout(seconds)
+    try:
+        packet = read_packet(sock)
+    except socket.timeout:
+        packet = None
+    finally:
+        sock.settimeout(previous_timeout)
+    return packet
 
 
 def read_memory(sock, address, length):

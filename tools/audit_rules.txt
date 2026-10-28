@@ -24,3 +24,7 @@ magic 0 53444600 RE Engine SDF
 magic 0 73726364 RE Engine audio
 magic 12 42475445 DS ROM header
 magic 0 504b0304 zip archive
+ext .mp4
+ext .webm
+ext .mkv
+ext .part
