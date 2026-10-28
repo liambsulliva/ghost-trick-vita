@@ -1,0 +1,117 @@
+diff --git a/cli/src/cmd/dump/elf_function.rs b/cli/src/cmd/dump/elf_function.rs
+index ef571e3..833ac25 100644
+--- a/cli/src/cmd/dump/elf_function.rs
++++ b/cli/src/cmd/dump/elf_function.rs
+@@ -172,7 +172,7 @@ impl DumpElfFunction {
+             existing_functions: None,
+             dsprot_encrypted_ranges: &[],
+             check_defs_uses: false,
+-            parse_options: ParseFunctionOptions { thumb: None },
++            parse_options: ParseFunctionOptions { thumb: None, skip_start_check: false },
+         })
+         .context("Failed to parse function")?;
+ 
+diff --git a/cli/src/cmd/sig/new_elf.rs b/cli/src/cmd/sig/new_elf.rs
+index 48779c6..73727b3 100644
+--- a/cli/src/cmd/sig/new_elf.rs
++++ b/cli/src/cmd/sig/new_elf.rs
+@@ -54,7 +54,7 @@ impl NewElfSignature {
+             existing_functions: None,
+             dsprot_encrypted_ranges: &[],
+             check_defs_uses: false,
+-            parse_options: ParseFunctionOptions { thumb: None },
++            parse_options: ParseFunctionOptions { thumb: None, skip_start_check: false },
+         })?;
+ 
+         let relocations = function_section
+diff --git a/lib/src/analysis/functions.rs b/lib/src/analysis/functions.rs
+index 9f90a08..91446e3 100644
+--- a/lib/src/analysis/functions.rs
++++ b/lib/src/analysis/functions.rs
+@@ -208,7 +208,7 @@ impl Function {
+             existing_functions: None,
+             dsprot_encrypted_ranges: &[],
+             check_defs_uses: true,
+-            parse_options: ParseFunctionOptions { thumb: Some(thumb) },
++            parse_options: ParseFunctionOptions { thumb: Some(thumb), skip_start_check: false },
+         })
+         .is_ok();
+         if !valid_destination {
+@@ -271,7 +271,7 @@ impl Function {
+                 source: NoEpilogueSnafu.build().into(),
+             });
+         };
+-        if !is_valid_function_start(address, ins, &parsed_ins) {
++        if !options.parse_options.skip_start_check && !is_valid_function_start(address, ins, &parsed_ins) {
+             return Err(FunctionAnalysisError::IntoFunction {
+                 source: InvalidStartSnafu { address, ins }.build().into(),
+             });
+@@ -371,6 +371,7 @@ impl Function {
+         // Used to limit how far to search for valid function starts, see `max_function_start_search_distance`
+         let mut prev_valid_address = start_address;
+         let mut address = start_address;
++        let mut retry_as_thumb: Option<u32> = None;
+ 
+         while !function_code.is_empty()
+             && address <= *upper_bounds.first().unwrap_or(&last_function_address)
+@@ -411,7 +412,8 @@ impl Function {
+                 continue;
+             }
+ 
+-            let thumb = Function::is_thumb_function(address, function_code);
++            let thumb = retry_as_thumb == Some(address)
++                || Function::is_thumb_function(address, function_code);
+ 
+             let parse_mode = if thumb { ParseMode::Thumb } else { ParseMode::Arm };
+             let parser =
+@@ -442,10 +444,28 @@ impl Function {
+                     // Some DS Protect function's sizes are overriden, and there are instances of
+                     // "illegal" register usage  in DS Protect functions (obfuscated code)
+                     check_defs_uses: search_options.check_defs_uses && overriden_size.is_none(),
+-                    parse_options: Default::default(),
++                    parse_options: ParseFunctionOptions {
++                        thumb: None,
++                        skip_start_check: search_options
++                            .function_addresses
++                            .is_some_and(|addresses| addresses.contains(&address)),
++                    },
+                 },
+                 &functions,
+             );
++            if let Err(FunctionAnalysisError::IntoFunction {
++                source: IntoFunctionError::ParseFunction { .. },
++            }) = &function_result
++            {
++                if !thumb
++                    && retry_as_thumb != Some(address)
++                    && function_code.len() >= 4
++                    && (function_code[3] & 0xf8) == 0xe0
++                {
++                    retry_as_thumb = Some(address);
++                    continue;
++                }
++            }
+             let mut function = match function_result {
+                 Ok(function) => function,
+                 Err(FunctionAnalysisError::IntoFunction {
+@@ -1571,6 +1591,7 @@ impl<'a> ParseFunctionContext<'a> {
+ pub struct ParseFunctionOptions {
+     /// Whether the function is in Thumb or ARM mode, or None if it should be detected automatically.
+     pub thumb: Option<bool>,
++    pub skip_start_check: bool,
+ }
+ 
+ enum ParseFunctionState {
+diff --git a/lib/src/config/module.rs b/lib/src/config/module.rs
+index 73ea986..1d746c8 100644
+--- a/lib/src/config/module.rs
++++ b/lib/src/config/module.rs
+@@ -490,7 +490,7 @@ impl Module {
+                 existing_functions: None,
+                 dsprot_encrypted_ranges: &[],
+                 check_defs_uses: false,
+-                parse_options: ParseFunctionOptions { thumb: sym_function.mode.into_thumb() },
++                parse_options: ParseFunctionOptions { thumb: sym_function.mode.into_thumb(), skip_start_check: true },
+             });
+             let function = match parse_result {
+                 Ok(function) => function,

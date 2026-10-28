@@ -3,6 +3,7 @@
 *.pak
 *.bin
 extracted/
+toolchain/
 *.gpr
 *.rep/
 *.gzf
