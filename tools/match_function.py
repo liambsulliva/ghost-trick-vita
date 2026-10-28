@@ -42,7 +42,7 @@ def read_symbols(path, defined):
             section_index = elf_fixups.read_u16(data, base + 14)
             is_defined = section_index != 0
             if name != "" and binding != 0 and is_defined == defined:
-                symbols[name] = value
+                symbols[name] = [value, data[base + 12] & 0xF]
             i = i + 1
     return symbols
 
@@ -103,11 +103,29 @@ def main():
     needed = read_symbols(object_path, False)
     known = read_symbols(REFERENCE_ELF, True)
     linker = [brew_bin("lld", "ld.lld"), "--no-undefined", "--entry=" + candidate_name, "-Ttext=" + hex(address), object_path, "-o", linked_path]
+    attributes_object = os.path.join(REPO_DIR, "extracted", "lld", "objects", "armv5te.o")
+    if os.path.exists(attributes_object):
+        linker.append(attributes_object)
+    stub_lines = []
     for name in sorted(needed):
         if name not in known:
             print("no value for external symbol " + name)
             sys.exit(1)
-        linker.append("--defsym=" + name + "=" + hex(known[name]))
+        value = known[name][0]
+        if known[name][1] == 2:
+            stub_lines.append(".global " + name)
+            stub_lines.append(".type " + name + ", %function")
+            stub_lines.append(".set " + name + ", " + hex(value))
+        else:
+            linker.append("--defsym=" + name + "=" + hex(value))
+    if len(stub_lines) > 0:
+        stub_source = os.path.join(work_dir, "externals.s")
+        stub_object = os.path.join(work_dir, "externals.o")
+        f = open(stub_source, "w")
+        f.write("\n".join(stub_lines) + "\n")
+        f.close()
+        subprocess.run([brew_bin("llvm", "llvm-mc"), "-triple=armv5te-none-eabi", "-filetype=obj", stub_source, "-o", stub_object], check=True)
+        linker.append(stub_object)
     result = subprocess.run(linker, capture_output=True, text=True)
     if result.returncode != 0:
         print(result.stdout + result.stderr)
