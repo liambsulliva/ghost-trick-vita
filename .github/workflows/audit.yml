@@ -18,3 +18,5 @@ jobs:
         run: python3 tools/rom_audit.py
       - name: Check the script decoder and animation mapping
         run: python3 -I -m unittest discover -s tests
+      - name: Check README progress treemap
+        run: python3 -I tools/progress_treemap.py --check

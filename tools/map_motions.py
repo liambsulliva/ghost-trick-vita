@@ -2,6 +2,7 @@ import sys
 import os
 import re
 import glob
+import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -104,16 +105,26 @@ def alias_candidates(stage, name, folders):
 
 
 def main():
-    source = os.path.join(REPO_DIR, "extracted", "nds_plain")
-    file_list = os.path.join(REPO_DIR, "extracted", "remaster_apk", "GTPD_ANDROID_Release.list")
-    out_dir = os.path.join(REPO_DIR, "extracted", "motion_map")
-    if len(sys.argv) > 1:
-        source = sys.argv[1]
-    if len(sys.argv) > 2:
-        file_list = sys.argv[2]
-    if len(sys.argv) > 3:
-        out_dir = sys.argv[3]
+    parser = argparse.ArgumentParser(description="Map DS motion names to remaster animation folders.")
+    parser.add_argument("source", nargs="?", default=os.path.join(REPO_DIR, "extracted", "nds_plain"))
+    parser.add_argument("file_list", nargs="?", default=os.path.join(REPO_DIR, "extracted", "remaster_apk", "GTPD_ANDROID_Release.list"))
+    parser.add_argument("output", nargs="?")
+    parser.add_argument("--stage")
+    args = parser.parse_args()
+    if args.stage is not None and re.fullmatch(r"st\d{2}", args.stage) is None:
+        parser.error("stage must use the form st01")
+    source = args.source
+    file_list = args.file_list
+    out_dir = args.output
+    if out_dir is None:
+        out_dir = os.path.join(REPO_DIR, "extracted", "motion_map")
+        if args.stage is not None:
+            out_dir = os.path.join(out_dir, args.stage)
     folders = read_remaster_folders(file_list)
+    if args.stage is not None:
+        folders = {stem: paths for stem, paths in folders.items() if stem.startswith(args.stage + "_")}
+        if len(folders) == 0:
+            raise ValueError("no remaster animation folders found for " + args.stage)
     rows = []
     uses_rows = []
     candidate_rows = []
@@ -128,6 +139,10 @@ def main():
     zero_jumps = 0
     zero_motions = 0
     for path in sorted(glob.glob(os.path.join(source, "**", "*.dec"), recursive=True)):
+        relative = os.path.relpath(path, source)
+        stage = relative.split(os.sep)[0]
+        if args.stage is not None and stage != args.stage:
+            continue
         with open(path, "rb") as script:
             data = script.read()
         if data[:4] != b"1LMG":
@@ -136,8 +151,6 @@ def main():
         if len(errors) > 0:
             raise ValueError(path + ": " + errors[0])
         scripts = scripts + 1
-        relative = os.path.relpath(path, source)
-        stage = relative.split(os.sep)[0]
         if re.fullmatch(r"st\d{2}", stage) is None:
             stage = ""
         uses = motion_uses(items, strings)

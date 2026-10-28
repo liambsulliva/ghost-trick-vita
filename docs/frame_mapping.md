@@ -6,17 +6,17 @@ Sources: DS ROM (USA, `BGTE`), remaster Android `re_chunk_000.pak` named with `t
 
 ## DS side: how sprites are stored
 
-`cpac_2d.bin`, as initially unpacked by `tools/cpac_unpack.py` (some counts and interpretations below are superseded by the runtime findings because the unpacker assumes 8-byte keys):
+The corrected `tools/cpac_unpack.py` extracts 24,853 nonempty entries from `cpac_2d.bin`:
 
-| Block | Entries | Contents |
-|---|---|---|
-| 0 | 1 | 4 KB table of 15-bit colors in a smooth ramp, probably a color lookup |
-| 1 | 8 | 3 KB entries, palette-like |
-| 2 | 251 | background tile and fill data |
-| 3 | 19,941 | character sprites as repeating triplets: an `RNAN` cell animation (usually one frame), a small cell-layout record, an LZ-compressed tile block. About 6,650 frame sets. |
-| 4 | 156 | large background bitmaps |
+- Block 0: 2,905 palettes, with four-byte keys.
+- Block 1: 8 entries, palette-like.
+- Block 2: 307 background tile and fill entries, 304 compressed.
+- Block 3: 21,477 sprite entries, including 2,489 `RNAN` resources, custom frame tables, layouts and graphics.
+- Block 4: 156 large background entries.
 
-There is no index in the pack that maps objects or animations to entries. That mapping lives in the code or the scene scripts.
+These replace the original counts, which misread palette keys and discarded some language variants. All 247 loads in the saved runtime trace now have manifest entries. See `docs/cpac_format.md` for the key formats and extraction checks.
+
+Resource IDs map to palettes and sprite entries through tables in ARM9, described below. Object and motion names come from the scene scripts or class setup code.
 
 The scene scripts (`stNN/*_Expand.xml`, `1LMG` bytecode) refer to on-screen objects by name. Those names are the same identifiers the remaster uses for its `charfiles` folders. So stage plus object name is a shared key between the two versions.
 
@@ -68,7 +68,7 @@ That reflection data will help name struct fields later. It does not identify th
 - **Pad reads:** `func_0202292c` and `func_020316dc` are the SDK pad read. Each wraps a 32-byte reader that combines the key register `0x04000130` with the X/Y bits from shared memory, then masks out opposite D-pad directions. Each has one caller.
 - **Pack setup:** `func_0202ef90` opens `cpac_2d.bin` and `cpac_3d.bin` through a stream class. The vtable is at `0x020a4670`, and `+0x10` is `open(path)` at `0x0201efb4`. It wraps each stream in a 0xcc-byte pack object.
 - **Entry loader:** `func_0201e664(pack, block, index)` reads one entry from a pack. It looks up the block's key table, which uses 4-byte keys (offset and size in 32-byte units) or 8-byte keys, keeps a small cache keyed by the index's low byte, and returns an entry reader. `func_0201e888`, with 44 call sites, wraps it to allocate and decompress.
-- **Unpacker bug:** `tools/cpac_unpack.py` assumes 8-byte keys everywhere. `cpac_2d` block 0 uses 4-byte keys, so the unpacker shows one entry there, but the game loads indices up to 2,876.
+- **Unpacker fix:** `tools/cpac_unpack.py` now reads both key formats and masks the language flag out of byte offsets. Block 0 contains 2,905 palettes; the saved trace loads indices up to 2,876.
 
 ### Input injection
 
@@ -165,4 +165,35 @@ All 75 unresolved play-motion targets are zero. The VM turns zero into the scrip
 
 `alias_candidates.tsv` now includes cases where script object names differ from art names, shared initializer calls, one-resource families with nonzero animation IDs, cross-stage resources, and two stage 14 naming patterns. `animation_gaps.tsv` keeps these proposals separate from the confirmed mappings: 23 gaps have the stricter object-name candidate, 37 have broader candidates, and three have no named-table candidate. Cross-stage alternatives remain explicit, including both guitar 000 and 999 for a stage 13 wait table. Confirmed coverage remains 4,007/4,070.
 
-The three remaining names are scenery effects: `st13_objeffect_neona_000`, `st13_objeffect_neonb_000` and `st14_scr_gyorai_000`. They exist in the complete local `re_chunk_002.pak` and each references one texture. Their DS draw path still needs to be found. `tools/re_pak_index.py` verifies resource presence directly in raw packs or their containing ZIP archives; all 4,265 queried 2D `.user` paths were found across the three local pack indexes. See `docs/lmg_format.md` for the candidate rules, archive layout and reproduction command.
+The three remaining names are scenery effects: `st13_objeffect_neona_000`, `st13_objeffect_neonb_000` and `st14_scr_gyorai_000`. They exist in the complete local `re_chunk_002.pak` and each references one texture. The neon class paths are now identified below; the gyorai scenery binding remains open. `tools/re_pak_index.py` verifies resource presence directly in raw packs or their containing ZIP archives; all 4,265 queried 2D `.user` paths were found across the three local pack indexes. See `docs/lmg_format.md` for the candidate rules, archive layout and reproduction command.
+
+## Resource IDs resolve through ARM9 tables
+
+The first argument of a motion table's `begin` command is a cell resource ID, not a CPAC entry index. `func_0200b598` resolves the ID through three tables in the USA ARM9 main segment:
+
+- `0x02086f84`: five language-specific u16 IDs per localized resource. When bit `0x8000` is set, use the low 15 bits as the row and the language byte at `0x020cff60`, minus one, as the column.
+- `0x02088910`: one packed u16 per resolved resource ID. Its upper 14 bits select a descriptor; the low two bits select the cell-animation sequence.
+- `0x0208c064`: four u16 indices per descriptor: palette, graphics, cell layout and animation/frame table. A zero component means it is absent. Palette indices refer to CPAC 2D block 0; the other three refer to block 3.
+
+The table pointers are literals at `0x0200b750`, `0x0200b754` and `0x0200b758`. The loader's component mask uses bits 1, 2, 4 and 8 in that same order. `func_0200af44` loads palettes, `func_0200af34` loads graphics, and `func_020420e0` loads the cell and animation data from block 3. The last component can hold an `RNAN` resource or the custom stage-object frame table; its index is not a remaster animation number.
+
+`tools/cell_resources.py` reads those pointers and writes metadata for explicit IDs. It is specific to this USA main segment; it does not scan other releases for equivalent tables. Language is a numeric selector from 1 to 5, defaulting to 1.
+
+```
+python3 -I tools/cell_resources.py extracted/nds/segments/main.bin extracted/motion_map/cell_resources.tsv 3751 4666 7006 7007
+```
+
+Resource 3751 resolves to palette 144, graphics 14001, cell 14000 and frame table 13999, agreeing with the saved bicycle load. Across all 929 decoded scripts, motion `begin` commands use 4,088 distinct IDs. One is zero, which selects no resource; the other 4,087 resolve without lookup errors. Every one of their 16,347 nonzero component references exists in the corrected CPAC manifest. This checks table bounds and entry presence, not the contents of every sprite set.
+
+## Neon scenery uses class setup instead of a named motion table
+
+The class registration at `0x020804bc` names `uObjEffectNeon`, `uObjEffectNeonA` and `uObjEffectNeonB`. Their factory and setup paths identify two hooks outside opcode `0x117`:
+
+- `uObjEffectNeonA`: creator `0x02055784`, object vtable `0x020ad474`, setup `0x020559a8`. Setup calls `func_0200b598(object + 0x28, 7006, 0xf)`. Resource 7006 resolves to palette 58, graphics 6906, cell 6905 and animation 6904, sequence 0.
+- `uObjEffectNeonB`: creator `0x020557ac`, object vtable `0x020ad4f4`, setup `0x020559f8`. It loads resource 7007 with the same mask. This resolves to palette 59, graphics 6909, cell 6908 and animation 6907, sequence 0.
+
+Their shared update is `0x02055948`. When its gates allow an update, it advances the fixed-point x position by `0x7000` or `0x9000`, wrapping through `0` to `0xff000`. These are increments of 7 or 9 DS pixels per eligible update, not a measured rate per second. Shared draw `0x020558f8` updates the cell animation, applies object position and camera subtraction, then calls `func_0200ba7c` on the embedded cell renderer at `object + 0x28`.
+
+The matching class and art names support using these setup paths for `st13_objeffect_neona_000` and `st13_objeffect_neonb_000`. This is a static binding proposal: neither the later-stage runtime behavior nor remaster pose, timing and placement has been verified. It does not change the confirmed named-table coverage of 4,007/4,070.
+
+`st14_scr_gyorai_000` still needs a binding. The script's `torpedo` object uses a different named resource, `st14_03gyorai-SV_000.mtbl.xml`, whose `begin` ID 4666 resolves to palette 484 and sprite set 19249. That does not establish an alias for the separate scenery resource. The generic `uScrObj` class draws through `0x0205a5f8` and `0x02058e38`, but its class path alone does not identify which instance, if any, uses the scenery art.

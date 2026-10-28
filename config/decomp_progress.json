@@ -1,0 +1,29 @@
+{
+  "excluded_modules": {
+    "ov000": "DS Protect is omitted from the Vita port."
+  },
+  "matched": [
+    {
+      "module": "main",
+      "address": "0x0205991c",
+      "name": "func_0205991c",
+      "size": 80,
+      "source": "src/motion/queue_motion.c",
+      "source_sha256": "bdb3a3a6016be75a9f4a3b26389fdbede0cc95b1988be05d82b254369066046e",
+      "compiler": "mwccarm dsi/1.2p1 (every dsi version tested matches)",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft (no -interworking)",
+      "verification_sha256": "878a7b8148baba63798859ea3d310ad8f4a074e4ab0974847204ff93d7f29435"
+    },
+    {
+      "module": "main",
+      "address": "0x020280c8",
+      "name": "func_020280c8",
+      "size": 68,
+      "source": "src/vm/play_motion.c",
+      "source_sha256": "14c921dcf773d390275e54f7233f4e843231ffd00fd3134a58e966c67c3ebe31",
+      "compiler": "mwccarm dsi/1.2p1 (every dsi version tested matches)",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft (no -interworking)",
+      "verification_sha256": "d54e24e462a72fce84d7b99f8d4bc91e6ea283254c7329b9a9c6158f90e6d7f0"
+    }
+  ]
+}

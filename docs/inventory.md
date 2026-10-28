@@ -1,5 +1,7 @@
 # Inventory and blockers
 
+The current release target is a playable Chapter 1 build on the Vita for user feedback. The rest of the game is a stretch goal after that test. Keep all prepared assets, logic, tools and findings for reuse; only new implementation and verification work is narrowed. See `docs/chapter1.md` for the delivery scope and next steps. This inventory retains the broader research.
+
 What was examined:
 
 - DS ROM, USA release (`BGTE`), through `tools/nds_unpack.py`, `tools/nds_catalog.py` and `tools/cpac_unpack.py`.
@@ -15,8 +17,8 @@ No. Neither version uses skeletal animation for characters, so there is nothing 
 **DS.** Characters are 2D cell (sprite) animation.
 
 - The ARM9 code contains the classes `cCellAnim`, `cAnimSequencer` and `mAnimCtrl.currentTime`, and no bone, joint or skeleton names.
-- `cpac_2d.bin` (81.8 MB) holds 1,977 `RNAN` cell-animation files and about 18,000 entries of frame layouts and tile pixels.
-- `cpac_3d.bin` (6.4 MB) is mostly textures (961 `sdt` entries) plus 310 `bws` structures that reference them. No skeleton data was found, but `bws` has not been decoded.
+- The corrected extraction of `cpac_2d.bin` (81.8 MB) has 24,853 nonempty entries, including 2,905 palettes and 2,489 `RNAN` cell-animation files, plus custom frame tables, layouts and tile pixels. See `docs/cpac_format.md`.
+- `cpac_3d.bin` (6.4 MB) has 1,481 nonempty entries after the key fix: 1,136 texture entries, 10 in block 2 and 335 in block 3. No skeleton data was found, but the `bws` structures have not been decoded.
 
 **Remaster.** Characters are high-resolution 2D, not rigged models.
 
@@ -91,7 +93,7 @@ The target is the remaster's single-screen layout. The remaster's layouts carry 
 | `ui040200` | | | |
 | `ui040300` | | | |
 
-DS UI-related files outside the stage folders: `system/language_select`, `system/database_0000_Expand` (likely the in-game profiles), `system/system_0000.msg` (system text), the fonts (`*.imb`, `font8x8.bin`, `CharWidth*.bin`, `PixLine*.bin`) and the 247 compressed entries in `cpac_2d` block 2.
+DS UI-related files outside the stage folders: `system/language_select`, `system/database_0000_Expand` (likely the in-game profiles), `system/system_0000.msg` (system text), the fonts (`*.imb`, `font8x8.bin`, `CharWidth*.bin`, `PixLine*.bin`) and the 304 compressed entries in `cpac_2d` block 2.
 
 ## Running the tools
 
@@ -106,6 +108,8 @@ python3 -I tools/rom_audit.py --self-test
 python3 -I tools/rom_audit.py
 python3 -I tools/lmg_decode.py
 python3 -I tools/map_motions.py
+python3 -I tools/map_motions.py --stage st01
+python3 -I tools/cell_resources.py extracted/nds/segments/main.bin extracted/motion_map/cell_resources.tsv 3751 7006 7007
 python3 -I tools/re_pak_index.py extracted/remaster_apk/GTPD_ANDROID_Release.list extracted/motion_map/pak_presence.tsv extracted/remaster_apk/re_chunk_000.pak extracted/remaster_apk/data01 extracted/remaster_apk/data02
 python3 -I -m unittest discover -s tests
 python3 -I tools/nds_loadmap.py "<your rom>.nds" extracted/nds

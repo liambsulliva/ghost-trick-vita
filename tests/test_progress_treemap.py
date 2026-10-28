@@ -1,0 +1,59 @@
+import hashlib
+import tempfile
+import unittest
+import xml.etree.ElementTree as ET
+from pathlib import Path
+import sys
+
+TOOLS_DIR = Path(__file__).resolve().parents[1] / "tools"
+sys.path.insert(0, str(TOOLS_DIR))
+
+import progress_treemap
+
+
+def function(address, size, matched=False, module="main"):
+    return {"module": module, "name": "function_" + str(address), "address": address, "size": size, "mode": "thumb", "matched": matched}
+
+
+class ProgressTests(unittest.TestCase):
+    def test_shared_code_is_counted_once_within_each_module(self):
+        rows = [function(0x1000, 16), function(0x1002, 14), function(0x1000, 8, module="itcm")]
+        self.assertEqual(progress_treemap.code_bytes(rows), 24)
+
+    def test_layout_preserves_area_without_overlapping_bounds(self):
+        rows = [function(i * 8, i + 1) for i in range(10)]
+        boxes = progress_treemap.rectangles(rows, 0, 0, 100, 80)
+        self.assertAlmostEqual(sum(w * h for row, x, y, w, h in boxes), 8000)
+        for i, (row, x, y, w, h) in enumerate(boxes):
+            self.assertGreater(w, 0)
+            self.assertGreater(h, 0)
+            for other, a, b, c, d in boxes[i + 1:]:
+                self.assertTrue(x + w <= a + 1e-8 or a + c <= x + 1e-8 or y + h <= b + 1e-8 or b + d <= y + 1e-8)
+
+    def test_svg_has_one_tile_per_function_and_honest_zero_progress(self):
+        rows = [function(0x1000, 2), function(0x1002, 14)]
+        svg = progress_treemap.make_svg(rows)
+        root = ET.fromstring(svg)
+        tiles = [element for element in root.iter() if "data-function" in element.attrib]
+        self.assertEqual(len(tiles), 2)
+        self.assertTrue(all(element.attrib["fill"] == "#535e6d" for element in tiles))
+        self.assertIn("Functions matched: 0 / 2 (0.00%)", svg)
+
+    def test_changed_source_and_unknown_match_cannot_inflate_progress(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "test.c").write_text("void test(void) {}\n")
+            rows = [function(0x1000, 2)]
+            match = {"module": "main", "address": "0x1000", "size": 2, "source": "test.c", "source_sha256": "0" * 64, "verification_sha256": "1" * 64}
+            with self.assertRaises(ValueError):
+                progress_treemap.apply_matches(rows, {"matched": [match]}, root)
+            match["source_sha256"] = hashlib.sha256((root / "test.c").read_bytes()).hexdigest()
+            progress_treemap.apply_matches(rows, {"matched": [match]}, root)
+            self.assertTrue(rows[0]["matched"])
+            match["address"] = "0x2000"
+            with self.assertRaises(ValueError):
+                progress_treemap.apply_matches(rows, {"matched": [match]}, root)
+
+
+if __name__ == "__main__":
+    unittest.main()

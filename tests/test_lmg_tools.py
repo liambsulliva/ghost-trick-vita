@@ -68,6 +68,31 @@ class DecoderTests(unittest.TestCase):
 
 
 class MappingTests(unittest.TestCase):
+    def test_stage_filter_limits_scripts_and_remaster_denominator(self):
+        code = struct.pack("<5H", 0xFFFD, 1, 0, 0x1000, 0xFFFE)
+        data = container(code, label_table("st01_lamp_004.mtbl.xml", 0x34))
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source = root / "source"
+            (source / "st01").mkdir(parents=True)
+            (source / "st02").mkdir()
+            (source / "st01" / "test.dec").write_bytes(data)
+            (source / "st02" / "test.dec").write_bytes(b"1LMG")
+            file_list = root / "files.list"
+            file_list.write_text("natives/android/charfiles/2d/group/st01/lamp/st01_lamp_004/st01_lamp_004.user.2\n"
+                                 "natives/android/charfiles/2d/group/st02/lamp/st02_lamp_004/st02_lamp_004.user.2\n")
+            out = root / "out"
+            command = [sys.executable, "-I", str(TOOLS_DIR / "map_motions.py"), str(source), str(file_list), str(out), "--stage", "st01"]
+            result = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("scripts: 1", result.stdout)
+            self.assertIn("remaster animation stems: 1, matched: 1, unmatched: 0", result.stdout)
+            with (out / "motions.tsv").open() as f:
+                rows = list(csv.DictReader(f, delimiter="\t"))
+            self.assertEqual([row["script"] for row in rows], ["st01/test.dec"])
+            with (out / "unmatched_remaster.tsv").open() as f:
+                self.assertEqual(list(csv.DictReader(f, delimiter="\t")), [])
+
     def test_wait_alias_can_have_a_different_script_object_name(self):
         folders = {"st03_02dbox_000": set()}
         self.assertEqual(map_motions.alias_candidates("st03", "02dbox_wait.mtbl.xml", folders), [("st03_02dbox_000", "wait_name")])
