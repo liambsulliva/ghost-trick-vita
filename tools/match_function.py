@@ -14,7 +14,7 @@ REFERENCE_ELF = os.path.join(REPO_DIR, "extracted", "lld", "linked.elf")
 WINE = "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine"
 BOTTLE = os.path.join(REPO_DIR, "toolchain", "wine-mwcc-run")
 COMPILER_VERSION = "dsi/1.2p1"
-FLAGS = ["-proc", "arm946e", "-thumb", "-O4,s", "-fp", "soft", "-sym", "on"]
+FLAGS = ["-proc", "arm946e", "-thumb", "-O4,s", "-fp", "soft", "-interworking", "-sym", "on"]
 
 
 def brew_bin(formula, name):
@@ -64,8 +64,15 @@ def main():
     reference_name = sys.argv[2]
     candidate_name = sys.argv[3]
     compiler_version = COMPILER_VERSION
-    if len(sys.argv) > 5 and sys.argv[4] == "--compiler":
-        compiler_version = sys.argv[5]
+    flags = list(FLAGS)
+    i = 4
+    while i < len(sys.argv):
+        if sys.argv[i] == "--compiler" and i + 1 < len(sys.argv):
+            compiler_version = sys.argv[i + 1]
+            i = i + 1
+        elif sys.argv[i] == "--no-interworking":
+            flags.remove("-interworking")
+        i = i + 1
     work_dir = os.path.join(REPO_DIR, "extracted", "decomp", reference_name, compiler_version.replace("/", "_"))
     os.makedirs(work_dir, exist_ok=True)
     source_copy = os.path.join(work_dir, os.path.basename(source))
@@ -85,7 +92,7 @@ def main():
     env["WINEDEBUG"] = "-all"
     env["LM_LICENSE_FILE"] = "Z:" + os.path.join(REPO_DIR, "toolchain", "mwccarm", "license.dat").replace("/", "\\")
     compiler = os.path.join(REPO_DIR, "toolchain", "mwccarm", compiler_version, "mwccarm.exe")
-    command = [WINE, "--bottle", BOTTLE, "--no-gui", "--workdir", work_dir, compiler, "-c", os.path.basename(source), "-o", object_name] + FLAGS
+    command = [WINE, "--bottle", BOTTLE, "--no-gui", "--workdir", work_dir, compiler, "-c", os.path.basename(source), "-o", object_name] + flags
     result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=120)
     if result.returncode != 0 or not os.path.exists(object_path):
         print(result.stdout + result.stderr)
@@ -115,7 +122,7 @@ def main():
     report["candidate_function"] = candidate_name
     report["source"] = os.path.relpath(source, REPO_DIR)
     report["compiler"] = compiler_version
-    report["flags"] = FLAGS
+    report["flags"] = flags
     report_path = os.path.join(work_dir, candidate_name + "_check.json")
     f = open(report_path, "w")
     f.write(json.dumps(report, indent=2) + "\n")
