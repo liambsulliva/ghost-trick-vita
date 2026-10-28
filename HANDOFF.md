@@ -61,7 +61,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | Started | 444 of 8,573 dsd functions are C-matched (`README.md` treemap via `tools/progress_treemap.py`, `config/decomp_progress.json`). A whole-game matching campaign is deferred behind the Chapter 1 target. |
+| 5–8 Matching decomp | Started | 888 of 8,573 dsd functions are C-matched (`README.md` treemap via `tools/progress_treemap.py`, `config/decomp_progress.json`). A whole-game matching campaign is deferred behind the Chapter 1 target. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -102,6 +102,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
   - Also matched: base-then-free and base-then-return copies, calls that pass one function's result straight into `func_02073fc4`, the one-time init `func_02008eb0` (guard `data_020b4250`, object `data_020b4254`), the `func_0206a7f0` fillers (`6, 1, 0` and swapped `8, 10, 2`), mark/clear of the byte at `+0x18`, 0x40 and 0x38 allocate/construct pairs, `func_02009830`'s field clear (the word at `+4` and the bytes at `+6/+7` are separate stores), and `func_02009bdc`, which sign-extends two ints to 16 bits and shifts them left by 12 before `func_02008398`.
 - **Snapshot at 222 functions (2,710 bytes).** Added 111 matched functions: empty bodies, small constant returns, single field loads, address constants, and tail calls.
 - **Snapshot at 444 functions (3,598 bytes).** Added 222 matched functions: empty bodies, small constant returns, single field loads, address constants, and tail calls.
+- **Snapshot at 888 functions (6,416 bytes).** Added 444 matched functions: empty bodies, small constant returns, single field loads, address constants, and tail calls.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
