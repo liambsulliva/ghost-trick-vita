@@ -1,0 +1,23 @@
+ext .nds
+ext .apk
+ext .pak
+ext .sdat
+ext .mods
+ext .imb
+ext .dat
+ext .tex
+ext .mesh
+ext .gui
+magic 0 4b504b41 RE Engine pak
+magic 0 314c4d47 DS scene script
+magic 0 524e414e DS cell animation
+magic 0 53444154 DS sound archive
+magic 0 4d4f4453 Mobiclip video
+magic 0 73647421 DS cpac texture
+magic 0 7364742e DS cpac texture
+magic 0 54455800 RE Engine texture
+magic 0 4d455348 RE Engine mesh
+magic 0 53444600 RE Engine SDF
+magic 0 73726364 RE Engine audio
+magic 12 42475445 DS ROM header
+magic 0 504b0304 zip archive

@@ -21,10 +21,11 @@ No. Neither version uses skeletal animation for characters, so there is nothing 
 **Remaster.** Characters are high-resolution 2D, not rigged models.
 
 - The main pack has 15 meshes (0.4 MB in total). None of them contain bone names, and the pack has no motion or skeleton files.
-- Scene and data files hold 59,906 references to textures under `charfiles/`, which looks like per-frame character art.
-- The largest unknown format is `SDF` (348 files, 424 MB). It is the most likely home of the animation timing, but it has not been decoded.
+- Character art lives under `charfiles/2d/`, one folder per stage, then per character, then per animation. Each animation folder holds one texture per frame (`stNN_<character>_<anim>_<frame>_imlN.tex`) and one `.user` file, which probably holds the frame timing. The `.user` file has not been decoded.
+- `charfiles/3d/` is not 3D models. It holds face cut-ins, backlog, profiles, chapter cards, ending and effect images.
+- `SDF` (348 entries, 424 MB) is not animation. In the file list, `.sdf` and `.vsdf` live under `systems/`, so it is most likely shader data.
 
-**What this means for the port.** Swapping assets means swapping frames. When the DS code asks `cCellAnim` for animation A, frame F, the new renderer draws the remaster's frame for the same animation. There are no high-poly models to bring over. What the remaster adds is higher-resolution 2D art, Ogg audio and new UI layouts.
+**What this means for the port.** Swapping assets means swapping frames. When the DS code asks `cCellAnim` for animation A, frame F, the new renderer draws the remaster's frame for the same animation. The remaster's layout (stage, character, animation, frame) suggests the key. The DS ROM also groups content by stage. Whether the DS animation numbers match the remaster's is still unproven. There are no high-poly models to bring over. What the remaster adds is higher-resolution 2D art, Ogg audio and new UI layouts.
 
 ## Blockers
 
@@ -33,8 +34,8 @@ No. Neither version uses skeletal animation for characters, so there is nothing 
 | Recompiling the DS code | ARM9 is 728,888 bytes decompressed. The 7 overlays add 122 KB, and all of them load at `0x020d3a40`, so only one is resident at a time. The code is ARMv5TE, which the Vita's ARMv7 CPU mostly runs natively. | Feasible. Small for a DS game. |
 | Game logic | About 1,500 scene scripts in a binary format with the magic `1LMG`, one set per stage (`st01` to `st15`), plus 5 translations each. The interpreter is in ARM9. | Good sign: the logic is mostly data. |
 | Matching remaster files to DS files | The remaster references `.xml` files under stage folders named like the DS ones (902 references), so the scene structure looks shared. | Promising. Not proven. |
-| Remaster file names are hashed | The pack's table of contents has hashes only. 1,892 data files contain readable path strings, which can be hashed to recover the names. | Next step. The hash scheme has not been verified on this game. |
-| Character frame mapping | The DS has 2,004 cell sequences; the remaster has `charfiles` textures plus `SDF`. | Unknown until `SDF` is decoded. This is the biggest open question. |
+| Remaster file names are hashed | Verified scheme: MurmurHash3 (seed `0xFFFFFFFF`) of the UTF-16LE path `natives/android/<path>.<ext>.<version>`, plus an optional language or platform suffix. The lowercase path gives one half of the hash and the uppercase path the other. Paths found inside the game data name 4,268 of the 6,478 entries in `re_chunk_000.pak`. Adding the community list `GTPD_ANDROID_Release.list` (REE.PAK.Tool) names 5,293. | Solved for the Android build. A Steam list (`GTPD_STM_Release.list`) also exists. |
+| Character frame mapping | The DS has 2,004 cell sequences. The remaster has a folder per animation with one texture per frame and one `.user` file. | The key looks like stage, character, animation, frame. The next step is decoding a remaster `.user` file and the DS animation index. This is the biggest open question. |
 | Texture memory | 2,644 textures, 1.76 GB. Common sizes are 4096², 2048², 1920×1080 and 1440×1080. The format codes (1038, 1086, 1087) look like mobile ASTC. | The converter must re-encode to formats the Vita's GPU reads, at a size chosen per chapter. The Steam formats are not checked yet. |
 | UI | The remaster has 25 GUI layouts with numeric IDs (table below). The DS UI is drawn by code using `cpac_2d` graphics. | Each layout has to be identified, and its DS draw site found. |
 | Video | 17 Mobiclip `.mods` cutscenes on the DS. The remaster references 10 `.mov` files under `@GUI`. | FFmpeg includes a Mobiclip decoder. Re-encode offline for the Vita's hardware video decoder. |
@@ -46,7 +47,7 @@ The order follows the phase ladder in the BFM-decomp wiki ("Start a new decomp p
 
 | Phase | Milestone from the guide | DS version | Status |
 |---|---|---|---|
-| 0 Governance and firewall | ROM audit fails on a planted file and passes on the tree; CI green | `.gitignore` blocks ROM, APK, pak and bin files and `extracted/`. The audit script and CI are not written yet. | Partly done |
+| 0 Governance and firewall | ROM audit fails on a planted file and passes on the tree; CI green | `.gitignore` blocks ROM, APK, pak and bin files and `extracted/`. `tools/rom_audit.py` reads its forbidden extensions and magic bytes from `tools/audit_rules.txt`. When a local manifest exists, it also flags any file whose hash matches a ROM file. `--self-test` must catch every planted file before the tree check is trusted. `.github/workflows/audit.yml` runs both on every push. | Done locally. CI not yet seen green. |
 | 1 Deterministic extraction | One command extracts; a rerun reproduces the manifest | `nds_unpack.py` writes `manifest.txt` with SHA-1 hashes. Two runs produced identical manifests. | Done |
 | 2 Oracles and load map | Disassembly database exported as text; runtime oracle; load addresses proven | Ghidra (not installed) for the database. A DS emulator with a debugger as the runtime oracle. ARM9 loads at `0x02000000`, overlays at `0x020d3a40`. | Not started |
 | 3 All-assembly baseline | Every binary rebuilds byte-identical from assembly | ds-decomp toolkit to split and rebuild the ROM | Not started |
@@ -100,12 +101,15 @@ python3 -I tools/nds_catalog.py extracted/nds/files extracted/nds_plain
 python3 -I tools/cpac_unpack.py extracted/nds/files/cpac_2d.bin extracted/cpac
 python3 -I tools/cpac_unpack.py extracted/nds/files/cpac_3d.bin extracted/cpac
 python3 -I tools/re_pak_scan.py <remaster>/re_chunk_000.pak extracted/remaster/pak_entries.tsv
+python3 -I tools/re_names.py <remaster>/re_chunk_000.pak tools/re_versions_android.txt extracted/remaster/names.tsv [optional .list file]
+python3 -I tools/rom_audit.py --self-test
+python3 -I tools/rom_audit.py
 ```
 
-`re_pak_scan.py` needs the `zstd` command on the PATH.
+`re_pak_scan.py` and `re_names.py` need the `zstd` command on the PATH. `tools/re_versions_android.txt` holds the path prefix and the version number for each file extension in the Android build. The Steam build will need its own table. Community `.list` files stay in `extracted/` and never go into the repo.
 
 ## Not examined yet
 
-- `data01` and `data02` (Play Asset Delivery packs, about 2 GB)
+- `re_chunk_001.pak` and `re_chunk_002.pak`, the rest of the remaster, stored in the Play Asset Delivery archives `data01` and `data02` (about 2 GB)
 - The Steam copy
-- The formats `SDF`, `FBFO` (high entropy, maybe video or encrypted), `bws` and the `cpac` frame-layout records
+- The remaster's per-animation `.user` files, `FBFO` (high entropy, maybe video or encrypted), the DS `bws` structures and the `cpac` frame-layout records
