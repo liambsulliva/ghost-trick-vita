@@ -1,0 +1,9 @@
+void func_02016450(void *object);
+void func_0202f644(void *object);
+
+void *func_0201d644(void *object)
+{
+    func_02016450(object);
+    func_0202f644(object);
+    return object;
+}
