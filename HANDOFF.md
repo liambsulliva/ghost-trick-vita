@@ -15,15 +15,15 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 5821 |
-| Needed for 7104 milestone | 1283 more |
-| Remaining in full inventory | 2752 |
-| Current compilation | Four disjoint matching workers; mid batch5/batch6 recorded; no push |
+| Verified ledger / treemap | 5823 |
+| Needed for 7104 milestone | 1281 more |
+| Remaining in full inventory | 2750 |
+| Current compilation | Four disjoint matching workers; ARM fourth_arm and second_thumb recorded; no push |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 5821 functions (146,976 unique code bytes).** Added two existing mapped functions from the parallel middle-address batches.
+**Latest verified checkpoint: 5823 functions (147,108 unique code bytes).** Added two existing mapped ARM and high-Thumb functions from the parallel library batches.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -149,6 +149,8 @@ Parallel fourth checkpoint: `parallel_logic_low/batch4` added two matches from s
 
 Parallel fifth checkpoint: `parallel_objects_mid/crossgroup` compiled eight variants of `func_0204fb10` / `func_0204fb80` with no matches. `batch5` matched `func_0205c458` by restoring the verified `func_02029640` receiver and nested integer predicates; `batch6` matched `func_020410fc` by typing the existing factory result. Those callees remain close: helper-success-first reproduces most of `func_0204fb10`, with one remaining fail-path store order. Do not retry the compiled crossgroup, batch4 omitted-argument, batch5, or batch6 variants unchanged.
 
+Parallel sixth checkpoint: `parallel_arm_library/fourth_arm` matched ARM `func_020710a8` with a cast-pointer table index; `second_thumb` matched `func_02067a04` with a C++ slot-10 receiver and unsigned last-byte copy. Remaining ARM/high-Thumb close misses must not be retried unchanged. Mapped `func_0207b8a0` is the MWCC `_u32_div_f` unrolled restoring divider: C `/` emits a call to that missing symbol, so a `/` body cannot match this address. Interpreter opcode 0x66 should treat r0 as unsigned quotient and r1 as remainder.
+
 The first context-driven queue is prepared by `extracted/decomp/context_candidates.py <arm|thumb>`. It checks each anchor source/report hash, confirms direct call targets in `context_reference_disassembly.txt`, and uses only targets present in both the configured inventory and successful `ghidra_narrow/` exports. `context_candidates/<mode>/context_evidence.json` records the target identity and reasons for its variants. Run `validate_context_candidates.py <mode>` before compiling; it requires exactly the existing target definition and rejects function references without verified context evidence. Its negative checks rejected both a fabricated target and a fabricated function reference. The first signature-only samples tested 16 ARM and 100 Thumb targets without matches. These sources are not to be retried unchanged. Use context to repair the actual body and call relationships, not only declarations.
 
 Reuse `extracted/decomp/batch_tail.py` (`compile_items`, `match_items`, `defined_names`, `halfs`, `literal_word`). Pattern:
@@ -245,7 +247,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 5821 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 5823 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -337,6 +339,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 5817 functions (146,738 bytes).** Added twenty existing mapped functions across the next parallel low-address and middle-address batches.
 - **Snapshot at 5819 functions (146,806 bytes).** Added two existing mapped functions from the parallel low-address batch.
 - **Snapshot at 5821 functions (146,976 bytes).** Added two existing mapped functions from the parallel middle-address batches.
+- **Snapshot at 5823 functions (147,108 bytes).** Added two existing mapped ARM and high-Thumb functions from the parallel library batches.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
