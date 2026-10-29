@@ -5,7 +5,7 @@ import json
 import os
 import re
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -89,7 +89,7 @@ def rectangles(items, x, y, width, height):
     return rectangles(items[:split], x, y, width, cut) + rectangles(items[split:], x, y + cut, width, height - cut)
 
 
-def make_svg(functions, source_prefix=".."):
+def make_svg(functions, source_prefix="..", interactive=True):
     matched = [row for row in functions if row["matched"]]
     total_bytes = code_bytes(functions)
     matched_bytes = code_bytes(matched)
@@ -100,9 +100,11 @@ def make_svg(functions, source_prefix=".."):
         modules.append({"name": module, "size": sum(row["size"] for row in rows), "functions": rows})
     modules.sort(key=lambda row: (-row["size"], row["name"]))
     subtitle = f'Functions matched: {len(matched):,} / {len(functions):,} ({len(matched) / len(functions):.2%}) | Code bytes matched: {matched_bytes:,} / {total_bytes:,} ({matched_bytes / total_bytes:.2%}) | Modules: {len(modules)}'
-    out = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1092" width="1600" height="1092" role="group" aria-labelledby="title description" font-family="Segoe UI, system-ui, sans-serif">',
+    role = "group" if interactive else "img"
+    explanation = "Green tiles link to verified C or C++ source; gray tiles have no verified source yet." if interactive else "Static preview. Green means verified C or C++; gray means unmatched."
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1092" width="1600" height="1092" role="{role}" aria-labelledby="title description" font-family="Segoe UI, system-ui, sans-serif">',
            '<title id="title">Ghost Trick decompilation progress</title>',
-           '<desc id="description">' + html.escape(subtitle) + '. Each rectangle is one function. Green tiles link to verified C or C++ source; gray tiles have no verified source yet. Open this SVG directly in a browser to use the links. This is the prepared code inventory, not the Chapter 1 dependency count.</desc>',
+           '<desc id="description">' + html.escape(subtitle) + '. Each rectangle is one function. ' + explanation + ' This is the prepared code inventory, not the Chapter 1 dependency count.</desc>',
            '<style>a { cursor: pointer; } a:hover rect, a:focus-visible rect { stroke: #fff; stroke-width: 1; }</style>',
            '<rect width="1600" height="1092" fill="#14191f"/>',
            '<text x="16" y="33" fill="#e6eaf0" font-size="24" font-weight="600">Ghost Trick decompilation progress</text>',
@@ -117,14 +119,25 @@ def make_svg(functions, source_prefix=".."):
         if width > 100 and header >= 14:
             out.append(f'<text x="{x + 6:.3f}" y="{y + 17:.3f}" fill="#e6eaf0" font-size="12" font-weight="600">{module["name"]} · {percentage:.1%}</text>')
         leaves = rectangles(module["functions"], x + pad, y + header, width - pad * 2, height - header - pad)
+        paths = {"#3b9b72": [], "#535e6d": []}
+        labels = []
         for row, left, top, wide, high in leaves:
             gap = min(0.35, wide / 5, high / 5)
             color = "#3b9b72" if row["matched"] else "#535e6d"
+            if not interactive:
+                paths[color].append(f'M{left + gap:.2f} {top + gap:.2f}h{wide - gap * 2:.2f}v{high - gap * 2:.2f}h-{wide - gap * 2:.2f}z')
+                if wide > 120 and high > 25:
+                    label = row["name"][:int(wide / 7)]
+                    labels.append(f'<text x="{left + 5:.3f}" y="{top + 17:.3f}" fill="#f1f4f8" font-size="11">{html.escape(label)}</text>')
+                continue
             state = "Verified C/C++" if row["matched"] else "Unmatched"
             title = f'{row["module"]} / {row["name"]} | 0x{row["address"]:08x} | {row["mode"]} | {row["size"]} bytes | {state}'
             if row["matched"]:
                 title += " | " + row["source"]
-                href = quote((Path(source_prefix) / row["source"]).as_posix(), safe="/")
+                if source_prefix.startswith("https://"):
+                    href = source_prefix.rstrip("/") + "/" + quote(row["source"], safe="/")
+                else:
+                    href = quote((Path(source_prefix) / row["source"]).as_posix(), safe="/")
                 label = "Open " + row["name"] + " in " + row["source"]
                 out.append(f'<a href="{html.escape(href, quote=True)}" target="_top" aria-label="{html.escape(label, quote=True)}">')
             out.append(f'<rect data-function="{html.escape(row["module"] + ":" + row["name"], quote=True)}" x="{left + gap:.3f}" y="{top + gap:.3f}" width="{wide - gap * 2:.3f}" height="{high - gap * 2:.3f}" fill="{color}"><title>{html.escape(title)}</title></rect>')
@@ -133,8 +146,14 @@ def make_svg(functions, source_prefix=".."):
                 out.append(f'<text x="{left + 5:.3f}" y="{top + 17:.3f}" fill="#f1f4f8" font-size="11" pointer-events="none">{html.escape(label)}</text>')
             if row["matched"]:
                 out.append('</a>')
+        for color, parts in paths.items():
+            if parts:
+                data = "\n".join("".join(parts[start:start + 128]) for start in range(0, len(parts), 128))
+                out.append(f'<path fill="{color}" d="{data}"/>')
+        out.extend(labels)
+    legend = "Verified C/C++ · click to open source" if interactive else "Verified C/C++"
     out.extend(['<rect x="16" y="1042" width="12" height="12" fill="#3b9b72"/>',
-                '<text x="35" y="1053" fill="#e6eaf0" font-size="13">Verified C/C++ · click to open source</text>',
+                '<text x="35" y="1053" fill="#e6eaf0" font-size="13">' + legend + '</text>',
                 '<rect x="300" y="1042" width="12" height="12" fill="#535e6d"/>',
                 '<text x="319" y="1053" fill="#e6eaf0" font-size="13">Unmatched</text>',
                 '<text x="16" y="1079" fill="#a7b0bc" font-size="12">Source: config/arm9 symbols + config/decomp_progress.json. Assembly rebuilds and asset preparation do not count as C matches. DS Protect excluded.</text>',
@@ -142,22 +161,53 @@ def make_svg(functions, source_prefix=".."):
     return "\n".join(out) + "\n"
 
 
+def make_viewer(source_url):
+    project = html.escape(source_url.rstrip("/") + "/README.md", quote=True)
+    return '\n'.join([
+        '<!doctype html>',
+        '<html lang="en">',
+        '<head>',
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        '<title>Ghost Trick function progress</title>',
+        '<style>body { margin: 0; background: #14191f; color: #e6eaf0; font: 16px system-ui, sans-serif; } p { margin: 16px; } a { color: #83dcb4; } iframe { display: block; width: 100%; height: 68.25vw; min-height: 600px; border: 0; }</style>',
+        '</head>',
+        '<body>',
+        '<p>Click a green rectangle to open its verified C/C++ source on GitHub. Gray rectangles have no verified source yet. Use browser zoom for small rectangles.</p>',
+        '<p><a href="treemap.svg">Open the full chart</a> · <a href="' + project + '">Project README at this revision</a></p>',
+        '<iframe src="treemap.svg" title="Function treemap with links to verified source"></iframe>',
+        '</body>',
+        '</html>',
+        '',
+    ])
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate the README function progress treemap from the dsd inventory and verified-source ledger.")
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--output", type=Path, default=ROOT / "docs/progress-treemap.svg")
+    parser.add_argument("--site-dir", type=Path)
+    parser.add_argument("--source-url")
     args = parser.parse_args()
+    if args.site_dir:
+        url = urlsplit(args.source_url or "")
+        if url.scheme != "https" or not url.netloc or url.query or url.fragment:
+            parser.error("--site-dir needs --source-url with an HTTPS repository source base URL")
     ledger = json.loads((ROOT / "config/decomp_progress.json").read_text())
     functions = read_functions(ROOT / "config/arm9", ledger["excluded_modules"])
     apply_matches(functions, ledger, ROOT)
     source_prefix = os.path.relpath(ROOT, args.output.resolve().parent)
-    svg = make_svg(functions, source_prefix)
-    if args.check:
-        if not args.output.exists() or args.output.read_text() != svg:
-            raise SystemExit("progress treemap is stale; run python3 -I tools/progress_treemap.py")
-    else:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(svg)
+    outputs = {args.output: make_svg(functions, source_prefix, interactive=False)}
+    if args.site_dir:
+        outputs[args.site_dir / "treemap.svg"] = make_svg(functions, args.source_url)
+        outputs[args.site_dir / "index.html"] = make_viewer(args.source_url)
+    for path, content in outputs.items():
+        if args.check:
+            if not path.exists() or path.read_text() != content:
+                raise SystemExit("progress treemap is stale: " + str(path))
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content)
     print(f'functions matched: {sum(row["matched"] for row in functions)}/{len(functions)}, code bytes: {code_bytes(functions)}')
 
 

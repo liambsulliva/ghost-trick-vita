@@ -71,6 +71,26 @@ class ProgressTests(unittest.TestCase):
             self.assertEqual(links[0].find("svg:rect", namespace).attrib["data-function"], "main:function_4096")
             relocated = ET.fromstring(progress_treemap.make_svg(rows, "../../checkout"))
             self.assertEqual(relocated.find(".//svg:a", namespace).attrib["href"], "../../checkout/src/one%20%26%20two.cpp")
+            hosted = ET.fromstring(progress_treemap.make_svg(rows, "https://github.com/owner/repo/blob/revision/"))
+            link = hosted.find(".//svg:a", namespace)
+            self.assertEqual(link.attrib["href"], "https://github.com/owner/repo/blob/revision/src/one%20%26%20two.cpp")
+            self.assertEqual(link.attrib["target"], "_top")
+
+    def test_static_preview_keeps_every_rectangle_without_claiming_links(self):
+        rows = [function(0x1000, 2), function(0x1002, 14)]
+        text = progress_treemap.make_svg(rows, interactive=False)
+        svg = ET.fromstring(text)
+        namespace = {"svg": "http://www.w3.org/2000/svg"}
+        self.assertEqual(svg.findall(".//svg:a", namespace), [])
+        self.assertEqual(sum(path.attrib["d"].count("M") for path in svg.findall("svg:path", namespace)), 2)
+        self.assertIn("Static preview", text)
+        self.assertNotIn("click to open source", text)
+
+    def test_hosted_viewer_embeds_svg_as_a_document(self):
+        viewer = progress_treemap.make_viewer("https://github.com/owner/repo/blob/revision/")
+        self.assertIn('<iframe src="treemap.svg"', viewer)
+        self.assertNotIn('<img', viewer)
+        self.assertIn('href="https://github.com/owner/repo/blob/revision/README.md"', viewer)
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ Newer instruction on 2026-10-29: "you can continue past 7104 and decompile all f
 | Verified ledger / treemap | 5580 |
 | Needed for 7104 milestone | 1524 more |
 | Remaining in full inventory | 2993 |
-| Current compilation | GitHub treemap viewer preparation; no Wine process |
+| Current compilation | GitHub viewer prepared; publication approval pending; no Wine process |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
@@ -58,6 +58,8 @@ Targeted source repairs: `condition_repairs.py <mode>` prepares equivalent integ
 Treemap navigation: commit `358151f` retains each verified source path and wraps its tile in an SVG link. The README preview links to the SVG and documents opening the local SVG directly in a browser; image previews do not expose internal links. Regression coverage includes C++ paths with spaces and ampersands, unmatched tiles, and output-directory changes. All 56 tests passed, and every one of the 5543 source links in that checkpoint was checked against the ledger. Browser UI verification was unavailable because the browser tool blocks local file URLs.
 
 Signed bytes: close misses prove that Ghidra's `char` must sometimes be spelled `signed char` for the pinned compiler. Examples are `func_02062cb8` (ASR versus LSR after an 8-bit cast) and `func_0205b36c` (LDRSB versus LDRB). `char_repairs.py <mode>` prepares changed sources from the best prior failed compile, with individual-site alternatives for small close misses.
+
+GitHub viewer correction: the user clarified that navigation must work from GitHub, and reported “Unable to render code block.” The Markdown API probe in `extracted/decomp/github_render_probe.html` confirms that GitHub strips inline SVG shapes and image-map regions, then links the entire image to its file. The earlier local SVG links do not solve that platform behavior. `tools/progress_treemap.py` now generates a compact static README SVG (about 285 KB rather than 2.7 MB). With `--site-dir build/progress-site --source-url <HTTPS source base>`, it also prepares an iframe-based viewer and a full SVG with absolute GitHub source links. `.github/workflows/progress-pages.yml` is manual only and publishes only that two-file directory. The GitHub API confirms that the repository is public and Pages is disabled. Publication and pushing remain unapproved; do not enable Pages, dispatch deployment or push until the user explicitly authorizes them. See `docs/progress-viewer.md`.
 
 Use verified names, not a brace census: a loose definition regex can mistake a function call in an `if` condition for a definition. Anchor definitions at an unindented declaration line, allow the return type on the preceding line, and reject braces/semicolons inside the parameter match. The source census also omits the differently named motion queue entry. `defined_names()` now starts from verified ledger names and adds anchored source definitions, including initializers and split return-type lines. Update the ledger and treemap at verified local checkpoints.
 
@@ -125,7 +127,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 
 ## 2. How the user works (follow this)
 
-- **Commits:** the newer 2026-10-29 instruction authorizes autonomous local commits, which the user expects to adjust later. Use the configured Git identity, with no assistant attribution or co-author lines. Do not push or rewrite their previous commits. Branch: `asset-inventory`. Remote: `git@github.com:liambsulliva/ghost-trick-vita.git` (private).
+- **Commits:** the newer 2026-10-29 instruction authorizes autonomous local commits, which the user expects to adjust later. Use the configured Git identity, with no assistant attribution or co-author lines. Do not push or rewrite their previous commits. Branch: `asset-inventory`. Remote: `git@github.com:liambsulliva/ghost-trick-vita.git` (public, confirmed through the GitHub API on 2026-10-29).
 - **Code style:** write like a junior developer learning as they go. Plain loops and functions, no clever pointer arithmetic, no unusual data structures, **no comments in code**. Match the existing `tools/*.py`.
 - **Writing style:** plain and direct, no filler. The user had asked for an "unslop" skill that wasn't installed, so write plainly.
 - **Decisions:** continue the matching campaign autonomously under the user's newer instruction. Do not stop at checkpoints to request continuation approval.

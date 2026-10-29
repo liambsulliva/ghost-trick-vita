@@ -8,15 +8,11 @@ The current work is an autonomous function-matching campaign across the full pre
 
 ## Decompilation progress
 
-[![Ghost Trick function matching progress](docs/progress-treemap.svg)](docs/progress-treemap.svg)
+![Ghost Trick function matching progress](docs/progress-treemap.svg)
 
-Each rectangle is one function, sized by its byte span and grouped by module. Green means reconstructed C/C++ passes the compiler and linked-function byte check; gray means unmatched. Full-game C link integration and Vita execution are separate milestones. In the [SVG](docs/progress-treemap.svg), hover a rectangle for its symbol, address, mode, size and status, or click a green rectangle to open its C/C++ source. Gray rectangles have no verified source yet.
+Each rectangle is one function, sized by its byte span and grouped by module. Green means reconstructed C/C++ passes the compiler and linked-function byte check; gray means unmatched. Full-game C link integration and Vita execution are separate milestones.
 
-README and GitHub file previews display the SVG as an image, which disables its internal links. Open `docs/progress-treemap.svg` directly in a web browser from your local checkout to use them. On macOS:
-
-```
-open -a Safari docs/progress-treemap.svg
-```
+This is a static preview. GitHub's README and SVG file viewers do not support clicking individual rectangles to open source. A separate viewer with working function links is prepared for GitHub Pages; it has not been published. See [the viewer and publishing setup](docs/progress-viewer.md).
 
 This shows the **full prepared code inventory**, not the number of functions required for Chapter 1. The latter still needs runtime dependency tracing. The denominator comes from ds-decomp's current symbol configuration; the older Ghidra export has a different function census. Shared code ranges count once in byte totals. DS Protect is excluded from the Vita target.
 

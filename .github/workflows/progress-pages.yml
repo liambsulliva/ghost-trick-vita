@@ -1,0 +1,48 @@
+name: Progress treemap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: progress-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/configure-pages@v5
+      - name: Check the generator
+        run: python3 -I -m unittest discover -s tests -p test_progress_treemap.py
+      - name: Build the progress viewer
+        run: >-
+          python3 -I tools/progress_treemap.py
+          --site-dir build/progress-site
+          --source-url "https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/"
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/progress-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish the progress viewer
+        id: deployment
+        uses: actions/deploy-pages@v4
