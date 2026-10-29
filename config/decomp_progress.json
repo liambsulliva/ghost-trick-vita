@@ -64913,6 +64913,28 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "c82356c6a35cf400996a2125a70ebe0da703342a2c44f23b815676680b3d5430"
+    },
+    {
+      "module": "main",
+      "address": "0x020570e4",
+      "name": "func_020570e4",
+      "size": 176,
+      "source": "src/thumb/parallel_objects_mid_func_020570e4.cpp",
+      "source_sha256": "6265890bd4824bd4342afb7e4a0cc0aefbcbee92d1c44a51858e39b373cfcfb9",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "f4b4397f94ee580d8a53a498e3202ed9b7e40ab966d0636e6adbb0c8d5a7c577"
+    },
+    {
+      "module": "main",
+      "address": "0x0206e2a8",
+      "name": "func_0206e2a8",
+      "size": 20,
+      "source": "src/arm/parallel_arm_library_func_0206e2a8.c",
+      "source_sha256": "adf3d0bb6439071fead4bb1b708f29ff4df0755caf6e0d1a493a0a8e56e92483",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,s -fp soft -interworking",
+      "verification_sha256": "594c64ecb6e474f3ea1a19ca1546f79cf3ae7dcee6da744390a42b4827aaf312"
     }
   ]
 }
