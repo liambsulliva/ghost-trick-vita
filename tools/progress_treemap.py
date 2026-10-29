@@ -2,8 +2,10 @@ import argparse
 import hashlib
 import html
 import json
+import os
 import re
 from pathlib import Path
+from urllib.parse import quote
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -54,6 +56,7 @@ def apply_matches(functions, ledger, root):
         if match["size"] != lookup[key]["size"]:
             raise ValueError("matched size differs from the function inventory")
         lookup[key]["matched"] = True
+        lookup[key]["source"] = source.relative_to(root.resolve()).as_posix()
         seen.add(key)
 
 
@@ -86,7 +89,7 @@ def rectangles(items, x, y, width, height):
     return rectangles(items[:split], x, y, width, cut) + rectangles(items[split:], x, y + cut, width, height - cut)
 
 
-def make_svg(functions):
+def make_svg(functions, source_prefix=".."):
     matched = [row for row in functions if row["matched"]]
     total_bytes = code_bytes(functions)
     matched_bytes = code_bytes(matched)
@@ -97,9 +100,10 @@ def make_svg(functions):
         modules.append({"name": module, "size": sum(row["size"] for row in rows), "functions": rows})
     modules.sort(key=lambda row: (-row["size"], row["name"]))
     subtitle = f'Functions matched: {len(matched):,} / {len(functions):,} ({len(matched) / len(functions):.2%}) | Code bytes matched: {matched_bytes:,} / {total_bytes:,} ({matched_bytes / total_bytes:.2%}) | Modules: {len(modules)}'
-    out = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1092" width="1600" height="1092" role="img" aria-labelledby="title description" font-family="Segoe UI, system-ui, sans-serif">',
+    out = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1092" width="1600" height="1092" role="group" aria-labelledby="title description" font-family="Segoe UI, system-ui, sans-serif">',
            '<title id="title">Ghost Trick decompilation progress</title>',
-           '<desc id="description">' + html.escape(subtitle) + '. Each rectangle is one function. Green means verified C or C++; gray means unmatched. This is the prepared code inventory, not the Chapter 1 dependency count.</desc>',
+           '<desc id="description">' + html.escape(subtitle) + '. Each rectangle is one function. Green tiles link to verified C or C++ source; gray tiles have no verified source yet. Open this SVG directly in a browser to use the links. This is the prepared code inventory, not the Chapter 1 dependency count.</desc>',
+           '<style>a { cursor: pointer; } a:hover rect, a:focus-visible rect { stroke: #fff; stroke-width: 1; }</style>',
            '<rect width="1600" height="1092" fill="#14191f"/>',
            '<text x="16" y="33" fill="#e6eaf0" font-size="24" font-weight="600">Ghost Trick decompilation progress</text>',
            '<text x="16" y="60" fill="#e6eaf0" font-size="15">' + html.escape(subtitle) + '</text>',
@@ -118,14 +122,21 @@ def make_svg(functions):
             color = "#3b9b72" if row["matched"] else "#535e6d"
             state = "Verified C/C++" if row["matched"] else "Unmatched"
             title = f'{row["module"]} / {row["name"]} | 0x{row["address"]:08x} | {row["mode"]} | {row["size"]} bytes | {state}'
+            if row["matched"]:
+                title += " | " + row["source"]
+                href = quote((Path(source_prefix) / row["source"]).as_posix(), safe="/")
+                label = "Open " + row["name"] + " in " + row["source"]
+                out.append(f'<a href="{html.escape(href, quote=True)}" target="_top" aria-label="{html.escape(label, quote=True)}">')
             out.append(f'<rect data-function="{html.escape(row["module"] + ":" + row["name"], quote=True)}" x="{left + gap:.3f}" y="{top + gap:.3f}" width="{wide - gap * 2:.3f}" height="{high - gap * 2:.3f}" fill="{color}"><title>{html.escape(title)}</title></rect>')
             if wide > 120 and high > 25:
                 label = row["name"][:int(wide / 7)]
                 out.append(f'<text x="{left + 5:.3f}" y="{top + 17:.3f}" fill="#f1f4f8" font-size="11" pointer-events="none">{html.escape(label)}</text>')
+            if row["matched"]:
+                out.append('</a>')
     out.extend(['<rect x="16" y="1042" width="12" height="12" fill="#3b9b72"/>',
-                '<text x="35" y="1053" fill="#e6eaf0" font-size="13">Verified C/C++</text>',
-                '<rect x="176" y="1042" width="12" height="12" fill="#535e6d"/>',
-                '<text x="195" y="1053" fill="#e6eaf0" font-size="13">Unmatched</text>',
+                '<text x="35" y="1053" fill="#e6eaf0" font-size="13">Verified C/C++ · click to open source</text>',
+                '<rect x="300" y="1042" width="12" height="12" fill="#535e6d"/>',
+                '<text x="319" y="1053" fill="#e6eaf0" font-size="13">Unmatched</text>',
                 '<text x="16" y="1079" fill="#a7b0bc" font-size="12">Source: config/arm9 symbols + config/decomp_progress.json. Assembly rebuilds and asset preparation do not count as C matches. DS Protect excluded.</text>',
                 '</svg>'])
     return "\n".join(out) + "\n"
@@ -139,7 +150,8 @@ def main():
     ledger = json.loads((ROOT / "config/decomp_progress.json").read_text())
     functions = read_functions(ROOT / "config/arm9", ledger["excluded_modules"])
     apply_matches(functions, ledger, ROOT)
-    svg = make_svg(functions)
+    source_prefix = os.path.relpath(ROOT, args.output.resolve().parent)
+    svg = make_svg(functions, source_prefix)
     if args.check:
         if not args.output.exists() or args.output.read_text() != svg:
             raise SystemExit("progress treemap is stale; run python3 -I tools/progress_treemap.py")

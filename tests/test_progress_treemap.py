@@ -54,6 +54,24 @@ class ProgressTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 progress_treemap.apply_matches(rows, {"matched": [match]}, root)
 
+    def test_verified_tile_links_to_its_source_and_unmatched_tile_has_no_link(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source = root / "src/one & two.cpp"
+            source.parent.mkdir()
+            source.write_text("void test(void) {}\n")
+            rows = [function(0x1000, 2), function(0x1002, 14)]
+            match = {"module": "main", "address": "0x1000", "size": 2, "source": "src/one & two.cpp", "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(), "verification_sha256": "1" * 64}
+            progress_treemap.apply_matches(rows, {"matched": [match]}, root)
+            svg = ET.fromstring(progress_treemap.make_svg(rows))
+            namespace = {"svg": "http://www.w3.org/2000/svg"}
+            links = svg.findall(".//svg:a", namespace)
+            self.assertEqual(len(links), 1)
+            self.assertEqual(links[0].attrib["href"], "../src/one%20%26%20two.cpp")
+            self.assertEqual(links[0].find("svg:rect", namespace).attrib["data-function"], "main:function_4096")
+            relocated = ET.fromstring(progress_treemap.make_svg(rows, "../../checkout"))
+            self.assertEqual(relocated.find(".//svg:a", namespace).attrib["href"], "../../checkout/src/one%20%26%20two.cpp")
+
 
 if __name__ == "__main__":
     unittest.main()
