@@ -1,27 +1,33 @@
 # Handoff: Ghost Trick PS Vita port
 
-For the next agent. Updated 2026-10-29. **Active task: keep matching Thumb until 7104 verified bodies.** Chapter 1 remains the long-term delivery goal; do not switch to it while 7104 is open. The user now authorizes autonomous work and local commits they can adjust later. After this file, read `docs/chapter1.md`, `docs/inventory.md` and `docs/frame_mapping.md` only if the matching campaign is done.
+For the next agent. Updated 2026-10-29. **Active task: continue autonomously through the full port function inventory, making local commits along the way.** The user extended the task beyond 7104 to all functions; 7104 is now an intermediate milestone, not a stopping point. Include ARM functions after the current Thumb work. Chapter 1 remains the later on-device delivery goal. The user authorizes local commits they can adjust later.
 
-## 0. Active task: match Thumb to 7104
+## 0. Active task: match the full function inventory
 
 User instruction: "I already committed it. Keep going til 7104." The 3552 snapshot is `d996db0` on `asset-inventory` ("3552 total functions! Mostly six-arg constructors, alloc-init wrappers, and vtable stores"). Do not rewrite it.
+
+Newer instruction on 2026-10-29: "you can continue past 7104 and decompile all functions without my input, as long as you make commits along the way." This supersedes the old stopping point. Continue with verified local checkpoint commits, keep the README treemap current at those checkpoints, and do not ask for permission merely to continue. DS Protect remains outside the port inventory.
 
 ### Status (2026-10-29)
 
 | Item | Value |
 |---|---|
-| Last committed snapshot | 3552 (`d996db0`) |
-| Ledger / treemap / HANDOFF table | still 3552; leave them until 7104 |
-| Defined C/C++ bodies (brace count) | 3969 |
-| Needed for 7104 | 3135 more |
-| Unmatched | 3341 Thumb + 860 ARM |
+| Previous user snapshot | 3552 (`d996db0`, preserved) |
+| Verified ledger / treemap | 4413 |
+| Needed for 7104 milestone | 2691 more |
+| Remaining in full inventory | 4160 |
+| Current compilation | First 100 ARM proposals; then remaining ARM and larger Thumb batches, one Wine process |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | Untracked new sources | `src/thumb/*.c` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
-Fresh continuation check: all 414 pending sources passed a new pinned compile and linked-byte comparison in `extracted/decomp/pending_audit_3969/`. Together with the existing ledger this establishes 3966 distinct verified functions. Four older source bodies outside the ledger still need checking: `func_02067ea0`, `func_02067e94`, `func_02067ce0` and `func_020082e8`. The source brace census also omits the differently named motion queue entry, so use verified name sets rather than subtracting brace totals. Leave the ledger and treemap at 3552 until the requested 7104 snapshot.
+Fresh continuation check: all 414 pending sources passed a new pinned compile and linked-byte comparison in `extracted/decomp/pending_audit_3969/`, committed locally as `37509c7`. The first 1200-function Ghidra proposal batch yielded 443 exact matches (37 in the sample and 406 in the remainder). All four older source bodies outside the ledger also passed: `func_02067ea0`, `func_02067e94`, `func_02067ce0` and `func_020082e8`. Normalized sources and those four were freshly compiled and checked in `extracted/decomp/checkpoint_audit/` (209/209 passed). The verified ledger is now 4413, with 72,386 unique code bytes matched.
+
+Next proposals are prepared under ignored `extracted/decomp/`: `batch_ghidra_arm.py` has 817 ARM candidates and `batch_ghidra_thumb.py` has 2037 larger Thumb candidates. Both use `ghidra_remaining/`; the ARM script omits `-thumb`. `ghidra_other/` contains the 403 ITCM and in-scope overlay candidates. The first ARM sample is compiling. Only passing sources are promoted into `src/thumb/`. Do not regenerate failed proposals without a deliberate source change. `record_checkpoint.py` verifies the compiled source copy and linked function again, writes reports, and appends ledger rows while preserving old row order.
+
+Use verified names, not a brace census: a loose definition regex can mistake a function call in an `if` condition for a definition. Anchor definitions at an unindented declaration line and reject braces/semicolons inside the parameter match. The source census also omits the differently named motion queue entry. Update the ledger and treemap at verified local checkpoints.
 
 ### Rules
 
@@ -29,7 +35,7 @@ Fresh continuation check: all 414 pending sources passed a new pinned compile an
 - One function per `.c`/`.cpp`. Junior style: plain loops, no comments, dsd names (`func_XXXXXXXX`, `data_XXXXXXXX`).
 - Pinned compiler: `mwccarm dsi/1.2p1` with `-proc arm946e -thumb -O4,s -fp soft -interworking -sym on`. Ledger `flags` omit `-sym on`.
 - Compare address, size, thumb, and body. Relocs do not count.
-- ARM functions are out of scope under `-thumb`. Hitting 7104 means matching about 94% of remaining Thumb.
+- The current batch uses `-thumb`. ARM functions require separate ARM compiler settings and verification; do not apply Thumb flags to them or change their mode to inflate coverage. They are in scope under the user's newer full-inventory instruction.
 - Wine: `/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine`, bottle `toolchain/wine-mwcc-run`, `WINEDEBUG=-all`, `LM_LICENSE_FILE=Z:\Users\liambsulliva\Developer\ghost-trick-vita\toolchain\mwccarm\license.dat`. One wine process. `python3 -u`. Needs host permissions (`all`).
 - Tools: `ld.lld`, `llvm-mc`, `llvm-objdump` from Homebrew llvm/lld. Reference ELF `extracted/lld/linked.elf`, `.main.text` at `0x2000000`. `elf_fixups.fix_object` before link. Thumb `BL` is `F000`/`F800`; `BLX` second half is `E800` (word-align target with `&~3`). Literal pool `PC=(insn+4)&~3 + imm8*4`.
 - Defined names: brace regex `\bfunc_...\([^;]*\)\s*\{` plus `__sinit_`.
@@ -59,14 +65,14 @@ Empty `bx lr`; imm return; field `ldr` word/half/byte via `char*` plus byte offs
 
 `skip_sinit` (do not regenerate): `__sinit_0207e3f4`, `0207e58c`, `0207e934`, `0207ec0c`, `0207ef1c`, `0207f60c`, `0207f87c`, `0207f8bc`, `0207fa3c`, `0207fc8c`, `0207fefc`, `020800f8`, `02080964`, `02080c80`.
 
-### When 7104 defined bodies exist
+### Checkpoint verification, including the 7104 milestone
 
-1. Verify 7104 names actually pass (`link_one` or `tools/match_function.py`). Delete extras that fail.
+1. Verify checkpoint names actually pass (`link_one` or `tools/match_function.py`). Delete extras that fail.
 2. Write check JSONs (`indent=2` plus newline) under `extracted/decomp/<name>/dsi_1.2p1/<name>_check.json`. Helpers: `extracted/decomp/snapshot_ready.py`, `extracted/decomp/build_pending.py` (point them at the new batch work dirs / `passed.txt` lists, or write an equivalent).
-3. Append ledger rows to `config/decomp_progress.json` until `matched` is **exactly 7104**. Fields: `module`, `address`, `name`, `size`, `source`, `source_sha256`, `compiler`, `flags` (no `-sym on`), `verification_sha256`. Sort by address as existing rows do. Remainder sources stay untracked.
+3. Append verified ledger rows at each checkpoint; 7104 is an intermediate milestone. Fields: `module`, `address`, `name`, `size`, `source`, `source_sha256`, `compiler`, `flags` (no `-sym on`), `verification_sha256`. Sort each appended batch by module/address while preserving older row order. Do not count unverified remainder sources. Check that the compiled source copy equals the promoted source before recording a match.
 4. `python3 -I tools/progress_treemap.py` then `python3 -I tools/progress_treemap.py --check`.
-5. Update this file's phase table (5–8) to 7104 of 8,573 and add a snapshot bullet. Do not touch earlier snapshot bullets.
-6. Commit the verified 7104 checkpoint locally under the user's latest authorization, then stop and report the count and commit. Do not push.
+5. Update this file's status and phase table (5–8) to the verified count of 8,573 and add a snapshot bullet. Preserve earlier snapshot bullets.
+6. Commit each verified checkpoint locally under the user's latest authorization, then continue. Report meaningful progress. Do not push.
 
 ### Where to look next
 
@@ -83,14 +89,14 @@ Decided direction, after earlier feasibility work:
 - **The plan:** recompile the DS game's ARM9 code natively for the Vita (ARMv5TE code runs mostly unchanged on ARMv7), replace its renderer and UI, and draw remaster assets converted offline from the user's own Steam copy. The UI follows the single-screen Android remaster, not the DS's two screens.
 - **The asset finding:** neither version uses skeletal animation. The remaster's characters are high-resolution 2D art driven by keyframe timelines. Details are in section 6.
 
-The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/Start-a-new-decomp-project) supplied the earlier phase sequence. It was written for PlayStation and gcc, so the DS equivalents are used. Phases 0–3 are done (section 5). The user paused Chapter 1 long enough to double matched C to 7104 (section 0); after that snapshot, return to the Chapter 1 device test.
+The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/Start-a-new-decomp-project) supplied the earlier phase sequence. It was written for PlayStation and gcc, so the DS equivalents are used. Phases 0–3 are done (section 5). The user now prioritizes matching the full function inventory autonomously (section 0), with local commits along the way. The playable release target remains Chapter 1.
 
 ## 2. How the user works (follow this)
 
 - **Commits:** the newer 2026-10-29 instruction authorizes autonomous local commits, which the user expects to adjust later. Use the configured Git identity, with no assistant attribution or co-author lines. Do not push or rewrite their previous commits. Branch: `asset-inventory`. Remote: `git@github.com:liambsulliva/ghost-trick-vita.git` (private).
 - **Code style:** write like a junior developer learning as they go. Plain loops and functions, no clever pointer arithmetic, no unusual data structures, **no comments in code**. Match the existing `tools/*.py`.
 - **Writing style:** plain and direct, no filler. The user had asked for an "unslop" skill that wasn't installed, so write plainly.
-- **Decisions:** at each checkpoint, offer the user a short choice of the next step rather than charging ahead into big new areas.
+- **Decisions:** continue the matching campaign autonomously under the user's newer instruction. Do not stop at checkpoints to request continuation approval.
 - **Hardware:** the Vita (`ps-vita-mcp`, FTP on volume `/Untitled`, DevLoop and Control MCP servers) is **turned off to save battery**. Ask the user to re-enable it before any on-device test. The first on-device step is planned to be a small model or frame viewer that reports frame time and free memory.
 - **Network:** the user runs a VPN that sometimes drops connections. Some network commands get rejected or interrupted. When the user says "VPN connected, continue", retry the same command.
 - **Legal and ethical guardrails:**
@@ -106,7 +112,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Remaster (Android repack):** the APK above. `re_chunk_000.pak` and the `data01`/`data02` Play Asset Delivery ZIP archives are under `extracted/remaster_apk/`. Pack 000 has a broad payload inventory. All three pack indexes and selected other animation payloads have now been checked. `data01` contains a complete 794,538,139-byte `re_chunk_002.pak` plus its partial `.pak.0` copy; `data02` contains complete `re_chunk_001.pak` and the `.pak.1` tail. Use the complete files inside the ZIP archives directly; there is no need to join the split copies or extract another large copy.
 - **Community file list:** `extracted/remaster_apk/GTPD_ANDROID_Release.list`, from Ekey/REE.PAK.Tool. Its license is unclear, so never commit it. A `GTPD_STM_Release.list` for Steam also exists upstream.
 - **PC reference video:** downloaded and checked; see section 8.
-- **Disk:** about 40 GiB free after the corrected CPAC extraction and video download. `extracted/` takes several GB. Be careful with big outputs.
+- **Disk:** about 23 GiB free at the 2026-10-29 checkpoint. `extracted/` takes several GB. Be careful with big outputs.
 
 ## 4. Toolchain installed
 
@@ -131,7 +137,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress toward 7104 | Ledger still 3552 of 8,573 (`docs/progress-treemap.svg` via `tools/progress_treemap.py`, `config/decomp_progress.json`). About 3969 Thumb/C++ bodies exist in `src/` (417 untracked since `d996db0`). User ordered continuation to 7104; Chapter 1 waits until that snapshot is named. |
+| 5–8 Matching decomp | In progress through the full inventory | 4413 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -175,7 +181,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 888 functions (6,416 bytes).** Added 444 matched functions: empty bodies, small constant returns, single field loads, address constants, and tail calls.
 - **Snapshot at 1776 functions (16,852 bytes).** Added 888 matched functions: wrappers that call one or two functions and return the object, plus field reads, field writes, and shifts.
 - **Snapshot at 3552 functions (49,270 bytes).** Added 1776 matched functions: six-argument constructors, allocate-then-init wrappers, vtable stores, and the remaining small call and field helpers. User committed this as `d996db0`.
-- **Toward 7104.** Next doubling is 7104. Do not update the ledger, treemap, or this table until that count exists and check JSONs are written. See section 0.
+- **Snapshot at 4413 functions.** Freshly verified the 414 pending helpers, added 443 matches from the first Ghidra proposal batch and verified four older source bodies. The README treemap and ledger now update at each local checkpoint. The 7104 count is an intermediate milestone under the newer full-inventory instruction in section 0.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
@@ -289,9 +295,9 @@ Still open:
 
 ## 10. Next steps
 
-**Now:** section 0, match Thumb to 7104, then stop for the user to name the commit.
+**Now:** section 0, continue through all in-scope Thumb and ARM functions, with verified local commits along the way. Do not stop at 7104 or ask for continuation approval.
 
-**After that snapshot:** follow `docs/chapter1.md`. Keep all prepared work. Defer later-stage effect tracing, whole-game alias cleanup and full-pack payload surveys until Chapter 1 is on device.
+**For the playable delivery:** follow `docs/chapter1.md`. Keep all prepared work. Defer later-stage effect tracing, whole-game alias cleanup and full-pack payload surveys until Chapter 1 is on device.
 
 1. Trace the first chapter's entry, completion transition and actual scene/resource dependencies. Start at the existing `st01_game000` oracle path. The whole `st01` folder includes later scenes and is only a conservative inventory.
 2. Locate/configure VitaSDK for this repository and make an installable viewer with a small converted asset set. No Vita application exists in this repository yet. Measure frame time and free memory; ask the user to power on the Vita when the build is ready.
