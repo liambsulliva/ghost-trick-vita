@@ -8,22 +8,22 @@ User instruction: "I already committed it. Keep going til 7104." The 3552 snapsh
 
 Newer instruction on 2026-10-29: "you can continue past 7104 and decompile all functions without my input, as long as you make commits along the way." This supersedes the old stopping point. Continue with verified local checkpoint commits, keep the README treemap current at those checkpoints, and do not ask for permission merely to continue. DS Protect remains outside the port inventory.
 
-The user explicitly approved “Push commits and publish viewer” on 2026-10-29 after reviewing the prepared viewer at `e104499`. This authorizes pushing the prepared `asset-inventory` checkpoints and the follow-up changes needed to publish and verify the progress-only GitHub Pages viewer. Pages is now enabled with Actions as the build source at https://liambsulliva.github.io/ghost-trick-vita/. The user subsequently asked that updated function counts and references propagate to the interactive site. Publishing verified decompilation checkpoints and rebuilding the viewer on relevant pushes is authorized for this task. Other pushes remain outside this scope.
+The user explicitly approved “Push commits and publish viewer” on 2026-10-29 after reviewing the prepared viewer at `e104499`. This authorizes pushing the prepared `asset-inventory` checkpoints and the follow-up changes needed to publish and verify the progress-only GitHub Pages viewer. Pages is now enabled with Actions as the build source at https://liambsulliva.github.io/ghost-trick-vita/. The user subsequently asked that updated function counts and references propagate to the interactive site. The 5625-function checkpoint was published as `c864cf9`, and Pages now rebuilds automatically on relevant pushes. The latest user instruction is: "This time it is fine, but just wait for me to push going forward." Continue making local checkpoint commits, but leave all future pushes to the user unless freshly authorized.
 
 ### Status (2026-10-29)
 
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 5625 |
-| Needed for 7104 milestone | 1479 more |
-| Remaining in full inventory | 2948 |
-| Current compilation | Publishing updated viewer; table and flag repairs next |
+| Verified ledger / treemap | 5630 |
+| Needed for 7104 milestone | 1474 more |
+| Remaining in full inventory | 2943 |
+| Current compilation | Preparing verified-context variants; future pushes belong to the user |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 5625 functions (131,312 unique code bytes).** Added eleven unsigned-halfword matches: one ARM and ten Thumb. The viewer workflow now rebuilds on relevant pushes so its count and source links advance together.
+**Latest verified checkpoint: 5630 functions (131,636 unique code bytes).** Added four typed-table Thumb matches and one ARM flag-update match. New reconstruction hypotheses must use byte-matched context anchors and preserve an existing Ghidra/inventory target identity.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -71,13 +71,13 @@ Signed-byte results: the complete Thumb pass tested 543 functions (580 variants)
 
 Signed bytes: close misses prove that Ghidra's `char` must sometimes be spelled `signed char` for the pinned compiler. Examples are `func_02062cb8` (ASR versus LSR after an 8-bit cast) and `func_0205b36c` (LDRSB versus LDRB). `char_repairs.py <mode>` prepares changed sources from the best prior failed compile, with individual-site alternatives for small close misses.
 
-GitHub viewer correction: the user clarified that navigation must work from GitHub, and reported “Unable to render code block.” The Markdown API probe in `extracted/decomp/github_render_probe.html` confirms that GitHub strips inline SVG shapes and image-map regions, then links the entire image to its file. The earlier local SVG links do not solve that platform behavior. `tools/progress_treemap.py` now generates a compact static README SVG (about 285 KB rather than 2.7 MB). With `--site-dir build/progress-site --source-url <HTTPS source base>`, it also prepares an iframe-based viewer and a full SVG with absolute GitHub source links. `.github/workflows/progress-pages.yml` publishes only that two-file directory. It now rebuilds on relevant pushes to `asset-inventory`, in addition to manual dispatch, following the user's instruction to propagate current counts and references. The repository is public. The user approved pushing the prepared commits and publishing the viewer; see the scoped authorization above. Pages deployed successfully from `6b74099` (Actions run `40886639139`). Both hosted files returned HTTP 200, all 5580 source links were checked, and the user confirmed that tile clicks work. The user subsequently authorized keeping the hosted count and references current with verified decompilation checkpoints. See `docs/progress-viewer.md`.
+GitHub viewer correction: the user clarified that navigation must work from GitHub, and reported “Unable to render code block.” The Markdown API probe in `extracted/decomp/github_render_probe.html` confirms that GitHub strips inline SVG shapes and image-map regions, then links the entire image to its file. The earlier local SVG links do not solve that platform behavior. `tools/progress_treemap.py` now generates a compact static README SVG (about 285 KB rather than 2.7 MB). With `--site-dir build/progress-site --source-url <HTTPS source base>`, it also prepares an iframe-based viewer and a full SVG with absolute GitHub source links. `.github/workflows/progress-pages.yml` publishes only that two-file directory. It now rebuilds on relevant pushes to `asset-inventory`, in addition to manual dispatch, following the user's instruction to propagate current counts and references. The repository is public. The user approved pushing the prepared commits and publishing the viewer; see the scoped authorization above. Pages deployed successfully from `6b74099` (Actions run `40886639139`). Both hosted files returned HTTP 200, all 5580 source links were checked, and the user confirmed that tile clicks work. The viewer also deployed successfully from `c864cf9` (Actions run `40892128208`), with 5625 functions. Future checkpoint pushes are left to the user and trigger an automatic rebuild. See `docs/progress-viewer.md`.
 
 Use verified names, not a brace census: a loose definition regex can mistake a function call in an `if` condition for a definition. Anchor definitions at an unindented declaration line, allow the return type on the preceding line, and reject braces/semicolons inside the parameter match. The source census also omits the differently named motion queue entry. `defined_names()` now starts from verified ledger names and adds anchored source definitions, including initializers and split return-type lines. Update the ledger and treemap at verified local checkpoints.
 
 ### Rules
 
-- On 2026-10-29 the user authorized local commits while continuing autonomously, with the expectation they may adjust them later. Use the repository's configured Git identity. Do not add assistant attribution or co-author lines. Do not rewrite the user's earlier commits. Push verified progress checkpoints to keep the interactive viewer current under the newer authorization above; do not push unrelated work.
+- On 2026-10-29 the user authorized local commits while continuing autonomously, with the expectation they may adjust them later. Use the repository's configured Git identity. Do not add assistant attribution or co-author lines. Do not rewrite the user's earlier commits. Do not push. The user will push future checkpoints, which automatically rebuild the interactive viewer.
 - One function per `.c`/`.cpp`. Junior style: plain loops, no comments, dsd names (`func_XXXXXXXX`, `data_XXXXXXXX`).
 - Pinned compiler: `mwccarm dsi/1.2p1` with `-proc arm946e -thumb -O4,s -fp soft -interworking -sym on` for Thumb. Omit `-thumb` for ARM. Ledger `flags` omit `-sym on`.
 - Compare address, size, thumb, and body. Relocs do not count.
@@ -89,9 +89,21 @@ Use verified names, not a brace census: a loose definition regex can mistake a f
 
 ### How to match
 
+#### Use verified calling context to guide existing mapped targets
+
+The user requires context-guided reconstruction: use existing byte-matched functions as reference points when building source variants for functions already mapped by Ghidra. Do not invent functions. This is a requirement for new hypotheses, not permission to expand the function inventory.
+
+1. Select an unmatched target that exists in both the configured function inventory and a successful Ghidra export. Confirm its existing symbol, module, entry address, size, and ARM/Thumb mode before generating a candidate. Keep that identity throughout every permutation.
+2. Find relevant anchors in `config/decomp_progress.json`: verified callers, callees, constructors, accessors, or siblings that operate on the same demonstrated object fields. Check each anchor's source and verification hashes. A Ghidra draft, an address nearby, or a plausible name is not a byte-matched anchor. Confirm proposed direct call edges against the reference instructions; do not infer a call target from an unresolved indirect call.
+3. Read the target's Ghidra draft together with those verified sources. Follow argument order and widths, pointer versus scalar use, return-value consumption, field offsets, table strides, flag updates, and existing virtual-call slots. Use these observations to constrain the target's signature, partial data views, and control flow. A matching body is evidence for that compiled body; it does not prove the original header or a complete class layout.
+4. Record observations separately from inferred meaning. Keep a local context packet under ignored `extracted/decomp/` containing the mapped target identity, Ghidra export path/hash, anchor symbols and source/verification hashes, observed relationships, proposed role, and the reason for each source change. Treat the proposed role as tentative until supported by further evidence. Keep canonical dsd names in source and the ledger.
+5. Generate a small set of deliberate variants of that same function. Prefer changes explained by the anchors, such as a verified callee's return width, caller-supplied argument positions, an accessor's demonstrated field type, or a constructor's field initialization. Do not add speculative helper implementations, function addresses, call targets, or inventory entries. Resolve declarations to existing mapped/reference symbols; skip ambiguous or unresolved relationships. Do not rename or repurpose a different function to make a candidate fit.
+6. Compile and compare each variant with the pinned compiler and correct instruction mode. Require the exact entry address, size, mode, and every linked body byte. Prune previously tested unchanged sources. Promote only a passing compiled snapshot, then update the ledger, treemap, and local checkpoint commit. Semantic plausibility alone never counts as a match.
+7. Feed newly verified signatures and field observations back into the context index and later Ghidra seeds. Revisit connected mapped targets when that new evidence justifies a changed source. Keep all rejected variants and inference notes out of public sources, and leave pushes to the user.
+
 Reuse `extracted/decomp/batch_tail.py` (`compile_items`, `match_items`, `defined_names`, `halfs`, `literal_word`). Pattern:
 
-1. Classify remaining unmatched Thumb by size and first opcodes.
+1. Select existing mapped targets using the verified context above, then classify them by size and first opcodes. Include ARM targets with their own mode settings.
 2. Write a `batch_moreNN.py` that emits one C file per hit.
 3. `python3 -u extracted/decomp/batch_moreNN.py generate && python3 -u extracted/decomp/batch_moreNN.py sample`
 4. Sample is one function per kind. Keep passing kinds, delete failing kinds, then `... all`.
@@ -183,7 +195,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 5625 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 5630 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -254,6 +266,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 5605 functions (129,732 bytes).** Added one more ARM match, completing the corrected parameter queue: 21 matches from 424 tested functions. The next candidates use the newer narrow ABI export.
 - **Snapshot at 5614 functions (130,656 bytes).** Added eight Thumb matches from the narrow ABI sample and verified one interior Thumb entry at its exact two-byte-aligned address.
 - **Snapshot at 5625 functions (131,312 bytes).** Added eleven unsigned-halfword matches: one ARM and ten Thumb. The viewer workflow now rebuilds on relevant pushes so its count and source links advance together.
+- **Snapshot at 5630 functions (131,636 bytes).** Added four typed-table Thumb matches and one ARM flag-update match. New reconstruction hypotheses must use byte-matched context anchors and preserve an existing Ghidra/inventory target identity.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
