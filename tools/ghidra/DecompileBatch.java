@@ -17,9 +17,13 @@ import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.IntegerDataType;
 import ghidra.program.model.data.PointerDataType;
+import ghidra.program.model.data.ShortDataType;
+import ghidra.program.model.data.SignedByteDataType;
 import ghidra.program.model.data.Undefined1DataType;
+import ghidra.program.model.data.UnsignedCharDataType;
 import ghidra.program.model.data.UnsignedIntegerDataType;
 import ghidra.program.model.data.UnsignedLongLongDataType;
+import ghidra.program.model.data.UnsignedShortDataType;
 import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.lang.RegisterValue;
@@ -173,6 +177,18 @@ public class DecompileBatch extends GhidraScript {
         }
         if (name.equals("ptr")) {
             return new PointerDataType(Undefined1DataType.dataType);
+        }
+        if (name.equals("u8")) {
+            return UnsignedCharDataType.dataType;
+        }
+        if (name.equals("s8")) {
+            return SignedByteDataType.dataType;
+        }
+        if (name.equals("u16")) {
+            return UnsignedShortDataType.dataType;
+        }
+        if (name.equals("s16")) {
+            return ShortDataType.dataType;
         }
         if (name.equals("u32")) {
             return UnsignedIntegerDataType.dataType;
