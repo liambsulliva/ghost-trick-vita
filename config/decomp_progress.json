@@ -61382,6 +61382,50 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "c59076c2487ce6c5e055486af480892cb5321db1cbb53ad702f4356abb93f441"
+    },
+    {
+      "module": "main",
+      "address": "0x0203bfc8",
+      "name": "func_0203bfc8",
+      "size": 84,
+      "source": "src/thumb/signed_func_0203bfc8.c",
+      "source_sha256": "bb43da3456e01a6994faddd22d8e679786018ce8d64eb81efbfeebb11e9fc572",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "7cb2bc74b3111d00f1d8b2f08543d31191c0fe368cab4d61ab5a24c2b1c15244"
+    },
+    {
+      "module": "main",
+      "address": "0x02050b58",
+      "name": "func_02050b58",
+      "size": 112,
+      "source": "src/thumb/signed_func_02050b58.c",
+      "source_sha256": "ed9a5300df5c196f8400e3d8e980da3340029735b8a20a6cc9389a6ba60b08a3",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "75badef4d795bd53ba6731c8e015030bda9730f90caaa2de01378705e7db0a2d"
+    },
+    {
+      "module": "main",
+      "address": "0x020737bc",
+      "name": "func_020737bc",
+      "size": 76,
+      "source": "src/arm/condition_func_020737bc.c",
+      "source_sha256": "a4e12960f1d228b8a618109fb3fd45586eb7633d155b574fb1e5fd256c85e63d",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,s -fp soft -interworking",
+      "verification_sha256": "7a7cd9c0d10b972cdf360ad2027121abbf7e163e25375b56fc081427799dd737"
+    },
+    {
+      "module": "main",
+      "address": "0x02075d14",
+      "name": "func_02075d14",
+      "size": 28,
+      "source": "src/arm/condition_func_02075d14.c",
+      "source_sha256": "f8c58532e1af3c8b60633936ecdc78b2f8a8145a599a378550d9862c57c66004",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,s -fp soft -interworking",
+      "verification_sha256": "e30d1da6b7623122993cff880665357652db66b3b8928f86b19f6ee78e1db5f4"
     }
   ]
 }
