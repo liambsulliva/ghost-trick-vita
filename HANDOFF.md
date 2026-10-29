@@ -15,15 +15,15 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 5605 |
-| Needed for 7104 milestone | 1499 more |
-| Remaining in full inventory | 2968 |
-| Current compilation | Narrow ABI candidates next |
+| Verified ledger / treemap | 5614 |
+| Needed for 7104 milestone | 1490 more |
+| Remaining in full inventory | 2959 |
+| Current compilation | ARM unsigned-halfword repairs |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 5605 functions (129,732 unique code bytes).** Added one more ARM match, completing the corrected parameter queue: 21 matches from 424 tested functions. The next candidates use the newer narrow ABI export.
+**Latest verified checkpoint: 5614 functions (130,656 unique code bytes).** Added eight Thumb matches from the narrow ABI sample and verified one interior Thumb entry at its exact two-byte-aligned address.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -56,6 +56,10 @@ Source ABI hints: the optional fourth argument to `DecompileBatch.java ... param
 Parameter sample results: the first seeded sample added 42 matches. The corrected return-type and callable-address sample added 71. `params_candidates_seeded_returns/<mode>/` preserves both numeric and symbolic address variants and C/C++ alternatives. Before continuing a queue, `prune_variants.py <work>` removes sources identical to inputs already tested with pinned flags. The first 200-function sample is archived in `sample_records/`. `callable_addresses.py` only resolves a callable address when the reference ELF has a unique matching function symbol. `declaration_repairs/` tested seven functions with missing ITCM declarations and yielded zero matches.
 
 Narrow ABI hints: `source_prototypes_narrow.tsv` seeds all 5584 current verified functions, preserving signed/unsigned byte and halfword scalar types as well as pointer/register widths. `ghidra_narrow/` exported all 8573 functions successfully and discarded database changes. `params_candidates.py narrow_returns <mode>` prepares changed candidates; unchanged tested sources are skipped. No draft counts until its pinned build and linked bytes pass.
+
+Halfword retries: close misses such as `func_02051448`, `func_020547e0`, and `func_02075d6c` use LDRH in the reference where a signed `short` draft emits LDRSH. `halfword_repairs.py <mode>` prepares unsigned alternatives from prior compiled inputs. The narrow ABI ARM pass tested 21 changed functions without matches; its first 300 Thumb functions added eight.
+
+Interior entry: `func_020267ca` is a 14-byte Thumb entry inside the 16-byte `func_020267c8`. Its compiled body already matched, but the default section alignment placed it two bytes late. A per-candidate linker script with `SUBALIGN(2)` places this entry at its exact address; address, mode, size, and every byte now pass. The function has no PC-relative literals. Evidence and the explicit link command are in `interior_entry_retry/thumb/`; do not relax alignment generally for functions with literal pools.
 
 Targeted source repairs: `condition_repairs.py <mode>` prepares equivalent integer comparison boundaries and byte-mask complements from close misses. The Thumb pass added 23 exact matches; its ARM proposals remain untested. `table_getters.py` reconstructs typed global arrays or records for literal-base indexed loads; all four remaining recognized getters matched. The corrected parameter queue added 54 matches in its next 400-function batch; those records are in `params_candidates_seeded_returns/thumb/chunk2_records/`.
 
@@ -177,7 +181,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 5605 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 5614 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -246,6 +250,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 5584 functions (128,896 bytes).** Added two signed-byte Thumb matches and two ARM condition matches. The hosted viewer is published and the user confirmed that tile clicks work.
 - **Snapshot at 5604 functions (129,624 bytes).** Added 20 ARM matches from 200 recovered-signature candidates. A read-only Ghidra export with narrow ABI hints also completed for all 8573 functions.
 - **Snapshot at 5605 functions (129,732 bytes).** Added one more ARM match, completing the corrected parameter queue: 21 matches from 424 tested functions. The next candidates use the newer narrow ABI export.
+- **Snapshot at 5614 functions (130,656 bytes).** Added eight Thumb matches from the narrow ABI sample and verified one interior Thumb entry at its exact two-byte-aligned address.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
