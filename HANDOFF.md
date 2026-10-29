@@ -18,7 +18,7 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Verified ledger / treemap | 5928 |
 | Needed for 7104 milestone | 1176 more |
 | Remaining in full inventory | 2645 |
-| Current compilation | Claude coordinator session (2026-10-29): ledger 5986 at e1768da (local, unpushed). Running: logic_low (below 0x02018000, told to stop after its next batch) and arm_library (overlay Thumb first). logic_low_b is paused at batch3 because of 5-hour usage. objects_mid has been paused since batch41. |
+| Current compilation | Claude coordinator session (2026-10-29) stopped at the 5-hour usage threshold (90% used). Ledger 6016 at 24aec55 (local, unpushed). Last workers were told to stop; run `python3 -I extracted/decomp/integrate_pending.py "<msg>"` first in the next session to pick up any final passes. Groups: logic_low (next batch41), logic_low_b (batch4), arm_library (overlay 4 next twenty_seventh_thumb, then thirty_first_arm), overlay_b (overlays 1/2/3/5/6 + ITCM, from its latest batch), objects_mid paused. |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
@@ -94,6 +94,8 @@ The user asked for three subagents on Haiku with extra-high effort, coordinated 
 Integration is one command: `python3 -I extracted/decomp/integrate_pending.py "<commit message>"`. It finds every group batch whose `passed.txt` names are not in the ledger, runs `record_checkpoint.py`, regenerates and checks the treemap, runs the tests and the audit, stages exactly the recorded sources plus the ledger and treemap, and commits with `commit-tree` and `reset --soft` using Liam as author and no trailer. After recording, message the worker so its passes can serve as anchors. Pushes stay with the user.
 
 Yield by area this session: overlay 4 Thumb is by far the best (twenty_fourth_thumb and round 2 matched 14 of 15; overlay Thumb neighbors of the 18 recorded `func_ov004_*` anchors share forms). Low Thumb gives about 2–4 per batch, ARM 0–7 per batch, middle 0. Next session: put two workers on overlay and ITCM Thumb (split by overlay number), one on low Thumb, and leave the middle range paused until there is a new idea.
+
+Session total: 5928 → 6016 (88 new, all exact linked-body passes recorded through `record_checkpoint.py`). The overlay_b split paid off right away: three of its first five batches gave 13 overlay 1/3/6 Thumb matches. The overlay 4 tail-stub family (6210, 621c, 6228, 57b0, 707c) compiles to push/blx/pop where the reference has a bare `bx` tail; treat it as not junior-C matchable for now.
 
 Pitfall: SendMessage to a worker that has already stopped resumes it. Only send recording confirmations to workers that are still running. Once a worker has handed back its final report, start a replacement instead; never message the old one. A resumed old worker plus its replacement in the same folder caused one double-run batch, `parallel_logic_low/batch35`. The middle group is paused after four consecutive zero-match batches (38–41); its leads are in its handoff. The low range is split: `parallel_logic_low` below `0x02018000` and `parallel_logic_low_b` for `0x02018000`–`0x0202ffff`. Shared worker rules are in ignored `extracted/decomp/WORKER_BRIEF.md`, so a restart prompt only names the group, range, folder, prefix, next batch, anchors and leads.
 
