@@ -13,15 +13,15 @@ Newer instruction on 2026-10-29: "you can continue past 7104 and decompile all f
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 4947 |
-| Needed for 7104 milestone | 2157 more |
-| Remaining in full inventory | 3626 |
-| Current compilation | 100 constructor-like Thumb candidates with observable return register; one Wine process |
+| Verified ledger / treemap | 4993 |
+| Needed for 7104 milestone | 2111 more |
+| Remaining in full inventory | 3580 |
+| Current compilation | Third 400-function Thumb batch using grouped compilation; one Wine process |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | Untracked new sources | `src/thumb/*.c` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 4947 functions (91,808 unique code bytes).** Added 5 small Thumb matches, 15 ARM matches from preserved token types, and one verified ARM memory-width correction. The ten-function speed-optimization probe produced no additional matches.
+**Latest verified checkpoint: 4993 functions (94,336 unique code bytes).** Added 4 matches from the return-register sample, one symbolic-base proof and 41 more symbolic-base matches (19 Thumb, 22 ARM). The verified count is now 4993.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -35,7 +35,11 @@ Further prepared retries: `batch_ghidra_typed_small/` has 149 changed proposals 
 
 Return-register experiment: `DecompileBatch.java <targets.tsv> <out> r0` sets 32-bit returns in the read-only analysis before decompiling. Existing wide or float return types are preserved. This makes r0 dataflow visible; it does not establish the original C API. `ghidra_r0/` contains all 8573 in-scope exports; the database changes were discarded. `r0_candidates/thumb/` has 2607 changed proposals after pruning, prioritizing 254 constructor-like bodies that were previously void. A 100-function sample is running through `run_batch.py`; only exact matches count. `r0_candidates.py` and `candidate_syntax.py` prepare these drafts.
 
-Use verified names, not a brace census: a loose definition regex can mistake a function call in an `if` condition for a definition. Anchor definitions at an unindented declaration line, allow the return type on the preceding line, and reject braces/semicolons inside the parameter match. The source census also omits the differently named motion queue entry. Update the ledger and treemap at verified local checkpoints.
+Symbolic bases: `pool_address_proposals.py <thumb|arm>` prepares changed drafts from close misses. The first 100 Thumb and 100 ARM candidates yielded 19 and 22 matches. Sample records are preserved under each `pool_addresses/<mode>/sample_records/`. `pool_bindings.py` binds known data/BSS addresses and pointer bases to named externs, preventing numeric folding of field offsets. This was proved first on `func_02073fc4`. The remaining larger Thumb proposals have this correction; all 744 changed numeric-address variants are preserved in `batch_ghidra_thumb/unbound_proposals/` and `unbound_variants.json` for fallback after a symbolic variant fails.
+
+Compiler batching: `batch_tail.compile_items` now compiles ten separate input files per compiler invocation inside one Wine command. Failed groups fall back to single-file compilation. Old objects are removed first, and absent success markers are failures. `grouped_compiler_check.log` confirms 20 independent translation units still match, including cross-file calls, and that an intentionally invalid unit is rejected. The prior implementation is preserved as `batch_tail_single.py`.
+
+Use verified names, not a brace census: a loose definition regex can mistake a function call in an `if` condition for a definition. Anchor definitions at an unindented declaration line, allow the return type on the preceding line, and reject braces/semicolons inside the parameter match. The source census also omits the differently named motion queue entry. `defined_names()` now starts from verified ledger names and adds anchored source definitions, including initializers and split return-type lines. Update the ledger and treemap at verified local checkpoints.
 
 ### Rules
 
@@ -145,7 +149,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 4947 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 4993 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -197,6 +201,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 4853 functions (86,700 bytes).** Added 129 exact matches from the first 400 larger Thumb proposals. The source copies remain in `batch_ghidra_thumb/`; its compiler log and pass list are preserved in `batch_ghidra_thumb/chunk1_records/`.
 - **Snapshot at 4926 functions (91,076 bytes).** Added 73 exact matches from the second 400-function Thumb batch. Its compiler log and pass list are preserved in batch_ghidra_thumb/chunk2_records/.
 - **Snapshot at 4947 functions (91,808 bytes).** Added 5 small Thumb matches, 15 ARM matches from preserved token types, and one verified ARM memory-width correction. The ten-function speed-optimization probe produced no additional matches.
+- **Snapshot at 4993 functions (94,336 bytes).** Added 4 matches from the return-register sample, one symbolic-base proof and 41 more symbolic-base matches (19 Thumb, 22 ARM). The verified count is now 4993.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
