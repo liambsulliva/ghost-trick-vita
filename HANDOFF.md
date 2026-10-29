@@ -15,15 +15,15 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 5920 |
-| Needed for 7104 milestone | 1184 more |
-| Remaining in full inventory | 2653 |
-| Current compilation | Four disjoint matching workers; low batches 27-28 and mid batch34 recorded; no push |
+| Verified ledger / treemap | 5924 |
+| Needed for 7104 milestone | 1180 more |
+| Remaining in full inventory | 2649 |
+| Current compilation | Four disjoint matching workers; low batch29 recorded; no push |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 5920 functions (151,876 unique code bytes).** Added eight existing mapped low-address and mid-object Thumb functions from later parallel batches.
+**Latest verified checkpoint: 5924 functions (152,040 unique code bytes).** Added four existing mapped low-address Thumb functions from parallel batch 29.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -185,6 +185,8 @@ Parallel twenty-second checkpoint: `parallel_arm_library/twenty_second_arm` matc
 
 Parallel twenty-third checkpoint: `parallel_logic_low` batches 27–28 matched seven more mapped Thumb functions (zero-flag then ushort helper, goto-test key/unlink, clobber-src word2 pair, present-nonzero retain, and node-fields unlink). `parallel_objects_mid/batch34` matched `func_02065ff0` with nested-child C++ slots and no extra local.
 
+Parallel twenty-fourth checkpoint: `parallel_logic_low/batch29` matched four more mapped Thumb functions: shared success/fail goto, disp-fb8 signed-byte helper, shared store then word, and goto-test zero helper then recurse.
+
 The first context-driven queue is prepared by `extracted/decomp/context_candidates.py <arm|thumb>`. It checks each anchor source/report hash, confirms direct call targets in `context_reference_disassembly.txt`, and uses only targets present in both the configured inventory and successful `ghidra_narrow/` exports. `context_candidates/<mode>/context_evidence.json` records the target identity and reasons for its variants. Run `validate_context_candidates.py <mode>` before compiling; it requires exactly the existing target definition and rejects function references without verified context evidence. Its negative checks rejected both a fabricated target and a fabricated function reference. The first signature-only samples tested 16 ARM and 100 Thumb targets without matches. These sources are not to be retried unchanged. Use context to repair the actual body and call relationships, not only declarations.
 
 Reuse `extracted/decomp/batch_tail.py` (`compile_items`, `match_items`, `defined_names`, `halfs`, `literal_word`). Pattern:
@@ -281,7 +283,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 5920 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 5924 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -391,6 +393,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 5908 functions (151,256 bytes).** Added two existing mapped ARM and high-Thumb functions from address-range and byte-pointer context.
 - **Snapshot at 5912 functions (151,518 bytes).** Added four existing mapped ARM and high-Thumb functions from unlink, flag, mode, and byte-base context.
 - **Snapshot at 5920 functions (151,876 bytes).** Added eight existing mapped low-address and mid-object Thumb functions from later parallel batches.
+- **Snapshot at 5924 functions (152,040 bytes).** Added four existing mapped low-address Thumb functions from parallel batch 29.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
