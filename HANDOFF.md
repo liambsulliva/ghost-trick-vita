@@ -13,15 +13,15 @@ Newer instruction on 2026-10-29: "you can continue past 7104 and decompile all f
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 5155 |
-| Needed for 7104 milestone | 1949 more |
-| Remaining in full inventory | 3418 |
-| Current compilation | Next 200 C++ virtual-call reconstructions; one Wine process |
+| Verified ledger / treemap | 5207 |
+| Needed for 7104 milestone | 1897 more |
+| Remaining in full inventory | 3366 |
+| Current compilation | 18 bitfield getters, then remaining C++ virtual-call proposals; one Wine process |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | Untracked new sources | `src/thumb/*.c` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 5155 functions (107,640 unique code bytes).** Added 50 exact matches from 100 C++ virtual-call reconstructions. The compiler reproduces the original virtual-dispatch instruction order; the mixed C/C++ compilation controls also pass.
+**Latest verified checkpoint: 5207 functions (110,884 unique code bytes).** Added 52 exact matches from the next 200 C++ virtual-call proposals. The C++ reconstruction has yielded 102 matches so far, and its second batch records are preserved under virtual_cpp/thumb/chunk2_records/.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -155,7 +155,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 5155 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 5207 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -212,6 +212,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 5102 functions (105,454 bytes).** Added 47 exact matches from the fourth larger Thumb batch. Its compiler log and pass list are preserved in batch_ghidra_thumb/chunk4_records/.
 - **Snapshot at 5105 functions (106,154 bytes).** Added three exact matches from the fifth larger Thumb batch. The final 37 proposals yielded no matches. The complete 2037-proposal pass produced 314 matches, with compiler and pass records preserved for all six chunks.
 - **Snapshot at 5155 functions (107,640 bytes).** Added 50 exact matches from 100 C++ virtual-call reconstructions. The compiler reproduces the original virtual-dispatch instruction order; the mixed C/C++ compilation controls also pass.
+- **Snapshot at 5207 functions (110,884 bytes).** Added 52 exact matches from the next 200 C++ virtual-call proposals. The C++ reconstruction has yielded 102 matches so far, and its second batch records are preserved under virtual_cpp/thumb/chunk2_records/.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
