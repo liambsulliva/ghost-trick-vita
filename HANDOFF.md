@@ -13,15 +13,15 @@ Newer instruction on 2026-10-29: "you can continue past 7104 and decompile all f
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 5543 |
-| Needed for 7104 milestone | 1561 more |
-| Remaining in full inventory | 3030 |
-| Current compilation | Next 400 corrected parameter candidates; one Wine process |
+| Verified ledger / treemap | 5566 |
+| Needed for 7104 milestone | 1538 more |
+| Remaining in full inventory | 3007 |
+| Current compilation | Signed-byte candidates prepared; no Wine process |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 5543 functions (126,162 unique code bytes).** Added 81 matches: 54 from the next 400 corrected parameter candidates, 23 from equivalent integer conditions and bit masks, and four from typed global tables. Every promoted source was rechecked against its compiled snapshot and linked body.
+**Latest verified checkpoint: 5566 functions (128,012 unique code bytes).** Added 23 exact matches from the next 400 corrected parameter candidates. The batch completed during the interrupted turn and its records are preserved in params_candidates_seeded_returns/thumb/chunk3_records/. Treemap source navigation is committed separately as 358151f.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -54,6 +54,10 @@ Source ABI hints: the optional fourth argument to `DecompileBatch.java ... param
 Parameter sample results: the first seeded sample added 42 matches. The corrected return-type and callable-address sample added 71. `params_candidates_seeded_returns/<mode>/` preserves both numeric and symbolic address variants and C/C++ alternatives. Before continuing a queue, `prune_variants.py <work>` removes sources identical to inputs already tested with pinned flags. The first 200-function sample is archived in `sample_records/`. `callable_addresses.py` only resolves a callable address when the reference ELF has a unique matching function symbol. `declaration_repairs/` tested seven functions with missing ITCM declarations and yielded zero matches.
 
 Targeted source repairs: `condition_repairs.py <mode>` prepares equivalent integer comparison boundaries and byte-mask complements from close misses. The Thumb pass added 23 exact matches; its ARM proposals remain untested. `table_getters.py` reconstructs typed global arrays or records for literal-base indexed loads; all four remaining recognized getters matched. The corrected parameter queue added 54 matches in its next 400-function batch; those records are in `params_candidates_seeded_returns/thumb/chunk2_records/`.
+
+Treemap navigation: commit `358151f` retains each verified source path and wraps its tile in an SVG link. The README preview links to the SVG and documents opening the local SVG directly in a browser; image previews do not expose internal links. Regression coverage includes C++ paths with spaces and ampersands, unmatched tiles, and output-directory changes. All 56 tests passed, and every one of the 5543 source links in that checkpoint was checked against the ledger. Browser UI verification was unavailable because the browser tool blocks local file URLs.
+
+Signed bytes: close misses prove that Ghidra's `char` must sometimes be spelled `signed char` for the pinned compiler. Examples are `func_02062cb8` (ASR versus LSR after an 8-bit cast) and `func_0205b36c` (LDRSB versus LDRB). `char_repairs.py <mode>` prepares changed sources from the best prior failed compile, with individual-site alternatives for small close misses.
 
 Use verified names, not a brace census: a loose definition regex can mistake a function call in an `if` condition for a definition. Anchor definitions at an unindented declaration line, allow the return type on the preceding line, and reject braces/semicolons inside the parameter match. The source census also omits the differently named motion queue entry. `defined_names()` now starts from verified ledger names and adds anchored source definitions, including initializers and split return-type lines. Update the ledger and treemap at verified local checkpoints.
 
@@ -165,7 +169,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 5543 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 5566 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -228,6 +232,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 5349 functions (119,864 bytes).** Added five more typed C++ matches and 38 deleting-destructor matches. The optional source-prototype input was exercised in a read-only Ghidra export of all 8573 functions. The next 200-function sample uses those recovered parameters.
 - **Snapshot at 5462 functions (122,456 bytes).** Added 113 functions from the seeded parameter work: 42 in the initial sample and 71 after preserving pointer return types and resolving uniquely identified callable addresses. Compiled snapshots and strict per-variant comparisons are archived with the sample records.
 - **Snapshot at 5543 functions (126,162 bytes).** Added 81 matches: 54 from the next 400 corrected parameter candidates, 23 from equivalent integer conditions and bit masks, and four from typed global tables. Every promoted source was rechecked against its compiled snapshot and linked body.
+- **Snapshot at 5566 functions (128,012 bytes).** Added 23 exact matches from the next 400 corrected parameter candidates. The batch completed during the interrupted turn and its records are preserved in params_candidates_seeded_returns/thumb/chunk3_records/. Treemap source navigation is committed separately as 358151f.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
