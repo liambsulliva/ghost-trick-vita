@@ -61646,6 +61646,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,s -fp soft -interworking",
       "verification_sha256": "c10799a01bc595856d893da8d12673ac0d512a6af3fd550b0665c0ea51c3df4d"
+    },
+    {
+      "module": "main",
+      "address": "0x0206a7f0",
+      "name": "func_0206a7f0",
+      "size": 108,
+      "source": "src/arm/params_func_0206a7f0.c",
+      "source_sha256": "b09d1663a7e991d784eaada0d0e2b1547e5343fdc02b54f1f3e1bb6b68cbef01",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,s -fp soft -interworking",
+      "verification_sha256": "c8ead9110c269f6bb5b680474fb00f3abfe79bcbf8e3bd1ae4eebda730751b37"
     }
   ]
 }
