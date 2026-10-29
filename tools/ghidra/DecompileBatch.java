@@ -11,6 +11,8 @@ import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.UnsignedIntegerDataType;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.lang.RegisterValue;
 import ghidra.program.model.listing.Function;
@@ -23,6 +25,30 @@ public class DecompileBatch extends GhidraScript {
         String[] args = getScriptArgs();
         File folder = new File(args[1]);
         folder.mkdirs();
+        if (args.length > 2 && args[2].equals("r0")) {
+            BufferedReader prototypes = new BufferedReader(new FileReader(args[0]));
+            String target;
+            int prepared = 0;
+            while ((target = prototypes.readLine()) != null) {
+                if (target.trim().isEmpty()) {
+                    continue;
+                }
+                try {
+                    Function function = prepareFunction(target.split("\t"));
+                    if (function != null) {
+                        DataType type = function.getReturnType();
+                        if (type.getLength() != 8 && !type.getName().equals("float")) {
+                            function.setReturnType(UnsignedIntegerDataType.dataType, SourceType.USER_DEFINED);
+                            prepared++;
+                        }
+                    }
+                } catch (Exception error) {
+                    println("could not prepare " + target.split("\t")[0]);
+                }
+            }
+            prototypes.close();
+            println("prepared r0 returns for " + prepared + " functions");
+        }
         DecompInterface decompiler = new DecompInterface();
         decompiler.openProgram(currentProgram);
         BufferedReader input = new BufferedReader(new FileReader(args[0]));
@@ -35,20 +61,10 @@ public class DecompileBatch extends GhidraScript {
                 continue;
             }
             String[] parts = line.split("\t");
-            Address address = currentProgram.getAddressFactory().getAddress(parts[2]);
             String status = "no_function";
             try {
-                Function function = getFunctionAt(address);
-                if (function == null) {
-                    Register tmode = currentProgram.getProgramContext().getRegister("TMode");
-                    BigInteger mode = parts[1].equals("thumb") ? BigInteger.ONE : BigInteger.ZERO;
-                    DisassembleCommand command = new DisassembleCommand(address, null, true);
-                    command.setInitialContext(new RegisterValue(tmode, mode));
-                    command.applyTo(currentProgram, monitor);
-                    function = createFunction(address, null);
-                }
+                Function function = prepareFunction(parts);
                 if (function != null) {
-                    function.setName(parts[0], SourceType.USER_DEFINED);
                     DecompileResults result = decompiler.decompileFunction(function, 10, monitor);
                     if (result.decompileCompleted()) {
                         PrintWriter source = new PrintWriter(new File(folder, parts[0] + ".c"));
@@ -86,5 +102,22 @@ public class DecompileBatch extends GhidraScript {
         report.close();
         decompiler.dispose();
         println("processed " + count + " functions");
+    }
+
+    private Function prepareFunction(String[] parts) throws Exception {
+        Address address = currentProgram.getAddressFactory().getAddress(parts[2]);
+        Function function = getFunctionAt(address);
+        if (function == null) {
+            Register tmode = currentProgram.getProgramContext().getRegister("TMode");
+            BigInteger mode = parts[1].equals("thumb") ? BigInteger.ONE : BigInteger.ZERO;
+            DisassembleCommand command = new DisassembleCommand(address, null, true);
+            command.setInitialContext(new RegisterValue(tmode, mode));
+            command.applyTo(currentProgram, monitor);
+            function = createFunction(address, null);
+        }
+        if (function != null) {
+            function.setName(parts[0], SourceType.USER_DEFINED);
+        }
+        return function;
     }
 }

@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1092" width="1600" height="1092" role="img" aria-labelledby="title description" font-family="Segoe UI, system-ui, sans-serif">
 <title id="title">Ghost Trick decompilation progress</title>
-<desc id="description">Functions matched: 4,926 / 8,573 (57.46%) | Code bytes matched: 91,076 / 572,086 (15.92%) | Modules: 7. Each rectangle is one function. Green means verified C or C++; gray means unmatched. This is the prepared code inventory, not the Chapter 1 dependency count.</desc>
+<desc id="description">Functions matched: 4,947 / 8,573 (57.70%) | Code bytes matched: 91,808 / 572,086 (16.05%) | Modules: 7. Each rectangle is one function. Green means verified C or C++; gray means unmatched. This is the prepared code inventory, not the Chapter 1 dependency count.</desc>
 <rect width="1600" height="1092" fill="#14191f"/>
 <text x="16" y="33" fill="#e6eaf0" font-size="24" font-weight="600">Ghost Trick decompilation progress</text>
-<text x="16" y="60" fill="#e6eaf0" font-size="15">Functions matched: 4,926 / 8,573 (57.46%) | Code bytes matched: 91,076 / 572,086 (15.92%) | Modules: 7</text>
+<text x="16" y="60" fill="#e6eaf0" font-size="15">Functions matched: 4,947 / 8,573 (57.70%) | Code bytes matched: 91,808 / 572,086 (16.05%) | Modules: 7</text>
 <text x="16" y="83" fill="#a7b0bc" font-size="13">Prepared code across all chapters. Area = function span bytes. Shared byte ranges count once in the totals.</text>
 <rect x="12.000" y="101.000" width="1436.339" height="922.000" fill="#202832" stroke="#8993a1" stroke-width="1"/>
-<text x="18.000" y="118.000" fill="#e6eaf0" font-size="12" font-weight="600">main · 16.9%</text>
+<text x="18.000" y="118.000" fill="#e6eaf0" font-size="12" font-weight="600">main · 17.1%</text>
 <rect data-function="main:func_02023fdc" x="16.350" y="125.350" width="183.104" height="126.679" fill="#535e6d"><title>main / func_02023fdc | 0x02023fdc | thumb | 9560 bytes | Unmatched</title></rect>
 <text x="21.000" y="142.000" fill="#f1f4f8" font-size="11" pointer-events="none">func_02023fdc</text>
 <rect data-function="main:func_0203052c" x="16.350" y="252.729" width="81.197" height="99.418" fill="#535e6d"><title>main / func_0203052c | 0x0203052c | thumb | 3348 bytes | Unmatched</title></rect>
@@ -760,7 +760,7 @@
 <rect data-function="main:func_020441d8" x="776.033" y="332.666" width="21.946" height="15.738" fill="#535e6d"><title>main / func_020441d8 | 0x020441d8 | thumb | 152 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02057488" x="798.679" y="316.228" width="21.946" height="15.738" fill="#535e6d"><title>main / func_02057488 | 0x02057488 | thumb | 152 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0206f964" x="798.679" y="332.666" width="21.946" height="15.738" fill="#535e6d"><title>main / func_0206f964 | 0x0206f964 | arm | 152 bytes | Unmatched</title></rect>
-<rect data-function="main:func_02071188" x="821.325" y="237.282" width="12.971" height="26.529" fill="#535e6d"><title>main / func_02071188 | 0x02071188 | arm | 152 bytes | Unmatched</title></rect>
+<rect data-function="main:func_02071188" x="821.325" y="237.282" width="12.971" height="26.529" fill="#3b9b72"><title>main / func_02071188 | 0x02071188 | arm | 152 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02077438" x="834.996" y="237.282" width="12.971" height="26.529" fill="#535e6d"><title>main / func_02077438 | 0x02077438 | arm | 152 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0207b2cc" x="848.667" y="237.282" width="12.971" height="26.529" fill="#535e6d"><title>main / func_0207b2cc | 0x0207b2cc | arm | 152 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02006084" x="821.325" y="264.511" width="12.971" height="26.171" fill="#535e6d"><title>main / func_02006084 | 0x02006084 | thumb | 150 bytes | Unmatched</title></rect>
@@ -1215,7 +1215,7 @@
 <rect data-function="main:func_02074ee0" x="1149.862" y="179.790" width="25.865" height="8.888" fill="#535e6d"><title>main / func_02074ee0 | 0x02074ee0 | arm | 104 bytes | Unmatched</title></rect>
 <rect data-function="main:func_020750b4" x="1149.862" y="189.378" width="12.582" height="18.476" fill="#535e6d"><title>main / func_020750b4 | 0x020750b4 | arm | 104 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02075354" x="1163.145" y="189.378" width="12.582" height="18.476" fill="#535e6d"><title>main / func_02075354 | 0x02075354 | arm | 104 bytes | Unmatched</title></rect>
-<rect data-function="main:func_02075dc0" x="1132.152" y="208.553" width="17.114" height="13.598" fill="#535e6d"><title>main / func_02075dc0 | 0x02075dc0 | arm | 104 bytes | Unmatched</title></rect>
+<rect data-function="main:func_02075dc0" x="1132.152" y="208.553" width="17.114" height="13.598" fill="#3b9b72"><title>main / func_02075dc0 | 0x02075dc0 | arm | 104 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0200e410" x="1132.152" y="222.851" width="17.114" height="13.323" fill="#535e6d"><title>main / func_0200e410 | 0x0200e410 | thumb | 102 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0203838c" x="1149.966" y="208.553" width="25.761" height="8.740" fill="#535e6d"><title>main / func_0203838c | 0x0203838c | thumb | 102 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02040570" x="1149.966" y="217.994" width="12.531" height="18.181" fill="#535e6d"><title>main / func_02040570 | 0x02040570 | thumb | 102 bytes | Unmatched</title></rect>
@@ -2189,7 +2189,7 @@
 <rect data-function="main:func_02067aac" x="807.352" y="739.055" width="12.046" height="10.060" fill="#535e6d"><title>main / func_02067aac | 0x02067aac | thumb | 56 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02067df4" x="794.606" y="749.815" width="7.797" height="15.440" fill="#3b9b72"><title>main / func_02067df4 | 0x02067df4 | thumb | 56 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_020685e0" x="803.104" y="749.815" width="7.797" height="15.440" fill="#535e6d"><title>main / func_020685e0 | 0x020685e0 | arm | 56 bytes | Unmatched</title></rect>
-<rect data-function="main:func_0206b130" x="811.601" y="749.815" width="7.797" height="15.440" fill="#535e6d"><title>main / func_0206b130 | 0x0206b130 | arm | 56 bytes | Unmatched</title></rect>
+<rect data-function="main:func_0206b130" x="811.601" y="749.815" width="7.797" height="15.440" fill="#3b9b72"><title>main / func_0206b130 | 0x0206b130 | arm | 56 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0206f494" x="774.212" y="765.955" width="10.771" height="11.255" fill="#535e6d"><title>main / func_0206f494 | 0x0206f494 | arm | 56 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02070dcc" x="785.684" y="765.955" width="10.771" height="11.255" fill="#3b9b72"><title>main / func_02070dcc | 0x02070dcc | arm | 56 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02070e84" x="774.212" y="777.910" width="6.948" height="17.233" fill="#535e6d"><title>main / func_02070e84 | 0x02070e84 | arm | 56 bytes | Unmatched</title></rect>
@@ -2778,7 +2778,7 @@
 <rect data-function="main:func_0206b284" x="842.459" y="852.030" width="6.651" height="12.626" fill="#535e6d"><title>main / func_0206b284 | 0x0206b284 | arm | 40 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0206df74" x="849.810" y="852.030" width="6.651" height="12.626" fill="#535e6d"><title>main / func_0206df74 | 0x0206df74 | arm | 40 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0206e9ac" x="857.161" y="852.030" width="6.651" height="12.626" fill="#535e6d"><title>main / func_0206e9ac | 0x0206e9ac | arm | 40 bytes | Unmatched</title></rect>
-<rect data-function="main:func_0206f030" x="842.459" y="865.356" width="6.651" height="12.626" fill="#535e6d"><title>main / func_0206f030 | 0x0206f030 | arm | 40 bytes | Unmatched</title></rect>
+<rect data-function="main:func_0206f030" x="842.459" y="865.356" width="6.651" height="12.626" fill="#3b9b72"><title>main / func_0206f030 | 0x0206f030 | arm | 40 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0206f46c" x="849.810" y="865.356" width="6.651" height="12.626" fill="#535e6d"><title>main / func_0206f46c | 0x0206f46c | arm | 40 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0206f51c" x="857.161" y="865.356" width="6.651" height="12.626" fill="#535e6d"><title>main / func_0206f51c | 0x0206f51c | arm | 40 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0206fae0" x="820.405" y="878.682" width="6.086" height="13.737" fill="#3b9b72"><title>main / func_0206fae0 | 0x0206fae0 | arm | 40 bytes | Verified C/C++</title></rect>
@@ -2803,7 +2803,7 @@
 <rect data-function="main:func_020784ac" x="885.195" y="852.030" width="7.343" height="11.479" fill="#535e6d"><title>main / func_020784ac | 0x020784ac | arm | 40 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0207855c" x="893.238" y="852.030" width="7.343" height="11.479" fill="#535e6d"><title>main / func_0207855c | 0x0207855c | arm | 40 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02078d58" x="901.281" y="852.030" width="7.343" height="11.479" fill="#3b9b72"><title>main / func_02078d58 | 0x02078d58 | arm | 40 bytes | Verified C/C++</title></rect>
-<rect data-function="main:func_0207a118" x="885.195" y="864.209" width="11.365" height="7.420" fill="#535e6d"><title>main / func_0207a118 | 0x0207a118 | arm | 40 bytes | Unmatched</title></rect>
+<rect data-function="main:func_0207a118" x="885.195" y="864.209" width="11.365" height="7.420" fill="#3b9b72"><title>main / func_0207a118 | 0x0207a118 | arm | 40 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0207a354" x="885.195" y="872.329" width="11.365" height="7.420" fill="#535e6d"><title>main / func_0207a354 | 0x0207a354 | arm | 40 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0207a550" x="897.259" y="864.209" width="11.365" height="7.420" fill="#535e6d"><title>main / func_0207a550 | 0x0207a550 | arm | 40 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0207d954" x="897.259" y="872.329" width="11.365" height="7.420" fill="#535e6d"><title>main / func_0207d954 | 0x0207d954 | arm | 40 bytes | Unmatched</title></rect>
@@ -3222,10 +3222,10 @@
 <rect data-function="main:func_02069d94" x="1053.746" y="830.500" width="10.607" height="6.231" fill="#3b9b72"><title>main / func_02069d94 | 0x02069d94 | arm | 32 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0206e0b4" x="1042.440" y="837.431" width="10.607" height="6.231" fill="#3b9b72"><title>main / func_0206e0b4 | 0x0206e0b4 | arm | 32 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0206e528" x="1042.440" y="844.362" width="10.607" height="6.231" fill="#3b9b72"><title>main / func_0206e528 | 0x0206e528 | arm | 32 bytes | Verified C/C++</title></rect>
-<rect data-function="main:func_0206fcdc" x="1053.746" y="837.431" width="10.607" height="6.231" fill="#535e6d"><title>main / func_0206fcdc | 0x0206fcdc | arm | 32 bytes | Unmatched</title></rect>
-<rect data-function="main:func_0206fd30" x="1053.746" y="844.362" width="10.607" height="6.231" fill="#535e6d"><title>main / func_0206fd30 | 0x0206fd30 | arm | 32 bytes | Unmatched</title></rect>
-<rect data-function="main:func_0206ff74" x="1065.053" y="823.568" width="10.607" height="6.231" fill="#535e6d"><title>main / func_0206ff74 | 0x0206ff74 | arm | 32 bytes | Unmatched</title></rect>
-<rect data-function="main:func_0206ffc8" x="1065.053" y="830.500" width="10.607" height="6.231" fill="#535e6d"><title>main / func_0206ffc8 | 0x0206ffc8 | arm | 32 bytes | Unmatched</title></rect>
+<rect data-function="main:func_0206fcdc" x="1053.746" y="837.431" width="10.607" height="6.231" fill="#3b9b72"><title>main / func_0206fcdc | 0x0206fcdc | arm | 32 bytes | Verified C/C++</title></rect>
+<rect data-function="main:func_0206fd30" x="1053.746" y="844.362" width="10.607" height="6.231" fill="#3b9b72"><title>main / func_0206fd30 | 0x0206fd30 | arm | 32 bytes | Verified C/C++</title></rect>
+<rect data-function="main:func_0206ff74" x="1065.053" y="823.568" width="10.607" height="6.231" fill="#3b9b72"><title>main / func_0206ff74 | 0x0206ff74 | arm | 32 bytes | Verified C/C++</title></rect>
+<rect data-function="main:func_0206ffc8" x="1065.053" y="830.500" width="10.607" height="6.231" fill="#3b9b72"><title>main / func_0206ffc8 | 0x0206ffc8 | arm | 32 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02073918" x="1076.359" y="823.568" width="10.607" height="6.231" fill="#3b9b72"><title>main / func_02073918 | 0x02073918 | arm | 32 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02073944" x="1076.359" y="830.500" width="10.607" height="6.231" fill="#3b9b72"><title>main / func_02073944 | 0x02073944 | arm | 32 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02073fc4" x="1065.053" y="837.431" width="10.607" height="6.231" fill="#535e6d"><title>main / func_02073fc4 | 0x02073fc4 | arm | 32 bytes | Unmatched</title></rect>
@@ -4109,9 +4109,9 @@
 <rect data-function="main:func_020732d0" x="1254.420" y="701.407" width="5.189" height="9.280" fill="#3b9b72"><title>main / func_020732d0 | 0x020732d0 | arm | 24 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02073468" x="1260.310" y="701.407" width="5.189" height="9.280" fill="#535e6d"><title>main / func_02073468 | 0x02073468 | arm | 24 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02073964" x="1221.225" y="711.387" width="8.468" height="5.711" fill="#535e6d"><title>main / func_02073964 | 0x02073964 | arm | 24 bytes | Unmatched</title></rect>
-<rect data-function="main:func_0207397c" x="1221.225" y="717.798" width="8.468" height="5.711" fill="#535e6d"><title>main / func_0207397c | 0x0207397c | arm | 24 bytes | Unmatched</title></rect>
+<rect data-function="main:func_0207397c" x="1221.225" y="717.798" width="8.468" height="5.711" fill="#3b9b72"><title>main / func_0207397c | 0x0207397c | arm | 24 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_020739cc" x="1230.394" y="711.387" width="3.884" height="12.122" fill="#535e6d"><title>main / func_020739cc | 0x020739cc | arm | 24 bytes | Unmatched</title></rect>
-<rect data-function="main:func_020739e4" x="1234.978" y="711.387" width="8.468" height="5.711" fill="#535e6d"><title>main / func_020739e4 | 0x020739e4 | arm | 24 bytes | Unmatched</title></rect>
+<rect data-function="main:func_020739e4" x="1234.978" y="711.387" width="8.468" height="5.711" fill="#3b9b72"><title>main / func_020739e4 | 0x020739e4 | arm | 24 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02073ab4" x="1234.978" y="717.798" width="8.468" height="5.711" fill="#3b9b72"><title>main / func_02073ab4 | 0x02073ab4 | arm | 24 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02073ad8" x="1221.225" y="724.209" width="10.761" height="4.429" fill="#535e6d"><title>main / func_02073ad8 | 0x02073ad8 | arm | 24 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02074534" x="1221.225" y="729.337" width="5.030" height="9.557" fill="#535e6d"><title>main / func_02074534 | 0x02074534 | arm | 24 bytes | Unmatched</title></rect>
@@ -4340,7 +4340,7 @@
 <rect data-function="main:func_02020cfc" x="1282.224" y="646.217" width="4.642" height="8.470" fill="#535e6d"><title>main / func_02020cfc | 0x02020cfc | thumb | 20 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02022310" x="1287.566" y="627.878" width="10.873" height="3.532" fill="#3b9b72"><title>main / func_02022310 | 0x02022310 | thumb | 20 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_020224cc" x="1287.566" y="632.110" width="5.087" height="7.764" fill="#535e6d"><title>main / func_020224cc | 0x020224cc | thumb | 20 bytes | Unmatched</title></rect>
-<rect data-function="main:func_02022918" x="1293.352" y="632.110" width="5.087" height="7.764" fill="#535e6d"><title>main / func_02022918 | 0x02022918 | thumb | 20 bytes | Unmatched</title></rect>
+<rect data-function="main:func_02022918" x="1293.352" y="632.110" width="5.087" height="7.764" fill="#3b9b72"><title>main / func_02022918 | 0x02022918 | thumb | 20 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02022d50" x="1299.139" y="627.878" width="10.873" height="3.532" fill="#3b9b72"><title>main / func_02022d50 | 0x02022d50 | thumb | 20 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02023348" x="1299.139" y="632.110" width="5.087" height="7.764" fill="#3b9b72"><title>main / func_02023348 | 0x02023348 | thumb | 20 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02023bd4" x="1304.925" y="632.110" width="5.087" height="7.764" fill="#535e6d"><title>main / func_02023bd4 | 0x02023bd4 | thumb | 20 bytes | Unmatched</title></rect>
@@ -4351,7 +4351,7 @@
 <rect data-function="main:func_0202657c" x="1304.099" y="640.575" width="5.913" height="6.706" fill="#3b9b72"><title>main / func_0202657c | 0x0202657c | thumb | 20 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02026608" x="1297.485" y="647.981" width="5.913" height="6.706" fill="#535e6d"><title>main / func_02026608 | 0x02026608 | thumb | 20 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02026698" x="1304.099" y="647.981" width="5.913" height="6.706" fill="#3b9b72"><title>main / func_02026698 | 0x02026698 | thumb | 20 bytes | Verified C/C++</title></rect>
-<rect data-function="main:func_020266c0" x="1266.199" y="655.387" width="10.428" height="3.702" fill="#535e6d"><title>main / func_020266c0 | 0x020266c0 | thumb | 20 bytes | Unmatched</title></rect>
+<rect data-function="main:func_020266c0" x="1266.199" y="655.387" width="10.428" height="3.702" fill="#3b9b72"><title>main / func_020266c0 | 0x020266c0 | thumb | 20 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0202671c" x="1266.199" y="659.789" width="4.864" height="8.103" fill="#3b9b72"><title>main / func_0202671c | 0x0202671c | thumb | 20 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_020268fc" x="1271.763" y="659.789" width="4.864" height="8.103" fill="#535e6d"><title>main / func_020268fc | 0x020268fc | thumb | 20 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02026924" x="1277.328" y="655.387" width="10.428" height="3.702" fill="#3b9b72"><title>main / func_02026924 | 0x02026924 | thumb | 20 bytes | Verified C/C++</title></rect>
@@ -5639,8 +5639,8 @@
 <rect data-function="main:func_020313f0" x="1148.888" y="935.387" width="4.930" height="6.260" fill="#3b9b72"><title>main / func_020313f0 | 0x020313f0 | thumb | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02031420" x="1143.259" y="942.347" width="4.930" height="6.260" fill="#3b9b72"><title>main / func_02031420 | 0x02031420 | thumb | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02031430" x="1148.888" y="942.347" width="4.930" height="6.260" fill="#3b9b72"><title>main / func_02031430 | 0x02031430 | thumb | 16 bytes | Verified C/C++</title></rect>
-<rect data-function="main:func_02031440" x="1131.999" y="949.308" width="4.930" height="6.260" fill="#535e6d"><title>main / func_02031440 | 0x02031440 | thumb | 16 bytes | Unmatched</title></rect>
-<rect data-function="main:func_02031450" x="1137.629" y="949.308" width="4.930" height="6.260" fill="#535e6d"><title>main / func_02031450 | 0x02031450 | thumb | 16 bytes | Unmatched</title></rect>
+<rect data-function="main:func_02031440" x="1131.999" y="949.308" width="4.930" height="6.260" fill="#3b9b72"><title>main / func_02031440 | 0x02031440 | thumb | 16 bytes | Verified C/C++</title></rect>
+<rect data-function="main:func_02031450" x="1137.629" y="949.308" width="4.930" height="6.260" fill="#3b9b72"><title>main / func_02031450 | 0x02031450 | thumb | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_020314c8" x="1131.999" y="956.268" width="4.930" height="6.260" fill="#3b9b72"><title>main / func_020314c8 | 0x020314c8 | thumb | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0203163c" x="1137.629" y="956.268" width="4.930" height="6.260" fill="#3b9b72"><title>main / func_0203163c | 0x0203163c | thumb | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_020317b8" x="1143.259" y="949.308" width="4.930" height="6.260" fill="#3b9b72"><title>main / func_020317b8 | 0x020317b8 | thumb | 16 bytes | Verified C/C++</title></rect>
@@ -5781,11 +5781,11 @@
 <rect data-function="main:func_0206e298" x="1160.280" y="998.304" width="4.886" height="6.315" fill="#3b9b72"><title>main / func_0206e298 | 0x0206e298 | arm | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0206ef28" x="1165.865" y="991.289" width="4.886" height="6.315" fill="#3b9b72"><title>main / func_0206ef28 | 0x0206ef28 | arm | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0206ef38" x="1171.451" y="991.289" width="4.886" height="6.315" fill="#3b9b72"><title>main / func_0206ef38 | 0x0206ef38 | arm | 16 bytes | Verified C/C++</title></rect>
-<rect data-function="main:func_0206f4cc" x="1165.865" y="998.304" width="4.886" height="6.315" fill="#535e6d"><title>main / func_0206f4cc | 0x0206f4cc | arm | 16 bytes | Unmatched</title></rect>
+<rect data-function="main:func_0206f4cc" x="1165.865" y="998.304" width="4.886" height="6.315" fill="#3b9b72"><title>main / func_0206f4cc | 0x0206f4cc | arm | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02071e20" x="1171.451" y="998.304" width="4.886" height="6.315" fill="#535e6d"><title>main / func_02071e20 | 0x02071e20 | arm | 16 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02071e30" x="1154.694" y="1005.320" width="4.886" height="6.315" fill="#535e6d"><title>main / func_02071e30 | 0x02071e30 | arm | 16 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02071e40" x="1160.280" y="1005.320" width="4.886" height="6.315" fill="#535e6d"><title>main / func_02071e40 | 0x02071e40 | arm | 16 bytes | Unmatched</title></rect>
-<rect data-function="main:func_020728e0" x="1154.694" y="1012.335" width="4.886" height="6.315" fill="#535e6d"><title>main / func_020728e0 | 0x020728e0 | arm | 16 bytes | Unmatched</title></rect>
+<rect data-function="main:func_020728e0" x="1154.694" y="1012.335" width="4.886" height="6.315" fill="#3b9b72"><title>main / func_020728e0 | 0x020728e0 | arm | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_020733e8" x="1160.280" y="1012.335" width="4.886" height="6.315" fill="#3b9b72"><title>main / func_020733e8 | 0x020733e8 | arm | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_020733f8" x="1165.865" y="1005.320" width="4.886" height="6.315" fill="#3b9b72"><title>main / func_020733f8 | 0x020733f8 | arm | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02073408" x="1171.451" y="1005.320" width="4.886" height="6.315" fill="#3b9b72"><title>main / func_02073408 | 0x02073408 | arm | 16 bytes | Verified C/C++</title></rect>
@@ -5794,7 +5794,7 @@
 <rect data-function="main:func_02073438" x="1177.037" y="907.545" width="4.864" height="6.343" fill="#3b9b72"><title>main / func_02073438 | 0x02073438 | arm | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02073448" x="1182.601" y="907.545" width="4.864" height="6.343" fill="#3b9b72"><title>main / func_02073448 | 0x02073448 | arm | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02073458" x="1177.037" y="914.588" width="4.864" height="6.343" fill="#3b9b72"><title>main / func_02073458 | 0x02073458 | arm | 16 bytes | Verified C/C++</title></rect>
-<rect data-function="main:func_02073680" x="1182.601" y="914.588" width="4.864" height="6.343" fill="#535e6d"><title>main / func_02073680 | 0x02073680 | arm | 16 bytes | Unmatched</title></rect>
+<rect data-function="main:func_02073680" x="1182.601" y="914.588" width="4.864" height="6.343" fill="#3b9b72"><title>main / func_02073680 | 0x02073680 | arm | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02073808" x="1188.165" y="907.545" width="4.864" height="6.343" fill="#535e6d"><title>main / func_02073808 | 0x02073808 | arm | 16 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0207388c" x="1193.729" y="907.545" width="4.864" height="6.343" fill="#535e6d"><title>main / func_0207388c | 0x0207388c | arm | 16 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02073908" x="1188.165" y="914.588" width="4.864" height="6.343" fill="#535e6d"><title>main / func_02073908 | 0x02073908 | arm | 16 bytes | Unmatched</title></rect>
@@ -5809,8 +5809,8 @@
 <rect data-function="main:func_02074fd0" x="1193.729" y="928.673" width="4.864" height="6.343" fill="#535e6d"><title>main / func_02074fd0 | 0x02074fd0 | arm | 16 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02074fe0" x="1199.293" y="907.545" width="4.907" height="6.288" fill="#535e6d"><title>main / func_02074fe0 | 0x02074fe0 | arm | 16 bytes | Unmatched</title></rect>
 <rect data-function="main:func_0207511c" x="1204.900" y="907.545" width="4.907" height="6.288" fill="#535e6d"><title>main / func_0207511c | 0x0207511c | arm | 16 bytes | Unmatched</title></rect>
-<rect data-function="main:func_02075344" x="1199.293" y="914.533" width="4.907" height="6.288" fill="#535e6d"><title>main / func_02075344 | 0x02075344 | arm | 16 bytes | Unmatched</title></rect>
-<rect data-function="main:func_020754e4" x="1204.900" y="914.533" width="4.907" height="6.288" fill="#535e6d"><title>main / func_020754e4 | 0x020754e4 | arm | 16 bytes | Unmatched</title></rect>
+<rect data-function="main:func_02075344" x="1199.293" y="914.533" width="4.907" height="6.288" fill="#3b9b72"><title>main / func_02075344 | 0x02075344 | arm | 16 bytes | Verified C/C++</title></rect>
+<rect data-function="main:func_020754e4" x="1204.900" y="914.533" width="4.907" height="6.288" fill="#3b9b72"><title>main / func_020754e4 | 0x020754e4 | arm | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_020754f4" x="1210.507" y="907.545" width="4.907" height="6.288" fill="#3b9b72"><title>main / func_020754f4 | 0x020754f4 | arm | 16 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0207578c" x="1216.115" y="907.545" width="4.907" height="6.288" fill="#535e6d"><title>main / func_0207578c | 0x0207578c | arm | 16 bytes | Unmatched</title></rect>
 <rect data-function="main:func_02075d50" x="1210.507" y="914.533" width="4.907" height="6.288" fill="#3b9b72"><title>main / func_02075d50 | 0x02075d50 | arm | 16 bytes | Verified C/C++</title></rect>
@@ -6179,7 +6179,7 @@
 <rect data-function="main:func_0202713c" x="1303.145" y="833.004" width="6.683" height="3.281" fill="#3b9b72"><title>main / func_0202713c | 0x0202713c | thumb | 12 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_020274e8" x="1288.380" y="836.985" width="4.334" height="5.138" fill="#3b9b72"><title>main / func_020274e8 | 0x020274e8 | thumb | 12 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_020274f4" x="1293.414" y="836.985" width="4.334" height="5.138" fill="#3b9b72"><title>main / func_020274f4 | 0x020274f4 | thumb | 12 bytes | Verified C/C++</title></rect>
-<rect data-function="main:func_02027500" x="1288.380" y="842.823" width="2.656" height="8.058" fill="#535e6d"><title>main / func_02027500 | 0x02027500 | thumb | 12 bytes | Unmatched</title></rect>
+<rect data-function="main:func_02027500" x="1288.380" y="842.823" width="2.656" height="8.058" fill="#3b9b72"><title>main / func_02027500 | 0x02027500 | thumb | 12 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0202750c" x="1291.736" y="842.823" width="6.011" height="3.679" fill="#3b9b72"><title>main / func_0202750c | 0x0202750c | thumb | 12 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_0202768c" x="1291.736" y="847.202" width="6.011" height="3.679" fill="#3b9b72"><title>main / func_0202768c | 0x0202768c | thumb | 12 bytes | Verified C/C++</title></rect>
 <rect data-function="main:func_02027f9c" x="1298.447" y="836.985" width="3.327" height="6.598" fill="#3b9b72"><title>main / func_02027f9c | 0x02027f9c | thumb | 12 bytes | Verified C/C++</title></rect>
