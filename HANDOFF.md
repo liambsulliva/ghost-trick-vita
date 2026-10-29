@@ -18,7 +18,7 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Verified ledger / treemap | 5928 |
 | Needed for 7104 milestone | 1176 more |
 | Remaining in full inventory | 2645 |
-| Current compilation | Four disjoint matching workers; mid batch35 recorded; no push |
+| Current compilation | Session wrap-up at 5928; workers stopped; two local commits unpushed |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
@@ -191,6 +191,15 @@ Parallel twenty-fifth checkpoint: `parallel_logic_low/batch30` matched three mor
 
 Parallel twenty-sixth checkpoint: `parallel_objects_mid/batch35` matched `func_0205d984` with character-address die then volatile word +0x90.
 
+Session wrap-up (2026-10-29, context limit): ledger **5928/8573**, 152,306 unique code bytes, working tree clean. Unpushed HEAD `a35cd7a` (`Match one function from mid-object character-address context`) plus `af39609` (`Match three functions from later parallel low-address batches`). Do not push unless the user says so. Local checkpoints use `git commit-tree` + `git reset --soft` with Liam author/committer copied from HEAD, empty body, and no `Co-authored-by` trailer. Plain `git commit` injects a Cursor trailer; do not use it.
+
+Resume the same four disjoint lanes. Integrator only records `passed.txt` after snapshot/source/ELF byte identity and `COMPILE_OK` without `COMPILE_FAIL`. Workers do not edit the ledger, public HANDOFF, treemap, or git.
+
+- Low Thumb `< 0x02030000` except interpreter `func_02023fdc`. Last recorded: `parallel_logic_low/batch30`. Resume after batch 30. Do not retry compiled batch 15–30 failures, including leftovers on `func_0201c130`, the `func_02006cbc` family, `func_0200dac8`, `func_02019358`, `func_02022400` (`movs r0,#1` / `lsls r7,r0,#8` vs `movs r7,#1` / `lsls r7,r7,#8`), and `func_0201fc80` / `func_0201fd34`. Helper `list_candidates.py` last counted 608 unmatched owned exports with verified edges.
+- Mid Thumb `0x02030000`–`0x02066fff`. Last recorded: `batch35` (`func_0205d984`). Closest leftover: `func_02043fd8` from `charptr_ldrsb` — get the loop counter in r6 not r4, and live `1<<20>>8` in r7 not r6 so `<<12` lands as `lsls r4`. Do not retry stalled `func_0204fb10` / `func_0204fb80` / `func_020466f0`, archived 0-match identities from batch21/25/26/28/30–33/36/37, volatile ldrsb, sc/idx locals, `pass_t_orig_ldrsb`, or `shifted_decl_first`. CFG still has no BL to `func_0205c7b8`.
+- ARM + high Thumb `>= 0x02067000` + overlays except DS Protect. Last recorded: `twenty_second_arm` / `twenty_third_arm` / `twentieth_thumb`. Remaining skip_sinit last-group wants `LDR dest; STR; LDR src`, not `LDR dest; LDR src; STR`. Do not retry `dest_chain_sizeof`, `after_first_sizeof`, `last_dest_sizeof`, `pool_last_dest`, `last_zero_args`, `reuse_first_last`, `zero_between_last_dest`, or `nested_last_dest`. CPSR/CP15 wrappers (`func_02075c84`, `func_02075c98`, `func_02075cac`, `func_02075fc4`, `func_02074844` / `02074860` / `020748b8`) and overlay jumptable stubs are not junior-C matchable. Do not retry compiled walk/increment forms of `func_02076e58` / `func_02074398`, or `func_02078e84` strcpy/ldrsb/reload variants. `func_0207b8a0` is MWCC `_u32_div_f`; C `/` cannot match.
+- Interpreter: analysis-only on mapped `func_02023fdc` unless a full 9560-byte match exists. `extraout_r1` is the high word of `func_0207b8a0` after opcode 0x66 BLX at `0x02024604` (unsigned quotient r0 / remainder r1). Keep export ignored; do not invent interior labels.
+
 The first context-driven queue is prepared by `extracted/decomp/context_candidates.py <arm|thumb>`. It checks each anchor source/report hash, confirms direct call targets in `context_reference_disassembly.txt`, and uses only targets present in both the configured inventory and successful `ghidra_narrow/` exports. `context_candidates/<mode>/context_evidence.json` records the target identity and reasons for its variants. Run `validate_context_candidates.py <mode>` before compiling; it requires exactly the existing target definition and rejects function references without verified context evidence. Its negative checks rejected both a fabricated target and a fabricated function reference. The first signature-only samples tested 16 ARM and 100 Thumb targets without matches. These sources are not to be retried unchanged. Use context to repair the actual body and call relationships, not only declarations.
 
 Reuse `extracted/decomp/batch_tail.py` (`compile_items`, `match_items`, `defined_names`, `halfs`, `literal_word`). Pattern:
@@ -213,7 +222,7 @@ Empty `bx lr`; imm return; field `ldr` word/half/byte via `char*` plus byte offs
 
 `flag_bit` / `flag_bit8` (compiler `tst`/`and`, not `lsl`/`lsr`+`beq`); `wrap_blx`; copies `copy8`/`copy12`/`copy2`/`copy2h`/`copy2b`/`copy3` (store order); hw pack `func_02029370` / `func_02029390`; `ldm` r3 vs r2; `089c8` struct-init; virt `func_02015db0` / `func_02015e38` register allocation; SVC `dfxx` size 4; `slot_virt` / `virt_s` / `virt_c` / `virt_e` / `virt_cf` (r1 vs r2 or extra ldr); `signbit` (`cmp`/`bge` vs `lsrs #31`); clamp `>` vs unsigned `bls`; `u8` double `lsl`/`lsr` (compiler emits one pair); `zero_2call` (compiler saves r4, original does not); `loadb_far` unused `cmp` dropped.
 
-`skip_sinit` (do not regenerate the old failing kinds): `__sinit_0207ec0c`, `0207ef1c`, `0207f60c`, `0207fa3c`, `0207fc8c`, `0207fefc`, `02080964`, `02080c80`. `__sinit_0207e3f4` and `0207e58c` now have verified dest-chain sizeof matches. Do not retry `dest_chain_sizeof`, `after_first_sizeof`, `last_dest_sizeof`, or `pool_last_dest` on the remaining names unchanged.
+`skip_sinit` (do not regenerate the old failing kinds): `__sinit_0207ec0c`, `0207ef1c`, `0207f60c`, `0207fa3c`, `0207fc8c`, `0207fefc`, `02080964`, `02080c80`. `__sinit_0207e3f4` and `0207e58c` now have verified dest-chain sizeof matches. Do not retry `dest_chain_sizeof`, `after_first_sizeof`, `last_dest_sizeof`, `pool_last_dest`, `last_zero_args`, `reuse_first_last`, `zero_between_last_dest`, or `nested_last_dest` on the remaining names unchanged. `__sinit_02080c80` still wants `LDR dest; STR; LDR src` on the last dest-chain group.
 
 ### Checkpoint verification, including the 7104 milestone
 
