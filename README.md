@@ -8,11 +8,11 @@ The current work is an autonomous function-matching campaign across the full pre
 
 ## Decompilation progress
 
-![Ghost Trick function matching progress](docs/progress-treemap.svg)
+[![Ghost Trick function matching progress](docs/progress-treemap.svg)](https://liambsulliva.github.io/ghost-trick-vita/)
 
 Each rectangle is one function, sized by its byte span and grouped by module. Green means reconstructed C/C++ passes the compiler and linked-function byte check; gray means unmatched. Full-game C link integration and Vita execution are separate milestones.
 
-This is a static preview. GitHub's README and SVG file viewers do not support clicking individual rectangles to open source. A separate viewer with working function links is prepared for GitHub Pages; it has not been published. See [the viewer and publishing setup](docs/progress-viewer.md).
+Click the preview to open the [interactive treemap](https://liambsulliva.github.io/ghost-trick-vita/), then click a green rectangle to open its verified C/C++ source on GitHub. Gray rectangles have no verified source yet. The README image itself is static; the viewer provides the function links. See [the viewer setup](docs/progress-viewer.md).
 
 This shows the **full prepared code inventory**, not the number of functions required for Chapter 1. The latter still needs runtime dependency tracing. The denominator comes from ds-decomp's current symbol configuration; the older Ghidra export has a different function census. Shared code ranges count once in byte totals. DS Protect is excluded from the Vita target.
 

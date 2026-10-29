@@ -8,6 +8,8 @@ User instruction: "I already committed it. Keep going til 7104." The 3552 snapsh
 
 Newer instruction on 2026-10-29: "you can continue past 7104 and decompile all functions without my input, as long as you make commits along the way." This supersedes the old stopping point. Continue with verified local checkpoint commits, keep the README treemap current at those checkpoints, and do not ask for permission merely to continue. DS Protect remains outside the port inventory.
 
+The user explicitly approved “Push commits and publish viewer” on 2026-10-29 after reviewing the prepared viewer at `e104499`. This authorizes pushing the prepared `asset-inventory` checkpoints and the follow-up changes needed to publish and verify the progress-only GitHub Pages viewer. Pages is now enabled with Actions as the build source at https://liambsulliva.github.io/ghost-trick-vita/. This is a scoped exception to the older no-push rule; ordinary later decompilation checkpoints remain local unless separately authorized.
+
 ### Status (2026-10-29)
 
 | Item | Value |
@@ -16,7 +18,7 @@ Newer instruction on 2026-10-29: "you can continue past 7104 and decompile all f
 | Verified ledger / treemap | 5580 |
 | Needed for 7104 milestone | 1524 more |
 | Remaining in full inventory | 2993 |
-| Current compilation | GitHub viewer prepared; publication approval pending; no Wine process |
+| Current compilation | Publishing GitHub viewer; no Wine process |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
@@ -59,7 +61,7 @@ Treemap navigation: commit `358151f` retains each verified source path and wraps
 
 Signed bytes: close misses prove that Ghidra's `char` must sometimes be spelled `signed char` for the pinned compiler. Examples are `func_02062cb8` (ASR versus LSR after an 8-bit cast) and `func_0205b36c` (LDRSB versus LDRB). `char_repairs.py <mode>` prepares changed sources from the best prior failed compile, with individual-site alternatives for small close misses.
 
-GitHub viewer correction: the user clarified that navigation must work from GitHub, and reported “Unable to render code block.” The Markdown API probe in `extracted/decomp/github_render_probe.html` confirms that GitHub strips inline SVG shapes and image-map regions, then links the entire image to its file. The earlier local SVG links do not solve that platform behavior. `tools/progress_treemap.py` now generates a compact static README SVG (about 285 KB rather than 2.7 MB). With `--site-dir build/progress-site --source-url <HTTPS source base>`, it also prepares an iframe-based viewer and a full SVG with absolute GitHub source links. `.github/workflows/progress-pages.yml` is manual only and publishes only that two-file directory. The GitHub API confirms that the repository is public and Pages is disabled. Publication and pushing remain unapproved; do not enable Pages, dispatch deployment or push until the user explicitly authorizes them. See `docs/progress-viewer.md`.
+GitHub viewer correction: the user clarified that navigation must work from GitHub, and reported “Unable to render code block.” The Markdown API probe in `extracted/decomp/github_render_probe.html` confirms that GitHub strips inline SVG shapes and image-map regions, then links the entire image to its file. The earlier local SVG links do not solve that platform behavior. `tools/progress_treemap.py` now generates a compact static README SVG (about 285 KB rather than 2.7 MB). With `--site-dir build/progress-site --source-url <HTTPS source base>`, it also prepares an iframe-based viewer and a full SVG with absolute GitHub source links. `.github/workflows/progress-pages.yml` is manual only and publishes only that two-file directory. The GitHub API confirms that the repository is public and Pages is disabled. The user subsequently approved pushing the prepared commits and publishing the viewer; see the scoped authorization above. See `docs/progress-viewer.md`.
 
 Use verified names, not a brace census: a loose definition regex can mistake a function call in an `if` condition for a definition. Anchor definitions at an unindented declaration line, allow the return type on the preceding line, and reject braces/semicolons inside the parameter match. The source census also omits the differently named motion queue entry. `defined_names()` now starts from verified ledger names and adds anchored source definitions, including initializers and split return-type lines. Update the ledger and treemap at verified local checkpoints.
 

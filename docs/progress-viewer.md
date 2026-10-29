@@ -4,7 +4,7 @@ GitHub renders README images and repository SVG previews as images. Links inside
 
 The README uses a compact static SVG. The standalone viewer embeds a separate SVG as a document, where each green rectangle links directly to its verified C/C++ file on GitHub. The source links include the revision used to build the chart. Gray rectangles have no verified source yet.
 
-The viewer is prepared but **not published**. The GitHub API reports that this repository is public and Pages is disabled. Publishing requires the commits to be pushed and GitHub Pages to be enabled; the viewer will also be public. See [GitHub's custom workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
+The [interactive viewer](https://liambsulliva.github.io/ghost-trick-vita/) uses GitHub Pages. The repository and viewer are public. The README preview links to this page rather than GitHub's SVG file viewer. See [GitHub's custom workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 
 Only `index.html` and `treemap.svg` are included in the site artifact. They contain chart geometry, function names, addresses, instruction modes, sizes, matching status, source paths and links. They contain no C/C++ source contents, ROM bytes, game art, extracted assets or compiler tools. GitHub still controls access to the linked source files.
 
@@ -19,4 +19,4 @@ open -a Safari build/progress-site/index.html
 
 The build uses the symbol configuration, verification ledger and source files already in the repository. It needs no ROM, compiler or extracted data.
 
-Once publication is approved, enable Pages with **GitHub Actions** as the publishing source, then run the **Progress treemap** workflow. The workflow runs only when manually dispatched and uploads only `build/progress-site`. After a successful deployment, the README preview can link to the published viewer. It should not link to an unpublished URL or promise clickable regions in GitHub's image preview.
+Pages uses **GitHub Actions** as the publishing source. Run the **Progress treemap** workflow to update the viewer after pushing a verified checkpoint. The workflow runs only when manually dispatched and uploads only `build/progress-site`. Its source links use that workflow's commit, so the chart remains consistent with the source it opens.
