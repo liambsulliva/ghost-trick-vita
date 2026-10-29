@@ -65034,6 +65034,94 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,s -fp soft -interworking",
       "verification_sha256": "613abab86999e3c44df71aaba2abd05fc45843e1aed4b0df5aa87f2af9341577"
+    },
+    {
+      "module": "main",
+      "address": "0x020082d8",
+      "name": "func_020082d8",
+      "size": 14,
+      "source": "src/thumb/parallel_logic_low_func_020082d8.c",
+      "source_sha256": "49c5d7e945378e2d638337e79518170e831a3c57e537f62c3d8753acb8aa8b48",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "e64e96022a4cad4a2352f94bef64d6a20ecf283f457da92060a81cd6abee7205"
+    },
+    {
+      "module": "main",
+      "address": "0x020083b0",
+      "name": "func_020083b0",
+      "size": 14,
+      "source": "src/thumb/parallel_logic_low_func_020083b0.c",
+      "source_sha256": "d89c5ca53817fbfc5de337dff07124cca204142794ad1764b7ecaf07debf1271",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "aa867b88bd8e0ab6e16c6eed9ef6d29797dcdb57b8db67b467efcda7ebf5d45e"
+    },
+    {
+      "module": "main",
+      "address": "0x020153d8",
+      "name": "func_020153d8",
+      "size": 42,
+      "source": "src/thumb/parallel_logic_low_func_020153d8.c",
+      "source_sha256": "d0ec55869826f8388edea397945a243f2ab7fefc072e08ca9dc109ef523ecb1e",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "3d7d04a7294bf4f6cb030ea061d35dfc6194927f510da8924768af9959ddf362"
+    },
+    {
+      "module": "main",
+      "address": "0x020187bc",
+      "name": "func_020187bc",
+      "size": 42,
+      "source": "src/thumb/parallel_logic_low_func_020187bc.c",
+      "source_sha256": "d24df3039c7a822a21e9ae0ae59d5f9d0e2f8a6ea866b0cba4c081115cfa5c2c",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "e7dc0b1ba72e04442f5f4d8783d79f34a68d97170dac05e850759f80c109ffb1"
+    },
+    {
+      "module": "main",
+      "address": "0x0202b258",
+      "name": "func_0202b258",
+      "size": 40,
+      "source": "src/thumb/parallel_logic_low_func_0202b258.c",
+      "source_sha256": "a41ea90fbaec7e503948aabe9ac4f1b8eed591a5a9d40f686e0cd344d7ad2613",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "93753456575934728c4c3488654f0c174ee9faca6ea243b9816e702834ea73b0"
+    },
+    {
+      "module": "main",
+      "address": "0x0202b53c",
+      "name": "func_0202b53c",
+      "size": 46,
+      "source": "src/thumb/parallel_logic_low_func_0202b53c.c",
+      "source_sha256": "9d51970f3ada8c76677518b2023f6385d4dcac5c652acd3a38b53fd0dafbd388",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "8e1890652c210786c70183fe52ccb1c5d9dd72b6f754d4a88eaa79869cbf3452"
+    },
+    {
+      "module": "main",
+      "address": "0x0202f17c",
+      "name": "func_0202f17c",
+      "size": 36,
+      "source": "src/thumb/parallel_logic_low_func_0202f17c.c",
+      "source_sha256": "54cd392162f12fcba4b49886038f5218aa21adc1ebdf4805308be5a9f5f563e9",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "b3d758ab89914e5fa3fb9a5d77fd6eecd2a0dcc71ff12e0f58292ba307ef1e99"
+    },
+    {
+      "module": "main",
+      "address": "0x02065ff0",
+      "name": "func_02065ff0",
+      "size": 124,
+      "source": "src/thumb/parallel_objects_mid_func_02065ff0.cpp",
+      "source_sha256": "47c1188ea3a2015e1b05a0e7ed241d7f4df7438f4563377fd0fe1ea84dc1119e",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "4b1589534798e928dc08564bf863242ecb328ce879721794875ed9c75ca44457"
     }
   ]
 }
