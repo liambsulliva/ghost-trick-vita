@@ -93,6 +93,8 @@ The user asked for three subagents on Haiku with extra-high effort, coordinated 
 
 Integration is one command: `python3 -I extracted/decomp/integrate_pending.py "<commit message>"`. It finds every group batch whose `passed.txt` names are not in the ledger, runs `record_checkpoint.py`, regenerates and checks the treemap, runs the tests and the audit, stages exactly the recorded sources plus the ledger and treemap, and commits with `commit-tree` and `reset --soft` using Liam as author and no trailer. After recording, message the worker so its passes can serve as anchors. Pushes stay with the user.
 
+Pitfall: SendMessage to a worker that has already stopped resumes it. Only send recording confirmations to workers that are still running. Once a worker has handed back its final report, start a replacement instead; never message the old one. A resumed old worker plus its replacement in the same folder caused one double-run batch, `parallel_logic_low/batch35`. The middle group is paused after four consecutive zero-match batches (38–41); its leads are in its handoff. The low range is split: `parallel_logic_low` below `0x02018000` and `parallel_logic_low_b` for `0x02018000`–`0x0202ffff`. Shared worker rules are in ignored `extracted/decomp/WORKER_BRIEF.md`, so a restart prompt only names the group, range, folder, prefix, next batch, anchors and leads.
+
 Results so far this session: low batches 31–33 gave 9, middle batch 38 gave 0 (the mid close-miss pool is exhausted, so new variants need new context), and ARM twenty_sixth/twenty_seventh gave 0 and 4. ARM yield has been low.
 
 ### How to match
