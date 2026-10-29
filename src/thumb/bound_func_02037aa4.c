@@ -7,7 +7,7 @@ unsigned int func_02037aa4(unsigned int param_1)
 {
     int iVar1;
     unsigned int uVar2;
-    
+
     iVar1 = ((int)&data_020cdd0c);
     if (*(int *)(((int)&data_020cdd0c) + 8) == 0) {
         return 0;

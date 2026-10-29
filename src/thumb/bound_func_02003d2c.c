@@ -5,7 +5,7 @@ unsigned int func_02003d2c(void)
 
 {
     int iVar1;
-    
+
     iVar1 = func_02003d8c();
     if (iVar1 == 0x10) {
         return 0xffffffff;
