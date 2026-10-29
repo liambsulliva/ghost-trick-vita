@@ -8,22 +8,22 @@ User instruction: "I already committed it. Keep going til 7104." The 3552 snapsh
 
 Newer instruction on 2026-10-29: "you can continue past 7104 and decompile all functions without my input, as long as you make commits along the way." This supersedes the old stopping point. Continue with verified local checkpoint commits, keep the README treemap current at those checkpoints, and do not ask for permission merely to continue. DS Protect remains outside the port inventory.
 
-The user explicitly approved “Push commits and publish viewer” on 2026-10-29 after reviewing the prepared viewer at `e104499`. This authorizes pushing the prepared `asset-inventory` checkpoints and the follow-up changes needed to publish and verify the progress-only GitHub Pages viewer. Pages is now enabled with Actions as the build source at https://liambsulliva.github.io/ghost-trick-vita/. This is a scoped exception to the older no-push rule; ordinary later decompilation checkpoints remain local unless separately authorized.
+The user explicitly approved “Push commits and publish viewer” on 2026-10-29 after reviewing the prepared viewer at `e104499`. This authorizes pushing the prepared `asset-inventory` checkpoints and the follow-up changes needed to publish and verify the progress-only GitHub Pages viewer. Pages is now enabled with Actions as the build source at https://liambsulliva.github.io/ghost-trick-vita/. The user subsequently asked that updated function counts and references propagate to the interactive site. Publishing verified decompilation checkpoints and rebuilding the viewer on relevant pushes is authorized for this task. Other pushes remain outside this scope.
 
 ### Status (2026-10-29)
 
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 5614 |
-| Needed for 7104 milestone | 1490 more |
-| Remaining in full inventory | 2959 |
-| Current compilation | ARM unsigned-halfword repairs |
+| Verified ledger / treemap | 5625 |
+| Needed for 7104 milestone | 1479 more |
+| Remaining in full inventory | 2948 |
+| Current compilation | Publishing updated viewer; table and flag repairs next |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 5614 functions (130,656 unique code bytes).** Added eight Thumb matches from the narrow ABI sample and verified one interior Thumb entry at its exact two-byte-aligned address.
+**Latest verified checkpoint: 5625 functions (131,312 unique code bytes).** Added eleven unsigned-halfword matches: one ARM and ten Thumb. The viewer workflow now rebuilds on relevant pushes so its count and source links advance together.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -57,6 +57,8 @@ Parameter sample results: the first seeded sample added 42 matches. The correcte
 
 Narrow ABI hints: `source_prototypes_narrow.tsv` seeds all 5584 current verified functions, preserving signed/unsigned byte and halfword scalar types as well as pointer/register widths. `ghidra_narrow/` exported all 8573 functions successfully and discarded database changes. `params_candidates.py narrow_returns <mode>` prepares changed candidates; unchanged tested sources are skipped. No draft counts until its pinned build and linked bytes pass.
 
+Halfword results: the unsigned-halfword pass added one ARM match and ten Thumb matches. Compiled inputs and comparison records are archived under `halfword_repairs/<mode>/complete_records/`.
+
 Halfword retries: close misses such as `func_02051448`, `func_020547e0`, and `func_02075d6c` use LDRH in the reference where a signed `short` draft emits LDRSH. `halfword_repairs.py <mode>` prepares unsigned alternatives from prior compiled inputs. The narrow ABI ARM pass tested 21 changed functions without matches; its first 300 Thumb functions added eight.
 
 Interior entry: `func_020267ca` is a 14-byte Thumb entry inside the 16-byte `func_020267c8`. Its compiled body already matched, but the default section alignment placed it two bytes late. A per-candidate linker script with `SUBALIGN(2)` places this entry at its exact address; address, mode, size, and every byte now pass. The function has no PC-relative literals. Evidence and the explicit link command are in `interior_entry_retry/thumb/`; do not relax alignment generally for functions with literal pools.
@@ -69,13 +71,13 @@ Signed-byte results: the complete Thumb pass tested 543 functions (580 variants)
 
 Signed bytes: close misses prove that Ghidra's `char` must sometimes be spelled `signed char` for the pinned compiler. Examples are `func_02062cb8` (ASR versus LSR after an 8-bit cast) and `func_0205b36c` (LDRSB versus LDRB). `char_repairs.py <mode>` prepares changed sources from the best prior failed compile, with individual-site alternatives for small close misses.
 
-GitHub viewer correction: the user clarified that navigation must work from GitHub, and reported “Unable to render code block.” The Markdown API probe in `extracted/decomp/github_render_probe.html` confirms that GitHub strips inline SVG shapes and image-map regions, then links the entire image to its file. The earlier local SVG links do not solve that platform behavior. `tools/progress_treemap.py` now generates a compact static README SVG (about 285 KB rather than 2.7 MB). With `--site-dir build/progress-site --source-url <HTTPS source base>`, it also prepares an iframe-based viewer and a full SVG with absolute GitHub source links. `.github/workflows/progress-pages.yml` is manual only and publishes only that two-file directory. The repository is public. The user approved pushing the prepared commits and publishing the viewer; see the scoped authorization above. Pages deployed successfully from `6b74099` (Actions run `40886639139`). Both hosted files returned HTTP 200, all 5580 source links were checked, and the user confirmed that tile clicks work. Later decompilation checkpoints remain local. See `docs/progress-viewer.md`.
+GitHub viewer correction: the user clarified that navigation must work from GitHub, and reported “Unable to render code block.” The Markdown API probe in `extracted/decomp/github_render_probe.html` confirms that GitHub strips inline SVG shapes and image-map regions, then links the entire image to its file. The earlier local SVG links do not solve that platform behavior. `tools/progress_treemap.py` now generates a compact static README SVG (about 285 KB rather than 2.7 MB). With `--site-dir build/progress-site --source-url <HTTPS source base>`, it also prepares an iframe-based viewer and a full SVG with absolute GitHub source links. `.github/workflows/progress-pages.yml` publishes only that two-file directory. It now rebuilds on relevant pushes to `asset-inventory`, in addition to manual dispatch, following the user's instruction to propagate current counts and references. The repository is public. The user approved pushing the prepared commits and publishing the viewer; see the scoped authorization above. Pages deployed successfully from `6b74099` (Actions run `40886639139`). Both hosted files returned HTTP 200, all 5580 source links were checked, and the user confirmed that tile clicks work. The user subsequently authorized keeping the hosted count and references current with verified decompilation checkpoints. See `docs/progress-viewer.md`.
 
 Use verified names, not a brace census: a loose definition regex can mistake a function call in an `if` condition for a definition. Anchor definitions at an unindented declaration line, allow the return type on the preceding line, and reject braces/semicolons inside the parameter match. The source census also omits the differently named motion queue entry. `defined_names()` now starts from verified ledger names and adds anchored source definitions, including initializers and split return-type lines. Update the ledger and treemap at verified local checkpoints.
 
 ### Rules
 
-- On 2026-10-29 the user authorized local commits while continuing autonomously, with the expectation they may adjust them later. Use the repository's configured Git identity. Do not add assistant attribution or co-author lines. Do not push or rewrite the user's earlier commits.
+- On 2026-10-29 the user authorized local commits while continuing autonomously, with the expectation they may adjust them later. Use the repository's configured Git identity. Do not add assistant attribution or co-author lines. Do not rewrite the user's earlier commits. Push verified progress checkpoints to keep the interactive viewer current under the newer authorization above; do not push unrelated work.
 - One function per `.c`/`.cpp`. Junior style: plain loops, no comments, dsd names (`func_XXXXXXXX`, `data_XXXXXXXX`).
 - Pinned compiler: `mwccarm dsi/1.2p1` with `-proc arm946e -thumb -O4,s -fp soft -interworking -sym on` for Thumb. Omit `-thumb` for ARM. Ledger `flags` omit `-sym on`.
 - Compare address, size, thumb, and body. Relocs do not count.
@@ -181,7 +183,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 5614 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 5625 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -251,6 +253,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 5604 functions (129,624 bytes).** Added 20 ARM matches from 200 recovered-signature candidates. A read-only Ghidra export with narrow ABI hints also completed for all 8573 functions.
 - **Snapshot at 5605 functions (129,732 bytes).** Added one more ARM match, completing the corrected parameter queue: 21 matches from 424 tested functions. The next candidates use the newer narrow ABI export.
 - **Snapshot at 5614 functions (130,656 bytes).** Added eight Thumb matches from the narrow ABI sample and verified one interior Thumb entry at its exact two-byte-aligned address.
+- **Snapshot at 5625 functions (131,312 bytes).** Added eleven unsigned-halfword matches: one ARM and ten Thumb. The viewer workflow now rebuilds on relevant pushes so its count and source links advance together.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 

@@ -19,4 +19,6 @@ open -a Safari build/progress-site/index.html
 
 The build uses the symbol configuration, verification ledger and source files already in the repository. It needs no ROM, compiler or extracted data.
 
-Pages uses **GitHub Actions** as the publishing source. Run the **Progress treemap** workflow to update the viewer after pushing a verified checkpoint. The workflow runs only when manually dispatched and uploads only `build/progress-site`. Its source links use that workflow's commit, so the chart remains consistent with the source it opens.
+Pages uses **GitHub Actions** as the publishing source. The **Progress treemap** workflow rebuilds and deploys when a push to `asset-inventory` changes the verification ledger, function sources, symbol configuration, chart, or generator. It can also be run manually. Local commits appear on the site after they are pushed and deployment succeeds.
+
+The workflow checks the committed preview against the ledger and builds the interactive chart from the same checkout. Its source links use that workflow's commit, so the function count and file references advance together. It uploads only `build/progress-site`.

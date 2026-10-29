@@ -1,0 +1,72 @@
+extern char data_02084cd8;
+extern char data_020a428c;
+typedef int code();
+extern int func_02007b70();
+extern int func_02007bd8();
+extern int func_02016c4c();
+extern int func_0201786c();
+extern int func_02018c4c();
+extern int func_0201d6d4();
+
+unsigned int * func_02017878(unsigned int *param_1)
+
+{
+    int *piVar1;
+    unsigned int uVar2;
+    unsigned int uVar3;
+
+    func_02016c4c();
+    *param_1 = ((unsigned int)&data_020a428c);
+    param_1[0x20] = 0;
+    param_1[0x21] = 0;
+    *(unsigned short *)(param_1 + 0x22) = 0;
+    *(unsigned short *)((int)param_1 + 0x8a) = (unsigned short)((unsigned int)0x0000ffffu);
+    *(unsigned char *)(param_1 + 0x23) = 0;
+    *(unsigned char *)((int)param_1 + 0x8d) = 0;
+    *(unsigned char *)((int)param_1 + 0x8e) = 0;
+    *(unsigned char *)((int)param_1 + 0x8f) = 0;
+    *(unsigned char *)(param_1 + 0x24) = 0;
+    *(unsigned char *)((int)param_1 + 0x91) = 0;
+    *(unsigned char *)((int)param_1 + 0x92) = 0;
+    *(unsigned char *)((int)param_1 + 0x93) = 0;
+    *(unsigned short *)(param_1 + 0x25) = 0;
+    *(unsigned short *)((int)param_1 + 0x96) = 0;
+    *(unsigned short *)(param_1 + 0x26) = 0;
+    *(unsigned short *)((int)param_1 + 0x9a) = 0;
+    *(unsigned short *)(param_1 + 0x27) = 5;
+    *(unsigned char *)((int)param_1 + 0x9e) = 0;
+    *(unsigned short *)(param_1 + 0x28) = 0;
+    *(unsigned short *)((int)param_1 + 0xa2) = 0;
+    *(unsigned char *)(param_1 + 0x29) = 0;
+    *(unsigned char *)((int)param_1 + 0xa5) = 0;
+    *(unsigned char *)((int)param_1 + 0xa6) = 1;
+    *(unsigned char *)((int)param_1 + 0xa7) = 0;
+    *(unsigned char *)(param_1 + 0x2a) = 0;
+    param_1[0x1a] = 0;
+    param_1[0x1b] = 0;
+    param_1[0x1c] = 0;
+    param_1[0x1d] = 0;
+    param_1[0x1e] = 0;
+    param_1[0x1f] = 0;
+    *(unsigned char *)((int)param_1 + 0xa9) = 0;
+    func_0201d6d4(param_1 + 0x2b);
+    param_1[0x1c] = 0x3000;
+    func_02007bd8();
+    piVar1 = (int *)func_02007b70();
+    uVar3 = ((unsigned int)&data_02084cd8);
+    uVar2 = (**(code **)(*piVar1 + 8))(piVar1,param_1[0x1c],((unsigned int)&data_02084cd8));
+    param_1[0x1a] = uVar2;
+    func_02007bd8();
+    piVar1 = (int *)func_02007b70();
+    uVar2 = (**(code **)(*piVar1 + 8))(piVar1,param_1[0x1c],uVar3);
+    param_1[0x1b] = uVar2;
+    param_1[2] = 0x18;
+    func_02007bd8();
+    piVar1 = (int *)func_02007b70();
+    uVar3 = (**(code **)(*piVar1 + 8))(piVar1,param_1[2] << 3,uVar3);
+    param_1[1] = uVar3;
+    func_0201786c(uVar3,param_1[2] << 3);
+    func_02018c4c(param_1);
+    param_1[0x1d] = 0x1800;
+    return param_1;
+}
