@@ -3,8 +3,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.PrintWriter;
 import java.math.BigInteger;
+import java.util.Iterator;
 
 import ghidra.app.cmd.disassemble.DisassembleCommand;
+import ghidra.app.decompiler.ClangToken;
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
@@ -12,6 +14,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.lang.RegisterValue;
 import ghidra.program.model.listing.Function;
+import ghidra.program.model.pcode.HighVariable;
 import ghidra.program.model.symbol.SourceType;
 
 public class DecompileBatch extends GhidraScript {
@@ -51,6 +54,19 @@ public class DecompileBatch extends GhidraScript {
                         PrintWriter source = new PrintWriter(new File(folder, parts[0] + ".c"));
                         source.println(result.getDecompiledFunction().getC());
                         source.close();
+                        PrintWriter types = new PrintWriter(new File(folder, parts[0] + ".types.tsv"));
+                        Iterator<ClangToken> tokens = result.getCCodeMarkup().tokenIterator(true);
+                        while (tokens.hasNext()) {
+                            ClangToken token = tokens.next();
+                            if (!token.getText().matches("(?:_?DAT_|[a-z]+Ram)(?:ov[0-9]+__)?[0-9a-fA-F]{8}")) {
+                                continue;
+                            }
+                            HighVariable variable = token.getHighVariable();
+                            if (variable != null) {
+                                types.println(token.getText() + "\t" + variable.getDataType().getDisplayName());
+                            }
+                        }
+                        types.close();
                         status = "decompiled";
                     } else {
                         status = "decompile_failed";
