@@ -1,6 +1,76 @@
 # Handoff: Ghost Trick PS Vita port
 
-For the next agent picking up this project. Updated 2026-10-28 after the CPAC fix and the user's Chapter 1 scope decision. Read this file, then `docs/chapter1.md`, `docs/inventory.md` and `docs/frame_mapping.md`.
+For the next agent. Updated 2026-10-29. **Active task: keep matching Thumb until 7104 verified bodies.** Chapter 1 remains the long-term delivery goal; do not switch to it while 7104 is open. The user now authorizes autonomous work and local commits they can adjust later. After this file, read `docs/chapter1.md`, `docs/inventory.md` and `docs/frame_mapping.md` only if the matching campaign is done.
+
+## 0. Active task: match Thumb to 7104
+
+User instruction: "I already committed it. Keep going til 7104." The 3552 snapshot is `d996db0` on `asset-inventory` ("3552 total functions! Mostly six-arg constructors, alloc-init wrappers, and vtable stores"). Do not rewrite it.
+
+### Status (2026-10-29)
+
+| Item | Value |
+|---|---|
+| Last committed snapshot | 3552 (`d996db0`) |
+| Ledger / treemap / HANDOFF table | still 3552; leave them until 7104 |
+| Defined C/C++ bodies (brace count) | 3969 |
+| Needed for 7104 | 3135 more |
+| Unmatched | 3341 Thumb + 860 ARM |
+| dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
+| Untracked new sources | `src/thumb/*.c` (one function per file) |
+| Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
+
+Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
+
+Fresh continuation check: all 414 pending sources passed a new pinned compile and linked-byte comparison in `extracted/decomp/pending_audit_3969/`. Together with the existing ledger this establishes 3966 distinct verified functions. Four older source bodies outside the ledger still need checking: `func_02067ea0`, `func_02067e94`, `func_02067ce0` and `func_020082e8`. The source brace census also omits the differently named motion queue entry, so use verified name sets rather than subtracting brace totals. Leave the ledger and treemap at 3552 until the requested 7104 snapshot.
+
+### Rules
+
+- On 2026-10-29 the user authorized local commits while continuing autonomously, with the expectation they may adjust them later. Use the repository's configured Git identity. Do not add assistant attribution or co-author lines. Do not push or rewrite the user's earlier commits.
+- One function per `.c`/`.cpp`. Junior style: plain loops, no comments, dsd names (`func_XXXXXXXX`, `data_XXXXXXXX`).
+- Pinned compiler: `mwccarm dsi/1.2p1` with `-proc arm946e -thumb -O4,s -fp soft -interworking -sym on`. Ledger `flags` omit `-sym on`.
+- Compare address, size, thumb, and body. Relocs do not count.
+- ARM functions are out of scope under `-thumb`. Hitting 7104 means matching about 94% of remaining Thumb.
+- Wine: `/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine`, bottle `toolchain/wine-mwcc-run`, `WINEDEBUG=-all`, `LM_LICENSE_FILE=Z:\Users\liambsulliva\Developer\ghost-trick-vita\toolchain\mwccarm\license.dat`. One wine process. `python3 -u`. Needs host permissions (`all`).
+- Tools: `ld.lld`, `llvm-mc`, `llvm-objdump` from Homebrew llvm/lld. Reference ELF `extracted/lld/linked.elf`, `.main.text` at `0x2000000`. `elf_fixups.fix_object` before link. Thumb `BL` is `F000`/`F800`; `BLX` second half is `E800` (word-align target with `&~3`). Literal pool `PC=(insn+4)&~3 + imm8*4`.
+- Defined names: brace regex `\bfunc_...\([^;]*\)\s*\{` plus `__sinit_`.
+- `extracted/` and `toolchain/` stay gitignored. No game dialogue or art in git or chat.
+
+### How to match
+
+Reuse `extracted/decomp/batch_tail.py` (`compile_items`, `match_items`, `defined_names`, `halfs`, `literal_word`). Pattern:
+
+1. Classify remaining unmatched Thumb by size and first opcodes.
+2. Write a `batch_moreNN.py` that emits one C file per hit.
+3. `python3 -u extracted/decomp/batch_moreNN.py generate && python3 -u extracted/decomp/batch_moreNN.py sample`
+4. Sample is one function per kind. Keep passing kinds, delete failing kinds, then `... all`.
+5. `match_items` deletes failing sources. If you rerun `generate`, it can recreate them: delete those again.
+
+Duplicate small bodies are mostly gone (remaining size≤32 dups are known-fail hw pack and virt `15db0`). Yield is unique functions plus constrained-register wrappers.
+
+Pass-through unused parameters keep live registers. Extra `0` in r1 forces vtable into r2 (`virt0`, `virt_c0`). Originals that use r2 with r1 free will not match; skip them. Compiler tails (`ldr r3; bx r3`) where the original `push`/`bl`/`pop`: skip (`wrap`, `add_wrap`, `wrap_blx`).
+
+### C that has matched
+
+Empty `bx lr`; imm return; field `ldr` word/half/byte via `char*` plus byte offset; const pool; tail `bx`; alloc-if; six-arg ctor; destructor duplication; CRC tails; virtual delete in `.cpp`; `(short)x<<12`; overlapping stores via `char*`; unused third param to keep r2; `func_0206a7f0` fillers; singleton guard; return 1 vs 2; `unsigned char` `lsl#24`/`lsr#24`; return-this after 1/2 calls; call then store vtable; alloc-if with shift; swap tail; `tail3`; `zero_third`; `add_tail` / `add_tail2` / `add_tail3`; `imm_tail`; `big_add_tail`; `index_load`; `nonzero`; `shift_store`; `null_call`; `call_zero`; `two_call`; `two_this` as `return second(first(object), object)` with no extra `return object`; `ldrsh` as `*(short *)(object + imm)`; `virt0` as `object->methods[n](object, 0)`; `idx_add` as `object += index; return object[CONST]`; `ctor_far` parent then vtable then field zeros; `ctor_vt` vtable-first then calls/stores; `ctor_x` parent then vtable then r0 stores and `(imm << shift)` stores; `sinitn` with numeric 4th arg; `flag_word` as `if ((*(int*)(object+off) & mask) != 0) return 1; return 0`; `call_offstr` stores the second param, not the call result; `call2_str` with unused second param; `ubfx` / `ubfx8` as `(value << lsl) >> lsr` (some widths become AND-with-pool: drop those); `call_strb`; `zero_inc`; `inc_far`; `copy_far2`; `bicw` as `&= ~mask`; `child1`; `relink`; `setb2`; `setb_z`; `call_bool`; `and_pool`; `strb_tail`; `child_imm`; `add_r2`; `imm_shift`; `ifsetb`.
+
+### Do not retry the same C
+
+`flag_bit` / `flag_bit8` (compiler `tst`/`and`, not `lsl`/`lsr`+`beq`); `wrap_blx`; copies `copy8`/`copy12`/`copy2`/`copy2h`/`copy2b`/`copy3` (store order); hw pack `func_02029370` / `func_02029390`; `ldm` r3 vs r2; `089c8` struct-init; virt `func_02015db0` / `func_02015e38` register allocation; SVC `dfxx` size 4; `slot_virt` / `virt_s` / `virt_c` / `virt_e` / `virt_cf` (r1 vs r2 or extra ldr); `signbit` (`cmp`/`bge` vs `lsrs #31`); clamp `>` vs unsigned `bls`; `u8` double `lsl`/`lsr` (compiler emits one pair); `zero_2call` (compiler saves r4, original does not); `loadb_far` unused `cmp` dropped.
+
+`skip_sinit` (do not regenerate): `__sinit_0207e3f4`, `0207e58c`, `0207e934`, `0207ec0c`, `0207ef1c`, `0207f60c`, `0207f87c`, `0207f8bc`, `0207fa3c`, `0207fc8c`, `0207fefc`, `020800f8`, `02080964`, `02080c80`.
+
+### When 7104 defined bodies exist
+
+1. Verify 7104 names actually pass (`link_one` or `tools/match_function.py`). Delete extras that fail.
+2. Write check JSONs (`indent=2` plus newline) under `extracted/decomp/<name>/dsi_1.2p1/<name>_check.json`. Helpers: `extracted/decomp/snapshot_ready.py`, `extracted/decomp/build_pending.py` (point them at the new batch work dirs / `passed.txt` lists, or write an equivalent).
+3. Append ledger rows to `config/decomp_progress.json` until `matched` is **exactly 7104**. Fields: `module`, `address`, `name`, `size`, `source`, `source_sha256`, `compiler`, `flags` (no `-sym on`), `verification_sha256`. Sort by address as existing rows do. Remainder sources stay untracked.
+4. `python3 -I tools/progress_treemap.py` then `python3 -I tools/progress_treemap.py --check`.
+5. Update this file's phase table (5–8) to 7104 of 8,573 and add a snapshot bullet. Do not touch earlier snapshot bullets.
+6. Commit the verified 7104 checkpoint locally under the user's latest authorization, then stop and report the count and commit. Do not push.
+
+### Where to look next
+
+Remaining Thumb is mostly unique. Highest leftover piles: `10b5 041c` save-this (~650), `08b5` wrappers (~160 small), `38b5`/`b570`/`b5f8` frames, ~120 ctor-like that are not `ctor_far`/`ctor_x` (pool load is not a vtable store, or extra bit ops / far calls). Leaf `bx lr` size 8–16 still has table/index/and/or forms. `extracted/decomp/batch_more20.py` `ctor_x` can grow if it learns `1c20`+BL after vtable and extra pool pointer stores; `batch_more22.py` is the latest unique-leaf classifier.
 
 ## 1. What the project is
 
@@ -13,11 +83,11 @@ Decided direction, after earlier feasibility work:
 - **The plan:** recompile the DS game's ARM9 code natively for the Vita (ARMv5TE code runs mostly unchanged on ARMv7), replace its renderer and UI, and draw remaster assets converted offline from the user's own Steam copy. The UI follows the single-screen Android remaster, not the DS's two screens.
 - **The asset finding:** neither version uses skeletal animation. The remaster's characters are high-resolution 2D art driven by keyframe timelines. Details are in section 6.
 
-The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/Start-a-new-decomp-project) supplied the earlier phase sequence. It was written for PlayStation and gcc, so the DS equivalents are used. Phases 0–3 are done (section 5). The user's newer priority is the Chapter 1 device test; a whole-game matching-C campaign is deferred.
+The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/Start-a-new-decomp-project) supplied the earlier phase sequence. It was written for PlayStation and gcc, so the DS equivalents are used. Phases 0–3 are done (section 5). The user paused Chapter 1 long enough to double matched C to 7104 (section 0); after that snapshot, return to the Chapter 1 device test.
 
 ## 2. How the user works (follow this)
 
-- **Commits:** the user reviews, commits and pushes with their own messages. The user reaffirmed this during the continuation: "Don't commit. Let me do it myself." Leave changes ready for their review and commit. Do not commit, push, amend or add co-author lines. Branch: `asset-inventory`. Remote: `git@github.com:liambsulliva/ghost-trick-vita.git` (private).
+- **Commits:** the newer 2026-10-29 instruction authorizes autonomous local commits, which the user expects to adjust later. Use the configured Git identity, with no assistant attribution or co-author lines. Do not push or rewrite their previous commits. Branch: `asset-inventory`. Remote: `git@github.com:liambsulliva/ghost-trick-vita.git` (private).
 - **Code style:** write like a junior developer learning as they go. Plain loops and functions, no clever pointer arithmetic, no unusual data structures, **no comments in code**. Match the existing `tools/*.py`.
 - **Writing style:** plain and direct, no filler. The user had asked for an "unslop" skill that wasn't installed, so write plainly.
 - **Decisions:** at each checkpoint, offer the user a short choice of the next step rather than charging ahead into big new areas.
@@ -61,7 +131,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | Started | 3552 of 8,573 dsd functions are C-matched (`README.md` treemap via `tools/progress_treemap.py`, `config/decomp_progress.json`). A whole-game matching campaign is deferred behind the Chapter 1 target. |
+| 5–8 Matching decomp | In progress toward 7104 | Ledger still 3552 of 8,573 (`docs/progress-treemap.svg` via `tools/progress_treemap.py`, `config/decomp_progress.json`). About 3969 Thumb/C++ bodies exist in `src/` (417 untracked since `d996db0`). User ordered continuation to 7104; Chapter 1 waits until that snapshot is named. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -104,7 +174,8 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 444 functions (3,598 bytes).** Added 222 matched functions: empty bodies, small constant returns, single field loads, address constants, and tail calls.
 - **Snapshot at 888 functions (6,416 bytes).** Added 444 matched functions: empty bodies, small constant returns, single field loads, address constants, and tail calls.
 - **Snapshot at 1776 functions (16,852 bytes).** Added 888 matched functions: wrappers that call one or two functions and return the object, plus field reads, field writes, and shifts.
-- **Snapshot at 3552 functions (49,270 bytes).** Added 1776 matched functions: six-argument constructors, allocate-then-init wrappers, vtable stores, and the remaining small call and field helpers.
+- **Snapshot at 3552 functions (49,270 bytes).** Added 1776 matched functions: six-argument constructors, allocate-then-init wrappers, vtable stores, and the remaining small call and field helpers. User committed this as `d996db0`.
+- **Toward 7104.** Next doubling is 7104. Do not update the ledger, treemap, or this table until that count exists and check JSONs are written. See section 0.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
@@ -216,9 +287,11 @@ Still open:
 - full names for most opcodes
 - confirming the motion-command meanings beyond their lengths
 
-## 10. Next steps: deliver the Chapter 1 test
+## 10. Next steps
 
-Follow `docs/chapter1.md`. Keep all prepared work, but defer later-stage effect tracing, whole-game alias cleanup, full-pack payload surveys and a whole-game matching-C campaign.
+**Now:** section 0, match Thumb to 7104, then stop for the user to name the commit.
+
+**After that snapshot:** follow `docs/chapter1.md`. Keep all prepared work. Defer later-stage effect tracing, whole-game alias cleanup and full-pack payload surveys until Chapter 1 is on device.
 
 1. Trace the first chapter's entry, completion transition and actual scene/resource dependencies. Start at the existing `st01_game000` oracle path. The whole `st01` folder includes later scenes and is only a conservative inventory.
 2. Locate/configure VitaSDK for this repository and make an installable viewer with a small converted asset set. No Vita application exists in this repository yet. Measure frame time and free memory; ask the user to power on the Vita when the build is ready.
