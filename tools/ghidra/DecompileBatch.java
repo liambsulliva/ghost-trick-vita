@@ -6,11 +6,13 @@ import java.math.BigInteger;
 import java.util.Iterator;
 
 import ghidra.app.cmd.disassemble.DisassembleCommand;
+import ghidra.app.cmd.function.DecompilerParameterIdCmd;
 import ghidra.app.decompiler.ClangToken;
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.UnsignedIntegerDataType;
 import ghidra.program.model.lang.Register;
@@ -25,6 +27,28 @@ public class DecompileBatch extends GhidraScript {
         String[] args = getScriptArgs();
         File folder = new File(args[1]);
         folder.mkdirs();
+        if (args.length > 2 && args[2].equals("params")) {
+            BufferedReader prototypes = new BufferedReader(new FileReader(args[0]));
+            AddressSet entries = new AddressSet();
+            String target;
+            while ((target = prototypes.readLine()) != null) {
+                if (target.trim().isEmpty()) {
+                    continue;
+                }
+                Function function = prepareFunction(target.split("\t"));
+                if (function != null) {
+                    function.setSignatureSource(SourceType.DEFAULT);
+                    entries.add(function.getEntryPoint());
+                }
+            }
+            prototypes.close();
+            DecompilerParameterIdCmd command = new DecompilerParameterIdCmd(
+                "Recover parameters", entries, SourceType.USER_DEFINED, true, false, 10);
+            if (!command.applyTo(currentProgram, monitor)) {
+                throw new Exception(command.getStatusMsg());
+            }
+            println("recovered parameters for " + entries.getNumAddresses() + " functions");
+        }
         if (args.length > 2 && args[2].equals("r0")) {
             BufferedReader prototypes = new BufferedReader(new FileReader(args[0]));
             String target;

@@ -1,0 +1,24 @@
+class Object0200b088_0 {
+public:
+    virtual void slot0();
+    virtual void slot1();
+    virtual void slot2();
+    virtual void slot3();
+    virtual void slot4();
+    virtual int slot5(int argument0);
+};
+
+extern "C" {
+typedef int code(...);
+
+unsigned int func_0200b088(int param_1)
+
+{
+
+
+    unsigned int uVar1;
+
+    uVar1 = ((Object0200b088_0 *)(*(int **)(param_1 + 0x14)))->slot5((int)(*(unsigned int *)(param_1 + 8)));
+    return uVar1;
+}
+}
