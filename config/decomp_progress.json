@@ -64858,6 +64858,61 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "46e18eef2f0e9483e1fa5e798f7d02217b7397c5c1f3794e99d4c84bc12f729b"
+    },
+    {
+      "module": "main",
+      "address": "0x020072b8",
+      "name": "func_020072b8",
+      "size": 20,
+      "source": "src/thumb/parallel_logic_low_func_020072b8.c",
+      "source_sha256": "a7885fb0144c8989b3c1e12bbbee89a7f2aec46a661a63ac23a9554ebdbe62bf",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "793772466505cea819ac1468d577e1e8019892c460ca958a3c3f85b25b9ee0c6"
+    },
+    {
+      "module": "main",
+      "address": "0x0200730c",
+      "name": "func_0200730c",
+      "size": 20,
+      "source": "src/thumb/parallel_logic_low_func_0200730c.c",
+      "source_sha256": "6ab459ba33eca17cf452a0cd71d9966641b9faca639aeca7c57705661fd3501c",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "4bb139d95091b1b5896688c3e2cb958bd59d03c11c0b59758876f8aa9acd6d05"
+    },
+    {
+      "module": "main",
+      "address": "0x02011958",
+      "name": "func_02011958",
+      "size": 44,
+      "source": "src/thumb/parallel_logic_low_func_02011958.c",
+      "source_sha256": "7fc5958ebe8daa48386bbd471be90581210a63b40b31d57db6b621157ed335da",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "8d3ac07b77ceb675f47f9c72235be94b82039bf22521a1ffd1bbacf92ba8da71"
+    },
+    {
+      "module": "main",
+      "address": "0x0201c248",
+      "name": "func_0201c248",
+      "size": 30,
+      "source": "src/thumb/parallel_logic_low_func_0201c248.cpp",
+      "source_sha256": "34eb5c7695d29a5a0d027c30a40edf18ff048fbff072d5adcd85a07888b4693b",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "14f919aa312fe9498c23b51a831e58a0a3ded3592b964e49c7e91630fe3057a4"
+    },
+    {
+      "module": "main",
+      "address": "0x02023be8",
+      "name": "func_02023be8",
+      "size": 42,
+      "source": "src/thumb/parallel_logic_low_func_02023be8.cpp",
+      "source_sha256": "c570c6ce63f825f3546c22de4d18ede2c36d33db9bab4a69b16fd1394726a9a3",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "c82356c6a35cf400996a2125a70ebe0da703342a2c44f23b815676680b3d5430"
     }
   ]
 }
