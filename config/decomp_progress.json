@@ -64429,6 +64429,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "48f18f278dce660b4c86ca4fce6186cf9d186d38bf850e771c27cd28ebdb11c7"
+    },
+    {
+      "module": "main",
+      "address": "0x0207eb34",
+      "name": "__sinit_0207eb34",
+      "size": 88,
+      "source": "src/thumb/parallel_arm_library___sinit_0207eb34.c",
+      "source_sha256": "313637f4dca3051ee95332c20e278d39c2b495a488c5163bda172e08be9180f1",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "6ed65b384fdcddf3c2ff9bd4beb383b435015f5768015a145bfde00615770c15"
     }
   ]
 }
