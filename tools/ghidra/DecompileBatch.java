@@ -3,6 +3,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.PrintWriter;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import ghidra.app.cmd.disassemble.DisassembleCommand;
@@ -14,10 +15,17 @@ import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.IntegerDataType;
+import ghidra.program.model.data.PointerDataType;
+import ghidra.program.model.data.Undefined1DataType;
 import ghidra.program.model.data.UnsignedIntegerDataType;
+import ghidra.program.model.data.UnsignedLongLongDataType;
+import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.lang.RegisterValue;
 import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.Parameter;
+import ghidra.program.model.listing.ParameterImpl;
 import ghidra.program.model.pcode.HighVariable;
 import ghidra.program.model.symbol.SourceType;
 
@@ -42,8 +50,11 @@ public class DecompileBatch extends GhidraScript {
                 }
             }
             prototypes.close();
+            if (args.length > 3) {
+                applyPrototypes(args[3]);
+            }
             DecompilerParameterIdCmd command = new DecompilerParameterIdCmd(
-                "Recover parameters", entries, SourceType.USER_DEFINED, true, false, 10);
+                "Recover parameters", entries, SourceType.ANALYSIS, true, false, 10);
             if (!command.applyTo(currentProgram, monitor)) {
                 throw new Exception(command.getStatusMsg());
             }
@@ -126,6 +137,53 @@ public class DecompileBatch extends GhidraScript {
         report.close();
         decompiler.dispose();
         println("processed " + count + " functions");
+    }
+
+    private void applyPrototypes(String path) throws Exception {
+        BufferedReader input = new BufferedReader(new FileReader(path));
+        String line;
+        int count = 0;
+        while ((line = input.readLine()) != null) {
+            if (line.trim().isEmpty()) {
+                continue;
+            }
+            String[] parts = line.split("\t", -1);
+            Function function = getFunctionAt(currentProgram.getAddressFactory().getAddress(parts[0]));
+            if (function == null) {
+                throw new Exception("no function for prototype at " + parts[0]);
+            }
+            ArrayList<Parameter> parameters = new ArrayList<>();
+            if (!parts[2].isEmpty()) {
+                for (String type : parts[2].split(",")) {
+                    parameters.add(new ParameterImpl(null, prototypeType(type), currentProgram));
+                }
+            }
+            function.replaceParameters(parameters, Function.FunctionUpdateType.DYNAMIC_STORAGE_ALL_PARAMS,
+                true, SourceType.USER_DEFINED);
+            function.setReturnType(prototypeType(parts[1]), SourceType.USER_DEFINED);
+            count++;
+        }
+        input.close();
+        println("applied " + count + " source prototypes");
+    }
+
+    private DataType prototypeType(String name) throws Exception {
+        if (name.equals("void")) {
+            return VoidDataType.dataType;
+        }
+        if (name.equals("ptr")) {
+            return new PointerDataType(Undefined1DataType.dataType);
+        }
+        if (name.equals("u32")) {
+            return UnsignedIntegerDataType.dataType;
+        }
+        if (name.equals("s32")) {
+            return IntegerDataType.dataType;
+        }
+        if (name.equals("u64")) {
+            return UnsignedLongLongDataType.dataType;
+        }
+        throw new Exception("unsupported prototype type " + name);
     }
 
     private Function prepareFunction(String[] parts) throws Exception {
