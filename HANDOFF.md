@@ -18,7 +18,7 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Verified ledger / treemap | 5928 |
 | Needed for 7104 milestone | 1176 more |
 | Remaining in full inventory | 2645 |
-| Current compilation | Session wrap-up at 5928; workers stopped; two local commits unpushed |
+| Current compilation | Claude coordinator session (2026-10-29): three Haiku workers (low Thumb, middle Thumb, ARM/high/overlays) running in the background; ledger 5941 at f201f15; local commits only, unpushed |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
@@ -86,6 +86,14 @@ Use verified names, not a brace census: a loose definition regex can mistake a f
 - Tools: `ld.lld`, `llvm-mc`, `llvm-objdump` from Homebrew llvm/lld. Reference ELF `extracted/lld/linked.elf`, `.main.text` at `0x2000000`. `elf_fixups.fix_object` before link. Thumb `BL` is `F000`/`F800`; `BLX` second half is `E800` (word-align target with `&~3`). Literal pool `PC=(insn+4)&~3 + imm8*4`.
 - Defined names: brace regex `\bfunc_...\([^;]*\)\s*\{` plus `__sinit_`.
 - `extracted/` and `toolchain/` stay gitignored. No game dialogue or art in git or chat.
+
+### Coordinator loop (Claude session, 2026-10-29)
+
+The user asked for three subagents on Haiku with extra-high effort, coordinated from the main thread, with local commits at key points until every function is done. Workers own the three existing groups (low Thumb below `0x02030000`, middle Thumb `0x02030000`–`0x02066fff`, ARM plus high Thumb/ITCM/overlays 1–6) and write only their `extracted/decomp/parallel_<group>/` folder and `src/<mode>/parallel_<group>_<name>` sources. Each worker messages main when a batch is ready. Workers run out of context after about 2–3 batches and then stop cleanly. Start a fresh worker for that group with a brief naming the newly recorded anchors and the group handoff's latest status and leads.
+
+Integration is one command: `python3 -I extracted/decomp/integrate_pending.py "<commit message>"`. It finds every group batch whose `passed.txt` names are not in the ledger, runs `record_checkpoint.py`, regenerates and checks the treemap, runs the tests and the audit, stages exactly the recorded sources plus the ledger and treemap, and commits with `commit-tree` and `reset --soft` using Liam as author and no trailer. After recording, message the worker so its passes can serve as anchors. Pushes stay with the user.
+
+Results so far this session: low batches 31–33 gave 9, middle batch 38 gave 0 (the mid close-miss pool is exhausted, so new variants need new context), and ARM twenty_sixth/twenty_seventh gave 0 and 4. ARM yield has been low.
 
 ### How to match
 
