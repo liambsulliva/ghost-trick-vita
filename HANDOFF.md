@@ -15,15 +15,15 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 5737 |
-| Needed for 7104 milestone | 1367 more |
-| Remaining in full inventory | 2836 |
-| Current compilation | Parallel expected-independent groups and interpreter flow investigation; no push |
+| Verified ledger / treemap | 5770 |
+| Needed for 7104 milestone | 1334 more |
+| Remaining in full inventory | 2803 |
+| Current compilation | Parallel groups and interpreter flow validation; no push |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 5737 functions (141,642 unique code bytes).** Added five existing mapped ARM functions from the first parallel library batch.
+**Latest verified checkpoint: 5770 functions (143,386 unique code bytes).** Added thirty-three existing mapped functions across integrated parallel low-address, middle-address and ARM batches.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -101,6 +101,8 @@ The user requires context-guided reconstruction: use existing byte-matched funct
 6. Compile and compare each variant with the pinned compiler and correct instruction mode. Require the exact entry address, size, mode, and every linked body byte. Prune previously tested unchanged sources. Promote only a passing compiled snapshot, then update the ledger, treemap, and local checkpoint commit. Semantic plausibility alone never counts as a match.
 7. Feed newly verified signatures and field observations back into the context index and later Ghidra seeds. Revisit connected mapped targets when that new evidence justifies a changed source. Keep all rejected variants and inference notes out of public sources, and leave pushes to the user.
 
+Usage and stalled work: the user requires a graceful stop when either account usage window has 5% or less remaining. Read the account limits; `usedPercent` is consumed usage, so remaining is `100 - usedPercent`. At the threshold, signal every active worker to stop new experiments, preserve results, finish a handoff distinguishing integrated matches from unrecorded or untested work, and stop. The integration owner does the same after safeguarding completed work. Check meaningful progress before declaring a stall; a worker waiting for the shared compiler lock is not stalled. Interrupt and terminate a confirmed stalled owned process, preserve logs, and document its exact stopping point. Do not leave background compiler or analysis jobs behind at shutdown.
+
 Parallel matching: divide pending targets into groups expected to be independent based on their subsystem and observed call relationships. Independence is a hypothesis, not a guarantee. Assign disjoint function ownership, inspect shared callers/callees before changing hypotheses, and exchange new verified context through per-group handoff notes under ignored `extracted/decomp/parallel_*/HANDOFF.md`. Only recorded byte matches become new context anchors. Keep the shared ledger, treemap and local checkpoint commits under one integration owner. Compiler runs share one bottle and must use `extracted/decomp/with_compiler_lock.py` to serialize compilation while analysis proceeds in parallel. Every target still requires existing inventory/Ghidra identity and exact linked-body verification; leave pushes to the user.
 
 Concrete wrapper context: verified `func_0200eabc` forwards to existing `func_0202fc08`. The reference callers `func_02028170` and `func_020275cc` call the wrapper, while their older Ghidra drafts name its destination. `wrapper_context.py <mode>` compares call sites in each compiled close miss with the reference, requires a hash-checked verified forwarding wrapper, and prepares substitutions only for the same existing mapped caller. Its first Thumb pass tested 22 targets / 23 variants and matched ten, including `func_02028170` and `func_020275cc`. The anchor evidence and sample records are archived under `wrapper_context/thumb/sample_records/`. This repairs a demonstrated call relationship; it adds no functions or inventory entries. A combined-wrapper variant for the remaining `func_0200b3a8` was also tested and did not match; its records are in `wrapper_combinations/thumb/complete_records/`. Do not retry it unchanged.
@@ -130,6 +132,12 @@ Second body pass: `context_body_round2.py` tested 16 Thumb targets / 19 variants
 Scheduling follow-ups: `context_scheduling_followups.py` tested six existing Thumb targets / eight variants and added two matches, with both controls passing. Existing fields, record grouping and constant placement supplied the hypotheses; remaining variants failed and must not be repeated unchanged. Records are in `context_scheduling_followups/thumb/complete_records/`.
 
 Parallel ARM checkpoint: `parallel_arm_library/first_arm` tested eight mapped targets / twelve variants and added five exact ARM matches: `func_02075ecc`, `func_0206aa3c`, `func_02078c74`, `func_02075f84`, and `func_020743c8`. Existing typed global/record views fixed four bodies; preserving the original input in a path where it is known to equal 1 fixed the fifth. Context and verification records are preserved under that work directory and its `complete_records/`. Cross-group dependencies and next hypotheses are in `parallel_arm_library/HANDOFF.md`. These recorded functions may now anchor related mapped work.
+
+Parallel low-address checkpoint: `parallel_logic_low/batch1` tested 19 existing mapped targets / 20 variants and added 15 matches, with both controls passing. Seven shared singleton accessors matched by keeping their existing object-address initialization inside the guarded block. Other matches use typed count fields, branch layout, signed flag extraction and existing linked-record fields. The batch includes newly verified shared accessors `func_02008444`, `func_02008860`, `func_02009900`, `func_0200b208`, `func_0200eb78`, `func_0201003c`, and `func_0202970c`. Context and immutable comparison records are preserved under that work directory; cross-group notes are in `parallel_logic_low/HANDOFF.md`.
+
+Parallel ARM follow-up: `parallel_arm_library/second_arm` matched both existing targets (four variants): fixed-point multiply `func_0206f28c` and callback-list cleanup `func_0207d9ac`. The cleanup preserves existing indirect calls without assigning callback identities. Immutable metadata and comparison records are under that work directory and `complete_records/`; these recorded bodies are available as context anchors.
+
+Parallel middle-address checkpoint: `parallel_objects_mid/batch1` matched all 16 existing targets, with both controls passing. In `func_02035aac` and `func_02035ad0`, the missing argument to verified getter `func_02029640` explained the table-load scheduling; changing table types alone had not. Other matches restore observed inputs, typed fields and equivalent return layouts. Immutable inputs and comparison records are under the batch directory and its `complete_records/`; `parallel_objects_mid/HANDOFF.md` records shared dependencies. Newly matched bodies can anchor connected work only after integration.
 
 The first context-driven queue is prepared by `extracted/decomp/context_candidates.py <arm|thumb>`. It checks each anchor source/report hash, confirms direct call targets in `context_reference_disassembly.txt`, and uses only targets present in both the configured inventory and successful `ghidra_narrow/` exports. `context_candidates/<mode>/context_evidence.json` records the target identity and reasons for its variants. Run `validate_context_candidates.py <mode>` before compiling; it requires exactly the existing target definition and rejects function references without verified context evidence. Its negative checks rejected both a fabricated target and a fabricated function reference. The first signature-only samples tested 16 ARM and 100 Thumb targets without matches. These sources are not to be retried unchanged. Use context to repair the actual body and call relationships, not only declarations.
 
@@ -227,7 +235,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 5737 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 5770 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -312,6 +320,9 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 5730 functions (141,196 bytes).** Added fourteen existing mapped Thumb and ARM functions through verified argument flow, flag fields and body layout.
 - **Snapshot at 5732 functions (141,334 bytes).** Added two existing mapped functions through verified scheduling follow-ups.
 - **Snapshot at 5737 functions (141,642 bytes).** Added five existing mapped ARM functions from the first parallel library batch.
+- **Snapshot at 5752 functions (142,254 bytes).** Added fifteen existing mapped functions from the parallel low-address batch, including shared verified accessors.
+- **Snapshot at 5754 functions (142,346 bytes).** Added seventeen existing mapped functions across the parallel low-address and ARM batches.
+- **Snapshot at 5770 functions (143,386 bytes).** Added thirty-three existing mapped functions across integrated parallel low-address, middle-address and ARM batches.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
