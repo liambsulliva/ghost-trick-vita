@@ -15,15 +15,15 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 6757 |
-| Needed for 7104 milestone | 347 more |
-| Remaining in full inventory | 1816 |
-| Current compilation | Bounded Codex checkpoint complete with usage reserved for passover. All accepted results are recorded and committed locally; no pending integration or owned workers/compiler/Ghidra jobs. Last usage check: 21% five-hour and 82% weekly consumed (start: 1% and 78%). See the current dated continuation below for next leads. |
+| Verified ledger / treemap | 6765 |
+| Needed for 7104 milestone | 339 more |
+| Remaining in full inventory | 1808 |
+| Current compilation | Winding down at the requested margin: last usage check72% five-hour and90% weekly consumed (10% weekly remaining). All workers and compiler/analysis jobs exited; accepted matches integrated locally, nothing pending. Handoff prepared ahead of the10:17EDT Claude Max deadline; see latest continuation. |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/` and `src/arm/`, `.c` or `.cpp`, one function per file |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 6757 functions (212,526 unique code bytes).** Bounded Codex continuation: 23 additions from 6734 (six saved matches restored with verified context, sixteen sibling-template matches and one typed color-field reconstruction). All accepted sources pass exact linked-entry, size, mode and body checks. No pushes.
+**Latest verified checkpoint: 6765 functions (213,154 unique code bytes).** Resumed on the user's corrected 10%-remaining policy: eight additions from6757 (seven new compiled matches and one saved exact match restored with verified caller context). All source snapshots and linked bytes checked; no pushes.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -87,6 +87,18 @@ Use verified names, not a brace census: a loose definition regex can mistake a f
 - Defined names: brace regex `\bfunc_...\([^;]*\)\s*\{` plus `__sinit_`.
 - `extracted/` and `toolchain/` stay gitignored. No game dialogue or art in git or chat.
 
+### Resume to the requested 10% wind-down (2026-10-30)
+
+The user corrected the early bounded stop: continue and start winding down agents around 10% remaining in either usage window. They also requested a Claude Max handoff by **10:17 EDT**. This resume advanced **6757 → 6765** (eight additions); 1808 inventory functions remain, and 339 remain to the intermediate7104 milestone. Last account check was72% five-hour and90% weekly consumed. All workers and owned compiler/Ghidra processes have exited, the integrator has nothing pending, and the handoff was prepared ahead of the deadline. Nothing was pushed.
+
+New compiled passes: `func_02075c48`, `func_0206c1c8`, `func_02074630`, `func_02074ee0`, `func_020704f8`, `func_ov004_020d5978`, `func_ov004_020d5958`. Each packet has checked pre-match anchor source/report hashes, inventory/Ghidra identity, actual compiler flags, exact source snapshot and linked entry/size/mode/body verification. Main SDK ARM uses `-O4,p`; overlay Thumb `-O4,s`, with both controls passing. The new caller02074630 then justified restoring saved exact list helper `func_0207479c`; its packet explicitly marks post-match context validation. The other37 held functions remain private. Source checkpoints: `2a86185`, `67f6a59`, `a0bab2e`, `dd418c7`, `1019d08`.
+
+An important local tool correction: `extracted/decomp/prune_variants.py` now keys cached attempts by compiler, actual C/C++ source language and exact flags, including instruction mode and optimization. The old source-only cache incorrectly rejected the existing704f8 source because it had only been tried under `-O4,s`; under independently established SDK `-O4,p` it matches exactly. Existing metadata is authoritative, with a legacy build.bat fallback. Backup and five cache-only validation cases are under `extracted/decomp/terra_resume_20261030/`; no-O3 or cache-probe source was compiled. Use the corrected tool rather than manually bypassing unchanged-source pruning. The previously prepared704f8 lead is now completed.
+
+Private passover details and validation: `extracted/decomp/terra_resume_20261030/HANDOFF.md`, `final_validation.json`, `cache_probe/results.json`, plus each batch handoff. All58 repository tests, treemap checks and ROM audit pass. The source tree contains only accepted matches; no failed proposals were promoted.
+
+Next work should start from fresh usage/clean-tree checks and `integrate_pending.py --dry-run`, then refresh anchors from the new callers/callees. Preserve the five-failure logical queue limits and inspect `escalation.failures()` again; counts changed during this run. The actual workers were GPT6.1TerraHigh, with the inherited medium/x queue labels recorded separately. ARM batch8 has an unpassed typed C++ boolean source for0206c290; earlier batch7 shows a prototype issue, so consult both before a changed retry. Main Thumb batches1–3 stopped after three zero-match batches, and their C++ prototype/stack-pressure and constructor-order failures must not be repeated unchanged. The small-constant sibling proposal02061640 also failed; it stays private. No wake-up job was created in Codex.
+
 ### Bounded Codex continuation (2026-10-30)
 
 Baseline `3d7c897` had 6734 functions; this continuation ends at **6757/8573**, 23 additions, with 1816 inventory functions remaining and 347 to the intermediate 7104 milestone. Function checkpoints are `3f3fdb2`, `707a992`, `94970ee`, `7a9ea82` and `6c17f3d`. Nothing was pushed. Only one GPT 6.1 Terra High worker ran at a time, each with a small fixed task; both workers finished and all owned compiler/analysis jobs exited. The run stopped at a clean bounded checkpoint with passover usage reserved, rather than at the hard usage limit. Final checks: 58 tests, generated treemap check and ROM audit passed.
@@ -108,7 +120,7 @@ Start continuation with usage, clean-tree and integrator dry-run checks. All con
 
 ### Coordinator workflow
 
-For Codex under the user's latest usage constraint, use one bounded worker at a time, checkpoint results before extending the run, and preserve capacity for final verification and handoff. The older Claude Max fan-out is historical. The 95% hard stop still applies to either account window; it is not a requirement to consume the reserve. Read weekly usage as well as the five-hour window.
+Latest user correction (2026-10-30): continue working and start stopping agents when either account window has about 10% remaining (90% consumed). Do not end the run merely because a small batch finished. Use GPT 6.1 Terra High subagents with disjoint ownership, checkpoint continuously, and reserve the final 10% for integration, verification and a clean handoff. Read both weekly and five-hour usage; usedPercent is consumed usage. The earlier bounded-run policy below is historical.
 
 The latest user continuation requests GPT 6.1 Terra High for spawned subagents. Use model `gpt-6.1-terra` with `reasoning_effort="high"` and a fresh concise brief. Coordinate up to three workers from the main thread, with local checkpoint commits until every in-scope function is done or the required usage stop threshold is reached. Workers own the three existing groups (low Thumb below `0x02030000`, middle Thumb `0x02030000`–`0x02066fff`, ARM plus high Thumb/ITCM/overlays 1–6) and write only their `extracted/decomp/parallel_<group>/` folder and `src/<mode>/parallel_<group>_<name>` sources. Each worker messages main when a batch is ready. Workers run out of context after about 2–3 batches and then stop cleanly. Start a fresh worker for that group with a brief naming the newly recorded anchors and the group handoff's latest status and leads.
 
@@ -184,7 +196,7 @@ The user requires context-guided reconstruction: use existing byte-matched funct
 6. Compile and compare each variant with the pinned compiler and correct instruction mode. Require the exact entry address, size, mode, and every linked body byte. Prune previously tested unchanged sources. Promote only a passing compiled snapshot, then update the ledger, treemap, and local checkpoint commit. Semantic plausibility alone never counts as a match.
 7. Feed newly verified signatures and field observations back into the context index and later Ghidra seeds. Revisit connected mapped targets when that new evidence justifies a changed source. Keep all rejected variants and inference notes out of public sources, and leave pushes to the user.
 
-Usage and stalled work: the user requires a graceful stop when either account usage window has 5% or less remaining. Read the account limits; `usedPercent` is consumed usage, so remaining is `100 - usedPercent`. At the threshold, signal every active worker to stop new experiments, preserve results, finish a handoff distinguishing integrated matches from unrecorded or untested work, and stop. The integration owner does the same after safeguarding completed work. Check meaningful progress before declaring a stall; a worker waiting for the shared compiler lock is not stalled. Interrupt and terminate a confirmed stalled owned process, preserve logs, and document its exact stopping point. Do not leave background compiler or analysis jobs behind at shutdown.
+Usage and stalled work: the latest user instruction is to start stopping agents when either account usage window has about 10% remaining (90% consumed), reserving that margin for a graceful handoff. Read the account limits; `usedPercent` is consumed usage, so remaining is `100 - usedPercent`. At the threshold, signal every active worker to stop new experiments, preserve results, finish a handoff distinguishing integrated matches from unrecorded or untested work, and stop. The integration owner does the same after safeguarding completed work. Check meaningful progress before declaring a stall; a worker waiting for the shared compiler lock is not stalled. Interrupt and terminate a confirmed stalled owned process, preserve logs, and document its exact stopping point. Do not leave background compiler or analysis jobs behind at shutdown.
 
 Parallel matching: divide pending targets into groups expected to be independent based on their subsystem and observed call relationships. Independence is a hypothesis, not a guarantee. Assign disjoint function ownership, inspect shared callers/callees before changing hypotheses, and exchange new verified context through per-group handoff notes under ignored `extracted/decomp/parallel_*/HANDOFF.md`. Only recorded byte matches become new context anchors. Keep the shared ledger, treemap and local checkpoint commits under one integration owner. Compiler runs share one bottle and must use `extracted/decomp/with_compiler_lock.py` to serialize compilation while analysis proceeds in parallel. Every target still requires existing inventory/Ghidra identity and exact linked-body verification; leave pushes to the user.
 
@@ -379,7 +391,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 6757 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 6765 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -496,6 +508,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 6111 functions (159,494 bytes).** GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
 - **Snapshot at 6739 functions (211,040 bytes).** Restored five saved exact-byte matches after validating newly recorded caller/callee context. No blind recompilation; actual saved compiler flags and source/ELF identity preserved.
 - **Snapshot at 6757 functions (212,526 bytes).** Bounded Codex continuation: 23 additions from 6734 (six saved matches restored with verified context, sixteen sibling-template matches and one typed color-field reconstruction). All accepted sources pass exact linked-entry, size, mode and body checks. No pushes.
+- **Snapshot at 6765 functions (213,154 bytes).** Resumed on the user's corrected 10%-remaining policy: eight additions from6757 (seven new compiled matches and one saved exact match restored with verified caller context). All source snapshots and linked bytes checked; no pushes.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
