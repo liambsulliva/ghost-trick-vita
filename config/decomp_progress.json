@@ -73251,6 +73251,94 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "8c5fc2a80bde011082ab3fa5d6b42d969d8eaf9e56235d771803b2f8214b89e0"
+    },
+    {
+      "module": "main",
+      "address": "0x020134d4",
+      "name": "func_020134d4",
+      "size": 64,
+      "source": "src/thumb/parallel_logic_low_func_020134d4.c",
+      "source_sha256": "5773129d5dc52fc1f284adf812bf4bc443f465ef7c087c0dce6d0c7fcc20b153",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "6cfedb29de0d11777ee8cc4aa0228d00f02d8c735e0f9b328f7894f6ae2c8fa9"
+    },
+    {
+      "module": "main",
+      "address": "0x0205bb40",
+      "name": "func_0205bb40",
+      "size": 112,
+      "source": "src/thumb/parallel_escalate_x_func_0205bb40.cpp",
+      "source_sha256": "fa284a12cd87b3ed5da2eebfdd640820f8142ad768fe59c1b5587d84a5341d77",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "d71280994a2afd3d7f9f48612bcee3ae7b5bf34100aa7ba9a34e7eb237650201"
+    },
+    {
+      "module": "main",
+      "address": "0x02064b88",
+      "name": "func_02064b88",
+      "size": 204,
+      "source": "src/thumb/parallel_objects_mid_d_func_02064b88.cpp",
+      "source_sha256": "034d2710fed5dd83ad38e5c74ad3af56b4d7de14f188a901adc910008681d7cb",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "275b752e215df19f8371f488016ef3d7c7275f1406db8bdd96cd45888d43321f"
+    },
+    {
+      "module": "main",
+      "address": "0x02065570",
+      "name": "func_02065570",
+      "size": 68,
+      "source": "src/thumb/parallel_objects_mid_d_func_02065570.c",
+      "source_sha256": "b57ca0aa5c28c69f6fa1a59a4c3c2ef751229b8494bb578f179450bebd15c4d4",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "09a46ab5c7fcefeb2ee2d8d884a9944ca3bf34667586bf26921c3040608fb5c2"
+    },
+    {
+      "module": "main",
+      "address": "0x020655b4",
+      "name": "func_020655b4",
+      "size": 68,
+      "source": "src/thumb/parallel_objects_mid_d_func_020655b4.c",
+      "source_sha256": "41a70a50ed3cb6a17dd68e97dc207836dbb162095bd2ed6bfb6444fa6057a091",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "13dbdc8e8c7aa97e20b1e31030689e76d281088c5747012da9417d700f6b139b"
+    },
+    {
+      "module": "main",
+      "address": "0x020656e4",
+      "name": "func_020656e4",
+      "size": 68,
+      "source": "src/thumb/parallel_objects_mid_d_func_020656e4.c",
+      "source_sha256": "2e25d282bd47a6735d49e61983885dfff3379ab36b03c16ee1e9ef8e4b4e1899",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "a07180c6381f14fef362eeabfcda4126a8a3bdeb7b04d4586d3461763532843e"
+    },
+    {
+      "module": "main",
+      "address": "0x02065728",
+      "name": "func_02065728",
+      "size": 68,
+      "source": "src/thumb/parallel_objects_mid_d_func_02065728.c",
+      "source_sha256": "d5ce72db3026178a5d90a4c67ae5f705cc8d7e7a136ad6f11a4758f4d0a4175b",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "6b87496857f1957a6de7247bc914bdd493794dd1af633e83c3f5d9a81a6f6d01"
+    },
+    {
+      "module": "main",
+      "address": "0x02065e40",
+      "name": "func_02065e40",
+      "size": 376,
+      "source": "src/thumb/parallel_objects_mid_d_func_02065e40.c",
+      "source_sha256": "a9159d6ff10767cf148917e7494f3fe3f57875a3d4478d805f89331acc771ba1",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "cfb3b538bf92eb54845fc900a204d27c6b795fb6cda66b91ec0e4aceb773d078"
     }
   ]
 }
