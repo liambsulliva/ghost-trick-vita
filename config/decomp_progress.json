@@ -68235,6 +68235,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,s -fp soft -interworking",
       "verification_sha256": "c5c1724cf09c12413703f2634f7221913f10c30d6d154bdf7d6afe41f6aa1a7d"
+    },
+    {
+      "module": "main",
+      "address": "0x0206f46c",
+      "name": "func_0206f46c",
+      "size": 40,
+      "source": "src/arm/parallel_arm_library_func_0206f46c.c",
+      "source_sha256": "56ce81a229ee4b27e04eedf0e3be923e2b51c71f1fdffa4ac187410a040f4561",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,s -fp soft -interworking",
+      "verification_sha256": "7da82e0832ea83091f5a7ab2338a7bda0c479a13f8be831b3bbdf8c917546094"
     }
   ]
 }
