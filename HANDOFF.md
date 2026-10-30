@@ -15,15 +15,15 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 5928 |
-| Needed for 7104 milestone | 1176 more |
-| Remaining in full inventory | 2645 |
-| Current compilation | Claude coordinator session (2026-10-29) stopped at the 5-hour usage threshold (90% used). Ledger 6016 at 24aec55 (local, unpushed). Last workers were told to stop; run `python3 -I extracted/decomp/integrate_pending.py "<msg>"` first in the next session to pick up any final passes. Groups: logic_low (next batch41), logic_low_b (batch4), arm_library (overlay 4 next twenty_seventh_thumb, then thirty_first_arm), overlay_b (overlays 1/2/3/5/6 + ITCM, from its latest batch), objects_mid paused. |
+| Verified ledger / treemap | 6111 |
+| Needed for 7104 milestone | 993 more |
+| Remaining in full inventory | 2462 |
+| Current compilation | Stopped gracefully at 95% consumed in the 5-hour account window (78% weekly at stop). All workers and compiler runners exited. All context-supported completed matches are integrated locally; no pushes. Five middle-range byte-only results are held under ignored context_pending_sources directories and excluded from passed.txt/ledger. |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 5928 functions (152,306 unique code bytes).** Added one existing mapped mid-object Thumb function from character address context.
+**Latest verified checkpoint: 6111 functions (159,494 unique code bytes).** GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -87,19 +87,29 @@ Use verified names, not a brace census: a loose definition regex can mistake a f
 - Defined names: brace regex `\bfunc_...\([^;]*\)\s*\{` plus `__sinit_`.
 - `extracted/` and `toolchain/` stay gitignored. No game dialogue or art in git or chat.
 
-### Coordinator loop (Claude session, 2026-10-29)
+### Coordinator workflow
 
-The user asked for three subagents on Haiku with extra-high effort, coordinated from the main thread, with local commits at key points until every function is done. Workers own the three existing groups (low Thumb below `0x02030000`, middle Thumb `0x02030000`–`0x02066fff`, ARM plus high Thumb/ITCM/overlays 1–6) and write only their `extracted/decomp/parallel_<group>/` folder and `src/<mode>/parallel_<group>_<name>` sources. Each worker messages main when a batch is ready. Workers run out of context after about 2–3 batches and then stop cleanly. Start a fresh worker for that group with a brief naming the newly recorded anchors and the group handoff's latest status and leads.
+The latest user continuation requests GPT 6.1 Terra High for spawned subagents. Use model `gpt-6.1-terra` with `reasoning_effort="high"` and a fresh concise brief. Coordinate up to three workers from the main thread, with local checkpoint commits until every in-scope function is done or the required usage stop threshold is reached. Workers own the three existing groups (low Thumb below `0x02030000`, middle Thumb `0x02030000`–`0x02066fff`, ARM plus high Thumb/ITCM/overlays 1–6) and write only their `extracted/decomp/parallel_<group>/` folder and `src/<mode>/parallel_<group>_<name>` sources. Each worker messages main when a batch is ready. Workers run out of context after about 2–3 batches and then stop cleanly. Start a fresh worker for that group with a brief naming the newly recorded anchors and the group handoff's latest status and leads.
 
 Integration is one command: `python3 -I extracted/decomp/integrate_pending.py "<commit message>"`. It finds every group batch whose `passed.txt` names are not in the ledger, runs `record_checkpoint.py`, regenerates and checks the treemap, runs the tests and the audit, stages exactly the recorded sources plus the ledger and treemap, and commits with `commit-tree` and `reset --soft` using Liam as author and no trailer. After recording, message the worker so its passes can serve as anchors. Pushes stay with the user.
 
-Yield by area this session: overlay 4 Thumb is by far the best (twenty_fourth_thumb and round 2 matched 14 of 15; overlay Thumb neighbors of the 18 recorded `func_ov004_*` anchors share forms). Low Thumb gives about 2–4 per batch, ARM 0–7 per batch, middle 0. Next session: put two workers on overlay and ITCM Thumb (split by overlay number), one on low Thumb, and leave the middle range paused until there is a new idea.
+Yield by area in the previous Claude session: overlay 4 Thumb is by far the best (twenty_fourth_thumb and round 2 matched 14 of 15; overlay Thumb neighbors of the 18 recorded `func_ov004_*` anchors share forms). Low Thumb gives about 2–4 per batch, ARM 0–7 per batch, middle 0. Next session: put two workers on overlay and ITCM Thumb (split by overlay number), one on low Thumb, and leave the middle range paused until there is a new idea.
 
 Session total: 5928 → 6016 (88 new, all exact linked-body passes recorded through `record_checkpoint.py`). The overlay_b split paid off right away: three of its first five batches gave 13 overlay 1/3/6 Thumb matches. The overlay 4 tail-stub family (6210, 621c, 6228, 57b0, 707c) compiled to push/blx/pop where the reference has a bare `bx` tail. overlay_b then found the form that matches such thunks (`add r0,#imm; ldr r3,=entry; bx r3`): a direct tail call to an extern callee, `return callee(param_1 + imm);`, not a function-pointer cast. Retry that family with this form. overlay_b leads: virtual-slot bodies func_ov006_020d80e8/_7e98/_4c60/_4cac, func_ov005_020d454c, func_ov003_020d5298. Remaining overlay Thumb: ov1 4, ov3 27, ov5 12, ov6 96; ITCM has none.
 
 Pitfall: SendMessage to a worker that has already stopped resumes it. Only send recording confirmations to workers that are still running. Once a worker has handed back its final report, start a replacement instead; never message the old one. A resumed old worker plus its replacement in the same folder caused one double-run batch, `parallel_logic_low/batch35`. The middle group is paused after four consecutive zero-match batches (38–41); its leads are in its handoff. The low range is split: `parallel_logic_low` below `0x02018000` and `parallel_logic_low_b` for `0x02018000`–`0x0202ffff`. Shared worker rules are in ignored `extracted/decomp/WORKER_BRIEF.md`, so a restart prompt only names the group, range, folder, prefix, next batch, anchors and leads.
 
 Results so far this session: low batches 31–33 gave 9, middle batch 38 gave 0 (the mid close-miss pool is exhausted, so new variants need new context), and ARM twenty_sixth/twenty_seventh gave 0 and 4. ARM yield has been low.
+
+### GPT 6.1 Terra High continuation (2026-10-29)
+
+The session advanced from 6016 to 6111 recorded functions (95 new). Every accepted source is an exact pinned compiled snapshot with the correct entry, size, ARM/Thumb mode and linked body. The README treemap, repository tests and ROM audit passed. All commits stay local; the user pushes.
+
+The source-context audit recovered verified caller relationships for middle batch42 targets `func_0203247c`, `func_020576bc` and `func_02050cb4` after matching; their packets explicitly mark this as post-match validation. Two initially recorded byte matches (`func_0204fb04`, `func_020664e0`) lack a verified relationship and were withdrawn from public sources and the ledger. Their original sources, rows and exact-byte records remain ignored under `parallel_objects_mid/batch42/`. Batch43's three byte matches (`func_020576d0`, `func_0204b550`, `func_020663e4`) also remain private until context is validated. `passed_byte_only.txt` preserves their byte results; `passed.txt` excludes the held names so the integration helper cannot count them automatically.
+
+Resume from the private handoffs: low Thumb `parallel_logic_low` next batch55; root's 0x02018000–0x0202ffff lane `parallel_logic_low_b` next batch10; overlay1/3/5/6 `parallel_overlay_b` next batch37 (two consecutive zero batches at stop); ARM/high lane `parallel_arm_library` next forty_eighth_arm or next unused Thumb batch; middle lane next batch44 only after resolving the five held context results. Never retry failed variants unchanged. Stream local-buffer/C++ slot forms, direct extern tail calls, proven table peers and restored argument widths supplied the main gains. Shared compiler lock and explicit checked source/report anchors remain required.
+
+The account reached the required 95% 5-hour usage stop threshold; all workers stopped and all owned compiler/Ghidra runners exited. No work continues in the background. On continuation check account limits first, then `integrate_pending.py`; no context-supported passes remain pending at this checkpoint.
 
 ### How to match
 
@@ -310,7 +320,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 5928 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 6111 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -423,6 +433,8 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 5924 functions (152,040 bytes).** Added four existing mapped low-address Thumb functions from parallel batch 29.
 - **Snapshot at 5927 functions (152,166 bytes).** Added three existing mapped low-address Thumb functions from parallel batch 30.
 - **Snapshot at 5928 functions (152,306 bytes).** Added one existing mapped mid-object Thumb function from character address context.
+- **Snapshot at 6091 functions (158,602 bytes).** Added 75 exact matches since the 6016-function starting point: overlay ARM/Thumb context, stream buffers and virtual-call wrappers. All recorded through pinned compile and linked-byte checks; work continues locally.
+- **Snapshot at 6111 functions (159,494 bytes).** GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
