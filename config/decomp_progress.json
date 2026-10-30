@@ -76023,6 +76023,94 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "5ba69ceb58d80745245b35bd91a42a0a8019816bb2af7db42b9867a02749b38d"
+    },
+    {
+      "module": "main",
+      "address": "0x02007184",
+      "name": "func_02007184",
+      "size": 56,
+      "source": "src/thumb/parallel_small_func_02007184.c",
+      "source_sha256": "ea1e8bfacd84c45732cab482d2a7ca256ca25a9452b6735410f505503e5d7f36",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "1abbdd940537e801666058b0ac1fac7b07bee2f1aa28c36dc91c904cab02fa6f"
+    },
+    {
+      "module": "main",
+      "address": "0x020175a4",
+      "name": "func_020175a4",
+      "size": 56,
+      "source": "src/thumb/parallel_small_func_020175a4.c",
+      "source_sha256": "e22615aa99eea800e44d6f8401a7de9722aa0248ce859fa287ca71879288481c",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "eadb1e32585a7bbace5ab6922a0ff29a506599c342d1e4af5ab904b36a99c73e"
+    },
+    {
+      "module": "main",
+      "address": "0x020414e8",
+      "name": "func_020414e8",
+      "size": 46,
+      "source": "src/thumb/parallel_small_func_020414e8.c",
+      "source_sha256": "1f93f8afd17e1966db0779ca2df7fe3953b67dfd1c4706216f31d3662c57a5cf",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "a6431927351dcf63eaf10636b7605a3bd618f5964479cfdbc08100d7dfcf8366"
+    },
+    {
+      "module": "main",
+      "address": "0x02047120",
+      "name": "func_02047120",
+      "size": 44,
+      "source": "src/thumb/parallel_small_func_02047120.c",
+      "source_sha256": "e855a9bc480fbd3260363e68998c42d7415b5a3c6e40ee3d3b14e9f9a202ad34",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "72a7578d8cf423a7d0917caacea538e566d1f26a585a3416dcdcce84692dcbc5"
+    },
+    {
+      "module": "main",
+      "address": "0x0204714c",
+      "name": "func_0204714c",
+      "size": 44,
+      "source": "src/thumb/parallel_small_func_0204714c.c",
+      "source_sha256": "a0272dee011999b05aae29a9f24119c0d30e66bbfe0095e44b5fb2d4ace79b12",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "39c8a72bd6d68a4c07234256b0debc7acf29ec9bfc266bf131ebe92596d30bf2"
+    },
+    {
+      "module": "main",
+      "address": "0x02052740",
+      "name": "func_02052740",
+      "size": 44,
+      "source": "src/thumb/parallel_small_func_02052740.c",
+      "source_sha256": "3ff1e9ee97893b7707c1b2dce588b53de238e47750a071d37c6b72b77a09abbc",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "01ba078a8ac6c172b8bbbb6b7c9875dea9eba05db2e83b1b8767e69cecb6a26e"
+    },
+    {
+      "module": "main",
+      "address": "0x0205279c",
+      "name": "func_0205279c",
+      "size": 44,
+      "source": "src/thumb/parallel_small_func_0205279c.c",
+      "source_sha256": "ddb0ec29fdc008707185e0cf8df1eedeb0a96db66392976c1b7016da9733551f",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "27e965c572769b633bb2924e08d3a862ff7fad1f939b456dc927b5e875dabcfd"
+    },
+    {
+      "module": "main",
+      "address": "0x020549c4",
+      "name": "func_020549c4",
+      "size": 46,
+      "source": "src/thumb/parallel_small_func_020549c4.c",
+      "source_sha256": "daee31727bbf9ba3d08ad14a18f6de609724997b594ad1115111aa2d018cab7b",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "81b2ed855a0a3f43cb8ef619e2210733ad826f937aa3e59a56ba49d130d9dab9"
     }
   ]
 }
