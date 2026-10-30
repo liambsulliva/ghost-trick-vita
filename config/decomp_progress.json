@@ -69159,6 +69159,94 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "12011f8a7cf357a9d8d8879c4af0616a7ef27445beb23dbd31978c6d46eff541"
+    },
+    {
+      "module": "main",
+      "address": "0x0201b324",
+      "name": "func_0201b324",
+      "size": 42,
+      "source": "src/thumb/parallel_escalate_m_func_0201b324.cpp",
+      "source_sha256": "7661a851d0a9f688e708cd6272161ae5998a32619c07986a72fdc4da581e4bdb",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "a7aae6bd7abf6c38894ce4ed09e47014726ed7d6275e43cd1b01c6202c06fca5"
+    },
+    {
+      "module": "main",
+      "address": "0x0201df98",
+      "name": "func_0201df98",
+      "size": 40,
+      "source": "src/thumb/parallel_escalate_m_func_0201df98.c",
+      "source_sha256": "823a22ac2876ab8cd2e53a134c40bae940491dc3a0494d402925c16cce2c81eb",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "490196e3f160dd8db2bd9ac8b11af22d93e69bcc5d64ae5e6a5f61d753510501"
+    },
+    {
+      "module": "main",
+      "address": "0x0201f944",
+      "name": "func_0201f944",
+      "size": 48,
+      "source": "src/thumb/parallel_escalate_m_func_0201f944.c",
+      "source_sha256": "9a9aebcf32eb6ccddaa990badf077611b27c915d000f1e07cb41f4fc50fa6c09",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "fb7c8c7ab2383d5a09725b2a29c23bc65e4f2654b87091d5a4db00d6350a11ff"
+    },
+    {
+      "module": "main",
+      "address": "0x02020d10",
+      "name": "func_02020d10",
+      "size": 48,
+      "source": "src/thumb/parallel_escalate_m_func_02020d10.c",
+      "source_sha256": "a066e81412b0d9ac7e23dd3797d398c3cde984c93bc4cd83d37f22a21159d2ae",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "aa336567665b612c7288b1fe3a7e4f4988ec6f35821d7eef6ae68d8fd91aaca8"
+    },
+    {
+      "module": "main",
+      "address": "0x020224e0",
+      "name": "func_020224e0",
+      "size": 24,
+      "source": "src/thumb/parallel_escalate_m_func_020224e0.c",
+      "source_sha256": "ce96ac29266235105c6e6047b74b90eeaf4f18d73fedd547943007e6aaa61665",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "cdea3e337a2ab95b1fd85b32004b33a623f76a379d37279432ca55a50ae54af1"
+    },
+    {
+      "module": "main",
+      "address": "0x020224f8",
+      "name": "func_020224f8",
+      "size": 26,
+      "source": "src/thumb/parallel_escalate_m_func_020224f8.c",
+      "source_sha256": "455f248e0eef2e1aded1683582ec48b6c88aa05057f42d19264dabf3f5255bed",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "c649724a0e974355db61c8cfc9e27f504b4afd8841ebfad36dc027cc3c43bd08"
+    },
+    {
+      "module": "main",
+      "address": "0x0202801c",
+      "name": "func_0202801c",
+      "size": 46,
+      "source": "src/thumb/parallel_escalate_m_func_0202801c.c",
+      "source_sha256": "37052c3f1a667c3714e8aacf5ed31eba275eec06617b51a9be38b77d8bbe4ed3",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "8a9e2a743a84629b1a5bd9640182191067821a35964dd9d699c0f8e1fb92abf4"
+    },
+    {
+      "module": "main",
+      "address": "0x02029450",
+      "name": "func_02029450",
+      "size": 48,
+      "source": "src/thumb/parallel_escalate_m_func_02029450.cpp",
+      "source_sha256": "aa28c6ec10c88d648ead80ce3346f687bbbf0baed7efbed5dcbfe59abb38c7be",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "7693e064076ffabe13fb03889dd2be5ab8b09b1c13c48b2025ce4718dcc70695"
     }
   ]
 }
