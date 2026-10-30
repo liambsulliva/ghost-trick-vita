@@ -68037,6 +68037,94 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "c72085336de62da719b6407875839ffb8166689a9ebf9e0cd08e064140e32822"
+    },
+    {
+      "module": "main",
+      "address": "0x0201eaf8",
+      "name": "func_0201eaf8",
+      "size": 44,
+      "source": "src/thumb/parallel_logic_low_b_func_0201eaf8.c",
+      "source_sha256": "f459101bde254a180d14995ef74f110deea35ebf5cbe923f0f749307e988cca8",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "f980976e878faca6e06391499bb53f5f478290ae45dfb1e5bc8ca26d66e1a7bd"
+    },
+    {
+      "module": "main",
+      "address": "0x0201ec58",
+      "name": "func_0201ec58",
+      "size": 70,
+      "source": "src/thumb/parallel_logic_low_b_func_0201ec58.c",
+      "source_sha256": "e3ebf28d1586cf13356ce78a0673bfa19600645b268bbb1c31d01f3ead94909f",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "6ffe33f120bf8a45b18a853f1ab8426744271dc565cbc3f4fcaf72a008811661"
+    },
+    {
+      "module": "main",
+      "address": "0x02022084",
+      "name": "func_02022084",
+      "size": 70,
+      "source": "src/thumb/parallel_logic_low_b_func_02022084.c",
+      "source_sha256": "0aa0da55aef92351850087c652fca4e3287285bc4ed98af3a93385c8872690ad",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "c9aa1ec3c7c17ccc4cec4bde412e8c84ebbed810c5963c72bef3bf90942f9217"
+    },
+    {
+      "module": "main",
+      "address": "0x020220d4",
+      "name": "func_020220d4",
+      "size": 70,
+      "source": "src/thumb/parallel_logic_low_b_func_020220d4.c",
+      "source_sha256": "41e9b985cc9520ee06da73cab3d114191e43ec7e1ca7c3d856a47c77869d186d",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "f1a38f02f3b8f357839f833855e2afdee890f6eb97e8e10593bb2d7f81f60324"
+    },
+    {
+      "module": "main",
+      "address": "0x02022124",
+      "name": "func_02022124",
+      "size": 70,
+      "source": "src/thumb/parallel_logic_low_b_func_02022124.c",
+      "source_sha256": "2f44f9d778a59c3b23e065e3e9b46839814b962c28e0d7358d86a555e0b705ad",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "108125b7190d22f022b1f8e2345d8f19b22fcff6fd1cfe24179af4489e6bf1b6"
+    },
+    {
+      "module": "main",
+      "address": "0x02022174",
+      "name": "func_02022174",
+      "size": 70,
+      "source": "src/thumb/parallel_logic_low_b_func_02022174.c",
+      "source_sha256": "06087e5cc94b6c90c017f2760848d588db0f144d334c1550d6739b873ff8b6aa",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "fc05f3ef86f2f0caa874c9b6a9e3226f3c1f4fbe244d886c35bd74a0d23b7622"
+    },
+    {
+      "module": "main",
+      "address": "0x020221c4",
+      "name": "func_020221c4",
+      "size": 70,
+      "source": "src/thumb/parallel_logic_low_b_func_020221c4.c",
+      "source_sha256": "684c13204b44aa6b2d99170f6e44cecb9cfb16468dd271f38077fdf50e1af850",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "4e10ff4c2b9bd49d3c763e55ff25d1cee2cc096b4e511759918b11d86150df8f"
+    },
+    {
+      "module": "main",
+      "address": "0x02022214",
+      "name": "func_02022214",
+      "size": 44,
+      "source": "src/thumb/parallel_logic_low_b_func_02022214.c",
+      "source_sha256": "4e31d9b6f3d5f93d9b0c31d3356b17d2de92e1af69ac633543aa0cc727bd5be1",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "edd6d38543f837bbf8abebde779d2706eb29068e9f79372fd023ee21d67e7fbb"
     }
   ]
 }
