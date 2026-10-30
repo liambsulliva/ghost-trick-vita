@@ -15,15 +15,15 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 6659 |
-| Needed for 7104 milestone | 445 more |
-| Remaining in full inventory | 1914 |
+| Verified ledger / treemap | 6725 |
+| Needed for 7104 milestone | 379 more |
+| Remaining in full inventory | 1848 |
 | Current compilation | Window 3 (from 05:19 EDT, 2026-10-30), about 50% used at 05:42. Running: Opus medium r2s1–r2s5, r2s8 and r2s11; Opus xhigh x4, x5 and x6; a frame-shape compiler/flag sweep researcher (writes extracted/decomp/frame_sweep/results.json); Haiku on logic_low, logic_low_b, logic_low_c, objects_mid_b, objects_mid_c, objects_mid_d, arm_high, overlay_b and overlay_c. Opus xhigh is 3/3 so far (func_0202a770, func_02011644, func_0201909c). Waiting for xhigh: func_020436c8 and func_02046614 (run `escalation.py <audit> 1 1 --append`). One-shot CronCreate wake-up at 10:17 EDT. All recorded work is in local commits; no pushes. |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 6659 functions** (Claude coordinator continuation: 93 matches recorded, 61 anchorless ones withdrawn on the user's decision, 23 of those restored after a post-match call-edge audit, 55 kept). Previous: 6111 functions (159,494 unique code bytes). GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
+**Latest verified checkpoint: 6725 functions** (Claude coordinator continuation: 93 matches recorded, 61 anchorless ones withdrawn on the user's decision, 23 of those restored after a post-match call-edge audit, 55 kept). Previous: 6111 functions (159,494 unique code bytes). GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -124,6 +124,8 @@ Yield this session: ARM was best (forty_eighth_arm 10/14, fifty_first_arm 7/11, 
 **Window summary (2026-10-30, 01:30–02:20 EDT).** Ledger 6265 → 6528 in this window. Opus medium did most of it: shard 2 finished at 47/49, shard 1 at 27, shard 7 at 29, shard 13 at 7/7, shard 10 at 3/3, shard 9 at 3/3, plus shards 3, 5, 6, 8 and 12. Haiku added a few per batch. Tier state: 1121 Haiku, about 237 Opus medium, and 3 Opus xhigh (func_02011644, func_0201909c, func_0202a770; the last still needs an `escalation.py --append` run). Recurring blocker: about 30 reference functions use a separate `sub sp` frame or push dead argument registers differently than the pinned compiler (see the lead above); sweep those before spending more model tries on them. The recorder's duplicate-source check now skips `static` helpers, so per-file `static inline` C++ helpers such as `delete_part` don't collide.
 
 **Escalation results so far.** Opus medium matches most of what Haiku failed 5 times on: shard3 8/11, shard7 12 (thumb1 4/4 plus arm1 8/17), shard2 9/13 then 12/13, shard9 3/3 and shard8 3, with no fakematches. Its fixes include NitroSDK `asm void` bodies (WaitByLoop precedent), the nine-member constructor family (func_02008a64 and siblings), and argument and parameter types matched to how mwcc fuses shifts with truncation. Workers are capped at 20 concurrent subagents (CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS). shard8_arm1 lost one COMPILE_OK line, so its three passes were recompiled cleanly in `shard8_arm1_recheck` before recording. `escalation.py ... --append` writes newly escalated functions to new shard files without touching shards owned by running workers.
+
+**Result: the ARM SDK region 0x02067000–0x0207ffff was built with `-O4,p`.** The frame sweep (extracted/decomp/frame_sweep/results.json) matched 10 of 10 separate-`sub sp` ARM targets under dsi/1.2p1 `-O4,p`. It also re-linked 20 already-matched ARM functions from that region, and all 20 pass under both `-O4,p` and `-O4,s`. Other builds and flags did worse: 2.0 got 3/10, 1.2/sp3 and sp4 got 1/10, and -O3, -O2, `-inline off` and nopeephole got 0. Game Thumb code stays `-O4,s` (see func_020280c8 in section 5). To compile a batch with another optimization flag, put it in `<folder>/opt.txt` (e.g. `-O4,p`). run_variants.py then swaps it for `-O4,s`, and the ledger row records the real flags. The first such batch is parallel_arm_library/framep1. About 30–67 unmatched `sub sp` ARM functions remain to be retried this way. Thumb and overlays have not been tested. batch_tail.py now kills a crashed mwccarm and its `winedbg --auto` (crt0 `Entry` asm variants crash the compiler under wine), so a crash no longer holds the compiler lock.
 
 **Lead: separate `sub sp` frames.** The shard8 Opus worker reports that about 30 reference functions allocate their stack frame with a separate `sub sp` after the push (e.g. func_020765d0, func_02078410, func_020785b0), while the pinned compiler folds it into the push. None of those 30 is matched. The earlier version sweep tested only same-size close misses; sweep these frame-shape targets specifically across the dsi/2.0/1.2 builds and optimization flags (-O4,p / -O3) before spending model tries on them. The accepted `asm` bodies so far are NitroSDK or runtime routines (WaitByLoop, func_02075d08 delay loop, func_0207b674 64-bit multiply, the six shard7 SDK functions).
 
@@ -356,7 +358,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 6659 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 6725 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
