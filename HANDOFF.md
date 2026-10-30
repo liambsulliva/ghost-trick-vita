@@ -15,15 +15,15 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 6528 |
-| Needed for 7104 milestone | 576 more |
-| Remaining in full inventory | 2045 |
-| Current compilation | Stopped gracefully at 92% of the 5-hour window (13% weekly); every worker has finished and no compiler process is running. All recorded work is in local commits; no pushes. A one-shot CronCreate wake-up at 05:17 EDT (session-only) resumes the loop after the 05:10 reset, including the first Opus xhigh workers on parallel_escalate_x (func_02011644, func_0201909c, func_0202a770). Opus medium shards 1, 3, 4, 5 and 6 still have untried targets listed in their status sections; queue_shardN entries already matched are skipped automatically. |
+| Verified ledger / treemap | 6529 |
+| Needed for 7104 milestone | 575 more |
+| Remaining in full inventory | 2044 |
+| Current compilation | Window 3 (from 05:19 EDT, 2026-10-30): 20 workers running, namely 3 Opus xhigh (parallel_escalate_x shards 1–3, batches x<N>_*), 8 Opus medium (regenerated parallel_escalate_m shards 1–8, batches r2s<N>_*) and 9 Haiku groups. A one-shot CronCreate wake-up at 10:17 EDT (after the 10:10 reset) resumes the loop. All recorded work is in local commits; no pushes. |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 6528 functions** (Claude coordinator continuation: 93 matches recorded, 61 anchorless ones withdrawn on the user's decision, 23 of those restored after a post-match call-edge audit, 55 kept). Previous: 6111 functions (159,494 unique code bytes). GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
+**Latest verified checkpoint: 6529 functions** (Claude coordinator continuation: 93 matches recorded, 61 anchorless ones withdrawn on the user's decision, 23 of those restored after a post-match call-edge audit, 55 kept). Previous: 6111 functions (159,494 unique code bytes). GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -356,7 +356,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 6528 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 6529 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
