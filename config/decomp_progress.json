@@ -68873,6 +68873,50 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "ba546bbaadbc80b92adda8148f53735555380e472f8aa4c8ed49f406222ac457"
+    },
+    {
+      "module": "main",
+      "address": "0x0201eee8",
+      "name": "func_0201eee8",
+      "size": 112,
+      "source": "src/thumb/parallel_logic_low_b_func_0201eee8.c",
+      "source_sha256": "e31d9fd06621a1cf98261ebb1c2e037123ed8555dba91f5d28e846658d09c083",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "56f867f56791e1cea1fd88711f222b4bb271c13003d537412d4bbc34d2101fa9"
+    },
+    {
+      "module": "main",
+      "address": "0x020595cc",
+      "name": "func_020595cc",
+      "size": 48,
+      "source": "src/thumb/parallel_objects_mid_c_func_020595cc.c",
+      "source_sha256": "6108921c10f88b3489aec97b1c10d18546182281177b5d5ffe3f54b1ca59060b",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "8c750550cf89045d74cfc8d25e8c2c4903199ec000e322bb71d6a25ea3d5ee37"
+    },
+    {
+      "module": "main",
+      "address": "0x0205b3f0",
+      "name": "func_0205b3f0",
+      "size": 48,
+      "source": "src/thumb/parallel_objects_mid_c_func_0205b3f0.c",
+      "source_sha256": "51f7d332157c6bdcba72a8aee995e2ca877e455c9436a8cbf0a22d687699afe7",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "d82cb9224f0bf3b8b5244f0ddf61c97a31b1994357b7159b283c524c300de98b"
+    },
+    {
+      "module": "main",
+      "address": "0x0205c9bc",
+      "name": "func_0205c9bc",
+      "size": 60,
+      "source": "src/thumb/parallel_objects_mid_c_func_0205c9bc.c",
+      "source_sha256": "174da6580b8dc8faa1eaa4d4b6da110cffb5705c64b5c76b006887046f6dafdf",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "212978b744921dbc247df24a5cfabba9ad9848f4642a617c06028b9b3de37850"
     }
   ]
 }
