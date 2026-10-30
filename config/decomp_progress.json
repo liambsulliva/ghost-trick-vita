@@ -74318,6 +74318,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "72161473bfb3d0ba85b5b628675c77589ef655249e9ac99b2ab47b48cff1706a"
+    },
+    {
+      "module": "main",
+      "address": "0x02010f84",
+      "name": "func_02010f84",
+      "size": 36,
+      "source": "src/thumb/parallel_twins_func_02010f84.c",
+      "source_sha256": "22325c17976a455c7834a1e7babac19a97dddd6bac09b0b5160710500f2f479d",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "95b9704440c3d7d53b440d908772151af5c6b53929bfd44bf9c2bf3430a1d0cc"
     }
   ]
 }
