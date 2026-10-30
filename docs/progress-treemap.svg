@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1092" width="1600" height="1092" role="img" aria-labelledby="title description" font-family="Segoe UI, system-ui, sans-serif">
 <title id="title">Ghost Trick decompilation progress</title>
-<desc id="description">Functions matched: 6,226 / 8,573 (72.62%) | Code bytes matched: 167,174 / 572,086 (29.22%) | Modules: 7. Each rectangle is one function. Static preview. Green means verified C or C++; gray means unmatched. This is the prepared code inventory, not the Chapter 1 dependency count.</desc>
+<desc id="description">Functions matched: 6,228 / 8,573 (72.65%) | Code bytes matched: 167,614 / 572,086 (29.30%) | Modules: 7. Each rectangle is one function. Static preview. Green means verified C or C++; gray means unmatched. This is the prepared code inventory, not the Chapter 1 dependency count.</desc>
 <style>a { cursor: pointer; } a:hover rect, a:focus-visible rect { stroke: #fff; stroke-width: 1; }</style>
 <rect width="1600" height="1092" fill="#14191f"/>
 <text x="16" y="33" fill="#e6eaf0" font-size="24" font-weight="600">Ghost Trick decompilation progress</text>
-<text x="16" y="60" fill="#e6eaf0" font-size="15">Functions matched: 6,226 / 8,573 (72.62%) | Code bytes matched: 167,174 / 572,086 (29.22%) | Modules: 7</text>
+<text x="16" y="60" fill="#e6eaf0" font-size="15">Functions matched: 6,228 / 8,573 (72.65%) | Code bytes matched: 167,614 / 572,086 (29.30%) | Modules: 7</text>
 <text x="16" y="83" fill="#a7b0bc" font-size="13">Prepared code across all chapters. Area = function span bytes. Shared byte ranges count once in the totals.</text>
 <rect x="12.000" y="101.000" width="1436.339" height="922.000" fill="#202832" stroke="#8993a1" stroke-width="1"/>
 <text x="18.000" y="118.000" fill="#e6eaf0" font-size="12" font-weight="600">main · 30.3%</text>
@@ -93,8 +93,8 @@ M1369.48 980.30h1.81v3.20h-1.81zM1371.99 977.38h2.17v2.71h-2.17zM1374.86 977.38h
 <path fill="#3b9b72" d="M1576.83 971.05h6.82v8.81h-6.82z"/>
 <path fill="#535e6d" d="M1534.30 933.99h22.12v24.35h-22.12zM1557.12 933.99h13.04v24.35h-13.04zM1570.86 933.99h12.79v24.35h-12.79zM1534.30 959.04h24.45v12.73h-24.45zM1534.30 972.48h24.45v11.70h-24.45zM1559.45 959.04h24.20v11.30h-24.20zM1559.45 971.05h9.64v13.13h-9.64zM1569.79 971.05h6.35v13.13h-6.35zM1576.83 980.55h6.82v3.62h-6.82z"/>
 <rect x="1529.948" y="988.524" width="58.052" height="34.476" fill="#202832" stroke="#8993a1" stroke-width="1"/>
-<path fill="#3b9b72" d="M1572.92 1011.23h5.20v7.42h-5.20zM1578.82 1011.23h4.83v3.63h-4.83zM1578.82 1015.56h4.83v3.09h-4.83z"/>
-<path fill="#535e6d" d="M1534.30 995.77h24.96v22.88h-24.96zM1559.96 995.77h12.26v22.88h-12.26zM1572.92 995.77h10.73v10.04h-10.73zM1572.92 1006.51h10.73v4.02h-10.73z"/>
+<path fill="#3b9b72" d="M1534.30 995.77h24.96v22.88h-24.96zM1572.92 1006.51h10.73v4.02h-10.73zM1572.92 1011.23h5.20v7.42h-5.20zM1578.82 1011.23h4.83v3.63h-4.83zM1578.82 1015.56h4.83v3.09h-4.83z"/>
+<path fill="#535e6d" d="M1559.96 995.77h12.26v22.88h-12.26zM1572.92 995.77h10.73v10.04h-10.73z"/>
 <rect x="16" y="1042" width="12" height="12" fill="#3b9b72"/>
 <text x="35" y="1053" fill="#e6eaf0" font-size="13">Verified C/C++</text>
 <rect x="300" y="1042" width="12" height="12" fill="#535e6d"/>
