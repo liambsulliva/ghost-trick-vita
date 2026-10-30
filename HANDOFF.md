@@ -15,9 +15,9 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 6765 |
-| Needed for 7104 milestone | 339 more |
-| Remaining in full inventory | 1808 |
+| Verified ledger / treemap | 6942 |
+| Needed for 7104 milestone | 162 more |
+| Remaining in full inventory | 1631 |
 | Current compilation | Winding down at the requested margin: last usage check72% five-hour and90% weekly consumed (10% weekly remaining). All workers and compiler/analysis jobs exited; accepted matches integrated locally, nothing pending. Handoff prepared ahead of the10:17EDT Claude Max deadline; see latest continuation. |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/` and `src/arm/`, `.c` or `.cpp`, one function per file |
@@ -157,6 +157,8 @@ Yield this session: ARM was best (forty_eighth_arm 10/14, fifty_first_arm 7/11, 
 **Deferral (user rule, 2026-10-30).** A function that still fails after 5 Opus xhigh variants is deferred, to be addressed later. Workers stop on it and list it in their handoff as deferred. `escalation.py` marks it `deferred` in `escalation_tiers.json`, writes the list to `extracted/decomp/escalation_deferred.json`, and never queues it again. Come back to the deferred list once the rest of the inventory is matched or a new lead (a flag, a twin, a newly recorded neighbor) appears.
 
 **One worker per tier (user rule, 2026-10-30).** To stretch usage, run three workers: one Haiku xhigh, one Opus medium and one Opus xhigh. When a function reaches 5 failures in a tier, main messages the running worker of the next tier with the function, its queue file and its lead section, and that worker adds it to its list. Rerun `escalation.py <audit> 1 1 --append` first so the function has a queue entry with anchors.
+
+**Window 4 wind-down (2026-10-30, about 13:50 EDT).** The user had to leave and asked to stop. Ledger went 6765 to 6942 this window. All workers were stopped and nothing is pending; no wake-up is scheduled. New forms this window, all in extracted/decomp/WORKER_BRIEF.md "Compile tips": `extern const` for .rodata tables, `switch` to avoid selects, address-type splitting to control CSE, merged tails, narrow spilled parameters (x15), mwcc `asm` bodies only for CPSR/CP15/clz/runtime code (parallel_arm_high batch21/22), and functions returning a call result keep r0 reserved. `withheld.txt` in a batch folder keeps a byte pass out of the ledger (func_020741b0 was withheld as an asm shortcut, then matched in C). Probes compared against a target count as tries. Deferred: func_0201c760, func_0205cdac. Next: the parallel_small lists (small7 status), Opus medium leftovers in "## r8m status", Opus xhigh leftovers in "## x15 status", and the narrow-parameter lead for func_ov006_020d79b4 and func_02004a84.
 
 **Window summary (2026-10-30, 01:30–02:20 EDT).** Ledger 6265 → 6528 in this window. Opus medium did most of it: shard 2 finished at 47/49, shard 1 at 27, shard 7 at 29, shard 13 at 7/7, shard 10 at 3/3, shard 9 at 3/3, plus shards 3, 5, 6, 8 and 12. Haiku added a few per batch. Tier state: 1121 Haiku, about 237 Opus medium, and 3 Opus xhigh (func_02011644, func_0201909c, func_0202a770; the last still needs an `escalation.py --append` run). Recurring blocker: about 30 reference functions use a separate `sub sp` frame or push dead argument registers differently than the pinned compiler (see the lead above); sweep those before spending more model tries on them. The recorder's duplicate-source check now skips `static` helpers, so per-file `static inline` C++ helpers such as `delete_part` don't collide.
 
@@ -395,7 +397,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 6765 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 6942 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
