@@ -76298,6 +76298,50 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,p -fp soft -interworking",
       "verification_sha256": "65ce177bcbbd9ae0c247c7e18eae212a913fb380d5dfe3834bbb5ced208e8496"
+    },
+    {
+      "module": "main",
+      "address": "0x02033fe0",
+      "name": "func_02033fe0",
+      "size": 56,
+      "source": "src/thumb/parallel_small_func_02033fe0.c",
+      "source_sha256": "e02e1dbd6e375c069b5dec2eacbaa814c724d4999c30b3bcc4c68b6e5c7ec32f",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "ec27be85a762d1a2fc53ef544334e6d44ec31b39881b99ab083b0f1b42c5339a"
+    },
+    {
+      "module": "main",
+      "address": "0x0204f340",
+      "name": "func_0204f340",
+      "size": 62,
+      "source": "src/thumb/parallel_small_func_0204f340.c",
+      "source_sha256": "b6d5b8b0bc70e229cf671f137f6a5d9872393128f7af2d4f674c3a7d6062b48c",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "88c3f0f4d692b58a2305870247b0571fb5b52a248d33c5f40b9680523af788a2"
+    },
+    {
+      "module": "main",
+      "address": "0x0204f39c",
+      "name": "func_0204f39c",
+      "size": 66,
+      "source": "src/thumb/parallel_small_func_0204f39c.c",
+      "source_sha256": "1b1c89c157f04942fe33cc9b197fe597563529538c5af6e3a2267c3780194c33",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "41d66ff3f48beb9a3245bcf77635131b88cf97419a19318d4a1ab0b09b5ab5e2"
+    },
+    {
+      "module": "main",
+      "address": "0x0204f3e0",
+      "name": "func_0204f3e0",
+      "size": 64,
+      "source": "src/thumb/parallel_small_func_0204f3e0.c",
+      "source_sha256": "ad333cff41ac0c06e1adab67c3a2f42838bd35e9494036a29288308b5c944ea9",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "bcaf6f4d637f8b029eb2da04f66e797203f484d51973a2f06511b8652b164346"
     }
   ]
 }
