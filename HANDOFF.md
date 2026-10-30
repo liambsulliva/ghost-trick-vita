@@ -1,6 +1,6 @@
 # Handoff: Ghost Trick PS Vita port
 
-For the next agent. Updated 2026-10-29. **Active task: continue autonomously through the full port function inventory, making local commits along the way.** The user extended the task beyond 7104 to all functions; 7104 is now an intermediate milestone, not a stopping point. Include ARM functions after the current Thumb work. Chapter 1 remains the later on-device delivery goal. The user authorizes local commits they can adjust later.
+For the next agent. Updated 2026-10-30. **Active task: continue autonomously through the full port function inventory, making local commits along the way.** The user extended the task beyond 7104 to all functions; 7104 is now an intermediate milestone, not a stopping point. Include ARM functions after the current Thumb work. Chapter 1 remains the later on-device delivery goal. The user authorizes local commits they can adjust later.
 
 ## 0. Active task: match the full function inventory
 
@@ -10,20 +10,20 @@ Newer instruction on 2026-10-29: "you can continue past 7104 and decompile all f
 
 The user explicitly approved “Push commits and publish viewer” on 2026-10-29 after reviewing the prepared viewer at `e104499`. This authorizes pushing the prepared `asset-inventory` checkpoints and the follow-up changes needed to publish and verify the progress-only GitHub Pages viewer. Pages is now enabled with Actions as the build source at https://liambsulliva.github.io/ghost-trick-vita/. The user subsequently asked that updated function counts and references propagate to the interactive site. The 5625-function checkpoint was published as `c864cf9`, and Pages now rebuilds automatically on relevant pushes. The latest user instruction is: "This time it is fine, but just wait for me to push going forward." Continue making local checkpoint commits, but leave all future pushes to the user unless freshly authorized. The user subsequently pushed the 5640-function checkpoint at `5dbc66f`; the automatic Pages run `40896902476` succeeded, and live checks verified both files and all 5640 source links against that revision.
 
-### Status (2026-10-29)
+### Status (2026-10-30)
 
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 6734 |
-| Needed for 7104 milestone | 370 more |
-| Remaining in full inventory | 1839 |
-| Current compilation | Window 3 (from 05:19 EDT, 2026-10-30), about 50% used at 05:42. Running: Opus medium r2s1–r2s5, r2s8 and r2s11; Opus xhigh x4, x5 and x6; a frame-shape compiler/flag sweep researcher (writes extracted/decomp/frame_sweep/results.json); Haiku on logic_low, logic_low_b, logic_low_c, objects_mid_b, objects_mid_c, objects_mid_d, arm_high, overlay_b and overlay_c. Opus xhigh is 3/3 so far (func_0202a770, func_02011644, func_0201909c). Waiting for xhigh: func_020436c8 and func_02046614 (run `escalation.py <audit> 1 1 --append`). One-shot CronCreate wake-up at 10:17 EDT. All recorded work is in local commits; no pushes. |
+| Verified ledger / treemap | 6757 |
+| Needed for 7104 milestone | 347 more |
+| Remaining in full inventory | 1816 |
+| Current compilation | Bounded Codex checkpoint complete with usage reserved for passover. All accepted results are recorded and committed locally; no pending integration or owned workers/compiler/Ghidra jobs. Last usage check: 21% five-hour and 82% weekly consumed (start: 1% and 78%). See the current dated continuation below for next leads. |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
-| New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
+| New sources | `src/thumb/` and `src/arm/`, `.c` or `.cpp`, one function per file |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 6734 functions** (Claude coordinator continuation: 93 matches recorded, 61 anchorless ones withdrawn on the user's decision, 23 of those restored after a post-match call-edge audit, 55 kept). Previous: 6111 functions (159,494 unique code bytes). GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
+**Latest verified checkpoint: 6757 functions (212,526 unique code bytes).** Bounded Codex continuation: 23 additions from 6734 (six saved matches restored with verified context, sixteen sibling-template matches and one typed color-field reconstruction). All accepted sources pass exact linked-entry, size, mode and body checks. No pushes.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -79,15 +79,36 @@ Use verified names, not a brace census: a loose definition regex can mistake a f
 
 - On 2026-10-29 the user authorized local commits while continuing autonomously, with the expectation they may adjust them later. Use the repository's configured Git identity. Do not add assistant attribution or co-author lines. Do not rewrite the user's earlier commits. Do not push. The user will push future checkpoints, which automatically rebuild the interactive viewer.
 - One function per `.c`/`.cpp`. Junior style: plain loops, no comments, dsd names (`func_XXXXXXXX`, `data_XXXXXXXX`).
-- Pinned compiler: `mwccarm dsi/1.2p1` with `-proc arm946e -thumb -O4,s -fp soft -interworking -sym on` for Thumb. Omit `-thumb` for ARM. Ledger `flags` omit `-sym on`.
+- Pinned compiler: `mwccarm dsi/1.2p1` with `-proc arm946e -thumb -O4,s -fp soft -interworking -sym on` for Thumb. Main-module ARM in `0x02067000`–`0x0207ffff` omits `-thumb` and uses `-O4,p`; put that flag in the batch `opt.txt`. Other ARM keeps its separately verified setting. Preserve the actual compiled flags for restored older exact matches; some bodies match both optimization settings. Ledger `flags` omit `-sym on`.
 - Compare address, size, thumb, and body. Relocs do not count.
-- The current batch uses `-thumb`. ARM functions require separate ARM compiler settings and verification; do not apply Thumb flags to them or change their mode to inflate coverage. They are in scope under the user's newer full-inventory instruction.
+- Keep each inventory function's ARM/Thumb mode and module. Use separate batches for different modes or proven optimization settings; never change a function's mode to inflate coverage.
 - Wine: `/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine`, bottle `toolchain/wine-mwcc-run`, `WINEDEBUG=-all`, `LM_LICENSE_FILE=Z:\Users\liambsulliva\Developer\ghost-trick-vita\toolchain\mwccarm\license.dat`. One wine process. `python3 -u`. Needs host permissions (`all`).
 - Tools: `ld.lld`, `llvm-mc`, `llvm-objdump` from Homebrew llvm/lld. Reference ELF `extracted/lld/linked.elf`, `.main.text` at `0x2000000`. `elf_fixups.fix_object` before link. Thumb `BL` is `F000`/`F800`; `BLX` second half is `E800` (word-align target with `&~3`). Literal pool `PC=(insn+4)&~3 + imm8*4`.
 - Defined names: brace regex `\bfunc_...\([^;]*\)\s*\{` plus `__sinit_`.
 - `extracted/` and `toolchain/` stay gitignored. No game dialogue or art in git or chat.
 
+### Bounded Codex continuation (2026-10-30)
+
+Baseline `3d7c897` had 6734 functions; this continuation ends at **6757/8573**, 23 additions, with 1816 inventory functions remaining and 347 to the intermediate 7104 milestone. Function checkpoints are `3f3fdb2`, `707a992`, `94970ee`, `7a9ea82` and `6c17f3d`. Nothing was pushed. Only one GPT 6.1 Terra High worker ran at a time, each with a small fixed task; both workers finished and all owned compiler/analysis jobs exited. The run stopped at a clean bounded checkpoint with passover usage reserved, rather than at the hard usage limit. Final checks: 58 tests, generated treemap check and ROM audit passed.
+
+Six formerly held exact-byte sources acquired real verified call relationships: func_020576d0, func_0206812c, func_02073b68, func_02078638, func_0207a550, then func_02078cb0 through newly restored caller02078638. Their saved compiler markers, source snapshots, mode/entry/size/body and anchor source/report hashes were checked before restoration. Packets explicitly mark post-match context validation. The other 38 held sources stay ignored; the post-restoration audit found no more verified edges at ledger6755. Private session evidence is under `extracted/decomp/terra_20261030/`.
+
+Verified sibling templates supplied 16 new matches: four Thumb functions and eleven main ARM SDK copies in `parallel_twins/terra_20261030_thumb` and `_arm`, then wrapper func_02010f84 in `_thumb2` after callee func_02010fa8 was recorded. All 16 matched; Thumb controls passed; SDK ARM used `-O4,p`, Thumb `-O4,s`. Source-template hashes, real call anchors and Ghidra hashes are saved in each packet. The typed color record for func_0200d4d4 also matched in `parallel_escalate_m/terra_20261030_thumb1`; actual worker model is Terra High, while the legacy logical queue remains labeled opus_medium.
+
+The four fresh ARM source hypotheses in `parallel_arm_library/terra_20261030_arm1_host` compiled but did not match. The first sandbox invocation never reached MWCC (Wine bind denied); its untouched log and original status rows are preserved under `terra_20261030_arm1`, with `infrastructure_failure.json` and the rows renamed to `infrastructure_variant_status.tsv` so no nonexistent source attempts are counted. The host retry is a separate one-run folder. Never rerun a batch in place or redirect runner output onto `compile.log`. Use host permissions for the shared locked Wine invocation.
+
+Next steps, with prior failure records preserved:
+
+- Best prepared follow-up: exact SDK sibling func_020704f8 of verified func_02070418, generated under `terra_20261030/twins_exact/arm/`. It was not compiled in this run because its legacy Haiku bucket is exhausted (10); the later logical medium bucket has 2 failures, so up to 3 remain there. Read the template/target context, prune unchanged inputs, and use a fresh folder with `-O4,p`. A prepared source is not a match.
+- func_0203d604's new typed-record variant still has the old r4/r5 split; legacy medium failures are now 3. Do not retry its failed declaration-order or typed-record forms unchanged. Its batch handoff is `parallel_escalate_m/terra_20261030_thumb1/PRIVATE_HANDOFF.md`.
+- func_0206c1c8's late-flag variant is its fifth actual legacy Haiku-bucket failure; escalate rather than attempting a sixth. func_0206c138, func_0206c46c and func_0206d9ec each have 3 in that bucket; their latest sources failed and need genuinely new evidence before retrying. ARM group handoff records the exact variants and frames.
+- Refresh the checked call-context audit after more verified neighbors appear, then revisit held matches or sibling templates. Skip ordinary-RAM volatile scheduling forms. Preserve existing user-reviewed matches and the historical escalation queues; do not revive the stale list of running Claude workers above as a Codex plan.
+
+Start continuation with usage, clean-tree and integrator dry-run checks. All context-supported completed passes are integrated at this checkpoint. No workers remain active, and no wake-up jobs were created in Codex.
+
 ### Coordinator workflow
+
+For Codex under the user's latest usage constraint, use one bounded worker at a time, checkpoint results before extending the run, and preserve capacity for final verification and handoff. The older Claude Max fan-out is historical. The 95% hard stop still applies to either account window; it is not a requirement to consume the reserve. Read weekly usage as well as the five-hour window.
 
 The latest user continuation requests GPT 6.1 Terra High for spawned subagents. Use model `gpt-6.1-terra` with `reasoning_effort="high"` and a fresh concise brief. Coordinate up to three workers from the main thread, with local checkpoint commits until every in-scope function is done or the required usage stop threshold is reached. Workers own the three existing groups (low Thumb below `0x02030000`, middle Thumb `0x02030000`–`0x02066fff`, ARM plus high Thumb/ITCM/overlays 1–6) and write only their `extracted/decomp/parallel_<group>/` folder and `src/<mode>/parallel_<group>_<name>` sources. Each worker messages main when a batch is ready. Workers run out of context after about 2–3 batches and then stop cleanly. Start a fresh worker for that group with a brief naming the newly recorded anchors and the group handoff's latest status and leads.
 
@@ -358,7 +379,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 6734 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 6757 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
@@ -473,6 +494,8 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 - **Snapshot at 5928 functions (152,306 bytes).** Added one existing mapped mid-object Thumb function from character address context.
 - **Snapshot at 6091 functions (158,602 bytes).** Added 75 exact matches since the 6016-function starting point: overlay ARM/Thumb context, stream buffers and virtual-call wrappers. All recorded through pinned compile and linked-byte checks; work continues locally.
 - **Snapshot at 6111 functions (159,494 bytes).** GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
+- **Snapshot at 6739 functions (211,040 bytes).** Restored five saved exact-byte matches after validating newly recorded caller/callee context. No blind recompilation; actual saved compiler flags and source/ELF identity preserved.
+- **Snapshot at 6757 functions (212,526 bytes).** Bounded Codex continuation: 23 additions from 6734 (six saved matches restored with verified context, sixteen sibling-template matches and one typed color-field reconstruction). All accepted sources pass exact linked-entry, size, mode and body checks. No pushes.
 - **Method note:** dumping disassembly with `tail -n +8` drops the first instruction. Use `+7` or the match tool's diff. `func_02027eb4` looked empty because of that.
 - **Still open for phase 4:** the dsi versions have produced identical output on every probe so far, including the non-leaf `func_020280c8`. Pinning "exactly one compiler" needs probe functions that tell `dsi/1.1`–`dsi/1.6sp2` apart. Until then, treat the dsi family plus the flags above as the working baseline for new matches.
 
