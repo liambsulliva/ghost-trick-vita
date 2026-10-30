@@ -15,6 +15,7 @@ WINE = "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine"
 BOTTLE = os.path.join(REPO_DIR, "toolchain", "wine-mwcc-run")
 COMPILER_VERSION = "dsi/1.2p1"
 FLAGS = ["-proc", "arm946e", "-thumb", "-O4,s", "-fp", "soft", "-interworking", "-sym", "on"]
+RUNTIME_ALIASES = {"_s32_div_f": "func_0207b694", "_u32_div_f": "func_0207b8a0"}
 
 
 def brew_bin(formula, name):
@@ -108,11 +109,12 @@ def main():
         linker.append(attributes_object)
     stub_lines = []
     for name in sorted(needed):
-        if name not in known:
+        source_name = RUNTIME_ALIASES.get(name, name)
+        if source_name not in known:
             print("no value for external symbol " + name)
             sys.exit(1)
-        value = known[name][0]
-        if known[name][1] == 2:
+        value = known[source_name][0]
+        if known[source_name][1] == 2:
             stub_lines.append(".global " + name)
             stub_lines.append(".type " + name + ", %function")
             stub_lines.append(".set " + name + ", " + hex(value))
@@ -142,6 +144,11 @@ def main():
     report["compiler"] = compiler_version
     report["flags"] = flags
     report_path = os.path.join(work_dir, candidate_name + "_check.json")
+    f = open(os.path.join(REPO_DIR, "config", "decomp_progress.json"))
+    recorded = set(row["name"] for row in json.load(f)["matched"])
+    f.close()
+    if reference_name in recorded:
+        report_path = os.path.join(work_dir, candidate_name + "_scratch_check.json")
     f = open(report_path, "w")
     f.write(json.dumps(report, indent=2) + "\n")
     f.close()
