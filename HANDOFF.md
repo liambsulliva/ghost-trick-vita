@@ -15,15 +15,15 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 6251 |
-| Needed for 7104 milestone | 853 more |
-| Remaining in full inventory | 2322 |
+| Verified ledger / treemap | 6265 |
+| Needed for 7104 milestone | 839 more |
+| Remaining in full inventory | 2308 |
 | Current compilation | Claude coordinator session stopped gracefully at 88% of the 5-hour window (24% weekly), because anchored-only batches were yielding 1–2 and another worker risked passing 95%. No workers, compiler, Wine runner or Ghidra processes remain (only the shared winedevice bottle service). All recordable completed matches are integrated in local commits; no pushes. On the user's decision, the 61 anchorless matches from this session were withdrawn (`3c8d8f1`); see "Anchor gap" below. |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 6251 functions** (Claude coordinator continuation: 93 matches recorded, 61 anchorless ones withdrawn on the user's decision, 23 of those restored after a post-match call-edge audit, 55 kept). Previous: 6111 functions (159,494 unique code bytes). GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
+**Latest verified checkpoint: 6265 functions** (Claude coordinator continuation: 93 matches recorded, 61 anchorless ones withdrawn on the user's decision, 23 of those restored after a post-match call-edge audit, 55 kept). Previous: 6111 functions (159,494 unique code bytes). GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -118,6 +118,8 @@ Yield this session: ARM was best (forty_eighth_arm 10/14, fifty_first_arm 7/11, 
 **Volatile-on-RAM matches for the user's review.** Two recorded passes use `volatile` on ordinary memory to reproduce a reload or store order, rather than on a hardware register: `func_0206b958` (`*(volatile unsigned int *)(param_1 + 3)`) and `func_ov001_020d3b60` (volatile halfword stores into `data_020c9e88`/`data_020c9e48`). Both are exact byte matches with call-edge anchors, but they may be fakematches. The IRQ/IME helpers (0x04000208) and `func_0206a97c` (0x040001a4) are genuine hardware registers. The worker brief now keeps new volatile-on-RAM passes out of `passed.txt`.
 
 **Compiler-version sweep: negative (2026-10-30).** Many close misses differ only in the prologue register list, so `extracted/decomp/sweep_compilers.py <close_misses.json> <out> <versions> <n>` recompiled the 40 closest same-size misses (8 or fewer differing halfwords; 91 Thumb and 29 ARM such targets exist), unchanged, under dsi/1.2p1, dsi/1.1, dsi/1.3, dsi/1.6sp2, 2.0/sp1p5 and 1.2/sp4. None matched. All four dsi versions gave the same differences as the pin, and 2.0/sp1p5 (13 size changes) and 1.2/sp4 (22) were worse. The pinned dsi/1.2p1 stands, and the remaining misses need source changes. `batch_tail.COMPILER_VERSION` now selects the compiler for experiments; leave it at dsi/1.2p1 for real batches.
+
+**Autonomous run (2026-10-30, user away).** The user asked for continuous work until every function is matched, with a wake-up after each 5-hour reset. The wake-up is a one-shot `CronCreate` job in the coordinator session (session-only, so it doesn't survive the app exiting), set a few minutes after each reset. Its prompt resumes the loop: check usage, run the integrator dry-run, record anchored batches, restart workers, commit locally, and stop gracefully at 95% used. All eleven groups have workers: logic_low, logic_low_b, logic_low_c, objects_mid, objects_mid_b, objects_mid_c, objects_mid_d, arm_library, arm_high, overlay_b and overlay_c. The near_misses group is paused (0 of 8). An app restart killed five workers mid-batch. Their finished batches (logic_low_b/batch16, objects_mid_c/batch10_round2 and _round3) were recorded in `104ed3e`; their handoffs may lack those batch sections, so prune against each folder's variant_status.tsv.
 
 **Runtime divide helpers (2026-10-30).** mwcc compiles `/` and `%` into calls to its runtime routines `_s32_div_f` and `_u32_div_f`, which the reference only knows by dsd names. They are identified by code: `func_0207b694` opens with signed-divide sign handling (`eor r12,r0,r1; and r12,#0x80000000; cmp r0,#0; rsblt r0,r0,#0; addlt r12,#1; cmp r1,#0; rsblt r1,r1,#0`), and `func_0207b8a0` is the unsigned routine (`cmp r1,#0; bxeq lr; cmp r0,r1; movlo ...`), with 135 and 37 reference call sites. `tools/match_function.py` and ignored `extracted/decomp/batch_tail.py` map the two runtime names to these addresses (`RUNTIME_ALIASES`). This was checked by writing the matched `func_0201c310` with a plain `0x10000u / x`: it links and matches all 22 bytes. `match_function.py` now writes reports for recorded functions to `<name>_scratch_check.json`, because a test run had overwritten a ledger verification report. That report was rebuilt and its hash re-verified against the ledger.
 
@@ -344,7 +346,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 6251 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 6265 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
