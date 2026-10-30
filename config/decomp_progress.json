@@ -74824,6 +74824,50 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "10259033cccbeaf37f605892e2b8c3f7f2fe4a414c94121e4f768939fc918758"
+    },
+    {
+      "module": "main",
+      "address": "0x02071a6c",
+      "name": "func_02071a6c",
+      "size": 128,
+      "source": "src/arm/parallel_escalate_x_func_02071a6c.c",
+      "source_sha256": "8ace9d69bae0237f50248f3126abe46907cc586e609f6ce1633db79a7c1ef20d",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "ab34788c9c1307e9c60a7451f6de70d503175166899703f23210dff793ad186e"
+    },
+    {
+      "module": "main",
+      "address": "0x02071aec",
+      "name": "func_02071aec",
+      "size": 128,
+      "source": "src/arm/parallel_escalate_x_func_02071aec.c",
+      "source_sha256": "21d393653e98b802d074672e2ddb57274ec3be1c7a67e2635ec0b722fb5bed09",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "6b9e7cfa1d8651fb2420571d383a7c3e6eed01484a200ded592eddd8bf2ca850"
+    },
+    {
+      "module": "main",
+      "address": "0x02075a94",
+      "name": "func_02075a94",
+      "size": 360,
+      "source": "src/arm/parallel_escalate_x_func_02075a94.c",
+      "source_sha256": "450427f83f76c1eb0d8cf5e77a69062a423a2c3cf31abe2b6da8280b53d44b06",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "427cee0236696a2d03d788de064db6f0e37ad434e8b3d9dab931f83627b0c7ec"
+    },
+    {
+      "module": "main",
+      "address": "0x0207ea60",
+      "name": "__sinit_0207ea60",
+      "size": 196,
+      "source": "src/thumb/parallel_arm_library___sinit_0207ea60.c",
+      "source_sha256": "51702d4e16579405e03dbdc84a19be6f170d9ffcebdb3a8f96f65a6cd2c0ff19",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "c3389fabaa89bfa4f5312233401ffda357096a5f348d43126c0d47cd90e889ff"
     }
   ]
 }
