@@ -68345,6 +68345,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,s -fp soft -interworking",
       "verification_sha256": "61b11019f5fff00249afc4de1ff0e2245696b9e774b89bf981a29c046ca8324c"
+    },
+    {
+      "module": "ov006",
+      "address": "0x020d5a28",
+      "name": "func_ov006_020d5a28",
+      "size": 96,
+      "source": "src/thumb/parallel_overlay_b_func_ov006_020d5a28.c",
+      "source_sha256": "53551cc9583bd2810fa1b0eac4bcb7a3f7e2dfde7a75f64a40b6e99bfa365766",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "7e0eb80c4bd4ea795a3ea8fb3b5a9097f8e5d5dcddd1b6d74d79087c48230570"
     }
   ]
 }
