@@ -68356,6 +68356,39 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "7e0eb80c4bd4ea795a3ea8fb3b5a9097f8e5d5dcddd1b6d74d79087c48230570"
+    },
+    {
+      "module": "main",
+      "address": "0x0204fe18",
+      "name": "func_0204fe18",
+      "size": 168,
+      "source": "src/thumb/parallel_objects_mid_b_func_0204fe18.c",
+      "source_sha256": "0dda70b95f4236aaedd3f6a3eb4ec29124451f9cb583b44e9fff66bdfaecb636",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "52366e2dc03037ca1cb4e34972a5579fbe4b3d6f13fe33207d04064e673b24d4"
+    },
+    {
+      "module": "main",
+      "address": "0x020547f4",
+      "name": "func_020547f4",
+      "size": 188,
+      "source": "src/thumb/parallel_objects_mid_b_func_020547f4.c",
+      "source_sha256": "0e251dd9cd38347ad9fd9fa827bfe28efe6beeceb4f59387cef946b8c4bb5e25",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "709f8d8b4b2d0b92e5eee94224e64721f16dfa0206a3ccde6846ceec70bece5c"
+    },
+    {
+      "module": "main",
+      "address": "0x020561bc",
+      "name": "func_020561bc",
+      "size": 192,
+      "source": "src/thumb/parallel_objects_mid_b_func_020561bc.c",
+      "source_sha256": "cf53cf4c6094704334d2277c97d64d3582c261e9c549511d9c9b3315d9ae3b6b",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "d784f9e706283b806677d165167bdac697ce496b11860d1d439b3ed53a16d6e5"
     }
   ]
 }
