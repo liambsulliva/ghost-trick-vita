@@ -67773,6 +67773,50 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,s -fp soft -interworking",
       "verification_sha256": "3210b9595eb0ed7a6eb82ebfdcf7b161c5fb40e1eca3a5a113ea528b85d14c3b"
+    },
+    {
+      "module": "ov003",
+      "address": "0x020d55c8",
+      "name": "func_ov003_020d55c8",
+      "size": 108,
+      "source": "src/thumb/parallel_overlay_b_func_ov003_020d55c8.c",
+      "source_sha256": "b6776d26676040b96e8ae4d0ce1048851e978176e6515918ae75246abd08e615",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "0ce99f926bb7fe55195a040e5bea97c416017808bbf1b504451761599df68eb5"
+    },
+    {
+      "module": "ov005",
+      "address": "0x020d43c4",
+      "name": "func_ov005_020d43c4",
+      "size": 92,
+      "source": "src/thumb/parallel_overlay_b_func_ov005_020d43c4.c",
+      "source_sha256": "c2a79faad3a85fd2a21077b2eff9fb57e2eb052d775d2487f1d9c61c31ce573f",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "6e5e39f4275c9fd7d9f3f0d5157b18d1f77ce0047c85bb724ff2f64d42bfc6b2"
+    },
+    {
+      "module": "ov005",
+      "address": "0x020d4500",
+      "name": "func_ov005_020d4500",
+      "size": 76,
+      "source": "src/thumb/parallel_overlay_b_func_ov005_020d4500.c",
+      "source_sha256": "d89504e4e8e31272eaee509331814c16bca09402091212bf60c35b31dfe89e7b",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "7d5d13d930be8bf754b8705e8f462420ebfae08e4efa4ba9c670b60b49b9bfaf"
+    },
+    {
+      "module": "ov006",
+      "address": "0x020d58e4",
+      "name": "func_ov006_020d58e4",
+      "size": 68,
+      "source": "src/thumb/parallel_overlay_b_func_ov006_020d58e4.c",
+      "source_sha256": "0a47ba22e161b9f7366bc54e6c4b89a3321e6768bc2bd4068956f1b0ec949309",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "c006cbeb7f0310f7053f17ca0db26a8f9b48a793521357caa09a516e26456be0"
     }
   ]
 }
