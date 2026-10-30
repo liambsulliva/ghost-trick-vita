@@ -15,15 +15,15 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 6529 |
-| Needed for 7104 milestone | 575 more |
-| Remaining in full inventory | 2044 |
+| Verified ledger / treemap | 6590 |
+| Needed for 7104 milestone | 514 more |
+| Remaining in full inventory | 1983 |
 | Current compilation | Window 3 (from 05:19 EDT, 2026-10-30): 20 workers running, namely 3 Opus xhigh (parallel_escalate_x shards 1–3, batches x<N>_*), 8 Opus medium (regenerated parallel_escalate_m shards 1–8, batches r2s<N>_*) and 9 Haiku groups. A one-shot CronCreate wake-up at 10:17 EDT (after the 10:10 reset) resumes the loop. All recorded work is in local commits; no pushes. |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/*.c` and `src/thumb/*.cpp` (one function per file) |
 | Batch scripts | gitignored under `extracted/decomp/batch_more*.py` |
 
-**Latest verified checkpoint: 6529 functions** (Claude coordinator continuation: 93 matches recorded, 61 anchorless ones withdrawn on the user's decision, 23 of those restored after a post-match call-edge audit, 55 kept). Previous: 6111 functions (159,494 unique code bytes). GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
+**Latest verified checkpoint: 6590 functions** (Claude coordinator continuation: 93 matches recorded, 61 anchorless ones withdrawn on the user's decision, 23 of those restored after a post-match call-edge audit, 55 kept). Previous: 6111 functions (159,494 unique code bytes). GPT 6.1 Terra High continuation added 95 context-supported exact matches from the 6016-function starting point. Completed passes are integrated; two byte-only matches and three unintegrated byte passes remain private pending verified context.
 
 Brace count can overcount: `generate` may rewrite a failed body, and `defined_names()` then treats it as done. A function counts toward 7104 only after `link_one` / `match_function.py` reports pass. Delete C that fails.
 
@@ -115,7 +115,7 @@ Yield this session: ARM was best (forty_eighth_arm 10/14, fifty_first_arm 7/11, 
 
 **Twins and more splits (2026-10-30).** `extracted/decomp/twin_finder.py <audit.json> <out_dir> [--imm]` normalizes every function's reference instructions. Internal branches become offsets, external calls become `EXT` (target recorded), and pool words become `WORD` (value recorded); `--imm` also turns immediates into `#I`. For each anchored unmatched function with an identical normalized sequence to a verified one, it rewrites the verified source with the target's name, callees and pool words (and immediates under `--imm`), positionally, and writes a manifest plus context packets. Each packet carries the call-edge anchors and the twin as the template. Exact twins gave 7 of 7 and near twins 1 of 2 (group `parallel_twins`, folders `batchN_thumb` / `batchN_arm`, prefix `parallel_twins_`). Most twins appear to have been matched by earlier peer passes already; rerun it after big recording runs. logic_low_b is split at 0x02020e60: the new `parallel_logic_low_c` takes 0x02020e60–0x0202ffff. overlay_c and arm_high are paused after zero-match runs (arm_high notes that mwcc emits bhi compare trees where 17 unmatched reference functions use `addls pc` jump tables). logic_low and arm_library were restarted with the close-miss method that worked for objects_mid_c.
 
-**Volatile-on-RAM matches for the user's review.** Two recorded passes use `volatile` on ordinary memory to reproduce a reload or store order, rather than on a hardware register: `func_0206b958` (`*(volatile unsigned int *)(param_1 + 3)`) and `func_ov001_020d3b60` (volatile halfword stores into `data_020c9e88`/`data_020c9e48`). Both are exact byte matches with call-edge anchors, but they may be fakematches. The IRQ/IME helpers (0x04000208) and `func_0206a97c` (0x040001a4) are genuine hardware registers. The worker brief now keeps new volatile-on-RAM passes out of `passed.txt`.
+**Volatile-on-RAM matches for the user's review.** Two recorded passes use `volatile` on ordinary memory to reproduce a reload or store order, rather than on a hardware register: `func_0206b958` (`*(volatile unsigned int *)(param_1 + 3)`) and `func_ov001_020d3b60` (volatile halfword stores into `data_020c9e88`/`data_020c9e48`). Both are exact byte matches with call-edge anchors, but they may be fakematches. The IRQ/IME helpers (0x04000208) and `func_0206a97c` (0x040001a4) are genuine hardware registers. The worker brief now keeps new volatile-on-RAM passes out of `passed.txt`. A third case for review: `func_020315ac` (Opus medium r2s3_thumb1) declares `volatile signed char busy` in the global struct at `data_020cff60`, then does `busy = 1; while (busy != 0) { ... }`. That is a spin-wait on a flag cleared elsewhere (likely an interrupt or callback), which only compiles as a loop if the field is volatile, so it is probably faithful to the original. It is recorded but flagged for your review alongside the other two.
 
 **Compiler-version sweep: negative (2026-10-30).** Many close misses differ only in the prologue register list, so `extracted/decomp/sweep_compilers.py <close_misses.json> <out> <versions> <n>` recompiled the 40 closest same-size misses (8 or fewer differing halfwords; 91 Thumb and 29 ARM such targets exist), unchanged, under dsi/1.2p1, dsi/1.1, dsi/1.3, dsi/1.6sp2, 2.0/sp1p5 and 1.2/sp4. None matched. All four dsi versions gave the same differences as the pin, and 2.0/sp1p5 (13 size changes) and 1.2/sp4 (22) were worse. The pinned dsi/1.2p1 stands, and the remaining misses need source changes. `batch_tail.COMPILER_VERSION` now selects the compiler for experiments; leave it at dsi/1.2p1 for real batches.
 
@@ -356,7 +356,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 6529 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 6590 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
