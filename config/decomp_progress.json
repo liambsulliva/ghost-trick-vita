@@ -67916,6 +67916,28 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,s -fp soft -interworking",
       "verification_sha256": "a0aeb0baa422c8002b0b345cf1765f85ae9c908196baeef39b1cb691b96cbf90"
+    },
+    {
+      "module": "ov003",
+      "address": "0x020d56b0",
+      "name": "func_ov003_020d56b0",
+      "size": 144,
+      "source": "src/thumb/parallel_overlay_b_func_ov003_020d56b0.c",
+      "source_sha256": "2002a1b5ab28409af29119b7cc43d203a4465d88fd53b58f6668bc2c0acb62bb",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "d155ca5efa310181e2eeae073efb54c13283d3c50c4f8c30967ae7c0701f7eee"
+    },
+    {
+      "module": "ov006",
+      "address": "0x020d4638",
+      "name": "func_ov006_020d4638",
+      "size": 112,
+      "source": "src/thumb/parallel_overlay_b_func_ov006_020d4638.c",
+      "source_sha256": "25086b552b2e069482ba99501d7a92e64534f0bc6f4b9750162f1349c27c920d",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "c8742b860df2901536d1c3b29374960fea7a72d993866f78918f4e29028a6d4f"
     }
   ]
 }
