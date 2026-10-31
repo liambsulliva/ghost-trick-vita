@@ -83635,6 +83635,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "77a265a8b1705f6ac7af1470e38edafd7b8282e87313432f45713266b1ade8b9"
+    },
+    {
+      "module": "itcm",
+      "address": "0x01ff83a8",
+      "name": "func_01ff83a8",
+      "size": 208,
+      "source": "src/arm/parallel_arm_library_func_01ff83a8.c",
+      "source_sha256": "baf7c1dbe05691232cb9475de91a6ab5273c05ec65ec49f181dbba3dab567068",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "d17832159aa7bbb124c3e7f0798c877941900cd75cf144b622d79c701f0a6978"
     }
   ]
 }
