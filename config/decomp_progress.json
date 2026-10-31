@@ -82579,6 +82579,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "95fdc471cae75cbfddb88a23f4326ecbae79d459558873bfe7f3f17475365439"
+    },
+    {
+      "module": "main",
+      "address": "0x020005f2",
+      "name": "CpuSet",
+      "size": 4,
+      "source": "src/thumb/parallel_logic_low_CpuSet.c",
+      "source_sha256": "b74073abc52c8a2d774677a54d5d5a420fef2ca256aee5d1e5481eeb76a32c6c",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "4fd9fafec1656db321d308ec33676cb1451b023dde141236089cb392e6938401"
     }
   ]
 }
