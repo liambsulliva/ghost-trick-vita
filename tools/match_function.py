@@ -15,7 +15,7 @@ WINE = "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine"
 BOTTLE = os.path.join(REPO_DIR, "toolchain", "wine-mwcc-run")
 COMPILER_VERSION = "dsi/1.2p1"
 FLAGS = ["-proc", "arm946e", "-thumb", "-O4,s", "-fp", "soft", "-interworking", "-sym", "on"]
-RUNTIME_ALIASES = {"_s32_div_f": "func_0207b694", "_u32_div_f": "func_0207b8a0", "_ll_udiv": "func_0207b62c"}
+RUNTIME_ALIASES = {"_s32_div_f": "func_0207b694", "_u32_div_f": "func_0207b8a0", "_ll_udiv": "func_0207b62c", "_ll_mul": "func_0207b674"}
 
 
 def brew_bin(formula, name):
