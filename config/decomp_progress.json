@@ -83338,6 +83338,94 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "f40535b8997db6a1cf488f93350e6717ea015ed3ada60cb930b95ac63e225804"
+    },
+    {
+      "module": "main",
+      "address": "0x02009968",
+      "name": "func_02009968",
+      "size": 164,
+      "source": "src/thumb/parallel_escalate_m_func_02009968.c",
+      "source_sha256": "db28aacec6ff8061445dc7ac0495489d8a251ada7cb05280bf09ef68afce7f19",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "0b0a7a8d2ef5469d116b451035d2c1c62461ab01cc456eff2479f1fdd7cd8411"
+    },
+    {
+      "module": "main",
+      "address": "0x0200a260",
+      "name": "func_0200a260",
+      "size": 152,
+      "source": "src/thumb/parallel_escalate_m_func_0200a260.c",
+      "source_sha256": "31d581dfa8c74a9eabdad700ba7c44cd9474c81d3f6a67ba8e414b18005b68d6",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "cdf0a158d7b282c8544d640fef259c5e64b86b928cfbb7db9d9f19f2e3cb79a9"
+    },
+    {
+      "module": "main",
+      "address": "0x0204aa58",
+      "name": "func_0204aa58",
+      "size": 248,
+      "source": "src/thumb/parallel_objects_mid_b_func_0204aa58.cpp",
+      "source_sha256": "98496bb7713ecb477835b35992210c660e4c228a3ba4443679a31f967a525d63",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "f2b75d4d4923dfe66c4bcb0358c802dc6103f66348c2c46cad4dc8db5b5ccbe3"
+    },
+    {
+      "module": "main",
+      "address": "0x0204ab50",
+      "name": "func_0204ab50",
+      "size": 248,
+      "source": "src/thumb/parallel_objects_mid_b_func_0204ab50.cpp",
+      "source_sha256": "3acaacb0afdd34649143e872a86218b109ebb4ae70e7426781e1ece7a5f9304c",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "88365bc41670ea7ec70808b28f5dbb6a4e8dedaabd0db4484ba6c13c552cfbcc"
+    },
+    {
+      "module": "main",
+      "address": "0x020563f8",
+      "name": "func_020563f8",
+      "size": 212,
+      "source": "src/thumb/parallel_escalate_m_func_020563f8.c",
+      "source_sha256": "9a95e62bec67d5dcfa23781cfaa3d13f0c334569ec41d55ac7a951752873dedd",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "71fdf13077d71660223fb23e20783a75e60cff3038d9f65c668f4a7b3d8cb3b4"
+    },
+    {
+      "module": "main",
+      "address": "0x02057c58",
+      "name": "func_02057c58",
+      "size": 220,
+      "source": "src/thumb/parallel_escalate_m_func_02057c58.cpp",
+      "source_sha256": "1a28aa968e161b5f1cd1ddf488be149f75f312c90805b19060164f2761aed488",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "ff418f4bff6d5ffdf3a221de749da494e3e48cbaddbe6a513664d362937368ad"
+    },
+    {
+      "module": "main",
+      "address": "0x0205a458",
+      "name": "func_0205a458",
+      "size": 260,
+      "source": "src/thumb/parallel_escalate_m_func_0205a458.cpp",
+      "source_sha256": "1f68efb82ff8077690aaa4c28d0bd799c187c375b74b8472bf399cd1caa3b754",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "e25c96ec0c56ec6fa7280ec34c600196ec1459068cf00508f937d6722a9cccbe"
+    },
+    {
+      "module": "main",
+      "address": "0x0205b870",
+      "name": "func_0205b870",
+      "size": 240,
+      "source": "src/thumb/parallel_escalate_m_func_0205b870.c",
+      "source_sha256": "f98341bf7a66b982ac218002872479f8a74f8cf46ceeba1b33640994cf77aea0",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "cebdbf0de14211801cf5b0b401cad6bbb574e374665de365cab0bb513cd7d9cb"
     }
   ]
 }
