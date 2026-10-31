@@ -83712,6 +83712,94 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,p -fp soft -interworking",
       "verification_sha256": "7adda1f601d639c454e8449a0a7ffddb94287aaa252a027e0a09e537fc6d8ee3"
+    },
+    {
+      "module": "main",
+      "address": "0x02006db0",
+      "name": "func_02006db0",
+      "size": 188,
+      "source": "src/thumb/parallel_escalate_m_func_02006db0.c",
+      "source_sha256": "8cc77b94bb9b6bdb98f57cb535a56e9a5563533c1b3e59a4fcb4db551ab72925",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "c85ed49fa6e47d2b5d25125309f407cd16dab4d7ac60d4d539f6aa1294f63506"
+    },
+    {
+      "module": "main",
+      "address": "0x02008ef4",
+      "name": "func_02008ef4",
+      "size": 176,
+      "source": "src/thumb/parallel_escalate_m_func_02008ef4.c",
+      "source_sha256": "3ee0f885e950c75caf4b7a6522ba9e7e46781d040ef66b00a13b2c332e6cb8ea",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "c949702daf300735b6089106bcb0f035ba56fe5bb8d4e6fe68d30ef01d3b91f7"
+    },
+    {
+      "module": "main",
+      "address": "0x0200af44",
+      "name": "func_0200af44",
+      "size": 182,
+      "source": "src/thumb/parallel_escalate_m_func_0200af44.cpp",
+      "source_sha256": "08784a6cd891c595c1b52df49fc649349d1f8b9958a27f0570a9b45bd3961c3f",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "3c36feef4724da13e02dc6188050ac2123adfc2f4c6451e1870c229b3795c612"
+    },
+    {
+      "module": "main",
+      "address": "0x0200df20",
+      "name": "func_0200df20",
+      "size": 176,
+      "source": "src/thumb/parallel_escalate_m_func_0200df20.cpp",
+      "source_sha256": "fe4f43dab35dc5d14bcbe569de2ccb222ef73f98e6257e69334f371bca7a0b9d",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "25596d8dcf8aa7705ee1a35611a94293bc9e09060db40b6e79e8a10248f61337"
+    },
+    {
+      "module": "main",
+      "address": "0x02011598",
+      "name": "func_02011598",
+      "size": 172,
+      "source": "src/thumb/parallel_escalate_m_func_02011598.c",
+      "source_sha256": "fa0eec29b47b521c18c4ea1b6e200146513979fc2d90cb1fa3c690c79a53e049",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "43aaea0759db892bd2134058d3c7da3697273fb77c41dce5747147c03c8c7870"
+    },
+    {
+      "module": "main",
+      "address": "0x020450ec",
+      "name": "func_020450ec",
+      "size": 256,
+      "source": "src/thumb/parallel_escalate_m_func_020450ec.cpp",
+      "source_sha256": "63877ed16c7e4a6a93b0a4f74a581917b66b0ff4decae2980fc51056a36bd1a5",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "08ff3635f1f222b7591c5fc7297bf7e2449fa06bac68a1404f300a6ebceb7e90"
+    },
+    {
+      "module": "main",
+      "address": "0x0204d770",
+      "name": "func_0204d770",
+      "size": 260,
+      "source": "src/thumb/parallel_escalate_m_func_0204d770.cpp",
+      "source_sha256": "4bf1e4ef0df83d78796c06fcd03ea44c8a84d00a61659f1584194a3a10b8857a",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "2124e5a1f6e4f75cb179f6b9b5b64e89301fc61383655c0899f9148145b04810"
+    },
+    {
+      "module": "main",
+      "address": "0x0204db84",
+      "name": "func_0204db84",
+      "size": 268,
+      "source": "src/thumb/parallel_escalate_m_func_0204db84.cpp",
+      "source_sha256": "a57510154f5edbaa94955bd36b486d77bafca86d2a19490a04a103c6f32429d2",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "1e1e5974c616dfc78bf8eba22f4856db46dbdf5224f26563bdb69718a718b2fe"
     }
   ]
 }
