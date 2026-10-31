@@ -80654,6 +80654,50 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "eab2bf4c11f9b81e83fcbad6113bca1ff7855ba6118710e531513ae591e48c83"
+    },
+    {
+      "module": "main",
+      "address": "0x0203a540",
+      "name": "func_0203a540",
+      "size": 300,
+      "source": "src/thumb/parallel_escalate_m_func_0203a540.cpp",
+      "source_sha256": "529e969e7ac773ac4aab7735fb308db2a30efb6a51ea32d2a5e01064dc4e99f0",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "9d8da6dafb4f494526affc2fc9fc97c66e39875c948461454a779c878b3b88f2"
+    },
+    {
+      "module": "main",
+      "address": "0x020517dc",
+      "name": "func_020517dc",
+      "size": 336,
+      "source": "src/thumb/parallel_escalate_m_func_020517dc.c",
+      "source_sha256": "4b5da004d2eaaeae2e2cf8b734f11761743054b7e228bb802b1c3cd5c6251be7",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "751cf11a1e58edced21a008e272bb859aeb1b5eca5740dbdc16b7af2c1844833"
+    },
+    {
+      "module": "main",
+      "address": "0x0206c46c",
+      "name": "func_0206c46c",
+      "size": 140,
+      "source": "src/arm/parallel_escalate_x_func_0206c46c.c",
+      "source_sha256": "b2a89688d6266d2083059ed6d89b87411277e06d0d66a5224dcf504e4a125e48",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "6e28734c7f3b0f60292707b85a8e77d73d201b09816aba2906db8a3351810fcd"
+    },
+    {
+      "module": "ov004",
+      "address": "0x020d6234",
+      "name": "func_ov004_020d6234",
+      "size": 264,
+      "source": "src/thumb/parallel_escalate_m_func_ov004_020d6234.c",
+      "source_sha256": "8cb8477e2982e8ccaec199261efe67ac4e08a07faac0279beae704870edf7b65",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "46d48007576a4f98cb5ad684e26efe629b5360352bb6419121c868c2083a78db"
     }
   ]
 }
