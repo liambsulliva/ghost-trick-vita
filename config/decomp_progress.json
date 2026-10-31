@@ -79851,6 +79851,50 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "9e09fca7cb0fd1f32822c552edef4c063f5338ab2e81841b79ffcfd636735d88"
+    },
+    {
+      "module": "main",
+      "address": "0x02003dbc",
+      "name": "func_02003dbc",
+      "size": 116,
+      "source": "src/thumb/parallel_escalate_x_func_02003dbc.c",
+      "source_sha256": "248d66281b526191849399497e2a8dd3e94293c889011c66993d197c5be2fe30",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "6c934fa87e941b86a8afdac06d66e0b5be6a9ac021a7fb7b5fe524d38b49ad08"
+    },
+    {
+      "module": "main",
+      "address": "0x0201e580",
+      "name": "func_0201e580",
+      "size": 216,
+      "source": "src/thumb/parallel_escalate_m_func_0201e580.cpp",
+      "source_sha256": "de368f050a5bcce3c90d74890669d42486df88da6e842903a2603748d495052b",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "c6fd05cd9ec20c922cec80b8b2b64166854705f1b8b8d97d5d335b536b5583c5"
+    },
+    {
+      "module": "main",
+      "address": "0x02038ba4",
+      "name": "func_02038ba4",
+      "size": 48,
+      "source": "src/thumb/parallel_escalate_x_func_02038ba4.c",
+      "source_sha256": "f1f91517303d4ddc9f8574d961aa1dc8ef027e5136a881d95151401bc5687fb9",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "a70b29653a131fe9db2c1fa7a850d46f8ee009a20aad82ace365c5bf5210692f"
+    },
+    {
+      "module": "main",
+      "address": "0x0205106c",
+      "name": "func_0205106c",
+      "size": 212,
+      "source": "src/thumb/parallel_escalate_m_func_0205106c.c",
+      "source_sha256": "fc527ab696f6144a5b7aed3bd03f99ce41442a5bdf5b39173db6c1c021cc2413",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "9a4d47db147fc91c7342c131463163c0df34d50c94c6358e5fe4f08ba41a17d7"
     }
   ]
 }
