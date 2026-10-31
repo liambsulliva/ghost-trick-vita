@@ -95,12 +95,62 @@ def retype_arm_branches(data, sections):
     return changed
 
 
+def relax_thumb_alignment(data, sections):
+    symtab = None
+    for section in sections:
+        if section[0] == 2:
+            symtab = section
+    if symtab is None:
+        return 0
+    strtab_offset = sections[symtab[3]][1]
+    thumb_sections = set()
+    i = 0
+    while i < symtab[2] // 16:
+        base = symtab[1] + i * 16
+        name = read_name(data, strtab_offset + read_u32(data, base))
+        if name == "$t" or name.startswith("$t."):
+            thumb_sections.add(read_u16(data, base + 14))
+        i = i + 1
+    section_offset = read_u32(data, 0x20)
+    section_size = read_u16(data, 0x2E)
+    relaxed = 0
+    for index in thumb_sections:
+        base = section_offset + index * section_size
+        if read_u32(data, base + 4) == 1 and read_u32(data, base + 8) & 4 and read_u32(data, base + 32) == 4:
+            struct.pack_into("<I", data, base + 32, 2)
+            relaxed = relaxed + 1
+    return relaxed
+
+
+def relax_empty_text(path):
+    f = open(path, "rb")
+    data = bytearray(f.read())
+    f.close()
+    section_offset = read_u32(data, 0x20)
+    section_size = read_u16(data, 0x2E)
+    sections = read_sections(data)
+    relaxed = 0
+    i = 0
+    while i < len(sections):
+        base = section_offset + i * section_size
+        if sections[i][0] == 1 and sections[i][2] == 0 and read_u32(data, base + 8) & 4 and read_u32(data, base + 32) == 4:
+            struct.pack_into("<I", data, base + 32, 2)
+            relaxed = relaxed + 1
+        i = i + 1
+    if relaxed:
+        f = open(path, "wb")
+        f.write(data)
+        f.close()
+    return relaxed
+
+
 def fix_object(path):
     f = open(path, "rb")
     data = bytearray(f.read())
     f.close()
     sections = read_sections(data)
     marked = mark_thumb_functions(data, sections)
+    relax_thumb_alignment(data, sections)
     retyped = retype_arm_branches(data, sections)
     f = open(path, "wb")
     f.write(data)

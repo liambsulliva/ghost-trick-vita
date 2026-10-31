@@ -106,6 +106,7 @@ def main():
     linker = [brew_bin("lld", "ld.lld"), "--no-undefined", "--entry=" + candidate_name, "-Ttext=" + hex(address), object_path, "-o", linked_path]
     attributes_object = os.path.join(REPO_DIR, "extracted", "lld", "objects", "armv5te.o")
     if os.path.exists(attributes_object):
+        elf_fixups.relax_empty_text(attributes_object)
         linker.append(attributes_object)
     stub_lines = []
     for name in sorted(needed):
