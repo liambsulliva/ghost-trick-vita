@@ -15,9 +15,9 @@ The user explicitly approved “Push commits and publish viewer” on 2026-10-29
 | Item | Value |
 |---|---|
 | Previous user snapshot | 3552 (`d996db0`, preserved) |
-| Verified ledger / treemap | 7160 |
+| Verified ledger / treemap | 7243 |
 | Needed for 7104 milestone | reached |
-| Remaining in full inventory | 1413 |
+| Remaining in full inventory | 1330 |
 | Current compilation | Winding down at the requested margin: last usage check72% five-hour and90% weekly consumed (10% weekly remaining). All workers and compiler/analysis jobs exited; accepted matches integrated locally, nothing pending. Handoff prepared ahead of the10:17EDT Claude Max deadline; see latest continuation. |
 | dsd inventory (treemap denominator) | 8573 (DS Protect overlay excluded) |
 | New sources | `src/thumb/` and `src/arm/`, `.c` or `.cpp`, one function per file |
@@ -163,6 +163,8 @@ Yield this session: ARM was best (forty_eighth_arm 10/14, fifty_first_arm 7/11, 
 **Per-function flags (user rule, 2026-10-30 evening).** Optimization flags may differ per function as long as the function byte-matches; the ledger records each batch's flags. func_ov004_020d633c (matched at `-O2` in parallel_escalate_m/r21m_thumb3) was released from withholding on this rule. The compiler itself stays dsi/1.2p1; the mwcc 2.0 lead for the ov004 ARM family is still a separate decision.
 
 **Window 6 (2026-10-30, 17:20 to 20:00).** Ledger 7002 to 7160. Most gains came from the Haiku last-try pass followed by Opus medium on the true escalations (r20m–r27m matched about 85% of them, many SDK ARM functions written in NitroSDK source shape, several NitroSDK hand-asm routines: MTX_Identity*, CP context save/restore, OS_InitContext, MI fill/send, IME-saving waits). Withheld: func_ov004_020d633c (matched only at -O2; needs a region sweep). Leads: ov004 ARM func_ov004_020d4e20/4e90/4f00/4da4 look like mwcc 2.0 output (r26m), which needs your approval and a sweep; func_02069274 and func_02069e44 need a second symbol at one address, which can't be added. Open queues: parallel_escalate_m/queue_shard50.json and queue_shard51.json remainders (Opus medium), parallel_escalate_x/queue_shard20–22 (Opus xhigh, leads in "## x18 status"). Deferred: func_0201c760, func_0205cdac, func_02068220. All workers stopped before the 20:10 reset; nothing pending.
+
+**Window 7 (2026-10-30, from 20:10; resets 01:10).** Ledger 7161 to 7243 by 21:10. Running: Opus medium r33m (open medium tier list plus queue_shard58), Opus xhigh x20 (open xhigh list), Haiku last-try worker (objects_mid_b/d/c, logic_low_b/c 2-failure lists). Infrastructure fixes this window: a stray repo-root build.bat broke every compile from 20:26 until removed (batch_tail now runs Wine with cwd=WORK); with_compiler_lock.py kills compiles after 20 minutes. Rules added to WORKER_BRIEF Compile tips: per-function flags, pointer-to-const loads, struct views, receiver type, virtual calls, Ghidra placeholders, `typedef int code();`. Pace usage to stay under 95% before the 01:10 reset, then schedule a wake-up a few minutes after it.
 
 **One worker per tier (user rule, 2026-10-30).** To stretch usage, run three workers: one Haiku xhigh, one Opus medium and one Opus xhigh. When a function reaches 5 failures in a tier, main messages the running worker of the next tier with the function, its queue file and its lead section, and that worker adds it to its list. Rerun `escalation.py <audit> 1 1 --append` first so the function has a queue entry with anchors.
 
@@ -409,7 +411,7 @@ The `BFM-decomp` wiki phase ladder (https://github.com/Druthulu/BFM-decomp/wiki/
 | 2 Oracles and load map | Done | `tools/nds_loadmap.py`, `tools/nds_prove_bases.py`, `tools/ghidra_build.sh` (rebuilds the Ghidra DB from `symbols/database.txt` and checks the re-export is identical), `tools/runtime_oracle.py` (melonDS GDB stub; entry, main, ITCM and overlay checks) |
 | 3 All-assembly baseline | Done | `config/arm9/` (dsd config with two hand edits), `tools/lld_link.py`, `tools/elf_fixups.py`, `tools/fix_header.py`, `tools/phase3_check.sh <rom>` (ROM rebuilds byte-identical from linked objects) |
 | 4 Compiler pinned | Flags pinned and the dsi family pinned (8 matches); exact dsi version not yet | See "Phase 4 compiler probe" below. |
-| 5–8 Matching decomp | In progress through the full inventory | 7160 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
+| 5–8 Matching decomp | In progress through the full inventory | 7243 of 8,573 functions have source-level compiler and linked-byte verification (`docs/progress-treemap.svg`, `config/decomp_progress.json`). Full-game C link integration and Vita runtime verification remain separate milestones. The user authorized continuation beyond 7104 and local commits along the way. |
 
 ### Phase 4 compiler probe (2026-10-28)
 
