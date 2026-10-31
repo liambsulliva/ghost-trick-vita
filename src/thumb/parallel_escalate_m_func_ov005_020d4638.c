@@ -1,0 +1,60 @@
+extern unsigned char data_020c9e94[];
+extern unsigned char data_020c9e48[];
+extern struct { char pad00[0x12]; short f12; char pad14[8]; short f1c; short f1e; char pad20[8]; short f28; char pad2a[2]; short f2c; } data_020c9e88;
+extern struct { char pad00[0x26]; short f26; } data_020c9ec8;
+extern int func_ov005_020d40a8();
+extern int func_02071d24();
+extern int func_02071d38();
+extern int func_02071d4c();
+extern int func_02071d70();
+extern int func_02071d94();
+extern int func_02071da8();
+extern int func_02071dd0();
+extern int func_02071de4();
+extern int func_02071424();
+extern int func_02071220();
+extern int func_020716e8();
+extern int func_02071860();
+extern int func_0207164c();
+extern int func_02071554();
+extern int func_020719fc();
+extern int func_02071960();
+extern int func_0206f628();
+extern int func_02008860();
+extern int func_0200c82c();
+
+void func_ov005_020d4638(void)
+{
+    int zero;
+    int value;
+
+    zero = 0;
+    func_ov005_020d40a8(0);
+    func_02071d24();
+    func_02071d38();
+    func_02071d4c();
+    func_02071d70();
+    func_02071d94();
+    func_02071da8();
+    func_02071dd0();
+    func_02071de4();
+    func_02071424(1);
+    func_02071220(2);
+    func_020716e8(4);
+    func_02071860(0x10);
+    func_0207164c(0x20);
+    func_02071554(0x40);
+    func_020719fc(8);
+    func_02071960(0x180);
+    value = 0x18;
+    func_0206f628(data_020c9e94, 1, value, 0, zero);
+    *(unsigned int *)(data_020c9e48 + 0x54) = 0xc0210010u;
+    data_020c9e88.f28 = zero;
+    data_020c9e88.f2c = zero;
+    data_020c9e88.f1c = 0x409;
+    data_020c9e88.f1e = 0xfc7;
+    func_0200c82c(func_02008860(), zero);
+    value = value - 0x28;
+    data_020c9e88.f12 = value;
+    data_020c9ec8.f26 = value;
+}
