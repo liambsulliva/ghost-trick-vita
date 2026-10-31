@@ -1,0 +1,68 @@
+extern void func_0207193c();
+extern void func_02014728();
+extern void func_02071dbc();
+extern void func_02014744();
+extern void func_02071424();
+extern void func_02071220();
+extern void func_020716e8();
+extern void func_02071860();
+extern void func_0207164c();
+extern void func_02071554();
+extern void func_020719fc();
+extern void func_02071960();
+extern void func_02071aec();
+extern void func_020304f8();
+extern void func_0201475c();
+extern void func_02014768();
+extern void func_02014778();
+extern void func_02014734();
+extern void func_0206f628();
+extern void func_02014788();
+extern char data_020c9e48;
+extern char data_020c9e9c;
+extern char data_020c9ec8;
+extern char data_020c9e88;
+extern char data_020c9e94;
+
+void func_02014624(void)
+{
+    unsigned int *puVar1;
+    short *puVar2;
+    unsigned int zero;
+    unsigned int six;
+
+    func_0207193c(0x1ff);
+    func_02014728(0x6800000, 0xa4000);
+    func_02071dbc();
+    zero = 0;
+    func_02014744(0);
+    func_02071424(1);
+    func_02071220(2);
+    func_020716e8(4);
+    func_02071860(0x10);
+    func_0207164c(0x20);
+    func_02071554(0x40);
+    func_020719fc(8);
+    six = 0x80;
+    func_02071960(0x80);
+    func_02071aec(0x100);
+    func_020304f8(0);
+    puVar1 = (unsigned int *)&data_020c9e48;
+    func_0201475c(puVar1, 0x54);
+    func_0201475c(&data_020c9e9c, 0x54);
+    puVar1[0x15] = 0xc0210010;
+    *puVar1 = 0x00211918;
+    puVar2 = (short *)&data_020c9ec8;
+    puVar2[0x13] = -0x10;
+    ((short *)&data_020c9e88)[9] = -0x10;
+    func_02014768(-0x10);
+    func_02014778(-0x10);
+    func_02014734(0x7000000, 0xc0, six << 3);
+    func_02014728(0x5000000, six << 3);
+    func_02014734(0x07000400, 0xc0, six << 3);
+    func_02014728(0x05000400, six << 3);
+    ((short *)&data_020c9e88)[6] = zero;
+    puVar2[0x10] = zero;
+    func_0206f628(&data_020c9e94, 1, 0x18, 0, zero);
+    func_02014788(1, 1);
+}
