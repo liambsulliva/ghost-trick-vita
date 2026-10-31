@@ -80566,6 +80566,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,p -fp soft -interworking",
       "verification_sha256": "0737ddc4a6a347a73e02bc81a926bfa785fbd9bdd4b2fb86a1e817874dbd1bef"
+    },
+    {
+      "module": "ov004",
+      "address": "0x020d5a04",
+      "name": "func_ov004_020d5a04",
+      "size": 308,
+      "source": "src/thumb/parallel_escalate_m_func_ov004_020d5a04.c",
+      "source_sha256": "65d93c7be0e4759b8cf1f68e89ba392365cb723b863ec92e14caf9973c97f615",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "0e4d15b0be057b2521a6e334484a11994204bc6521393fc43872f3e84a1ad3d1"
     }
   ]
 }
