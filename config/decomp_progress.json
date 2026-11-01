@@ -87606,6 +87606,50 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,p -fp soft -interworking",
       "verification_sha256": "276e149f67d3d3e00666f78b2715e7d9e1cbc294d85ff91416e12ae7315cce67"
+    },
+    {
+      "module": "main",
+      "address": "0x0200d46c",
+      "name": "func_0200d46c",
+      "size": 104,
+      "source": "src/thumb/parallel_escalate_x_func_0200d46c.c",
+      "source_sha256": "5d313e7d271226dd5f8f761974ab801f9ac09ebf8db393856b0ac03524797dcd",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "1403a4c551e6db069aeafec7ab2f1c49fce8724b3e0824275b14683e4e1e1656"
+    },
+    {
+      "module": "main",
+      "address": "0x0202c8f0",
+      "name": "func_0202c8f0",
+      "size": 108,
+      "source": "src/thumb/parallel_escalate_x_func_0202c8f0.c",
+      "source_sha256": "ad547129e97ef70320378181ce38d8ecc0fbc997017310edf1c10c2e8f5f5edd",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "22cb1072921582b005c019cf33477580eebdb75691912787baaebadb6c03c4cb"
+    },
+    {
+      "module": "main",
+      "address": "0x0202d3d4",
+      "name": "func_0202d3d4",
+      "size": 84,
+      "source": "src/thumb/parallel_escalate_x_func_0202d3d4.cpp",
+      "source_sha256": "b641acd644c630c07a6b31db94b25dd6bd2397739178bf48bd1420c808fc9ac3",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "4e3483c2238c920ad94d370bf5044378fa40fbdb0b81bccb3b97750cd090dc88"
+    },
+    {
+      "module": "main",
+      "address": "0x0207c6f8",
+      "name": "func_0207c6f8",
+      "size": 132,
+      "source": "src/arm/parallel_escalate_x_func_0207c6f8.c",
+      "source_sha256": "995bed21b69ea72341be42bc037de894a9746fb0dee76c54620d6badc58bedfc",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "04117fc6fc229a87b08c2fd7a9caf330cd28bd169a27645016da86d48d355491"
     }
   ]
 }
