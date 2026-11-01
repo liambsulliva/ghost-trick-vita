@@ -85505,6 +85505,50 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,p -fp soft -interworking",
       "verification_sha256": "4dd1630933c5687e089f87824fda89b1c50856c67136911e6f14404f2c8f7d65"
+    },
+    {
+      "module": "main",
+      "address": "0x020304f8",
+      "name": "func_020304f8",
+      "size": 52,
+      "source": "src/thumb/parallel_escalate_x_func_020304f8.c",
+      "source_sha256": "41516e769ac3378338a3639ffa9225d24ffefed97aba0163170ab0a22f08f073",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "47ccc60cfb5acba1425479be48d68063820139e149fd32235135f54caaf218c0"
+    },
+    {
+      "module": "main",
+      "address": "0x0206c8c0",
+      "name": "func_0206c8c0",
+      "size": 44,
+      "source": "src/arm/parallel_escalate_x_func_0206c8c0.c",
+      "source_sha256": "3f12c9b55cb7ab0b63c6ca39b35341400ced3f3145203545aed358f4e6e98039",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "ef43d8a8cfa9473834e574a9fe5800f3915567439e011c54b3d81b290d1a0a57"
+    },
+    {
+      "module": "main",
+      "address": "0x020752b0",
+      "name": "func_020752b0",
+      "size": 36,
+      "source": "src/arm/parallel_escalate_x_func_020752b0.c",
+      "source_sha256": "913a9769f6bc2cdf527c1f0ff21beab53c92d8fd4d8426c707230f4b5e95fb7e",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "0eb04716f8b750897ce55ce84d7f1d3ea330de77f06d6b89ad362f09d6088ef3"
+    },
+    {
+      "module": "main",
+      "address": "0x0207c594",
+      "name": "func_0207c594",
+      "size": 36,
+      "source": "src/arm/parallel_escalate_x_func_0207c594.c",
+      "source_sha256": "e7bc9ce168e208baef981f709c09cf1673071b7c7bbc1b21b744ca7c26329438",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "a3b0fb35b15344b3d0e0cb62e596b8220f40f47cedcc69ca16b362c5c7e771bb"
     }
   ]
 }
