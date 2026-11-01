@@ -6,8 +6,8 @@ Updated 2026-11-01 for the next agent. This is a compacted copy of the 2026-10-3
 
 **Active task:** byte-match every in-scope function in the DS inventory. Denominator: 8,573 (DS Protect overlay excluded). The 7,104 milestone is passed, and there is no stopping point short of full coverage. Chapter 1 playable delivery is the later goal (see Port project).
 
-**State after `8af0880` (branch `asset-inventory`):**
-- Ledger: 7,964 matched, 609 remaining. By module: main 7,635; ov004 141; ov006 123; ov003 33; ov005 20; ov001 6; itcm 6.
+**State after the 2026-11-01 late passes (branch `asset-inventory`):**
+- Ledger: 7,981 matched, 592 remaining. By module: main 7,652; ov004 141; ov006 123; ov003 33; ov005 20; ov001 6; itcm 6.
 - Deferred: 19 functions in `extracted/decomp/escalation_deferred.json`.
 - Nothing pending: `python3 -I extracted/decomp/integrate_pending.py --dry-run` prints "nothing pending".
 - Working tree is clean except `context_pending_sources/parallel_escalate_m_func_0206b168.c`, which is untracked user work. Leave it in place. It is not a pass.
@@ -161,6 +161,7 @@ Do not decide these yourself.
 3. **C++ exception handling (binding-13 link blocker):** func_0201d3a4, func_0207dd08 and func_0207dc50. The last two are catch handlers reached through exception tables, part of CodeWarrior's `__construct_array` helpers. func_0200fbd4 joins them: it keeps a local object whose destructor (func_0201ef74) runs on each of its three exits, unmerged, after func_0201ef58 constructs it. An inline C++ wrapper (`Archive() { func_0201ef58(this); } ~Archive() { func_0201ef74(this); }`) reproduces that, but the object then carries an out-of-line `~Archive` with binding 13 and ld.lld refuses it (x45_thumb13).
 4. **`main`:** mwcc inserts `bl __main` into a C `main`.
 5. **Review list.** These match and are accepted for now. The user has not reviewed them.
+   - SDK and runtime routines written as `asm void` (added 2026-11-01 late): func_01ff8478 (32-bit fill loop in ITCM), func_02071e74 (64-byte FIFO send), func_0207bab8 (runtime float-to-unsigned).
    - SDK routines written as `asm void`, as NitroSDK does: func_01ff83a8 (OSi_DoBoot), func_0207303c (MI_CpuCopy8), func_0206e784 and func_0206eab4 (MTX_RotZ), func_0206e6a8 (MTX_Scale33_), func_02072f08 (CpuClearFast), func_02072f8c (MI_Copy36B), func_02073174 (LZ8 with swpb), func_020748a0 (CP15), func_0207e04c (runtime throw context save), func_02075234 and func_020751b4 (OS exception mode switches), func_020009fc (crt0 autoload with CP15), and CpuSet (BIOS SWI). Added 2026-11-01 (Haiku asm1/asm2 in parallel_arm_high, 30 routines): CP15 control and cache routines func_020747e4, func_02074f5c, 4f6c, 4f7c, 4f8c, 4f9c, 4fac, 4fbc, 4fd0 and 4fe0; the 16 protection-region accessors func_0207500c to func_02075084 (mcr/mrc c6, c0 to c7); clz func_02075ec4; int and unsigned int to double func_0207b250 and func_0207b290; and func_0207e01c (runtime context restore, the partner of func_0207e04c).
    - MSL routines: func_0207a3c0 (`exit`) and func_0207a6e0 (`raise`).
    - Volatile on ordinary RAM: func_0206b958 (`*(volatile unsigned int *)(param_1 + 3)`), func_ov001_020d3b60 (volatile halfword stores into data_020c9e88 and data_020c9e48), func_020315ac (volatile `busy` spin-wait, probably faithful), func_0206a120 and func_0206a270 (volatile CARDiCommon flag), func_0206c138 (volatile-const inline in FS), func_020699b4 (spin-wait on `data_020d0220[1]`) and func_02077fcc (TP_WaitBusy-style spin on the touch-panel `command_flg`; NitroSDK probably declares it volatile). Both spin-waits matched at -O4,p and can only re-read memory in a loop with volatile. These may be fakematches.
@@ -216,7 +217,7 @@ Do not decide these yourself.
 | 2 Oracles and load map | Done: `nds_loadmap.py`, `nds_prove_bases.py`, `ghidra_build.sh`, `runtime_oracle.py` |
 | 3 All-assembly baseline | Done: `config/arm9/`, `lld_link.py`, `elf_fixups.py`, `fix_header.py`, `phase3_check.sh` |
 | 4 Compiler | `dsi/1.2p1` is pinned. The exact dsi version is not proven, because probes gave identical output across the dsi builds. |
-| 5–8 Matching | In progress: 7,964 of 8,573 |
+| 5–8 Matching | In progress: 7,981 of 8,573 |
 
 **Inputs**
 - DS ROM: `~/Developer/Ghost Trick - Phantom Detective (USA) (En,Fr,De,Es,It).nds`, SHA-1 `bcfe74e5592eef3255fd23758b772226960a1b0b`, game code BGTE.
