@@ -7,7 +7,7 @@ Updated 2026-11-01 for the next agent. This is a compacted copy of the 2026-10-3
 **Active task:** byte-match every in-scope function in the DS inventory. Denominator: 8,573 (DS Protect overlay excluded). The 7,104 milestone is passed, and there is no stopping point short of full coverage. Chapter 1 playable delivery is the later goal (see Port project).
 
 **State at HEAD `18622cc` (branch `asset-inventory`):**
-- Ledger: 7,726 matched, 847 remaining. By module: main 7,399; ov004 141; ov006 121; ov003 33; ov005 20; ov001 6.
+- Ledger: 7,740 matched, 833 remaining. By module: main 7,413; ov004 141; ov006 121; ov003 33; ov005 20; ov001 6; itcm 6.
 - Deferred: 6 functions in `extracted/decomp/escalation_deferred.json`.
 - Nothing pending: `python3 -I extracted/decomp/integrate_pending.py --dry-run` prints "nothing pending".
 - Working tree is clean except `context_pending_sources/parallel_escalate_m_func_0206b168.c`, which is untracked user work. Leave it in place. It is not a pass.
@@ -216,7 +216,7 @@ Do not decide these yourself.
 | 2 Oracles and load map | Done: `nds_loadmap.py`, `nds_prove_bases.py`, `ghidra_build.sh`, `runtime_oracle.py` |
 | 3 All-assembly baseline | Done: `config/arm9/`, `lld_link.py`, `elf_fixups.py`, `fix_header.py`, `phase3_check.sh` |
 | 4 Compiler | `dsi/1.2p1` is pinned. The exact dsi version is not proven, because probes gave identical output across the dsi builds. |
-| 5–8 Matching | In progress: 7,726 of 8,573 |
+| 5–8 Matching | In progress: 7,740 of 8,573 |
 
 **Inputs**
 - DS ROM: `~/Developer/Ghost Trick - Phantom Detective (USA) (En,Fr,De,Es,It).nds`, SHA-1 `bcfe74e5592eef3255fd23758b772226960a1b0b`, game code BGTE.
