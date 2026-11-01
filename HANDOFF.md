@@ -7,7 +7,7 @@ Updated 2026-11-01 for the next agent. This is a compacted copy of the 2026-10-3
 **Active task:** byte-match every in-scope function in the DS inventory. Denominator: 8,573 (DS Protect overlay excluded). The 7,104 milestone is passed, and there is no stopping point short of full coverage. Chapter 1 playable delivery is the later goal (see Port project).
 
 **State at HEAD `18622cc` (branch `asset-inventory`):**
-- Ledger: 7,749 matched, 824 remaining. By module: main 7,422; ov004 141; ov006 121; ov003 33; ov005 20; ov001 6; itcm 6.
+- Ledger: 7,750 matched, 823 remaining. By module: main 7,423; ov004 141; ov006 121; ov003 33; ov005 20; ov001 6; itcm 6.
 - Deferred: 6 functions in `extracted/decomp/escalation_deferred.json`.
 - Nothing pending: `python3 -I extracted/decomp/integrate_pending.py --dry-run` prints "nothing pending".
 - Working tree is clean except `context_pending_sources/parallel_escalate_m_func_0206b168.c`, which is untracked user work. Leave it in place. It is not a pass.
@@ -56,7 +56,7 @@ Use verified calling context to write variants for mapped targets. Use byte-matc
 - **Identity is fixed.** Never change a function's mode to inflate coverage. Never guess addresses or call targets. Declarations must resolve to existing mapped or reference symbols.
 - **Compiler: `mwccarm dsi/1.2p1`.** Thumb game code: `-proc arm946e -thumb -O4,s -fp soft -interworking -sym on`. Main-module ARM at 0x02067000–0x0207ffff: `-O4,p`, placed in the batch folder's `opt.txt`. Other ARM keeps its verified setting.
 - **Per-function flags are allowed** when the function byte-matches (user rule, 2026-10-30). Keep such targets in their own batch folder. Mwcc optimization pragmas count the same way, for example `#pragma optimization_level 0` in the source. The ledger records the flags.
-- **Anchors are required.** Each pass needs at least one verified anchor in its packet's `anchors` or `evidence`. Reference instructions alone do not count. `integrate_pending.py` refuses an anchorless pass.
+- **Anchors are required.** Each pass needs at least one verified anchor in its packet's `anchors` or `evidence`. Reference instructions alone do not count. `integrate_pending.py` refuses an anchorless pass. Since 2026-11-01 (user's choice) `anchor_audit.py` also counts `table` edges: a function's literal pool loads a data symbol in the reference ELF, and a word inside that symbol is the other function's address with the right Thumb bit (vtables, callback lists). That added anchors for 117 functions, 105 of them under 100 bytes.
 - **`volatile`** only on 0x04xxxxxx hardware registers, or where NitroSDK declares it. Volatile on ordinary RAM stays out of `passed.txt` until the user reviews it.
 - **`asm`** only where the SDK writes the routine in asm: NitroSDK hand-asm, CPSR/CP15 code, runtime code, BIOS SWI stubs.
 - **Variant names are unique per target.** Failures are counted per (tier, function, variant name), so a reused name hides a real try.
@@ -127,7 +127,7 @@ This writes `parallel_escalate_m/queue_shardN.json` and `parallel_escalate_x/que
 
 **Tiers.** `haiku` runs first, then `opus_medium`, then `opus_xhigh`. These are logical names that count failures, not a claim about which model ran them. Keep the names so the counts stay valid. Each function gets `LIMIT = 3` failed variants per tier, and a 4th failure is never compiled. After 3 opus_xhigh failures the function is deferred to `escalation_deferred.json`, ordered farthest-by-address from the last function attempted. When every function has used its last try, restart from the top of that list. `escalation.failures()` gives the counts.
 
-**Current ladder (2026-11-01, user's choice).** Two tiers: `haiku`, then `opus_xhigh`; `escalation.py` no longer routes to `opus_medium`, and targets already there were moved to the xhigh queue. Haiku workers (subagents) only take functions under 100 bytes (user's rule, 2026-11-01): `escalation.py` sends anything of 100 bytes or more straight to `opus_xhigh` (`HAIKU_MAX = 100`). Haiku matched 1 of 59 targets in its last 10 batches (the last three on 216-428-byte functions). A fresh anchor audit on 2026-11-01 (`anchor_all.json` updated in place; the 2026-10-31 copy is `anchor_all_2026-10-31.json`) found anchors for 136 more functions under 100 bytes. 123 of them are in the Haiku bucket, and `write_anchored_targets.py` now lists only Haiku-tier targets in each group's `anchored_targets.json`. 266 functions under 100 bytes are still unanchored. 151 of them only touch unmatched functions: matching func_02023fdc (9,560 bytes, already anchored) would anchor 13. The other 115 have no code edge at all. The coordinator works the xhigh queue in its own chat, writing each target from the reference disassembly (`sh extracted/decomp/parallel_escalate_x/x41_src/ref.sh <hex> <size>`, which also resolves literal-pool symbols) and building one-off batch folders with `parallel_escalate_x/x41_src/mk.py <batch> <sources>`. Notes are in `parallel_escalate_x/HANDOFF.md` from "## x41". mwcc's soft-float helpers (`_dadd/_dsub/_dmul/_dflt/_dfltu/_dgr/_dfix`) are mapped in RUNTIME_ALIASES, so double math compiles and links.
+**Current ladder (2026-11-01, user's choice).** Two tiers: `haiku`, then `opus_xhigh`; `escalation.py` no longer routes to `opus_medium`, and targets already there were moved to the xhigh queue. Haiku workers (subagents) only take functions under 100 bytes (user's rule, 2026-11-01): `escalation.py` sends anything of 100 bytes or more straight to `opus_xhigh` (`HAIKU_MAX = 100`). Haiku matched 1 of 59 targets in its last 10 batches (the last three on 216-428-byte functions). A fresh anchor audit on 2026-11-01 (`anchor_all.json` updated in place; the 2026-10-31 copy is `anchor_all_2026-10-31.json`) found anchors for 136 more functions under 100 bytes, and table edges added 105 more. 218 are in the Haiku bucket, and `write_anchored_targets.py` now lists only Haiku-tier targets in each group's `anchored_targets.json`. 266 functions under 100 bytes are still unanchored. 151 of them only touch unmatched functions: matching func_02023fdc (9,560 bytes, already anchored) would anchor 13. The other 115 have no code edge at all. The coordinator works the xhigh queue in its own chat, writing each target from the reference disassembly (`sh extracted/decomp/parallel_escalate_x/x41_src/ref.sh <hex> <size>`, which also resolves literal-pool symbols) and building one-off batch folders with `parallel_escalate_x/x41_src/mk.py <batch> <sources>`. Notes are in `parallel_escalate_x/HANDOFF.md` from "## x41". mwcc's soft-float helpers (`_dadd/_dsub/_dmul/_dflt/_dfltu/_dgr/_dfix`) are mapped in RUNTIME_ALIASES, so double math compiles and links.
 
 **Batch hygiene.** A batch that crashes before writing `variant_status.tsv` gets an `abandoned.txt`, or its targets look busy forever. Do the same for a folder with a manifest, no `passed.txt`, and no live process. The tools deduplicate failures copied into record folders.
 
@@ -167,7 +167,6 @@ Do not decide these yourself.
    - SDK-declared volatile: func_02074dd8 (OS_AllocFromHeap, `OSHeapInfo.currentHeap`) and func_020753bc (OS_GetTick volatile locals and tick counter). Hardware volatile is genuine: IRQ and IME at 0x04000208, and func_0206a97c at 0x040001a4.
    - Per-function flags and explicit calls: func_ov004_020d6f34 (`#pragma optimization_level 0`), func_020768d0 (-O2), func_ov004_020d633c (matched at -O2 only), and func_0200c220, func_0200d668 and func_0205fe04, which call `func_0207b674` explicitly where `*` was possible.
 6. **Vita device test:** ask first, every time.
-7. **Anchors through data tables.** 102 unanchored functions under 100 bytes are reached only through function tables in .data, and a matched function loads each table's base as a literal. For example, func_0200a8d8 is the word at data_020a2be8+0x14, and matched func_020097b4 loads data_020a2be8. `anchor_audit.py` does not count this edge, so counting it would change the anchor rule.
 
 ## Tools and environment
 
@@ -217,7 +216,7 @@ Do not decide these yourself.
 | 2 Oracles and load map | Done: `nds_loadmap.py`, `nds_prove_bases.py`, `ghidra_build.sh`, `runtime_oracle.py` |
 | 3 All-assembly baseline | Done: `config/arm9/`, `lld_link.py`, `elf_fixups.py`, `fix_header.py`, `phase3_check.sh` |
 | 4 Compiler | `dsi/1.2p1` is pinned. The exact dsi version is not proven, because probes gave identical output across the dsi builds. |
-| 5–8 Matching | In progress: 7,749 of 8,573 |
+| 5–8 Matching | In progress: 7,750 of 8,573 |
 
 **Inputs**
 - DS ROM: `~/Developer/Ghost Trick - Phantom Detective (USA) (En,Fr,De,Es,It).nds`, SHA-1 `bcfe74e5592eef3255fd23758b772226960a1b0b`, game code BGTE.
