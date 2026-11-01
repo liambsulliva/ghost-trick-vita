@@ -87672,6 +87672,50 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,p -fp soft -interworking",
       "verification_sha256": "de8ee08938d33d3c075efe9e4901fc0a48f6f2f36f05063be2c27b0127641ab6"
+    },
+    {
+      "module": "itcm",
+      "address": "0x01ff8478",
+      "name": "func_01ff8478",
+      "size": 20,
+      "source": "src/arm/parallel_escalate_x_func_01ff8478.c",
+      "source_sha256": "dd5f75a5b28978392a8f8bee5d9bc0aae389435f78be63b5f994146cd7367b55",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "865d56f8fe95cbbe16e381d6d1e2c2f3f5a8b7c0986d9d0ea9610612c6e7e0ab"
+    },
+    {
+      "module": "main",
+      "address": "0x0206c868",
+      "name": "func_0206c868",
+      "size": 28,
+      "source": "src/arm/parallel_escalate_x_func_0206c868.c",
+      "source_sha256": "7306fa09930080257a4fc0102248c30d8323ac3fcb17f37e4b3b7623e949d6b0",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "57469c0ed64a761df91c13eb77360a7b9667436c0e3efa63db054dcb160b27da"
+    },
+    {
+      "module": "main",
+      "address": "0x02071e74",
+      "name": "func_02071e74",
+      "size": 28,
+      "source": "src/arm/parallel_escalate_x_func_02071e74.c",
+      "source_sha256": "7699451581a92b7fb8aca6fcffa832cff4b56aea7c2015f1046d7f7c9361705e",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "ab3ddec854f4759f32130058d972c9480ad99b6a2e9e61cdaba05803c208eed0"
+    },
+    {
+      "module": "main",
+      "address": "0x02077518",
+      "name": "func_02077518",
+      "size": 32,
+      "source": "src/arm/parallel_escalate_x_func_02077518.c",
+      "source_sha256": "844991f42f1f6a93ae9a6145588d62e00ba9b2a81a1439719650a5bbbda3cd99",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "be35e7db080752f0b094e6cb51adcf87fad6dd3e073dcae1d18f99360f0ff6cf"
     }
   ]
 }
