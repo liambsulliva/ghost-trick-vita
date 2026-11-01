@@ -7,7 +7,7 @@ Updated 2026-11-01 for the next agent. This is a compacted copy of the 2026-10-3
 **Active task:** byte-match every in-scope function in the DS inventory. Denominator: 8,573 (DS Protect overlay excluded). The 7,104 milestone is passed, and there is no stopping point short of full coverage. Chapter 1 playable delivery is the later goal (see Port project).
 
 **State after the 2026-11-01 late passes (branch `asset-inventory`):**
-- Ledger: 7,981 matched, 592 remaining. By module: main 7,652; ov004 141; ov006 123; ov003 33; ov005 20; ov001 6; itcm 6.
+- Ledger: 7,981 matched, 592 remaining. By module: main 7,651; ov004 141; ov006 123; ov003 33; ov005 20; itcm 7; ov001 6.
 - Deferred: 19 functions in `extracted/decomp/escalation_deferred.json`.
 - Nothing pending: `python3 -I extracted/decomp/integrate_pending.py --dry-run` prints "nothing pending".
 - Working tree is clean except `context_pending_sources/parallel_escalate_m_func_0206b168.c`, which is untracked user work. Leave it in place. It is not a pass.
