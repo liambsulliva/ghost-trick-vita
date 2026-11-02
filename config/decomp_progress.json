@@ -90158,6 +90158,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "98a05c877c0a40a3a7ae0f7ef1f09bc3dbb5f0c67937ee4c2c9aa1d383dc75d4"
+    },
+    {
+      "module": "main",
+      "address": "0x02052c28",
+      "name": "func_02052c28",
+      "size": 20,
+      "source": "src/thumb/parallel_objects_mid_b_func_02052c28.c",
+      "source_sha256": "b81087dad3a7a1a2dcfb576242c2c5537a8956780e2022d2e14eb974d1fd00b8",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "2620e0d4e16ecc9a1dbd652e21d450fc2161b61a22b0a182ace7d091b9174d05"
     }
   ]
 }
