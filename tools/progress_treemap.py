@@ -111,7 +111,7 @@ def make_svg(functions, source_prefix="..", interactive=True, canvas_width=WIDE_
     module_size = 11 if portrait else 12
     tile_size = 10 if portrait else 11
     if portrait:
-        lines = [("Ghost Trick: Phantom Detective", 62, ' font-weight="600"', "#e6eaf0")]
+        lines = [("Ghost Trick Decomp Progress", 62, ' font-weight="600"', "#e6eaf0")]
         lines += [(part, 40, "", "#e6eaf0") for part in subtitle.split(" | ")]
         lines += [("Prepared code across all chapters. Area = function span bytes.", 31, "", "#a7b0bc"), ("Shared byte ranges count once in the totals.", 31, "", "#a7b0bc")]
         title_block = []
