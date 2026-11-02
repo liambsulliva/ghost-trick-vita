@@ -121,6 +121,7 @@ class ProgressTests(unittest.TestCase):
         self.assertIn(f"aspect-ratio: {progress_treemap.PORTRAIT_WIDTH} / {progress_treemap.PORTRAIT_HEIGHT}", viewer)
         self.assertNotIn('<img', viewer)
         self.assertIn('history.scrollRestoration = "manual"', viewer)
+        self.assertIn('<title>Ghost Trick Decomp Progress</title>', viewer)
         self.assertNotIn('<p>', viewer)
 
 

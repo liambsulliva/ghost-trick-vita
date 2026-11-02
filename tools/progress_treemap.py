@@ -110,6 +110,7 @@ def make_svg(functions, source_prefix="..", interactive=True, canvas_width=WIDE_
     portrait = canvas_height > canvas_width
     module_size = 11 if portrait else 12
     tile_size = 10 if portrait else 11
+    map_title = "Ghost Trick Decomp Progress" if portrait else "Ghost Trick: Phantom Detective Decompilation Progress"
     if portrait:
         lines = [("Ghost Trick Decomp Progress", 62, ' font-weight="600"', "#e6eaf0")]
         lines += [(part, 40, "", "#e6eaf0") for part in subtitle.split(" | ")]
@@ -127,7 +128,7 @@ def make_svg(functions, source_prefix="..", interactive=True, canvas_width=WIDE_
                        '<text x="16" y="83" fill="#a7b0bc" font-size="13">Prepared code across all chapters. Area = function span bytes. Shared byte ranges count once in the totals.</text>']
         top = 101
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {canvas_width} {canvas_height}"{sizing} role="{role}" aria-labelledby="title description" font-family="Segoe UI, system-ui, sans-serif">',
-           '<title id="title">Ghost Trick: Phantom Detective Decompilation Progress</title>',
+           f'<title id="title">{map_title}</title>',
            '<desc id="description">' + html.escape(subtitle) + '. Each rectangle is one function. ' + explanation + ' This is the prepared code inventory, not the Chapter 1 dependency count.</desc>',
            '<style>a { cursor: pointer; } a:hover rect, a:focus-visible rect { stroke: #fff; stroke-width: 1; }</style>',
            f'<rect width="{canvas_width}" height="{canvas_height}" fill="#14191f"/>',
@@ -191,7 +192,7 @@ def make_viewer():
         '<head>',
         '<meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
-        '<title>Ghost Trick function progress</title>',
+        '<title>Ghost Trick Decomp Progress</title>',
         '<style>',
         'body { margin: 0; background: #14191f; }',
         'iframe { display: block; height: 100vh; height: 100dvh; border: 0; }',
