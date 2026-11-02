@@ -7,7 +7,7 @@ Updated 2026-11-01 for the next agent. This is a compacted copy of the 2026-10-3
 **Active task:** byte-match every in-scope function in the DS inventory. Denominator: 8,573 (DS Protect overlay excluded). The 7,104 milestone is passed, and there is no stopping point short of full coverage. Chapter 1 playable delivery is the later goal (see Port project).
 
 **State after the 2026-11-01 late passes (branch `asset-inventory`):**
-- Ledger: 8,079 matched, 494 remaining. By module: main 7,741; ov004 143; ov006 127; ov003 33; ov005 21; itcm 7; ov001 7.
+- Ledger: 8,081 matched, 492 remaining. By module: main 7,743; ov004 143; ov006 127; ov003 33; ov005 21; itcm 7; ov001 7.
 - Deferred: 19 functions in `extracted/decomp/escalation_deferred.json`.
 - Nothing pending: `python3 -I extracted/decomp/integrate_pending.py --dry-run` prints "nothing pending".
 - Working tree is clean except `context_pending_sources/parallel_escalate_m_func_0206b168.c`, which is untracked user work. Leave it in place. It is not a pass.
@@ -165,11 +165,12 @@ Do not decide these yourself.
    - SDK routines written as `asm void`, as NitroSDK does: func_01ff83a8 (OSi_DoBoot), func_0207303c (MI_CpuCopy8), func_0206e784 and func_0206eab4 (MTX_RotZ), func_0206e6a8 (MTX_Scale33_), func_02072f08 (CpuClearFast), func_02072f8c (MI_Copy36B), func_02073174 (LZ8 with swpb), func_020748a0 (CP15), func_0207e04c (runtime throw context save), func_02075234 and func_020751b4 (OS exception mode switches), func_020009fc (crt0 autoload with CP15), and CpuSet (BIOS SWI). Added 2026-11-01 (Haiku asm1/asm2 in parallel_arm_high, 30 routines): CP15 control and cache routines func_020747e4, func_02074f5c, 4f6c, 4f7c, 4f8c, 4f9c, 4fac, 4fbc, 4fd0 and 4fe0; the 16 protection-region accessors func_0207500c to func_02075084 (mcr/mrc c6, c0 to c7); clz func_02075ec4; int and unsigned int to double func_0207b250 and func_0207b290; and func_0207e01c (runtime context restore, the partner of func_0207e04c).
    - MSL routines: func_0207a3c0 (`exit`) and func_0207a6e0 (`raise`).
    - Volatile on ordinary RAM: func_0206b958 (`*(volatile unsigned int *)(param_1 + 3)`), func_ov001_020d3b60 (volatile halfword stores into data_020c9e88 and data_020c9e48), func_020315ac (volatile `busy` spin-wait, probably faithful), func_0206a120 and func_0206a270 (volatile CARDiCommon flag), func_0206c138 (volatile-const inline in FS), func_020699b4 (spin-wait on `data_020d0220[1]`) and func_02077fcc (TP_WaitBusy-style spin on the touch-panel `command_flg`; NitroSDK probably declares it volatile). Both spin-waits matched at -O4,p and can only re-read memory in a loop with volatile. These may be fakematches.
-   - SDK-declared volatile: func_02074dd8 (OS_AllocFromHeap, `OSHeapInfo.currentHeap`) and func_020753bc (OS_GetTick volatile locals and tick counter). Hardware volatile is genuine: IRQ and IME at 0x04000208, and func_0206a97c at 0x040001a4.
+   - SDK-declared volatile: func_02074dd8 (OS_AllocFromHeap, `OSHeapInfo.currentHeap`) and func_020753bc (OS_GetTick volatile locals and tick counter), and func_020732e8 (OS_WaitIrq: the vu32 IRQ check buffer at the DTCM base + 0x3ff8). Hardware volatile is genuine: IRQ and IME at 0x04000208, and func_0206a97c at 0x040001a4.
    - Literal data address standing in for a same-file initialized object (added 2026-11-02): func_0202c1a0 and func_020570e4 pass `(T *)0x020a5078` and `0x020adb20` to G3_LoadMtx43 (func_0206f77c, which writes command 0x17 to the geometry FIFO); func_0200ab84 passes `&data_020a2bb8 + 4` for its matrix at 0x020a2bbc. Each reference keeps two pool words for one `.main.data` matrix. A generic probe shows mwcc does that only for an initialized object defined in the same file, and no source here defines data yet, so the faithful form needs that tooling. func_02069e44 (an SDK callback-list walk, not matched) waits on the same tooling: a probe reproduces its two pool loads for the list head only with `N *head = 0;` defined in the file.
    - Volatile outside the rule (added 2026-11-02, not matched): func_ov004_020d5c10 spins on a ready bit (byte 0xaa9, bit 7) and on data_020bbb50, which func_ov004_020d6bf8 sets to 1 from a callback. The reference reloads both inside the wait loops; without `volatile` mwcc hoists the loads and spins on a register (x46_thumb100). Neither is a hardware register or declared volatile by an anchor or the SDK, so it waits for your call. The rest (1-bit and 3-bit bitfields, `bics` clear) is understood. func_ov004_020d64b4 (stream update) has the same need for data_020bbb58, a u64 counter it subtracts from the stream position and then zeroes: a probe reproduces the reference (load order, no register copy, the reload in the subtract path) only with `volatile unsigned long long`, and the rest of the function matches the plain form (x46_thumb123).
    - Per-function flags and explicit calls: func_ov004_020d6f34 (`#pragma optimization_level 0`), func_020768d0 (-O2), func_ov004_020d633c (matched at -O2 only), and func_0200c220, func_0200d668 and func_0205fe04, which call `func_0207b674` explicitly where `*` was possible.
-6. **Vita device test:** ask first, every time.
+6. **func_020785b0, a 4th Opus try.** It is deferred at 3 xhigh tries, but generic probes found the fix: store through `*(unsigned int *)0x020b17a8` (as 99 matched sources do), so mwcc keeps the result load after the last store. Allow one more try?
+7. **Vita device test:** ask first, every time.
 
 ## Tools and environment
 
@@ -219,7 +220,7 @@ Do not decide these yourself.
 | 2 Oracles and load map | Done: `nds_loadmap.py`, `nds_prove_bases.py`, `ghidra_build.sh`, `runtime_oracle.py` |
 | 3 All-assembly baseline | Done: `config/arm9/`, `lld_link.py`, `elf_fixups.py`, `fix_header.py`, `phase3_check.sh` |
 | 4 Compiler | `dsi/1.2p1` is pinned. The exact dsi version is not proven, because probes gave identical output across the dsi builds. On 2026-11-02 a probe found that the non-DSi 1.2 builds (base, sp2, sp2p3, sp3, sp4) copy a later parameter before a hoisted zero, which is the reference order in func_02039c2c, func_02017b60 and func_020044ec. But 30 random matched Thumb functions and all 61 matched sound functions (0x02002000-0x02008000) fail under 1.2/sp3, so this is not a project-wide switch. |
-| 5–8 Matching | In progress: 8,079 of 8,573 |
+| 5–8 Matching | In progress: 8,081 of 8,573 |
 
 **Inputs**
 - DS ROM: `~/Developer/Ghost Trick - Phantom Detective (USA) (En,Fr,De,Es,It).nds`, SHA-1 `bcfe74e5592eef3255fd23758b772226960a1b0b`, game code BGTE.
