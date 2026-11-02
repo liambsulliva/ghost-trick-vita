@@ -7,7 +7,7 @@ Updated 2026-11-01 for the next agent. This is a compacted copy of the 2026-10-3
 **Active task:** byte-match every in-scope function in the DS inventory. Denominator: 8,573 (DS Protect overlay excluded). The 7,104 milestone is passed, and there is no stopping point short of full coverage. Chapter 1 playable delivery is the later goal (see Port project).
 
 **State after the 2026-11-01 late passes (branch `asset-inventory`):**
-- Ledger: 8,023 matched, 550 remaining. By module: main 7,690; ov004 141; ov006 124; ov003 33; ov005 21; itcm 7; ov001 7.
+- Ledger: 8,035 matched, 538 remaining. By module: main 7,702; ov004 141; ov006 124; ov003 33; ov005 21; itcm 7; ov001 7.
 - Deferred: 19 functions in `extracted/decomp/escalation_deferred.json`.
 - Nothing pending: `python3 -I extracted/decomp/integrate_pending.py --dry-run` prints "nothing pending".
 - Working tree is clean except `context_pending_sources/parallel_escalate_m_func_0206b168.c`, which is untracked user work. Leave it in place. It is not a pass.
@@ -166,7 +166,7 @@ Do not decide these yourself.
    - MSL routines: func_0207a3c0 (`exit`) and func_0207a6e0 (`raise`).
    - Volatile on ordinary RAM: func_0206b958 (`*(volatile unsigned int *)(param_1 + 3)`), func_ov001_020d3b60 (volatile halfword stores into data_020c9e88 and data_020c9e48), func_020315ac (volatile `busy` spin-wait, probably faithful), func_0206a120 and func_0206a270 (volatile CARDiCommon flag), func_0206c138 (volatile-const inline in FS), func_020699b4 (spin-wait on `data_020d0220[1]`) and func_02077fcc (TP_WaitBusy-style spin on the touch-panel `command_flg`; NitroSDK probably declares it volatile). Both spin-waits matched at -O4,p and can only re-read memory in a loop with volatile. These may be fakematches.
    - SDK-declared volatile: func_02074dd8 (OS_AllocFromHeap, `OSHeapInfo.currentHeap`) and func_020753bc (OS_GetTick volatile locals and tick counter). Hardware volatile is genuine: IRQ and IME at 0x04000208, and func_0206a97c at 0x040001a4.
-   - Literal data address standing in for a same-file initialized object (added 2026-11-02): func_0202c1a0 and func_020570e4 pass `(T *)0x020a5078` and `0x020adb20` to G3_LoadMtx43 (func_0206f77c, which writes command 0x17 to the geometry FIFO); func_0200ab84 passes `&data_020a2bb8 + 4` for its matrix at 0x020a2bbc. Each reference keeps two pool words for one `.main.data` matrix. A generic probe shows mwcc does that only for an initialized object defined in the same file, and no source here defines data yet, so the faithful form needs that tooling.
+   - Literal data address standing in for a same-file initialized object (added 2026-11-02): func_0202c1a0 and func_020570e4 pass `(T *)0x020a5078` and `0x020adb20` to G3_LoadMtx43 (func_0206f77c, which writes command 0x17 to the geometry FIFO); func_0200ab84 passes `&data_020a2bb8 + 4` for its matrix at 0x020a2bbc. Each reference keeps two pool words for one `.main.data` matrix. A generic probe shows mwcc does that only for an initialized object defined in the same file, and no source here defines data yet, so the faithful form needs that tooling. func_02069e44 (an SDK callback-list walk, not matched) waits on the same tooling: a probe reproduces its two pool loads for the list head only with `N *head = 0;` defined in the file.
    - Per-function flags and explicit calls: func_ov004_020d6f34 (`#pragma optimization_level 0`), func_020768d0 (-O2), func_ov004_020d633c (matched at -O2 only), and func_0200c220, func_0200d668 and func_0205fe04, which call `func_0207b674` explicitly where `*` was possible.
 6. **Vita device test:** ask first, every time.
 
@@ -218,7 +218,7 @@ Do not decide these yourself.
 | 2 Oracles and load map | Done: `nds_loadmap.py`, `nds_prove_bases.py`, `ghidra_build.sh`, `runtime_oracle.py` |
 | 3 All-assembly baseline | Done: `config/arm9/`, `lld_link.py`, `elf_fixups.py`, `fix_header.py`, `phase3_check.sh` |
 | 4 Compiler | `dsi/1.2p1` is pinned. The exact dsi version is not proven, because probes gave identical output across the dsi builds. |
-| 5–8 Matching | In progress: 8,023 of 8,573 |
+| 5–8 Matching | In progress: 8,035 of 8,573 |
 
 **Inputs**
 - DS ROM: `~/Developer/Ghost Trick - Phantom Detective (USA) (En,Fr,De,Es,It).nds`, SHA-1 `bcfe74e5592eef3255fd23758b772226960a1b0b`, game code BGTE.
