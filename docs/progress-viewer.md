@@ -6,7 +6,7 @@ The README uses a compact static SVG. The standalone viewer embeds a separate SV
 
 The [interactive viewer](https://liambsulliva.github.io/ghost-trick-vita/) uses GitHub Pages. The repository and viewer are public. The README preview links to this page rather than GitHub's SVG file viewer. See [GitHub's custom workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 
-Only `index.html` and `treemap.svg` are included in the site artifact. They contain chart geometry, function names, addresses, instruction modes, sizes, matching status, source paths and links. They contain no C/C++ source contents, ROM bytes, game art, extracted assets or compiler tools. GitHub still controls access to the linked source files.
+Only `index.html`, `treemap.svg` and `treemap-portrait.svg` are included in the site artifact. The viewer shows `treemap-portrait.svg`, a taller layout, on portrait screens and `treemap.svg` otherwise. They contain chart geometry, function names, addresses, instruction modes, sizes, matching status, source paths and links. They contain no C/C++ source contents, ROM bytes, game art, extracted assets or compiler tools. GitHub still controls access to the linked source files.
 
 To build a local preview from a checkout:
 
