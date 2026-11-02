@@ -120,6 +120,7 @@ class ProgressTests(unittest.TestCase):
         self.assertIn(f"calc(100dvh * {progress_treemap.WIDE_WIDTH} / {progress_treemap.WIDE_HEIGHT})", viewer)
         self.assertIn(f"aspect-ratio: {progress_treemap.PORTRAIT_WIDTH} / {progress_treemap.PORTRAIT_HEIGHT}", viewer)
         self.assertNotIn('<img', viewer)
+        self.assertIn('history.scrollRestoration = "manual"', viewer)
         self.assertNotIn('<p>', viewer)
 
 
