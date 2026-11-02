@@ -196,7 +196,7 @@ def make_viewer():
         'body { margin: 0; background: #14191f; }',
         'iframe { display: block; height: 100vh; height: 100dvh; border: 0; }',
         f'iframe.landscape {{ width: calc(100vh * {WIDE_WIDTH} / {WIDE_HEIGHT}); width: calc(100dvh * {WIDE_WIDTH} / {WIDE_HEIGHT}); }}',
-        f'iframe.portrait {{ display: none; width: calc(100vh * {PORTRAIT_WIDTH} / {PORTRAIT_HEIGHT}); width: calc(100dvh * {PORTRAIT_WIDTH} / {PORTRAIT_HEIGHT}); }}',
+        f'iframe.portrait {{ display: none; width: 100%; height: auto; aspect-ratio: {PORTRAIT_WIDTH} / {PORTRAIT_HEIGHT}; }}',
         '@media (max-aspect-ratio: 4/5) { iframe.landscape { display: none; } iframe.portrait { display: block; } }',
         '</style>',
         '</head>',
