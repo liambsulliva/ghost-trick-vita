@@ -117,6 +117,7 @@ class ProgressTests(unittest.TestCase):
         viewer = progress_treemap.make_viewer()
         self.assertIn('<iframe class="landscape" src="treemap.svg"', viewer)
         self.assertIn('<iframe class="portrait" src="treemap-portrait.svg"', viewer)
+        self.assertIn(f"calc(100dvh * {progress_treemap.WIDE_WIDTH} / {progress_treemap.WIDE_HEIGHT})", viewer)
         self.assertNotIn('<img', viewer)
         self.assertNotIn('<p>', viewer)
 

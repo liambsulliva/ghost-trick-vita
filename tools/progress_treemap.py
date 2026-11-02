@@ -9,6 +9,8 @@ from urllib.parse import quote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
+WIDE_WIDTH = 1600
+WIDE_HEIGHT = 1092
 PORTRAIT_WIDTH = 1100
 PORTRAIT_HEIGHT = 2380
 
@@ -91,7 +93,7 @@ def rectangles(items, x, y, width, height):
     return rectangles(items[:split], x, y, width, cut) + rectangles(items[split:], x, y + cut, width, height - cut)
 
 
-def make_svg(functions, source_prefix="..", interactive=True, canvas_width=1600, canvas_height=1092):
+def make_svg(functions, source_prefix="..", interactive=True, canvas_width=WIDE_WIDTH, canvas_height=WIDE_HEIGHT):
     matched = [row for row in functions if row["matched"]]
     total_bytes = code_bytes(functions)
     matched_bytes = code_bytes(matched)
@@ -192,9 +194,10 @@ def make_viewer():
         '<title>Ghost Trick function progress</title>',
         '<style>',
         'body { margin: 0; background: #14191f; }',
-        'iframe { display: block; width: 100%; height: 100vh; height: 100dvh; border: 0; }',
-        'iframe.portrait { display: none; }',
-        '@media (orientation: portrait) { iframe.landscape { display: none; } iframe.portrait { display: block; } }',
+        'iframe { display: block; height: 100vh; height: 100dvh; border: 0; }',
+        f'iframe.landscape {{ width: calc(100vh * {WIDE_WIDTH} / {WIDE_HEIGHT}); width: calc(100dvh * {WIDE_WIDTH} / {WIDE_HEIGHT}); }}',
+        f'iframe.portrait {{ display: none; width: calc(100vh * {PORTRAIT_WIDTH} / {PORTRAIT_HEIGHT}); width: calc(100dvh * {PORTRAIT_WIDTH} / {PORTRAIT_HEIGHT}); }}',
+        '@media (max-aspect-ratio: 4/5) { iframe.landscape { display: none; } iframe.portrait { display: block; } }',
         '</style>',
         '</head>',
         '<body>',
