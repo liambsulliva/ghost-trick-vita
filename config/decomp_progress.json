@@ -88563,6 +88563,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "b34cbcaabe2c38f9390bd682e1c9149a4f06b4cf22ad3c1a8def74919be84407"
+    },
+    {
+      "module": "main",
+      "address": "0x02049ab8",
+      "name": "func_02049ab8",
+      "size": 26,
+      "source": "src/thumb/parallel_escalate_x_func_02049ab8.c",
+      "source_sha256": "afa5a5fb30a2973865866ad87801249e0a7ec8c2a60e9a682dca29caa255eb61",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "46a9d7806357d29886117eb9600dd693d99bd1e22cb892d93b2cd50622c6cbe5"
     }
   ]
 }
