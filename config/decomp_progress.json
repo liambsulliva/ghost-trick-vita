@@ -90103,6 +90103,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "b17e9cd522341830fee7a900951808c2bec1a1a2d84720e09b903188a750051d"
+    },
+    {
+      "module": "ov003",
+      "address": "0x020d414c",
+      "name": "func_ov003_020d414c",
+      "size": 8,
+      "source": "src/arm/parallel_arm_library_func_ov003_020d414c.c",
+      "source_sha256": "af28a41a1d1e85de6f77b9c8d38306d597375d86ecea90f9d19573487a385dcc",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,s -fp soft -interworking",
+      "verification_sha256": "c6d6d454513b2382b2424d27c5c9207da2004f1952af3cd4099dfdaaef8baaf7"
     }
   ]
 }
