@@ -86,11 +86,39 @@ class ProgressTests(unittest.TestCase):
         self.assertIn("Static preview", text)
         self.assertNotIn("click to open source", text)
 
+    def test_hosted_svg_scales_to_its_frame_while_static_preview_keeps_its_size(self):
+        rows = [function(0x1000, 2), function(0x1002, 14)]
+        namespace = {"svg": "http://www.w3.org/2000/svg"}
+        hosted = ET.fromstring(progress_treemap.make_svg(rows, "https://github.com/owner/repo/blob/revision/"))
+        self.assertEqual(hosted.attrib["viewBox"], "0 0 1600 1092")
+        self.assertEqual(hosted.attrib["preserveAspectRatio"], "xMinYMid meet")
+        self.assertNotIn("width", hosted.attrib)
+        self.assertNotIn("height", hosted.attrib)
+        static = ET.fromstring(progress_treemap.make_svg(rows, interactive=False))
+        self.assertEqual(static.attrib["width"], "1600")
+        self.assertEqual(static.attrib["height"], "1092")
+        self.assertEqual(static.find("svg:title", namespace).text, "Ghost Trick: Phantom Detective Decompilation Progress")
+
+    def test_portrait_map_keeps_every_tile_inside_its_taller_canvas(self):
+        rows = [function(i * 8, i + 1) for i in range(40)]
+        width, height = progress_treemap.PORTRAIT_WIDTH, progress_treemap.PORTRAIT_HEIGHT
+        svg = ET.fromstring(progress_treemap.make_svg(rows, "https://github.com/owner/repo/blob/revision/", canvas_width=width, canvas_height=height))
+        self.assertEqual(svg.attrib["viewBox"], f"0 0 {width} {height}")
+        tiles = [element for element in svg.iter() if "data-function" in element.attrib]
+        self.assertEqual(len(tiles), 40)
+        for element in tiles:
+            x, y, width, height = (float(element.attrib[name]) for name in ("x", "y", "width", "height"))
+            self.assertGreaterEqual(x, 0)
+            self.assertGreaterEqual(y, 0)
+            self.assertLessEqual(x + width, progress_treemap.PORTRAIT_WIDTH)
+            self.assertLessEqual(y + height, progress_treemap.PORTRAIT_HEIGHT)
+
     def test_hosted_viewer_embeds_svg_as_a_document(self):
-        viewer = progress_treemap.make_viewer("https://github.com/owner/repo/blob/revision/")
-        self.assertIn('<iframe src="treemap.svg"', viewer)
+        viewer = progress_treemap.make_viewer()
+        self.assertIn('<iframe class="landscape" src="treemap.svg"', viewer)
+        self.assertIn('<iframe class="portrait" src="treemap-portrait.svg"', viewer)
         self.assertNotIn('<img', viewer)
-        self.assertIn('href="https://github.com/owner/repo/blob/revision/README.md"', viewer)
+        self.assertNotIn('<p>', viewer)
 
 
 if __name__ == "__main__":

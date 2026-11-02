@@ -9,6 +9,8 @@ from urllib.parse import quote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PORTRAIT_WIDTH = 1100
+PORTRAIT_HEIGHT = 2380
 
 
 def read_functions(config, excluded):
@@ -89,7 +91,7 @@ def rectangles(items, x, y, width, height):
     return rectangles(items[:split], x, y, width, cut) + rectangles(items[split:], x, y + cut, width, height - cut)
 
 
-def make_svg(functions, source_prefix="..", interactive=True):
+def make_svg(functions, source_prefix="..", interactive=True, canvas_width=1600, canvas_height=1092):
     matched = [row for row in functions if row["matched"]]
     total_bytes = code_bytes(functions)
     matched_bytes = code_bytes(matched)
@@ -102,22 +104,40 @@ def make_svg(functions, source_prefix="..", interactive=True):
     subtitle = f'Functions matched: {len(matched):,} / {len(functions):,} ({len(matched) / len(functions):.2%}) | Code bytes matched: {matched_bytes:,} / {total_bytes:,} ({matched_bytes / total_bytes:.2%}) | Modules: {len(modules)}'
     role = "group" if interactive else "img"
     explanation = "Green tiles link to verified C or C++ source; gray tiles have no verified source yet." if interactive else "Static preview. Green means verified C or C++; gray means unmatched."
-    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1092" width="1600" height="1092" role="{role}" aria-labelledby="title description" font-family="Segoe UI, system-ui, sans-serif">',
+    sizing = ' preserveAspectRatio="xMinYMid meet"' if interactive else f' width="{canvas_width}" height="{canvas_height}"'
+    portrait = canvas_height > canvas_width
+    module_size = 11 if portrait else 12
+    tile_size = 10 if portrait else 11
+    if portrait:
+        lines = [("Ghost Trick: Phantom Detective", 62, ' font-weight="600"', "#e6eaf0")]
+        lines += [(part, 40, "", "#e6eaf0") for part in subtitle.split(" | ")]
+        lines += [("Prepared code across all chapters. Area = function span bytes.", 31, "", "#a7b0bc"), ("Shared byte ranges count once in the totals.", 31, "", "#a7b0bc")]
+        title_block = []
+        y = 16
+        for text, size, weight, color in lines:
+            y += size
+            title_block.append(f'<text x="16" y="{y:.1f}" fill="{color}" font-size="{size}"{weight}>{html.escape(text)}</text>')
+            y += size * 0.3
+        top = y + 12
+    else:
+        title_block = ['<text x="16" y="33" fill="#e6eaf0" font-size="24" font-weight="600">Ghost Trick: Phantom Detective Decompilation Progress</text>',
+                       '<text x="16" y="60" fill="#e6eaf0" font-size="15">' + html.escape(subtitle) + '</text>',
+                       '<text x="16" y="83" fill="#a7b0bc" font-size="13">Prepared code across all chapters. Area = function span bytes. Shared byte ranges count once in the totals.</text>']
+        top = 101
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {canvas_width} {canvas_height}"{sizing} role="{role}" aria-labelledby="title description" font-family="Segoe UI, system-ui, sans-serif">',
            '<title id="title">Ghost Trick: Phantom Detective Decompilation Progress</title>',
            '<desc id="description">' + html.escape(subtitle) + '. Each rectangle is one function. ' + explanation + ' This is the prepared code inventory, not the Chapter 1 dependency count.</desc>',
            '<style>a { cursor: pointer; } a:hover rect, a:focus-visible rect { stroke: #fff; stroke-width: 1; }</style>',
-           '<rect width="1600" height="1092" fill="#14191f"/>',
-           '<text x="16" y="33" fill="#e6eaf0" font-size="24" font-weight="600">Ghost Trick: Phantom Detective Decompilation Progress</text>',
-           '<text x="16" y="60" fill="#e6eaf0" font-size="15">' + html.escape(subtitle) + '</text>',
-           '<text x="16" y="83" fill="#a7b0bc" font-size="13">Prepared code across all chapters. Area = function span bytes. Shared byte ranges count once in the totals.</text>']
-    for module, x, y, width, height in rectangles(modules, 12, 101, 1576, 922):
+           f'<rect width="{canvas_width}" height="{canvas_height}" fill="#14191f"/>',
+           *title_block]
+    for module, x, y, width, height in rectangles(modules, 12, top, canvas_width - 24, canvas_height - top - 69):
         pad = min(4, width / 8, height / 8)
         header = min(24, height / 5)
         out.append(f'<rect x="{x:.3f}" y="{y:.3f}" width="{width:.3f}" height="{height:.3f}" fill="#202832" stroke="#8993a1" stroke-width="1"/>')
         done = code_bytes([row for row in module["functions"] if row["matched"]])
         percentage = done / code_bytes(module["functions"])
         if width > 100 and header >= 14:
-            out.append(f'<text x="{x + 6:.3f}" y="{y + 17:.3f}" fill="#e6eaf0" font-size="12" font-weight="600">{module["name"]} · {percentage:.1%}</text>')
+            out.append(f'<text x="{x + 6:.3f}" y="{y + 17:.3f}" fill="#e6eaf0" font-size="{module_size}" font-weight="600">{module["name"]} · {percentage:.1%}</text>')
         leaves = rectangles(module["functions"], x + pad, y + header, width - pad * 2, height - header - pad)
         paths = {"#3b9b72": [], "#535e6d": []}
         labels = []
@@ -143,7 +163,7 @@ def make_svg(functions, source_prefix="..", interactive=True):
             out.append(f'<rect data-function="{html.escape(row["module"] + ":" + row["name"], quote=True)}" x="{left + gap:.3f}" y="{top + gap:.3f}" width="{wide - gap * 2:.3f}" height="{high - gap * 2:.3f}" fill="{color}"><title>{html.escape(title)}</title></rect>')
             if wide > 120 and high > 25:
                 label = row["name"][:int(wide / 7)]
-                out.append(f'<text x="{left + 5:.3f}" y="{top + 17:.3f}" fill="#f1f4f8" font-size="11" pointer-events="none">{html.escape(label)}</text>')
+                out.append(f'<text x="{left + 5:.3f}" y="{top + 17:.3f}" fill="#f1f4f8" font-size="{tile_size}" pointer-events="none">{html.escape(label)}</text>')
             if row["matched"]:
                 out.append('</a>')
         for color, parts in paths.items():
@@ -152,17 +172,17 @@ def make_svg(functions, source_prefix="..", interactive=True):
                 out.append(f'<path fill="{color}" d="{data}"/>')
         out.extend(labels)
     legend = "Verified C/C++ · click to open source" if interactive else "Verified C/C++"
-    out.extend(['<rect x="16" y="1042" width="12" height="12" fill="#3b9b72"/>',
-                '<text x="35" y="1053" fill="#e6eaf0" font-size="13">' + legend + '</text>',
-                '<rect x="300" y="1042" width="12" height="12" fill="#535e6d"/>',
-                '<text x="319" y="1053" fill="#e6eaf0" font-size="13">Unmatched</text>',
-                '<text x="16" y="1079" fill="#a7b0bc" font-size="12">Source: config/arm9 symbols + config/decomp_progress.json. Assembly rebuilds and asset preparation do not count as C matches. DS Protect excluded.</text>',
+    footer = canvas_height - 50
+    out.extend([f'<rect x="16" y="{footer}" width="12" height="12" fill="#3b9b72"/>',
+                f'<text x="35" y="{footer + 11}" fill="#e6eaf0" font-size="13">' + legend + '</text>',
+                f'<rect x="300" y="{footer}" width="12" height="12" fill="#535e6d"/>',
+                f'<text x="319" y="{footer + 11}" fill="#e6eaf0" font-size="13">Unmatched</text>',
+                f'<text x="16" y="{footer + 37}" fill="#a7b0bc" font-size="12">Source: config/arm9 symbols + config/decomp_progress.json. Assembly rebuilds and asset preparation do not count as C matches. DS Protect excluded.</text>',
                 '</svg>'])
     return "\n".join(out) + "\n"
 
 
-def make_viewer(source_url):
-    project = html.escape(source_url.rstrip("/") + "/README.md", quote=True)
+def make_viewer():
     return '\n'.join([
         '<!doctype html>',
         '<html lang="en">',
@@ -170,12 +190,16 @@ def make_viewer(source_url):
         '<meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
         '<title>Ghost Trick function progress</title>',
-        '<style>body { margin: 0; background: #14191f; color: #e6eaf0; font: 16px system-ui, sans-serif; } p { margin: 16px; } a { color: #83dcb4; } iframe { display: block; width: 100%; height: 68.25vw; min-height: 600px; border: 0; }</style>',
+        '<style>',
+        'body { margin: 0; background: #14191f; }',
+        'iframe { display: block; width: 100%; height: 100vh; height: 100dvh; border: 0; }',
+        'iframe.portrait { display: none; }',
+        '@media (orientation: portrait) { iframe.landscape { display: none; } iframe.portrait { display: block; } }',
+        '</style>',
         '</head>',
         '<body>',
-        '<p>Click a green rectangle to open its verified C/C++ source on GitHub. Gray rectangles have no verified source yet. Use browser zoom for small rectangles.</p>',
-        '<p><a href="treemap.svg">Open the full chart</a> · <a href="' + project + '">Project README at this revision</a></p>',
-        '<iframe src="treemap.svg" title="Function treemap with links to verified source"></iframe>',
+        '<iframe class="landscape" src="treemap.svg" loading="lazy" title="Function treemap with links to verified source"></iframe>',
+        '<iframe class="portrait" src="treemap-portrait.svg" loading="lazy" title="Function treemap with links to verified source"></iframe>',
         '</body>',
         '</html>',
         '',
@@ -200,7 +224,8 @@ def main():
     outputs = {args.output: make_svg(functions, source_prefix, interactive=False)}
     if args.site_dir:
         outputs[args.site_dir / "treemap.svg"] = make_svg(functions, args.source_url)
-        outputs[args.site_dir / "index.html"] = make_viewer(args.source_url)
+        outputs[args.site_dir / "treemap-portrait.svg"] = make_svg(functions, args.source_url, canvas_width=PORTRAIT_WIDTH, canvas_height=PORTRAIT_HEIGHT)
+        outputs[args.site_dir / "index.html"] = make_viewer()
     for path, content in outputs.items():
         if args.check:
             if not path.exists() or path.read_text() != content:
