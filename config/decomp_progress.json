@@ -90125,6 +90125,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "3fc52972219fa354ae25d0652f2721399096c0691b110d8ff7144d229efe0868"
+    },
+    {
+      "module": "main",
+      "address": "0x0202f134",
+      "name": "func_0202f134",
+      "size": 54,
+      "source": "src/thumb/parallel_logic_low_c_func_0202f134.cpp",
+      "source_sha256": "d96955b5f5b75bf1b066ee4509674d7ad4e315931c357fed3fec84b452568f17",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "af1b3d068ae9944b4c7103c5bc750253bf361129eac979d78783bdfcd508e361"
     }
   ]
 }
