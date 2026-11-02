@@ -7,7 +7,7 @@ Updated 2026-11-01 for the next agent. This is a compacted copy of the 2026-10-3
 **Active task:** byte-match every in-scope function in the DS inventory. Denominator: 8,573 (DS Protect overlay excluded). The 7,104 milestone is passed, and there is no stopping point short of full coverage. Chapter 1 playable delivery is the later goal (see Port project).
 
 **State after the 2026-11-01 late passes (branch `asset-inventory`):**
-- Ledger: 8,169 matched, 404 remaining. By module: main 7,829; ov004 143; ov006 127; ov003 33; ov005 21; itcm 9; ov001 7.
+- Ledger: 8,176 matched, 397 remaining. By module: main 7,836; ov004 143; ov006 127; ov003 33; ov005 21; itcm 9; ov001 7.
 - Deferred: 19 functions in `extracted/decomp/escalation_deferred.json`.
 - Nothing pending: `python3 -I extracted/decomp/integrate_pending.py --dry-run` prints "nothing pending".
 - Working tree is clean except `context_pending_sources/parallel_escalate_m_func_0206b168.c`, which is untracked user work. Leave it in place. It is not a pass.
@@ -175,7 +175,7 @@ Do not decide these yourself.
 6. **A 4th Opus try for two deferred functions.** (a) func_020785b0: generic probes found the fix: store through `*(unsigned int *)0x020b17a8` (as 99 matched sources do), so mwcc keeps the result load after the last store. (b) func_02001c64: the 3rd try was lost to a compile error from my edit script; the corrected source (index recomputed with `/ 32` in the set block) is `extracted/decomp/parallel_escalate_x/x41_src/func_02001c64__x58_bank_word_recompute_fixed.c`. Allow one more try for each?
 7. **Vita device test:** ask first, every time.
 8. **Address aliases for runtime entry points (added 2026-11-02).** mwcc inline asm rejects `sym+offset` branch operands, and the link step (tools/match_function.py, extracted/decomp/batch_tail.py RUNTIME_ALIASES) only resolves global symbols. An alias by address for these entry points would unlock six functions: `_ll_div` at 0x0207b47c (inside func_0207b46c; needed by MTX_OrthoW func_0206ed14), the `_dadd`/`_dsub` cross entries at +0x10 (func_0207a808, func_0207ab38), the +0xc cross entries of func_0207bd24/func_0207bf54, and the local label func_0207b62c (`_ll_udiv`) calls. Not changed unattended. Also not matchable as asm today: func_020725c4 (SHA-1 block, its constants sit in a gap before the function). Update (2026-11-02 later): the four cross-entry functions and func_0207c1d8 now match without any tooling change, with raw `dcd` words for the cross branches (review list, item 5). The alias would make those branches symbolic again. `_ll_div` (needed by func_0206ed14) and func_0207b62c still wait on it.
-9. **More 4th-try requests (added 2026-11-02).** Deferred after 3 Opus tries, each with a written lead in `parallel_escalate_x/HANDOFF.md`: func_0207d628 (two diffs left), func_0206b728 (two unthreaded branches), func_020695c8 (step through a local), func_0204b560 (one store address), func_02042820 (first store copy), func_0200322c, func_0206f174, func_0206b9dc, func_02002e14, and func_02057fa4 (every byte matches at -O4,s except one cross-jumped `index--; func_020660c4(p)` tail; the probe above suggests the 4th try is the same source at -O2, as func_02067474 matched).
+9. **More 4th-try requests (added 2026-11-02).** Deferred after 3 Opus tries, each with a written lead in `parallel_escalate_x/HANDOFF.md`: func_0207d628 (two diffs left), func_0206b728 (two unthreaded branches), func_020695c8 (step through a local), func_0204b560 (one store address), func_02042820 (first store copy), func_0200322c, func_0206f174, func_0206b9dc, func_02002e14, and func_02057fa4 (every byte matches at -O4,s except one cross-jumped `index--; func_020660c4(p)` tail; the probe above suggests the 4th try is the same source at -O2, as func_02067474 matched). Added later on 2026-11-02 (leads in `parallel_escalate_x/HANDOFF.md`): func_02038848 (one select left: an if/else statement into a local is untested), func_02005cec (the full diff shows a 5..10 jump table, so cases 7-9 are listed, plus the try-1 pan form).
 
 ## Tools and environment
 
@@ -225,7 +225,7 @@ Do not decide these yourself.
 | 2 Oracles and load map | Done: `nds_loadmap.py`, `nds_prove_bases.py`, `ghidra_build.sh`, `runtime_oracle.py` |
 | 3 All-assembly baseline | Done: `config/arm9/`, `lld_link.py`, `elf_fixups.py`, `fix_header.py`, `phase3_check.sh` |
 | 4 Compiler | `dsi/1.2p1` is pinned. The exact dsi version is not proven, because probes gave identical output across the dsi builds. On 2026-11-02 a probe found that the non-DSi 1.2 builds (base, sp2, sp2p3, sp3, sp4) copy a later parameter before a hoisted zero, which is the reference order in func_02039c2c, func_02017b60 and func_020044ec. But 30 random matched Thumb functions and all 61 matched sound functions (0x02002000-0x02008000) fail under 1.2/sp3, so this is not a project-wide switch. |
-| 5–8 Matching | In progress: 8,169 of 8,573 |
+| 5–8 Matching | In progress: 8,176 of 8,573 |
 
 **Inputs**
 - DS ROM: `~/Developer/Ghost Trick - Phantom Detective (USA) (En,Fr,De,Es,It).nds`, SHA-1 `bcfe74e5592eef3255fd23758b772226960a1b0b`, game code BGTE.
