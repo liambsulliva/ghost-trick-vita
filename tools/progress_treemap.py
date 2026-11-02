@@ -103,11 +103,11 @@ def make_svg(functions, source_prefix="..", interactive=True):
     role = "group" if interactive else "img"
     explanation = "Green tiles link to verified C or C++ source; gray tiles have no verified source yet." if interactive else "Static preview. Green means verified C or C++; gray means unmatched."
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1092" width="1600" height="1092" role="{role}" aria-labelledby="title description" font-family="Segoe UI, system-ui, sans-serif">',
-           '<title id="title">Ghost Trick: Phantom Detective Decompilation</title>',
+           '<title id="title">Ghost Trick: Phantom Detective Decompilation Progress</title>',
            '<desc id="description">' + html.escape(subtitle) + '. Each rectangle is one function. ' + explanation + ' This is the prepared code inventory, not the Chapter 1 dependency count.</desc>',
            '<style>a { cursor: pointer; } a:hover rect, a:focus-visible rect { stroke: #fff; stroke-width: 1; }</style>',
            '<rect width="1600" height="1092" fill="#14191f"/>',
-           '<text x="16" y="33" fill="#e6eaf0" font-size="24" font-weight="600">Ghost Trick: Phantom Detective Decompilation</text>',
+           '<text x="16" y="33" fill="#e6eaf0" font-size="24" font-weight="600">Ghost Trick: Phantom Detective Decompilation Progress</text>',
            '<text x="16" y="60" fill="#e6eaf0" font-size="15">' + html.escape(subtitle) + '</text>',
            '<text x="16" y="83" fill="#a7b0bc" font-size="13">Prepared code across all chapters. Area = function span bytes. Shared byte ranges count once in the totals.</text>']
     for module, x, y, width, height in rectangles(modules, 12, 101, 1576, 922):
