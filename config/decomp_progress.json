@@ -89080,6 +89080,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,p -fp soft -interworking",
       "verification_sha256": "2a24cee28166f314d97d9e6cbf16ca5edf84dd210801c0120cb2996c39c544bd"
+    },
+    {
+      "module": "main",
+      "address": "0x0207dfd4",
+      "name": "__FindExceptionTable",
+      "size": 32,
+      "source": "src/arm/parallel_escalate_x___FindExceptionTable.c",
+      "source_sha256": "bef784991a2b63e3d091a1a7c7dc3bfd00ea294d802a4e1aa3a651441d7d3396",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "18611d303615305bdd5b2d3d54e08b71a99bbb6a113692497be5fabd20d68a85"
     }
   ]
 }
