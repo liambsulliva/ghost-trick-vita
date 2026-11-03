@@ -2,6 +2,9 @@
  "_ZN11Obj02007ab8C1Ev": "func_02007ab8",
  "_ZN11Obj02016c4cC1Ev": "func_02016d30",
  "_ZN11Obj02016c4cC2Ev": "func_02016c4c",
+ "_ZN11Obj02016c4cD2Ev": "func_02016e24",
+ "_ZN11Obj02019dc4D0Ev": "func_02019f04",
+ "_ZN11Obj02019dc4D1Ev": "func_02019dc4",
  "_ZN11Obj02041990C1Ev": "func_02041990",
  "_ZN11Obj02064cfcD0Ev": "func_02064dec",
  "_ZN11Obj02064cfcD1Ev": "func_02064cfc",
@@ -12,6 +15,7 @@
  "_ZN13Child02064de8D1Ev": "func_02064de8",
  "_ZTV11Obj02007ab8": "0x020a2b0c",
  "_ZTV11Obj02016c4c": "0x020a3f5c",
+ "_ZTV11Obj02019dc4": "0x020a3c34",
  "_ZTV11Obj02041990": "0x020a7bf8",
  "_ZTV11Obj02064cfc": "0x020b0310",
  "_ZdlPv": "func_02031270"
