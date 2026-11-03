@@ -91830,6 +91830,17 @@
       "compiler": "mwccarm 2.0/sp1p5",
       "flags": "-proc arm946e -O4,s -fp soft -interworking",
       "verification_sha256": "3e71297f6ee9af9b92dc6d8272295cdc6e55a73992f570c360dd450cc5b4bd45"
+    },
+    {
+      "module": "main",
+      "address": "0x02009fe8",
+      "name": "func_02009fe8",
+      "size": 160,
+      "source": "src/thumb/parallel_escalate_x_func_02009fe8.c",
+      "source_sha256": "7b2dfc209a5952ebb239a967a294c2f3f07b153fbf153a96d44db5a49123df70",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "f57d1fcf86653da57185628907af848383ebe982c23d215d15032c8a3c2302bd"
     }
   ]
 }
