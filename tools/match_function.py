@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 import json
 import shutil
 import subprocess
@@ -47,6 +48,46 @@ def read_symbols(path, defined):
                 symbols[name] = [value, data[base + 12] & 0xF]
             i = i + 1
     return symbols
+
+
+def data_section_starts(path):
+    f = open(path, "rb")
+    data = f.read()
+    f.close()
+    section_offset = elf_fixups.read_u32(data, 0x20)
+    section_size = elf_fixups.read_u16(data, 0x2E)
+    section_count = elf_fixups.read_u16(data, 0x30)
+    names_index = elf_fixups.read_u16(data, 0x32)
+    names_offset = elf_fixups.read_u32(data, section_offset + names_index * section_size + 16)
+    section_names = []
+    i = 0
+    while i < section_count:
+        section_names.append(elf_fixups.read_name(data, names_offset + elf_fixups.read_u32(data, section_offset + i * section_size)))
+        i = i + 1
+    starts = {}
+    sections = elf_fixups.read_sections(data)
+    for section in sections:
+        if section[0] != 2:
+            continue
+        strtab_offset = sections[section[3]][1]
+        count = section[2] // 16
+        i = 0
+        while i < count:
+            base = section[1] + i * 16
+            name = elf_fixups.read_name(data, strtab_offset + elf_fixups.read_u32(data, base))
+            value = elf_fixups.read_u32(data, base + 4)
+            section_index = elf_fixups.read_u16(data, base + 14)
+            i = i + 1
+            if section_index == 0 or section_index >= 0xFF00:
+                continue
+            if re.fullmatch(r"data_(?:ov[0-9]+_)?[0-9a-fA-F]{8}", name) is None:
+                continue
+            start = int(name[-8:], 16) - value
+            section_name = section_names[section_index]
+            if starts.get(section_name, start) != start:
+                return None
+            starts[section_name] = start
+    return starts
 
 
 def disassembly(path, start, end):
@@ -105,6 +146,12 @@ def main():
     needed = read_symbols(object_path, False)
     known = read_symbols(REFERENCE_ELF, True)
     linker = [brew_bin("lld", "ld.lld"), "--no-undefined", "--entry=" + candidate_name, "-Ttext=" + hex(address), object_path, "-o", linked_path]
+    starts = data_section_starts(object_path)
+    if starts is None:
+        print("data definitions do not fit one address per section")
+        sys.exit(1)
+    for section_name in sorted(starts):
+        linker.append("--section-start=" + section_name + "=" + hex(starts[section_name]))
     attributes_object = os.path.join(REPO_DIR, "extracted", "lld", "objects", "armv5te.o")
     if os.path.exists(attributes_object):
         elf_fixups.relax_empty_text(attributes_object)
