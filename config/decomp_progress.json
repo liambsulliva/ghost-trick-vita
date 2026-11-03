@@ -92457,6 +92457,17 @@
       "compiler": "mwccarm 2.0/sp1p5",
       "flags": "-proc arm946e -O4,p -Cpp_exceptions off -fp soft -interworking",
       "verification_sha256": "f2fd0b60976b419c8256869c977e97645b3f1361b1d6144d2d0bff8045d05fd8"
+    },
+    {
+      "module": "ov004",
+      "address": "0x020d5120",
+      "name": "func_ov004_020d5120",
+      "size": 20,
+      "source": "src/arm/parallel_arm_library_func_ov004_020d5120.c",
+      "source_sha256": "300ff0bf110caf42122064a05dc5a979a8d1caa1b5d153f574f0cad0d7568d81",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,s -fp soft -interworking",
+      "verification_sha256": "0123224b66449f0083a26650dbb406b9886e0efe0fff15b114e9dde30f143b66"
     }
   ]
 }
