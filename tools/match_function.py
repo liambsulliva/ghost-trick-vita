@@ -17,7 +17,7 @@ BOTTLE = os.path.join(REPO_DIR, "toolchain", "wine-mwcc-run")
 COMPILER_VERSION = "dsi/1.2p1"
 FLAGS = ["-proc", "arm946e", "-thumb", "-O4,s", "-fp", "soft", "-interworking", "-sym", "on"]
 RUNTIME_ALIASES = {"_s32_div_f": "func_0207b694", "_u32_div_f": "func_0207b8a0", "_ll_udiv": "func_0207b62c", "_ll_mul": "func_0207b674", "_ull_mul": "func_0207b674", "_dadd": "func_0207a808", "_dsub": "func_0207ab38", "_dmul": "func_0207aeec", "_dflt": "func_0207b250", "_dgr": "func_0207b2cc", "_dfix": "func_0207baf8", "_dfltu": "func_0207b290"}
-RUNTIME_ADDRESSES = {"_ll_div": 0x0207b47c}
+RUNTIME_ADDRESSES = {"_ll_sdiv": 0x0207b47c}
 
 
 def brew_bin(formula, name):
