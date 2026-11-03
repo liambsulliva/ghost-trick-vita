@@ -16,6 +16,7 @@ BOTTLE = os.path.join(REPO_DIR, "toolchain", "wine-mwcc-run")
 COMPILER_VERSION = "dsi/1.2p1"
 FLAGS = ["-proc", "arm946e", "-thumb", "-O4,s", "-fp", "soft", "-interworking", "-sym", "on"]
 RUNTIME_ALIASES = {"_s32_div_f": "func_0207b694", "_u32_div_f": "func_0207b8a0", "_ll_udiv": "func_0207b62c", "_ll_mul": "func_0207b674", "_ull_mul": "func_0207b674", "_dadd": "func_0207a808", "_dsub": "func_0207ab38", "_dmul": "func_0207aeec", "_dflt": "func_0207b250", "_dgr": "func_0207b2cc", "_dfix": "func_0207baf8", "_dfltu": "func_0207b290"}
+RUNTIME_ADDRESSES = {"_ll_div": 0x0207b47c}
 
 
 def brew_bin(formula, name):
@@ -111,11 +112,16 @@ def main():
     stub_lines = []
     for name in sorted(needed):
         source_name = RUNTIME_ALIASES.get(name, name)
-        if source_name not in known:
+        if source_name in known:
+            value = known[source_name][0]
+            kind = known[source_name][1]
+        elif name in RUNTIME_ADDRESSES:
+            value = RUNTIME_ADDRESSES[name]
+            kind = 2
+        else:
             print("no value for external symbol " + name)
             sys.exit(1)
-        value = known[source_name][0]
-        if known[source_name][1] == 2:
+        if kind == 2:
             stub_lines.append(".global " + name)
             stub_lines.append(".type " + name + ", %function")
             stub_lines.append(".set " + name + ", " + hex(value))
