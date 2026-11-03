@@ -193,6 +193,7 @@ Do not decide these yourself.
    - (c) Per-function flags: -O2 for func_020019d4, func_02000e28, func_0200a1ac, func_0200322c and func_02003298; -O2,p for func_02079f34; non-DSi 1.2 for func_02039c2c, func_020044ec and func_02017b60.
    - (d) A 6th try for func_02057fa4.
    - (e) Main ran three grid rounds each on func_02002e14 (matched 1a05c19) and func_0200611c (held), which went past the 4-try cap. Keep 1a05c19?
+   - (f) `asm` for a hand-written ov004 library (likely a decoder, around 0x020d7b90-0x020d9100 and 0x020e4098-0x020e44fc). It is not SDK or runtime code, so the asm rule doesn't cover it. func_ov004_020d8550 is `b func_ov004_020d8f5c`, which an `asm void` body reproduces exactly. func_ov004_020d7b90 branches into an unnamed code region (0x020d83a0). func_ov004_020e4098 uses pc-relative tables inside .text and conditional `blne`. func_ov004_020d5138 may belong to it too. Should these be written as `asm` and added to the review list?
 
 ## Tools and environment
 
