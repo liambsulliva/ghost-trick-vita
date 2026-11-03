@@ -91280,6 +91280,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "5f8d478c7786d250e0cb533c573984a79ada30ca24ea4edb813fc91e0bcc7970"
+    },
+    {
+      "module": "main",
+      "address": "0x0201fc30",
+      "name": "func_0201fc30",
+      "size": 42,
+      "source": "src/thumb/parallel_logic_low_b_func_0201fc30.c",
+      "source_sha256": "56368463ef272b8d3744b3a86d08e30220112818dfd876b46b91fa6c9f30dbe2",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "23a546ee01cb4b9b0529585faebadee4e226dd960dce25503971fa5dcaf5b7cf"
     }
   ]
 }
