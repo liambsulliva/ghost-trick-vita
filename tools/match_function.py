@@ -112,7 +112,7 @@ def data_section_starts(path):
             i = i + 1
             if section_index == 0 or section_index >= 0xFF00:
                 continue
-            if re.fullmatch(r"data_(?:ov[0-9]+_)?[0-9a-fA-F]{8}", name) is None:
+            if re.fullmatch(r"(?:_ZZ\w+E[0-9]+)?data_(?:ov[0-9]+_)?[0-9a-fA-F]{8}", name) is None:
                 continue
             start = int(name[-8:], 16) - value
             section_name = section_names[section_index]
