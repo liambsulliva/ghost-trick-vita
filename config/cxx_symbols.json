@@ -1,12 +1,15 @@
 {
  "_ZN11Obj02016c4cC1Ev": "func_02016d30",
  "_ZN11Obj02016c4cC2Ev": "func_02016c4c",
+ "_ZN11Obj02041990C1Ev": "func_02041990",
  "_ZN11Obj02064cfcD0Ev": "func_02064dec",
  "_ZN11Obj02064cfcD1Ev": "func_02064cfc",
+ "_ZN12Base02022d70C2Ev": "func_02022d70",
  "_ZN12Base020644b0D2Ev": "func_020644b0",
  "_ZN12Base020644b0dlEPv": "func_0202f644",
  "_ZN13Child02064de8D1Ev": "func_02064de8",
  "_ZTV11Obj02016c4c": "0x020a3f5c",
+ "_ZTV11Obj02041990": "0x020a7bf8",
  "_ZTV11Obj02064cfc": "0x020b0310",
  "_ZdlPv": "func_02031270"
 }
