@@ -50,6 +50,38 @@ def read_symbols(path, defined):
     return symbols
 
 
+CXX_SYMBOLS_PATH = os.path.join(REPO_DIR, "config", "cxx_symbols.json")
+
+
+def apply_cxx_symbols(path):
+    table = {}
+    if os.path.exists(CXX_SYMBOLS_PATH):
+        f = open(CXX_SYMBOLS_PATH)
+        table = json.load(f)
+        f.close()
+    present = set(read_symbols(path, True)) | set(read_symbols(path, False))
+    command = [brew_bin("llvm", "llvm-objcopy")]
+    addresses = {}
+    for name in sorted(present):
+        if name not in table:
+            continue
+        if table[name].startswith("0x"):
+            addresses[name] = int(table[name], 16)
+        else:
+            command = command + ["--redefine-sym", name + "=" + table[name]]
+    if len(command) > 1:
+        subprocess.run(command + [path], check=True)
+    return addresses
+
+
+def function_count(path):
+    count = 0
+    for name, info in read_symbols(path, True).items():
+        if info[1] == 2:
+            count = count + 1
+    return count
+
+
 def data_section_starts(path):
     f = open(path, "rb")
     data = f.read()
@@ -142,6 +174,7 @@ def main():
         print("compile failed")
         sys.exit(1)
     elf_fixups.fix_object(object_path)
+    addresses = apply_cxx_symbols(object_path)
 
     needed = read_symbols(object_path, False)
     known = read_symbols(REFERENCE_ELF, True)
@@ -152,6 +185,8 @@ def main():
         sys.exit(1)
     for section_name in sorted(starts):
         linker.append("--section-start=" + section_name + "=" + hex(starts[section_name]))
+    if function_count(object_path) > 1:
+        linker.append("--gc-sections")
     attributes_object = os.path.join(REPO_DIR, "extracted", "lld", "objects", "armv5te.o")
     if os.path.exists(attributes_object):
         elf_fixups.relax_empty_text(attributes_object)
@@ -165,6 +200,9 @@ def main():
         elif name in RUNTIME_ADDRESSES:
             value = RUNTIME_ADDRESSES[name]
             kind = 2
+        elif name in addresses:
+            value = addresses[name]
+            kind = 1
         else:
             print("no value for external symbol " + name)
             sys.exit(1)
