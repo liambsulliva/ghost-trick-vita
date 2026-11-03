@@ -92028,6 +92028,17 @@
       "compiler": "mwccarm 2.0/sp1p5",
       "flags": "-proc arm946e -O4,s -fp soft -interworking",
       "verification_sha256": "fe250ae11c2fd41c1d23b33c7cfed69605af53311dd7d5fd9fa3c1ee6dace04c"
+    },
+    {
+      "module": "main",
+      "address": "0x02034b3c",
+      "name": "func_02034b3c",
+      "size": 276,
+      "source": "src/thumb/parallel_escalate_x_func_02034b3c.cpp",
+      "source_sha256": "1f8e4eb756f3b9df21b51f17056587719af057c98afdcb30494aa9b57d9624ce",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "a0c50677369701019f938b45eed4815f2b6ba5f24f03e06430025f898eaba269"
     }
   ]
 }
