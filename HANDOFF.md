@@ -190,7 +190,7 @@ Do not decide these yourself.
 10. **Open decisions, 2026-11-03 evening.**
    - (a) func_ov004_020d3bdc (held after 4 tries): `-Cpp_exceptions off` under 2.0/sp1p5 -O4,p gives an exact match. With exceptions on (the default), mwcc keeps the operator new result for the cleanup and ignores the `this` returned by the `new Obj` constructor call (18 lines off). `throw()` specs change nothing. Candidate: `extracted/decomp/parallel_escalate_x/x41_src/func_ov004_020d3bdc__x58_factory_noexc.cpp`, which needs config/cxx_symbols.json entries for its classes.
    - (b) func_ov004_020d4da4, 4e20, 4e90 and 4f00: their buffer pool words (0x020ddafc, 0x020db9fc, 0x020d77cc, 0x020d764c) point into .ov004.text and have no relocation or symbol. Written as `extern char data_020db9fc[];` (the link step resolves any `data_<address>` name by address), 4e20 and 4f00 match exactly in probes. As plain numbers, every 2.0 build if-converts the return. Is a `data_` name acceptable here?
-   - (c) Per-function flags: -O2 for func_020019d4, func_02000e28, func_0200a1ac, func_0200322c and func_02003298; -O1 for func_02007150; -O2,p for func_02079f34; non-DSi 1.2 for func_02039c2c, func_020044ec and func_02017b60.
+   - (c) Per-function flags: -O2 for func_020019d4, func_02000e28, func_0200a1ac, func_0200322c and func_02003298; -O2,p for func_02079f34; non-DSi 1.2 for func_02039c2c, func_020044ec and func_02017b60.
    - (d) A 6th try for func_02057fa4.
    - (e) Main ran three grid rounds each on func_02002e14 (matched 1a05c19) and func_0200611c (held), which went past the 4-try cap. Keep 1a05c19?
 
