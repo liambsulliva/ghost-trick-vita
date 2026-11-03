@@ -92391,6 +92391,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "b1a072e7ca5a7d3ff934526e8d05b6bc3ae5b33d104140a76723d5f62177ea03"
+    },
+    {
+      "module": "main",
+      "address": "0x02007ab8",
+      "name": "func_02007ab8",
+      "size": 92,
+      "source": "src/thumb/parallel_escalate_x_func_02007ab8.cpp",
+      "source_sha256": "b6daa01dc71c3cebeffe3678164e5de2167cce299a25b851caeacc9a35ff770f",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "18fd107d2d9088ea7d54f504fd4ac5d958e18921cda7b512d4fb95852eb84e2f"
     }
   ]
 }
