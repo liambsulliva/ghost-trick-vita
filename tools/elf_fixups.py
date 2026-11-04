@@ -144,6 +144,25 @@ def relax_empty_text(path):
     return relaxed
 
 
+def retype_weak_symbols(data, sections):
+    symtab = None
+    for section in sections:
+        if section[0] == 2:
+            symtab = section
+    if symtab is None:
+        return 0
+    symbol_count = symtab[2] // 16
+    retyped = 0
+    i = 0
+    while i < symbol_count:
+        base = symtab[1] + i * 16
+        if data[base + 12] >> 4 == 13:
+            data[base + 12] = (2 << 4) | (data[base + 12] & 0xF)
+            retyped = retyped + 1
+        i = i + 1
+    return retyped
+
+
 def fix_object(path):
     f = open(path, "rb")
     data = bytearray(f.read())
@@ -152,6 +171,7 @@ def fix_object(path):
     marked = mark_thumb_functions(data, sections)
     relax_thumb_alignment(data, sections)
     retyped = retype_arm_branches(data, sections)
+    retype_weak_symbols(data, sections)
     f = open(path, "wb")
     f.write(data)
     f.close()
