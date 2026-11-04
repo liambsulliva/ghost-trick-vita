@@ -92820,6 +92820,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,p -fp soft -interworking",
       "verification_sha256": "aeede905a5e56ae9d8dc4e408367abf47f8d4b25ffc1a83a9ba38e08b2528f6e"
+    },
+    {
+      "module": "main",
+      "address": "0x02019cec",
+      "name": "func_02019cec",
+      "size": 96,
+      "source": "src/thumb/parallel_escalate_x_func_02019cec.c",
+      "source_sha256": "1d63eeb5221c09c879c9f4ee98c748f1618c12367970d4df8735de5c38587f31",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
+      "verification_sha256": "49b85c60f33c91bb1e96cb08f2717d13f8cc4b82d60b5d5c5206e152c162fc1f"
     }
   ]
 }
