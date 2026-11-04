@@ -93282,6 +93282,28 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "20737de12120efb85c293e135e25ea840573e2b2ef6c6569d7c3b7fa3e77c9c2"
+    },
+    {
+      "module": "ov004",
+      "address": "0x020d8550",
+      "name": "func_ov004_020d8550",
+      "size": 4,
+      "source": "src/arm/parallel_escalate_x_func_ov004_020d8550.c",
+      "source_sha256": "ad10a7dacb674ec465b6c4329de2527384af35c21aeb4c1584fa59a09af84717",
+      "compiler": "mwccarm 2.0/sp1p5",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "33b8557c56de022552e8bc74738739addd38d34dffbc6752381ed3901d0d68ad"
+    },
+    {
+      "module": "ov004",
+      "address": "0x020e4098",
+      "name": "func_ov004_020e4098",
+      "size": 228,
+      "source": "src/arm/parallel_escalate_x_func_ov004_020e4098.c",
+      "source_sha256": "e209b905c2a17692cba22103f4c106138a0b10f869680d2b18f832b5ca9263dc",
+      "compiler": "mwccarm 2.0/sp1p5",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "c05f813dda44ea267f287c219dd41400349235f9c0c15103dd3f91ea907c0210"
     }
   ]
 }
