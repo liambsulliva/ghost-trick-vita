@@ -27,5 +27,7 @@
  "_ZTV11Obj02064cfc": "0x020b0310",
  "_ZTV12Base020d3eb8": "0x020e4780",
  "_ZTV12File020d5134": "0x020e47a4",
- "_ZdlPv": "func_02031270"
+ "_ZdlPv": "func_02031270",
+ "__end__catch": "func_0207d954",
+ "__rethrow": "func_0207e04c"
 }
