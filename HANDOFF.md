@@ -1,10 +1,20 @@
 # Handoff: Ghost Trick PS Vita port
 
-Updated 2026-11-01 for the next agent. This is a compacted copy of the 2026-10-31 handoff, which was about 168 KB. The full earlier text is in git: `git show 18622cc:HANDOFF.md`. Per-function history lives in `config/decomp_progress.json`, each group's `extracted/decomp/parallel_*/HANDOFF.md`, and `git log`. Paths are relative to the repo root. Find a section with `grep -n '^## ' HANDOFF.md`.
+Updated 2026-11-04. This is a compacted copy of the 2026-10-31 handoff, which was about 168 KB. The full earlier text is in git: `git show 18622cc:HANDOFF.md`. Per-function history lives in `config/decomp_progress.json`, each group's `extracted/decomp/parallel_*/HANDOFF.md`, and `git log`. Paths are relative to the repo root. Find a section with `grep -n '^## ' HANDOFF.md`.
 
 ## Start here
 
 **Active task:** byte-match every in-scope function in the DS inventory. Denominator: 8,573 (DS Protect overlay excluded). The 7,104 milestone is passed, and there is no stopping point short of full coverage. Chapter 1 playable delivery is the later goal (see Port project).
+
+**Current resumption, 2026-11-04 (supersedes the historical snapshot below):**
+- Ledger after the current checkpoint: 8,500 matched, 73 remaining. Main 8,102; ov004 173; ov006 141; ov003 44; ov005 23; itcm 10; ov001 7.
+- The user requested smaller subagents for functions **under 200 bytes**, then asked to stagger progress across the five-hour usage window. Use small bounded batches and fewest-tries-first order. The older 150-byte worker cutoff below is historical; no escalation-tool threshold has been changed in this resumption.
+- Usage at 03:04 Eastern: 15% five-hour, 2% weekly; five-hour reset 07:51 Eastern on November 4. Check again at checkpoints; the 98% weekly stop still applies.
+- Restored three already exact held sources using newly verified anchors: func_02026838, func_ov003_020d47fc, func_ov006_020d789c (49fb15b0). New exact bodies: func_02059bd8 (dbfaf3d9), func_02059c0c (b0d9b842), func_02012ee0 (1322b191), and func_02059564 in the checkpoint containing this note. All use dsi/1.2p1 Thumb -O4,s.
+- New batches and coordinator utilities are in `extracted/decomp/parallel_escalate_x/croot_*`. The refreshed audit is `croot_20261104/anchor_refresh.json`, merged into `anchor_all.json`. Watcher files under `extracted/decomp/coordinator_kit/anchors/live/` are old snapshots, not a live watcher.
+- Small-worker notes: `ca_small_a_20261104_12ee0_pair2/ca_HANDOFF.md`, `cb_small_b_HANDOFF.md`, and `cc_small_c_HANDOFF.md`, all under `parallel_escalate_x`. Their failed fresh-anchor targets were subsequently solved by coordinator changes: typed Message fields from verified sibling func_02008a64 for func_02012ee0; actual unsigned-char bitfields for func_02059564; second bound written `<= 1` for func_02059bd8. Do not repeat their prior variants.
+- Three files were already staged at resumption: `context_pending_sources/parallel_escalate_m_func_0206b168.c`, `tests/test_progress_treemap.py`, and `tools/progress_treemap.py`. Preserve them. `croot_20261104/checkpoint.py` wraps the integrator in a temporary Git index, then verifies the original staged patch is unchanged. Do not run the integrator against the ordinary index while these user changes are staged.
+- Wine cannot connect to the existing bottle server inside this session's sandbox. Invoke authorized compiler jobs with host access through the shared compiler lock. Do not kill the shared server. Use a fresh folder after an interrupted compile, and mark incomplete folders abandoned; do not rerun a batch in place.
 
 **State after the 2026-11-01 late passes (branch `asset-inventory`):**
 - Ledger: 8,250 matched, 323 remaining. By module: main 7,891; ov004 145; ov006 134; ov003 41; ov005 23; itcm 9; ov001 7.
