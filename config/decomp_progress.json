@@ -2,9 +2,7 @@
   "excluded_modules": {
     "ov000": "DS Protect is omitted from the Vita port."
   },
-  "excluded_functions": {
-    "func_0207cbc0": "C++ exception unwinder. Reachable only from func_0207d860, which has no direct callers in any code section and whose address appears only in .main.exceptix. Stays in the build as assembly. Excluded by the user on 2026-11-04."
-  },
+  "excluded_functions": {},
   "matched": [
     {
       "module": "main",
@@ -93838,17 +93836,6 @@
     },
     {
       "module": "main",
-      "address": "0x0207d3ec",
-      "name": "func_0207d3ec",
-      "size": 8,
-      "source": "src/arm/parallel_escalate_x_func_0207d3ec.c",
-      "source_sha256": "2b0169f21a0e11eee03bae28c634ade9a7f0811293f4aae8719c251d8fea3e21",
-      "compiler": "mwccarm dsi/1.2p1",
-      "flags": "-proc arm946e -O4,p -fp soft -interworking",
-      "verification_sha256": "370bad706bac3f6c73c1c7726a86ab47d10f3b631def1a94bc785b54d0b94005"
-    },
-    {
-      "module": "main",
       "address": "0x02029da4",
       "name": "func_02029da4",
       "size": 40,
@@ -94242,6 +94229,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -O4,p -fp soft -interworking",
       "verification_sha256": "a90288d12470c6a7a0ba2a06c9177c1a8f3cef08aafd63acbdbc109860c098e4"
+    },
+    {
+      "module": "main",
+      "address": "0x0207cbc0",
+      "name": "func_0207cbc0",
+      "size": 2100,
+      "source": "src/arm/parallel_escalate_x_func_0207cbc0.cpp",
+      "source_sha256": "c9b93fb1558cfc31c177cdb025f65f0cd1bd27867f78135560deb85ce1a51a12",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "47a1196e723487a8976b6c5958e28ce7e4d3a160e6d0af4a49bc4d37132df72e"
     }
   ]
 }
