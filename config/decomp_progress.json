@@ -3,8 +3,7 @@
     "ov000": "DS Protect is omitted from the Vita port."
   },
   "excluded_functions": {
-    "func_0207cbc0": "C++ exception unwinder. Reachable only from func_0207d860, which has no direct callers in any code section and whose address appears only in .main.exceptix. Stays in the build as assembly. Excluded by the user on 2026-11-04.",
-    "func_0207d5c8": "C++ exception catch setup. Called only from func_0207d628, which is reachable only from func_0207d860 (see func_0207cbc0). Stays in the build as assembly. Excluded by the user on 2026-11-04."
+    "func_0207cbc0": "C++ exception unwinder. Reachable only from func_0207d860, which has no direct callers in any code section and whose address appears only in .main.exceptix. Stays in the build as assembly. Excluded by the user on 2026-11-04."
   },
   "matched": [
     {
@@ -94232,6 +94231,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "fe398c30245138d197702749cace8c34e7b1ac16a330c33a3003a86d6b57113d"
+    },
+    {
+      "module": "main",
+      "address": "0x0207d5c8",
+      "name": "func_0207d5c8",
+      "size": 96,
+      "source": "src/arm/parallel_escalate_x_func_0207d5c8.cpp",
+      "source_sha256": "663e0931da38a9b5194916a51d657ddc4fbc80a572e40fb718fe305950eb7935",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -O4,p -fp soft -interworking",
+      "verification_sha256": "a90288d12470c6a7a0ba2a06c9177c1a8f3cef08aafd63acbdbc109860c098e4"
     }
   ]
 }
