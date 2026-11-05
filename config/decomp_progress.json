@@ -2,6 +2,10 @@
   "excluded_modules": {
     "ov000": "DS Protect is omitted from the Vita port."
   },
+  "excluded_functions": {
+    "func_0207cbc0": "C++ exception unwinder. Reachable only from func_0207d860, which has no direct callers in any code section and whose address appears only in .main.exceptix. Stays in the build as assembly. Excluded by the user on 2026-11-04.",
+    "func_0207d5c8": "C++ exception catch setup. Called only from func_0207d628, which is reachable only from func_0207d860 (see func_0207cbc0). Stays in the build as assembly. Excluded by the user on 2026-11-04."
+  },
   "matched": [
     {
       "module": "main",

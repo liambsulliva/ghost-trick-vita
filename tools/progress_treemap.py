@@ -15,12 +15,13 @@ PORTRAIT_WIDTH = 1100
 PORTRAIT_HEIGHT = 2380
 
 
-def read_functions(config, excluded):
+def read_functions(config, excluded, excluded_functions=()):
     paths = [("main", config / "symbols.txt"), ("itcm", config / "itcm/symbols.txt"), ("dtcm", config / "dtcm/symbols.txt")]
     for path in sorted((config / "overlays").glob("ov*/symbols.txt")):
         paths.append((path.parent.name, path))
     functions = []
     seen = set()
+    left_out = set()
     for module, path in paths:
         if module in excluded:
             continue
@@ -31,6 +32,9 @@ def read_functions(config, excluded):
             if match is None:
                 raise ValueError("function has no supported size or mode in " + str(path))
             name, mode, size, address = match.groups()
+            if name in excluded_functions:
+                left_out.add(name)
+                continue
             size = int(size, 16)
             address = int(address, 16)
             key = (module, address)
@@ -40,6 +44,8 @@ def read_functions(config, excluded):
             functions.append({"module": module, "name": name, "mode": mode, "size": size, "address": address, "matched": False})
     if not functions:
         raise ValueError("no functions found")
+    if left_out != set(excluded_functions):
+        raise ValueError("excluded function not found: " + ", ".join(sorted(set(excluded_functions) - left_out)))
     return functions
 
 
@@ -226,7 +232,7 @@ def main():
         if url.scheme != "https" or not url.netloc or url.query or url.fragment:
             parser.error("--site-dir needs --source-url with an HTTPS repository source base URL")
     ledger = json.loads((ROOT / "config/decomp_progress.json").read_text())
-    functions = read_functions(ROOT / "config/arm9", ledger["excluded_modules"])
+    functions = read_functions(ROOT / "config/arm9", ledger["excluded_modules"], ledger.get("excluded_functions", {}))
     apply_matches(functions, ledger, ROOT)
     source_prefix = os.path.relpath(ROOT, args.output.resolve().parent)
     outputs = {args.output: make_svg(functions, source_prefix, interactive=False)}

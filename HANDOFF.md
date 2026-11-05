@@ -4,7 +4,7 @@ Updated 2026-11-04. This is a compacted copy of the 2026-10-31 handoff, which wa
 
 ## Start here
 
-**Active task:** byte-match every in-scope function in the DS inventory. Denominator: 8,573 (DS Protect overlay excluded). The 7,104 milestone is passed, and there is no stopping point short of full coverage. Chapter 1 playable delivery is the later goal (see Port project).
+**Active task:** byte-match every in-scope function in the DS inventory. Denominator: 8,571 (DS Protect overlay excluded, plus the two never-called exception functions under `excluded_functions` in the ledger, which the user approved on 2026-11-04 and which stay in the build as assembly). The 7,104 milestone is passed, and there is no stopping point short of full coverage. Chapter 1 playable delivery is the later goal (see Port project).
 
 **Current resumption, 2026-11-04 (supersedes the historical snapshot below):**
 - Ledger after the current checkpoint: 8,532 matched, 41 remaining. Main 8,129; ov004 178; ov006 141; ov003 44; ov005 23; itcm 10; ov001 7.

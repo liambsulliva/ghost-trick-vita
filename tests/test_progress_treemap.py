@@ -16,6 +16,21 @@ def function(address, size, matched=False, module="main"):
 
 
 class ProgressTests(unittest.TestCase):
+    def test_excluded_function_is_left_out_and_a_wrong_name_is_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config = Path(folder)
+            (config / "itcm").mkdir()
+            (config / "dtcm").mkdir()
+            (config / "overlays").mkdir()
+            (config / "itcm/symbols.txt").write_text("")
+            (config / "dtcm/symbols.txt").write_text("")
+            (config / "symbols.txt").write_text("keep kind:function(arm,size=0x4) addr:0x02000000\ndrop kind:function(arm,size=0x4) addr:0x02000004\n")
+            rows = progress_treemap.read_functions(config, {}, {"drop": "reason"})
+            self.assertEqual([row["name"] for row in rows], ["keep"])
+            self.assertEqual(len(progress_treemap.read_functions(config, {})), 2)
+            with self.assertRaises(ValueError):
+                progress_treemap.read_functions(config, {}, {"missing": "reason"})
+
     def test_shared_code_is_counted_once_within_each_module(self):
         rows = [function(0x1000, 16), function(0x1002, 14), function(0x1000, 8, module="itcm")]
         self.assertEqual(progress_treemap.code_bytes(rows), 24)
