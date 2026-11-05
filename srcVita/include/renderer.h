@@ -7,6 +7,11 @@
 
 typedef unsigned int renderer_texture;
 
+enum renderer_compressed_format {
+    RENDERER_COMPRESSED_DXT5,
+    RENDERER_COMPRESSED_DXT1
+};
+
 struct renderer_rect {
     float x;
     float y;
@@ -26,6 +31,7 @@ void renderer_shutdown(void);
 void renderer_begin_frame(struct renderer_color clear_color);
 void renderer_end_frame(void);
 renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int width, int height);
+renderer_texture renderer_texture_create_compressed(const unsigned char *blocks, unsigned int block_bytes, int width, int height, enum renderer_compressed_format format);
 void renderer_texture_destroy(renderer_texture texture);
 void renderer_draw_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color tint);
 void renderer_draw_filled_rect(struct renderer_rect screen_area, struct renderer_color color);

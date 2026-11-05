@@ -10,6 +10,16 @@ static int read_one_line(const char *line, struct asset_manifest *manifest)
     if (line[0] == '\0') {
         return ASSET_MANIFEST_OK;
     }
+    if (strncmp(line, "scene ", 6) == 0) {
+        if (manifest->scene_count >= ASSET_MANIFEST_SCENE_MAX) {
+            return ASSET_MANIFEST_ERR_TOO_MANY;
+        }
+        if (sscanf(line, "scene %95s", manifest->scene_names[manifest->scene_count]) != 1) {
+            return ASSET_MANIFEST_ERR_BAD_LINE;
+        }
+        manifest->scene_count = manifest->scene_count + 1;
+        return ASSET_MANIFEST_OK;
+    }
     if (strncmp(line, "background ", 11) == 0) {
         if (manifest->background_count >= ASSET_MANIFEST_BACKGROUND_MAX) {
             return ASSET_MANIFEST_ERR_TOO_MANY;
@@ -39,6 +49,7 @@ int asset_manifest_parse(const char *text, unsigned int text_size, struct asset_
     unsigned int offset;
     int result;
 
+    manifest->scene_count = 0;
     manifest->background_count = 0;
     manifest->animation_count = 0;
     offset = 0;

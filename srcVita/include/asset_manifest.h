@@ -2,7 +2,9 @@
 #define ASSET_MANIFEST_H
 
 #include "animation.h"
+#include "scene.h"
 
+#define ASSET_MANIFEST_SCENE_MAX 16
 #define ASSET_MANIFEST_BACKGROUND_MAX 64
 #define ASSET_MANIFEST_ANIMATION_MAX 512
 
@@ -11,8 +13,10 @@
 #define ASSET_MANIFEST_ERR_TOO_MANY -2
 
 struct asset_manifest {
+    int scene_count;
     int background_count;
     int animation_count;
+    char scene_names[ASSET_MANIFEST_SCENE_MAX][SCENE_NAME_MAX];
     char background_names[ASSET_MANIFEST_BACKGROUND_MAX][TEXTURE_NAME_MAX];
     char animation_names[ASSET_MANIFEST_ANIMATION_MAX][ANIMATION_NAME_MAX];
 };

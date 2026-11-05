@@ -3,9 +3,10 @@
 
 #include "texture_cache.h"
 
-#define ANIMATION_FRAME_MAX 256
+#define ANIMATION_FRAME_MAX 512
 #define ANIMATION_NAME_MAX 96
 #define ANIMATION_DEFAULT_TICKS_PER_SECOND 60
+#define ANIMATION_BLANK_TEXTURE "-"
 
 #define ANIMATION_OK 0
 #define ANIMATION_ERR_EMPTY -1
@@ -20,6 +21,10 @@ struct animation_frame {
     float y;
     float width;
     float height;
+    float u;
+    float v;
+    float u_size;
+    float v_size;
 };
 
 struct animation {
@@ -44,6 +49,7 @@ struct animation_player {
 };
 
 int animation_parse(const char *text, unsigned int text_size, struct animation *animation);
+int animation_frame_is_blank(const struct animation_frame *frame);
 void animation_player_start(struct animation_player *player, const struct animation *animation);
 void animation_player_advance(struct animation_player *player, unsigned long long elapsed_us, animation_frame_ready_check frame_is_ready);
 unsigned int animation_player_count_shown_frames(const struct animation_player *player);

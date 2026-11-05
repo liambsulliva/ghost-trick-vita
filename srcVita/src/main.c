@@ -62,6 +62,12 @@ static int run_one_command(const struct command *command)
         run_log_write("command show_background name=%s ok=%d", command->name, viewer_app_show_background(command->name));
     } else if (command->kind == COMMAND_SHOW_ANIMATION) {
         run_log_write("command show_animation name=%s ok=%d", command->name, viewer_app_show_animation(command->name));
+    } else if (command->kind == COMMAND_PLAY_SCENE) {
+        run_log_write("command play_scene name=%s ok=%d", command->name, viewer_app_play_scene(command->name));
+    } else if (command->kind == COMMAND_HUD_ON) {
+        viewer_app_set_hud_visible(1);
+    } else if (command->kind == COMMAND_HUD_OFF) {
+        viewer_app_set_hud_visible(0);
     } else if (command->kind == COMMAND_QUIT) {
         run_log_write("command quit");
         return 1;

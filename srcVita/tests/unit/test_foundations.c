@@ -116,7 +116,7 @@ static void test_command_names_only_allow_plain_characters(void)
 
 static void test_command_file_parses_each_line_in_order(void)
 {
-    const char text[] = "capture one\r\n\nquit\nbogus\ncapture ../two\nshow_background room\nshow_animation walk_1";
+    const char text[] = "capture one\r\n\nquit\nbogus\ncapture ../two\nshow_background room\nshow_animation walk_1\nplay_scene opening\nhud on\nhud off";
     unsigned int size;
     unsigned int offset;
     struct command command;
@@ -139,6 +139,13 @@ static void test_command_file_parses_each_line_in_order(void)
     offset = command_parse_next_line(text, size, offset, &command);
     CHECK_INT(command.kind, COMMAND_SHOW_ANIMATION);
     CHECK_TEXT(command.name, "walk_1");
+    offset = command_parse_next_line(text, size, offset, &command);
+    CHECK_INT(command.kind, COMMAND_PLAY_SCENE);
+    CHECK_TEXT(command.name, "opening");
+    offset = command_parse_next_line(text, size, offset, &command);
+    CHECK_INT(command.kind, COMMAND_HUD_ON);
+    offset = command_parse_next_line(text, size, offset, &command);
+    CHECK_INT(command.kind, COMMAND_HUD_OFF);
     CHECK_INT(offset, size);
     offset = command_parse_next_line(text, size, offset, &command);
     CHECK_INT(command.kind, COMMAND_NONE);

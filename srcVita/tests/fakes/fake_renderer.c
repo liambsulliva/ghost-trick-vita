@@ -95,6 +95,13 @@ renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int w
     return (renderer_texture)textures_created;
 }
 
+renderer_texture renderer_texture_create_compressed(const unsigned char *blocks, unsigned int block_bytes, int width, int height, enum renderer_compressed_format format)
+{
+    (void)block_bytes;
+    (void)format;
+    return renderer_texture_create(blocks, width, height);
+}
+
 void renderer_texture_destroy(renderer_texture texture)
 {
     texture_is_alive[texture] = 0;

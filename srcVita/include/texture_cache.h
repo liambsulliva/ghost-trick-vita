@@ -5,7 +5,7 @@
 
 #define TEXTURE_CACHE_ENTRY_MAX 512
 #define TEXTURE_NAME_MAX 96
-#define TEXTURE_CACHE_DEFAULT_BUDGET_BYTES (64u * 1024u * 1024u)
+#define TEXTURE_CACHE_DEFAULT_BUDGET_BYTES (128u * 1024u * 1024u)
 
 enum cached_texture_state {
     CACHED_TEXTURE_LOADING,
@@ -40,6 +40,7 @@ void texture_cache_begin_frame(void);
 const struct cached_texture *texture_cache_request(const char *name);
 const struct cached_texture *texture_cache_load_now(const char *name);
 void texture_cache_upload_finished_reads(unsigned int upload_limit);
+int texture_cache_loading_count(void);
 void texture_cache_read_totals(struct texture_cache_totals *totals);
 void texture_cache_clear(void);
 

@@ -9,8 +9,8 @@ static int read_frame_line(const char *line, struct animation_frame *frame)
 {
     int fields_read;
 
-    fields_read = sscanf(line, "frame %95s %u %f %f %f %f", frame->texture_name, &frame->ticks, &frame->x, &frame->y, &frame->width, &frame->height);
-    if (fields_read != 6) {
+    fields_read = sscanf(line, "frame %95s %u %f %f %f %f %f %f %f %f", frame->texture_name, &frame->ticks, &frame->x, &frame->y, &frame->width, &frame->height, &frame->u, &frame->v, &frame->u_size, &frame->v_size);
+    if (fields_read != 10) {
         return ANIMATION_ERR_BAD_LINE;
     }
     if (frame->ticks == 0) {
@@ -74,6 +74,11 @@ int animation_parse(const char *text, unsigned int text_size, struct animation *
         return ANIMATION_ERR_EMPTY;
     }
     return ANIMATION_OK;
+}
+
+int animation_frame_is_blank(const struct animation_frame *frame)
+{
+    return strcmp(frame->texture_name, ANIMATION_BLANK_TEXTURE) == 0;
 }
 
 static unsigned long long frame_duration_us(const struct animation *animation, const struct animation_frame *frame)

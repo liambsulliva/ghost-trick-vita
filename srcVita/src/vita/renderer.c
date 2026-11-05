@@ -95,7 +95,7 @@ void renderer_end_frame(void)
     vglSwapBuffers(GL_FALSE);
 }
 
-renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int width, int height)
+static GLuint start_new_texture(void)
 {
     GLuint texture;
 
@@ -106,12 +106,39 @@ renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int w
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba_pixels);
+    return texture;
+}
+
+static renderer_texture finish_new_texture(GLuint texture)
+{
     if (glGetError() != GL_NO_ERROR) {
         glDeleteTextures(1, &texture);
         return RENDERER_NO_TEXTURE;
     }
     return texture;
+}
+
+renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int width, int height)
+{
+    GLuint texture;
+
+    texture = start_new_texture();
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba_pixels);
+    return finish_new_texture(texture);
+}
+
+renderer_texture renderer_texture_create_compressed(const unsigned char *blocks, unsigned int block_bytes, int width, int height, enum renderer_compressed_format format)
+{
+    GLuint texture;
+    GLenum gl_format;
+
+    gl_format = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+    if (format == RENDERER_COMPRESSED_DXT1) {
+        gl_format = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+    }
+    texture = start_new_texture();
+    glCompressedTexImage2D(GL_TEXTURE_2D, 0, gl_format, width, height, 0, block_bytes, blocks);
+    return finish_new_texture(texture);
 }
 
 void renderer_texture_destroy(renderer_texture texture)

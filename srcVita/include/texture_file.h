@@ -11,7 +11,9 @@
 #define TEXTURE_FILE_ERR_BAD_SIZE -4
 
 enum texture_file_format {
-    TEXTURE_FILE_FORMAT_RGBA8888 = 0
+    TEXTURE_FILE_FORMAT_RGBA8888 = 0,
+    TEXTURE_FILE_FORMAT_DXT5 = 1,
+    TEXTURE_FILE_FORMAT_DXT1 = 2
 };
 
 struct texture_file_header {

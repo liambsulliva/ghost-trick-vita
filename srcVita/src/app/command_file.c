@@ -69,6 +69,17 @@ unsigned int command_parse_next_line(const char *text, unsigned int text_size, u
         command->kind = COMMAND_QUIT;
         return offset;
     }
+    if (strcmp(line, "hud on") == 0) {
+        command->kind = COMMAND_HUD_ON;
+        return offset;
+    }
+    if (strcmp(line, "hud off") == 0) {
+        command->kind = COMMAND_HUD_OFF;
+        return offset;
+    }
+    if (read_named_command(line, "play_scene ", COMMAND_PLAY_SCENE, command)) {
+        return offset;
+    }
     if (read_named_command(line, "capture ", COMMAND_CAPTURE, command)) {
         return offset;
     }

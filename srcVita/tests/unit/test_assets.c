@@ -101,22 +101,50 @@ static void test_texture_header_rejects_bad_files(void)
     CHECK_INT(texture_file_read_header(file, sizeof(file), &header), TEXTURE_FILE_ERR_BAD_SIZE);
 }
 
+static void test_texture_header_checks_compressed_sizes(void)
+{
+    unsigned char file[TEXTURE_FILE_HEADER_SIZE + 64];
+    struct texture_file_header header;
+
+    memset(file, 0, sizeof(file));
+    memcpy(file, "GTEX", 4);
+    write_u32(&file[4], 8);
+    write_u32(&file[8], 8);
+    write_u32(&file[12], TEXTURE_FILE_FORMAT_DXT5);
+    write_u32(&file[16], 64);
+    CHECK_INT(texture_file_read_header(file, sizeof(file), &header), TEXTURE_FILE_OK);
+
+    write_u32(&file[12], TEXTURE_FILE_FORMAT_DXT1);
+    CHECK_INT(texture_file_read_header(file, sizeof(file), &header), TEXTURE_FILE_ERR_BAD_SIZE);
+    write_u32(&file[16], 32);
+    CHECK_INT(texture_file_read_header(file, sizeof(file), &header), TEXTURE_FILE_OK);
+
+    write_u32(&file[4], 6);
+    write_u32(&file[16], 24);
+    CHECK_INT(texture_file_read_header(file, sizeof(file), &header), TEXTURE_FILE_ERR_BAD_SIZE);
+}
+
 static void test_animation_parses_all_fields(void)
 {
     const char text[] =
         "animation walk\n"
         "ticks_per_second 30\n"
         "loops 1\n"
-        "frame walk_00 2 10 20 100 200\n"
+        "frame walk_00 2 10 20 100 200 0 0 0.25 0.5\n"
         "\n"
-        "frame walk_01 3 -5.5 21 100 200\n";
+        "frame walk_01 3 -5.5 21 100 200 0.25 0.5 0.25 0.5\n"
+        "frame - 1 0 0 0 0 0 0 0 0\n";
     static struct animation animation;
 
     CHECK_INT(animation_parse(text, sizeof(text) - 1, &animation), ANIMATION_OK);
     CHECK_TEXT(animation.name, "walk");
     CHECK_INT(animation.ticks_per_second, 30);
     CHECK_INT(animation.loops, 1);
-    CHECK_INT(animation.frame_count, 2);
+    CHECK_INT(animation.frame_count, 3);
+    CHECK(animation.frames[1].u == 0.25f);
+    CHECK(animation.frames[1].v_size == 0.5f);
+    CHECK(!animation_frame_is_blank(&animation.frames[1]));
+    CHECK(animation_frame_is_blank(&animation.frames[2]));
     CHECK_TEXT(animation.frames[1].texture_name, "walk_01");
     CHECK_INT(animation.frames[1].ticks, 3);
     CHECK(animation.frames[1].x == -5.5f);
@@ -127,8 +155,8 @@ static void test_animation_rejects_bad_input(void)
     static struct animation animation;
     const char empty[] = "animation empty\n";
     const char bad_line[] = "dance\n";
-    const char missing_field[] = "frame a 1 2 3\n";
-    const char zero_ticks[] = "frame a 0 0 0 1 1\n";
+    const char missing_field[] = "frame a 1 2 3 4 5\n";
+    const char zero_ticks[] = "frame a 0 0 0 1 1 0 0 1 1\n";
     const char zero_rate[] = "ticks_per_second 0\n";
     char *too_many;
     unsigned int index;
@@ -140,10 +168,10 @@ static void test_animation_rejects_bad_input(void)
     CHECK_INT(animation_parse(zero_ticks, sizeof(zero_ticks) - 1, &animation), ANIMATION_ERR_BAD_TICKS);
     CHECK_INT(animation_parse(zero_rate, sizeof(zero_rate) - 1, &animation), ANIMATION_ERR_BAD_LINE);
 
-    too_many = malloc((ANIMATION_FRAME_MAX + 1) * 20);
+    too_many = malloc((ANIMATION_FRAME_MAX + 1) * 40);
     used = 0;
     for (index = 0; index < ANIMATION_FRAME_MAX + 1; index++) {
-        used = used + (unsigned int)sprintf(&too_many[used], "frame a 1 0 0 1 1\n");
+        used = used + (unsigned int)sprintf(&too_many[used], "frame a 1 0 0 1 1 0 0 1 1\n");
     }
     CHECK_INT(animation_parse(too_many, used, &animation), ANIMATION_ERR_TOO_MANY_FRAMES);
     free(too_many);
@@ -151,7 +179,7 @@ static void test_animation_rejects_bad_input(void)
 
 static void make_two_frame_animation(struct animation *animation, int loops)
 {
-    const char text[] = "ticks_per_second 10\nframe a 1 0 0 1 1\nframe b 2 0 0 1 1\n";
+    const char text[] = "ticks_per_second 10\nframe a 1 0 0 1 1 0 0 1 1\nframe b 2 0 0 1 1 0 0 1 1\n";
 
     animation_parse(text, sizeof(text) - 1, animation);
     animation->loops = loops;
@@ -366,10 +394,12 @@ static void test_loading_textures_are_never_evicted(void)
 
 static void test_manifest_lists_assets(void)
 {
-    const char text[] = "background room\n\nanimation walk\nanimation idle\n";
+    const char text[] = "scene opening\nbackground room\n\nanimation walk\nanimation idle\n";
     static struct asset_manifest manifest;
 
     CHECK_INT(asset_manifest_parse(text, sizeof(text) - 1, &manifest), ASSET_MANIFEST_OK);
+    CHECK_INT(manifest.scene_count, 1);
+    CHECK_TEXT(manifest.scene_names[0], "opening");
     CHECK_INT(manifest.background_count, 1);
     CHECK_INT(manifest.animation_count, 2);
     CHECK_INT(asset_manifest_find_animation(&manifest, "idle"), 1);
@@ -511,6 +541,7 @@ int main(void)
     test_text_lines_handle_endings_and_long_lines();
     test_texture_header_accepts_a_valid_file();
     test_texture_header_rejects_bad_files();
+    test_texture_header_checks_compressed_sizes();
     test_animation_parses_all_fields();
     test_animation_rejects_bad_input();
     test_player_holds_each_frame_for_its_ticks();

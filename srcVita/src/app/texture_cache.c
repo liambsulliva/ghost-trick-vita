@@ -119,6 +119,22 @@ static void mark_missing(struct cached_texture *entry, const char *reason, int c
     totals.missing = totals.missing + 1;
 }
 
+static renderer_texture create_texture_from_file(const struct texture_file_header *header, const unsigned char *pixel_data)
+{
+    int width;
+    int height;
+
+    width = (int)header->width;
+    height = (int)header->height;
+    if (header->format == TEXTURE_FILE_FORMAT_DXT5) {
+        return renderer_texture_create_compressed(pixel_data, header->pixel_data_size, width, height, RENDERER_COMPRESSED_DXT5);
+    }
+    if (header->format == TEXTURE_FILE_FORMAT_DXT1) {
+        return renderer_texture_create_compressed(pixel_data, header->pixel_data_size, width, height, RENDERER_COMPRESSED_DXT1);
+    }
+    return renderer_texture_create(pixel_data, width, height);
+}
+
 static void upload_read_data(struct cached_texture *entry, const struct finished_read *finished)
 {
     struct texture_file_header header;
@@ -138,7 +154,7 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     }
     make_room_for(header.pixel_data_size);
     upload_started_us = timing_now_us();
-    entry->texture = renderer_texture_create(&finished->data[TEXTURE_FILE_HEADER_SIZE], (int)header.width, (int)header.height);
+    entry->texture = create_texture_from_file(&header, &finished->data[TEXTURE_FILE_HEADER_SIZE]);
     if (entry->texture == RENDERER_NO_TEXTURE) {
         mark_missing(entry, "upload", 0);
         return;
@@ -254,16 +270,18 @@ void texture_cache_read_totals(struct texture_cache_totals *totals_out)
     *totals_out = totals;
 }
 
-static int any_entry_is_loading(void)
+int texture_cache_loading_count(void)
 {
+    int count;
     int index;
 
+    count = 0;
     for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
         if (entries[index].in_use && entries[index].state == CACHED_TEXTURE_LOADING) {
-            return 1;
+            count = count + 1;
         }
     }
-    return 0;
+    return count;
 }
 
 void texture_cache_clear(void)
@@ -271,7 +289,7 @@ void texture_cache_clear(void)
     struct finished_read finished;
     int index;
 
-    while (any_entry_is_loading()) {
+    while (texture_cache_loading_count() > 0) {
         background_reader_wait_for_finished(&finished);
         handle_finished_read(&finished);
     }
