@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "fakes/fake_platform.h"
+#include "fakes/fake_reader.h"
 #include "fakes/fake_renderer.h"
 #include "file.h"
 #include "input.h"
@@ -48,6 +49,7 @@ static void set_up_platform(void)
 {
     fake_files_reset();
     fake_renderer_reset();
+    fake_reader_reset();
     fake_clock_set_us(0);
     run_log_open("run.log");
 }
@@ -291,6 +293,23 @@ static void test_list_widget_closes_after_a_selection(void)
     viewer_app_stop();
 }
 
+static void test_slow_reads_hold_the_frame_and_get_reported_as_late(void)
+{
+    set_up_platform();
+    set_up_complete_assets();
+    viewer_app_start("assets");
+    fake_reader_hold_reads(1);
+    run_frames(7);
+    draw_frame();
+    CHECK(fake_renderer_draw(1)->screen_area.x == 50.0f);
+    fake_reader_release_reads(4);
+    run_frames(3);
+    draw_frame();
+    CHECK(fake_renderer_draw(1)->screen_area.x == 55.0f);
+    viewer_app_stop();
+    CHECK_HAS_TEXT(log_text(), "frames_shown=2 frames_total=2 late_frames=1");
+}
+
 static void test_status_text_reaches_the_hud(void)
 {
     int draws_before;
@@ -339,6 +358,7 @@ int main(void)
     test_cross_pauses_and_triangle_hides_hud();
     test_list_widget_opens_selects_and_closes();
     test_list_widget_closes_after_a_selection();
+    test_slow_reads_hold_the_frame_and_get_reported_as_late();
     test_status_text_reaches_the_hud();
     test_long_run_keeps_memory_bounded_and_every_frame_shown();
     fake_files_reset();

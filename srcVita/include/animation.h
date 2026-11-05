@@ -30,10 +30,14 @@ struct animation {
     struct animation_frame frames[ANIMATION_FRAME_MAX];
 };
 
+typedef int (*animation_frame_ready_check)(const struct animation_frame *frame);
+
 struct animation_player {
     const struct animation *animation;
     unsigned int frame_index;
     unsigned long long time_in_frame_us;
+    unsigned int late_frame_count;
+    int waiting_for_frame;
     int is_finished;
     int is_paused;
     unsigned char frame_was_shown[ANIMATION_FRAME_MAX];
@@ -41,7 +45,7 @@ struct animation_player {
 
 int animation_parse(const char *text, unsigned int text_size, struct animation *animation);
 void animation_player_start(struct animation_player *player, const struct animation *animation);
-void animation_player_advance(struct animation_player *player, unsigned long long elapsed_us);
+void animation_player_advance(struct animation_player *player, unsigned long long elapsed_us, animation_frame_ready_check frame_is_ready);
 unsigned int animation_player_count_shown_frames(const struct animation_player *player);
 const struct animation_frame *animation_player_current_frame(const struct animation_player *player);
 

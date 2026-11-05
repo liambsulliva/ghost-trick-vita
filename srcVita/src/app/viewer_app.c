@@ -23,6 +23,7 @@
 #define LIST_ROW_HEIGHT 22.0f
 #define PLACEHOLDER_SIZE 64
 #define PLACEHOLDER_TILE 8
+#define UPLOADS_PER_FRAME 1
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color highlight = { 0.25f, 0.86f, 0.75f, 1.0f };
@@ -72,7 +73,17 @@ static void log_animation_coverage(void)
     if (current_animation == NULL || player.animation == NULL) {
         return;
     }
-    run_log_write("animation coverage name=%s frames_shown=%u frames_total=%u", current_animation->name, animation_player_count_shown_frames(&player), current_animation->frame_count);
+    run_log_write("animation coverage name=%s frames_shown=%u frames_total=%u late_frames=%u", current_animation->name, animation_player_count_shown_frames(&player), current_animation->frame_count, player.late_frame_count);
+}
+
+static int texture_will_never_block_frame(const struct cached_texture *texture)
+{
+    return texture == NULL || texture->state != CACHED_TEXTURE_LOADING;
+}
+
+static int animation_frame_is_ready(const struct animation_frame *frame)
+{
+    return texture_will_never_block_frame(texture_cache_request(frame->texture_name));
 }
 
 static int load_animation_file(const char *name)
@@ -102,10 +113,11 @@ static int load_animation_file(const char *name)
     }
 
     started_us = timing_now_us();
-    for (frame = 0; frame < current_animation->frame_count; frame++) {
-        texture_cache_get(current_animation->frames[frame].texture_name);
+    texture_cache_load_now(current_animation->frames[0].texture_name);
+    for (frame = 1; frame < current_animation->frame_count; frame++) {
+        texture_cache_request(current_animation->frames[frame].texture_name);
     }
-    run_log_write("animation loaded name=%s frames=%u preload_us=%llu", name, current_animation->frame_count, timing_now_us() - started_us);
+    run_log_write("animation loaded name=%s frames=%u first_frame_us=%llu", name, current_animation->frame_count, timing_now_us() - started_us);
     return 1;
 }
 
@@ -146,7 +158,7 @@ int viewer_app_show_background(const char *name)
     }
     current_background = index;
     run_log_write("background selected name=%s", name);
-    texture_cache_get(name);
+    texture_cache_load_now(name);
     return 1;
 }
 
@@ -301,12 +313,13 @@ static void update_scene_controls(const struct input_state *input)
 void viewer_app_update(const struct input_state *input, unsigned long long elapsed_us)
 {
     texture_cache_begin_frame();
+    texture_cache_upload_finished_reads(UPLOADS_PER_FRAME);
     if (list_is_open) {
         update_list(input);
     } else {
         update_scene_controls(input);
     }
-    animation_player_advance(&player, elapsed_us);
+    animation_player_advance(&player, elapsed_us, animation_frame_is_ready);
 }
 
 void viewer_app_set_status_text(const char *text)
@@ -324,12 +337,14 @@ static void draw_background(void)
         renderer_draw_sprite(placeholder_texture, whole_screen, whole_texture_area(), white);
         return;
     }
-    background = texture_cache_get(manifest->background_names[current_background]);
-    if (background == NULL || background->is_missing) {
+    background = texture_cache_request(manifest->background_names[current_background]);
+    if (background == NULL || background->state == CACHED_TEXTURE_MISSING) {
         renderer_draw_filled_rect(whole_screen, missing_texture_color);
         return;
     }
-    renderer_draw_sprite(background->texture, whole_screen, whole_texture_area(), white);
+    if (background->state == CACHED_TEXTURE_READY) {
+        renderer_draw_sprite(background->texture, whole_screen, whole_texture_area(), white);
+    }
 }
 
 static void draw_animation_frame(void)
@@ -343,12 +358,14 @@ static void draw_animation_frame(void)
         return;
     }
     area = scene_area_to_screen(frame->x, frame->y, frame->width, frame->height);
-    texture = texture_cache_get(frame->texture_name);
-    if (texture == NULL || texture->is_missing) {
+    texture = texture_cache_request(frame->texture_name);
+    if (texture == NULL || texture->state == CACHED_TEXTURE_MISSING) {
         renderer_draw_filled_rect(area, missing_texture_color);
         return;
     }
-    renderer_draw_sprite(texture->texture, area, whole_texture_area(), white);
+    if (texture->state == CACHED_TEXTURE_READY) {
+        renderer_draw_sprite(texture->texture, area, whole_texture_area(), white);
+    }
 }
 
 static void draw_hud(void)

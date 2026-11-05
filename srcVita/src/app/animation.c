@@ -86,16 +86,30 @@ void animation_player_start(struct animation_player *player, const struct animat
     player->animation = animation;
     player->frame_index = 0;
     player->time_in_frame_us = 0;
+    player->late_frame_count = 0;
+    player->waiting_for_frame = 0;
     player->is_finished = 0;
     player->is_paused = 0;
     memset(player->frame_was_shown, 0, sizeof(player->frame_was_shown));
     player->frame_was_shown[0] = 1;
 }
 
-void animation_player_advance(struct animation_player *player, unsigned long long elapsed_us)
+static int next_frame_index(const struct animation *animation, unsigned int frame_index)
+{
+    if (frame_index + 1 < animation->frame_count) {
+        return (int)frame_index + 1;
+    }
+    if (animation->loops) {
+        return 0;
+    }
+    return -1;
+}
+
+void animation_player_advance(struct animation_player *player, unsigned long long elapsed_us, animation_frame_ready_check frame_is_ready)
 {
     const struct animation *animation;
     unsigned long long duration_us;
+    int next_index;
 
     animation = player->animation;
     if (animation == NULL || player->is_finished || player->is_paused) {
@@ -107,16 +121,23 @@ void animation_player_advance(struct animation_player *player, unsigned long lon
         if (player->time_in_frame_us < duration_us) {
             return;
         }
-        player->time_in_frame_us = player->time_in_frame_us - duration_us;
-        if (player->frame_index + 1 < animation->frame_count) {
-            player->frame_index = player->frame_index + 1;
-        } else if (animation->loops) {
-            player->frame_index = 0;
-        } else {
+        next_index = next_frame_index(animation, player->frame_index);
+        if (next_index < 0) {
             player->is_finished = 1;
             player->time_in_frame_us = 0;
             return;
         }
+        if (frame_is_ready != NULL && !frame_is_ready(&animation->frames[next_index])) {
+            if (!player->waiting_for_frame) {
+                player->waiting_for_frame = 1;
+                player->late_frame_count = player->late_frame_count + 1;
+            }
+            player->time_in_frame_us = duration_us;
+            return;
+        }
+        player->waiting_for_frame = 0;
+        player->time_in_frame_us = player->time_in_frame_us - duration_us;
+        player->frame_index = (unsigned int)next_index;
         player->frame_was_shown[player->frame_index] = 1;
     }
 }

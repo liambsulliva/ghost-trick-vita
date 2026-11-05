@@ -2,6 +2,7 @@
 #include "animation.h"
 #include "asset_manifest.h"
 #include "fakes/fake_platform.h"
+#include "fakes/fake_reader.h"
 #include "fakes/fake_renderer.h"
 #include "test_support.h"
 #include "text_lines.h"
@@ -156,6 +157,18 @@ static void make_two_frame_animation(struct animation *animation, int loops)
     animation->loops = loops;
 }
 
+static int frame_is_never_ready(const struct animation_frame *frame)
+{
+    (void)frame;
+    return 0;
+}
+
+static int frame_is_always_ready(const struct animation_frame *frame)
+{
+    (void)frame;
+    return 1;
+}
+
 static void test_player_holds_each_frame_for_its_ticks(void)
 {
     static struct animation animation;
@@ -164,17 +177,17 @@ static void test_player_holds_each_frame_for_its_ticks(void)
     make_two_frame_animation(&animation, 0);
     animation_player_start(&player, &animation);
     CHECK_INT(player.frame_index, 0);
-    animation_player_advance(&player, 99999);
+    animation_player_advance(&player, 99999, NULL);
     CHECK_INT(player.frame_index, 0);
-    animation_player_advance(&player, 1);
+    animation_player_advance(&player, 1, NULL);
     CHECK_INT(player.frame_index, 1);
-    animation_player_advance(&player, 199999);
+    animation_player_advance(&player, 199999, NULL);
     CHECK_INT(player.frame_index, 1);
     CHECK(!player.is_finished);
-    animation_player_advance(&player, 1);
+    animation_player_advance(&player, 1, NULL);
     CHECK(player.is_finished);
     CHECK_INT(player.frame_index, 1);
-    animation_player_advance(&player, 1000000);
+    animation_player_advance(&player, 1000000, NULL);
     CHECK_INT(player.frame_index, 1);
 }
 
@@ -185,7 +198,7 @@ static void test_player_loops_and_catches_up_after_a_stall(void)
 
     make_two_frame_animation(&animation, 1);
     animation_player_start(&player, &animation);
-    animation_player_advance(&player, 350000);
+    animation_player_advance(&player, 350000, NULL);
     CHECK_INT(player.frame_index, 0);
     CHECK_INT(player.time_in_frame_us, 50000);
     CHECK(!player.is_finished);
@@ -199,7 +212,7 @@ static void test_player_pause_stops_time(void)
     make_two_frame_animation(&animation, 1);
     animation_player_start(&player, &animation);
     player.is_paused = 1;
-    animation_player_advance(&player, 900000);
+    animation_player_advance(&player, 900000, NULL);
     CHECK_INT(player.frame_index, 0);
     CHECK_INT(player.time_in_frame_us, 0);
 }
@@ -212,7 +225,7 @@ static void test_player_tracks_which_frames_were_shown(void)
     make_two_frame_animation(&animation, 0);
     animation_player_start(&player, &animation);
     CHECK_INT(animation_player_count_shown_frames(&player), 1);
-    animation_player_advance(&player, 100000);
+    animation_player_advance(&player, 100000, NULL);
     CHECK_INT(animation_player_count_shown_frames(&player), 2);
 }
 
@@ -221,9 +234,134 @@ static void test_player_without_animation_is_harmless(void)
     static struct animation_player player;
 
     player.animation = NULL;
-    animation_player_advance(&player, 1000);
+    animation_player_advance(&player, 1000, NULL);
     CHECK(animation_player_current_frame(&player) == NULL);
     CHECK_INT(animation_player_count_shown_frames(&player), 0);
+}
+
+static void test_player_holds_the_current_frame_until_the_next_is_ready(void)
+{
+    static struct animation animation;
+    static struct animation_player player;
+
+    make_two_frame_animation(&animation, 0);
+    animation_player_start(&player, &animation);
+    animation_player_advance(&player, 500000, frame_is_never_ready);
+    CHECK_INT(player.frame_index, 0);
+    CHECK_INT(player.late_frame_count, 1);
+    animation_player_advance(&player, 500000, frame_is_never_ready);
+    CHECK_INT(player.late_frame_count, 1);
+    CHECK_INT(player.frame_index, 0);
+    animation_player_advance(&player, 0, frame_is_always_ready);
+    CHECK_INT(player.frame_index, 1);
+    CHECK_INT(player.time_in_frame_us, 0);
+    CHECK_INT(player.late_frame_count, 1);
+    CHECK_INT(animation_player_count_shown_frames(&player), 2);
+}
+
+static void test_requested_texture_stays_loading_until_its_read_finishes(void)
+{
+    const struct cached_texture *entry;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_texture_file("tex/a.gtex", 2, 2);
+    texture_cache_init("tex", 1024);
+    fake_reader_hold_reads(1);
+    entry = texture_cache_request("a");
+    CHECK_INT(entry->state, CACHED_TEXTURE_LOADING);
+    CHECK_INT(fake_renderer_textures_created(), 0);
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(entry->state, CACHED_TEXTURE_LOADING);
+    fake_reader_release_reads(1);
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(entry->state, CACHED_TEXTURE_READY);
+    CHECK_INT(fake_renderer_textures_created(), 1);
+}
+
+static void test_requesting_twice_only_reads_once(void)
+{
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_texture_file("tex/a.gtex", 2, 2);
+    texture_cache_init("tex", 1024);
+    fake_reader_hold_reads(1);
+    texture_cache_request("a");
+    texture_cache_request("a");
+    CHECK_INT(fake_reader_pending_count(), 1);
+}
+
+static void test_uploads_respect_the_limit_per_frame(void)
+{
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_texture_file("tex/a.gtex", 2, 2);
+    add_texture_file("tex/b.gtex", 2, 2);
+    texture_cache_init("tex", 1024);
+    texture_cache_request("a");
+    texture_cache_request("b");
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(fake_renderer_textures_created(), 1);
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(fake_renderer_textures_created(), 2);
+}
+
+static void test_refused_read_can_be_requested_again_later(void)
+{
+    const struct cached_texture *entry;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_texture_file("tex/a.gtex", 2, 2);
+    texture_cache_init("tex", 1024);
+    fake_reader_refuse_submits(1);
+    CHECK(texture_cache_request("a") == NULL);
+    fake_reader_refuse_submits(0);
+    entry = texture_cache_load_now("a");
+    CHECK_INT(entry->state, CACHED_TEXTURE_READY);
+}
+
+static void test_clear_waits_for_reads_in_flight(void)
+{
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_texture_file("tex/a.gtex", 2, 2);
+    texture_cache_init("tex", 1024);
+    fake_reader_hold_reads(1);
+    texture_cache_request("a");
+    texture_cache_clear();
+    CHECK_INT(fake_reader_pending_count(), 0);
+    CHECK_INT(fake_renderer_textures_alive(), 0);
+}
+
+static void test_loading_textures_are_never_evicted(void)
+{
+    const struct cached_texture *loading;
+    struct texture_cache_totals totals;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_texture_file("tex/a.gtex", 2, 2);
+    add_texture_file("tex/b.gtex", 2, 2);
+    texture_cache_init("tex", 16);
+    loading = texture_cache_load_now("a");
+    CHECK_INT(loading->state, CACHED_TEXTURE_READY);
+    texture_cache_begin_frame();
+    fake_reader_hold_reads(1);
+    loading = texture_cache_request("b");
+    texture_cache_begin_frame();
+    fake_reader_release_reads(1);
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(loading->state, CACHED_TEXTURE_READY);
+    texture_cache_read_totals(&totals);
+    CHECK_INT(totals.evictions, 1);
+    CHECK_INT(totals.bytes_in_use, 16);
 }
 
 static void test_manifest_lists_assets(void)
@@ -256,12 +394,13 @@ static void test_cache_loads_once_and_reuses(void)
 
     fake_files_reset();
     fake_renderer_reset();
+    fake_reader_reset();
     add_texture_file("tex/a.gtex", 2, 2);
     texture_cache_init("tex", 1024);
-    first = texture_cache_get("a");
-    second = texture_cache_get("a");
+    first = texture_cache_load_now("a");
+    second = texture_cache_load_now("a");
     CHECK(first == second);
-    CHECK(!first->is_missing);
+    CHECK(first->state != CACHED_TEXTURE_MISSING);
     CHECK_INT(fake_renderer_textures_created(), 1);
     texture_cache_read_totals(&totals);
     CHECK_INT(totals.loads, 1);
@@ -274,24 +413,25 @@ static void test_cache_evicts_least_recently_used_when_over_budget(void)
 
     fake_files_reset();
     fake_renderer_reset();
+    fake_reader_reset();
     add_texture_file("tex/a.gtex", 2, 2);
     add_texture_file("tex/b.gtex", 2, 2);
     add_texture_file("tex/c.gtex", 2, 2);
     texture_cache_init("tex", 32);
-    texture_cache_get("a");
+    texture_cache_load_now("a");
     texture_cache_begin_frame();
-    texture_cache_get("b");
+    texture_cache_load_now("b");
     texture_cache_begin_frame();
-    texture_cache_get("a");
+    texture_cache_load_now("a");
     texture_cache_begin_frame();
-    texture_cache_get("c");
+    texture_cache_load_now("c");
     texture_cache_read_totals(&totals);
     CHECK_INT(totals.evictions, 1);
     CHECK_INT(totals.bytes_in_use, 32);
     CHECK_INT(fake_renderer_textures_alive(), 2);
-    texture_cache_get("a");
+    texture_cache_load_now("a");
     CHECK_INT(fake_renderer_textures_created(), 3);
-    texture_cache_get("b");
+    texture_cache_load_now("b");
     CHECK_INT(fake_renderer_textures_created(), 4);
 }
 
@@ -302,11 +442,12 @@ static void test_cache_never_evicts_what_this_frame_uses(void)
 
     fake_files_reset();
     fake_renderer_reset();
+    fake_reader_reset();
     add_texture_file("tex/a.gtex", 2, 2);
     add_texture_file("tex/b.gtex", 2, 2);
     texture_cache_init("tex", 16);
-    first = texture_cache_get("a");
-    texture_cache_get("b");
+    first = texture_cache_load_now("a");
+    texture_cache_load_now("b");
     texture_cache_read_totals(&totals);
     CHECK_INT(totals.evictions, 0);
     CHECK_INT(totals.bytes_in_use, 32);
@@ -320,11 +461,12 @@ static void test_cache_remembers_missing_files_and_only_tries_once(void)
 
     fake_files_reset();
     fake_renderer_reset();
+    fake_reader_reset();
     texture_cache_init("tex", 1024);
-    entry = texture_cache_get("gone");
+    entry = texture_cache_load_now("gone");
     CHECK(entry != NULL);
-    CHECK(entry->is_missing);
-    texture_cache_get("gone");
+    CHECK(entry->state == CACHED_TEXTURE_MISSING);
+    texture_cache_load_now("gone");
     texture_cache_read_totals(&totals);
     CHECK_INT(totals.missing, 1);
     CHECK_INT(fake_renderer_textures_created(), 0);
@@ -336,15 +478,16 @@ static void test_cache_reports_corrupt_and_failed_uploads_as_missing(void)
 
     fake_files_reset();
     fake_renderer_reset();
+    fake_reader_reset();
     fake_files_add("tex/bad.gtex", (const unsigned char *)"not a texture file at all", 25);
     add_texture_file("tex/ok.gtex", 2, 2);
     texture_cache_init("tex", 1024);
-    entry = texture_cache_get("bad");
-    CHECK(entry->is_missing);
+    entry = texture_cache_load_now("bad");
+    CHECK(entry->state == CACHED_TEXTURE_MISSING);
 
     fake_renderer_fail_uploads(1);
-    entry = texture_cache_get("ok");
-    CHECK(entry->is_missing);
+    entry = texture_cache_load_now("ok");
+    CHECK(entry->state == CACHED_TEXTURE_MISSING);
     fake_renderer_fail_uploads(0);
 }
 
@@ -352,11 +495,12 @@ static void test_cache_clear_destroys_every_texture(void)
 {
     fake_files_reset();
     fake_renderer_reset();
+    fake_reader_reset();
     add_texture_file("tex/a.gtex", 2, 2);
     add_texture_file("tex/b.gtex", 2, 2);
     texture_cache_init("tex", 1024);
-    texture_cache_get("a");
-    texture_cache_get("b");
+    texture_cache_load_now("a");
+    texture_cache_load_now("b");
     CHECK_INT(fake_renderer_textures_alive(), 2);
     texture_cache_clear();
     CHECK_INT(fake_renderer_textures_alive(), 0);
@@ -374,6 +518,13 @@ int main(void)
     test_player_pause_stops_time();
     test_player_tracks_which_frames_were_shown();
     test_player_without_animation_is_harmless();
+    test_player_holds_the_current_frame_until_the_next_is_ready();
+    test_requested_texture_stays_loading_until_its_read_finishes();
+    test_requesting_twice_only_reads_once();
+    test_uploads_respect_the_limit_per_frame();
+    test_refused_read_can_be_requested_again_later();
+    test_clear_waits_for_reads_in_flight();
+    test_loading_textures_are_never_evicted();
     test_manifest_lists_assets();
     test_manifest_rejects_unknown_lines();
     test_cache_loads_once_and_reuses();
