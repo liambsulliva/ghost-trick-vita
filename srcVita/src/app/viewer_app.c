@@ -24,6 +24,7 @@
 #define PLACEHOLDER_SIZE 64
 #define PLACEHOLDER_TILE 8
 #define UPLOADS_PER_FRAME 1
+#define NO_PENDING_BACKGROUND -1
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color highlight = { 0.25f, 0.86f, 0.75f, 1.0f };
@@ -38,6 +39,8 @@ static struct ui_list animation_list;
 static renderer_texture placeholder_texture;
 static char status_text[VIEWER_STATUS_TEXT_MAX];
 static int current_background;
+static int pending_background;
+static unsigned long long pending_background_started_us;
 static int current_animation_index;
 static int hud_is_visible;
 static int list_is_open;
@@ -156,9 +159,10 @@ int viewer_app_show_background(const char *name)
         run_log_write("background not_in_manifest name=%s", name);
         return 0;
     }
-    current_background = index;
+    pending_background = index;
+    pending_background_started_us = timing_now_us();
     run_log_write("background selected name=%s", name);
-    texture_cache_load_now(name);
+    texture_cache_request(name);
     return 1;
 }
 
@@ -217,6 +221,7 @@ void viewer_app_start(const char *assets_folder)
     manifest = NULL;
     player.animation = NULL;
     current_background = 0;
+    pending_background = NO_PENDING_BACKGROUND;
     current_animation_index = 0;
     hud_is_visible = 1;
     list_is_open = 0;
@@ -239,7 +244,7 @@ void viewer_app_start(const char *assets_folder)
     }
     ui_list_init(&animation_list, manifest->animation_count, LIST_VISIBLE_ROWS);
     if (manifest->background_count > 0) {
-        viewer_app_show_background(manifest->background_names[0]);
+        texture_cache_load_now(manifest->background_names[0]);
     }
     if (manifest->animation_count > 0) {
         viewer_app_show_animation(manifest->animation_names[0]);
@@ -248,13 +253,36 @@ void viewer_app_start(const char *assets_folder)
 
 static void step_background(int direction)
 {
+    int starting_from;
     int next;
 
     if (manifest == NULL || manifest->background_count == 0) {
         return;
     }
-    next = (current_background + direction + manifest->background_count) % manifest->background_count;
+    starting_from = current_background;
+    if (pending_background != NO_PENDING_BACKGROUND) {
+        starting_from = pending_background;
+    }
+    next = (starting_from + direction + manifest->background_count) % manifest->background_count;
     viewer_app_show_background(manifest->background_names[next]);
+}
+
+static void switch_to_pending_background_when_ready(void)
+{
+    const struct cached_texture *background;
+    const char *name;
+
+    if (pending_background == NO_PENDING_BACKGROUND) {
+        return;
+    }
+    name = manifest->background_names[pending_background];
+    background = texture_cache_request(name);
+    if (background == NULL || background->state == CACHED_TEXTURE_LOADING) {
+        return;
+    }
+    current_background = pending_background;
+    pending_background = NO_PENDING_BACKGROUND;
+    run_log_write("background shown name=%s wait_us=%llu", name, timing_now_us() - pending_background_started_us);
 }
 
 static void step_animation(int direction)
@@ -319,6 +347,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
     } else {
         update_scene_controls(input);
     }
+    switch_to_pending_background_when_ready();
     animation_player_advance(&player, elapsed_us, animation_frame_is_ready);
 }
 

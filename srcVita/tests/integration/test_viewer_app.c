@@ -310,6 +310,31 @@ static void test_slow_reads_hold_the_frame_and_get_reported_as_late(void)
     CHECK_HAS_TEXT(log_text(), "frames_shown=2 frames_total=2 late_frames=1");
 }
 
+static void test_old_background_stays_until_the_new_one_has_loaded(void)
+{
+    renderer_texture first_background;
+
+    set_up_platform();
+    set_up_complete_assets();
+    viewer_app_start("assets");
+    draw_frame();
+    first_background = fake_renderer_draw(0)->texture;
+
+    fake_reader_hold_reads(1);
+    press(INPUT_RIGHT);
+    run_frames(1);
+    draw_frame();
+    CHECK_INT(fake_renderer_draw(0)->texture, first_background);
+    CHECK(strstr(log_text(), "background shown name=room_b") == NULL);
+
+    fake_reader_release_reads(4);
+    run_frames(4);
+    draw_frame();
+    CHECK(fake_renderer_draw(0)->texture != first_background);
+    CHECK_HAS_TEXT(log_text(), "background shown name=room_b");
+    viewer_app_stop();
+}
+
 static void test_status_text_reaches_the_hud(void)
 {
     int draws_before;
@@ -359,6 +384,7 @@ int main(void)
     test_list_widget_opens_selects_and_closes();
     test_list_widget_closes_after_a_selection();
     test_slow_reads_hold_the_frame_and_get_reported_as_late();
+    test_old_background_stays_until_the_new_one_has_loaded();
     test_status_text_reaches_the_hud();
     test_long_run_keeps_memory_bounded_and_every_frame_shown();
     fake_files_reset();
