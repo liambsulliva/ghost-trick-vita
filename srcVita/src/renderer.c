@@ -34,7 +34,6 @@ void renderer_init(void)
 
 void renderer_shutdown(void)
 {
-    vglEnd();
 }
 
 void renderer_begin_frame(float red, float green, float blue)

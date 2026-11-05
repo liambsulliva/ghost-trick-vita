@@ -10,8 +10,11 @@ endif
 PREFIX  := arm-vita-eabi
 CC      := $(PREFIX)-gcc
 CFLAGS  := -Wall -O2 -Iinclude -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard
-LDFLAGS := -Wl,-q,-T$(VITASDK)/$(PREFIX)/lib/app.ld
-LIBS    := -lvitaGL -lvitashark -lSceDisplay_stub -lSceGxm_stub -lSceSysmodule_stub -lSceCtrl_stub -lSceIofilemgr_stub -lSceProcessmgr_stub -lm
+LDFLAGS := -Wl,-q
+LIBS    := -lvitaGL -lstdc++ -lSceLibKernel_stub -lSceAppMgr_stub -lSceAppUtil_stub -lmathneon \
+           -lc -lSceCommonDialog_stub -lm -lSceGxm_stub -lSceDisplay_stub -lSceSysmodule_stub \
+           -lvitashark -lSceShaccCgExt -ltaihen_stub -lSceShaccCg_stub \
+           -lSceKernelDmacMgr_stub -lSceCtrl_stub -lSceIofilemgr_stub -lSceProcessmgr_stub
 
 SRCS := $(wildcard src/*.c)
 OBJS := $(patsubst src/%.c,build/obj/%.o,$(SRCS))
