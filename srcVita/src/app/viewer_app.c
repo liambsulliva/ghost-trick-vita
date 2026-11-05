@@ -146,6 +146,7 @@ int viewer_app_show_background(const char *name)
     }
     current_background = index;
     run_log_write("background selected name=%s", name);
+    texture_cache_get(name);
     return 1;
 }
 
@@ -225,6 +226,9 @@ void viewer_app_start(const char *assets_folder)
         return;
     }
     ui_list_init(&animation_list, manifest->animation_count, LIST_VISIBLE_ROWS);
+    if (manifest->background_count > 0) {
+        viewer_app_show_background(manifest->background_names[0]);
+    }
     if (manifest->animation_count > 0) {
         viewer_app_show_animation(manifest->animation_names[0]);
     }

@@ -2,6 +2,7 @@
 #include <string.h>
 #include "fake_platform.h"
 #include "file.h"
+#include "log_sink.h"
 #include "memory.h"
 #include "timing.h"
 
@@ -17,6 +18,7 @@ struct fake_file {
 static struct fake_file fake_files[FAKE_FILE_COUNT];
 static unsigned long long fake_now_us;
 static int writes_should_fail;
+static char fake_log_path[FILE_PATH_MAX];
 
 void fake_clock_set_us(unsigned long long now_us)
 {
@@ -31,6 +33,21 @@ void fake_clock_advance_us(unsigned long long elapsed_us)
 unsigned long long timing_now_us(void)
 {
     return fake_now_us;
+}
+
+void log_sink_start(const char *path)
+{
+    strncpy(fake_log_path, path, FILE_PATH_MAX - 1);
+    fake_log_path[FILE_PATH_MAX - 1] = '\0';
+}
+
+void log_sink_write(const char *text, unsigned int size)
+{
+    file_append(fake_log_path, (const unsigned char *)text, size);
+}
+
+void log_sink_flush(void)
+{
 }
 
 void *mem_alloc(unsigned int size)

@@ -1,19 +1,18 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include "file.h"
+#include "log_sink.h"
 #include "run_log.h"
 #include "timing.h"
 
-static char log_path[FILE_PATH_MAX];
 static unsigned long long log_start_us;
 static unsigned int log_line_count;
 
 void run_log_open(const char *path)
 {
-    snprintf(log_path, sizeof(log_path), "%s", path);
     log_start_us = timing_now_us();
     log_line_count = 0;
+    log_sink_start(path);
     run_log_write("--- launch");
 }
 
@@ -37,8 +36,13 @@ void run_log_write(const char *format, ...)
     if (line_length >= (int)sizeof(line)) {
         line_length = (int)sizeof(line) - 1;
     }
-    file_append(log_path, (const unsigned char *)line, (unsigned int)line_length);
+    log_sink_write(line, (unsigned int)line_length);
     log_line_count = log_line_count + 1;
+}
+
+void run_log_flush(void)
+{
+    log_sink_flush();
 }
 
 unsigned int run_log_lines_written(void)

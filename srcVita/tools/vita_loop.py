@@ -2,6 +2,7 @@ import argparse
 import ftplib
 import hashlib
 import io
+import json
 import os
 import socket
 import sys
@@ -19,6 +20,9 @@ COMMANDS_PATH = DATA_FOLDER + "/commands.txt"
 CAPTURE_FOLDER = DATA_FOLDER + "/captures"
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD_FOLDER = os.path.join(SRC_VITA_FOLDER, "build")
+ASSETS_FOLDER = DATA_FOLDER + "/assets"
+UPLOAD_RECORD_PATH = os.path.join(BUILD_FOLDER, "uploaded_assets.json")
+SECONDS_FOR_APP_TEARDOWN = 3
 PACKAGE_FILES = [
     ("eboot.bin", "eboot.bin"),
     ("param.sfo", "sce_sys/param.sfo"),
@@ -92,10 +96,7 @@ def upload_verified(connection, local_path, remote_path):
     read_back = download_bytes(connection, temporary_path)
     if sha256_of_bytes(read_back) != sha256_of_bytes(data):
         raise RuntimeError("read-back hash differs for " + temporary_path + "; not retrying")
-    try:
-        connection.delete(remote_path)
-    except ftplib.error_perm:
-        pass
+    delete_if_present(connection, remote_path)
     connection.rename(temporary_path, remote_path)
     read_back = download_bytes(connection, remote_path)
     if sha256_of_bytes(read_back) != sha256_of_bytes(data):
@@ -135,14 +136,82 @@ def install():
     return 0 if "Promoted" in reply else 1
 
 
-def deploy():
+def quit_and_wait():
     print("quit:", send_command("quit " + TITLE_ID))
+    time.sleep(SECONDS_FOR_APP_TEARDOWN)
+
+
+def deploy():
+    quit_and_wait()
     connection = open_ftp()
     try:
         digest = upload_verified(connection, os.path.join(BUILD_FOLDER, "eboot.bin"), APP_FOLDER + "/eboot.bin")
     finally:
         connection.close()
     print("deployed eboot", digest[:16])
+    return 0
+
+
+def sha256_of_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as source:
+        while True:
+            chunk = source.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_upload_record():
+    if not os.path.exists(UPLOAD_RECORD_PATH):
+        return {}
+    with open(UPLOAD_RECORD_PATH, encoding="utf-8") as source:
+        return json.load(source)
+
+
+def save_upload_record(record):
+    os.makedirs(os.path.dirname(UPLOAD_RECORD_PATH), exist_ok=True)
+    with open(UPLOAD_RECORD_PATH, "w", encoding="utf-8") as output:
+        json.dump(record, output, indent=0, sort_keys=True)
+
+
+def list_local_files(folder):
+    files = []
+    for root, _, names in os.walk(folder):
+        for name in sorted(names):
+            local_path = os.path.join(root, name)
+            files.append((local_path, os.path.relpath(local_path, folder).replace(os.sep, "/")))
+    return files
+
+
+def upload_assets(folder):
+    record = load_upload_record()
+    uploaded = 0
+    skipped = 0
+    uploaded_bytes = 0
+    started = time.time()
+    connection = open_ftp()
+    try:
+        made_folders = set()
+        for local_path, relative_path in list_local_files(folder):
+            digest = sha256_of_file(local_path)
+            if record.get(relative_path) == digest:
+                skipped = skipped + 1
+                continue
+            remote_path = ASSETS_FOLDER + "/" + relative_path
+            remote_folder = os.path.dirname(remote_path)
+            if remote_folder not in made_folders:
+                make_folders(connection, remote_folder)
+                made_folders.add(remote_folder)
+            upload_verified(connection, local_path, remote_path)
+            record[relative_path] = digest
+            save_upload_record(record)
+            uploaded = uploaded + 1
+            uploaded_bytes = uploaded_bytes + os.path.getsize(local_path)
+    finally:
+        connection.close()
+    print("assets uploaded", uploaded, "skipped", skipped, "bytes", uploaded_bytes, "seconds", int(time.time() - started))
     return 0
 
 
@@ -170,7 +239,24 @@ def count_launch_markers():
     return count
 
 
+def delete_if_present(connection, path):
+    try:
+        connection.delete(path)
+    except ftplib.error_perm:
+        pass
+
+
+def clear_pending_commands():
+    connection = open_ftp()
+    try:
+        delete_if_present(connection, COMMANDS_PATH)
+        delete_if_present(connection, COMMANDS_PATH + ".new")
+    finally:
+        connection.close()
+
+
 def launch(seconds=30):
+    clear_pending_commands()
     markers_before = count_launch_markers()
     print("launch:", send_command("launch " + TITLE_ID))
     deadline = time.time() + seconds
@@ -198,6 +284,7 @@ def write_commands(text):
     try:
         temporary_path = COMMANDS_PATH + ".new"
         connection.storbinary("STOR " + temporary_path, io.BytesIO(text.encode("ascii")))
+        delete_if_present(connection, COMMANDS_PATH)
         connection.rename(temporary_path, COMMANDS_PATH)
     finally:
         connection.close()
@@ -228,7 +315,7 @@ def pull_capture(name, output_folder):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=["install", "deploy", "launch", "quit", "log", "capture", "pull", "command", "wait", "tell-app"])
+    parser.add_argument("action", choices=["install", "deploy", "launch", "quit", "log", "capture", "pull", "command", "wait", "tell-app", "upload-assets"])
     parser.add_argument("argument", nargs="?", default="")
     parser.add_argument("--output", default=os.path.join(BUILD_FOLDER, "captures"))
     parser.add_argument("--seconds", type=int, default=30)
@@ -254,6 +341,8 @@ def main():
     if arguments.action == "command":
         print(send_command(arguments.argument))
         return 0
+    if arguments.action == "upload-assets":
+        return upload_assets(arguments.argument)
     if arguments.action == "tell-app":
         write_commands(arguments.argument + "\n")
         return 0

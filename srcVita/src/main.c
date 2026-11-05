@@ -193,6 +193,7 @@ int main(void)
     viewer_app_stop();
     renderer_shutdown();
     run_log_write("exit clean");
+    run_log_flush();
     sceKernelExitProcess(0);
     return 0;
 }

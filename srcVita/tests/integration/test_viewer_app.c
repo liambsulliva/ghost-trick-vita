@@ -268,12 +268,24 @@ static void test_list_widget_opens_selects_and_closes(void)
     press(INPUT_LEFT);
     press(INPUT_CROSS);
     CHECK_HAS_TEXT(log_text(), "animation loaded name=idle");
-    CHECK(strstr(log_text(), "background selected") == NULL);
+    CHECK(strstr(log_text(), "background selected name=room_b") == NULL);
     draw_frame();
     CHECK(fake_renderer_draw(1)->screen_area.x == 250.0f);
 
     press(INPUT_R);
     press(INPUT_CIRCLE);
+    press(INPUT_RIGHT);
+    CHECK_HAS_TEXT(log_text(), "background selected name=room_b");
+    viewer_app_stop();
+}
+
+static void test_list_widget_closes_after_a_selection(void)
+{
+    set_up_platform();
+    set_up_complete_assets();
+    viewer_app_start("assets");
+    press(INPUT_R);
+    press(INPUT_CROSS);
     press(INPUT_RIGHT);
     CHECK_HAS_TEXT(log_text(), "background selected name=room_b");
     viewer_app_stop();
@@ -326,6 +338,7 @@ int main(void)
     test_buttons_switch_background_and_animation();
     test_cross_pauses_and_triangle_hides_hud();
     test_list_widget_opens_selects_and_closes();
+    test_list_widget_closes_after_a_selection();
     test_status_text_reaches_the_hud();
     test_long_run_keeps_memory_bounded_and_every_frame_shown();
     fake_files_reset();

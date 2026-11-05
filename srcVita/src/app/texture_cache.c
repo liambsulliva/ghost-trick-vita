@@ -111,6 +111,7 @@ static void load_into_entry(struct cached_texture *entry, const char *name)
     unsigned int file_size;
     struct texture_file_header header;
     unsigned long long started_us;
+    unsigned long long read_ended_us;
     unsigned long long elapsed_us;
     int result;
 
@@ -124,6 +125,7 @@ static void load_into_entry(struct cached_texture *entry, const char *name)
         remember_missing(entry, name, "read", result);
         return;
     }
+    read_ended_us = timing_now_us();
     result = texture_file_read_header(file_data, file_size, &header);
     if (result != TEXTURE_FILE_OK) {
         mem_free(file_data);
@@ -151,7 +153,7 @@ static void load_into_entry(struct cached_texture *entry, const char *name)
     if (elapsed_us > totals.longest_load_us) {
         totals.longest_load_us = elapsed_us;
     }
-    run_log_write("texture loaded name=%s width=%u height=%u bytes=%u load_us=%llu", name, header.width, header.height, header.pixel_data_size, elapsed_us);
+    run_log_write("texture loaded name=%s width=%u height=%u bytes=%u read_us=%llu load_us=%llu", name, header.width, header.height, header.pixel_data_size, read_ended_us - started_us, elapsed_us);
 }
 
 void texture_cache_init(const char *texture_folder, unsigned int budget_bytes)
