@@ -6,8 +6,9 @@
 #define RENDERER_WIDTH 960
 #define RENDERER_HEIGHT 544
 #define RENDERER_POOL_SIZE 0x800000
+#define RENDERER_RESERVED_MAIN_MEMORY 0x1000000
 
-void renderer_init(void);
+int renderer_init(void);
 void renderer_shutdown(void);
 void renderer_begin_frame(float red, float green, float blue);
 void renderer_end_frame(void);

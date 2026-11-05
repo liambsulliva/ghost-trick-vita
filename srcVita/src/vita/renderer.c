@@ -26,10 +26,13 @@ static const float quad_uvs[] = {
     1.0f, 1.0f
 };
 
-void renderer_init(void)
+int renderer_init(void)
 {
-    vglInit(RENDERER_POOL_SIZE);
+    GLboolean resolution_fell_back;
+
+    resolution_fell_back = vglInitExtended(RENDERER_POOL_SIZE, RENDERER_WIDTH, RENDERER_HEIGHT, RENDERER_RESERVED_MAIN_MEMORY, SCE_GXM_MULTISAMPLE_NONE);
     glViewport(0, 0, RENDERER_WIDTH, RENDERER_HEIGHT);
+    return !resolution_fell_back;
 }
 
 void renderer_shutdown(void)
