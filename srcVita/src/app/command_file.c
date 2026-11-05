@@ -1,7 +1,8 @@
 #include <string.h>
 #include "command_file.h"
+#include "text_lines.h"
 
-#define COMMAND_LINE_MAX 128
+#define COMMAND_LINE_MAX 160
 
 static int character_is_safe_in_name(char character)
 {
@@ -35,38 +36,32 @@ int command_name_is_safe(const char *name)
     return 1;
 }
 
-static unsigned int copy_one_line(const char *text, unsigned int text_size, unsigned int offset, char *line)
+static int read_named_command(const char *line, const char *prefix, enum command_kind kind, struct command *command)
 {
-    unsigned int length;
+    unsigned int prefix_length;
 
-    length = 0;
-    while (offset < text_size && text[offset] != '\n') {
-        if (text[offset] != '\r' && length < COMMAND_LINE_MAX - 1) {
-            line[length] = text[offset];
-            length = length + 1;
-        }
-        offset = offset + 1;
+    prefix_length = (unsigned int)strlen(prefix);
+    if (strncmp(line, prefix, prefix_length) != 0) {
+        return 0;
     }
-    line[length] = '\0';
-    if (offset < text_size) {
-        offset = offset + 1;
+    if (!command_name_is_safe(&line[prefix_length])) {
+        return 0;
     }
-    return offset;
+    command->kind = kind;
+    strcpy(command->name, &line[prefix_length]);
+    return 1;
 }
 
 unsigned int command_parse_next_line(const char *text, unsigned int text_size, unsigned int offset, struct command *command)
 {
-    static const char capture_prefix[] = "capture ";
     char line[COMMAND_LINE_MAX];
-    unsigned int prefix_length;
 
     command->kind = COMMAND_NONE;
     command->name[0] = '\0';
     if (offset >= text_size) {
         return offset;
     }
-    offset = copy_one_line(text, text_size, offset, line);
-    prefix_length = sizeof(capture_prefix) - 1;
+    offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
     if (line[0] == '\0') {
         return offset;
     }
@@ -74,9 +69,13 @@ unsigned int command_parse_next_line(const char *text, unsigned int text_size, u
         command->kind = COMMAND_QUIT;
         return offset;
     }
-    if (strncmp(line, capture_prefix, prefix_length) == 0 && command_name_is_safe(&line[prefix_length])) {
-        command->kind = COMMAND_CAPTURE;
-        strcpy(command->name, &line[prefix_length]);
+    if (read_named_command(line, "capture ", COMMAND_CAPTURE, command)) {
+        return offset;
+    }
+    if (read_named_command(line, "show_background ", COMMAND_SHOW_BACKGROUND, command)) {
+        return offset;
+    }
+    if (read_named_command(line, "show_animation ", COMMAND_SHOW_ANIMATION, command)) {
         return offset;
     }
     command->kind = COMMAND_UNKNOWN;

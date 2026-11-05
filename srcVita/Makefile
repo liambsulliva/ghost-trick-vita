@@ -2,7 +2,7 @@ TARGET   := ghosttrick
 TITLE    := Ghost Trick Vita
 TITLE_ID := GHTR00001
 APP_VER  := 01.00
-BUILD_ID := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(shell git diff --quiet HEAD -- . 2>/dev/null || echo -dirty)
+BUILD_ID := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(shell git diff --quiet HEAD -- . 2>/dev/null || echo -dirty)-$(shell date +%Y%m%d%H%M%S)
 
 PREFIX  := arm-vita-eabi
 CC      := $(PREFIX)-gcc
@@ -26,9 +26,11 @@ FAKE_SRCS   := $(wildcard tests/fakes/*.c)
 TEST_SRCS   := $(wildcard tests/unit/*.c) $(wildcard tests/widget/*.c) $(wildcard tests/integration/*.c)
 TEST_BINS   := $(patsubst tests/%.c,build/tests/%,$(TEST_SRCS))
 
-.PHONY: all clean check-sdk test
+.PHONY: all clean check-sdk test always-rebuild
 
 all: check-sdk build/$(TARGET).vpk
+
+build/obj/vita/build_info.o: always-rebuild
 
 check-sdk:
 ifeq ($(strip $(VITASDK)),)

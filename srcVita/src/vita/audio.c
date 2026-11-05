@@ -7,6 +7,8 @@ int audio_open(void)
 
 int audio_play(const void *pcm, unsigned int size)
 {
+    (void)pcm;
+    (void)size;
     return AUDIO_ERR_NOT_IMPLEMENTED;
 }
 

@@ -1,6 +1,8 @@
 #include "bmp_image.h"
 #include "command_file.h"
 #include "fakes/fake_platform.h"
+#include "file.h"
+#include "file_path.h"
 #include "frame_stats.h"
 #include "run_log.h"
 #include "test_pattern.h"
@@ -26,6 +28,19 @@ static void test_frame_stats_summarizes_one_window(void)
     CHECK_HAS_TEXT(text, "frame_us_avg=20000");
     CHECK_HAS_TEXT(text, "update_us=200");
     CHECK_HAS_TEXT(text, "present_us=17500");
+}
+
+static void test_frame_stats_only_counts_frames_over_the_slow_limit(void)
+{
+    struct frame_stats stats;
+
+    frame_stats_reset(&stats);
+    frame_stats_add_frame(&stats, 16000, 0, 0, 0);
+    frame_stats_add_frame(&stats, 17000, 0, 0, 0);
+    frame_stats_add_frame(&stats, FRAME_STATS_SLOW_FRAME_US, 0, 0, 0);
+    CHECK_INT(stats.slow_frame_count, 0);
+    frame_stats_add_frame(&stats, FRAME_STATS_SLOW_FRAME_US + 1, 0, 0, 0);
+    CHECK_INT(stats.slow_frame_count, 1);
 }
 
 static void test_frame_stats_window_fills_after_one_second(void)
@@ -101,7 +116,7 @@ static void test_command_names_only_allow_plain_characters(void)
 
 static void test_command_file_parses_each_line_in_order(void)
 {
-    const char text[] = "capture one\r\n\nquit\nbogus\ncapture ../two";
+    const char text[] = "capture one\r\n\nquit\nbogus\ncapture ../two\nshow_background room\nshow_animation walk_1";
     unsigned int size;
     unsigned int offset;
     struct command command;
@@ -118,6 +133,12 @@ static void test_command_file_parses_each_line_in_order(void)
     CHECK_INT(command.kind, COMMAND_UNKNOWN);
     offset = command_parse_next_line(text, size, offset, &command);
     CHECK_INT(command.kind, COMMAND_UNKNOWN);
+    offset = command_parse_next_line(text, size, offset, &command);
+    CHECK_INT(command.kind, COMMAND_SHOW_BACKGROUND);
+    CHECK_TEXT(command.name, "room");
+    offset = command_parse_next_line(text, size, offset, &command);
+    CHECK_INT(command.kind, COMMAND_SHOW_ANIMATION);
+    CHECK_TEXT(command.name, "walk_1");
     CHECK_INT(offset, size);
     offset = command_parse_next_line(text, size, offset, &command);
     CHECK_INT(command.kind, COMMAND_NONE);
@@ -204,6 +225,19 @@ static void test_fixed_step_counts_steps_and_drops_long_stalls(void)
     CHECK_INT(step.accumulator_us, 0);
 }
 
+static void test_paths_join_and_refuse_to_overflow(void)
+{
+    char path[FILE_PATH_MAX];
+    char long_name[FILE_PATH_MAX];
+
+    CHECK(file_path_join(path, "a/b", "c", ".txt"));
+    CHECK_TEXT(path, "a/b/c.txt");
+    memset(long_name, 'x', sizeof(long_name) - 1);
+    long_name[sizeof(long_name) - 1] = '\0';
+    CHECK(!file_path_join(path, "a", long_name, ""));
+    CHECK_TEXT(path, "");
+}
+
 static void test_frame_timer_measures_elapsed_time(void)
 {
     struct frame_timer timer;
@@ -219,6 +253,7 @@ static void test_frame_timer_measures_elapsed_time(void)
 int main(void)
 {
     test_frame_stats_summarizes_one_window();
+    test_frame_stats_only_counts_frames_over_the_slow_limit();
     test_frame_stats_window_fills_after_one_second();
     test_frame_stats_format_with_no_frames_reports_zero();
     test_bmp_rows_are_padded_to_four_bytes();
@@ -233,6 +268,7 @@ int main(void)
     test_checker_pattern_alternates_tiles();
     test_fixed_step_counts_steps_and_drops_long_stalls();
     test_frame_timer_measures_elapsed_time();
+    test_paths_join_and_refuse_to_overflow();
     fake_files_reset();
     return test_finish("unit/foundations");
 }
