@@ -94100,6 +94100,17 @@
       "compiler": "mwccarm dsi/1.2p1",
       "flags": "-proc arm946e -thumb -O4,s -fp soft -interworking",
       "verification_sha256": "6dfa3fc9795904a89caced737618c596f23e3d42530dc6b20cabe740ed6aecc2"
+    },
+    {
+      "module": "main",
+      "address": "0x02020ecc",
+      "name": "func_02020ecc",
+      "size": 420,
+      "source": "src/thumb/parallel_escalate_x_func_02020ecc.cpp",
+      "source_sha256": "6f3e3f7e12459633201080c0db3773a3052d14ff3c27c6d20d81dfd2eacc6446",
+      "compiler": "mwccarm dsi/1.2p1",
+      "flags": "-proc arm946e -thumb -O2,s -fp soft -interworking",
+      "verification_sha256": "c277a02eb55c38f94cde6e3047a86a038107c0a0f9f81e0d7bede9eef2db5cba"
     }
   ]
 }
