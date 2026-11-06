@@ -12,6 +12,8 @@
 #define SCENE_VIEW_CARD_WIDTH 720.0f
 #define SCENE_VIEW_CARD_HEIGHT 540.0f
 
+void scene_view_start(void);
+void scene_view_stop(void);
 void scene_view_draw(const struct scene_stage *stage);
 
 #endif

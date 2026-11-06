@@ -18,6 +18,7 @@ struct fake_file {
 static struct fake_file fake_files[FAKE_FILE_COUNT];
 static unsigned long long fake_now_us;
 static int writes_should_fail;
+static int memory_blocks_in_use;
 static char fake_log_path[FILE_PATH_MAX];
 
 void fake_clock_set_us(unsigned long long now_us)
@@ -52,15 +53,29 @@ void log_sink_flush(void)
 
 void *mem_alloc(unsigned int size)
 {
+    void *block;
+
     if (size == 0) {
         return NULL;
     }
-    return malloc(size);
+    block = malloc(size);
+    if (block != NULL) {
+        memory_blocks_in_use = memory_blocks_in_use + 1;
+    }
+    return block;
 }
 
 void mem_free(void *block)
 {
+    if (block != NULL) {
+        memory_blocks_in_use = memory_blocks_in_use - 1;
+    }
     free(block);
+}
+
+int fake_memory_blocks_in_use(void)
+{
+    return memory_blocks_in_use;
 }
 
 static struct fake_file *find_file(const char *path)

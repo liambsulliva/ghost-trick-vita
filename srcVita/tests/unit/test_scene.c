@@ -35,6 +35,90 @@ static void test_scene_parse_reads_every_kind_of_step(void)
     CHECK_INT(scene.steps[10].ticks, 90);
 }
 
+static void test_scene_parse_reads_beam_and_mask_steps(void)
+{
+    const char text[] =
+        "scene opening\n"
+        "mask_on\n"
+        "beam_create spot_a -16 64 108 542 60.5\n"
+        "beam_animate spot_a 118 367 30 60\n"
+        "beam_delete spot_a\n"
+        "mask_off\n";
+    static struct scene scene;
+
+    CHECK_INT(scene_parse(text, sizeof(text) - 1, &scene), SCENE_OK);
+    CHECK_INT(scene.step_count, 5);
+    CHECK_INT(scene.steps[0].kind, SCENE_STEP_MASK_ON);
+    CHECK_INT(scene.steps[1].kind, SCENE_STEP_BEAM_CREATE);
+    CHECK_TEXT(scene.steps[1].beam_name, "spot_a");
+    CHECK(scene.steps[1].apex_x == -16.0f);
+    CHECK(scene.steps[1].apex_y == 64.0f);
+    CHECK(scene.steps[1].x == 108.0f);
+    CHECK(scene.steps[1].y == 542.0f);
+    CHECK(scene.steps[1].half_width == 60.5f);
+    CHECK_INT(scene.steps[2].kind, SCENE_STEP_BEAM_ANIMATE);
+    CHECK_TEXT(scene.steps[2].beam_name, "spot_a");
+    CHECK(scene.steps[2].x == 118.0f);
+    CHECK(scene.steps[2].y == 367.0f);
+    CHECK(scene.steps[2].half_width == 30.0f);
+    CHECK_INT(scene.steps[2].ticks, 60);
+    CHECK_INT(scene.steps[3].kind, SCENE_STEP_BEAM_DELETE);
+    CHECK_TEXT(scene.steps[3].beam_name, "spot_a");
+    CHECK_INT(scene.steps[4].kind, SCENE_STEP_MASK_OFF);
+}
+
+static void test_scene_parse_reads_iris_dim_and_flash_steps(void)
+{
+    const char text[] =
+        "scene opening\n"
+        "iris 144 359 384 120\n"
+        "dim_to 0.49 10\n"
+        "flash 0.5 8\n";
+    static struct scene scene;
+
+    CHECK_INT(scene_parse(text, sizeof(text) - 1, &scene), SCENE_OK);
+    CHECK_INT(scene.steps[0].kind, SCENE_STEP_IRIS);
+    CHECK(scene.steps[0].x == 144.0f);
+    CHECK(scene.steps[0].y == 359.0f);
+    CHECK(scene.steps[0].radius == 384.0f);
+    CHECK_INT(scene.steps[0].ticks, 120);
+    CHECK_INT(scene.steps[1].kind, SCENE_STEP_DIM_TO);
+    CHECK(scene.steps[1].brightness == 0.49f);
+    CHECK_INT(scene.steps[1].ticks, 10);
+    CHECK_INT(scene.steps[2].kind, SCENE_STEP_FLASH);
+    CHECK(scene.steps[2].brightness == 0.5f);
+    CHECK_INT(scene.steps[2].ticks, 8);
+}
+
+static void test_scene_parse_lets_effects_change_at_once(void)
+{
+    CHECK_INT(parse_scene_text("scene s\nbeam_animate b 0 0 0 0\n"), SCENE_OK);
+    CHECK_INT(parse_scene_text("scene s\niris 0 0 0 0\n"), SCENE_OK);
+    CHECK_INT(parse_scene_text("scene s\ndim_to 1 0\n"), SCENE_OK);
+    CHECK_INT(parse_scene_text("scene s\nflash 1 0\n"), SCENE_OK);
+}
+
+static void test_scene_parse_rejects_bad_effect_values(void)
+{
+    CHECK_INT(parse_scene_text("scene s\nbeam_create b 0 0 0 0\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nbeam_create b 0 0 0 0 -1\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nbeam_animate b 0 0 0\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nbeam_animate b 0 0 -1 5\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nbeam_animate b 0 0 0 -1\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nbeam_delete\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nmask_on now\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nmask_off now\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\niris 0 0 0\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\niris 0 0 -1 5\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\niris 0 0 1 -5\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\ndim_to 1.5 5\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\ndim_to -0.5 5\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\ndim_to 1 -5\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nflash 1.5 5\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nflash -0.5 5\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nflash 1 -5\n"), SCENE_ERR_BAD_LINE);
+}
+
 static void test_scene_parse_rejects_durations_that_are_not_positive(void)
 {
     CHECK_INT(parse_scene_text("scene s\ncamera_pan 0 0 0\n"), SCENE_ERR_BAD_LINE);
@@ -62,6 +146,10 @@ static void test_scene_parse_stops_at_the_step_limit(void)
 int main(void)
 {
     test_scene_parse_reads_every_kind_of_step();
+    test_scene_parse_reads_beam_and_mask_steps();
+    test_scene_parse_reads_iris_dim_and_flash_steps();
+    test_scene_parse_lets_effects_change_at_once();
+    test_scene_parse_rejects_bad_effect_values();
     test_scene_parse_rejects_durations_that_are_not_positive();
     test_scene_parse_stops_at_the_step_limit();
     return test_finish("unit/scene");

@@ -5,6 +5,48 @@
 
 #define SCENE_LINE_MAX 320
 
+static int brightness_is_valid(float brightness)
+{
+    return brightness >= 0.0f && brightness <= 1.0f;
+}
+
+static int read_effect_step(const char *line, struct scene_step *step)
+{
+    if (text_line_starts_with(line, "beam_create ")) {
+        step->kind = SCENE_STEP_BEAM_CREATE;
+        return sscanf(line, "beam_create " ASSET_NAME_SCAN " %f %f %f %f %f", step->beam_name, &step->apex_x, &step->apex_y, &step->x, &step->y, &step->half_width) == 6 && step->half_width >= 0.0f;
+    }
+    if (text_line_starts_with(line, "beam_animate ")) {
+        step->kind = SCENE_STEP_BEAM_ANIMATE;
+        return sscanf(line, "beam_animate " ASSET_NAME_SCAN " %f %f %f %d", step->beam_name, &step->x, &step->y, &step->half_width, &step->ticks) == 5 && step->half_width >= 0.0f && step->ticks >= 0;
+    }
+    if (text_line_starts_with(line, "beam_delete ")) {
+        step->kind = SCENE_STEP_BEAM_DELETE;
+        return sscanf(line, "beam_delete " ASSET_NAME_SCAN, step->beam_name) == 1;
+    }
+    if (strcmp(line, "mask_on") == 0) {
+        step->kind = SCENE_STEP_MASK_ON;
+        return 1;
+    }
+    if (strcmp(line, "mask_off") == 0) {
+        step->kind = SCENE_STEP_MASK_OFF;
+        return 1;
+    }
+    if (text_line_starts_with(line, "iris ")) {
+        step->kind = SCENE_STEP_IRIS;
+        return sscanf(line, "iris %f %f %f %d", &step->x, &step->y, &step->radius, &step->ticks) == 4 && step->radius >= 0.0f && step->ticks >= 0;
+    }
+    if (text_line_starts_with(line, "dim_to ")) {
+        step->kind = SCENE_STEP_DIM_TO;
+        return sscanf(line, "dim_to %f %d", &step->brightness, &step->ticks) == 2 && brightness_is_valid(step->brightness) && step->ticks >= 0;
+    }
+    if (text_line_starts_with(line, "flash ")) {
+        step->kind = SCENE_STEP_FLASH;
+        return sscanf(line, "flash %f %d", &step->brightness, &step->ticks) == 2 && brightness_is_valid(step->brightness) && step->ticks >= 0;
+    }
+    return 0;
+}
+
 static int read_step(const char *line, struct scene_step *step)
 {
     if (text_line_starts_with(line, "room ")) {
@@ -51,7 +93,7 @@ static int read_step(const char *line, struct scene_step *step)
         step->kind = SCENE_STEP_WAIT;
         return sscanf(line, "wait %d", &step->ticks) == 1 && step->ticks > 0;
     }
-    return 0;
+    return read_effect_step(line, step);
 }
 
 int scene_parse(const char *text, unsigned int text_size, struct scene *scene)

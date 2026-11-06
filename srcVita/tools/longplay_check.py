@@ -46,6 +46,13 @@ SECONDS_TO_SETTLE = 1.0
 MOTION_WINDOW_START = "00:00:40.200"
 MOTION_WINDOW_SECONDS = 2.2
 VIDEO_FRAMES_PER_SECOND = 60.0
+SMALLEST_LIT_AREA_OVERLAP = 0.85
+LARGEST_EDGE_ERROR_AT_720P = 3.0
+COMPARED_PIXELS_PER_720P_PIXEL = COMPARED_HEIGHT / 720.0
+SMALLEST_SHARE_OF_EDGES_WITHIN_LIMIT = 0.85
+FEWEST_EDGE_READINGS = 12
+EDGE_READING_ROW_STEP = 24
+EDGE_SEARCH_PIXELS = 12
 LOAD_FAILURE_MARKERS = [
     "texture missing",
     "animation missing",
@@ -54,6 +61,8 @@ LOAD_FAILURE_MARKERS = [
     "animation library_full",
     "scene too_many_objects",
     "scene too_many_plates",
+    "scene too_many_beams",
+    "scene beam_missing",
 ]
 
 CLOSE_UP_POSES = [["cicel", "st01_cicel_999", 284, 578], ["cbag", "st01_cbag_999", 350, 577]]
@@ -65,6 +74,13 @@ VIEW_CHECKS = [
     {"name": "check_room7", "room": 7, "camera": (0, 192), "pose_group": "standing_after_the_shot", "time": "00:01:11.000", "measure": ["linne", "killer", "cicel", "cbag", "shadanki"], "max_error": 7.0, "expected_gain": 0.96, "fills_width": True},
     {"name": "check_room7_middle", "room": 7, "camera": (344, 192), "pose_group": "standing_after_the_shot", "time": "00:06:27.000", "spotlight": True, "measure": ["craneTopA", "hasigo", "bicycle", "switchA", "switchB", "craneBottomA"], "max_error": 7.0, "expected_gain": 0.97, "fills_width": True},
     {"name": "check_room7_right", "room": 7, "camera": (624, 192), "pose_group": "standing_after_the_shot", "time": "00:24:00.000", "spotlight": True, "measure": ["kasa"], "max_error": 12.0, "expected_gain": 1.0, "fills_width": True},
+]
+
+MASK_CHECKS = [
+    {"name": "check_mask_left_beam", "room": 11, "camera": (0, 192), "pose_group": "standing_before_the_shot", "time": "00:00:24.500", "measure": [], "beams": [(56, 128, 56, 367, 30)]},
+    {"name": "check_mask_two_beams", "room": 11, "camera": (0, 192), "pose_group": "standing_before_the_shot", "time": "00:00:40.300", "measure": [], "beams": [(56, 128, 56, 367, 30), (200, 128, 200, 367, 30)]},
+    {"name": "check_mask_v", "room": 11, "camera": (0, 192), "pose_group": "standing_after_the_shot", "time": "00:00:52.300", "measure": [], "beams": [(56, 128, 118, 367, 30), (200, 128, 138, 367, 30)]},
+    {"name": "check_mask_w", "room": 11, "camera": (0, 384), "pose_group": "standing_after_the_shot", "extra_poses": CLOSE_UP_POSES, "time": "00:00:58.500", "measure": [], "beams": [(-16, 64, 108, 542, 60), (272, 64, 148, 542, 60)]},
 ]
 
 MOTION_CHECKS = [
@@ -108,6 +124,15 @@ def object_line(set_description, pose):
     return "object %s %s %s %s %d %d" % (object_name, animation_name, x, y, settings["layer"], settings["flip"])
 
 
+def mask_lines(check):
+    if "beams" not in check:
+        return []
+    lines = ["mask_on"]
+    for index, beam in enumerate(check["beams"]):
+        lines.append("beam_create beam%d %d %d %d %d %d" % ((index,) + beam))
+    return lines
+
+
 def check_scene_text(set_description, plates, check):
     lines = ["scene " + check["name"]]
     if check.get("is_card"):
@@ -118,6 +143,7 @@ def check_scene_text(set_description, plates, check):
         lines.append("camera %d %d" % check["camera"])
         for pose in check["placed_objects"]:
             lines.append(object_line(set_description, pose))
+    lines.extend(mask_lines(check))
     lines.append("wait %d" % HOLD_FOREVER_TICKS)
     return "\n".join(lines) + "\n"
 
@@ -174,18 +200,19 @@ def write_check_files():
     set_description = json.loads(read_text(SET_DESCRIPTION_PATH))
     plates = room_plate_lines()
     view_checks = [expand_pose_group(set_description, dict(check)) for check in VIEW_CHECKS]
+    mask_checks = [expand_pose_group(set_description, dict(check)) for check in MASK_CHECKS]
     motion_checks = build_motion_checks()
     background_objects = set_description["object_groups"]["scenery"] + set_description["object_groups"]["body_on_floor"]
     scenes_folder = os.path.join(CHECK_FILES_FOLDER, "scenes")
     only_object_scene_names = []
-    for check in view_checks + motion_checks:
+    for check in view_checks + motion_checks + mask_checks:
         check["placed_objects"] = background_objects + check.get("poses", [])
         write_text(scenes_folder, check["name"] + ".scene", check_scene_text(set_description, plates, check))
         for object_name in measured_objects(check):
             scene_name = only_object_scene_name(check["name"], object_name)
             write_text(scenes_folder, scene_name + ".scene", only_object_scene_text(set_description, check, object_name))
             only_object_scene_names.append(scene_name)
-    return view_checks, motion_checks, only_object_scene_names
+    return view_checks, motion_checks, mask_checks, only_object_scene_names
 
 
 def remote_check_files():
@@ -287,17 +314,31 @@ def art_around_camera(plates, camera):
     return min(art[0] for art in overlapping), min(art[1] for art in overlapping), max(art[2] for art in overlapping), max(art[3] for art in overlapping)
 
 
+def view_start_centred_on_camera(camera_start, camera_length, view_length):
+    return camera_start - (view_length - camera_length) / 2.0
+
+
 def view_start_along_axis(camera_start, camera_length, view_length, art_start, art_end):
     if art_end - art_start <= view_length:
         return art_start - (view_length - (art_end - art_start)) / 2.0
-    return max(art_start, min(camera_start - (view_length - camera_length) / 2.0, art_end - view_length))
+    return max(art_start, min(view_start_centred_on_camera(camera_start, camera_length, view_length), art_end - view_length))
+
+
+def scene_turns_the_mask_on(scene_text):
+    return "mask_on" in scene_text.splitlines()
 
 
 def camera_window_on_screen(scene_text):
     plates, camera = plates_and_camera_of_scene(scene_text)
-    art_left, art_top, art_right, art_bottom = art_around_camera(plates, camera)
-    view_left = view_start_along_axis(camera[0], DS_CAMERA_WIDTH, SCREEN_WIDTH / SCREEN_PIXELS_PER_DS_PIXEL, art_left, art_right)
-    view_top = view_start_along_axis(camera[1], DS_CAMERA_HEIGHT, SCREEN_HEIGHT / SCREEN_PIXELS_PER_DS_PIXEL, art_top, art_bottom)
+    view_width = SCREEN_WIDTH / SCREEN_PIXELS_PER_DS_PIXEL
+    view_height = SCREEN_HEIGHT / SCREEN_PIXELS_PER_DS_PIXEL
+    if scene_turns_the_mask_on(scene_text):
+        view_left = view_start_centred_on_camera(camera[0], DS_CAMERA_WIDTH, view_width)
+        view_top = view_start_centred_on_camera(camera[1], DS_CAMERA_HEIGHT, view_height)
+    else:
+        art_left, art_top, art_right, art_bottom = art_around_camera(plates, camera)
+        view_left = view_start_along_axis(camera[0], DS_CAMERA_WIDTH, view_width, art_left, art_right)
+        view_top = view_start_along_axis(camera[1], DS_CAMERA_HEIGHT, view_height, art_top, art_bottom)
     return round((camera[0] - view_left) * SCREEN_PIXELS_PER_DS_PIXEL), round((camera[1] - view_top) * SCREEN_PIXELS_PER_DS_PIXEL)
 
 
@@ -491,14 +532,130 @@ def score_motion_checks(checks):
     return all_passed
 
 
+def lit_pixels(image):
+    return image.max(axis=2) > SPOTLIGHT_BLACK_LIMIT
+
+
+def pixels_inside_camera_window():
+    inside = comparable_pixels(numpy.zeros((COMPARED_HEIGHT, COMPARED_WIDTH, 3), dtype=numpy.float32), False)
+    inside[:, :PLAYFIELD_LEFT] = False
+    inside[:, PLAYFIELD_RIGHT:] = False
+    return inside
+
+
+def lit_area_overlap(capture, reference):
+    inside = pixels_inside_camera_window()
+    capture_lit = lit_pixels(capture) & inside
+    reference_lit = lit_pixels(reference) & inside
+    union = (capture_lit | reference_lit).sum()
+    if union == 0:
+        return 0.0
+    return float((capture_lit & reference_lit).sum()) / float(union)
+
+
+def beam_edges_at_row(beam, camera, row):
+    apex_x, apex_y, base_x, base_y, half_width = beam
+    world_y = camera[1] + (row + 0.5) / SCREEN_PIXELS_PER_DS_PIXEL
+    progress = (world_y - apex_y) / (base_y - apex_y)
+    if progress < 0.0 or progress > 1.0:
+        return None
+    centre = apex_x + (base_x - apex_x) * progress
+    half = half_width * progress
+    return (
+        PLAYFIELD_LEFT + (centre - half - camera[0]) * SCREEN_PIXELS_PER_DS_PIXEL,
+        PLAYFIELD_LEFT + (centre + half - camera[0]) * SCREEN_PIXELS_PER_DS_PIXEL,
+    )
+
+
+def column_is_inside_another_beam(column, row, beams, this_beam, camera):
+    for beam in beams:
+        if beam is this_beam:
+            continue
+        edges = beam_edges_at_row(beam, camera, row)
+        if edges is not None and edges[0] < column < edges[1]:
+            return True
+    return False
+
+
+def expected_edge_columns(check, row):
+    columns = []
+    for beam in check["beams"]:
+        edges = beam_edges_at_row(beam, check["camera"], row)
+        if edges is None:
+            continue
+        for column in edges:
+            inside_window = PLAYFIELD_LEFT + EDGE_SEARCH_PIXELS < column < PLAYFIELD_RIGHT - EDGE_SEARCH_PIXELS
+            if inside_window and not column_is_inside_another_beam(column, row, check["beams"], beam, check["camera"]):
+                columns.append(column)
+    return columns
+
+
+def nearest_edge_in_row(lit_row, expected_column):
+    best_column = None
+    start = int(expected_column) - EDGE_SEARCH_PIXELS
+    for column in range(start, start + 2 * EDGE_SEARCH_PIXELS + 1):
+        if lit_row[column - 1] != lit_row[column]:
+            if best_column is None or abs(column - expected_column) < abs(best_column - expected_column):
+                best_column = column
+    return best_column
+
+
+def edge_readings(check, capture, reference):
+    capture_lit = lit_pixels(capture)
+    reference_lit = lit_pixels(reference)
+    readings = []
+    for row in range(EDGE_READING_ROW_STEP // 2, COMPARED_HEIGHT, EDGE_READING_ROW_STEP):
+        for expected_column in expected_edge_columns(check, row):
+            capture_edge = nearest_edge_in_row(capture_lit[row], expected_column)
+            reference_edge = nearest_edge_in_row(reference_lit[row], expected_column)
+            if capture_edge is None and reference_edge is None:
+                continue
+            if capture_edge is None or reference_edge is None:
+                readings.append(None)
+            else:
+                readings.append(abs(capture_edge - reference_edge))
+    return readings
+
+
+def share_of_edges_within_limit(readings):
+    limit = LARGEST_EDGE_ERROR_AT_720P * COMPARED_PIXELS_PER_720P_PIXEL
+    within = [reading for reading in readings if reading is not None and reading <= limit]
+    return len(within) / len(readings) if readings else 0.0
+
+
+def share_of_light_beside_camera_window(whole_screen):
+    beside_window = numpy.concatenate((whole_screen[:, :PLAYFIELD_LEFT], whole_screen[:, PLAYFIELD_RIGHT:]), axis=1)
+    return float(lit_pixels(beside_window).mean())
+
+
+def screen_is_black_beside_camera_window(check):
+    share = share_of_light_beside_camera_window(read_whole_screen(check["name"]))
+    is_acceptable = share <= LARGEST_ART_SHARE_AT_A_BLACK_EDGE
+    print("%s     %-16s light share %.3f, limit %.2f" % ("ok  " if is_acceptable else "FAIL", "beside window", share, LARGEST_ART_SHARE_AT_A_BLACK_EDGE))
+    return is_acceptable
+
+
+def score_mask_check(check):
+    capture = read_capture(check["name"])
+    reference = read_clip_frames(check["time"])[0]
+    overlap = lit_area_overlap(capture, reference)
+    readings = edge_readings(check, capture, reference)
+    share = share_of_edges_within_limit(readings)
+    passed = overlap >= SMALLEST_LIT_AREA_OVERLAP and share >= SMALLEST_SHARE_OF_EDGES_WITHIN_LIMIT and len(readings) >= FEWEST_EDGE_READINGS
+    print("%s %-22s lit area overlap %.3f, limit %.2f, edges within %.1f px at 720p %.2f of %d, limit %.2f" % ("ok  " if passed else "FAIL", check["name"], overlap, SMALLEST_LIT_AREA_OVERLAP, LARGEST_EDGE_ERROR_AT_720P, share, len(readings), SMALLEST_SHARE_OF_EDGES_WITHIN_LIMIT))
+    passed = screen_is_black_beside_camera_window(check) and passed
+    write_pair_image(check["name"], capture, reference)
+    return passed
+
+
 def main():
     parser = argparse.ArgumentParser(description="Compares the Vita's screen against the reference video, one held pose at a time.")
     parser.add_argument("--score-only", action="store_true", help="score the captures already in build/longplay_check without using the device")
     arguments = parser.parse_args()
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-    view_checks, motion_checks, only_object_scene_names = write_check_files()
+    view_checks, motion_checks, mask_checks, only_object_scene_names = write_check_files()
     if not arguments.score_only:
-        scene_names = [check["name"] for check in view_checks + motion_checks] + only_object_scene_names
+        scene_names = [check["name"] for check in view_checks + motion_checks + mask_checks] + only_object_scene_names
         try:
             upload_check_files()
             captured = capture_on_device(scene_names)
@@ -508,8 +665,9 @@ def main():
             return 1
     views_passed = [score_view_check(check) for check in view_checks]
     motion_passed = score_motion_checks(motion_checks)
+    masks_passed = [score_mask_check(check) for check in mask_checks]
     print("pair images:", OUTPUT_FOLDER)
-    return 0 if all(views_passed) and motion_passed else 1
+    return 0 if all(views_passed) and motion_passed and all(masks_passed) else 1
 
 
 if __name__ == "__main__":

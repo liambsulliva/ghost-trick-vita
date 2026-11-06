@@ -58,11 +58,17 @@ static void log_object_coverage(const struct scene_object *object)
 void scene_stage_reset(void)
 {
     memset(&stage, 0, sizeof(stage));
+    scene_effects_reset(&stage.effects);
 }
 
 const struct scene_stage *scene_stage_view(void)
 {
     return &stage;
+}
+
+struct scene_effects *scene_stage_effects(void)
+{
+    return &stage.effects;
 }
 
 void scene_stage_request_animation_textures(const struct animation *animation)

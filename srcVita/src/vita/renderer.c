@@ -195,3 +195,12 @@ void renderer_draw_filled_rect(struct renderer_rect screen_area, struct renderer
     whole_texture.height = 1.0f;
     renderer_draw_sprite(white_texture, screen_area, whole_texture, color);
 }
+
+void renderer_draw_filled_rects(const struct renderer_rect *screen_areas, int count, struct renderer_color color)
+{
+    int index;
+
+    for (index = 0; index < count; index++) {
+        renderer_draw_filled_rect(screen_areas[index], color);
+    }
+}

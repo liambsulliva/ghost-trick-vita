@@ -263,6 +263,7 @@ void viewer_app_start(const char *folder)
         run_log_write("font failed");
     }
     create_placeholder_texture();
+    scene_view_start();
     load_manifest();
     if (manifest == NULL) {
         ui_list_init(&animation_list, 0, LIST_VISIBLE_ROWS);
@@ -559,6 +560,7 @@ void viewer_app_stop(void)
         renderer_texture_destroy(placeholder_texture);
     }
     placeholder_texture = RENDERER_NO_TEXTURE;
+    scene_view_stop();
     mem_free(manifest);
     manifest = NULL;
 }

@@ -10,4 +10,6 @@ const unsigned char *fake_files_contents(const char *path, unsigned int *size);
 int fake_files_exists(const char *path);
 void fake_files_fail_writes(int should_fail);
 
+int fake_memory_blocks_in_use(void);
+
 #endif

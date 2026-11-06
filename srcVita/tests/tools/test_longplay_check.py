@@ -137,6 +137,16 @@ class CameraWindowTests(unittest.TestCase):
     def test_two_plates_the_camera_straddles_count_as_one_piece_of_art(self):
         self.assertEqual(longplay_check.camera_window_on_screen(self.WIDE_PLATE + "plate lower 0 384 1024 384\ncamera 0 224\n"), (0, 2))
 
+    def test_a_masked_room_keeps_the_camera_centred_even_at_its_left_end(self):
+        self.assertEqual(longplay_check.camera_window_on_screen(self.WIDE_PLATE + "camera 0 192\nmask_on\n"), (120, 2))
+        self.assertEqual(longplay_check.camera_window_on_screen(self.WIDE_PLATE + "camera 0 192\nmask_on\n")[0], longplay_check.PLAYFIELD_LEFT)
+
+    def test_a_masked_room_keeps_the_camera_centred_at_its_right_end(self):
+        self.assertEqual(longplay_check.camera_window_on_screen(self.WIDE_PLATE + "camera 768 0\nmask_on\n"), (120, 2))
+
+    def test_a_masked_close_up_is_where_it_always_was(self):
+        self.assertEqual(longplay_check.camera_window_on_screen(self.WIDE_PLATE + "plate close 0 384 256 192\ncamera 0 384\nmask_on\n"), (120, 2))
+
 
 class MotionCheckTests(ScoringTestCase):
     def motion_check(self, name):
@@ -178,6 +188,176 @@ class OnlyObjectSceneTests(unittest.TestCase):
     def test_view_checks_and_motion_checks_measure_different_keys(self):
         self.assertEqual(longplay_check.measured_objects({"measure": ["a", "b"]}), ["a", "b"])
         self.assertEqual(longplay_check.measured_objects({"object": "c"}), ["c"])
+
+
+def beam_picture(beams, camera, brightness=200.0):
+    picture = numpy.zeros((HEIGHT, WIDTH, 3), dtype=numpy.float32)
+    for row in range(HEIGHT):
+        for beam in beams:
+            edges = longplay_check.beam_edges_at_row(beam, camera, row)
+            if edges is not None:
+                left = max(int(round(edges[0])), 0)
+                right = min(int(round(edges[1])), WIDTH)
+                picture[row, left:right] = brightness
+    return picture
+
+
+TWO_BEAMS = [(56, 128, 56, 367, 30), (200, 128, 200, 367, 30)]
+ROOM_CAMERA = (0, 192)
+
+
+def mask_check(beams=None):
+    return {"name": "mask", "camera": ROOM_CAMERA, "time": "00:00:01.000", "beams": TWO_BEAMS if beams is None else beams}
+
+
+class MaskCheckTests(ScoringTestCase):
+    def setUp(self):
+        super().setUp()
+        self.whole_screen = numpy.zeros((longplay_check.SCREEN_HEIGHT, longplay_check.SCREEN_WIDTH, 3), dtype=numpy.float32)
+
+    def score(self, capture, reference, check=None):
+        self.captures["mask"] = capture
+        with mock.patch.object(longplay_check, "read_clip_frames", return_value=[reference]):
+            return longplay_check.score_mask_check(mask_check() if check is None else check)
+
+    def test_the_same_picture_passes(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        self.assertTrue(self.score(reference.copy(), reference))
+        self.assertIn("lit area overlap 1.000", self.output.getvalue())
+
+    def test_a_small_difference_in_brightness_inside_the_beams_does_not_matter(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        self.assertTrue(self.score(beam_picture(TWO_BEAMS, ROOM_CAMERA, 90.0), reference))
+
+    def test_a_beam_half_a_ds_pixel_off_passes(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        moved = [(55.5, 128, 55.5, 367, 30), (200, 128, 200, 367, 30)]
+        self.assertTrue(self.score(beam_picture(moved, ROOM_CAMERA), reference))
+
+    def test_a_beam_one_ds_pixel_off_passes_on_area_but_fails_on_its_edges(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        moved = [(55, 128, 55, 367, 30), (200, 128, 200, 367, 30)]
+        self.assertFalse(self.score(beam_picture(moved, ROOM_CAMERA), reference))
+        self.assertGreater(longplay_check.lit_area_overlap(beam_picture(moved, ROOM_CAMERA), reference), longplay_check.SMALLEST_LIT_AREA_OVERLAP)
+
+    def test_a_missing_beam_fails(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        self.assertFalse(self.score(beam_picture(TWO_BEAMS[:1], ROOM_CAMERA), reference))
+
+    def test_a_fully_lit_capture_fails(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        self.assertFalse(self.score(numpy.full((HEIGHT, WIDTH, 3), 128.0, dtype=numpy.float32), reference))
+
+    def test_an_all_black_capture_fails(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        self.assertFalse(self.score(numpy.zeros((HEIGHT, WIDTH, 3), dtype=numpy.float32), reference))
+
+    def test_beams_much_too_narrow_fail(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        narrow = [(56, 128, 56, 367, 24), (200, 128, 200, 367, 24)]
+        self.assertFalse(self.score(beam_picture(narrow, ROOM_CAMERA), reference))
+
+    def test_light_outside_the_camera_window_is_not_compared(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        capture = reference.copy()
+        capture[:, :longplay_check.PLAYFIELD_LEFT] = 200.0
+        capture[:, longplay_check.PLAYFIELD_RIGHT:] = 200.0
+        self.assertTrue(self.score(capture, reference))
+
+    def test_light_right_of_the_camera_window_on_the_whole_screen_fails(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        self.whole_screen[:, longplay_check.PLAYFIELD_RIGHT:] = 180.0
+        self.assertFalse(self.score(reference.copy(), reference))
+        self.assertIn("beside window", self.output.getvalue())
+
+    def test_light_left_of_the_camera_window_on_the_whole_screen_fails(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        self.whole_screen[:, :longplay_check.PLAYFIELD_LEFT] = 180.0
+        self.assertFalse(self.score(reference.copy(), reference))
+
+    def test_a_faint_glow_beside_the_camera_window_counts_as_black(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        self.whole_screen[:, longplay_check.PLAYFIELD_RIGHT:] = float(longplay_check.SPOTLIGHT_BLACK_LIMIT)
+        self.assertTrue(self.score(reference.copy(), reference))
+
+    def test_a_few_lit_pixels_beside_the_camera_window_pass(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        self.whole_screen[:10, :longplay_check.PLAYFIELD_LEFT] = 180.0
+        self.assertTrue(self.score(reference.copy(), reference))
+        self.assertIn("beside window", self.output.getvalue())
+
+    def test_light_in_the_columns_of_the_camera_window_passes_even_above_it(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        self.whole_screen[:, longplay_check.PLAYFIELD_LEFT:longplay_check.PLAYFIELD_RIGHT] = 180.0
+        self.assertTrue(self.score(reference.copy(), reference))
+
+    def test_the_watermark_corner_is_not_compared(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        capture = reference.copy()
+        left, top, right, bottom = longplay_check.UPLOADER_WATERMARK
+        reference[top:bottom, left:right] = 200.0
+        self.assertAlmostEqual(longplay_check.lit_area_overlap(capture, reference), 1.0)
+
+    def test_a_scene_with_no_light_at_all_has_no_overlap(self):
+        black = numpy.zeros((HEIGHT, WIDTH, 3), dtype=numpy.float32)
+        self.assertEqual(longplay_check.lit_area_overlap(black, black), 0.0)
+
+    def test_an_edge_hidden_inside_another_beam_is_not_read(self):
+        crossing = [(56, 128, 118, 367, 30), (200, 128, 138, 367, 30)]
+        row_near_the_base = 480
+        columns = longplay_check.expected_edge_columns(mask_check(crossing), row_near_the_base)
+        self.assertEqual(len(columns), 2)
+
+    def test_the_edges_of_a_beam_come_from_the_camera_and_the_scale(self):
+        left, right = longplay_check.beam_edges_at_row((56, 128, 56, 367, 30), ROOM_CAMERA, 0)
+        progress = (192 + 0.5 / longplay_check.SCREEN_PIXELS_PER_DS_PIXEL - 128) / (367 - 128)
+        self.assertAlmostEqual(left, longplay_check.PLAYFIELD_LEFT + (56 - 30 * progress) * longplay_check.SCREEN_PIXELS_PER_DS_PIXEL)
+        self.assertAlmostEqual(right, longplay_check.PLAYFIELD_LEFT + (56 + 30 * progress) * longplay_check.SCREEN_PIXELS_PER_DS_PIXEL)
+
+    def test_rows_past_the_base_have_no_edges(self):
+        self.assertIsNone(longplay_check.beam_edges_at_row((56, 128, 56, 367, 30), ROOM_CAMERA, 500))
+
+    def test_edges_too_close_to_the_window_side_are_not_read(self):
+        at_the_left_side = [(0, 128, 0, 367, 30)]
+        columns = longplay_check.expected_edge_columns(mask_check(at_the_left_side), 200)
+        self.assertEqual(len(columns), 1)
+
+    def test_share_of_edges_counts_readings_with_no_edge_as_misses(self):
+        limit = longplay_check.LARGEST_EDGE_ERROR_AT_720P * longplay_check.COMPARED_PIXELS_PER_720P_PIXEL
+        self.assertEqual(longplay_check.share_of_edges_within_limit([0, limit, limit + 1, None]), 0.5)
+        self.assertEqual(longplay_check.share_of_edges_within_limit([]), 0.0)
+
+    def test_too_few_edge_readings_fail_even_when_they_agree(self):
+        reference = beam_picture(TWO_BEAMS, ROOM_CAMERA)
+        with mock.patch.object(longplay_check, "FEWEST_EDGE_READINGS", 100000):
+            self.assertFalse(self.score(reference.copy(), reference))
+
+
+class MaskSceneTests(unittest.TestCase):
+    def test_a_mask_check_scene_turns_the_mask_on_and_places_its_beams_after_the_objects(self):
+        set_description = {"objects": {"hero": {"layer": 5, "flip": 0}}}
+        check = {"name": "mask", "room": 11, "camera": (0, 192), "placed_objects": [OBJECT_POSE], "beams": [(56, 128, 118, 367, 30), (-16, 64, 108, 542, 60)]}
+        text = longplay_check.check_scene_text(set_description, {11: ["plate room 0 0 1024 384"]}, check)
+        self.assertEqual(text, "\n".join([
+            "scene mask",
+            "room 11",
+            "plate room 0 0 1024 384",
+            "camera 0 192",
+            "object hero hero_anim 100 50 5 0",
+            "mask_on",
+            "beam_create beam0 56 128 118 367 30",
+            "beam_create beam1 -16 64 108 542 60",
+            "wait %d" % longplay_check.HOLD_FOREVER_TICKS,
+        ]) + "\n")
+
+    def test_a_view_check_scene_has_no_mask(self):
+        set_description = {"objects": {}}
+        check = {"name": "view", "room": 11, "camera": (0, 192), "placed_objects": []}
+        self.assertNotIn("mask_on", longplay_check.check_scene_text(set_description, {11: []}, check))
+
+    def test_the_four_mask_checks_use_the_scripted_beam_layouts_and_clip_times(self):
+        self.assertEqual([check["time"] for check in longplay_check.MASK_CHECKS], ["00:00:24.500", "00:00:40.300", "00:00:52.300", "00:00:58.500"])
+        self.assertEqual([len(check["beams"]) for check in longplay_check.MASK_CHECKS], [1, 2, 2, 2])
 
 
 class CaptureFlowTests(unittest.TestCase):
@@ -240,7 +420,7 @@ class CaptureFlowTests(unittest.TestCase):
 
     def test_check_files_are_deleted_when_the_run_raises(self):
         self.patch(longplay_check, "OUTPUT_FOLDER", self.folder.name)
-        self.patch(longplay_check, "write_check_files", return_value=([], [], []))
+        self.patch(longplay_check, "write_check_files", return_value=([], [], [], []))
         self.patch(longplay_check, "upload_check_files")
         delete_check_files = self.patch(longplay_check, "delete_check_files_from_device")
         self.patch(longplay_check, "capture_on_device", side_effect=RuntimeError)

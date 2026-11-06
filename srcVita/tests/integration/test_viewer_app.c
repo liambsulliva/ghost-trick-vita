@@ -24,6 +24,7 @@
 #define SCENE_END_PROMPT_VISIBLE_CHARACTERS 35
 #define FRAMES_LONGER_THAN_EVERY_PRELOAD_PASS 16
 #define HALF_BUDGET_TEXTURE_WIDTH 4096
+#define IRIS_TEXTURE_WIDTH 256
 
 static void add_texture(const char *name, unsigned int width, unsigned int height)
 {
@@ -87,6 +88,15 @@ static void run_frames(int frame_count)
     for (frame = 0; frame < frame_count; frame++) {
         fake_clock_advance_us(FRAME_US);
         viewer_app_update(&no_input, FRAME_US);
+    }
+}
+
+static void run_frames_until_scene_is_no_longer_preloading(void)
+{
+    int frame;
+
+    for (frame = 0; frame < 4096 && scene_player_status() == SCENE_PLAYER_PRELOADING; frame++) {
+        run_frames(1);
     }
 }
 
@@ -605,6 +615,503 @@ static void test_a_fade_covers_the_whole_screen(void)
     viewer_app_stop();
 }
 
+static const struct fake_draw *find_mask_draw(void)
+{
+    int index;
+
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        if (fake_renderer_draw(index)->batched_rect_count > 0) {
+            return fake_renderer_draw(index);
+        }
+    }
+    return NULL;
+}
+
+static int index_of_mask_draw(void)
+{
+    const struct fake_draw *mask;
+
+    mask = find_mask_draw();
+    return mask == NULL ? -1 : (int)(mask - fake_renderer_draw(0));
+}
+
+static int mask_blackens_pixel(const struct fake_draw *mask, float x, float y)
+{
+    const struct renderer_rect *rects;
+    int index;
+
+    rects = fake_renderer_batched_rects(mask);
+    for (index = 0; index < mask->batched_rect_count; index++) {
+        if (x >= rects[index].x && x < rects[index].x + rects[index].width && y >= rects[index].y && y < rects[index].y + rects[index].height) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static const struct fake_draw *play_scene_and_draw_after(const char *scene_text, int frame_count)
+{
+    set_up_platform();
+    set_up_scene_assets(scene_text);
+    viewer_app_start("assets");
+    run_frames(frame_count);
+    draw_frame();
+    return find_mask_draw();
+}
+
+static void test_a_mask_with_no_beams_blackens_the_whole_screen_over_the_room(void)
+{
+    const struct fake_draw *mask;
+
+    mask = play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\nobject hero walk 100 150 1 0\nmask_on\nwait 600\n", 8);
+    CHECK(mask != NULL);
+    CHECK_INT(mask->batched_rect_count, 1);
+    CHECK(mask->color.alpha == 1.0f);
+    CHECK(mask->color.red == 0.0f);
+    CHECK(fake_renderer_batched_rects(mask)[0].width == RENDERER_WIDTH);
+    CHECK(fake_renderer_batched_rects(mask)[0].height == RENDERER_HEIGHT);
+    CHECK(index_of_draw_with_texture_width(ROOM_A_WIDTH) < index_of_mask_draw());
+    CHECK(index_of_draw_with_texture_width(CHARACTER_WIDTH) < index_of_mask_draw());
+    CHECK(strstr(log_text(), "scene mask_rects") == NULL);
+    viewer_app_stop();
+}
+
+static void test_a_deleted_beam_lights_nothing(void)
+{
+    const struct fake_draw *mask;
+
+    mask = play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 344 96\nmask_on\nbeam_create b 400 0 400 200 40\nbeam_delete b\nwait 600\n", 8);
+    CHECK(mask != NULL);
+    CHECK_INT(mask->batched_rect_count, 1);
+    viewer_app_stop();
+}
+
+static void test_a_beam_passes_through_the_same_world_to_screen_view_as_the_art(void)
+{
+    const struct fake_draw *mask;
+
+    mask = play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 344 96\nmask_on\nbeam_create b 400 0 400 200 40\nwait 600\n", 8);
+    CHECK(mask != NULL);
+    CHECK(!mask_blackens_pixel(mask, screen_x_when_camera_is_centred(400.0f, 344.0f), screen_y_when_camera_is_centred(199.0f, 96.0f)));
+    CHECK(!mask_blackens_pixel(mask, screen_x_when_camera_is_centred(400.0f - 38.0f, 344.0f), screen_y_when_camera_is_centred(199.0f, 96.0f)));
+    CHECK(mask_blackens_pixel(mask, screen_x_when_camera_is_centred(400.0f - 42.0f, 344.0f), screen_y_when_camera_is_centred(199.0f, 96.0f)));
+    CHECK(!mask_blackens_pixel(mask, screen_x_when_camera_is_centred(400.0f + 38.0f, 344.0f), screen_y_when_camera_is_centred(199.0f, 96.0f)));
+    CHECK(mask_blackens_pixel(mask, screen_x_when_camera_is_centred(400.0f + 42.0f, 344.0f), screen_y_when_camera_is_centred(199.0f, 96.0f)));
+    CHECK(mask_blackens_pixel(mask, screen_x_when_camera_is_centred(400.0f, 344.0f), screen_y_when_camera_is_centred(201.0f, 96.0f)));
+    CHECK(mask_blackens_pixel(mask, 0.0f, screen_y_when_camera_is_centred(199.0f, 96.0f)));
+    CHECK(mask_blackens_pixel(mask, RENDERER_WIDTH - 1.0f, screen_y_when_camera_is_centred(199.0f, 96.0f)));
+    viewer_app_stop();
+}
+
+static void test_a_masked_room_stays_centred_on_the_camera_even_at_its_left_end(void)
+{
+    const struct fake_draw *mask;
+    const struct fake_draw *plate;
+
+    mask = play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 0 192\nmask_on\nbeam_create b 56 128 56 367 30\nwait 600\n", 8);
+    plate = find_draw_with_texture_width(ROOM_A_WIDTH);
+    CHECK(mask != NULL);
+    CHECK(nearly_equal(plate->screen_area.x, screen_x_when_camera_is_centred(0.0f, 0.0f)));
+    CHECK(nearly_equal(plate->screen_area.y, screen_y_when_camera_is_centred(0.0f, 192.0f)));
+    CHECK(!mask_blackens_pixel(mask, screen_x_when_camera_is_centred(56.0f, 0.0f), screen_y_when_camera_is_centred(366.0f, 192.0f)));
+    CHECK(mask_blackens_pixel(mask, screen_x_when_camera_is_centred(56.0f, 0.0f), screen_y_when_camera_is_centred(368.0f, 192.0f)));
+    CHECK(mask_blackens_pixel(mask, screen_x_when_camera_is_centred(90.0f, 0.0f), screen_y_when_camera_is_centred(366.0f, 192.0f)));
+    CHECK(!mask_blackens_pixel(mask, screen_x_when_camera_is_centred(80.0f, 0.0f), screen_y_when_camera_is_centred(366.0f, 192.0f)));
+    viewer_app_stop();
+}
+
+static void check_beam_sits_in_the_middle_of_the_screen(const struct fake_draw *mask, float row)
+{
+    CHECK(!mask_blackens_pixel(mask, RENDERER_WIDTH / 2.0f, row));
+    CHECK(mask_blackens_pixel(mask, RENDERER_WIDTH / 2.0f - 32.0f * 2.8125f, row));
+    CHECK(mask_blackens_pixel(mask, RENDERER_WIDTH / 2.0f + 32.0f * 2.8125f, row));
+}
+
+static void test_a_beam_keeps_its_place_on_screen_across_a_cut_to_narrower_art(void)
+{
+    const struct fake_draw *mask;
+    float row_near_the_base;
+
+    row_near_the_base = screen_y_when_camera_is_centred(383.0f, 192.0f);
+    mask = play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\nplate room_b 0 384 256 192\ncamera 0 192\nmask_on\nbeam_create b 128 192 128 384 30\nwait 30\ncamera 0 384\nbeam_create b 128 384 128 576 30\nwait 6000\n", 8);
+    CHECK(mask != NULL);
+    check_beam_sits_in_the_middle_of_the_screen(mask, row_near_the_base);
+    run_frames(60);
+    draw_frame();
+    mask = find_mask_draw();
+    CHECK(mask != NULL);
+    check_beam_sits_in_the_middle_of_the_screen(mask, row_near_the_base);
+    viewer_app_stop();
+}
+
+static void test_an_iris_uses_the_same_view_as_the_lit_room_it_opens_onto(void)
+{
+    const struct fake_draw *iris;
+    const struct fake_draw *plate;
+
+    play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 0 192\nmask_on\niris 144 359 100 0\nwait 600\n", 8);
+    plate = find_draw_with_texture_width(ROOM_A_WIDTH);
+    iris = find_draw_with_texture_width(IRIS_TEXTURE_WIDTH);
+    CHECK(nearly_equal(plate->screen_area.x, 0.0f));
+    CHECK(nearly_equal(plate->screen_area.y + plate->screen_area.height, RENDERER_HEIGHT));
+    CHECK(iris != NULL);
+    CHECK(nearly_equal(iris->screen_area.x + iris->screen_area.width / 2.0f, 144.0f * 2.8125f));
+    viewer_app_stop();
+}
+
+static void test_the_mask_covers_the_black_around_narrow_art_and_is_drawn_after_it(void)
+{
+    const struct fake_draw *mask;
+    int plate_index;
+
+    mask = play_scene_and_draw_after("scene opening\nroom 1\nplate room_b 0 0 1024 384\nplate room_a 0 384 256 192\ncamera 0 384\nmask_on\nbeam_create b 128 384 128 500 30\nwait 600\n", 8);
+    plate_index = index_of_draw_with_texture_width(ROOM_A_WIDTH);
+    CHECK(mask != NULL);
+    CHECK_INT(count_filled_rects(), 4);
+    CHECK(fake_renderer_draw(index_of_mask_draw() - 1)->is_filled_rect);
+    CHECK(plate_index < index_of_mask_draw() - 4);
+    CHECK(mask_blackens_pixel(mask, 5.0f, 300.0f));
+    CHECK(mask_blackens_pixel(mask, RENDERER_WIDTH - 5.0f, 300.0f));
+    viewer_app_stop();
+}
+
+static void test_a_beam_swings_while_the_script_waits(void)
+{
+    const struct fake_draw *mask;
+    float world_to_screen_y;
+
+    mask = play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 344 96\nmask_on\nbeam_create b 400 0 400 200 20\nbeam_animate b 500 200 20 60\nwait 6000\n", 4);
+    world_to_screen_y = screen_y_when_camera_is_centred(199.0f, 96.0f);
+    CHECK(mask != NULL);
+    CHECK(!mask_blackens_pixel(mask, screen_x_when_camera_is_centred(400.0f, 344.0f), world_to_screen_y));
+    run_frames(60);
+    draw_frame();
+    mask = find_mask_draw();
+    CHECK(mask_blackens_pixel(mask, screen_x_when_camera_is_centred(400.0f, 344.0f), world_to_screen_y));
+    CHECK(!mask_blackens_pixel(mask, screen_x_when_camera_is_centred(500.0f, 344.0f), world_to_screen_y));
+    CHECK_INT(scene_player_next_step(), 7);
+    viewer_app_stop();
+}
+
+static int count_rects_in_mask_draw(void)
+{
+    return find_mask_draw() == NULL ? 0 : find_mask_draw()->batched_rect_count;
+}
+
+static int count_times_in_log(const char *wanted)
+{
+    const char *found;
+    int count;
+
+    count = 0;
+    found = strstr(log_text(), wanted);
+    while (found != NULL) {
+        count = count + 1;
+        found = strstr(found + 1, wanted);
+    }
+    return count;
+}
+
+static void test_a_large_mask_is_logged_and_a_normal_one_is_not(void)
+{
+    play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 344 96\nmask_on\nbeam_create b 400 0 400 200 40\nwait 600\n", 8);
+    CHECK(strstr(log_text(), "scene mask_rects") == NULL);
+    viewer_app_stop();
+    play_scene_and_draw_after("scene opening\nmask_on\nbeam_create a 0 0 800 544 20\nbeam_create b 300 0 1100 544 20\nbeam_create c 600 0 1400 544 20\nbeam_create d 900 0 1700 544 20\nwait 600\n", 8);
+    CHECK(count_rects_in_mask_draw() > 600);
+    draw_frame();
+    draw_frame();
+    CHECK_INT(count_times_in_log("scene mask_rects count="), 1);
+    viewer_app_stop();
+}
+
+static const struct fake_draw *find_iris_draw(void)
+{
+    return find_draw_with_texture_width(IRIS_TEXTURE_WIDTH);
+}
+
+static void test_the_iris_draws_a_soft_circle_with_black_around_it(void)
+{
+    const struct fake_draw *iris;
+    const struct fake_draw *around;
+    float center_x;
+    float center_y;
+    float radius;
+    float covered;
+    int index;
+
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 344 96\nmask_on\niris 400 150 100 120\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    run_frames(1);
+    draw_frame();
+    run_frames(60);
+    draw_frame();
+    iris = find_iris_draw();
+    CHECK(iris != NULL);
+    center_x = screen_x_when_camera_is_centred(400.0f, 344.0f);
+    center_y = screen_y_when_camera_is_centred(150.0f, 96.0f);
+    radius = iris->screen_area.width / 2.0f;
+    CHECK(radius > 49.0f * 2.8125f && radius < 51.0f * 2.8125f);
+    CHECK(nearly_equal(iris->screen_area.width, iris->screen_area.height));
+    CHECK(nearly_equal(iris->screen_area.x + radius, center_x));
+    CHECK(nearly_equal(iris->screen_area.y + radius, center_y));
+    CHECK(iris->color.alpha == 1.0f);
+    around = find_mask_draw();
+    CHECK(around != NULL);
+    CHECK(around->color.red == 0.0f && around->color.green == 0.0f && around->color.blue == 0.0f && around->color.alpha == 1.0f);
+    CHECK(index_of_draw_with_texture_width(ROOM_A_WIDTH) < index_of_draw_with_texture_width(IRIS_TEXTURE_WIDTH));
+    CHECK(index_of_draw_with_texture_width(IRIS_TEXTURE_WIDTH) < index_of_mask_draw());
+    covered = 0.0f;
+    for (index = 0; index < around->batched_rect_count; index++) {
+        covered = covered + fake_renderer_batched_rects(around)[index].width * fake_renderer_batched_rects(around)[index].height;
+    }
+    CHECK(nearly_equal(covered + iris->screen_area.width * iris->screen_area.height, (float)RENDERER_WIDTH * RENDERER_HEIGHT));
+    viewer_app_stop();
+}
+
+static void test_a_closed_iris_leaves_the_screen_black_and_an_open_one_draws_nothing(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 344 96\niris 400 150 1000 600\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    run_frames(1);
+    draw_frame();
+    CHECK(find_mask_draw() != NULL);
+    run_frames(240);
+    draw_frame();
+    CHECK(find_iris_draw() != NULL);
+    run_frames(300);
+    draw_frame();
+    CHECK(find_mask_draw() == NULL);
+    CHECK(find_iris_draw() == NULL);
+    viewer_app_stop();
+}
+
+static int iris_at_screen_corner_is_drawn(float corner_x, float corner_y, float radius)
+{
+    char scene_text[256];
+    int is_drawn;
+
+    snprintf(scene_text, sizeof(scene_text), "scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 344 96\niris %f %f %f 0\nwait 6000\n",
+        344.0f + (corner_x - screen_x_when_camera_is_centred(344.0f, 344.0f)) / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL,
+        96.0f + (corner_y - screen_y_when_camera_is_centred(96.0f, 96.0f)) / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL,
+        radius);
+    set_up_platform();
+    set_up_scene_assets(scene_text);
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    run_frames(1);
+    draw_frame();
+    is_drawn = find_iris_draw() != NULL;
+    viewer_app_stop();
+    return is_drawn;
+}
+
+static void test_an_iris_only_clears_once_its_clear_part_reaches_the_farthest_corner(void)
+{
+    static const float corners[4][2] = { { 0.0f, 0.0f }, { RENDERER_WIDTH, 0.0f }, { 0.0f, RENDERER_HEIGHT }, { RENDERER_WIDTH, RENDERER_HEIGHT } };
+    int index;
+
+    for (index = 0; index < 4; index++) {
+        CHECK(iris_at_screen_corner_is_drawn(corners[index][0], corners[index][1], 775.0f));
+        CHECK(!iris_at_screen_corner_is_drawn(corners[index][0], corners[index][1], 790.0f));
+    }
+}
+
+static void test_mask_off_after_an_iris_shows_the_room(void)
+{
+    const struct fake_draw *mask;
+
+    mask = play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\nmask_on\niris 100 100 10 1\nwait 12\nmask_off\nwait 600\n", 30);
+    CHECK(mask == NULL);
+    CHECK(find_iris_draw() == NULL);
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) != NULL);
+    viewer_app_stop();
+}
+
+static void test_dim_flash_card_and_fade_draw_in_that_order_over_the_mask(void)
+{
+    const struct fake_draw *dim;
+    const struct fake_draw *flash;
+    const struct fake_draw *last;
+    int mask_index;
+    int card_index;
+
+    play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\nmask_on\ndim_to 0.25 0\nflash 0.5 6000\ncard card\nfade_out 6\nwait 6000\n", 20);
+    mask_index = index_of_mask_draw();
+    card_index = index_of_draw_with_texture_width(CARD_WIDTH);
+    CHECK(mask_index >= 0);
+    dim = fake_renderer_draw(mask_index + 1);
+    flash = fake_renderer_draw(mask_index + 2);
+    last = fake_renderer_draw(fake_renderer_draw_count() - 1);
+    CHECK(dim->is_filled_rect);
+    CHECK(dim->color.red == 0.0f);
+    CHECK(nearly_equal(dim->color.alpha, 0.75f));
+    CHECK(nearly_equal(dim->screen_area.width, RENDERER_WIDTH));
+    CHECK(nearly_equal(dim->screen_area.height, RENDERER_HEIGHT));
+    CHECK(flash->is_filled_rect);
+    CHECK(flash->color.red == 1.0f);
+    CHECK(flash->color.green == 1.0f);
+    CHECK(flash->color.alpha > 0.49f && flash->color.alpha <= 0.5f);
+    CHECK(nearly_equal(flash->screen_area.width, RENDERER_WIDTH));
+    CHECK(mask_index + 2 < card_index);
+    CHECK(card_index < fake_renderer_draw_count() - 1);
+    CHECK(last->is_filled_rect);
+    CHECK(last->color.red == 0.0f);
+    CHECK(last->color.alpha == 1.0f);
+    viewer_app_stop();
+}
+
+static void test_no_dim_or_flash_draws_at_full_brightness(void)
+{
+    play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\nwait 6000\n", 8);
+    CHECK_INT(count_filled_rects(), 0);
+    viewer_app_stop();
+    play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\ndim_to 0.5 0\ndim_to 1 0\nflash 1 6\nwait 6000\n", 20);
+    CHECK_INT(count_filled_rects(), 0);
+    viewer_app_stop();
+}
+
+static void test_a_dim_and_a_flash_change_while_the_script_waits(void)
+{
+    const struct scene_effects *effects;
+
+    play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\ndim_to 0.5 60\nflash 1 60\nwait 6000\n", 4);
+    effects = &scene_stage_view()->effects;
+    run_frames(30);
+    CHECK(effects->brightness.value < 0.8f && effects->brightness.value > 0.7f);
+    CHECK(effects->flash_level.value < 0.55f && effects->flash_level.value > 0.45f);
+    CHECK_INT(scene_player_next_step(), 5);
+    run_frames(40);
+    CHECK(effects->brightness.value == 0.5f);
+    CHECK(effects->flash_level.value == 0.0f);
+    viewer_app_stop();
+}
+
+static void test_browsing_after_a_masked_scene_shows_no_mask(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 256 192\nmask_on\ndim_to 0.5 0\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames(8);
+    draw_frame();
+    CHECK(find_mask_draw() != NULL);
+    CHECK(viewer_app_show_animation("walk"));
+    run_frames(2);
+    viewer_app_set_hud_visible(0);
+    draw_frame();
+    CHECK(find_mask_draw() == NULL);
+    CHECK_INT(count_filled_rects(), 4);
+    viewer_app_stop();
+}
+
+static void test_watching_it_again_starts_with_no_mask_left_over(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nwait 6\nmask_on\ndim_to 0.5 0\n");
+    viewer_app_start("assets");
+    run_frames(20);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
+    draw_frame();
+    CHECK(find_mask_draw() != NULL);
+    press(INPUT_CROSS);
+    run_frames(4);
+    draw_frame();
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+    CHECK(find_mask_draw() == NULL);
+    CHECK(scene_stage_view()->effects.brightness.value == 1.0f);
+    viewer_app_stop();
+}
+
+static void test_the_end_prompt_stays_readable_over_a_black_mask(void)
+{
+    const struct fake_draw *last;
+
+    play_scene_and_draw_after("scene opening\nmask_on\nwait 6\n", 20);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
+    last = fake_renderer_draw(fake_renderer_draw_count() - 1);
+    CHECK(last->texture != RENDERER_NO_TEXTURE);
+    CHECK(index_of_mask_draw() < fake_renderer_draw_count() - 1);
+    viewer_app_stop();
+}
+
+static void test_the_iris_pattern_is_made_once_and_freed_at_the_end(void)
+{
+    int created_before;
+
+    set_up_platform();
+    set_up_scene_assets("scene opening\nwait 6\n");
+    viewer_app_start("assets");
+    created_before = fake_renderer_textures_created();
+    run_frames(30);
+    CHECK_INT(fake_renderer_textures_created(), created_before);
+    viewer_app_stop();
+    CHECK_INT(fake_renderer_textures_alive(), 0);
+}
+
+static void test_making_the_iris_pattern_keeps_no_memory_once_it_is_a_texture(void)
+{
+    int blocks_before;
+
+    set_up_platform();
+    blocks_before = fake_memory_blocks_in_use();
+    scene_view_start();
+    CHECK_INT(fake_memory_blocks_in_use(), blocks_before);
+    scene_view_stop();
+}
+
+static int count_sprites_with_no_texture(void)
+{
+    const struct fake_draw *draw;
+    int count;
+    int index;
+
+    count = 0;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        draw = fake_renderer_draw(index);
+        if (draw->texture == RENDERER_NO_TEXTURE && !draw->is_filled_rect && !draw->is_rect_batch) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+static void test_a_failed_iris_pattern_is_logged_and_the_iris_stays_black_around_its_circle(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\niris 100 100 50 0\nwait 6000\n");
+    fake_renderer_fail_uploads(1);
+    viewer_app_start("assets");
+    CHECK_HAS_TEXT(log_text(), "scene iris_texture_failed");
+    fake_renderer_fail_uploads(0);
+    run_frames_until_scene_is_no_longer_preloading();
+    run_frames(1);
+    draw_frame();
+    CHECK(find_mask_draw() != NULL);
+    CHECK(find_iris_draw() == NULL);
+    CHECK_INT(count_sprites_with_no_texture(), 0);
+    viewer_app_stop();
+    CHECK_INT(fake_renderer_textures_alive(), 0);
+}
+
+static void test_an_app_that_never_played_a_scene_draws_at_full_brightness(void)
+{
+    set_up_platform();
+    set_up_textures_and_animations();
+    add_text_file("assets/manifest.txt", "background room_a\n");
+    viewer_app_start("assets");
+    run_frames(2);
+    viewer_app_set_hud_visible(0);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) != NULL);
+    CHECK_INT(count_filled_rects(), 4);
+    CHECK(find_mask_draw() == NULL);
+    viewer_app_stop();
+}
+
 static void test_scene_runs_steps_in_order_and_finishes(void)
 {
     set_up_platform();
@@ -859,15 +1366,6 @@ static void update_with_elapsed_time(unsigned long long elapsed_us)
     no_input.pressed = 0;
     fake_clock_advance_us(elapsed_us);
     viewer_app_update(&no_input, elapsed_us);
-}
-
-static void run_frames_until_scene_is_no_longer_preloading(void)
-{
-    int frame;
-
-    for (frame = 0; frame < 4096 && scene_player_status() == SCENE_PLAYER_PRELOADING; frame++) {
-        run_frames(1);
-    }
 }
 
 static void write_card_scene(char *text, unsigned int text_size, int texture_count)
@@ -1193,6 +1691,29 @@ int main(void)
     test_a_plate_just_below_the_camera_does_not_count_as_art();
     test_a_card_is_centred_at_its_own_shape_over_black();
     test_a_fade_covers_the_whole_screen();
+    test_a_mask_with_no_beams_blackens_the_whole_screen_over_the_room();
+    test_a_deleted_beam_lights_nothing();
+    test_a_beam_passes_through_the_same_world_to_screen_view_as_the_art();
+    test_a_masked_room_stays_centred_on_the_camera_even_at_its_left_end();
+    test_a_beam_keeps_its_place_on_screen_across_a_cut_to_narrower_art();
+    test_an_iris_uses_the_same_view_as_the_lit_room_it_opens_onto();
+    test_the_mask_covers_the_black_around_narrow_art_and_is_drawn_after_it();
+    test_a_beam_swings_while_the_script_waits();
+    test_a_large_mask_is_logged_and_a_normal_one_is_not();
+    test_the_iris_draws_a_soft_circle_with_black_around_it();
+    test_a_closed_iris_leaves_the_screen_black_and_an_open_one_draws_nothing();
+    test_an_iris_only_clears_once_its_clear_part_reaches_the_farthest_corner();
+    test_mask_off_after_an_iris_shows_the_room();
+    test_dim_flash_card_and_fade_draw_in_that_order_over_the_mask();
+    test_no_dim_or_flash_draws_at_full_brightness();
+    test_a_dim_and_a_flash_change_while_the_script_waits();
+    test_browsing_after_a_masked_scene_shows_no_mask();
+    test_watching_it_again_starts_with_no_mask_left_over();
+    test_the_end_prompt_stays_readable_over_a_black_mask();
+    test_the_iris_pattern_is_made_once_and_freed_at_the_end();
+    test_making_the_iris_pattern_keeps_no_memory_once_it_is_a_texture();
+    test_a_failed_iris_pattern_is_logged_and_the_iris_stays_black_around_its_circle();
+    test_an_app_that_never_played_a_scene_draws_at_full_brightness();
     test_scene_runs_steps_in_order_and_finishes();
     test_scene_fades_and_pans_over_time();
     test_scene_survives_bad_files_and_missing_assets();

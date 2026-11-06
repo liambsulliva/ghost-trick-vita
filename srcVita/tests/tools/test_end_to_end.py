@@ -54,7 +54,6 @@ def game_files():
 def tiny_set_description():
     return {
         "scene_name": "opening",
-        "message_hold_ticks": 30,
         "screen_textures": [
             {"name": "card", "source": PLATE_PATH, "width": 64, "height": 48, "list_as_background": True},
             {"name": "card_corner", "source": PLATE_PATH, "width": 8, "height": 16, "crop": [0, 0, 32, 64]},
@@ -73,7 +72,7 @@ def tiny_set_description():
             ["plate", "plate", 0, 16],
             ["camera", 0, 0],
             ["object_group", "everyone"],
-            ["message_hold"],
+            ["wait", 30],
             ["object", "a", "st01_a_000_f01", 30, 40],
         ],
     }

@@ -12,7 +12,6 @@
 #include "scene_stage.h"
 #include "texture_cache.h"
 
-#define MICROSECONDS_PER_TICK (1000000ULL / TICKS_PER_SECOND)
 #define PRELOAD_PASS_MAX (TEXTURE_CACHE_ENTRY_MAX / BACKGROUND_READER_QUEUE_MAX)
 #define LONGEST_UPDATE_US 500000ULL
 #define LOG_FOR_TOOLS_SCENE_READY "scene ready name=%s preload_us=%llu texture_bytes=%u missing=%u"
@@ -107,6 +106,37 @@ static void run_step(const struct scene_step *step)
     case SCENE_STEP_WAIT:
         begin_hold(step->ticks);
         break;
+    case SCENE_STEP_BEAM_CREATE:
+        scene_effects_create_beam(scene_stage_effects(), step->beam_name, step->apex_x, step->apex_y, step->x, step->y, step->half_width);
+        run_log_write("scene beam_create name=%s", step->beam_name);
+        break;
+    case SCENE_STEP_BEAM_ANIMATE:
+        scene_effects_animate_beam(scene_stage_effects(), step->beam_name, step->x, step->y, step->half_width, step->ticks);
+        run_log_write("scene beam_animate name=%s ticks=%d", step->beam_name, step->ticks);
+        break;
+    case SCENE_STEP_BEAM_DELETE:
+        scene_effects_delete_beam(scene_stage_effects(), step->beam_name);
+        break;
+    case SCENE_STEP_MASK_ON:
+        scene_effects_set_mask(scene_stage_effects(), 1);
+        run_log_write("scene mask on");
+        break;
+    case SCENE_STEP_MASK_OFF:
+        scene_effects_set_mask(scene_stage_effects(), 0);
+        run_log_write("scene mask off");
+        break;
+    case SCENE_STEP_IRIS:
+        scene_effects_start_iris(scene_stage_effects(), step->x, step->y, step->radius, step->ticks);
+        run_log_write("scene iris ticks=%d", step->ticks);
+        break;
+    case SCENE_STEP_DIM_TO:
+        scene_effects_dim_to(scene_stage_effects(), step->brightness, step->ticks);
+        run_log_write("scene dim ticks=%d", step->ticks);
+        break;
+    case SCENE_STEP_FLASH:
+        scene_effects_flash(scene_stage_effects(), step->brightness, step->ticks);
+        run_log_write("scene flash ticks=%d", step->ticks);
+        break;
     }
 }
 
@@ -136,6 +166,7 @@ static void run_script(unsigned long long elapsed_us)
         elapsed_us = 0;
     }
     while (script.hold_remaining_us <= elapsed_us) {
+        scene_effects_advance(scene_stage_effects(), script.hold_remaining_us);
         elapsed_us = elapsed_us - script.hold_remaining_us;
         script.hold_remaining_us = 0;
         update_hold_effects();
@@ -145,11 +176,13 @@ static void run_script(unsigned long long elapsed_us)
         }
         if (script.hold_remaining_us == 0) {
             status = SCENE_PLAYER_FINISHED;
+            scene_effects_advance(scene_stage_effects(), elapsed_us);
             run_log_write("scene finished name=%s", current_scene->name);
             return;
         }
     }
     script.hold_remaining_us = script.hold_remaining_us - elapsed_us;
+    scene_effects_advance(scene_stage_effects(), elapsed_us);
     update_hold_effects();
 }
 
@@ -260,6 +293,7 @@ int scene_player_play(const char *scene_name)
     current_scene = scene;
     scene_stage_hide_card();
     scene_stage_set_fade(0.0f);
+    scene_effects_reset(scene_stage_effects());
     reset_script_progress();
     is_paused = 0;
     preload_started_us = clock_now_us();
@@ -285,6 +319,8 @@ void scene_player_update(unsigned long long elapsed_us)
     scene_stage_advance_objects(elapsed_us);
     if (status == SCENE_PLAYER_RUNNING) {
         run_script(elapsed_us);
+    } else {
+        scene_effects_advance(scene_stage_effects(), elapsed_us);
     }
 }
 
@@ -293,6 +329,7 @@ void scene_player_stop(void)
     status = SCENE_PLAYER_IDLE;
     scene_stage_set_fade(0.0f);
     scene_stage_hide_card();
+    scene_effects_reset(scene_stage_effects());
     reset_script_progress();
 }
 

@@ -35,5 +35,6 @@ renderer_texture renderer_texture_create_compressed(const unsigned char *blocks,
 void renderer_texture_destroy(renderer_texture texture);
 void renderer_draw_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color tint);
 void renderer_draw_filled_rect(struct renderer_rect screen_area, struct renderer_color color);
+void renderer_draw_filled_rects(const struct renderer_rect *screen_areas, int count, struct renderer_color color);
 
 #endif

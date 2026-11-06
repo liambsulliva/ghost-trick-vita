@@ -114,9 +114,7 @@ def expand_steps(set_description, plate_sizes):
     steps = []
     for step in set_description["steps"]:
         kind = step[0]
-        if kind == "message_hold":
-            steps.append(["wait", set_description["message_hold_ticks"]])
-        elif kind == "object_group":
+        if kind == "object_group":
             for name, animation_name, x, y in set_description["object_groups"][step[1]]:
                 steps.append(object_step(set_description, name, animation_name, x, y))
         elif kind == "object":

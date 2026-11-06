@@ -37,6 +37,7 @@ The DS camera covers 256 by 192 DS pixels, which is 720 by 540 screen pixels. Th
 - The art around the camera is every plate that overlaps the DS camera's 256 by 192 window. A plate that only touches that window does not count.
 - If the art is bigger than the screen, the DS window stays centred on screen, and the view slides to stay inside the art. Nothing is stretched, and the screen is always full.
 - If the art is smaller than the screen, it is centred with black around it. Room 11's close-up plate and the chapter card are like this, because no art exists beyond their edges.
+- While the mask is on and no iris is open, only the beams can be seen, so the DS window stays centred on screen whatever the size of the art. A beam then keeps its place on screen across a cut between a wide shot and the close-up. An iris and a lit room use the two rules above, so the room does not move when an iris gives way to it.
 
 ## Textures: `.gtex`
 
@@ -86,6 +87,8 @@ The converter crops each atlas page to the cells the set actually uses, so `u` a
 
 A scene is a list of steps that run in order. Most take effect immediately. `wait`, `fade_in`, `fade_out` and `camera_pan` hold the script for the number of ticks they name, at 60 ticks per second, while animations keep playing.
 
+`beam_animate`, `iris`, `dim_to` and `flash` do not hold the script. They run on their own timers while the script carries on with its next steps, and they stop when a pause stops the scene. Their ticks can be 0 to change at once. Positions are in DS pixels and pass through the same view as the art.
+
 | Step | Meaning |
 |---|---|
 | `scene <name>` | Names the scene. Must be the first line |
@@ -100,8 +103,20 @@ A scene is a list of steps that run in order. Most take effect immediately. `wai
 | `fade_out <ticks>` | Fades the screen to black |
 | `fade_in <ticks>` | Fades the screen back in |
 | `wait <ticks>` | Waits |
+| `mask_on` | Everything outside the beams goes black across the whole screen. With no beams the screen is black |
+| `mask_off` | Removes the mask and any iris |
+| `beam_create <name> <apex_x> <apex_y> <base_x> <base_y> <half_width>` | Adds a beam: a triangle from its apex to a horizontal base, lit while the mask is on. Using a name again replaces that beam |
+| `beam_animate <name> <base_x> <base_y> <half_width> <ticks>` | Moves a beam's base in a straight line. The apex stays |
+| `beam_delete <name>` | Removes a beam |
+| `iris <center_x> <center_y> <radius> <ticks>` | Opens a soft-edged circle in place of the mask, starting from nothing, or from its current size if an iris is already open. Black starts at `radius`, the picture is clear inside half of it, and nothing is drawn once the clear part reaches every screen corner |
+| `dim_to <brightness> <ticks>` | Moves the picture's brightness, from 0 to 1, in a straight line. A full-screen black overlay does this |
+| `flash <brightness> <ticks>` | A full-screen white overlay starting at that brightness and falling to nothing |
 
-A scene has at most 1024 steps.
+A scene has at most 1024 steps and 4 beams at once.
+
+Rooms do not change the mask or the beams. What draws over what, from the bottom: plates and objects, black around the art, the mask or iris, the dim, the flash, the card, the fade.
+
+A DS spotlight's `radius` becomes `half_width` as radius x 0.75 / 32, so 0x500 is 30 and 0xA00 is 60. The DS iris's radius 0x4000 is 384 by the same rule.
 
 ## Manifest: `manifest.txt`
 

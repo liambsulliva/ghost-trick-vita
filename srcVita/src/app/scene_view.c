@@ -1,9 +1,15 @@
 #include <limits.h>
 #include <stddef.h>
+#include "iris_pattern.h"
+#include "memory.h"
+#include "run_log.h"
 #include "scene_view.h"
+#include "spotlight_mask.h"
 #include "texture_cache.h"
 
 #define LOWER_THAN_ANY_LAYER INT_MIN
+#define IRIS_TEXTURE_SIZE 256
+#define MASK_RECT_COUNT_WORTH_LOGGING 600
 
 struct world_rect {
     float left;
@@ -21,6 +27,9 @@ struct screen_view {
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color black = { 0.0f, 0.0f, 0.0f, 1.0f };
 static const struct renderer_color missing_texture_color = { 1.0f, 0.0f, 1.0f, 0.6f };
+
+static renderer_texture iris_texture;
+static int largest_logged_mask_rect_count;
 
 static struct renderer_rect whole_texture_area(void)
 {
@@ -112,6 +121,11 @@ static struct world_rect art_around_camera(const struct scene_stage *stage)
     return art;
 }
 
+static float view_start_centred_on_camera(float camera_start, float camera_length, float view_length)
+{
+    return camera_start - (view_length - camera_length) / 2.0f;
+}
+
 static float view_start_along_axis(float camera_start, float camera_length, float view_length, float art_start, float art_end)
 {
     float start;
@@ -119,7 +133,7 @@ static float view_start_along_axis(float camera_start, float camera_length, floa
     if (art_end - art_start <= view_length) {
         return art_start - (view_length - (art_end - art_start)) / 2.0f;
     }
-    start = camera_start - (view_length - camera_length) / 2.0f;
+    start = view_start_centred_on_camera(camera_start, camera_length, view_length);
     if (start < art_start) {
         return art_start;
     }
@@ -129,13 +143,23 @@ static float view_start_along_axis(float camera_start, float camera_length, floa
     return start;
 }
 
+static int only_beams_can_be_seen(const struct scene_effects *effects)
+{
+    return effects->mask_is_on && !effects->iris_is_on;
+}
+
 static struct screen_view view_of_stage(const struct scene_stage *stage)
 {
     struct screen_view view;
 
     view.art = art_around_camera(stage);
-    view.left = view_start_along_axis(stage->camera_x, SCENE_VIEW_DS_SCREEN_WIDTH, SCENE_VIEW_WIDTH_IN_DS_PIXELS, view.art.left, view.art.right);
-    view.top = view_start_along_axis(stage->camera_y, SCENE_VIEW_DS_SCREEN_HEIGHT, SCENE_VIEW_HEIGHT_IN_DS_PIXELS, view.art.top, view.art.bottom);
+    if (only_beams_can_be_seen(&stage->effects)) {
+        view.left = view_start_centred_on_camera(stage->camera_x, SCENE_VIEW_DS_SCREEN_WIDTH, SCENE_VIEW_WIDTH_IN_DS_PIXELS);
+        view.top = view_start_centred_on_camera(stage->camera_y, SCENE_VIEW_DS_SCREEN_HEIGHT, SCENE_VIEW_HEIGHT_IN_DS_PIXELS);
+    } else {
+        view.left = view_start_along_axis(stage->camera_x, SCENE_VIEW_DS_SCREEN_WIDTH, SCENE_VIEW_WIDTH_IN_DS_PIXELS, view.art.left, view.art.right);
+        view.top = view_start_along_axis(stage->camera_y, SCENE_VIEW_DS_SCREEN_HEIGHT, SCENE_VIEW_HEIGHT_IN_DS_PIXELS, view.art.top, view.art.bottom);
+    }
     return view;
 }
 
@@ -277,6 +301,158 @@ static void draw_card(const char *texture_name)
     draw_texture_or_placeholder(texture_name, area, whole_texture_area());
 }
 
+static float world_x_to_screen(const struct screen_view *view, float x)
+{
+    return (x - view->left) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+}
+
+static float world_y_to_screen(const struct screen_view *view, float y)
+{
+    return (y - view->top) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+}
+
+static int find_beam_triangles_on_screen(const struct scene_effects *effects, const struct screen_view *view, struct spotlight_triangle *triangles)
+{
+    const struct scene_beam *beam;
+    int count;
+    int index;
+
+    count = 0;
+    for (index = 0; index < SCENE_BEAM_MAX; index++) {
+        beam = &effects->beams[index];
+        if (beam->in_use) {
+            triangles[count].apex_x = world_x_to_screen(view, beam->apex_x);
+            triangles[count].apex_y = world_y_to_screen(view, beam->apex_y);
+            triangles[count].base_x = world_x_to_screen(view, beam->base_x.value);
+            triangles[count].base_y = world_y_to_screen(view, beam->base_y.value);
+            triangles[count].half_width = beam->half_width.value * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+static void log_mask_rect_count_when_large(int rect_count)
+{
+    if (rect_count > MASK_RECT_COUNT_WORTH_LOGGING && rect_count > largest_logged_mask_rect_count) {
+        largest_logged_mask_rect_count = rect_count;
+        run_log_write("scene mask_rects count=%d", rect_count);
+    }
+}
+
+static void draw_mask(const struct scene_effects *effects, const struct screen_view *view)
+{
+    static struct renderer_rect rects[SPOTLIGHT_MASK_RECT_MAX];
+    struct spotlight_triangle triangles[SCENE_BEAM_MAX];
+    int triangle_count;
+    int rect_count;
+
+    triangle_count = find_beam_triangles_on_screen(effects, view, triangles);
+    rect_count = spotlight_mask_black_rects(triangles, triangle_count, rects);
+    log_mask_rect_count_when_large(rect_count);
+    renderer_draw_filled_rects(rects, rect_count, black);
+}
+
+static int point_is_within_clear_part_of_iris(float x, float y, float center_x, float center_y, float clear_radius)
+{
+    float from_center_x;
+    float from_center_y;
+
+    from_center_x = x - center_x;
+    from_center_y = y - center_y;
+    return from_center_x * from_center_x + from_center_y * from_center_y <= clear_radius * clear_radius;
+}
+
+static int iris_clears_whole_screen(float center_x, float center_y, float radius)
+{
+    float clear_radius;
+
+    clear_radius = radius * IRIS_PATTERN_CLEAR_SHARE_OF_RADIUS;
+    return point_is_within_clear_part_of_iris(0.0f, 0.0f, center_x, center_y, clear_radius)
+        && point_is_within_clear_part_of_iris(RENDERER_WIDTH, 0.0f, center_x, center_y, clear_radius)
+        && point_is_within_clear_part_of_iris(0.0f, RENDERER_HEIGHT, center_x, center_y, clear_radius)
+        && point_is_within_clear_part_of_iris(RENDERER_WIDTH, RENDERER_HEIGHT, center_x, center_y, clear_radius);
+}
+
+static void draw_iris(const struct scene_effects *effects, const struct screen_view *view)
+{
+    struct renderer_rect rects[SPOTLIGHT_MASK_RECTS_AROUND_AREA_MAX];
+    struct renderer_rect circle;
+    float center_x;
+    float center_y;
+    float radius;
+
+    center_x = world_x_to_screen(view, effects->iris_x);
+    center_y = world_y_to_screen(view, effects->iris_y);
+    radius = effects->iris_radius.value * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    if (iris_clears_whole_screen(center_x, center_y, radius)) {
+        return;
+    }
+    circle.x = center_x - radius;
+    circle.y = center_y - radius;
+    circle.width = radius * 2.0f;
+    circle.height = radius * 2.0f;
+    if (iris_texture != RENDERER_NO_TEXTURE) {
+        renderer_draw_sprite(iris_texture, circle, whole_texture_area(), white);
+    }
+    renderer_draw_filled_rects(rects, spotlight_mask_rects_around_area(circle, rects), black);
+}
+
+static void draw_mask_or_iris(const struct scene_effects *effects, const struct screen_view *view)
+{
+    if (effects->iris_is_on) {
+        draw_iris(effects, view);
+    } else if (effects->mask_is_on) {
+        draw_mask(effects, view);
+    }
+}
+
+static void draw_dim(const struct scene_effects *effects)
+{
+    struct renderer_color dim_color;
+
+    if (effects->brightness.value < 1.0f) {
+        dim_color = black;
+        dim_color.alpha = 1.0f - effects->brightness.value;
+        renderer_draw_filled_rect(whole_screen_area(), dim_color);
+    }
+}
+
+static void draw_flash(const struct scene_effects *effects)
+{
+    struct renderer_color flash_color;
+
+    if (effects->flash_level.value > 0.0f) {
+        flash_color = white;
+        flash_color.alpha = effects->flash_level.value;
+        renderer_draw_filled_rect(whole_screen_area(), flash_color);
+    }
+}
+
+void scene_view_start(void)
+{
+    unsigned char *pixels;
+
+    iris_texture = RENDERER_NO_TEXTURE;
+    pixels = mem_alloc(IRIS_TEXTURE_SIZE * IRIS_TEXTURE_SIZE * 4);
+    if (pixels != NULL) {
+        iris_pattern_fill(pixels, IRIS_TEXTURE_SIZE);
+        iris_texture = renderer_texture_create(pixels, IRIS_TEXTURE_SIZE, IRIS_TEXTURE_SIZE);
+        mem_free(pixels);
+    }
+    if (iris_texture == RENDERER_NO_TEXTURE) {
+        run_log_write("scene iris_texture_failed");
+    }
+}
+
+void scene_view_stop(void)
+{
+    if (iris_texture != RENDERER_NO_TEXTURE) {
+        renderer_texture_destroy(iris_texture);
+    }
+    iris_texture = RENDERER_NO_TEXTURE;
+}
+
 void scene_view_draw(const struct scene_stage *stage)
 {
     struct screen_view view;
@@ -286,6 +462,9 @@ void scene_view_draw(const struct scene_stage *stage)
     draw_plates(stage, &view);
     draw_objects_in_layer_order(stage, &view);
     draw_black_around_art(&view);
+    draw_mask_or_iris(&stage->effects, &view);
+    draw_dim(&stage->effects);
+    draw_flash(&stage->effects);
     if (stage->card_texture[0] != '\0') {
         draw_card(stage->card_texture);
     }
