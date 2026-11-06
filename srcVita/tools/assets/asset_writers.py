@@ -8,7 +8,6 @@ NAME_MAX_LENGTH = 95
 ANIMATION_FRAME_MAX = 512
 SCENE_STEP_MAX = 1024
 BLANK_TEXTURE = "-"
-TICKS_PER_SECOND = 60
 ALLOWED_NAME_CHARACTERS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-")
 
 
@@ -64,7 +63,7 @@ def anim_text(name, loops, frames):
     check_name(name)
     if len(frames) == 0 or len(frames) > ANIMATION_FRAME_MAX:
         raise ValueError("bad frame count in animation " + name)
-    lines = ["animation " + name, "ticks_per_second " + str(TICKS_PER_SECOND), "loops " + str(loops)]
+    lines = ["animation " + name, "loops " + str(loops)]
     for frame in frames:
         if frame["ticks"] <= 0:
             raise ValueError("frame has no duration in animation " + name)

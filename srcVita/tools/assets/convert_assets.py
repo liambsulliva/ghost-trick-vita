@@ -3,6 +3,7 @@ import concurrent.futures
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -14,17 +15,16 @@ import pack_files
 import texture_encoder
 import timeline_file
 
-TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
-SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(TOOLS_FOLDER))
+ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
+SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
 REPOSITORY_FOLDER = os.path.dirname(SRC_VITA_FOLDER)
 DEFAULT_APK_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "remaster_apk")
 TEXTURE_TOOL_PATH = os.path.join(SRC_VITA_FOLDER, "build", "tools", "texture_tool")
-ART_PER_DS_PIXEL = 4
 FORMAT_NAMES = {asset_writers.FORMAT_RGBA8888: "RGBA8888", asset_writers.FORMAT_DXT5: "DXT5", asset_writers.FORMAT_DXT1: "DXT1"}
 
 
 def load_set_description(set_name):
-    path = os.path.join(TOOLS_FOLDER, set_name + ".json")
+    path = os.path.join(ASSET_TOOLS_FOLDER, set_name + ".json")
     with open(path, "r", encoding="ascii") as source:
         return json.load(source)
 
@@ -46,7 +46,7 @@ def add_atlas_page_jobs(jobs, animations, timelines):
         frame_layout.add_used_cells_to_crops(crops, timeline, ds_frames)
         for record in frame_layout.select_records(timeline, ds_frames):
             if not record["is_blank"]:
-                logical_path = timeline["textures"][record["page"]]
+                logical_path = timeline["pages"][record["page"]]
                 name = frame_layout.texture_name_for(logical_path)
                 jobs[name] = {"name": name, "source": frame_layout.pack_path_for(logical_path)}
     for name, crop in crops.items():
@@ -101,29 +101,31 @@ def plate_size_lookup(texture_results, plates):
     sizes = {}
     for result in texture_results:
         if result["name"] in plate_names:
-            sizes[result["name"]] = (result["source_size"][0] / ART_PER_DS_PIXEL, result["source_size"][1] / ART_PER_DS_PIXEL)
+            sizes[result["name"]] = (result["source_size"][0] / frame_layout.ART_PER_DS_PIXEL, result["source_size"][1] / frame_layout.ART_PER_DS_PIXEL)
     return sizes
 
 
-def object_step(description, name, animation_name, x, y):
-    settings = description["objects"][name]
+def object_step(set_description, name, animation_name, x, y):
+    settings = set_description["objects"][name]
     return ["object", name, animation_name, x, y, settings["layer"], settings["flip"]]
 
 
-def expand_steps(description, plate_sizes):
+def expand_steps(set_description, plate_sizes):
     steps = []
-    for step in description["steps"]:
+    for step in set_description["steps"]:
         kind = step[0]
         if kind == "message_hold":
-            steps.append(["wait", description["message_hold_ticks"]])
+            steps.append(["wait", set_description["message_hold_ticks"]])
         elif kind == "object_group":
-            for name, animation_name, x, y in description["object_groups"][step[1]]:
-                steps.append(object_step(description, name, animation_name, x, y))
+            for name, animation_name, x, y in set_description["object_groups"][step[1]]:
+                steps.append(object_step(set_description, name, animation_name, x, y))
         elif kind == "object":
-            steps.append(object_step(description, step[1], step[2], step[3], step[4]))
+            _, name, animation_name, x, y = step
+            steps.append(object_step(set_description, name, animation_name, x, y))
         elif kind == "plate":
-            width, height = plate_sizes[step[1]]
-            steps.append(["plate", step[1], step[2], step[3], width, height])
+            _, name, x, y = step
+            width, height = plate_sizes[name]
+            steps.append(["plate", name, x, y, width, height])
         else:
             steps.append(list(step))
     return steps
@@ -153,17 +155,17 @@ def clear_output_folders(output_folder):
         os.makedirs(folder)
 
 
-def write_outputs(output_folder, description, texture_results, animation_texts, steps):
+def write_outputs(output_folder, set_description, texture_results, animation_texts, steps):
     clear_output_folders(output_folder)
     for result in texture_results:
         with open(os.path.join(output_folder, "textures", result["name"] + ".gtex"), "wb") as output:
             output.write(result["bytes"])
     for name, text in animation_texts.items():
         write_text_file(os.path.join(output_folder, "animations", name + ".anim"), text)
-    scene_name = description["scene_name"]
+    scene_name = set_description["scene_name"]
     write_text_file(os.path.join(output_folder, "scenes", scene_name + ".scene"), asset_writers.scene_text(scene_name, steps))
-    background_names = [plate["name"] for plate in description["plates"]]
-    for texture in description["screen_textures"]:
+    background_names = [plate["name"] for plate in set_description["plates"]]
+    for texture in set_description["screen_textures"]:
         if texture.get("list_as_background"):
             background_names.append(texture["name"])
     manifest = asset_writers.manifest_text([scene_name], background_names, list(animation_texts.keys()))
@@ -191,37 +193,35 @@ def print_summary(texture_results, animation_texts, steps):
     print("scene steps: %d" % len(steps))
 
 
-def convert_description(description, output_folder, apk_folder):
+def convert_set_description(set_description, output_folder, apk_folder):
     packs = pack_files.PackSet(apk_folder)
-    timelines = load_timelines(packs, description["animations"])
+    timelines = load_timelines(packs, set_description["animations"])
     jobs = {}
-    crops = add_atlas_page_jobs(jobs, description["animations"], timelines)
-    add_plate_jobs(jobs, description["plates"])
-    add_screen_texture_jobs(jobs, description["screen_textures"])
+    crops = add_atlas_page_jobs(jobs, set_description["animations"], timelines)
+    add_plate_jobs(jobs, set_description["plates"])
+    add_screen_texture_jobs(jobs, set_description["screen_textures"])
     os.makedirs(output_folder, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=output_folder, prefix="work_") as work_folder:
         texture_results = convert_all_textures(packs, jobs, work_folder)
     animation_texts = {}
-    for animation in description["animations"]:
+    for animation in set_description["animations"]:
         timeline = timelines[animation["timeline"]]
         frames = frame_layout.frames_for_animation(timeline, animation.get("ds_frames"), crops)
         animation_texts[animation["name"]] = asset_writers.anim_text(animation["name"], animation.get("loops", 0), frames)
-    steps = expand_steps(description, plate_size_lookup(texture_results, description["plates"]))
+    steps = expand_steps(set_description, plate_size_lookup(texture_results, set_description["plates"]))
     check_steps_refer_to_known_assets(steps, set(jobs.keys()), set(animation_texts.keys()))
-    write_outputs(output_folder, description, texture_results, animation_texts, steps)
+    write_outputs(output_folder, set_description, texture_results, animation_texts, steps)
     print_summary(texture_results, animation_texts, steps)
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--set", required=True)
-    parser.add_argument("--output", required=True)
-    parser.add_argument("--apk-folder", default=DEFAULT_APK_FOLDER)
+    parser = argparse.ArgumentParser(description="Converts the remaster's files named by a set description into Vita assets.")
+    parser.add_argument("--set", required=True, help="name of a set description in tools/assets, without .json")
+    parser.add_argument("--output", required=True, help="folder to write manifest.txt, textures, animations and scenes into")
+    parser.add_argument("--apk-folder", default=DEFAULT_APK_FOLDER, help="folder holding the remaster's pack files")
     arguments = parser.parse_args()
-    if not os.path.exists(TEXTURE_TOOL_PATH):
-        print("texture_tool is not built; run: make -C srcVita/tools/assets", file=sys.stderr)
-        return 1
-    convert_description(load_set_description(arguments.set), arguments.output, arguments.apk_folder)
+    subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)
+    convert_set_description(load_set_description(arguments.set), arguments.output, arguments.apk_folder)
     return 0
 
 

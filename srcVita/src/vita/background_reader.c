@@ -25,7 +25,7 @@ static int reader_started;
 
 static int reader_thread(SceSize argument_size, void *arguments)
 {
-    static struct read_request request;
+    struct read_request request;
     struct finished_read finished;
 
     (void)argument_size;
@@ -53,26 +53,30 @@ static int reader_thread(SceSize argument_size, void *arguments)
     return 0;
 }
 
-void background_reader_start(void)
+int background_reader_start(void)
 {
     SceUID thread;
 
     if (reader_started) {
-        return;
+        return 1;
     }
-    reader_started = 1;
     queue_lock = sceKernelCreateMutex("reader_queue", 0, 0, NULL);
     work_available = sceKernelCreateSema("reader_work", 0, 0, BACKGROUND_READER_QUEUE_MAX, NULL);
     read_finished = sceKernelCreateSema("reader_done", 0, 0, BACKGROUND_READER_QUEUE_MAX, NULL);
     thread = sceKernelCreateThread("file_reader", reader_thread, READER_PRIORITY, READER_STACK_SIZE, 0, SCE_KERNEL_CPU_MASK_USER_1, NULL);
-    if (thread >= 0) {
-        sceKernelStartThread(thread, 0, NULL);
+    if (queue_lock < 0 || work_available < 0 || read_finished < 0 || thread < 0) {
+        return 0;
     }
+    if (sceKernelStartThread(thread, 0, NULL) < 0) {
+        return 0;
+    }
+    reader_started = 1;
+    return 1;
 }
 
 int background_reader_submit(unsigned int request_id, const char *path)
 {
-    if (reads_in_flight >= BACKGROUND_READER_QUEUE_MAX || strlen(path) >= FILE_PATH_MAX) {
+    if (!reader_started || reads_in_flight >= BACKGROUND_READER_QUEUE_MAX || strlen(path) >= FILE_PATH_MAX) {
         return 0;
     }
     reads_in_flight = reads_in_flight + 1;

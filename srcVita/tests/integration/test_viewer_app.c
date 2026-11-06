@@ -1,48 +1,36 @@
 #include <stdlib.h>
+#include "animation_library.h"
 #include "fakes/fake_platform.h"
 #include "fakes/fake_reader.h"
 #include "fakes/fake_renderer.h"
+#include "fakes/fake_texture_files.h"
 #include "file.h"
 #include "input.h"
 #include "run_log.h"
 #include "scene_player.h"
+#include "scene_stage.h"
 #include "scene_view.h"
 #include "test_support.h"
 #include "texture_cache.h"
-#include "texture_file.h"
 #include "viewer_app.h"
 
 #define FRAME_US 16667
-#define WHITE_ROOM_WIDTH 120
-#define OTHER_ROOM_WIDTH 100
+#define ROOM_A_WIDTH 120
+#define ROOM_B_WIDTH 100
 #define CHARACTER_WIDTH 32
 #define CARD_WIDTH 72
 #define BAR_WIDTH 16
-
-static void write_u32(unsigned char *bytes, unsigned int value)
-{
-    bytes[0] = (unsigned char)(value & 0xff);
-    bytes[1] = (unsigned char)((value >> 8) & 0xff);
-    bytes[2] = (unsigned char)((value >> 16) & 0xff);
-    bytes[3] = (unsigned char)((value >> 24) & 0xff);
-}
+#define PLACEHOLDER_TEXTURE_WIDTH 64
+#define STATUS_TEXT_VISIBLE_CHARACTERS 11
+#define FRAMES_LONGER_THAN_EVERY_PRELOAD_PASS 16
+#define HALF_BUDGET_TEXTURE_WIDTH 4096
 
 static void add_texture(const char *name, unsigned int width, unsigned int height)
 {
     char path[FILE_PATH_MAX];
-    unsigned int pixel_bytes;
-    unsigned char *file;
 
     snprintf(path, sizeof(path), "assets/textures/%s.gtex", name);
-    pixel_bytes = width * height * 4;
-    file = calloc(1, TEXTURE_FILE_HEADER_SIZE + pixel_bytes);
-    memcpy(file, "GTEX", 4);
-    write_u32(&file[4], width);
-    write_u32(&file[8], height);
-    write_u32(&file[12], TEXTURE_FILE_FORMAT_RGBA8888);
-    write_u32(&file[16], pixel_bytes);
-    fake_files_add(path, file, TEXTURE_FILE_HEADER_SIZE + pixel_bytes);
-    free(file);
+    fake_files_add_rgba_texture(path, width, height);
 }
 
 static void add_text_file(const char *path, const char *text)
@@ -61,15 +49,15 @@ static void set_up_platform(void)
 
 static void set_up_textures_and_animations(void)
 {
-    add_texture("room_a", WHITE_ROOM_WIDTH, 54);
-    add_texture("room_b", OTHER_ROOM_WIDTH, 54);
+    add_texture("room_a", ROOM_A_WIDTH, 54);
+    add_texture("room_b", ROOM_B_WIDTH, 54);
     add_texture("walk_page", CHARACTER_WIDTH, 32);
     add_texture("idle_page", CHARACTER_WIDTH, 32);
     add_texture("card", CARD_WIDTH, 48);
     add_texture("left_bar", BAR_WIDTH, 32);
     add_texture("right_bar", BAR_WIDTH, 32);
-    add_text_file("assets/animations/walk.anim", "animation walk\nticks_per_second 10\nloops 1\nframe walk_page 1 -10 -20 30 40 0 0 0.5 1\nframe walk_page 1 -6 -20 30 40 0.5 0 0.5 1\n");
-    add_text_file("assets/animations/idle.anim", "animation idle\nticks_per_second 10\nloops 1\nframe idle_page 1 0 0 10 10 0 0 1 1\nframe - 1 0 0 0 0 0 0 0 0\n");
+    add_text_file("assets/animations/walk.anim", "animation walk\nloops 1\nframe walk_page 6 -10 -20 30 40 0 0 0.5 1\nframe walk_page 6 -6 -20 30 40 0.5 0 0.5 1\n");
+    add_text_file("assets/animations/idle.anim", "animation idle\nloops 1\nframe idle_page 6 0 0 10 10 0 0 1 1\nframe - 6 0 0 0 0 0 0 0 0\n");
 }
 
 static void set_up_browsing_assets(void)
@@ -97,7 +85,6 @@ static void run_frames(int frame_count)
     struct input_state no_input;
     int frame;
 
-    no_input.held = 0;
     no_input.pressed = 0;
     for (frame = 0; frame < frame_count; frame++) {
         fake_clock_advance_us(FRAME_US);
@@ -109,7 +96,6 @@ static void press(unsigned int button)
 {
     struct input_state input;
 
-    input.held = button;
     input.pressed = button;
     viewer_app_update(&input, 0);
 }
@@ -178,7 +164,7 @@ static void test_app_without_assets_shows_placeholder_and_says_so(void)
     run_frames(3);
     draw_frame();
     CHECK(fake_renderer_draw_count() > 0);
-    CHECK_INT(count_draws_with_texture_width(64), 1);
+    CHECK_INT(count_draws_with_texture_width(PLACEHOLDER_TEXTURE_WIDTH), 1);
     viewer_app_stop();
     CHECK_INT(fake_renderer_textures_alive(), 0);
 }
@@ -195,14 +181,14 @@ static void test_browsing_draws_background_then_character_in_playfield(void)
     run_frames(1);
     viewer_app_set_hud_visible(0);
     draw_frame();
-    background = find_draw_with_texture_width(WHITE_ROOM_WIDTH);
+    background = find_draw_with_texture_width(ROOM_A_WIDTH);
     character = find_draw_with_texture_width(CHARACTER_WIDTH);
     CHECK(background != NULL);
     CHECK(character != NULL);
-    CHECK(index_of_draw_with_texture_width(WHITE_ROOM_WIDTH) < index_of_draw_with_texture_width(CHARACTER_WIDTH));
+    CHECK(index_of_draw_with_texture_width(ROOM_A_WIDTH) < index_of_draw_with_texture_width(CHARACTER_WIDTH));
     CHECK(background->screen_area.x == SCENE_VIEW_PLAYFIELD_X);
     CHECK(background->screen_area.y == SCENE_VIEW_PLAYFIELD_Y);
-    CHECK(nearly_equal(background->screen_area.width, WHITE_ROOM_WIDTH));
+    CHECK(nearly_equal(background->screen_area.width, ROOM_A_WIDTH));
     CHECK(character->screen_area.x == SCENE_VIEW_PLAYFIELD_X + (128.0f - 10.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
     CHECK(character->screen_area.y == SCENE_VIEW_PLAYFIELD_Y + (176.0f - 20.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
     CHECK(character->screen_area.width == 30.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
@@ -261,7 +247,7 @@ static void test_missing_textures_are_marked_visibly(void)
 
     set_up_platform();
     set_up_browsing_assets();
-    add_text_file("assets/animations/walk.anim", "frame not_converted 1 0 0 10 10 0 0 1 1\n");
+    add_text_file("assets/animations/walk.anim", "frame not_converted 6 0 0 10 10 0 0 1 1\n");
     viewer_app_start("assets");
     run_frames(2);
     CHECK_HAS_TEXT(log_text(), "texture missing name=not_converted");
@@ -320,7 +306,7 @@ static void test_buttons_switch_background_and_animation(void)
     press(INPUT_UP);
     run_frames(1);
     draw_frame();
-    CHECK(find_draw_with_texture_width(OTHER_ROOM_WIDTH) != NULL);
+    CHECK(find_draw_with_texture_width(ROOM_B_WIDTH) != NULL);
     CHECK(find_draw_with_texture_width(CHARACTER_WIDTH) != NULL);
     viewer_app_stop();
 }
@@ -381,7 +367,7 @@ static void test_slow_reads_hold_the_frame_and_get_reported_as_late(void)
 {
     set_up_platform();
     set_up_browsing_assets();
-    add_text_file("assets/animations/walk.anim", "animation walk\nticks_per_second 10\nloops 1\nframe walk_page 1 0 0 10 10 0 0 1 1\nframe second_page 1 0 0 10 10 0 0 1 1\n");
+    add_text_file("assets/animations/walk.anim", "animation walk\nloops 1\nframe walk_page 6 0 0 10 10 0 0 1 1\nframe second_page 6 0 0 10 10 0 0 1 1\n");
     add_texture("second_page", 40, 32);
     fake_reader_hold_reads(1);
     viewer_app_start("assets");
@@ -409,13 +395,13 @@ static void test_old_background_stays_until_the_new_one_has_loaded(void)
     press(INPUT_RIGHT);
     run_frames(1);
     draw_frame();
-    CHECK(find_draw_with_texture_width(WHITE_ROOM_WIDTH) != NULL);
-    CHECK(find_draw_with_texture_width(OTHER_ROOM_WIDTH) == NULL);
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) != NULL);
+    CHECK(find_draw_with_texture_width(ROOM_B_WIDTH) == NULL);
     CHECK(strstr(log_text(), "background shown name=room_b") == NULL);
     fake_reader_release_reads(4);
     run_frames(4);
     draw_frame();
-    CHECK(find_draw_with_texture_width(OTHER_ROOM_WIDTH) != NULL);
+    CHECK(find_draw_with_texture_width(ROOM_B_WIDTH) != NULL);
     CHECK_HAS_TEXT(log_text(), "background shown name=room_b");
     viewer_app_stop();
 }
@@ -432,7 +418,7 @@ static void test_status_text_reaches_the_hud(void)
     draws_before = fake_renderer_draw_count();
     viewer_app_set_status_text("frame 16.6ms");
     draw_frame();
-    CHECK_INT(fake_renderer_draw_count(), draws_before + 11);
+    CHECK_INT(fake_renderer_draw_count(), draws_before + STATUS_TEXT_VISIBLE_CHARACTERS);
     viewer_app_stop();
 }
 
@@ -442,18 +428,18 @@ static void test_scene_waits_for_textures_before_running(void)
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 256 192\nobject hero walk 100 150 1 0\nwait 60\n");
     fake_reader_hold_reads(1);
     viewer_app_start("assets");
-    run_frames(3);
+    run_frames(FRAMES_LONGER_THAN_EVERY_PRELOAD_PASS);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_PRELOADING);
     CHECK(strstr(log_text(), "scene ready") == NULL);
     draw_frame();
-    CHECK(find_draw_with_texture_width(WHITE_ROOM_WIDTH) == NULL);
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) == NULL);
     fake_reader_release_reads(10);
     run_frames(5);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
     CHECK_HAS_TEXT(log_text(), "scene ready name=opening");
     run_frames(1);
     draw_frame();
-    CHECK(find_draw_with_texture_width(WHITE_ROOM_WIDTH) != NULL);
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) != NULL);
     CHECK(find_draw_with_texture_width(CHARACTER_WIDTH) != NULL);
     viewer_app_stop();
 }
@@ -491,18 +477,18 @@ static void test_scene_runs_steps_in_order_and_finishes(void)
     run_frames(5);
     draw_frame();
     CHECK(find_draw_with_texture_width(CARD_WIDTH) != NULL);
-    CHECK(find_draw_with_texture_width(WHITE_ROOM_WIDTH) == NULL);
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) == NULL);
     run_frames(8);
     draw_frame();
     CHECK(find_draw_with_texture_width(CARD_WIDTH) == NULL);
-    CHECK(find_draw_with_texture_width(WHITE_ROOM_WIDTH) != NULL);
-    CHECK(find_draw_with_texture_width(OTHER_ROOM_WIDTH) == NULL);
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) != NULL);
+    CHECK(find_draw_with_texture_width(ROOM_B_WIDTH) == NULL);
     CHECK_HAS_TEXT(log_text(), "scene room id=1");
     CHECK(strstr(log_text(), "scene room id=2") == NULL);
     run_frames(8);
     draw_frame();
-    CHECK(find_draw_with_texture_width(WHITE_ROOM_WIDTH) == NULL);
-    CHECK(find_draw_with_texture_width(OTHER_ROOM_WIDTH) != NULL);
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) == NULL);
+    CHECK(find_draw_with_texture_width(ROOM_B_WIDTH) != NULL);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
     CHECK_HAS_TEXT(log_text(), "scene finished name=opening");
     viewer_app_stop();
@@ -510,25 +496,25 @@ static void test_scene_runs_steps_in_order_and_finishes(void)
 
 static void test_scene_fades_and_pans_over_time(void)
 {
-    const struct scene_picture *picture;
+    const struct scene_stage *stage;
 
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 256 192\nfade_out 60\ncamera_pan 100 0 60\nfade_in 60\nwait 60\n");
     viewer_app_start("assets");
     run_frames(4);
-    picture = scene_player_picture();
+    stage = scene_stage_view();
     run_frames(30);
-    CHECK(picture->fade_amount > 0.4f && picture->fade_amount < 0.6f);
+    CHECK(stage->fade_amount > 0.4f && stage->fade_amount < 0.6f);
     run_frames(32);
-    CHECK(picture->fade_amount == 1.0f);
-    CHECK(picture->camera_x < 10.0f);
+    CHECK(stage->fade_amount == 1.0f);
+    CHECK(stage->camera_x < 10.0f);
     run_frames(30);
-    CHECK(picture->camera_x > 40.0f && picture->camera_x < 60.0f);
+    CHECK(stage->camera_x > 40.0f && stage->camera_x < 60.0f);
     run_frames(32);
-    CHECK(picture->camera_x == 100.0f);
-    CHECK(picture->fade_amount < 1.0f);
+    CHECK(stage->camera_x == 100.0f);
+    CHECK(stage->fade_amount < 1.0f);
     run_frames(62);
-    CHECK(picture->fade_amount == 0.0f);
+    CHECK(stage->fade_amount == 0.0f);
     viewer_app_stop();
 }
 
@@ -568,6 +554,273 @@ static void test_browsing_stops_a_running_scene(void)
     press(INPUT_L);
     run_frames(4);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+    viewer_app_stop();
+}
+
+static void update_with_elapsed_time(unsigned long long elapsed_us)
+{
+    struct input_state no_input;
+
+    no_input.pressed = 0;
+    fake_clock_advance_us(elapsed_us);
+    viewer_app_update(&no_input, elapsed_us);
+}
+
+static void run_frames_until_scene_is_no_longer_preloading(void)
+{
+    int frame;
+
+    for (frame = 0; frame < 4096 && scene_player_status() == SCENE_PLAYER_PRELOADING; frame++) {
+        run_frames(1);
+    }
+}
+
+static void write_card_scene(char *text, unsigned int text_size, int texture_count)
+{
+    unsigned int used;
+    int index;
+
+    used = (unsigned int)snprintf(text, text_size, "scene opening\n");
+    for (index = 0; index < texture_count; index++) {
+        used = used + (unsigned int)snprintf(&text[used], text_size - used, "card t%d\n", index);
+    }
+    snprintf(&text[used], text_size - used, "wait 60\n");
+}
+
+static void test_scene_with_more_textures_than_the_read_queue_loads_them_all(void)
+{
+    static char scene_text[4096];
+    const struct cached_texture *texture;
+    char name[16];
+    int index;
+
+    set_up_platform();
+    write_card_scene(scene_text, sizeof(scene_text), 130);
+    set_up_scene_assets(scene_text);
+    for (index = 0; index < 130; index++) {
+        snprintf(name, sizeof(name), "t%d", index);
+        add_texture(name, 4, 4);
+    }
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+    CHECK_HAS_TEXT(log_text(), "scene ready name=opening");
+    CHECK_HAS_TEXT(log_text(), "texture read_queue_full name=t64");
+    for (index = 0; index < 130; index++) {
+        snprintf(name, sizeof(name), "t%d", index);
+        texture = texture_cache_use_or_start_loading(name);
+        CHECK(texture != NULL);
+        CHECK_INT(texture->state, CACHED_TEXTURE_READY);
+    }
+    CHECK(strstr(log_text(), "does_not_fit_in_cache") == NULL);
+    viewer_app_stop();
+}
+
+static void test_scene_with_more_textures_than_cache_entries_says_so_and_still_plays(void)
+{
+    static char scene_text[8192];
+    char name[16];
+    int index;
+
+    set_up_platform();
+    write_card_scene(scene_text, sizeof(scene_text), TEXTURE_CACHE_ENTRY_MAX + 8);
+    set_up_scene_assets(scene_text);
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX + 8; index++) {
+        snprintf(name, sizeof(name), "t%d", index);
+        add_texture(name, 4, 4);
+    }
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+    CHECK_HAS_TEXT(log_text(), "texture_cache full name=t512");
+    viewer_app_stop();
+}
+
+static void test_scene_larger_than_the_memory_budget_says_so_and_still_plays(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\ncard big_a\ncard big_b\ncard big_c\ncard big_d\nwait 60\n");
+    add_texture("big_a", HALF_BUDGET_TEXTURE_WIDTH, HALF_BUDGET_TEXTURE_WIDTH);
+    add_texture("big_b", HALF_BUDGET_TEXTURE_WIDTH, HALF_BUDGET_TEXTURE_WIDTH);
+    add_texture("big_c", HALF_BUDGET_TEXTURE_WIDTH, HALF_BUDGET_TEXTURE_WIDTH);
+    add_texture("big_d", HALF_BUDGET_TEXTURE_WIDTH, HALF_BUDGET_TEXTURE_WIDTH);
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+    CHECK_HAS_TEXT(log_text(), "scene does_not_fit_in_cache name=opening");
+    viewer_app_stop();
+}
+
+static void test_time_past_the_end_of_a_hold_counts_towards_the_next_hold(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nwait 6\nfade_out 60\nwait 600\n");
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    update_with_elapsed_time(0);
+    CHECK_INT(scene_player_next_step(), 1);
+    update_with_elapsed_time(6 * 16666 + 100000);
+    CHECK_INT(scene_player_next_step(), 2);
+    CHECK(scene_stage_view()->fade_amount > 0.09f);
+    CHECK(scene_stage_view()->fade_amount < 0.11f);
+    viewer_app_stop();
+}
+
+static void test_the_first_update_does_not_shorten_the_first_hold(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nwait 6\nwait 600\n");
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    update_with_elapsed_time(6 * 16666 + 100000);
+    CHECK_INT(scene_player_next_step(), 1);
+    viewer_app_stop();
+}
+
+static void test_a_scene_that_fails_to_play_leaves_the_room_alone(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 256 192\nobject hero walk 100 150 1 0\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames(8);
+    CHECK_INT(viewer_app_play_scene("missing"), 0);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) != NULL);
+    CHECK(find_draw_with_texture_width(CHARACTER_WIDTH) != NULL);
+    viewer_app_stop();
+}
+
+static void test_a_long_stall_only_counts_as_half_a_second(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nfade_out 60\nwait 600\n");
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    update_with_elapsed_time(0);
+    update_with_elapsed_time(20000000);
+    CHECK_INT(scene_player_next_step(), 1);
+    CHECK(scene_stage_view()->fade_amount > 0.49f);
+    CHECK(scene_stage_view()->fade_amount < 0.51f);
+    viewer_app_stop();
+}
+
+static void write_manifest_of_animations(int animation_count)
+{
+    static char manifest_text[8192];
+    unsigned int used;
+    char path[64];
+    char text[128];
+    int index;
+
+    used = (unsigned int)snprintf(manifest_text, sizeof(manifest_text), "background room_a\n");
+    for (index = 0; index < animation_count; index++) {
+        snprintf(path, sizeof(path), "assets/animations/a%d.anim", index);
+        snprintf(text, sizeof(text), "animation a%d\nloops 1\nframe walk_page 6 0 0 10 10 0 0 1 1\n", index);
+        add_text_file(path, text);
+        used = used + (unsigned int)snprintf(&manifest_text[used], sizeof(manifest_text) - used, "animation a%d\n", index);
+    }
+    add_text_file("assets/manifest.txt", manifest_text);
+}
+
+static void test_browsing_past_the_animation_library_limit_keeps_working(void)
+{
+    char name[16];
+    int index;
+
+    set_up_platform();
+    set_up_textures_and_animations();
+    write_manifest_of_animations(ANIMATION_LIBRARY_MAX + 2);
+    viewer_app_start("assets");
+    for (index = 0; index < ANIMATION_LIBRARY_MAX + 2; index++) {
+        snprintf(name, sizeof(name), "a%d", index);
+        CHECK(viewer_app_show_animation(name));
+    }
+    CHECK(strstr(log_text(), "library_full") == NULL);
+    run_frames(2);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) != NULL);
+    CHECK(find_draw_with_texture_width(CHARACTER_WIDTH) != NULL);
+    viewer_app_stop();
+}
+
+static void write_scene_of_animations(const char *path, const char *scene_name, int first_animation, int animation_count)
+{
+    static char scene_text[8192];
+    unsigned int used;
+    int index;
+
+    used = (unsigned int)snprintf(scene_text, sizeof(scene_text), "scene %s\n", scene_name);
+    for (index = 0; index < animation_count; index++) {
+        used = used + (unsigned int)snprintf(&scene_text[used], sizeof(scene_text) - used, "object o%d a%d 0 0 0 0\n", index % 8, first_animation + index);
+    }
+    snprintf(&scene_text[used], sizeof(scene_text) - used, "wait 60\n");
+    add_text_file(path, scene_text);
+}
+
+static void test_each_scene_starts_with_an_empty_animation_library(void)
+{
+    set_up_platform();
+    set_up_textures_and_animations();
+    write_manifest_of_animations(200);
+    write_scene_of_animations("assets/scenes/first.scene", "first", 0, 100);
+    write_scene_of_animations("assets/scenes/second.scene", "second", 100, 100);
+    viewer_app_start("assets");
+    CHECK(viewer_app_play_scene("first"));
+    run_frames_until_scene_is_no_longer_preloading();
+    CHECK(viewer_app_play_scene("second"));
+    run_frames_until_scene_is_no_longer_preloading();
+    CHECK(strstr(log_text(), "library_full") == NULL);
+    viewer_app_stop();
+}
+
+static void test_replaying_a_paused_scene_starts_it_unpaused(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\ncard card\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames(4);
+    press(INPUT_CROSS);
+    CHECK(scene_player_is_paused());
+    press(INPUT_L);
+    CHECK_INT(scene_player_next_step(), 0);
+    run_frames(8);
+    CHECK(!scene_player_is_paused());
+    CHECK(scene_player_next_step() > 0);
+    viewer_app_stop();
+}
+
+static void test_uploading_never_evicts_what_the_last_frame_drew(void)
+{
+    set_up_platform();
+    add_texture("room_a", HALF_BUDGET_TEXTURE_WIDTH - 16, HALF_BUDGET_TEXTURE_WIDTH);
+    add_texture("room_b", HALF_BUDGET_TEXTURE_WIDTH - 8, HALF_BUDGET_TEXTURE_WIDTH);
+    add_texture("room_c", HALF_BUDGET_TEXTURE_WIDTH - 4, HALF_BUDGET_TEXTURE_WIDTH);
+    add_texture("big_page", HALF_BUDGET_TEXTURE_WIDTH, HALF_BUDGET_TEXTURE_WIDTH);
+    add_text_file("assets/animations/big.anim", "animation big\nloops 1\nframe big_page 6 0 0 10 10 0 0 1 1\n");
+    add_text_file("assets/manifest.txt", "background room_a\nbackground room_b\nbackground room_c\nanimation big\n");
+    viewer_app_start("assets");
+    run_frames(2);
+    press(INPUT_RIGHT);
+    run_frames(2);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(HALF_BUDGET_TEXTURE_WIDTH) != NULL);
+    press(INPUT_RIGHT);
+    draw_frame();
+    run_frames(1);
+    draw_frame();
+    CHECK_HAS_TEXT(log_text(), "background shown name=room_c");
+    CHECK(find_draw_with_texture_width(HALF_BUDGET_TEXTURE_WIDTH) != NULL);
+    viewer_app_stop();
+}
+
+static void test_a_reader_thread_that_fails_to_start_is_logged(void)
+{
+    set_up_platform();
+    fake_reader_fail_start(1);
+    set_up_browsing_assets();
+    viewer_app_start("assets");
+    CHECK_HAS_TEXT(log_text(), "reader thread_failed");
     viewer_app_stop();
 }
 
@@ -614,6 +867,18 @@ int main(void)
     test_scene_fades_and_pans_over_time();
     test_scene_survives_bad_files_and_missing_assets();
     test_browsing_stops_a_running_scene();
+    test_scene_with_more_textures_than_the_read_queue_loads_them_all();
+    test_scene_with_more_textures_than_cache_entries_says_so_and_still_plays();
+    test_scene_larger_than_the_memory_budget_says_so_and_still_plays();
+    test_time_past_the_end_of_a_hold_counts_towards_the_next_hold();
+    test_the_first_update_does_not_shorten_the_first_hold();
+    test_a_scene_that_fails_to_play_leaves_the_room_alone();
+    test_a_long_stall_only_counts_as_half_a_second();
+    test_browsing_past_the_animation_library_limit_keeps_working();
+    test_each_scene_starts_with_an_empty_animation_library();
+    test_replaying_a_paused_scene_starts_it_unpaused();
+    test_uploading_never_evicts_what_the_last_frame_drew();
+    test_a_reader_thread_that_fails_to_start_is_logged();
     test_long_run_keeps_memory_bounded();
     fake_files_reset();
     return test_finish("integration/viewer_app");

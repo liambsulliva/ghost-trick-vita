@@ -2,7 +2,7 @@
 #include "renderer.h"
 
 #define RENDERER_POOL_SIZE 0x800000
-#define RENDERER_RESERVED_MAIN_MEMORY 0x1000000
+#define RENDERER_MAIN_MEMORY_LEFT_FOR_APP 0x1000000
 #define BATCH_QUAD_MAX 1024
 #define VERTICES_PER_QUAD 6
 
@@ -70,7 +70,7 @@ int renderer_init(void)
     static const unsigned char white_pixel[4] = { 255, 255, 255, 255 };
     GLboolean resolution_fell_back;
 
-    resolution_fell_back = vglInitExtended(RENDERER_POOL_SIZE, RENDERER_WIDTH, RENDERER_HEIGHT, RENDERER_RESERVED_MAIN_MEMORY, SCE_GXM_MULTISAMPLE_NONE);
+    resolution_fell_back = vglInitExtended(RENDERER_POOL_SIZE, RENDERER_WIDTH, RENDERER_HEIGHT, RENDERER_MAIN_MEMORY_LEFT_FOR_APP, SCE_GXM_MULTISAMPLE_NONE);
     set_up_screen_space_drawing();
     white_texture = renderer_texture_create(white_pixel, 1, 1);
     return !resolution_fell_back;
@@ -111,7 +111,7 @@ static GLuint start_new_texture(void)
 
 static renderer_texture finish_new_texture(GLuint texture)
 {
-    if (glGetError() != GL_NO_ERROR) {
+    if (glGetError() != GL_NO_ERROR || vglGetTexDataPointer(GL_TEXTURE_2D) == NULL) {
         glDeleteTextures(1, &texture);
         return RENDERER_NO_TEXTURE;
     }

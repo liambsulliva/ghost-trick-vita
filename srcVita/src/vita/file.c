@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 #include "file.h"
@@ -41,18 +40,6 @@ int file_read_whole(const char *path, unsigned char **data, unsigned int *size)
     *data = buffer;
     *size = (unsigned int)length;
     return FILE_OK;
-}
-
-int file_read_app(const char *name, unsigned char **data, unsigned int *size)
-{
-    char path[FILE_PATH_MAX];
-    int written;
-
-    written = snprintf(path, sizeof(path), "%s%s", FILE_APP_PREFIX, name);
-    if (written < 0 || written >= (int)sizeof(path)) {
-        return FILE_ERR_PATH;
-    }
-    return file_read_whole(path, data, size);
 }
 
 static int write_with_flags(const char *path, const unsigned char *data, unsigned int size, int open_flags)

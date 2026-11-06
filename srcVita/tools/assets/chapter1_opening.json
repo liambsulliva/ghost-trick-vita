@@ -1,5 +1,4 @@
 {
-  "name": "chapter1_opening",
   "scene_name": "opening",
   "message_hold_ticks": 120,
   "screen_textures": [

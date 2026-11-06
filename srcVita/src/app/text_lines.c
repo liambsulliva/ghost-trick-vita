@@ -1,3 +1,4 @@
+#include <string.h>
 #include "text_lines.h"
 
 unsigned int text_lines_read_next(const char *text, unsigned int text_size, unsigned int offset, char *line, unsigned int line_size)
@@ -17,4 +18,9 @@ unsigned int text_lines_read_next(const char *text, unsigned int text_size, unsi
         offset = offset + 1;
     }
     return offset;
+}
+
+int text_line_starts_with(const char *line, const char *word)
+{
+    return strncmp(line, word, strlen(word)) == 0;
 }

@@ -7,9 +7,7 @@ import tempfile
 import unittest
 
 import convert_assets
-import pack_files
 import synthetic_files
-import test_dxt_encoding
 
 TESTS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(TESTS_FOLDER))
@@ -18,7 +16,7 @@ TIMELINE_PATH = "natives/android/charfiles/2d/01_human/st01/a/st01_a_000/st01_a_
 PAGE_0_PATH = "natives/android/charfiles/2d/01_human/st01/a/st01_a_000/st01_a_000_00_iml4.tex.691230823"
 PAGE_1_PATH = "natives/android/charfiles/2d/01_human/st01/a/st01_a_000/st01_a_000_01_iml4.tex.691230823"
 PLATE_PATH = "natives/android/charfiles/2d/02_bg/st01/plate_iml4.tex.691230823"
-GTEX_HEADER_SIZE = 20
+TEXTURE_FILE_HEADER_SIZE = 20
 DXT1_BLOCK_BYTES = 8
 LOGICAL_PAGES = ["charfiles/2D/01_Human/st01/A/st01_A_000/st01_A_000_00_IML4.tex", "charfiles/2D/01_Human/st01/A/st01_A_000/st01_A_000_01_IML4.tex"]
 
@@ -37,22 +35,12 @@ def opaque_etc2_tex(width, height):
     return synthetic_files.tex_file(width, height, synthetic_files.FORMAT_ETC2_RGB, block * (columns * rows), columns * 8)
 
 
-def shorts(first, anchor, point):
-    values = [0] * 20
-    values[0] = first
-    values[1] = anchor[0]
-    values[2] = anchor[1]
-    values[6] = point[0]
-    values[7] = point[1]
-    return values
-
-
 def game_files():
     records = [
-        (shorts(10, (-6, -6), (0, 0)), (16.0, 8.0), 0),
-        (shorts(10, (-6, -6), (0, 0)), (16.0, 8.0), 1),
-        (shorts(0, (0, 0), (0, 0)), (0.0, 0.0), 2),
-        (shorts(10, (0, 0), (0, 0)), (4.0, 4.0), 2),
+        (synthetic_files.record_shorts(10, (-6, -6), (0, 0)), (16.0, 8.0), 0),
+        (synthetic_files.record_shorts(10, (-6, -6), (0, 0)), (16.0, 8.0), 1),
+        (synthetic_files.record_shorts(0, (0, 0), (0, 0)), (0.0, 0.0), 2),
+        (synthetic_files.record_shorts(10, (0, 0), (0, 0)), (4.0, 4.0), 2),
     ]
     timeline = synthetic_files.timeline_file(LOGICAL_PAGES, (64, 64), (32, 32), [2, 1], records, 2, (8, -4))
     return [
@@ -63,9 +51,8 @@ def game_files():
     ]
 
 
-def set_description():
+def tiny_set_description():
     return {
-        "name": "tiny",
         "scene_name": "opening",
         "message_hold_ticks": 30,
         "screen_textures": [
@@ -105,9 +92,9 @@ class EndToEndTests(unittest.TestCase):
         convert_assets.TEXTURE_TOOL_PATH = CHECKED_TOOL_PATH
         self.addCleanup(setattr, convert_assets, "TEXTURE_TOOL_PATH", tool_path)
 
-    def convert(self, description):
+    def convert(self, set_description):
         with contextlib.redirect_stdout(io.StringIO()):
-            convert_assets.convert_description(description, self.output_folder, self.apk_folder)
+            convert_assets.convert_set_description(set_description, self.output_folder, self.apk_folder)
 
     def read_text(self, *parts):
         with open(os.path.join(self.output_folder, *parts), "r", encoding="ascii") as source:
@@ -122,10 +109,10 @@ class EndToEndTests(unittest.TestCase):
     def first_pixel_red(self, name):
         with open(os.path.join(self.output_folder, "textures", name + ".gtex"), "rb") as source:
             data = source.read()
-        return test_dxt_encoding.decode_colour_block(data[GTEX_HEADER_SIZE:GTEX_HEADER_SIZE + DXT1_BLOCK_BYTES])[0][0]
+        return synthetic_files.decode_color_block(data[TEXTURE_FILE_HEADER_SIZE:TEXTURE_FILE_HEADER_SIZE + DXT1_BLOCK_BYTES])[0][0]
 
     def test_a_small_set_converts_completely(self):
-        self.convert(set_description())
+        self.convert(tiny_set_description())
         self.assertEqual(self.read_text("manifest.txt"), "\n".join([
             "scene opening",
             "background plate",
@@ -147,82 +134,58 @@ class EndToEndTests(unittest.TestCase):
         ]) + "\n")
         self.assertEqual(self.read_text("animations", "st01_a_000.anim"), "\n".join([
             "animation st01_a_000",
-            "ticks_per_second 60",
             "loops 0",
             "frame st01_a_000_00 2 -247 -124 8 8 0 0 0.5 1",
             "frame st01_a_000_00 2 -247 -124 8 8 0.5 0 0.5 1",
             "frame - 2 0 0 0 0 0 0 0 0",
             "frame st01_a_000_01 2 -253 -128 8 8 0 0 1 1",
         ]) + "\n")
-        self.assertEqual(self.read_text("animations", "st01_a_000_f01.anim").splitlines()[3], "frame - 4 0 0 0 0 0 0 0 0")
+        self.assertEqual(self.read_text("animations", "st01_a_000_f01.anim").splitlines()[2], "frame - 4 0 0 0 0 0 0 0 0")
         self.assertEqual(self.read_gtex_header("st01_a_000_00"), ((44, 24, 1, 1056), 1076))
         self.assertEqual(self.read_gtex_header("st01_a_000_01"), ((24, 24, 1, 576), 596))
         self.assertEqual(self.read_gtex_header("plate"), ((92, 44, 2, 2024), 2044))
         self.assertEqual(self.read_gtex_header("card"), ((64, 48, 2, 1536), 1556))
         self.assertEqual(self.read_gtex_header("bar_left"), ((8, 16, 2, 64), 84))
 
-    def test_brightness_darkens_the_stored_colours(self):
-        self.convert(set_description())
+    def test_brightness_darkens_the_stored_colors(self):
+        self.convert(tiny_set_description())
         self.assertAlmostEqual(self.first_pixel_red("card"), 167, delta=6)
         self.assertAlmostEqual(self.first_pixel_red("bar_left"), 83, delta=6)
 
     def test_a_cell_outside_its_page_is_refused(self):
-        description = set_description()
-        description["animations"] = [{"name": "st01_a_000", "timeline": TIMELINE_PATH}]
+        set_description = tiny_set_description()
+        set_description["animations"] = [{"name": "st01_a_000", "timeline": TIMELINE_PATH}]
         files = game_files()
         files[2] = (PAGE_1_PATH, transparent_astc_tex(16, 16), False)
         synthetic_files.write_apk_folder(self.apk_folder, files)
         with self.assertRaises(ValueError):
-            self.convert(description)
+            self.convert(set_description)
 
     def test_running_twice_gives_the_same_files_and_removes_stale_ones(self):
-        self.convert(set_description())
+        self.convert(tiny_set_description())
         stale_path = os.path.join(self.output_folder, "textures", "old.gtex")
         with open(stale_path, "wb") as output:
             output.write(b"old")
         first_scene = self.read_text("scenes", "opening.scene")
         with open(os.path.join(self.output_folder, "textures", "plate.gtex"), "rb") as source:
             first_plate = source.read()
-        self.convert(set_description())
+        self.convert(tiny_set_description())
         self.assertFalse(os.path.exists(stale_path))
         self.assertEqual(self.read_text("scenes", "opening.scene"), first_scene)
         with open(os.path.join(self.output_folder, "textures", "plate.gtex"), "rb") as source:
             self.assertEqual(source.read(), first_plate)
 
     def test_a_missing_pack_entry_is_reported(self):
-        description = set_description()
-        description["plates"] = [{"name": "plate", "source": "natives/android/not/there.tex.691230823"}]
+        set_description = tiny_set_description()
+        set_description["plates"] = [{"name": "plate", "source": "natives/android/not/there.tex.691230823"}]
         with self.assertRaises(KeyError):
-            self.convert(description)
+            self.convert(set_description)
 
     def test_a_scene_naming_an_unknown_animation_is_refused(self):
-        description = set_description()
-        description["steps"].append(["object", "a", "no_such_animation", 0, 0])
+        set_description = tiny_set_description()
+        set_description["steps"].append(["object", "a", "no_such_animation", 0, 0])
         with self.assertRaises(ValueError):
-            self.convert(description)
-
-
-class PackFileTests(unittest.TestCase):
-    def setUp(self):
-        self.folder = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self.folder)
-
-    def test_stored_and_deflated_entries_read_back(self):
-        synthetic_files.write_apk_folder(self.folder, [("natives/android/a.bin", b"stored bytes", False), ("natives/android/b.bin", b"deflated bytes" * 20, True)])
-        packs = pack_files.PackSet(self.folder)
-        self.assertEqual(packs.read("natives/android/a.bin"), b"stored bytes")
-        self.assertEqual(packs.read("natives/android/b.bin"), b"deflated bytes" * 20)
-
-    def test_a_missing_path_raises(self):
-        synthetic_files.write_apk_folder(self.folder, [])
-        with self.assertRaises(KeyError):
-            pack_files.PackSet(self.folder).read("natives/android/missing.bin")
-
-    def test_the_key_pairs_the_lower_case_hash_then_the_upper_case_hash(self):
-        self.assertEqual(pack_files.path_hash_key("Ab"), (pack_files.murmur3_hash("ab".encode("utf-16-le")), pack_files.murmur3_hash("AB".encode("utf-16-le"))))
-
-    def test_the_hash_matches_a_published_vector(self):
-        self.assertEqual(pack_files.murmur3_hash(b""), 0x81F16F39)
+            self.convert(set_description)
 
 
 if __name__ == "__main__":

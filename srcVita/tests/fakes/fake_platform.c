@@ -1,12 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
+#include "clock.h"
 #include "fake_platform.h"
 #include "file.h"
 #include "log_sink.h"
 #include "memory.h"
-#include "timing.h"
 
-#define FAKE_FILE_COUNT 64
+#define FAKE_FILE_COUNT 1024
 
 struct fake_file {
     char path[FILE_PATH_MAX];
@@ -30,7 +30,7 @@ void fake_clock_advance_us(unsigned long long elapsed_us)
     fake_now_us = fake_now_us + elapsed_us;
 }
 
-unsigned long long timing_now_us(void)
+unsigned long long clock_now_us(void)
 {
     return fake_now_us;
 }
@@ -150,11 +150,6 @@ int file_read_whole(const char *path, unsigned char **data, unsigned int *size)
     *data = copy;
     *size = file->size;
     return FILE_OK;
-}
-
-int file_read_app(const char *name, unsigned char **data, unsigned int *size)
-{
-    return file_read_whole(name, data, size);
 }
 
 int file_write_whole(const char *path, const unsigned char *data, unsigned int size)

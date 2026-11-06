@@ -1,10 +1,10 @@
 #ifndef TEXTURE_CACHE_H
 #define TEXTURE_CACHE_H
 
+#include "asset_name.h"
 #include "renderer.h"
 
 #define TEXTURE_CACHE_ENTRY_MAX 512
-#define TEXTURE_NAME_MAX 96
 #define TEXTURE_CACHE_DEFAULT_BUDGET_BYTES (128u * 1024u * 1024u)
 
 enum cached_texture_state {
@@ -14,13 +14,13 @@ enum cached_texture_state {
 };
 
 struct cached_texture {
-    char name[TEXTURE_NAME_MAX];
+    char name[ASSET_NAME_MAX];
     renderer_texture texture;
     enum cached_texture_state state;
     unsigned int request_id;
     unsigned int width;
     unsigned int height;
-    unsigned int bytes;
+    unsigned int memory_bytes;
     unsigned int last_used_frame;
     unsigned long long requested_at_us;
     int in_use;
@@ -37,7 +37,7 @@ struct texture_cache_totals {
 
 void texture_cache_init(const char *texture_folder, unsigned int budget_bytes);
 void texture_cache_begin_frame(void);
-const struct cached_texture *texture_cache_request(const char *name);
+const struct cached_texture *texture_cache_use_or_start_loading(const char *name);
 const struct cached_texture *texture_cache_load_now(const char *name);
 void texture_cache_upload_finished_reads(unsigned int upload_limit);
 int texture_cache_loading_count(void);

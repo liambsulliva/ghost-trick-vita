@@ -27,7 +27,6 @@ static unsigned int read_app_buttons(unsigned int vita_buttons)
     buttons |= add_button_if_held(vita_buttons, SCE_CTRL_LTRIGGER, INPUT_L);
     buttons |= add_button_if_held(vita_buttons, SCE_CTRL_RTRIGGER, INPUT_R);
     buttons |= add_button_if_held(vita_buttons, SCE_CTRL_START, INPUT_START);
-    buttons |= add_button_if_held(vita_buttons, SCE_CTRL_SELECT, INPUT_SELECT);
     return buttons;
 }
 
@@ -38,7 +37,6 @@ void input_poll(struct input_state *state)
 
     sceCtrlPeekBufferPositive(0, &pad, 1);
     buttons = read_app_buttons(pad.buttons);
-    state->held = buttons;
     state->pressed = buttons & ~previous_buttons;
     previous_buttons = buttons;
 }

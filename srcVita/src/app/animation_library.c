@@ -84,6 +84,11 @@ const struct animation *animation_library_load(const char *name)
     return animation;
 }
 
+int animation_library_is_full(void)
+{
+    return loaded_count >= ANIMATION_LIBRARY_MAX;
+}
+
 void animation_library_clear(void)
 {
     int index;

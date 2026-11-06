@@ -22,7 +22,7 @@ def png_chunk(kind, payload):
 
 def indexed_png(width, height, pixels):
     header = struct.pack(">IIBBBBB", width, height, 8, 3, 0, 0, 0)
-    palette = bytes(channel for colour in PALETTE for channel in colour)
+    palette = bytes(channel for color in PALETTE for channel in color)
     rows = bytearray()
     for row in range(height):
         rows.append(0)

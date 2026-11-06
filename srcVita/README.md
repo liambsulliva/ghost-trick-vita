@@ -14,7 +14,7 @@ No game data lives in this folder. Converted assets, captures and reference vide
 | `src/vita/` | Everything that calls the Vita SDK or vitaGL |
 | `src/app/` | Everything else. It has no Vita calls, so the tests can run it on a Mac |
 | `include/` | Headers for both |
-| `tests/unit`, `tests/widget`, `tests/integration` | C tests, from one function up to the whole app |
+| `tests/unit`, `tests/integration` | C tests, from one function up to the whole app |
 | `tests/fakes/` | Stand-ins for `src/vita` that the C tests link against |
 | `tests/tools/` | Tests for the asset converter |
 | `tools/assets/` | The asset converter |
@@ -37,14 +37,14 @@ export VITASDK=/usr/local/vitasdk PATH="/usr/local/vitasdk/bin:$PATH"
 make -C srcVita -j8
 ```
 
-The tests run on the Mac and need no SDK.
+The tests run on the Mac and need no SDK. The first command runs the C tests, and the second also runs the converter and tool tests, which need Python's `numpy` and ImageMagick's `magick`.
 
 ```bash
 make -C srcVita test
 ```
 
 ```bash
-make -C srcVita/tools/assets test
+make -C srcVita test-all
 ```
 
 ```bash
@@ -76,13 +76,13 @@ python3 -I srcVita/tools/vita_loop.py upload-assets extracted/vita_assets/chapte
 ```
 
 ```bash
-python3 -I srcVita/tools/vita_loop.py install
+python3 -I srcVita/tools/vita_loop.py first-install
 ```
 
-After the first install, `deploy` swaps in a new `eboot.bin`, which is much faster. Quit before launching, because launching a running app does not restart it.
+After the first install, `upload-eboot` quits the app and swaps in a new `eboot.bin`, which is much faster. Quit before launching, because launching a running app does not restart it.
 
 ```bash
-python3 -I srcVita/tools/vita_loop.py deploy
+python3 -I srcVita/tools/vita_loop.py upload-eboot
 ```
 
 ```bash
@@ -107,7 +107,7 @@ This needs the reference video at `extracted/reference/chapter1_720p60.mp4`, plu
 python3 -I srcVita/tools/longplay_check.py
 ```
 
-It uploads temporary scenes that hold one exact pose, captures each on the Vita, deletes them, and compares each capture with the matching video frame. It fails if a sprite sits more than 0.4 DS pixels from the video, if the picture differs too much, or if motion frames match the video out of order. Side-by-side images land in `build/longplay_check/`. Use `--score-only` to re-score saved captures without the device.
+It first checks that the Vita has the same `eboot.bin` and manifest as this machine. Then it uploads temporary scenes that hold one exact pose, captures each on the Vita, deletes them, and compares each capture with the matching video frame. Each measured sprite is also captured alone, so only its own pixels are scored. The check fails if a sprite sits more than 0.4 DS pixels from the video, if a sprite or the picture differs too much, or if motion frames match the video out of order. Side-by-side images land in `build/longplay_check/`. Use `--score-only` to re-score saved captures without the device.
 
 ## Measured on the Vita
 
@@ -119,7 +119,7 @@ It uploads temporary scenes that hold one exact pose, captures each on the Vita,
 | Scene preload | about 2.4 s for 39 textures, none missing |
 | Asset size | 8.6 MB of files, about 20 MB of texture memory |
 | Free memory during the scene | about 66 MB video, 147 MB main |
-| Sprite placement against the video | 0 offset on all 29 object and motion measurements |
+| Sprite placement against the video | 0 offset on all 28 object and motion measurements |
 
 vitaGL rounds compressed textures up to power-of-two sizes, so a texture can take about twice its file size in memory. The cache counts the rounded size, and the converter crops each atlas page to the cells in use.
 
@@ -128,7 +128,7 @@ vitaGL rounds compressed textures up to power-of-two sizes, so a texture can tak
 - **Game logic.** The scene is a fixed script. Running the DS scene scripts needs a VM for 57 opcodes, and the DS logic still has to be brought up behind these Vita layers.
 - **The opening's spotlights and narration.** The real opening hides most of the room behind black with spotlight shapes, and shows narration over it. Here the room is fully lit, and the art for the spotlight shapes has not been identified.
 - **Text boxes, speech bubbles, effects and the HUD.** None are drawn yet.
-- **Audio.** `src/vita/audio.c` is a stub.
+- **Audio.** Nothing plays yet.
 - **Input.** Buttons only drive the debug viewer: LEFT, RIGHT, UP and DOWN browse, CROSS pauses, TRIANGLE toggles the HUD, R opens the list, L restarts the scene, SQUARE saves a capture and START quits.
 
 Some scene timing is hand-tuned rather than taken from the game: message holds use a fixed length, card fades were borrowed from Chapter 2, and the scene ends with a pan across the room so every object gets seen. The side bars are the remaster's art darkened to 0.46, a value measured from the video whose cause is unknown.

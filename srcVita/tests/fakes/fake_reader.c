@@ -14,6 +14,7 @@ static int pending_count;
 static int released_count;
 static int reads_are_held;
 static int submits_are_refused;
+static int start_should_fail;
 
 void fake_reader_reset(void)
 {
@@ -21,6 +22,7 @@ void fake_reader_reset(void)
     released_count = 0;
     reads_are_held = 0;
     submits_are_refused = 0;
+    start_should_fail = 0;
 }
 
 void fake_reader_hold_reads(int should_hold)
@@ -43,8 +45,14 @@ void fake_reader_release_reads(int count)
     released_count = released_count + count;
 }
 
-void background_reader_start(void)
+void fake_reader_fail_start(int should_fail)
 {
+    start_should_fail = should_fail;
+}
+
+int background_reader_start(void)
+{
+    return !start_should_fail;
 }
 
 int background_reader_submit(unsigned int request_id, const char *path)

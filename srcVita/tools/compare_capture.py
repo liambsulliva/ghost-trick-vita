@@ -4,7 +4,7 @@ import re
 import subprocess
 import sys
 
-SCREEN_SIZE = "960x540"
+COMPARED_SIZE = "960x540"
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_OUTPUT_FOLDER = os.path.join(SRC_VITA_FOLDER, "build", "compare")
 
@@ -14,13 +14,16 @@ def run_magick(arguments):
 
 
 def normalize_capture(source_path, output_path):
-    result = run_magick([source_path, "-gravity", "center", "-crop", SCREEN_SIZE + "+0+0", "+repage", "-alpha", "off", output_path])
+    result = run_magick([source_path, "-gravity", "center", "-crop", COMPARED_SIZE + "+0+0", "+repage", "-alpha", "off", output_path])
     if result.returncode != 0:
         raise RuntimeError("could not read " + source_path + ": " + result.stderr.strip())
+    size = run_magick(["identify", "-format", "%wx%h", output_path])
+    if size.stdout != COMPARED_SIZE:
+        raise RuntimeError(source_path + " is smaller than " + COMPARED_SIZE)
 
 
 def normalize_reference(source_path, output_path):
-    result = run_magick([source_path, "-resize", SCREEN_SIZE + "!", "-alpha", "off", output_path])
+    result = run_magick([source_path, "-resize", COMPARED_SIZE + "!", "-alpha", "off", output_path])
     if result.returncode != 0:
         raise RuntimeError("could not read " + source_path + ": " + result.stderr.strip())
 
@@ -40,12 +43,12 @@ def make_side_by_side(capture_path, reference_path, difference_path, output_path
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("capture")
-    parser.add_argument("reference")
-    parser.add_argument("--name", default="comparison")
-    parser.add_argument("--output", default=DEFAULT_OUTPUT_FOLDER)
-    parser.add_argument("--max-score", type=float, default=None)
+    parser = argparse.ArgumentParser(description="Scores a screen capture against a reference image and writes a side by side.")
+    parser.add_argument("capture", help="image saved by the app")
+    parser.add_argument("reference", help="image to compare it against; it is resized to fit")
+    parser.add_argument("--name", default="comparison", help="prefix for the images this writes")
+    parser.add_argument("--output", default=DEFAULT_OUTPUT_FOLDER, help="folder for the images this writes")
+    parser.add_argument("--max-score", type=float, default=None, help="exit 1 when the score is over this limit; without it, any score exits 0")
     arguments = parser.parse_args()
 
     os.makedirs(arguments.output, exist_ok=True)

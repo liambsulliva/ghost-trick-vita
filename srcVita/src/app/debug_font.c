@@ -116,11 +116,6 @@ void debug_font_shutdown(void)
     atlas_texture = RENDERER_NO_TEXTURE;
 }
 
-float debug_font_text_width(const char *text, float scale)
-{
-    return (float)strlen(text) * DEBUG_FONT_CELL_WIDTH * scale;
-}
-
 void debug_font_draw_text(float x, float y, float scale, struct renderer_color color, const char *text)
 {
     struct renderer_rect screen_area;

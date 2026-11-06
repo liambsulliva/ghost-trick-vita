@@ -19,15 +19,15 @@ all: $(TEXTURE_TOOL)
 
 $(TEXTURE_TOOL): texture_tool.c $(DECODER_SOURCES) $(DECODER_HEADERS)
 	@mkdir -p $(TOOLS_BUILD_FOLDER)
-	$(CC) $(CFLAGS) texture_tool.c $(DECODER_SOURCES) -o $@ -lm
+	$(CC) $(CFLAGS) texture_tool.c $(DECODER_SOURCES) -o $@
 
 $(TEXTURE_TOOL_CHECKED): texture_tool.c $(DECODER_SOURCES) $(DECODER_HEADERS)
 	@mkdir -p $(TOOLS_BUILD_FOLDER)
-	$(CC) $(SANITIZER_FLAGS) texture_tool.c $(DECODER_SOURCES) -o $@ -lm
+	$(CC) $(SANITIZER_FLAGS) texture_tool.c $(DECODER_SOURCES) -o $@
 
 $(DECODER_SELFTEST): $(TESTS_FOLDER)/decoder_selftest.c $(DECODER_SOURCES) $(DECODER_HEADERS)
 	@mkdir -p $(TOOLS_BUILD_FOLDER)
-	$(CC) $(SANITIZER_FLAGS) -I. $(TESTS_FOLDER)/decoder_selftest.c $(DECODER_SOURCES) -o $@ -lm
+	$(CC) $(SANITIZER_FLAGS) -I. $(TESTS_FOLDER)/decoder_selftest.c $(DECODER_SOURCES) -o $@
 
 test: $(TEXTURE_TOOL) $(TEXTURE_TOOL_CHECKED) $(DECODER_SELFTEST)
 	$(DECODER_SELFTEST) 20000

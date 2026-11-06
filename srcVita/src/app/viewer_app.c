@@ -2,6 +2,8 @@
 #include <string.h>
 #include "animation_library.h"
 #include "asset_manifest.h"
+#include "checker_pattern.h"
+#include "clock.h"
 #include "debug_font.h"
 #include "file.h"
 #include "file_path.h"
@@ -9,15 +11,25 @@
 #include "renderer.h"
 #include "run_log.h"
 #include "scene_player.h"
+#include "scene_stage.h"
 #include "scene_view.h"
-#include "test_pattern.h"
 #include "texture_cache.h"
-#include "timing.h"
 #include "ui_list.h"
 #include "viewer_app.h"
 
 #define LIST_VISIBLE_ROWS 20
 #define LIST_ROW_HEIGHT 22.0f
+#define LIST_PANEL_X 40.0f
+#define LIST_PANEL_Y 40.0f
+#define LIST_PANEL_WIDTH 880.0f
+#define LIST_PANEL_PADDING 16.0f
+#define LIST_TEXT_X 52.0f
+#define LIST_TEXT_Y 48.0f
+#define HUD_BAR_HEIGHT 44.0f
+#define HUD_TEXT_X 8.0f
+#define HUD_FIRST_LINE_Y 6.0f
+#define HUD_SECOND_LINE_Y 24.0f
+#define TEXT_SCALE 2.0f
 #define PLACEHOLDER_SIZE 64
 #define PLACEHOLDER_TILE 8
 #define UPLOADS_PER_FRAME 1
@@ -31,41 +43,46 @@ static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color highlight = { 0.25f, 0.86f, 0.75f, 1.0f };
 static const struct renderer_color panel = { 0.03f, 0.05f, 0.09f, 0.78f };
 
-static char assets_path[FILE_PATH_MAX];
+static char assets_folder[FILE_PATH_MAX];
 static struct asset_manifest *manifest;
 static struct ui_list animation_list;
 static renderer_texture placeholder_texture;
 static char status_text[VIEWER_STATUS_TEXT_MAX];
-static int current_background;
-static int pending_background;
+static int current_background_index;
+static int pending_background_index;
 static unsigned long long pending_background_started_us;
 static int current_animation_index;
 static int hud_is_visible;
 static int list_is_open;
 
-static void make_asset_subfolder(char *path, const char *subfolder)
+static void asset_subfolder_path(char *path, const char *subfolder)
 {
-    file_path_join(path, assets_path, subfolder, "");
+    file_path_join(path, assets_folder, subfolder, "");
 }
 
-static void put_background_in_room(const char *name)
+static void leave_scene_for_browsing(void)
+{
+    scene_player_stop();
+}
+
+static void replace_room_with_background(const char *name)
 {
     const struct cached_texture *texture;
 
-    texture = texture_cache_request(name);
-    scene_player_clear_room();
+    texture = texture_cache_use_or_start_loading(name);
+    scene_stage_clear_room();
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
-        scene_player_add_plate(name, 0.0f, 0.0f, 256.0f, 192.0f);
+        scene_stage_add_plate(name, 0.0f, 0.0f, SCENE_VIEW_DS_SCREEN_WIDTH, SCENE_VIEW_DS_SCREEN_HEIGHT);
     } else {
-        scene_player_add_plate(name, 0.0f, 0.0f, (float)texture->width / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL, (float)texture->height / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
+        scene_stage_add_plate(name, 0.0f, 0.0f, (float)texture->width / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL, (float)texture->height / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
     }
-    scene_player_set_camera(0.0f, 0.0f);
+    scene_stage_set_camera(0.0f, 0.0f);
 }
 
 static void restore_browse_object(void)
 {
     if (manifest->animation_count > 0) {
-        scene_player_set_object(BROWSE_OBJECT_NAME, manifest->animation_names[current_animation_index], BROWSE_OBJECT_X, BROWSE_OBJECT_Y, BROWSE_OBJECT_LAYER, 0);
+        scene_stage_set_object(BROWSE_OBJECT_NAME, manifest->animation_names[current_animation_index], BROWSE_OBJECT_X, BROWSE_OBJECT_Y, BROWSE_OBJECT_LAYER, 0);
     }
 }
 
@@ -81,8 +98,15 @@ int viewer_app_show_animation(const char *name)
         run_log_write("animation not_in_manifest name=%s", name);
         return 0;
     }
-    scene_player_stop_script();
-    if (!scene_player_set_object(BROWSE_OBJECT_NAME, name, BROWSE_OBJECT_X, BROWSE_OBJECT_Y, BROWSE_OBJECT_LAYER, 0)) {
+    leave_scene_for_browsing();
+    if (animation_library_is_full()) {
+        scene_stage_clear_room();
+        animation_library_clear();
+        if (manifest->background_count > 0) {
+            replace_room_with_background(manifest->background_names[current_background_index]);
+        }
+    }
+    if (!scene_stage_set_object(BROWSE_OBJECT_NAME, name, BROWSE_OBJECT_X, BROWSE_OBJECT_Y, BROWSE_OBJECT_LAYER, 0)) {
         return 0;
     }
     current_animation_index = index;
@@ -103,17 +127,17 @@ int viewer_app_show_background(const char *name)
         run_log_write("background not_in_manifest name=%s", name);
         return 0;
     }
-    scene_player_stop_script();
-    pending_background = index;
-    pending_background_started_us = timing_now_us();
+    leave_scene_for_browsing();
+    pending_background_index = index;
+    pending_background_started_us = clock_now_us();
     run_log_write("background selected name=%s", name);
-    texture_cache_request(name);
+    texture_cache_use_or_start_loading(name);
     return 1;
 }
 
 int viewer_app_play_scene(const char *name)
 {
-    pending_background = NO_PENDING_BACKGROUND;
+    pending_background_index = NO_PENDING_BACKGROUND;
     return scene_player_play(name);
 }
 
@@ -124,7 +148,7 @@ static void load_manifest(void)
     unsigned int text_size;
     int result;
 
-    if (!file_path_join(path, assets_path, "manifest", ".txt")) {
+    if (!file_path_join(path, assets_folder, "manifest", ".txt")) {
         run_log_write("manifest path_too_long");
         return;
     }
@@ -158,7 +182,7 @@ static void create_placeholder_texture(void)
     if (pixels == NULL) {
         return;
     }
-    test_pattern_fill_checker(pixels, PLACEHOLDER_SIZE, PLACEHOLDER_TILE);
+    checker_pattern_fill(pixels, PLACEHOLDER_SIZE, PLACEHOLDER_TILE);
     placeholder_texture = renderer_texture_create(pixels, PLACEHOLDER_SIZE, PLACEHOLDER_SIZE);
     mem_free(pixels);
 }
@@ -167,26 +191,26 @@ static void start_browsing_first_assets(void)
 {
     if (manifest->background_count > 0) {
         texture_cache_load_now(manifest->background_names[0]);
-        put_background_in_room(manifest->background_names[0]);
+        replace_room_with_background(manifest->background_names[0]);
     }
     if (manifest->animation_count > 0) {
         viewer_app_show_animation(manifest->animation_names[0]);
     }
 }
 
-void viewer_app_start(const char *assets_folder)
+void viewer_app_start(const char *folder)
 {
     char texture_folder[FILE_PATH_MAX];
     char animation_folder[FILE_PATH_MAX];
     char scene_folder[FILE_PATH_MAX];
 
-    snprintf(assets_path, sizeof(assets_path), "%s", assets_folder);
-    make_asset_subfolder(texture_folder, "textures");
-    make_asset_subfolder(animation_folder, "animations");
-    make_asset_subfolder(scene_folder, "scenes");
+    snprintf(assets_folder, sizeof(assets_folder), "%s", folder);
+    asset_subfolder_path(texture_folder, "textures");
+    asset_subfolder_path(animation_folder, "animations");
+    asset_subfolder_path(scene_folder, "scenes");
     manifest = NULL;
-    current_background = 0;
-    pending_background = NO_PENDING_BACKGROUND;
+    current_background_index = 0;
+    pending_background_index = NO_PENDING_BACKGROUND;
     current_animation_index = 0;
     hud_is_visible = 1;
     list_is_open = 0;
@@ -221,9 +245,9 @@ static void step_background(int direction)
     if (manifest == NULL || manifest->background_count == 0) {
         return;
     }
-    starting_from = current_background;
-    if (pending_background != NO_PENDING_BACKGROUND) {
-        starting_from = pending_background;
+    starting_from = current_background_index;
+    if (pending_background_index != NO_PENDING_BACKGROUND) {
+        starting_from = pending_background_index;
     }
     next = (starting_from + direction + manifest->background_count) % manifest->background_count;
     viewer_app_show_background(manifest->background_names[next]);
@@ -234,19 +258,19 @@ static void switch_to_pending_background_when_ready(void)
     const struct cached_texture *background;
     const char *name;
 
-    if (pending_background == NO_PENDING_BACKGROUND) {
+    if (pending_background_index == NO_PENDING_BACKGROUND) {
         return;
     }
-    name = manifest->background_names[pending_background];
-    background = texture_cache_request(name);
+    name = manifest->background_names[pending_background_index];
+    background = texture_cache_use_or_start_loading(name);
     if (background == NULL || background->state == CACHED_TEXTURE_LOADING) {
         return;
     }
-    current_background = pending_background;
-    pending_background = NO_PENDING_BACKGROUND;
-    put_background_in_room(name);
+    current_background_index = pending_background_index;
+    pending_background_index = NO_PENDING_BACKGROUND;
+    replace_room_with_background(name);
     restore_browse_object();
-    run_log_write("background shown name=%s wait_us=%llu", name, timing_now_us() - pending_background_started_us);
+    run_log_write("background shown name=%s wait_us=%llu", name, clock_now_us() - pending_background_started_us);
 }
 
 static void step_animation(int direction)
@@ -277,7 +301,7 @@ static void update_list(const struct input_state *input)
     }
 }
 
-static void update_scene_controls(const struct input_state *input)
+static void update_browse_controls(const struct input_state *input)
 {
     if (input->pressed & INPUT_LEFT) {
         step_background(-1);
@@ -291,6 +315,10 @@ static void update_scene_controls(const struct input_state *input)
     if (input->pressed & INPUT_DOWN) {
         step_animation(1);
     }
+}
+
+static void update_general_controls(const struct input_state *input)
+{
     if (input->pressed & INPUT_CROSS) {
         scene_player_set_paused(!scene_player_is_paused());
     }
@@ -307,12 +335,13 @@ static void update_scene_controls(const struct input_state *input)
 
 void viewer_app_update(const struct input_state *input, unsigned long long elapsed_us)
 {
-    texture_cache_begin_frame();
     texture_cache_upload_finished_reads(UPLOADS_PER_FRAME);
+    texture_cache_begin_frame();
     if (list_is_open) {
         update_list(input);
     } else {
-        update_scene_controls(input);
+        update_browse_controls(input);
+        update_general_controls(input);
     }
     switch_to_pending_background_when_ready();
     scene_player_update(elapsed_us);
@@ -344,13 +373,27 @@ static void draw_no_assets_screen(void)
     renderer_draw_sprite(placeholder_texture, screen_area, texture_area, white);
 }
 
-static void write_second_hud_line(char *line, unsigned int line_size)
+static void write_first_object_line(char *line, unsigned int line_size)
 {
-    const struct scene_picture *picture;
+    const struct scene_stage *stage;
+    const struct animation_player *player;
     int index;
 
+    stage = scene_stage_view();
+    for (index = 0; index < SCENE_OBJECT_MAX; index++) {
+        player = &stage->objects[index].player;
+        if (stage->objects[index].in_use && player->animation != NULL) {
+            snprintf(line, line_size, "%s %u/%u%s", player->animation->name, player->frame_index + 1, player->animation->frame_count, scene_player_is_paused() ? " paused" : "");
+            return;
+        }
+    }
+    snprintf(line, line_size, "no animation");
+}
+
+static void write_second_hud_line(char *line, unsigned int line_size)
+{
     if (manifest == NULL) {
-        snprintf(line, line_size, "no assets in %s", assets_path);
+        snprintf(line, line_size, "no assets in %s", assets_folder);
         return;
     }
     if (scene_player_status() == SCENE_PLAYER_PRELOADING) {
@@ -358,32 +401,25 @@ static void write_second_hud_line(char *line, unsigned int line_size)
         return;
     }
     if (scene_player_status() == SCENE_PLAYER_RUNNING) {
-        snprintf(line, line_size, "scene step %d", scene_player_current_step());
+        snprintf(line, line_size, "scene step %d", scene_player_next_step());
         return;
     }
-    picture = scene_player_picture();
-    for (index = 0; index < SCENE_OBJECT_MAX; index++) {
-        if (picture->objects[index].in_use && picture->objects[index].player.animation != NULL) {
-            snprintf(line, line_size, "%s %u/%u%s", picture->objects[index].player.animation->name, picture->objects[index].player.frame_index + 1, picture->objects[index].player.animation->frame_count, scene_player_is_paused() ? " paused" : "");
-            return;
-        }
-    }
-    snprintf(line, line_size, "no animation");
+    write_first_object_line(line, line_size);
 }
 
 static void draw_hud(void)
 {
     struct renderer_rect bar;
-    char line[FILE_PATH_MAX + ANIMATION_NAME_MAX];
+    char line[FILE_PATH_MAX + ASSET_NAME_MAX];
 
     bar.x = 0.0f;
     bar.y = 0.0f;
     bar.width = RENDERER_WIDTH;
-    bar.height = 44.0f;
+    bar.height = HUD_BAR_HEIGHT;
     renderer_draw_filled_rect(bar, panel);
-    debug_font_draw_text(8.0f, 6.0f, 2.0f, highlight, status_text);
+    debug_font_draw_text(HUD_TEXT_X, HUD_FIRST_LINE_Y, TEXT_SCALE, highlight, status_text);
     write_second_hud_line(line, sizeof(line));
-    debug_font_draw_text(8.0f, 24.0f, 2.0f, white, line);
+    debug_font_draw_text(HUD_TEXT_X, HUD_SECOND_LINE_Y, TEXT_SCALE, white, line);
 }
 
 static void draw_list(void)
@@ -392,15 +428,15 @@ static void draw_list(void)
     int item;
     int row;
 
-    area.x = 40.0f;
-    area.y = 40.0f;
-    area.width = 880.0f;
-    area.height = LIST_ROW_HEIGHT * LIST_VISIBLE_ROWS + 16.0f;
+    area.x = LIST_PANEL_X;
+    area.y = LIST_PANEL_Y;
+    area.width = LIST_PANEL_WIDTH;
+    area.height = LIST_ROW_HEIGHT * LIST_VISIBLE_ROWS + LIST_PANEL_PADDING;
     renderer_draw_filled_rect(area, panel);
     for (item = 0; item < animation_list.item_count; item++) {
         row = ui_list_row_for_item(&animation_list, item);
         if (row >= 0) {
-            debug_font_draw_text(52.0f, 48.0f + LIST_ROW_HEIGHT * row, 2.0f, item == animation_list.selected ? highlight : white, manifest->animation_names[item]);
+            debug_font_draw_text(LIST_TEXT_X, LIST_TEXT_Y + LIST_ROW_HEIGHT * row, TEXT_SCALE, item == animation_list.selected ? highlight : white, manifest->animation_names[item]);
         }
     }
 }
@@ -410,7 +446,7 @@ void viewer_app_draw(void)
     if (manifest == NULL) {
         draw_no_assets_screen();
     } else if (scene_player_status() != SCENE_PLAYER_PRELOADING) {
-        scene_view_draw(scene_player_picture());
+        scene_view_draw(scene_stage_view());
     }
     if (hud_is_visible || scene_player_status() == SCENE_PLAYER_PRELOADING) {
         draw_hud();

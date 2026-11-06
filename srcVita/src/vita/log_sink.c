@@ -17,7 +17,8 @@ static char writer_buffer[QUEUE_SIZE];
 static unsigned int queued_bytes;
 static unsigned int dropped_bytes;
 static SceUID queue_lock;
-static volatile int writer_is_busy;
+static int writer_is_busy;
+static int writer_is_running;
 
 static void write_batch_if_any(void)
 {
@@ -29,8 +30,8 @@ static void write_batch_if_any(void)
     sceKernelLockMutex(queue_lock, 1, NULL);
     batch_size = queued_bytes;
     dropped = dropped_bytes;
+    writer_is_busy = batch_size > 0 || dropped > 0;
     if (batch_size > 0) {
-        writer_is_busy = 1;
         memcpy(writer_buffer, queue, batch_size);
     }
     queued_bytes = 0;
@@ -39,12 +40,14 @@ static void write_batch_if_any(void)
 
     if (batch_size > 0) {
         file_append(sink_path, (const unsigned char *)writer_buffer, batch_size);
-        writer_is_busy = 0;
     }
     if (dropped > 0) {
         note_size = snprintf(note, sizeof(note), "log dropped_bytes=%u\n", dropped);
         file_append(sink_path, (const unsigned char *)note, (unsigned int)note_size);
     }
+    sceKernelLockMutex(queue_lock, 1, NULL);
+    writer_is_busy = 0;
+    sceKernelUnlockMutex(queue_lock, 1);
 }
 
 static int writer_thread(SceSize argument_size, void *arguments)
@@ -68,9 +71,7 @@ void log_sink_start(const char *path)
     writer_is_busy = 0;
     queue_lock = sceKernelCreateMutex("log_queue", 0, 0, NULL);
     thread = sceKernelCreateThread("log_writer", writer_thread, WRITER_PRIORITY, WRITER_STACK_SIZE, 0, SCE_KERNEL_CPU_MASK_USER_2, NULL);
-    if (thread >= 0) {
-        sceKernelStartThread(thread, 0, NULL);
-    }
+    writer_is_running = thread >= 0 && sceKernelStartThread(thread, 0, NULL) >= 0;
 }
 
 void log_sink_write(const char *text, unsigned int size)
@@ -87,7 +88,18 @@ void log_sink_write(const char *text, unsigned int size)
 
 void log_sink_flush(void)
 {
-    while (queued_bytes > 0 || writer_is_busy) {
-        sceKernelDelayThread(FLUSH_POLL_US);
+    int is_done;
+
+    if (!writer_is_running) {
+        return;
+    }
+    is_done = 0;
+    while (!is_done) {
+        sceKernelLockMutex(queue_lock, 1, NULL);
+        is_done = queued_bytes == 0 && !writer_is_busy;
+        sceKernelUnlockMutex(queue_lock, 1);
+        if (!is_done) {
+            sceKernelDelayThread(FLUSH_POLL_US);
+        }
     }
 }

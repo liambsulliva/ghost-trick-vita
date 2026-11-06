@@ -7,6 +7,7 @@ SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(TESTS_FOLDER))
 
 sys.path.insert(0, TESTS_FOLDER)
 sys.path.insert(0, os.path.join(SRC_VITA_FOLDER, "tools", "assets"))
+sys.path.insert(0, os.path.join(SRC_VITA_FOLDER, "tools"))
 
 
 def main():

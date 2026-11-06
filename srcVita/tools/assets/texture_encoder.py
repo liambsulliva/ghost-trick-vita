@@ -7,12 +7,13 @@ import asset_writers
 DDS_HEADER_SIZE = 128
 DDS_FOURCC_OFFSET = 84
 TEX_HEADER_SIZE = 40
+TEX_WIDTH_OFFSET = 8
 
 
 def read_tex_size(tex_bytes):
     if tex_bytes[:4] != b"TEX\0" or len(tex_bytes) < TEX_HEADER_SIZE:
         raise ValueError("not a TEX file")
-    return struct.unpack_from("<HH", tex_bytes, 8)
+    return struct.unpack_from("<HH", tex_bytes, TEX_WIDTH_OFFSET)
 
 
 def run_texture_tool(tool_path, tex_path, rgba_path, width, height, crop=None):
@@ -24,15 +25,10 @@ def run_texture_tool(tool_path, tex_path, rgba_path, width, height, crop=None):
     if result.returncode != 0:
         raise ValueError(result.stderr.decode("utf-8", "replace").strip())
     fields = result.stdout.decode("ascii").split()
-    return {
-        "source_width": int(fields[0]),
-        "source_height": int(fields[1]),
-        "source_format": int(fields[2]),
-        "is_opaque": fields[3] == "1",
-    }
+    return fields[3] == "1"
 
 
-def scale_colours(rgba_pixels, brightness):
+def scale_colors(rgba_pixels, brightness):
     scaled = bytearray(rgba_pixels)
     for index in range(0, len(scaled), 4):
         scaled[index] = min(255, int(scaled[index] * brightness + 0.5))
@@ -81,12 +77,12 @@ def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, 
     dds_path = os.path.join(work_folder, name + ".dds")
     with open(tex_path, "wb") as output:
         output.write(tex_bytes)
-    info = run_texture_tool(tool_path, tex_path, rgba_path, width, height, crop)
+    is_opaque = run_texture_tool(tool_path, tex_path, rgba_path, width, height, crop)
     with open(rgba_path, "rb") as source:
         rgba_pixels = source.read()
     if brightness != 1.0:
-        rgba_pixels = scale_colours(rgba_pixels, brightness)
-    if info["is_opaque"]:
+        rgba_pixels = scale_colors(rgba_pixels, brightness)
+    if is_opaque:
         texture_format = asset_writers.FORMAT_DXT1
         compression = "dxt1"
     else:

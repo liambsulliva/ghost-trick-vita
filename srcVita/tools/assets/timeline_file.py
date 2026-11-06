@@ -4,7 +4,15 @@ TYPE_SHEET = 147581786
 TYPE_RECORD = 4048237731
 TYPE_ROOT_ANIMATION = 240123514
 TYPE_ROOT_BACKGROUND = 2353218137
+USR_RSZ_POSITION_OFFSET = 32
+RSZ_INSTANCE_COUNT_OFFSET = 12
+RSZ_TABLE_OFFSETS_OFFSET = 24
 RECORD_SHORT_COUNT = 20
+SHORT_BLANK_MARKER = 0
+SHORT_ANCHOR_X = 1
+SHORT_ANCHOR_Y = 2
+SHORT_POINT_X = 6
+SHORT_POINT_Y = 7
 UNUSED_RECORD_TAIL_VALUES = 3
 
 
@@ -53,16 +61,15 @@ class ByteReader:
 
 
 def read_sheet(reader):
-    sheet = {}
-    texture_count = reader.read_i32()
-    sheet["textures"] = [reader.read_string() for _ in range(texture_count)]
-    sheet["atlas"] = (reader.read_i32(), reader.read_i32())
-    sheet["cell"] = (reader.read_i32(), reader.read_i32())
+    sheet = {"kind": "sheet"}
+    page_path_count = reader.read_i32()
+    sheet["pages"] = [reader.read_string() for _ in range(page_path_count)]
+    sheet["atlas_size"] = (reader.read_i32(), reader.read_i32())
+    sheet["cell_size"] = (reader.read_i32(), reader.read_i32())
     page_count = reader.read_i32()
-    sheet["cells_per_texture"] = [reader.read_i32() for _ in range(page_count)]
-    grid = reader.read_vector()
-    sheet["grid"] = (int(grid[0]), int(grid[1]))
-    sheet["total_cells"] = reader.read_i32()
+    sheet["cells_per_page"] = [reader.read_i32() for _ in range(page_count)]
+    reader.read_vector()
+    reader.read_i32()
     reader.read_u8()
     reader.read_u8()
     return sheet
@@ -75,20 +82,33 @@ def read_record(reader):
     shorts = [reader.read_i16() for _ in range(short_count)]
     reader.read_i32()
     position = reader.read_vector()
-    cell = reader.read_i32()
+    cell_index = reader.read_i32()
     for _ in range(UNUSED_RECORD_TAIL_VALUES):
         reader.read_i32()
-    return {"shorts": shorts, "position": (position[0], position[1]), "cell": cell}
+    return {"kind": "record", "shorts": shorts, "position": (position[0], position[1]), "cell_index": cell_index}
+
+
+def read_animation_root(reader):
+    sheet_index = reader.read_i32()
+    record_count = reader.read_i32()
+    record_indices = [reader.read_i32() for _ in range(record_count)]
+    _, ds_frame_count, _, shift_x, shift_y = [reader.read_i32() for _ in range(5)]
+    return {"kind": "root", "sheet_index": sheet_index, "record_indices": record_indices, "ds_frame_count": ds_frame_count, "placement_shift": (shift_x, shift_y)}
+
+
+def read_background_root(reader):
+    reader.read_i32()
+    return {"kind": "background_root"}
 
 
 def read_objects(data):
     if data[:4] != b"USR\0":
         raise TimelineError("not a USR file")
-    rsz_offset = struct.unpack_from("<Q", data, 32)[0]
+    rsz_offset = struct.unpack_from("<Q", data, USR_RSZ_POSITION_OFFSET)[0]
     if data[rsz_offset:rsz_offset + 4] != b"RSZ\0":
         raise TimelineError("no RSZ block")
-    instance_count = struct.unpack_from("<I", data, rsz_offset + 12)[0]
-    instance_offset, data_offset = struct.unpack_from("<QQ", data, rsz_offset + 24)
+    instance_count = struct.unpack_from("<I", data, rsz_offset + RSZ_INSTANCE_COUNT_OFFSET)[0]
+    instance_offset, data_offset = struct.unpack_from("<QQ", data, rsz_offset + RSZ_TABLE_OFFSETS_OFFSET)
     types = []
     for index in range(instance_count):
         types.append(struct.unpack_from("<I", data, rsz_offset + instance_offset + 8 * index)[0])
@@ -96,17 +116,13 @@ def read_objects(data):
     objects = [None]
     for type_id in types[1:]:
         if type_id == TYPE_SHEET:
-            objects.append(("sheet", read_sheet(reader)))
+            objects.append(read_sheet(reader))
         elif type_id == TYPE_RECORD:
-            objects.append(("record", read_record(reader)))
+            objects.append(read_record(reader))
         elif type_id == TYPE_ROOT_ANIMATION:
-            sheet_index = reader.read_i32()
-            reference_count = reader.read_i32()
-            references = [reader.read_i32() for _ in range(reference_count)]
-            tail = [reader.read_i32() for _ in range(5)]
-            objects.append(("root", sheet_index, references, tail))
+            objects.append(read_animation_root(reader))
         elif type_id == TYPE_ROOT_BACKGROUND:
-            objects.append(("background_root", reader.read_i32()))
+            objects.append(read_background_root(reader))
         else:
             raise TimelineError("unknown object type " + str(type_id))
     if reader.position != len(data):
@@ -114,57 +130,55 @@ def read_objects(data):
     return objects
 
 
-def page_starts(cells_per_texture):
+def page_starts(cells_per_page):
     starts = []
     first_cell = 0
-    for cell_count in cells_per_texture:
+    for cell_count in cells_per_page:
         starts.append((first_cell, cell_count))
         first_cell = first_cell + cell_count
     return starts
 
 
-def find_page(starts, cell):
+def find_page(starts, cell_index):
     for page_index, (first_cell, cell_count) in enumerate(starts):
-        if first_cell <= cell < first_cell + cell_count:
-            return page_index, cell - first_cell
-    raise TimelineError("cell " + str(cell) + " is on no page")
+        if first_cell <= cell_index < first_cell + cell_count:
+            return page_index, cell_index - first_cell
+    raise TimelineError("cell " + str(cell_index) + " is on no page")
 
 
 def build_timeline(objects):
     root = objects[-1]
-    if root[0] != "root":
+    if root["kind"] != "root":
         raise TimelineError("file is not an animation timeline")
-    sheet = objects[root[1]][1]
-    references = root[2]
-    ds_frame_count = root[3][1]
-    if ds_frame_count <= 0 or len(references) % ds_frame_count != 0:
+    sheet = objects[root["sheet_index"]]
+    record_indices = root["record_indices"]
+    ds_frame_count = root["ds_frame_count"]
+    if ds_frame_count <= 0 or len(record_indices) % ds_frame_count != 0:
         raise TimelineError("record count is not a multiple of the DS frame count")
-    starts = page_starts(sheet["cells_per_texture"])
+    starts = page_starts(sheet["cells_per_page"])
     records = []
-    for reference in references:
-        source = objects[reference][1]
+    for record_index in record_indices:
+        source = objects[record_index]
         shorts = source["shorts"]
-        is_blank = shorts[0] == 0 and source["position"] == (0.0, 0.0)
+        is_blank = shorts[SHORT_BLANK_MARKER] == 0 and source["position"] == (0.0, 0.0)
         page = None
-        local_cell = None
+        cell_in_page = None
         if not is_blank:
-            page, local_cell = find_page(starts, source["cell"])
+            page, cell_in_page = find_page(starts, source["cell_index"])
         records.append({
-            "cell": source["cell"],
             "page": page,
-            "local_cell": local_cell,
+            "cell_in_page": cell_in_page,
             "position": source["position"],
-            "anchor": (shorts[1], shorts[2]),
-            "point": (shorts[6], shorts[7]),
+            "anchor": (shorts[SHORT_ANCHOR_X], shorts[SHORT_ANCHOR_Y]),
+            "point": (shorts[SHORT_POINT_X], shorts[SHORT_POINT_Y]),
             "is_blank": is_blank,
         })
     return {
-        "textures": sheet["textures"],
-        "atlas": sheet["atlas"],
-        "cell": sheet["cell"],
-        "records_per_ds_frame": len(references) // ds_frame_count,
-        "ds_frame_count": ds_frame_count,
-        "placement_shift": (root[3][3], root[3][4]),
+        "pages": sheet["pages"],
+        "atlas_size": sheet["atlas_size"],
+        "cell_size": sheet["cell_size"],
+        "records_per_ds_frame": len(record_indices) // ds_frame_count,
+        "placement_shift": root["placement_shift"],
         "records": records,
     }
 

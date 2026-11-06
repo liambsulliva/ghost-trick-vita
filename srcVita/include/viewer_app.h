@@ -5,7 +5,7 @@
 
 #define VIEWER_STATUS_TEXT_MAX 128
 
-void viewer_app_start(const char *assets_folder);
+void viewer_app_start(const char *folder);
 void viewer_app_update(const struct input_state *input, unsigned long long elapsed_us);
 void viewer_app_draw(void);
 void viewer_app_stop(void);

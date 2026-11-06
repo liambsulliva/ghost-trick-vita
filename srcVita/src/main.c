@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <psp2/kernel/processmgr.h>
+#include "clock.h"
 #include "command_file.h"
 #include "device_stats.h"
 #include "build_info.h"
@@ -20,6 +21,8 @@
 #define COMMAND_POLL_FRAMES 30
 #define FIRST_CAPTURE_FRAME 120
 #define CAPTURE_NAME_MAX 64
+#define FIRST_TIMED_FRAME 2
+#define LOG_FOR_TOOLS_CAPTURE_DONE "capture name=%s result=%d took_us=%llu"
 
 #define LOG_PATH FILE_DATA_FOLDER "/run.log"
 #define COMMANDS_PATH FILE_DATA_FOLDER "/commands.txt"
@@ -49,21 +52,26 @@ static void save_capture(const char *name)
         run_log_write("capture path_too_long name=%s", name);
         return;
     }
-    started_us = timing_now_us();
+    started_us = clock_now_us();
     result = screen_capture_save_bmp(path);
-    run_log_write("capture name=%s result=%d took_us=%llu", name, result, timing_now_us() - started_us);
+    run_log_write(LOG_FOR_TOOLS_CAPTURE_DONE, name, result, clock_now_us() - started_us);
 }
 
 static int run_one_command(const struct command *command)
 {
+    int succeeded;
+
     if (command->kind == COMMAND_CAPTURE) {
         save_capture(command->name);
     } else if (command->kind == COMMAND_SHOW_BACKGROUND) {
-        run_log_write("command show_background name=%s ok=%d", command->name, viewer_app_show_background(command->name));
+        succeeded = viewer_app_show_background(command->name);
+        run_log_write("command show_background name=%s ok=%d", command->name, succeeded);
     } else if (command->kind == COMMAND_SHOW_ANIMATION) {
-        run_log_write("command show_animation name=%s ok=%d", command->name, viewer_app_show_animation(command->name));
+        succeeded = viewer_app_show_animation(command->name);
+        run_log_write("command show_animation name=%s ok=%d", command->name, succeeded);
     } else if (command->kind == COMMAND_PLAY_SCENE) {
-        run_log_write("command play_scene name=%s ok=%d", command->name, viewer_app_play_scene(command->name));
+        succeeded = viewer_app_play_scene(command->name);
+        run_log_write("command play_scene name=%s ok=%d", command->name, succeeded);
     } else if (command->kind == COMMAND_HUD_ON) {
         viewer_app_set_hud_visible(1);
     } else if (command->kind == COMMAND_HUD_OFF) {
@@ -129,21 +137,20 @@ static void run_main_loop(void)
     unsigned long long update_ended_us;
     unsigned long long draw_ended_us;
     unsigned long long present_ended_us;
-    unsigned long long frame_us;
+    unsigned long long last_frame_us;
     char capture_name[CAPTURE_NAME_MAX];
     int quit_requested;
 
-    input.held = 0;
     input.pressed = 0;
     frame_number = 0;
     manual_capture_count = 0;
-    frame_us = 0;
+    last_frame_us = 0;
     quit_requested = 0;
     frame_stats_reset(&stats);
     frame_timer_start(&frame_timer);
 
     while (!quit_requested) {
-        frame_started_us = timing_now_us();
+        frame_started_us = clock_now_us();
         input_poll(&input);
         if (input.pressed & INPUT_START) {
             run_log_write("input start pressed");
@@ -154,20 +161,20 @@ static void run_main_loop(void)
             snprintf(capture_name, sizeof(capture_name), "manual_%u", manual_capture_count);
             save_capture(capture_name);
         }
-        viewer_app_update(&input, frame_us);
-        update_ended_us = timing_now_us();
+        viewer_app_update(&input, last_frame_us);
+        update_ended_us = clock_now_us();
 
         renderer_begin_frame(clear_color);
         viewer_app_draw();
-        draw_ended_us = timing_now_us();
+        draw_ended_us = clock_now_us();
 
         renderer_end_frame();
-        present_ended_us = timing_now_us();
+        present_ended_us = clock_now_us();
 
-        frame_us = frame_timer_tick(&frame_timer);
+        last_frame_us = frame_timer_tick(&frame_timer);
         frame_number = frame_number + 1;
-        if (frame_number > 1) {
-            frame_stats_add_frame(&stats, frame_us, update_ended_us - frame_started_us, draw_ended_us - update_ended_us, present_ended_us - draw_ended_us);
+        if (frame_number >= FIRST_TIMED_FRAME) {
+            frame_stats_add_frame(&stats, last_frame_us, update_ended_us - frame_started_us, draw_ended_us - update_ended_us, present_ended_us - draw_ended_us);
         }
         if (frame_stats_window_is_full(&stats)) {
             publish_frame_stats(&stats);
@@ -184,12 +191,15 @@ static void run_main_loop(void)
 
 int main(void)
 {
+    int full_resolution;
+
     file_make_folder(FILE_DATA_FOLDER);
     file_make_folder(CAPTURE_FOLDER);
     run_log_open(LOG_PATH);
     run_log_write("build id=%s", build_info_id());
 
-    run_log_write("renderer ready full_resolution=%d", renderer_init());
+    full_resolution = renderer_init();
+    run_log_write("renderer ready full_resolution=%d", full_resolution);
     viewer_app_start(ASSETS_FOLDER);
     log_memory_and_textures();
     run_log_write("viewer ready has_assets=%d", viewer_app_has_assets());

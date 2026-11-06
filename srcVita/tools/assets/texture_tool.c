@@ -5,7 +5,15 @@
 #include "etc_decode.h"
 
 #define TEX_HEADER_SIZE 40
+#define TEX_WIDTH_OFFSET 8
+#define TEX_HEIGHT_OFFSET 10
+#define TEX_MUST_BE_ONE_OFFSET_A 12
+#define TEX_MUST_BE_ONE_OFFSET_B 14
+#define TEX_MIP_COUNT_OFFSET 15
+#define TEX_MIP_COUNT_DIVISOR 16
+#define TEX_FORMAT_OFFSET 16
 #define TEX_MIP_RECORD_SIZE 16
+#define TEX_MIP_RECORD_DATA_SIZE_OFFSET 12
 #define TEX_MAX_SIDE 16384
 #define FORMAT_RGBA8_LINEAR 28
 #define FORMAT_RGBA8_SRGB 29
@@ -121,14 +129,14 @@ static const char *read_tex_header(const unsigned char *data, size_t size, struc
     if (memcmp(data, "TEX\0", 4) != 0) {
         return "file is not a TEX file";
     }
-    image->width = read_u16(data + 8);
-    image->height = read_u16(data + 10);
-    image->format = read_u32(data + 16);
-    mip_count = data[15] / 16;
+    image->width = read_u16(data + TEX_WIDTH_OFFSET);
+    image->height = read_u16(data + TEX_HEIGHT_OFFSET);
+    image->format = read_u32(data + TEX_FORMAT_OFFSET);
+    mip_count = data[TEX_MIP_COUNT_OFFSET] / TEX_MIP_COUNT_DIVISOR;
     if (image->width == 0 || image->height == 0 || image->width > TEX_MAX_SIDE || image->height > TEX_MAX_SIDE) {
         return "bad image size";
     }
-    if (read_u16(data + 12) != 1 || data[14] != 1 || mip_count == 0) {
+    if (read_u16(data + TEX_MUST_BE_ONE_OFFSET_A) != 1 || data[TEX_MUST_BE_ONE_OFFSET_B] != 1 || mip_count == 0) {
         return "only plain 2D images are supported";
     }
     if (!block_layout(image->format, &block_width, &block_height, &block_bytes)) {
@@ -137,7 +145,7 @@ static const char *read_tex_header(const unsigned char *data, size_t size, struc
     expected_size = (unsigned long long)((image->width + block_width - 1) / block_width);
     expected_size = expected_size * ((image->height + block_height - 1) / block_height) * block_bytes;
     mip_offset = read_u64(data + TEX_HEADER_SIZE);
-    if (read_u32(data + TEX_HEADER_SIZE + 12) != expected_size) {
+    if (read_u32(data + TEX_HEADER_SIZE + TEX_MIP_RECORD_DATA_SIZE_OFFSET) != expected_size) {
         return "top mip size does not match the format";
     }
     if (mip_offset > size || expected_size > size - mip_offset) {
@@ -161,7 +169,7 @@ static unsigned char *decode_top_mip(const struct tex_image *image)
     } else if (image->format == FORMAT_ASTC_6X6_SRGB) {
         astc_decode_image(image->mip_data, (int)image->width, (int)image->height, 6, 6, 1, pixels);
     } else if (image->format == FORMAT_ETC2_RGB_LINEAR || image->format == FORMAT_ETC2_RGB_SRGB) {
-        etc2_rgb8_decode_image(image->mip_data, (int)image->width, (int)image->height, pixels, NULL);
+        etc2_rgb8_decode_image(image->mip_data, (int)image->width, (int)image->height, pixels);
     } else {
         memcpy(pixels, image->mip_data, image->mip_size);
     }
@@ -304,14 +312,14 @@ static unsigned char *resize_with_alpha_weight(const unsigned char *source, unsi
     return target;
 }
 
-static void copy_colour(unsigned char *pixels, size_t from_index, size_t to_index)
+static void copy_color(unsigned char *pixels, size_t from_index, size_t to_index)
 {
     pixels[to_index * 4] = pixels[from_index * 4];
     pixels[to_index * 4 + 1] = pixels[from_index * 4 + 1];
     pixels[to_index * 4 + 2] = pixels[from_index * 4 + 2];
 }
 
-static int fill_transparent_colours(unsigned char *pixels, unsigned int width, unsigned int height)
+static int fill_transparent_colors(unsigned char *pixels, unsigned int width, unsigned int height)
 {
     size_t pixel_count = (size_t)width * height;
     size_t *queue;
@@ -364,7 +372,7 @@ static int fill_transparent_colours(unsigned char *pixels, unsigned int width, u
 
             if (!is_done[next]) {
                 is_done[next] = 1;
-                copy_colour(pixels, current, next);
+                copy_color(pixels, current, next);
                 queue[queue_end] = next;
                 queue_end = queue_end + 1;
             }
@@ -494,7 +502,7 @@ int main(int argument_count, char **arguments)
         return fail(input_path, "out of memory");
     }
     is_opaque = image_is_fully_opaque(resized, output_width, output_height);
-    if (!fill_transparent_colours(resized, output_width, output_height)) {
+    if (!fill_transparent_colors(resized, output_width, output_height)) {
         return fail(input_path, "out of memory");
     }
     if (!write_whole_file(output_path, resized, (size_t)output_width * output_height * 4)) {

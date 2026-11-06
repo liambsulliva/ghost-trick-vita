@@ -1,11 +1,10 @@
 #ifndef ANIMATION_H
 #define ANIMATION_H
 
-#include "texture_cache.h"
+#include "asset_name.h"
 
 #define ANIMATION_FRAME_MAX 512
-#define ANIMATION_NAME_MAX 96
-#define ANIMATION_DEFAULT_TICKS_PER_SECOND 60
+#define TICKS_PER_SECOND 60
 #define ANIMATION_BLANK_TEXTURE "-"
 
 #define ANIMATION_OK 0
@@ -15,7 +14,7 @@
 #define ANIMATION_ERR_BAD_TICKS -4
 
 struct animation_frame {
-    char texture_name[TEXTURE_NAME_MAX];
+    char texture_name[ASSET_NAME_MAX];
     unsigned int ticks;
     float x;
     float y;
@@ -28,8 +27,7 @@ struct animation_frame {
 };
 
 struct animation {
-    char name[ANIMATION_NAME_MAX];
-    unsigned int ticks_per_second;
+    char name[ASSET_NAME_MAX];
     int loops;
     unsigned int frame_count;
     struct animation_frame frames[ANIMATION_FRAME_MAX];
@@ -44,7 +42,6 @@ struct animation_player {
     unsigned int late_frame_count;
     int waiting_for_frame;
     int is_finished;
-    int is_paused;
     unsigned char frame_was_shown[ANIMATION_FRAME_MAX];
 };
 

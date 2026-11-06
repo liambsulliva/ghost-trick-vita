@@ -23,6 +23,10 @@ BUILD_FOLDER = os.path.join(SRC_VITA_FOLDER, "build")
 ASSETS_FOLDER = DATA_FOLDER + "/assets"
 UPLOAD_RECORD_PATH = os.path.join(BUILD_FOLDER, "uploaded_assets.json")
 SECONDS_FOR_APP_TEARDOWN = 3
+SECONDS_FOR_APP_TO_READ_COMMANDS = 5
+COMMAND_FILE_POLL_SECONDS = 0.2
+LAUNCH_MARKER = "--- launch"
+SCENE_READY_TEXT = "scene ready"
 PACKAGE_FILES = [
     ("eboot.bin", "eboot.bin"),
     ("param.sfo", "sce_sys/param.sfo"),
@@ -33,7 +37,15 @@ PACKAGE_FILES = [
 ]
 
 
-def send_command(text):
+def scene_ready_text(name):
+    return SCENE_READY_TEXT + " name=" + name + " "
+
+
+def capture_done_text(name):
+    return "capture name=" + name + " result=0 "
+
+
+def send_device_command(text):
     with socket.create_connection((VITA_HOST, COMMAND_PORT), timeout=10) as connection:
         connection.sendall(text.encode("ascii") + b"\n")
         connection.settimeout(3)
@@ -104,6 +116,13 @@ def upload_verified(connection, local_path, remote_path):
     return sha256_of_bytes(data)
 
 
+def remote_size_or_none(connection, path):
+    try:
+        return connection.size(path)
+    except ftplib.error_perm:
+        return None
+
+
 def app_is_installed(connection):
     try:
         connection.size(APP_FOLDER + "/eboot.bin")
@@ -121,7 +140,7 @@ def stage_package(connection):
         print("staged", remote_name, digest[:16])
 
 
-def install():
+def first_install():
     connection = open_ftp()
     try:
         if app_is_installed(connection):
@@ -131,17 +150,17 @@ def install():
         stage_package(connection)
     finally:
         connection.close()
-    reply = send_command("promote " + INSTALL_FOLDER.replace("/ux0:/", "ux0:", 1))
+    reply = send_device_command("promote " + INSTALL_FOLDER.replace("/ux0:/", "ux0:", 1))
     print("promote:", reply)
     return 0 if "Promoted" in reply else 1
 
 
 def quit_and_wait():
-    print("quit:", send_command("quit " + TITLE_ID))
+    print("quit:", send_device_command("quit " + TITLE_ID))
     time.sleep(SECONDS_FOR_APP_TEARDOWN)
 
 
-def deploy():
+def upload_eboot():
     quit_and_wait()
     connection = open_ftp()
     try:
@@ -172,20 +191,25 @@ def load_upload_record():
 
 def save_upload_record(record):
     os.makedirs(os.path.dirname(UPLOAD_RECORD_PATH), exist_ok=True)
-    with open(UPLOAD_RECORD_PATH, "w", encoding="utf-8") as output:
+    temporary_path = UPLOAD_RECORD_PATH + ".new"
+    with open(temporary_path, "w", encoding="utf-8") as output:
         json.dump(record, output, indent=0, sort_keys=True)
+    os.replace(temporary_path, UPLOAD_RECORD_PATH)
 
 
 def list_local_files(folder):
-    files = []
-    for root, _, names in os.walk(folder):
-        for name in sorted(names):
-            local_path = os.path.join(root, name)
-            files.append((local_path, os.path.relpath(local_path, folder).replace(os.sep, "/")))
+    files = [(os.path.join(folder, "manifest.txt"), "manifest.txt")]
+    for folder_name in ("textures", "animations", "scenes"):
+        for name in sorted(os.listdir(os.path.join(folder, folder_name))):
+            if not name.startswith("."):
+                files.append((os.path.join(folder, folder_name, name), folder_name + "/" + name))
     return files
 
 
 def upload_assets(folder):
+    if not os.path.isfile(os.path.join(folder, "manifest.txt")):
+        print("no manifest.txt in: " + folder)
+        return 1
     record = load_upload_record()
     uploaded = 0
     skipped = 0
@@ -196,14 +220,16 @@ def upload_assets(folder):
         made_folders = set()
         for local_path, relative_path in list_local_files(folder):
             digest = sha256_of_file(local_path)
-            if record.get(relative_path) == digest:
+            remote_path = ASSETS_FOLDER + "/" + relative_path
+            if record.get(relative_path) == digest and remote_size_or_none(connection, remote_path) == os.path.getsize(local_path):
                 skipped = skipped + 1
                 continue
-            remote_path = ASSETS_FOLDER + "/" + relative_path
             remote_folder = os.path.dirname(remote_path)
             if remote_folder not in made_folders:
                 make_folders(connection, remote_folder)
                 made_folders.add(remote_folder)
+            record.pop(relative_path, None)
+            save_upload_record(record)
             upload_verified(connection, local_path, remote_path)
             record[relative_path] = digest
             save_upload_record(record)
@@ -226,7 +252,7 @@ def latest_run_lines():
     lines = log_lines()
     start = 0
     for index, line in enumerate(lines):
-        if "--- launch" in line:
+        if LAUNCH_MARKER in line:
             start = index
     return lines[start:]
 
@@ -234,7 +260,7 @@ def latest_run_lines():
 def count_launch_markers():
     count = 0
     for line in log_lines():
-        if "--- launch" in line:
+        if LAUNCH_MARKER in line:
             count = count + 1
     return count
 
@@ -258,7 +284,7 @@ def clear_pending_commands():
 def launch(seconds=30):
     clear_pending_commands()
     markers_before = count_launch_markers()
-    print("launch:", send_command("launch " + TITLE_ID))
+    print("launch:", send_device_command("launch " + TITLE_ID))
     deadline = time.time() + seconds
     while time.time() < deadline:
         if count_launch_markers() > markers_before:
@@ -269,19 +295,33 @@ def launch(seconds=30):
     return 1
 
 
-def wait_for_text(wanted, seconds):
+def count_lines_containing(wanted):
+    return len([line for line in latest_run_lines() if wanted in line])
+
+
+def wait_for_text(wanted, seconds, lines_to_skip=0):
     deadline = time.time() + seconds
     while time.time() < deadline:
-        for line in latest_run_lines():
-            if wanted in line:
-                return line
+        matching_lines = [line for line in latest_run_lines() if wanted in line]
+        if len(matching_lines) > lines_to_skip:
+            return matching_lines[lines_to_skip]
         time.sleep(1)
     return None
 
 
-def write_commands(text):
+def wait_for_app_to_read_commands(connection):
+    deadline = time.time() + SECONDS_FOR_APP_TO_READ_COMMANDS
+    while time.time() < deadline:
+        if remote_size_or_none(connection, COMMANDS_PATH) is None:
+            return
+        time.sleep(COMMAND_FILE_POLL_SECONDS)
+    raise RuntimeError("the app has not read the previous command in " + COMMANDS_PATH)
+
+
+def write_app_commands(text):
     connection = open_ftp()
     try:
+        wait_for_app_to_read_commands(connection)
         temporary_path = COMMANDS_PATH + ".new"
         connection.storbinary("STOR " + temporary_path, io.BytesIO(text.encode("ascii")))
         delete_if_present(connection, COMMANDS_PATH)
@@ -291,8 +331,10 @@ def write_commands(text):
 
 
 def request_capture(name, output_folder, seconds=15):
-    write_commands("capture " + name + "\n")
-    line = wait_for_text("capture name=" + name + " ", seconds)
+    done_text = capture_done_text(name)
+    lines_before = count_lines_containing(done_text)
+    write_app_commands("capture " + name + "\n")
+    line = wait_for_text(done_text, seconds, lines_before)
     if line is None:
         print("capture not acknowledged:", name)
         return 1
@@ -313,42 +355,66 @@ def pull_capture(name, output_folder):
     return 0
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=["install", "deploy", "launch", "quit", "log", "capture", "pull", "command", "wait", "tell-app", "upload-assets"])
-    parser.add_argument("argument", nargs="?", default="")
-    parser.add_argument("--output", default=os.path.join(BUILD_FOLDER, "captures"))
-    parser.add_argument("--seconds", type=int, default=30)
-    arguments = parser.parse_args()
+def build_parser():
+    captures_folder = os.path.join(BUILD_FOLDER, "captures")
+    parser = argparse.ArgumentParser(description="Installs, launches and reads back from the app on the Vita.")
+    actions = parser.add_subparsers(dest="action", required=True)
+    actions.add_parser("first-install", help="stage the package and install the app; only needed once")
+    actions.add_parser("upload-eboot", help="quit the app and replace its eboot.bin with the local build")
+    launch_action = actions.add_parser("launch", help="start the app and wait until its log shows a new run")
+    launch_action.add_argument("--seconds", type=int, default=30, help="how long to wait for the new run")
+    actions.add_parser("quit", help="quit the app and wait for it to tear down")
+    actions.add_parser("log", help="print the log of the latest run")
+    capture_action = actions.add_parser("capture", help="ask the app to save the screen, then pull the BMP back")
+    capture_action.add_argument("name", help="name of the capture, without .bmp")
+    capture_action.add_argument("--seconds", type=int, default=15, help="how long to wait for the app to save it")
+    capture_action.add_argument("--output", default=captures_folder, help="local folder for the BMP")
+    pull_action = actions.add_parser("pull", help="pull a capture the app saved earlier")
+    pull_action.add_argument("name", help="name of the capture, without .bmp")
+    pull_action.add_argument("--output", default=captures_folder, help="local folder for the BMP")
+    device_command_action = actions.add_parser("device-command", help="send a line to the Vita Companion command port")
+    device_command_action.add_argument("text", help="the line to send")
+    app_command_action = actions.add_parser("app-command", help="write a line to the commands file the running app reads")
+    app_command_action.add_argument("text", help="the line to write, such as play_scene opening")
+    wait_action = actions.add_parser("wait", help="wait until the log of the latest run contains some text")
+    wait_action.add_argument("text", help="the text to wait for")
+    wait_action.add_argument("--seconds", type=int, default=30, help="how long to wait")
+    upload_assets_action = actions.add_parser("upload-assets", help="upload a converted asset set, skipping files the device already has")
+    upload_assets_action.add_argument("folder", help="local folder holding manifest.txt")
+    return parser
 
-    if arguments.action == "install":
-        return install()
-    if arguments.action == "deploy":
-        return deploy()
+
+def main():
+    arguments = build_parser().parse_args()
+
+    if arguments.action == "first-install":
+        return first_install()
+    if arguments.action == "upload-eboot":
+        return upload_eboot()
     if arguments.action == "launch":
-        return launch()
+        return launch(arguments.seconds)
     if arguments.action == "quit":
-        print(send_command("quit " + TITLE_ID))
+        quit_and_wait()
         return 0
     if arguments.action == "log":
         for line in latest_run_lines():
             print(line)
         return 0
     if arguments.action == "capture":
-        return request_capture(arguments.argument, arguments.output)
+        return request_capture(arguments.name, arguments.output, arguments.seconds)
     if arguments.action == "pull":
-        return pull_capture(arguments.argument, arguments.output)
-    if arguments.action == "command":
-        print(send_command(arguments.argument))
+        return pull_capture(arguments.name, arguments.output)
+    if arguments.action == "device-command":
+        print(send_device_command(arguments.text))
         return 0
     if arguments.action == "upload-assets":
-        return upload_assets(arguments.argument)
-    if arguments.action == "tell-app":
-        write_commands(arguments.argument + "\n")
+        return upload_assets(arguments.folder)
+    if arguments.action == "app-command":
+        write_app_commands(arguments.text + "\n")
         return 0
     if arguments.action == "wait":
-        line = wait_for_text(arguments.argument, arguments.seconds)
-        print(line if line else "timed out waiting for: " + arguments.argument)
+        line = wait_for_text(arguments.text, arguments.seconds)
+        print(line if line else "timed out waiting for: " + arguments.text)
         return 0 if line else 1
     return 1
 

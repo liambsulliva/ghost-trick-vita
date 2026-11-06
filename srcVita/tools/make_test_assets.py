@@ -1,14 +1,13 @@
 import argparse
 import os
-import struct
-import subprocess
 import sys
 import tempfile
 
-FORMAT_RGBA8888 = 0
-FORMAT_DXT5 = 1
-FORMAT_DXT1 = 2
-DDS_HEADER_SIZE = 128
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets"))
+
+import asset_writers
+import texture_encoder
+
 ROOM_WIDTH = 720
 ROOM_HEIGHT = 540
 ATLAS_SIZE = 512
@@ -20,27 +19,27 @@ BAR_HEIGHT = 544
 MARKER_SIZE = 90
 
 
-def set_pixel(pixels, width, x, y, colour):
+def set_pixel(pixels, width, x, y, color):
     index = (y * width + x) * 4
-    pixels[index] = colour[0]
-    pixels[index + 1] = colour[1]
-    pixels[index + 2] = colour[2]
-    pixels[index + 3] = colour[3]
+    pixels[index] = color[0]
+    pixels[index + 1] = color[1]
+    pixels[index + 2] = color[2]
+    pixels[index + 3] = color[3]
 
 
-def fill_rectangle(pixels, width, left, top, right, bottom, colour):
+def fill_rectangle(pixels, width, left, top, right, bottom, color):
     for y in range(top, bottom):
         for x in range(left, right):
-            set_pixel(pixels, width, x, y, colour)
+            set_pixel(pixels, width, x, y, color)
 
 
 def room_pixels(tint):
     pixels = bytearray(ROOM_WIDTH * ROOM_HEIGHT * 4)
     for y in range(ROOM_HEIGHT):
         shade = 40 + 120 * y // ROOM_HEIGHT
-        colour = ((shade * tint[0]) // 255, (shade * tint[1]) // 255, (shade * tint[2]) // 255, 255)
+        color = ((shade * tint[0]) // 255, (shade * tint[1]) // 255, (shade * tint[2]) // 255, 255)
         for x in range(ROOM_WIDTH):
-            set_pixel(pixels, ROOM_WIDTH, x, y, colour)
+            set_pixel(pixels, ROOM_WIDTH, x, y, color)
     fill_rectangle(pixels, ROOM_WIDTH, 0, 0, MARKER_SIZE, MARKER_SIZE, (255, 0, 0, 255))
     fill_rectangle(pixels, ROOM_WIDTH, ROOM_WIDTH - MARKER_SIZE, 0, ROOM_WIDTH, MARKER_SIZE, (0, 255, 0, 255))
     fill_rectangle(pixels, ROOM_WIDTH, 0, ROOM_HEIGHT - MARKER_SIZE, MARKER_SIZE, ROOM_HEIGHT, (0, 0, 255, 255))
@@ -50,7 +49,7 @@ def room_pixels(tint):
 
 def atlas_pixels():
     pixels = bytearray(ATLAS_SIZE * ATLAS_SIZE * 4)
-    colours = [(255, 80, 80, 255), (80, 255, 80, 255), (80, 80, 255, 255), (255, 255, 80, 255)]
+    colors = [(255, 80, 80, 255), (80, 255, 80, 255), (80, 80, 255, 255), (255, 255, 80, 255)]
     for cell in range(CELL_COUNT):
         cell_left = (cell % CELL_COLUMNS) * CELL_SIZE
         cell_top = (cell // CELL_COLUMNS) * CELL_SIZE
@@ -60,35 +59,16 @@ def atlas_pixels():
         for y in range(cell_top, cell_top + CELL_SIZE):
             for x in range(cell_left, cell_left + CELL_SIZE):
                 if (x - center_x) ** 2 + (y - center_y) ** 2 <= radius * radius:
-                    set_pixel(pixels, ATLAS_SIZE, x, y, colours[cell])
+                    set_pixel(pixels, ATLAS_SIZE, x, y, colors[cell])
                 else:
-                    set_pixel(pixels, ATLAS_SIZE, x, y, (colours[cell][0], colours[cell][1], colours[cell][2], 0))
+                    set_pixel(pixels, ATLAS_SIZE, x, y, (colors[cell][0], colors[cell][1], colors[cell][2], 0))
     return pixels
 
 
-def bar_pixels(colour):
+def bar_pixels(color):
     pixels = bytearray(BAR_WIDTH * BAR_HEIGHT * 4)
-    fill_rectangle(pixels, BAR_WIDTH, 0, 0, BAR_WIDTH, BAR_HEIGHT, colour)
+    fill_rectangle(pixels, BAR_WIDTH, 0, 0, BAR_WIDTH, BAR_HEIGHT, color)
     return pixels
-
-
-def compress_with_magick(width, height, rgba_pixels, compression):
-    with tempfile.TemporaryDirectory() as folder:
-        raw_path = os.path.join(folder, "image.rgba")
-        dds_path = os.path.join(folder, "image.dds")
-        with open(raw_path, "wb") as output:
-            output.write(rgba_pixels)
-        subprocess.run(
-            ["magick", "-size", "%dx%d" % (width, height), "-depth", "8", "rgba:" + raw_path,
-             "-define", "dds:compression=" + compression, "-define", "dds:mipmaps=0", "-define", "dds:cluster-fit=true", "dds:" + dds_path],
-            check=True,
-        )
-        with open(dds_path, "rb") as source:
-            return source.read()[DDS_HEADER_SIZE:]
-
-
-def texture_file_bytes(width, height, texture_format, pixel_data):
-    return b"GTEX" + struct.pack("<IIII", width, height, texture_format, len(pixel_data)) + bytes(pixel_data)
 
 
 def write_binary(path, data):
@@ -102,22 +82,32 @@ def write_text(path, text):
 
 
 def write_dxt_texture(folder, name, width, height, pixels, texture_format, compression):
-    data = compress_with_magick(width, height, pixels, compression)
-    write_binary(os.path.join(folder, "textures", name + ".gtex"), texture_file_bytes(width, height, texture_format, data))
+    with tempfile.TemporaryDirectory() as work_folder:
+        data = texture_encoder.encode_rgba(work_folder, name, width, height, pixels, compression)
+    write_binary(os.path.join(folder, "textures", name + ".gtex"), asset_writers.gtex_bytes(width, height, texture_format, data))
 
 
 def write_rgba_texture(folder, name, width, height, pixels):
-    write_binary(os.path.join(folder, "textures", name + ".gtex"), texture_file_bytes(width, height, FORMAT_RGBA8888, pixels))
+    write_binary(os.path.join(folder, "textures", name + ".gtex"), asset_writers.gtex_bytes(width, height, asset_writers.FORMAT_RGBA8888, pixels))
 
 
 def animation_text(name, texture_name):
-    lines = ["animation " + name, "ticks_per_second 60", "loops 1"]
+    frames = []
     for cell in range(CELL_COUNT):
-        u = (cell % CELL_COLUMNS) / CELL_COLUMNS
-        v = (cell // CELL_COLUMNS) / CELL_COLUMNS
-        lines.append("frame %s 30 -45.5 -91 91 91 %g %g 0.5 0.5" % (texture_name, u, v))
-    lines.append("frame - 30 0 0 0 0 0 0 0 0")
-    return "\n".join(lines) + "\n"
+        frames.append({
+            "texture": texture_name,
+            "ticks": 30,
+            "x": -45.5,
+            "y": -91,
+            "width": 91,
+            "height": 91,
+            "u": (cell % CELL_COLUMNS) / CELL_COLUMNS,
+            "v": (cell // CELL_COLUMNS) / CELL_COLUMNS,
+            "u_size": 0.5,
+            "v_size": 0.5,
+        })
+    frames.append(asset_writers.blank_frame(30))
+    return asset_writers.anim_text(name, 1, frames)
 
 
 def scene_text():
@@ -140,14 +130,14 @@ def scene_text():
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("output_folder")
+    parser = argparse.ArgumentParser(description="Writes a small asset set with drawn test images, for trying the app without game files.")
+    parser.add_argument("output_folder", help="folder to write manifest.txt, textures, animations and scenes into")
     arguments = parser.parse_args()
     folder = arguments.output_folder
 
-    write_dxt_texture(folder, "test_room_blue", ROOM_WIDTH, ROOM_HEIGHT, room_pixels((120, 170, 255)), FORMAT_DXT1, "dxt1")
-    write_dxt_texture(folder, "test_room_green", ROOM_WIDTH, ROOM_HEIGHT, room_pixels((130, 255, 170)), FORMAT_DXT1, "dxt1")
-    write_dxt_texture(folder, "test_atlas", ATLAS_SIZE, ATLAS_SIZE, atlas_pixels(), FORMAT_DXT5, "dxt5")
+    write_dxt_texture(folder, "test_room_blue", ROOM_WIDTH, ROOM_HEIGHT, room_pixels((120, 170, 255)), asset_writers.FORMAT_DXT1, "dxt1")
+    write_dxt_texture(folder, "test_room_green", ROOM_WIDTH, ROOM_HEIGHT, room_pixels((130, 255, 170)), asset_writers.FORMAT_DXT1, "dxt1")
+    write_dxt_texture(folder, "test_atlas", ATLAS_SIZE, ATLAS_SIZE, atlas_pixels(), asset_writers.FORMAT_DXT5, "dxt5")
     write_rgba_texture(folder, "test_left_bar", BAR_WIDTH, BAR_HEIGHT, bar_pixels((20, 60, 70, 255)))
     write_rgba_texture(folder, "test_right_bar", BAR_WIDTH, BAR_HEIGHT, bar_pixels((70, 60, 20, 255)))
     write_text(os.path.join(folder, "animations", "test_orbit.anim"), animation_text("test_orbit", "test_atlas"))

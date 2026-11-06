@@ -4,41 +4,35 @@
 #include "text_lines.h"
 
 #define MANIFEST_LINE_MAX 160
+#define SCENE_LINE_START "scene "
+#define BACKGROUND_LINE_START "background "
+#define ANIMATION_LINE_START "animation "
+
+static int read_asset_name(const char *name_text, char names[][ASSET_NAME_MAX], int *count, int limit)
+{
+    if (*count >= limit) {
+        return ASSET_MANIFEST_ERR_TOO_MANY;
+    }
+    if (sscanf(name_text, ASSET_NAME_SCAN, names[*count]) != 1) {
+        return ASSET_MANIFEST_ERR_BAD_LINE;
+    }
+    *count = *count + 1;
+    return ASSET_MANIFEST_OK;
+}
 
 static int read_one_line(const char *line, struct asset_manifest *manifest)
 {
     if (line[0] == '\0') {
         return ASSET_MANIFEST_OK;
     }
-    if (strncmp(line, "scene ", 6) == 0) {
-        if (manifest->scene_count >= ASSET_MANIFEST_SCENE_MAX) {
-            return ASSET_MANIFEST_ERR_TOO_MANY;
-        }
-        if (sscanf(line, "scene %95s", manifest->scene_names[manifest->scene_count]) != 1) {
-            return ASSET_MANIFEST_ERR_BAD_LINE;
-        }
-        manifest->scene_count = manifest->scene_count + 1;
-        return ASSET_MANIFEST_OK;
+    if (text_line_starts_with(line, SCENE_LINE_START)) {
+        return read_asset_name(line + strlen(SCENE_LINE_START), manifest->scene_names, &manifest->scene_count, ASSET_MANIFEST_SCENE_MAX);
     }
-    if (strncmp(line, "background ", 11) == 0) {
-        if (manifest->background_count >= ASSET_MANIFEST_BACKGROUND_MAX) {
-            return ASSET_MANIFEST_ERR_TOO_MANY;
-        }
-        if (sscanf(line, "background %95s", manifest->background_names[manifest->background_count]) != 1) {
-            return ASSET_MANIFEST_ERR_BAD_LINE;
-        }
-        manifest->background_count = manifest->background_count + 1;
-        return ASSET_MANIFEST_OK;
+    if (text_line_starts_with(line, BACKGROUND_LINE_START)) {
+        return read_asset_name(line + strlen(BACKGROUND_LINE_START), manifest->background_names, &manifest->background_count, ASSET_MANIFEST_BACKGROUND_MAX);
     }
-    if (strncmp(line, "animation ", 10) == 0) {
-        if (manifest->animation_count >= ASSET_MANIFEST_ANIMATION_MAX) {
-            return ASSET_MANIFEST_ERR_TOO_MANY;
-        }
-        if (sscanf(line, "animation %95s", manifest->animation_names[manifest->animation_count]) != 1) {
-            return ASSET_MANIFEST_ERR_BAD_LINE;
-        }
-        manifest->animation_count = manifest->animation_count + 1;
-        return ASSET_MANIFEST_OK;
+    if (text_line_starts_with(line, ANIMATION_LINE_START)) {
+        return read_asset_name(line + strlen(ANIMATION_LINE_START), manifest->animation_names, &manifest->animation_count, ASSET_MANIFEST_ANIMATION_MAX);
     }
     return ASSET_MANIFEST_ERR_BAD_LINE;
 }

@@ -12,26 +12,6 @@ SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(TESTS_FOLDER))
 TOOL_PATH = os.path.join(SRC_VITA_FOLDER, "build", "tools", "texture_tool_checked")
 
 
-def rgb565_to_rgb(value):
-    red = (value >> 11) & 31
-    green = (value >> 5) & 63
-    blue = value & 31
-    return ((red << 3) | (red >> 2), (green << 2) | (green >> 4), (blue << 3) | (blue >> 2))
-
-
-def colour_table(colour0_value, colour1_value):
-    colour0 = rgb565_to_rgb(colour0_value)
-    colour1 = rgb565_to_rgb(colour1_value)
-    table = [colour0 + (255,), colour1 + (255,)]
-    if colour0_value > colour1_value:
-        table.append(tuple((2 * a + b) // 3 for a, b in zip(colour0, colour1)) + (255,))
-        table.append(tuple((a + 2 * b) // 3 for a, b in zip(colour0, colour1)) + (255,))
-    else:
-        table.append(tuple((a + b) // 2 for a, b in zip(colour0, colour1)) + (255,))
-        table.append((0, 0, 0, 0))
-    return table
-
-
 def alpha_table(alpha0, alpha1):
     table = [alpha0, alpha1]
     if alpha0 > alpha1:
@@ -42,12 +22,6 @@ def alpha_table(alpha0, alpha1):
             table.append(((5 - step) * alpha0 + step * alpha1) // 5)
         table.extend([0, 255])
     return table
-
-
-def decode_colour_block(block):
-    colour0_value, colour1_value, indices = struct.unpack("<HHI", block)
-    table = colour_table(colour0_value, colour1_value)
-    return [table[(indices >> (2 * position)) & 3] for position in range(16)]
 
 
 def decode_alpha_block(block):
@@ -65,15 +39,15 @@ def decode_dxt_image(block_data, width, height, block_bytes):
             block_index = block_index + block_bytes
             if block_bytes == 16:
                 alphas = decode_alpha_block(block[:8])
-                colours = decode_colour_block(block[8:])
+                colors = synthetic_files.decode_color_block(block[8:])
             else:
-                colours = decode_colour_block(block)
-                alphas = [colour[3] for colour in colours]
+                colors = synthetic_files.decode_color_block(block)
+                alphas = [color[3] for color in colors]
             for position in range(16):
                 x = block_x + position % 4
                 y = block_y + position // 4
-                colour = colours[position]
-                pixels[y * width + x] = (colour[0], colour[1], colour[2], alphas[position])
+                color = colors[position]
+                pixels[y * width + x] = (color[0], color[1], color[2], alphas[position])
     return pixels
 
 
@@ -149,8 +123,8 @@ class DxtEncodingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             texture_encoder.block_data_from_dds(dds, 4, 4, "dxt5")
 
-    def test_scaling_colours_leaves_alpha_alone(self):
-        self.assertEqual(texture_encoder.scale_colours(bytes([100, 200, 255, 77]), 0.5), bytes([50, 100, 128, 77]))
+    def test_scaling_colors_leaves_alpha_alone(self):
+        self.assertEqual(texture_encoder.scale_colors(bytes([100, 200, 255, 77]), 0.5), bytes([50, 100, 128, 77]))
 
 
 class TexToGtexTests(unittest.TestCase):

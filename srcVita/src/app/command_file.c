@@ -26,7 +26,7 @@ int command_name_is_safe(const char *name)
         return 0;
     }
     for (index = 0; name[index] != '\0'; index++) {
-        if (index >= COMMAND_NAME_MAX - 1) {
+        if (index >= ASSET_NAME_MAX - 1) {
             return 0;
         }
         if (!character_is_safe_in_name(name[index])) {

@@ -15,6 +15,5 @@ void debug_font_fill_atlas(unsigned char *rgba_pixels, int atlas_width, int atla
 int debug_font_init(void);
 void debug_font_shutdown(void);
 void debug_font_draw_text(float x, float y, float scale, struct renderer_color color, const char *text);
-float debug_font_text_width(const char *text, float scale);
 
 #endif

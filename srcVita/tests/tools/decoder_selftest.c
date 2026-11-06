@@ -1,7 +1,6 @@
 #include "astc_decode.h"
 #include "etc_decode.h"
 
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -89,13 +88,6 @@ static void test_void_extents(void)
     build_void_extent(block, 1, 3, 0x1FFF, 0x1FFF, 0x1FFF, 0x1FFF);
     expect(astc_decode_block(block, 6, 6, 0, texels) == ASTC_BLOCK_VOID_EXTENT_HDR, "HDR void extent kind");
     expect(all_texels_equal(texels, 36, 0xFFFF, 0, 0xFFFF, 0xFFFF), "HDR void extent is an error color in the LDR path");
-    put_bits(block, 64, 16, 0x3C00);
-    put_bits(block, 80, 16, 0x4000);
-    put_bits(block, 96, 16, 0x3800);
-    put_bits(block, 112, 16, 0x3C00);
-    float floats[ASTC_MAX_BLOCK_TEXELS * 4];
-    expect(astc_decode_block_hdr(block, 4, 4, floats) == ASTC_BLOCK_VOID_EXTENT_HDR, "HDR void extent kind in the HDR path");
-    expect(floats[0] == 1.0f && floats[1] == 2.0f && floats[2] == 0.5f && floats[3] == 1.0f, "HDR void extent half floats");
 }
 
 static void test_illegal_blocks(void)
@@ -183,7 +175,6 @@ static void fuzz_decoders(long block_count)
     static const int footprints[3][2] = {{6, 6}, {10, 5}, {4, 4}};
     uint8_t block[16];
     uint16_t texels16[ASTC_MAX_BLOCK_TEXELS * 4];
-    float floats[ASTC_MAX_BLOCK_TEXELS * 4];
     uint64_t legal_blocks = 0;
     uint64_t illegal_blocks = 0;
     for (long index = 0; index < block_count; index++) {
@@ -193,16 +184,13 @@ static void fuzz_decoders(long block_count)
         }
         const int *footprint = footprints[index % 3];
         astc_block_kind kind = astc_decode_block(block, footprint[0], footprint[1], (int)(index >> 2) & 1, texels16);
-        astc_decode_block_hdr(block, footprint[0], footprint[1], floats);
         if (kind == ASTC_BLOCK_ILLEGAL) {
             illegal_blocks++;
         } else {
             legal_blocks++;
         }
         uint8_t etc_texels[48];
-        uint16_t eac_texels[16];
         etc2_rgb8_decode_block(block, etc_texels);
-        eac_r11_decode_block(block, eac_texels);
     }
     printf("fuzzed %ld random blocks: %llu legal, %llu illegal\n", block_count, (unsigned long long)legal_blocks, (unsigned long long)illegal_blocks);
     int width = 37;
@@ -210,20 +198,12 @@ static void fuzz_decoders(long block_count)
     size_t bytes = (size_t)((width + 3) / 4) * (size_t)((height + 3) / 4) * 16 + 16;
     uint8_t *random_blocks = malloc(bytes);
     uint8_t *pixels = malloc((size_t)width * (size_t)height * 4);
-    uint16_t *pixels16 = malloc((size_t)width * (size_t)height * 8);
-    float *pixels_float = malloc((size_t)width * (size_t)height * 16);
     fill_random(random_blocks, (int)bytes);
     astc_decode_image(random_blocks, width, height, 6, 6, 0, pixels);
     astc_decode_image(random_blocks, width, height, 10, 5, 1, pixels);
-    astc_decode_image_16bit(random_blocks, width, height, 4, 4, 0, pixels16);
-    astc_decode_image_hdr(random_blocks, width, height, 4, 4, pixels_float);
-    etc2_rgb8_decode_image(random_blocks, width, height, pixels, NULL);
-    eac_r11_decode_image(random_blocks, width, height, pixels16, 1, 8);
-    eac_r11_decode_image(random_blocks, width, height, pixels16, 1, 16);
+    etc2_rgb8_decode_image(random_blocks, width, height, pixels);
     free(random_blocks);
     free(pixels);
-    free(pixels16);
-    free(pixels_float);
 }
 
 int main(int argument_count, char **arguments)

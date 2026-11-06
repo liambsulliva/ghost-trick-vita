@@ -1,7 +1,7 @@
 #include <psp2/kernel/processmgr.h>
-#include "timing.h"
+#include "clock.h"
 
-unsigned long long timing_now_us(void)
+unsigned long long clock_now_us(void)
 {
     return sceKernelGetProcessTimeWide();
 }

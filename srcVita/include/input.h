@@ -12,10 +12,8 @@
 #define INPUT_L 0x0100u
 #define INPUT_R 0x0200u
 #define INPUT_START 0x0400u
-#define INPUT_SELECT 0x0800u
 
 struct input_state {
-    unsigned int held;
     unsigned int pressed;
 };
 

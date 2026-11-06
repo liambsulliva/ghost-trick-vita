@@ -9,7 +9,7 @@ static int read_frame_line(const char *line, struct animation_frame *frame)
 {
     int fields_read;
 
-    fields_read = sscanf(line, "frame %95s %u %f %f %f %f %f %f %f %f", frame->texture_name, &frame->ticks, &frame->x, &frame->y, &frame->width, &frame->height, &frame->u, &frame->v, &frame->u_size, &frame->v_size);
+    fields_read = sscanf(line, "frame " ASSET_NAME_SCAN " %u %f %f %f %f %f %f %f %f", frame->texture_name, &frame->ticks, &frame->x, &frame->y, &frame->width, &frame->height, &frame->u, &frame->v, &frame->u_size, &frame->v_size);
     if (fields_read != 10) {
         return ANIMATION_ERR_BAD_LINE;
     }
@@ -24,19 +24,13 @@ static int read_one_line(const char *line, struct animation *animation)
     if (line[0] == '\0') {
         return ANIMATION_OK;
     }
-    if (strncmp(line, "animation ", 10) == 0) {
-        return sscanf(line, "animation %95s", animation->name) == 1 ? ANIMATION_OK : ANIMATION_ERR_BAD_LINE;
+    if (text_line_starts_with(line, "animation ")) {
+        return sscanf(line, "animation " ASSET_NAME_SCAN, animation->name) == 1 ? ANIMATION_OK : ANIMATION_ERR_BAD_LINE;
     }
-    if (strncmp(line, "ticks_per_second ", 17) == 0) {
-        if (sscanf(line, "ticks_per_second %u", &animation->ticks_per_second) != 1 || animation->ticks_per_second == 0) {
-            return ANIMATION_ERR_BAD_LINE;
-        }
-        return ANIMATION_OK;
-    }
-    if (strncmp(line, "loops ", 6) == 0) {
+    if (text_line_starts_with(line, "loops ")) {
         return sscanf(line, "loops %d", &animation->loops) == 1 ? ANIMATION_OK : ANIMATION_ERR_BAD_LINE;
     }
-    if (strncmp(line, "frame ", 6) == 0) {
+    if (text_line_starts_with(line, "frame ")) {
         int result;
 
         if (animation->frame_count >= ANIMATION_FRAME_MAX) {
@@ -58,7 +52,6 @@ int animation_parse(const char *text, unsigned int text_size, struct animation *
     int result;
 
     animation->name[0] = '\0';
-    animation->ticks_per_second = ANIMATION_DEFAULT_TICKS_PER_SECOND;
     animation->loops = 0;
     animation->frame_count = 0;
 
@@ -81,9 +74,9 @@ int animation_frame_is_blank(const struct animation_frame *frame)
     return strcmp(frame->texture_name, ANIMATION_BLANK_TEXTURE) == 0;
 }
 
-static unsigned long long frame_duration_us(const struct animation *animation, const struct animation_frame *frame)
+static unsigned long long frame_duration_us(const struct animation_frame *frame)
 {
-    return (unsigned long long)frame->ticks * 1000000ULL / animation->ticks_per_second;
+    return (unsigned long long)frame->ticks * 1000000ULL / TICKS_PER_SECOND;
 }
 
 void animation_player_start(struct animation_player *player, const struct animation *animation)
@@ -94,7 +87,6 @@ void animation_player_start(struct animation_player *player, const struct animat
     player->late_frame_count = 0;
     player->waiting_for_frame = 0;
     player->is_finished = 0;
-    player->is_paused = 0;
     memset(player->frame_was_shown, 0, sizeof(player->frame_was_shown));
     player->frame_was_shown[0] = 1;
 }
@@ -117,12 +109,12 @@ void animation_player_advance(struct animation_player *player, unsigned long lon
     int next_index;
 
     animation = player->animation;
-    if (animation == NULL || player->is_finished || player->is_paused) {
+    if (animation == NULL || player->is_finished) {
         return;
     }
     player->time_in_frame_us = player->time_in_frame_us + elapsed_us;
     while (1) {
-        duration_us = frame_duration_us(animation, &animation->frames[player->frame_index]);
+        duration_us = frame_duration_us(&animation->frames[player->frame_index]);
         if (player->time_in_frame_us < duration_us) {
             return;
         }

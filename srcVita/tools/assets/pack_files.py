@@ -4,11 +4,14 @@ import zipfile
 import zlib
 
 PACK_SOURCES = (
-    ("re_chunk_000.pak", "re_chunk_000.pak", None),
-    ("re_chunk_001.pak", "data02", "files/assetpacks/asset_fast_follow/18/18/assets/re_chunk_001.pak"),
-    ("re_chunk_002.pak", "data01", "files/assetpacks/asset_on_demand0/18/18/assets/re_chunk_002.pak"),
+    ("re_chunk_000.pak", None),
+    ("data02", "files/assetpacks/asset_fast_follow/18/18/assets/re_chunk_001.pak"),
+    ("data01", "files/assetpacks/asset_on_demand0/18/18/assets/re_chunk_002.pak"),
 )
+PACK_VERSION = 4
 PACK_HEADER_SIZE = 16
+PACK_ENTRY_COUNT_OFFSET = 8
+PACK_METHOD_MASK = 0xF
 PACK_ENTRY_SIZE = 48
 METHOD_STORED = 0
 METHOD_DEFLATE = 1
@@ -76,23 +79,23 @@ def read_pack_entries(file_path, base_offset):
     with open(file_path, "rb") as source:
         source.seek(base_offset)
         header = source.read(PACK_HEADER_SIZE)
-        if header[:4] != b"KPKA" or header[4] != 4:
-            raise ValueError(file_path + ": not a KPKA version 4 pack")
-        entry_count = struct.unpack_from("<I", header, 8)[0]
+        if header[:4] != b"KPKA" or header[4] != PACK_VERSION:
+            raise ValueError(file_path + ": not a KPKA version " + str(PACK_VERSION) + " pack")
+        entry_count = struct.unpack_from("<I", header, PACK_ENTRY_COUNT_OFFSET)[0]
         table = source.read(entry_count * PACK_ENTRY_SIZE)
     if len(table) != entry_count * PACK_ENTRY_SIZE:
         raise ValueError(file_path + ": truncated entry table")
     entries = {}
     for index in range(entry_count):
         lower_hash, upper_hash, offset, stored_size, plain_size, attributes = struct.unpack_from("<IIQQQQ", table, index * PACK_ENTRY_SIZE)
-        entries[(lower_hash, upper_hash)] = PackEntry(file_path, base_offset, offset, stored_size, plain_size, attributes & 0xF)
+        entries[(lower_hash, upper_hash)] = PackEntry(file_path, base_offset, offset, stored_size, plain_size, attributes & PACK_METHOD_MASK)
     return entries
 
 
 class PackSet:
     def __init__(self, root):
         self.entries = {}
-        for _, file_name, member_name in PACK_SOURCES:
+        for file_name, member_name in PACK_SOURCES:
             file_path = os.path.join(root, file_name)
             base_offset = 0
             if member_name is not None:

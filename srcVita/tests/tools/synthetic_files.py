@@ -4,6 +4,7 @@ import zipfile
 import zlib
 
 import pack_files
+import timeline_file as timeline_format
 
 FORMAT_RGBA8 = 28
 FORMAT_ASTC_6X6 = 1038
@@ -43,6 +44,32 @@ def expand_5_bits(value):
     return (value << 3) | (value >> 2)
 
 
+def rgb565_to_rgb(value):
+    red = (value >> 11) & 31
+    green = (value >> 5) & 63
+    blue = value & 31
+    return ((red << 3) | (red >> 2), (green << 2) | (green >> 4), (blue << 3) | (blue >> 2))
+
+
+def color_table(color0_value, color1_value):
+    color0 = rgb565_to_rgb(color0_value)
+    color1 = rgb565_to_rgb(color1_value)
+    table = [color0 + (255,), color1 + (255,)]
+    if color0_value > color1_value:
+        table.append(tuple((2 * a + b) // 3 for a, b in zip(color0, color1)) + (255,))
+        table.append(tuple((a + 2 * b) // 3 for a, b in zip(color0, color1)) + (255,))
+    else:
+        table.append(tuple((a + b) // 2 for a, b in zip(color0, color1)) + (255,))
+        table.append((0, 0, 0, 0))
+    return table
+
+
+def decode_color_block(block):
+    color0_value, color1_value, indices = struct.unpack("<HHI", block)
+    table = color_table(color0_value, color1_value)
+    return [table[(indices >> (2 * position)) & 3] for position in range(16)]
+
+
 class ByteWriter:
     def __init__(self):
         self.data = bytearray()
@@ -72,36 +99,46 @@ class ByteWriter:
         self.data.extend(struct.pack("<4f", x, y, 0.0, 0.0))
 
 
-def write_sheet(writer, textures, atlas, cell, cells_per_texture):
-    writer.i32(len(textures))
-    for texture in textures:
-        writer.string(texture)
-    writer.i32(atlas[0])
-    writer.i32(atlas[1])
-    writer.i32(cell[0])
-    writer.i32(cell[1])
-    writer.i32(len(cells_per_texture))
-    for count in cells_per_texture:
+def write_sheet(writer, pages, atlas_size, cell_size, cells_per_page):
+    writer.i32(len(pages))
+    for page in pages:
+        writer.string(page)
+    writer.i32(atlas_size[0])
+    writer.i32(atlas_size[1])
+    writer.i32(cell_size[0])
+    writer.i32(cell_size[1])
+    writer.i32(len(cells_per_page))
+    for count in cells_per_page:
         writer.i32(count)
-    writer.vector(atlas[0] // cell[0], atlas[1] // cell[1])
-    writer.i32(sum(cells_per_texture))
+    writer.vector(atlas_size[0] // cell_size[0], atlas_size[1] // cell_size[1])
+    writer.i32(sum(cells_per_page))
     writer.u8(0)
     writer.u8(0)
 
 
-def write_record(writer, shorts, position, cell, adjust):
+def record_shorts(first, anchor, point):
+    values = [0] * timeline_format.RECORD_SHORT_COUNT
+    values[timeline_format.SHORT_BLANK_MARKER] = first
+    values[timeline_format.SHORT_ANCHOR_X] = anchor[0]
+    values[timeline_format.SHORT_ANCHOR_Y] = anchor[1]
+    values[timeline_format.SHORT_POINT_X] = point[0]
+    values[timeline_format.SHORT_POINT_Y] = point[1]
+    return values
+
+
+def write_record(writer, shorts, position, cell_index, adjust):
     writer.i32(len(shorts))
     for value in shorts:
         writer.i16(value)
     writer.i32(1)
     writer.vector(position[0], position[1])
-    writer.i32(cell)
+    writer.i32(cell_index)
     writer.i32(adjust[0])
     writer.i32(adjust[1])
     writer.i32(0)
 
 
-def timeline_file(textures, atlas, cell, cells_per_texture, records, ds_frame_count, placement_shift=(0, 0)):
+def timeline_file(pages, atlas_size, cell_size, cells_per_page, records, ds_frame_count, placement_shift=(0, 0)):
     rsz_offset = 64
     instance_count = 1 + 1 + len(records) + 1
     instance_table_offset = 48
@@ -123,7 +160,7 @@ def timeline_file(textures, atlas, cell, cells_per_texture, records, ds_frame_co
         writer.data.extend(struct.pack("<II", type_id, 0))
     while len(writer.data) < rsz_offset + data_offset:
         writer.data.append(0)
-    write_sheet(writer, textures, atlas, cell, cells_per_texture)
+    write_sheet(writer, pages, atlas_size, cell_size, cells_per_page)
     for record in records:
         adjust = (0, 0)
         if len(record) > 3:
@@ -160,6 +197,6 @@ def pack_bytes(files):
 def write_apk_folder(folder, files):
     with open(os.path.join(folder, "re_chunk_000.pak"), "wb") as output:
         output.write(pack_bytes(files))
-    for pack_name, file_name, member_name in pack_files.PACK_SOURCES[1:]:
+    for file_name, member_name in pack_files.PACK_SOURCES[1:]:
         with zipfile.ZipFile(os.path.join(folder, file_name), "w", zipfile.ZIP_STORED) as archive:
             archive.writestr(member_name, pack_bytes([]))

@@ -2,10 +2,13 @@ import asset_writers
 
 DS_TICKS_PER_FRAME = 4
 ART_PER_DS_PIXEL = 4
-DS_ORIGIN_X = 256
-DS_ORIGIN_Y = 128
-TARGET_SCALE = 0.703125
-ROUNDING_NOISE = 1
+SCREEN_PIXELS_PER_DS_PIXEL = 720 / 256
+TARGET_SCALE = SCREEN_PIXELS_PER_DS_PIXEL / ART_PER_DS_PIXEL
+OBJECT_ORIGIN_X_IN_TIMELINE = 256
+OBJECT_ORIGIN_Y_IN_TIMELINE = 128
+ANCHOR_UNITS_PER_DS_PIXEL = 2
+ANCHOR_NOISE_UNITS = 1
+TEX_VERSION_SUFFIX = ".691230823"
 
 
 def round_to_multiple_of_four(value):
@@ -34,7 +37,7 @@ def texture_name_for(logical_path):
 
 
 def pack_path_for(logical_path):
-    return "natives/android/" + logical_path.lower() + ".691230823"
+    return "natives/android/" + logical_path.lower() + TEX_VERSION_SUFFIX
 
 
 def select_records(timeline, ds_frames):
@@ -49,16 +52,23 @@ def select_records(timeline, ds_frames):
 
 def anchor_offset(anchor_value, point_value):
     difference = anchor_value - point_value
-    if abs(difference) <= ROUNDING_NOISE:
+    if abs(difference) <= ANCHOR_NOISE_UNITS:
         return 0
-    return difference / 2
+    return difference / ANCHOR_UNITS_PER_DS_PIXEL
+
+
+def placement_in_ds_pixels(position, origin, anchor, point, shift):
+    position_ds = position / ART_PER_DS_PIXEL
+    offset_ds = anchor_offset(anchor, point)
+    shift_ds = shift / ART_PER_DS_PIXEL
+    return position_ds - origin - offset_ds + shift_ds
 
 
 def cell_rectangle(timeline, record):
-    atlas_width = timeline["atlas"][0]
-    cell_width, cell_height = timeline["cell"]
+    atlas_width = timeline["atlas_size"][0]
+    cell_width, cell_height = timeline["cell_size"]
     columns = atlas_width // cell_width
-    return ((record["local_cell"] % columns) * cell_width, (record["local_cell"] // columns) * cell_height, cell_width, cell_height)
+    return ((record["cell_in_page"] % columns) * cell_width, (record["cell_in_page"] // columns) * cell_height, cell_width, cell_height)
 
 
 def merge_rectangles(first, second):
@@ -70,7 +80,7 @@ def merge_rectangles(first, second):
 
 
 def record_texture_name(timeline, record):
-    return texture_name_for(timeline["textures"][record["page"]])
+    return texture_name_for(timeline["pages"][record["page"]])
 
 
 def add_used_cells_to_crops(crops, timeline, ds_frames):
@@ -91,8 +101,8 @@ def frame_for_record(timeline, record, ticks, crops):
     cell_x, cell_y, cell_width, cell_height = cell_rectangle(timeline, record)
     crop_x, crop_y, crop_width, crop_height = crops[name]
     shift_x, shift_y = timeline["placement_shift"]
-    left = record["position"][0] / ART_PER_DS_PIXEL - DS_ORIGIN_X - anchor_offset(record["anchor"][0], record["point"][0]) + shift_x / ART_PER_DS_PIXEL
-    top = record["position"][1] / ART_PER_DS_PIXEL - DS_ORIGIN_Y - anchor_offset(record["anchor"][1], record["point"][1]) + shift_y / ART_PER_DS_PIXEL
+    left = placement_in_ds_pixels(record["position"][0], OBJECT_ORIGIN_X_IN_TIMELINE, record["anchor"][0], record["point"][0], shift_x)
+    top = placement_in_ds_pixels(record["position"][1], OBJECT_ORIGIN_Y_IN_TIMELINE, record["anchor"][1], record["point"][1], shift_y)
     return {
         "texture": name,
         "ticks": ticks,

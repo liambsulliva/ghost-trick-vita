@@ -50,7 +50,7 @@ class DecodeTests(TextureToolCase):
         output, _ = self.convert(tex, 1, 1)
         self.assertEqual(output, top_pixels)
 
-    def test_astc_void_extent_decodes_to_its_colour(self):
+    def test_astc_void_extent_decodes_to_its_color(self):
         block = synthetic_files.astc_constant_block(200, 100, 50, 255)
         tex = synthetic_files.tex_file(6, 6, synthetic_files.FORMAT_ASTC_6X6, block, 16)
         output, info = self.convert(tex, 6, 6)
@@ -90,7 +90,7 @@ class ResizeTests(TextureToolCase):
         self.assertEqual(output, [255, 0, 0, 128])
         self.assertEqual(info[3], "0")
 
-    def test_alpha_weights_the_colour_average(self):
+    def test_alpha_weights_the_color_average(self):
         pixels = [200, 0, 0, 255, 0, 200, 0, 85]
         output, _ = self.convert(rgba_tex(2, 1, pixels), 1, 1)
         self.assertEqual(output, [150, 50, 0, 170])
@@ -118,8 +118,8 @@ class ResizeTests(TextureToolCase):
         self.assertEqual(output, [2, 2, 2, 255, 4, 4, 4, 255])
 
 
-class ColourFillTests(TextureToolCase):
-    def test_fill_copies_the_nearest_visible_colour(self):
+class ColorFillTests(TextureToolCase):
+    def test_fill_copies_the_nearest_visible_color(self):
         pixels = [255, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 200]
         output, _ = self.convert(rgba_tex(5, 1, pixels), 5, 1)
         self.assertEqual(output[4:8], [255, 0, 0, 0])

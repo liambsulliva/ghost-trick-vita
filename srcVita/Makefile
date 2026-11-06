@@ -20,13 +20,13 @@ LIVEAREA_FOLDER := build/sce_sys
 LIVEAREA_IMAGES := $(LIVEAREA_FOLDER)/icon0.png $(LIVEAREA_FOLDER)/livearea/contents/bg.png $(LIVEAREA_FOLDER)/livearea/contents/startup.png
 
 HOST_CC     := clang
-HOST_CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -g -O1 -Iinclude -Itests -fsanitize=address,undefined -fno-omit-frame-pointer
+HOST_CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -g -O1 -Iinclude -Itests -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
 APP_SRCS    := $(wildcard src/app/*.c)
 FAKE_SRCS   := $(wildcard tests/fakes/*.c)
-TEST_SRCS   := $(wildcard tests/unit/*.c) $(wildcard tests/widget/*.c) $(wildcard tests/integration/*.c)
+TEST_SRCS   := $(wildcard tests/unit/*.c) $(wildcard tests/integration/*.c)
 TEST_BINS   := $(patsubst tests/%.c,build/tests/%,$(TEST_SRCS))
 
-.PHONY: all clean check-sdk test always-rebuild
+.PHONY: all clean check-sdk test test-binaries test-all always-rebuild
 
 all: check-sdk build/$(TARGET).vpk
 
@@ -37,7 +37,7 @@ ifeq ($(strip $(VITASDK)),)
 	$(error VITASDK is not set; point it at the VitaSDK install)
 endif
 
-build/obj/%.o: src/%.c
+build/obj/%.o: src/%.c $(wildcard include/*.h)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -50,7 +50,7 @@ build/$(TARGET).velf: build/$(TARGET).elf
 build/eboot.bin: build/$(TARGET).velf
 	vita-make-fself -s $< $@
 
-build/param.sfo:
+build/param.sfo: Makefile
 	@mkdir -p build
 	vita-mksfoex -s TITLE_ID=$(TITLE_ID) -s APP_VER=$(APP_VER) -s VERSION=$(APP_VER) "$(TITLE)" $@
 
@@ -65,12 +65,17 @@ build/$(TARGET).vpk: build/eboot.bin build/param.sfo $(LIVEAREA_IMAGES) sce_sys/
 		-a sce_sys/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml \
 		$@
 
-build/tests/%: tests/%.c $(APP_SRCS) $(FAKE_SRCS) $(wildcard include/*.h) $(wildcard tests/*.h)
+build/tests/%: tests/%.c $(APP_SRCS) $(FAKE_SRCS) $(wildcard include/*.h) $(wildcard tests/*.h) $(wildcard tests/fakes/*.h)
 	@mkdir -p $(dir $@)
 	$(HOST_CC) $(HOST_CFLAGS) $< $(APP_SRCS) $(FAKE_SRCS) -o $@
 
+test-binaries: $(TEST_BINS)
+
 test: $(TEST_BINS)
 	@failed=0; for test_binary in $(TEST_BINS); do $$test_binary || failed=1; done; exit $$failed
+
+test-all: test
+	$(MAKE) -C tools/assets test
 
 clean:
 	rm -rf build

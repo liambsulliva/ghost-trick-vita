@@ -13,25 +13,6 @@ static const int base_intensity_table[8][4] = {
 
 static const int distance_table[8] = {3, 6, 11, 16, 23, 32, 41, 64};
 
-static const int eac_modifier_table[16][8] = {
-    {-3, -6, -9, -15, 2, 5, 8, 14},
-    {-3, -7, -10, -13, 2, 6, 9, 12},
-    {-2, -5, -8, -13, 1, 4, 7, 12},
-    {-2, -4, -6, -13, 1, 3, 5, 12},
-    {-3, -6, -8, -12, 2, 5, 7, 11},
-    {-3, -7, -9, -11, 2, 6, 8, 10},
-    {-4, -7, -8, -11, 3, 6, 7, 10},
-    {-3, -5, -8, -11, 2, 4, 7, 10},
-    {-2, -6, -8, -10, 1, 5, 7, 9},
-    {-2, -5, -8, -10, 1, 4, 7, 9},
-    {-2, -4, -8, -10, 1, 3, 7, 9},
-    {-2, -5, -7, -10, 1, 4, 6, 9},
-    {-3, -4, -7, -10, 2, 3, 6, 9},
-    {-1, -2, -3, -10, 0, 1, 2, 9},
-    {-4, -6, -8, -9, 3, 5, 7, 8},
-    {-3, -5, -7, -9, 2, 4, 6, 8}
-};
-
 static int clamp_to_byte(int value)
 {
     if (value < 0) {
@@ -211,42 +192,14 @@ etc2_block_mode etc2_rgb8_decode_block(const uint8_t *block, uint8_t *texels_rgb
     return ETC2_MODE_DIFFERENTIAL;
 }
 
-void eac_r11_decode_block(const uint8_t *block, uint16_t *texels_11bit)
-{
-    int base_codeword = block[0];
-    int multiplier = block[1] >> 4;
-    const int *modifiers = eac_modifier_table[block[1] & 0xF];
-    uint64_t selector_bits = 0;
-    for (int byte_index = 2; byte_index < 8; byte_index++) {
-        selector_bits = (selector_bits << 8) | block[byte_index];
-    }
-    for (int x = 0; x < 4; x++) {
-        for (int y = 0; y < 4; y++) {
-            int selector = (int)((selector_bits >> (45 - 3 * (x * 4 + y))) & 7);
-            int modifier = modifiers[selector];
-            int value = base_codeword * 8 + 4 + (multiplier == 0 ? modifier : modifier * multiplier * 8);
-            if (value < 0) {
-                value = 0;
-            }
-            if (value > 2047) {
-                value = 2047;
-            }
-            texels_11bit[x + y * 4] = (uint16_t)value;
-        }
-    }
-}
-
-void etc2_rgb8_decode_image(const uint8_t *blocks, int image_width, int image_height, uint8_t *pixels_rgba8, uint64_t *mode_counts)
+void etc2_rgb8_decode_image(const uint8_t *blocks, int image_width, int image_height, uint8_t *pixels_rgba8)
 {
     int columns = (image_width + 3) / 4;
     int rows = (image_height + 3) / 4;
     for (int row = 0; row < rows; row++) {
         for (int column = 0; column < columns; column++) {
             uint8_t texels[4 * 4 * 3];
-            etc2_block_mode mode = etc2_rgb8_decode_block(blocks + (size_t)(row * columns + column) * ETC2_RGB8_BLOCK_BYTES, texels);
-            if (mode_counts != NULL) {
-                mode_counts[mode]++;
-            }
+            etc2_rgb8_decode_block(blocks + (size_t)(row * columns + column) * ETC2_RGB8_BLOCK_BYTES, texels);
             for (int y = 0; y < 4 && row * 4 + y < image_height; y++) {
                 for (int x = 0; x < 4 && column * 4 + x < image_width; x++) {
                     uint8_t *pixel = pixels_rgba8 + ((size_t)(row * 4 + y) * image_width + column * 4 + x) * 4;
@@ -255,23 +208,6 @@ void etc2_rgb8_decode_image(const uint8_t *blocks, int image_width, int image_he
                     pixel[1] = texel[1];
                     pixel[2] = texel[2];
                     pixel[3] = 255;
-                }
-            }
-        }
-    }
-}
-
-void eac_r11_decode_image(const uint8_t *blocks, int image_width, int image_height, uint16_t *pixels_11bit, int pixel_stride, int block_stride)
-{
-    int columns = (image_width + 3) / 4;
-    int rows = (image_height + 3) / 4;
-    for (int row = 0; row < rows; row++) {
-        for (int column = 0; column < columns; column++) {
-            uint16_t texels[16];
-            eac_r11_decode_block(blocks + (size_t)(row * columns + column) * block_stride, texels);
-            for (int y = 0; y < 4 && row * 4 + y < image_height; y++) {
-                for (int x = 0; x < 4 && column * 4 + x < image_width; x++) {
-                    pixels_11bit[((size_t)(row * 4 + y) * image_width + column * 4 + x) * pixel_stride] = texels[x + y * 4];
                 }
             }
         }

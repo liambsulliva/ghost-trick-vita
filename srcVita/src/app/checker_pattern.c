@@ -1,6 +1,6 @@
-#include "test_pattern.h"
+#include "checker_pattern.h"
 
-void test_pattern_fill_checker(unsigned char *rgba_pixels, int size, int tile_size)
+void checker_pattern_fill(unsigned char *rgba_pixels, int size, int tile_size)
 {
     int x;
     int y;

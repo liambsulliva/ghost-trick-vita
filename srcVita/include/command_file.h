@@ -1,7 +1,7 @@
 #ifndef COMMAND_FILE_H
 #define COMMAND_FILE_H
 
-#define COMMAND_NAME_MAX 96
+#include "asset_name.h"
 
 enum command_kind {
     COMMAND_NONE,
@@ -17,7 +17,7 @@ enum command_kind {
 
 struct command {
     enum command_kind kind;
-    char name[COMMAND_NAME_MAX];
+    char name[ASSET_NAME_MAX];
 };
 
 int command_name_is_safe(const char *name);
