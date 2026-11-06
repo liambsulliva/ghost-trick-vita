@@ -6,7 +6,7 @@
 #include "log_sink.h"
 #include "memory.h"
 
-#define FAKE_FILE_COUNT 1024
+#define FAKE_FILE_COUNT 4096
 
 struct fake_file {
     char path[FILE_PATH_MAX];

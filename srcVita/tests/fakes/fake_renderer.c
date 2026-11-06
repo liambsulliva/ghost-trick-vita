@@ -1,7 +1,7 @@
 #include <string.h>
 #include "fake_renderer.h"
 
-#define FAKE_TEXTURE_MAX 2048
+#define FAKE_TEXTURE_MAX 8192
 
 static struct fake_draw draws[FAKE_DRAW_MAX];
 static int draw_count;

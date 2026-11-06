@@ -15,6 +15,7 @@
 #include "scene_stage.h"
 #include "scene_view.h"
 #include "script_player.h"
+#include "script_view.h"
 #include "sound_engine.h"
 #include "texture_cache.h"
 #include "ui_list.h"
@@ -41,17 +42,12 @@
 #define BROWSE_CENTRE_ACROSS_CAMERA 128.0f
 #define BROWSE_CENTRE_DOWN_CAMERA 96.0f
 #define BROWSE_OBJECT_LAYER 0
-#define SCENE_END_FIRST_LINE "End of the opening"
+#define SCENE_END_FIRST_LINE "End of the chapter"
 #define SCENE_END_SECOND_LINE "Press X to watch it again"
 #define SCENE_END_FIRST_LINE_Y 240.0f
 #define SCENE_END_SECOND_LINE_Y 280.0f
 #define SCENE_END_TEXT_SCALE 3.0f
 #define SCRIPT_ENTRY_NAME "route"
-#define HALT_BAR_Y 500.0f
-#define HALT_BAR_HEIGHT 28.0f
-#define HALT_TEXT_X 8.0f
-#define HALT_TEXT_Y 506.0f
-#define HALT_TEXT_SCALE 1.5f
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color highlight = { 0.25f, 0.86f, 0.75f, 1.0f };
@@ -436,11 +432,19 @@ static void replay_what_finished(void)
 
 static void update_player_controls(const struct input_state *input)
 {
+    if ((input->pressed & (INPUT_L | INPUT_R)) && (input->held & (INPUT_L | INPUT_R)) == (INPUT_L | INPUT_R)) {
+        script_player_skip_ahead();
+        return;
+    }
     if (!(input->pressed & INPUT_CROSS)) {
         return;
     }
     if (playback_status() == SCENE_PLAYER_FINISHED && opening_can_play()) {
         replay_what_finished();
+        return;
+    }
+    if (script_player_is_active()) {
+        script_player_press();
         return;
     }
     scene_player_skip_hold();
@@ -610,29 +614,15 @@ static void draw_centred_scene_end_line(float y, const char *text)
     debug_font_draw_text(((float)RENDERER_WIDTH - width) / 2.0f, y, SCENE_END_TEXT_SCALE, white, text);
 }
 
-static void draw_script_halt_line(void)
-{
-    struct renderer_rect bar;
-    const char *line;
-
-    line = script_player_halt_line();
-    if (line == NULL) {
-        return;
-    }
-    bar.x = 0.0f;
-    bar.y = HALT_BAR_Y;
-    bar.width = RENDERER_WIDTH;
-    bar.height = HALT_BAR_HEIGHT;
-    renderer_draw_filled_rect(bar, panel);
-    debug_font_draw_text(HALT_TEXT_X, HALT_TEXT_Y, HALT_TEXT_SCALE, white, line);
-}
-
 void viewer_app_draw(void)
 {
     if (manifest == NULL) {
         draw_no_assets_screen();
     } else if (playback_status() != SCENE_PLAYER_PRELOADING) {
         scene_view_draw(scene_stage_view());
+        if (script_player_is_active()) {
+            script_view_draw();
+        }
     }
     if (playback_status() == SCENE_PLAYER_FINISHED && !debug_controls_are_on && !scene_layers_text_is_fading_out(scene_stage_layers())) {
         draw_centred_scene_end_line(SCENE_END_FIRST_LINE_Y, SCENE_END_FIRST_LINE);
@@ -641,7 +631,6 @@ void viewer_app_draw(void)
     if (hud_is_visible || playback_status() == SCENE_PLAYER_PRELOADING) {
         draw_hud();
     }
-    draw_script_halt_line();
     if (list_is_open) {
         draw_list();
     }

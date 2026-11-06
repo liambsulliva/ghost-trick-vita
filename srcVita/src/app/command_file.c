@@ -68,6 +68,38 @@ static int read_music_starve_command(const char *line, struct command *command)
     return 1;
 }
 
+#ifdef FAST_FORWARD_BUILD
+static int read_fast_forward_command(const char *line, struct command *command)
+{
+    char kind[16];
+    char name[ASSET_NAME_MAX];
+
+    if (sscanf(line, "ff %d", &command->number) == 1) {
+        command->kind = COMMAND_FAST_FORWARD;
+        return 1;
+    }
+    if (sscanf(line, "ff_until %15s %31s", kind, name) == 2) {
+        command->kind = COMMAND_FAST_FORWARD_UNTIL;
+        snprintf(command->name, sizeof(command->name), "%s", name);
+        snprintf(command->detail, sizeof(command->detail), "%s", kind);
+        return 1;
+    }
+    if (strcmp(line, "resume") == 0) {
+        command->kind = COMMAND_RESUME;
+        return 1;
+    }
+    if (strcmp(line, "skip") == 0) {
+        command->kind = COMMAND_SKIP_AHEAD;
+        return 1;
+    }
+    if (sscanf(line, "press %x", (unsigned int *)&command->number) == 1) {
+        command->kind = COMMAND_PRESS;
+        return 1;
+    }
+    return 0;
+}
+#endif
+
 unsigned int command_parse_next_line(const char *text, unsigned int text_size, unsigned int offset, struct command *command)
 {
     char line[COMMAND_LINE_MAX];
@@ -112,6 +144,11 @@ unsigned int command_parse_next_line(const char *text, unsigned int text_size, u
     if (read_music_starve_command(line, command)) {
         return offset;
     }
+#ifdef FAST_FORWARD_BUILD
+    if (read_fast_forward_command(line, command)) {
+        return offset;
+    }
+#endif
     command->kind = COMMAND_UNKNOWN;
     return offset;
 }

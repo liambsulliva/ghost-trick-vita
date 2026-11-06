@@ -39,5 +39,6 @@ void input_poll(struct input_state *state)
     sceCtrlPeekBufferPositive(0, &pad, 1);
     buttons = read_app_buttons(pad.buttons);
     state->pressed = buttons & ~previous_buttons;
+    state->held = buttons;
     previous_buttons = buttons;
 }

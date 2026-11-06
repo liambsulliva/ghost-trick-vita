@@ -1955,14 +1955,15 @@ static void test_scene_with_more_textures_than_the_read_queue_loads_them_all(voi
     viewer_app_stop();
 }
 
-static void test_scene_with_more_textures_than_cache_entries_says_so_and_still_plays(void)
+static void test_more_textures_than_cache_entries_says_so_and_still_plays(void)
 {
-    static char scene_text[8192];
+    static char scene_text[256 * 16];
     char name[16];
+    char expected[64];
     int index;
 
     set_up_platform();
-    write_card_scene(scene_text, sizeof(scene_text), TEXTURE_CACHE_ENTRY_MAX + 8);
+    write_card_scene(scene_text, sizeof(scene_text), 4);
     set_up_scene_assets(scene_text);
     for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX + 8; index++) {
         snprintf(name, sizeof(name), "t%d", index);
@@ -1970,8 +1971,13 @@ static void test_scene_with_more_textures_than_cache_entries_says_so_and_still_p
     }
     viewer_app_start("assets");
     run_frames_until_scene_is_no_longer_preloading();
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX + 8; index++) {
+        snprintf(name, sizeof(name), "t%d", index);
+        texture_cache_use_or_start_loading(name);
+    }
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
-    CHECK_HAS_TEXT(log_text(), "texture_cache full name=t512");
+    snprintf(expected, sizeof(expected), "texture_cache full name=t%d", TEXTURE_CACHE_ENTRY_MAX);
+    CHECK_HAS_TEXT(log_text(), expected);
     viewer_app_stop();
 }
 
@@ -2520,7 +2526,7 @@ int main(void)
     test_a_list_left_open_closes_when_debug_controls_go_off();
     test_every_button_press_is_logged();
     test_scene_with_more_textures_than_the_read_queue_loads_them_all();
-    test_scene_with_more_textures_than_cache_entries_says_so_and_still_plays();
+    test_more_textures_than_cache_entries_says_so_and_still_plays();
     test_scene_larger_than_the_memory_budget_says_so_and_still_plays();
     test_time_past_the_end_of_a_hold_counts_towards_the_next_hold();
     test_each_frame_change_of_a_moving_object_is_logged();

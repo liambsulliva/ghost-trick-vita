@@ -16,6 +16,7 @@
 
 void scene_view_start(void);
 void scene_view_stop(void);
+void scene_view_world_to_screen(const struct scene_stage *stage, float x, float y, float *screen_x, float *screen_y);
 void scene_view_draw(const struct scene_stage *stage);
 int scene_view_snapshot_stage(const struct scene_stage *stage);
 

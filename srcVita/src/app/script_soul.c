@@ -1,0 +1,478 @@
+#include <stdio.h>
+#include <string.h>
+#include "script_machine.h"
+
+#define SOUL_VISION_MESSAGE_AFTER_TICKS 90
+#define DEMO_MODE 2
+#define NORMAL_PLAY_MODE 3
+#define AUTO_TRICK_TICKS 30u
+#define NO_CORE (-1)
+#define CAMERA_FREE_SPEED_PIXELS 4
+
+enum tutorial_mode {
+    TUTORIAL_NONE,
+    TUTORIAL_TOUCH_CHECK,
+    TUTORIAL_MOVE
+};
+
+static const char *const core_verbs[SCRIPT_CORE_SLOT_COUNT] = { "core", "core1" };
+
+static int handler_exists(const struct script_object *object, const char *verb, const char *arg)
+{
+    int index;
+
+    for (index = 0; index < object->handler_count; index++) {
+        const struct script_handler *handler;
+
+        handler = &object->handlers[index];
+        if (strcmp(handler->verb, verb) == 0 && (arg == NULL || handler->arg[0] == '\0' || strcmp(handler->arg, arg) == 0)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int object_can_be_a_core(const struct script_object *object, int slot)
+{
+    if (!object->actor.exists || object->actor.is_hard_hidden || object->actor.is_frozen_and_hidden) {
+        return 0;
+    }
+    return handler_exists(object, core_verbs[slot], NULL);
+}
+
+static void set_active_core(struct script_machine *machine, int object_index, int slot)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->active_object == object_index && soul->active_slot == slot) {
+        return;
+    }
+    soul->active_object = object_index;
+    soul->active_slot = slot;
+    machine->active_core_name = object_index == NO_CORE ? NULL : machine->objects[object_index].name;
+    if (soul->is_on && object_index != NO_CORE) {
+        script_machine_send(machine, "*", "SYSTEM", "SV_CHGCORE");
+    }
+    script_soul_report_cursor(machine);
+}
+
+void script_soul_report_cursor(struct script_machine *machine)
+{
+    const struct script_soul *soul;
+    const struct script_actor *actor;
+
+    if (machine->outputs->soul_cursor_moved == NULL) {
+        return;
+    }
+    soul = &machine->soul;
+    if (!soul->is_on || soul->active_object == NO_CORE) {
+        machine->outputs->soul_cursor_moved(0, 0.0f, 0.0f);
+        return;
+    }
+    actor = &machine->objects[soul->active_object].actor;
+    machine->outputs->soul_cursor_moved(1, (float)(actor->x + actor->points[0][0]), (float)(actor->y + actor->points[0][1]));
+}
+
+static void step_to_next_core(struct script_machine *machine)
+{
+    const struct script_soul *soul;
+    int candidates;
+    int position;
+
+    soul = &machine->soul;
+    candidates = machine->object_count * SCRIPT_CORE_SLOT_COUNT;
+    if (candidates == 0) {
+        return;
+    }
+    position = soul->active_object == NO_CORE ? -1 : soul->active_object * SCRIPT_CORE_SLOT_COUNT + soul->active_slot;
+    while (candidates > 0) {
+        int object_index;
+        int slot;
+
+        position = (position + 1) % (machine->object_count * SCRIPT_CORE_SLOT_COUNT);
+        object_index = position / SCRIPT_CORE_SLOT_COUNT;
+        slot = position % SCRIPT_CORE_SLOT_COUNT;
+        if (object_can_be_a_core(&machine->objects[object_index], slot)) {
+            set_active_core(machine, object_index, slot);
+            return;
+        }
+        candidates = candidates - 1;
+    }
+}
+
+static long long off_axis_cost(int along, int across)
+{
+    return (long long)along * along + 4LL * (long long)across * across;
+}
+
+static void step_to_core_in_direction(struct script_machine *machine, int direction_x, int direction_y)
+{
+    const struct script_soul *soul;
+    int from_x;
+    int from_y;
+    int object_index;
+    int best_object;
+    int best_slot;
+    long long best_cost;
+
+    soul = &machine->soul;
+    if (soul->active_object == NO_CORE) {
+        step_to_next_core(machine);
+        return;
+    }
+    from_x = machine->objects[soul->active_object].actor.x;
+    from_y = machine->objects[soul->active_object].actor.y;
+    best_object = NO_CORE;
+    best_slot = 0;
+    best_cost = 0;
+    for (object_index = 0; object_index < machine->object_count; object_index++) {
+        const struct script_object *object;
+        int slot;
+
+        object = &machine->objects[object_index];
+        for (slot = 0; slot < SCRIPT_CORE_SLOT_COUNT; slot++) {
+            int along;
+            int across;
+            long long cost;
+
+            if (!object_can_be_a_core(object, slot) || object_index == soul->active_object) {
+                continue;
+            }
+            along = (object->actor.x - from_x) * direction_x + (object->actor.y - from_y) * direction_y;
+            across = (object->actor.x - from_x) * direction_y - (object->actor.y - from_y) * direction_x;
+            if (along <= 0) {
+                continue;
+            }
+            cost = off_axis_cost(along, across);
+            if (best_object == NO_CORE || cost < best_cost) {
+                best_object = object_index;
+                best_slot = slot;
+                best_cost = cost;
+            }
+            break;
+        }
+    }
+    if (best_object != NO_CORE) {
+        set_active_core(machine, best_object, best_slot);
+    }
+}
+
+static void fire_trick(struct script_machine *machine)
+{
+    const struct script_soul *soul;
+    const struct script_object *object;
+    const char *verb;
+
+    soul = &machine->soul;
+    if (soul->active_object == NO_CORE) {
+        return;
+    }
+    object = &machine->objects[soul->active_object];
+    verb = core_verbs[soul->active_slot];
+    if (handler_exists(object, verb, "ready")) {
+        script_machine_send(machine, object->name, verb, "ready");
+    }
+    if (handler_exists(object, verb, "action")) {
+        script_machine_send(machine, object->name, verb, "action");
+    }
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("trick", object->name);
+    }
+}
+
+static void set_soul_view(struct script_machine *machine, int is_on)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    soul->is_on = is_on;
+    machine->soul_state_keeps_pause = is_on;
+    machine->pause_bit = is_on;
+    if (machine->outputs->soul_vision_changed != NULL) {
+        machine->outputs->soul_vision_changed(is_on);
+    }
+    if (is_on) {
+        soul->start_message_at = (long long)machine->tick + 1;
+        machine->soul_sound_at = (long long)machine->tick + 1;
+    }
+    script_soul_report_cursor(machine);
+}
+
+static void enter_scripted_soul_view(struct script_machine *machine)
+{
+    set_soul_view(machine, 1);
+    machine->soul_vision_message_at = (long long)machine->tick + SOUL_VISION_MESSAGE_AFTER_TICKS;
+}
+
+static void leave_soul_view(struct script_machine *machine)
+{
+    machine->soul.tutorial_mode = TUTORIAL_NONE;
+    machine->mode_byte = DEMO_MODE;
+    set_soul_view(machine, 0);
+}
+
+static void run_tutorial_command(struct script_machine *machine, const char *arg)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (strcmp(arg, "TouchCheck") == 0) {
+        soul->tutorial_mode = TUTORIAL_TOUCH_CHECK;
+        soul->tutorial_click_was_sent = 0;
+    } else if (strcmp(arg, "MoveStart") == 0) {
+        soul->tutorial_mode = TUTORIAL_MOVE;
+    } else if (strcmp(arg, "TouchCheckEnd") == 0 || strcmp(arg, "MoveEnd") == 0) {
+        soul->tutorial_mode = TUTORIAL_NONE;
+    } else if (strcmp(arg, "ReturnGame") == 0) {
+        leave_soul_view(machine);
+    }
+}
+
+static void run_button_command(struct script_machine *machine, const char *arg)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (strcmp(arg, "All:Off") == 0) {
+        soul->trick_is_on = 0;
+    } else if (strcmp(arg, "All:On") == 0 || strcmp(arg, "Action:On") == 0 || strcmp(arg, "Trick:On") == 0) {
+        soul->trick_is_on = 1;
+    } else if (strcmp(arg, "Input:Off") == 0) {
+        soul->input_is_off = 1;
+    } else if (strcmp(arg, "Input:On") == 0) {
+        soul->input_is_off = 0;
+    } else if (strcmp(arg, "Camera:Off") == 0) {
+        soul->camera_is_locked = 1;
+    } else if (strcmp(arg, "Camera:On") == 0) {
+        soul->camera_is_locked = 0;
+    }
+}
+
+static void run_exception_command(struct script_machine *machine, const char *arg)
+{
+    if (strcmp(arg, "BreakTalk") == 0) {
+        machine->pause_bit = 0;
+        machine->soul_state_keeps_pause = 0;
+    } else if (strcmp(arg, "ForceDemo") == 0) {
+        machine->mode_byte = DEMO_MODE;
+    }
+}
+
+static void run_custom_soul_command(struct script_machine *machine, const char *arg)
+{
+    if (strcmp(arg, "Start") == 0 || strcmp(arg, "NoEffectStart") == 0) {
+        set_soul_view(machine, 1);
+    } else if (strcmp(arg, "NoEffectFinish") == 0 || strcmp(arg, "ReturnDemo") == 0) {
+        if (machine->soul.is_on) {
+            set_soul_view(machine, 0);
+        }
+    }
+}
+
+void script_soul_run_command(struct script_machine *machine, const char *verb, const char *arg)
+{
+    if (strcmp(verb, "SoulVision") == 0) {
+        enter_scripted_soul_view(machine);
+    } else if (strcmp(verb, "Message") == 0) {
+        script_talk_note_forward(machine);
+    } else if (strcmp(verb, "SVTUTO") == 0) {
+        run_tutorial_command(machine, arg);
+    } else if (strcmp(verb, "Button") == 0) {
+        run_button_command(machine, arg);
+    } else if (strcmp(verb, "Exception") == 0) {
+        run_exception_command(machine, arg);
+    } else if (strcmp(verb, "CustomSoulVision") == 0) {
+        run_custom_soul_command(machine, arg);
+    } else if (strcmp(verb, "FreeCamera") == 0) {
+        machine->soul.camera_tutorial_is_on = strcmp(arg, "TutorialStart") == 0;
+    }
+}
+
+static void player_moved_in_tutorial(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK) {
+        if (!soul->tutorial_click_was_sent) {
+            soul->tutorial_click_was_sent = 1;
+            script_machine_send(machine, "*", "SVTUTO", "onClick");
+            return;
+        }
+        script_machine_send(machine, "*", "SVTUTO", "onTouch");
+    } else if (soul->tutorial_mode == TUTORIAL_MOVE) {
+        script_machine_send(machine, "*", "SVTUTO", "move");
+    }
+}
+
+static int world_is_playable(const struct script_machine *machine)
+{
+    return !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && !machine->soul.input_is_off;
+}
+
+static void take_press(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine)) {
+        script_talk_note_press(machine);
+        return;
+    }
+    if (soul->tutorial_mode != TUTORIAL_NONE) {
+        if (soul->tutorial_mode != TUTORIAL_TOUCH_CHECK || soul->tutorial_click_was_sent) {
+            step_to_next_core(machine);
+        }
+        player_moved_in_tutorial(machine);
+        return;
+    }
+    if (soul->is_on && soul->player_opened_soul_view) {
+        soul->player_opened_soul_view = 0;
+        set_soul_view(machine, 0);
+        fire_trick(machine);
+        return;
+    }
+    if (world_is_playable(machine) && soul->trick_is_on) {
+        fire_trick(machine);
+    }
+}
+
+static void take_direction(struct script_machine *machine, int direction_x, int direction_y)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->tutorial_mode != TUTORIAL_NONE) {
+        if (soul->tutorial_mode != TUTORIAL_TOUCH_CHECK || soul->tutorial_click_was_sent) {
+            step_to_core_in_direction(machine, direction_x, direction_y);
+        }
+        player_moved_in_tutorial(machine);
+        return;
+    }
+    if (soul->is_on) {
+        step_to_core_in_direction(machine, direction_x, direction_y);
+    }
+}
+
+static void take_ghost_button(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->is_on && soul->player_opened_soul_view) {
+        soul->player_opened_soul_view = 0;
+        set_soul_view(machine, 0);
+        return;
+    }
+    if (!soul->is_on && world_is_playable(machine)) {
+        soul->player_opened_soul_view = 1;
+        set_soul_view(machine, 1);
+        if (soul->active_object == NO_CORE) {
+            step_to_next_core(machine);
+        }
+    }
+}
+
+static void move_free_camera(struct script_machine *machine)
+{
+    const struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->held_x == 0 && soul->held_y == 0) {
+        return;
+    }
+    if (soul->is_on || soul->camera_is_locked || (machine->pause_bit && !soul->camera_tutorial_is_on)) {
+        return;
+    }
+    script_machine_scroll_camera(machine, soul->held_x * CAMERA_FREE_SPEED_PIXELS, soul->held_y * CAMERA_FREE_SPEED_PIXELS);
+}
+
+static void play_automatically(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine)) {
+        machine->press_is_pending = 1;
+        return;
+    }
+    if (machine->tick < soul->next_auto_try_tick) {
+        return;
+    }
+    soul->next_auto_try_tick = machine->tick + AUTO_TRICK_TICKS;
+    if (soul->tutorial_mode != TUTORIAL_NONE) {
+        machine->press_is_pending = 1;
+        return;
+    }
+    if (world_is_playable(machine) && soul->trick_is_on) {
+        step_to_next_core(machine);
+        machine->press_is_pending = 1;
+    }
+}
+
+void script_soul_step_before_tasks(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->start_message_at == (long long)machine->tick) {
+        soul->start_message_at = -1;
+        script_machine_send(machine, "*", "SYSTEM", "SV_START");
+    }
+    if (machine->auto_press) {
+        play_automatically(machine);
+    }
+    if (machine->press_is_pending) {
+        machine->press_is_pending = 0;
+        take_press(machine);
+    }
+    if (soul->ghost_is_pending) {
+        soul->ghost_is_pending = 0;
+        take_ghost_button(machine);
+    }
+    if (soul->direction_x != 0 || soul->direction_y != 0) {
+        take_direction(machine, soul->direction_x, soul->direction_y);
+        soul->direction_x = 0;
+        soul->direction_y = 0;
+    }
+    move_free_camera(machine);
+}
+
+void script_soul_note_ghost(struct script_machine *machine)
+{
+    machine->soul.ghost_is_pending = 1;
+}
+
+void script_soul_note_direction(struct script_machine *machine, int direction_x, int direction_y)
+{
+    machine->soul.direction_x = direction_x;
+    machine->soul.direction_y = direction_y;
+}
+
+void script_soul_set_held(struct script_machine *machine, int held_x, int held_y)
+{
+    machine->soul.held_x = held_x;
+    machine->soul.held_y = held_y;
+}
+
+void script_soul_reset(struct script_machine *machine)
+{
+    memset(&machine->soul, 0, sizeof(machine->soul));
+    machine->soul.active_object = NO_CORE;
+    machine->soul.start_message_at = -1;
+    machine->soul.trick_is_on = 1;
+    machine->active_core_name = NULL;
+}
+
+void script_soul_set_first_core(struct script_machine *machine, int object_index)
+{
+    machine->soul.active_object = object_index;
+    machine->soul.active_slot = 0;
+    machine->active_core_name = machine->objects[object_index].name;
+}
+
+int script_soul_waits_on_the_player(const struct script_machine *machine)
+{
+    return machine->soul.tutorial_mode != TUTORIAL_NONE || machine->soul.player_opened_soul_view;
+}

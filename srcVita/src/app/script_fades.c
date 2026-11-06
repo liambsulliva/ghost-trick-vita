@@ -40,7 +40,7 @@ void script_fades_add(struct script_machine *machine, const struct script_vm *vm
     int scale;
 
     if (machine->fade_count >= SCRIPT_FADE_MAX) {
-        script_machine_halt(machine, vm, "too_many_fades", "");
+        script_machine_note(machine, vm, "too_many_fades", "");
         return;
     }
     if (kind == FADE_IN_KIND && machine->brightness > 0) {

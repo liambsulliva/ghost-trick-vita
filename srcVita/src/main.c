@@ -17,12 +17,17 @@
 #include "run_log.h"
 #include "screen_capture.h"
 #include "screen_watch.h"
+#include "script_player.h"
 #include "system_watch.h"
 #include "texture_cache.h"
 #include "timing.h"
 #include "viewer_app.h"
 
+#ifdef FAST_FORWARD_BUILD
+#define COMMAND_POLL_FRAMES 6
+#else
 #define COMMAND_POLL_FRAMES 30
+#endif
 #define KEEP_AWAKE_FRAMES 30
 #define CAPTURE_NAME_MAX 64
 #define FIRST_TIMED_FRAME 2
@@ -62,6 +67,10 @@ static void save_capture(const char *name)
     run_log_write(LOG_FOR_TOOLS_CAPTURE_DONE, name, result, clock_now_us() - started_us);
 }
 
+#ifdef FAST_FORWARD_BUILD
+static unsigned int injected_buttons;
+#endif
+
 static int run_one_command(const struct command *command)
 {
     int succeeded;
@@ -87,6 +96,18 @@ static int run_one_command(const struct command *command)
     } else if (command->kind == COMMAND_MUSIC_STARVE) {
         music_request_starve(command->number);
         run_log_write(LOG_FOR_TOOLS_MUSIC_STARVE_COMMAND, command->number);
+#ifdef FAST_FORWARD_BUILD
+    } else if (command->kind == COMMAND_FAST_FORWARD) {
+        script_player_set_fast_forward(command->number);
+    } else if (command->kind == COMMAND_FAST_FORWARD_UNTIL) {
+        script_player_run_until(command->detail, command->name);
+    } else if (command->kind == COMMAND_RESUME) {
+        script_player_set_paused(0);
+    } else if (command->kind == COMMAND_SKIP_AHEAD) {
+        script_player_skip_ahead();
+    } else if (command->kind == COMMAND_PRESS) {
+        injected_buttons = (unsigned int)command->number;
+#endif
     } else if (command->kind == COMMAND_QUIT) {
         run_log_write("command quit");
         return 1;
@@ -155,6 +176,7 @@ static void run_main_loop(void)
     int quit_requested;
 
     input.pressed = 0;
+    input.held = 0;
     frame_number = 0;
     manual_capture_count = 0;
     last_frame_us = 0;
@@ -169,6 +191,11 @@ static void run_main_loop(void)
         }
         frame_started_us = clock_now_us();
         input_poll(&input);
+#ifdef FAST_FORWARD_BUILD
+        input.pressed = input.pressed | injected_buttons;
+        input.held = input.held | injected_buttons;
+        injected_buttons = 0;
+#endif
         if (input.pressed & INPUT_START) {
             run_log_write("input start pressed");
             break;

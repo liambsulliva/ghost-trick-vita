@@ -150,6 +150,28 @@ void scene_stage_place_object(const char *object_name, const char *animation_nam
     show_object_frame(object, frame_index);
 }
 
+void scene_stage_set_object_flipped(const char *object_name, int is_flipped)
+{
+    struct scene_object *object;
+
+    object = find_object(object_name);
+    if (object != NULL) {
+        object->is_flipped = is_flipped;
+    }
+}
+
+void scene_stage_set_soul_mode(int is_on)
+{
+    stage.soul_mode_is_on = is_on;
+}
+
+void scene_stage_set_last_plate_soul_texture(const char *texture_name)
+{
+    if (stage.plate_count > 0) {
+        snprintf(stage.plates[stage.plate_count - 1].soul_texture_name, sizeof(stage.plates[stage.plate_count - 1].soul_texture_name), "%s", texture_name);
+    }
+}
+
 void scene_stage_remove_object(const char *object_name)
 {
     struct scene_object *object;

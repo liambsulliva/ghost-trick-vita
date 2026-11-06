@@ -33,9 +33,6 @@ static int read_chain_line(struct script_tables *tables, const char *line)
 {
     char word[ASSET_NAME_MAX];
 
-    if (sscanf(line, "stop " NAME_SCAN, tables->stop_act) == 1) {
-        return 1;
-    }
     if (sscanf(line, "card " NAME_SCAN, tables->card_texture) == 1) {
         return 1;
     }
@@ -68,15 +65,32 @@ int script_tables_read_chain(struct script_tables *tables, const char *text, uns
     return read_all_lines(tables, text, text_size, read_chain_line);
 }
 
+static int read_room_size_line(struct script_tables *tables, const char *line)
+{
+    int room;
+    int width;
+    int height;
+
+    if (sscanf(line, "room %d %d %d", &room, &width, &height) != 3 || room < 0 || room >= SCRIPT_ROOM_ID_MAX) {
+        return 0;
+    }
+    tables->room_bounds[room].width = width;
+    tables->room_bounds[room].height = height;
+    return 1;
+}
+
 static int read_room_line(struct script_tables *tables, const char *line)
 {
     struct script_room_plate *plate;
 
+    if (text_line_starts_with(line, "room ")) {
+        return read_room_size_line(tables, line);
+    }
     if (tables->room_plate_count >= SCRIPT_ROOM_PLATE_MAX) {
-        return 0;
+        return 1;
     }
     plate = &tables->room_plates[tables->room_plate_count];
-    if (sscanf(line, "plate %d " NAME_SCAN " %f %f %f %f", &plate->room, plate->texture_name, &plate->x, &plate->y, &plate->width, &plate->height) != 6) {
+    if (sscanf(line, "plate %d " NAME_SCAN " %f %f %f %f " NAME_SCAN, &plate->room, plate->texture_name, &plate->x, &plate->y, &plate->width, &plate->height, plate->soul_texture_name) < 6) {
         return 0;
     }
     tables->room_plate_count = tables->room_plate_count + 1;
@@ -124,7 +138,7 @@ static int read_text_line(struct script_tables *tables, const char *line)
     struct script_text_row *row;
 
     if (tables->text_row_count >= SCRIPT_TEXT_ROW_MAX) {
-        return 0;
+        return 1;
     }
     row = &tables->text_rows[tables->text_row_count];
     if (sscanf(line, "line %31s %d %d " NAME_SCAN " %f %f", row->label, &row->group, &row->id, row->texture_name, &row->center_x, &row->top_y) != 6) {
@@ -139,12 +153,55 @@ int script_tables_read_text_lines(struct script_tables *tables, const char *text
     return read_all_lines(tables, text, text_size, read_text_line);
 }
 
+static int read_effect_line(struct script_tables *tables, const char *line)
+{
+    struct script_effect_row *row;
+    char kind[16];
+
+    if (tables->effect_row_count >= SCRIPT_EFFECT_ROW_MAX) {
+        return 1;
+    }
+    row = &tables->effect_rows[tables->effect_row_count];
+    memset(row, 0, sizeof(*row));
+    if (sscanf(line, "effect %d %15s " NAME_SCAN " %d %f %f %f", &row->id, kind, row->texture_name, &row->ticks, &row->end_zoom, &row->width, &row->height) != 7) {
+        return 0;
+    }
+    if (strcmp(kind, "card") == 0) {
+        row->kind = SCRIPT_EFFECT_CARD;
+    } else if (strcmp(kind, "dissolve") == 0) {
+        row->kind = SCRIPT_EFFECT_DISSOLVE;
+    } else if (strcmp(kind, "ring") == 0) {
+        row->kind = SCRIPT_EFFECT_RING;
+    } else {
+        return 0;
+    }
+    tables->effect_row_count = tables->effect_row_count + 1;
+    return 1;
+}
+
+int script_tables_read_effects(struct script_tables *tables, const char *text, unsigned int text_size)
+{
+    return read_all_lines(tables, text, text_size, read_effect_line);
+}
+
+const struct script_effect_row *script_tables_find_effect(const struct script_tables *tables, int id)
+{
+    int index;
+
+    for (index = 0; index < tables->effect_row_count; index++) {
+        if (tables->effect_rows[index].id == id) {
+            return &tables->effect_rows[index];
+        }
+    }
+    return NULL;
+}
+
 static int read_balloon_row_line(struct script_tables *tables, const char *line)
 {
     struct script_balloon_row *row;
 
     if (tables->balloon_row_count >= SCRIPT_BALLOON_ROW_MAX) {
-        return 0;
+        return 1;
     }
     row = &tables->balloon_rows[tables->balloon_row_count];
     memset(row, 0, sizeof(*row));
@@ -197,7 +254,7 @@ static int read_preload_line(struct script_tables *tables, const char *line)
     char word[16];
 
     if (tables->preload_row_count >= SCRIPT_PRELOAD_ROW_MAX) {
-        return 0;
+        return 1;
     }
     row = &tables->preload_rows[tables->preload_row_count];
     if (sscanf(line, "%15s " NAME_SCAN, word, row->name) != 2) {
@@ -237,7 +294,7 @@ int script_tables_read_motions(struct script_tables *tables, const char *file_na
             continue;
         }
         if (tables->motion_row_count >= SCRIPT_MOTION_ROW_MAX) {
-            return 0;
+            return 1;
         }
         row = &tables->motion_rows[tables->motion_row_count];
         if (sscanf(line, "motion %x " NAME_SCAN " %d", &row->table_offset, row->animation_name, &row->records_per_frame) != 3) {

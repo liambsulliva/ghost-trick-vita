@@ -4,7 +4,7 @@
 #include "asset_name.h"
 #include "renderer.h"
 
-#define TEXTURE_CACHE_ENTRY_MAX 512
+#define TEXTURE_CACHE_ENTRY_MAX 2048
 #define TEXTURE_CACHE_DEFAULT_BUDGET_BYTES (128u * 1024u * 1024u)
 #define TEXTURE_CACHE_READS_AT_ONCE 2u
 

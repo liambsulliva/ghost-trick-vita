@@ -7,19 +7,18 @@
 #include "run_log.h"
 #include "scene_stage.h"
 #include "scene_view.h"
+#include "animation_library.h"
 #include "script_bridge.h"
+#include "script_player.h"
+#include "script_view.h"
 #include "sound_engine.h"
 
 #define BRIGHTNESS_SCALE 16.0f
 #define DIM_LEVEL_WHEN_FULL (1.0f - (float)SCRIPT_NARRATION_DIM_TOP_LEVEL / (float)SCRIPT_NARRATION_DIM_SCALE)
-#define CARD_EFFECT_ID 66
-#define ZOOM_EFFECT_ID 85
 #define CARD_FADE_IN_STARTS 22
 #define CARD_FADE_IN_ENDS 31
 #define CARD_FADE_OUT_STARTS 242
 #define CARD_FADE_OUT_ENDS 273
-#define CLOSE_UP_DISSOLVE_TICKS 32
-#define CLOSE_UP_END_ZOOM 2.0f
 #define PENDING_OVERLAY_MAX 16
 #define OVERLAYS_PER_BALLOON 4
 #define LAYER_PER_LEVEL 256
@@ -49,6 +48,10 @@ static int mask_fade_is_alive;
 static int zoom_ticks_left;
 static int soul_vision_is_on;
 static int mask_is_on;
+static int shake_level;
+static int shake_ticks_left;
+static int is_quiet;
+static const char *current_music;
 static const struct script_balloon_row *open_balloon_rows[SCRIPT_BALLOON_MAX];
 static struct pending_overlay pending_overlays[PENDING_OVERLAY_MAX];
 static char logged_once[LOGGED_ONCE_MAX][ASSET_NAME_MAX];
@@ -80,6 +83,58 @@ static void log_once(const char *what, const char *name)
 static void on_stage_cleared(void)
 {
     scene_stage_clear_room();
+    animation_library_clear();
+    scene_layers_clear(scene_stage_layers());
+    scene_effects_reset(scene_stage_effects());
+    scene_stage_hide_card();
+    card_is_showing = 0;
+    memset(open_balloon_rows, 0, sizeof(open_balloon_rows));
+    memset(pending_overlays, 0, sizeof(pending_overlays));
+    script_view_talk_changed(NULL);
+}
+
+static void on_camera_moved(int x, int y)
+{
+    scene_stage_set_camera((float)x, (float)y);
+}
+
+static void on_shake_changed(int level, int ticks)
+{
+    shake_level = level;
+    shake_ticks_left = ticks;
+}
+
+static void on_screen_filter_changed(int mode)
+{
+    char text[16];
+
+    snprintf(text, sizeof(text), "%d", mode);
+    log_once("screen_filter_not_drawn", text);
+}
+
+static void on_mask_fade_color_changed(int is_white)
+{
+    (void)is_white;
+    log_once("white_mask_fade_not_drawn", "-");
+}
+
+static void on_sounds_stopped(void)
+{
+    if (!is_quiet) {
+        sound_request_stop();
+    }
+}
+
+static void on_music_volume_changed(int volume, int ticks)
+{
+    (void)volume;
+    (void)ticks;
+    log_once("music_volume_not_ported", "-");
+}
+
+static void on_talk_changed(const struct script_talk_view *view)
+{
+    script_view_talk_changed(view);
 }
 
 static void on_room_loaded(int room, int camera_x, int camera_y)
@@ -98,6 +153,7 @@ static void on_room_loaded(int room, int camera_x, int camera_y)
         plate = &tables->room_plates[index];
         if (plate->room == room) {
             scene_stage_add_plate(plate->texture_name, plate->x, plate->y, plate->width, plate->height);
+            scene_stage_set_last_plate_soul_texture(plate->soul_texture_name);
             found = 1;
         }
     }
@@ -135,6 +191,7 @@ static void on_actor_changed(const struct script_actor_view *actor)
         return;
     }
     scene_stage_place_object(actor->name, row->animation_name, (float)actor->x, (float)actor->y, (LEVEL_COUNT - actor->level) * LAYER_PER_LEVEL + (CREATION_INDEX_TOP - actor->creation_index), record_of(actor, row->records_per_frame));
+    scene_stage_set_object_flipped(actor->name, actor->is_flipped);
 }
 
 static void on_brightness_changed(int signed_level)
@@ -210,31 +267,59 @@ static void on_iris_deleted(const char *name)
     scene_effects_stop_iris(scene_stage_effects());
 }
 
-static void start_close_up_dissolve(void)
+static void start_dissolve(const struct script_effect_row *row, const char *name)
 {
     unsigned long long started_us;
     int has_snapshot;
 
+    write_cue("dissolve", name);
+    if (is_quiet) {
+        return;
+    }
     started_us = clock_now_us();
     has_snapshot = scene_view_snapshot_stage(scene_stage_view());
     if (has_snapshot) {
-        scene_effects_start_dissolve(scene_stage_effects(), CLOSE_UP_END_ZOOM, CLOSE_UP_DISSOLVE_TICKS);
+        scene_effects_start_dissolve(scene_stage_effects(), row->end_zoom, row->ticks);
     }
-    zoom_ticks_left = CLOSE_UP_DISSOLVE_TICKS;
-    run_log_write(LOG_FOR_TOOLS_DISSOLVE, CLOSE_UP_DISSOLVE_TICKS, CLOSE_UP_END_ZOOM, has_snapshot, clock_now_us() - started_us);
+    zoom_ticks_left = row->ticks;
+    run_log_write(LOG_FOR_TOOLS_DISSOLVE, row->ticks, row->end_zoom, has_snapshot, clock_now_us() - started_us);
 }
 
-static void on_effect_spawned(int id, const char *name)
+static void start_card(const char *name)
 {
-    if (id == CARD_EFFECT_ID) {
-        write_cue("card", name);
-        scene_stage_show_card(tables->card_texture);
-        card_is_showing = 1;
-        card_started_tick = tick;
-    } else if (id == ZOOM_EFFECT_ID) {
-        write_cue("dissolve", name);
-        start_close_up_dissolve();
+    write_cue("card", name);
+    scene_stage_show_card(tables->card_texture);
+    card_is_showing = 1;
+    card_started_tick = tick;
+}
+
+static void on_effect_spawned(int id, const char *name, float x, float y)
+{
+    const struct script_effect_row *row;
+    char text[64];
+
+    row = script_tables_find_effect(tables, id);
+    if (row == NULL) {
+        snprintf(text, sizeof(text), "%d %s", id, name);
+        log_once("effect_not_drawn", text);
+        return;
     }
+    switch (row->kind) {
+    case SCRIPT_EFFECT_CARD:
+        start_card(name);
+        break;
+    case SCRIPT_EFFECT_DISSOLVE:
+        start_dissolve(row, name);
+        break;
+    default:
+        script_view_effect_spawned(row, name, x, y);
+        break;
+    }
+}
+
+static void on_effect_deleted(const char *name)
+{
+    script_view_effect_deleted(name);
 }
 
 static void show_group(const char *label, int group)
@@ -391,7 +476,9 @@ static void on_music_prepared(int id)
         log_once("no_music_row", number);
         return;
     }
-    music_request_prepare(name);
+    if (!is_quiet) {
+        music_request_prepare(name);
+    }
 }
 
 static void on_music_started(int id)
@@ -406,13 +493,17 @@ static void on_music_started(int id)
         return;
     }
     write_cue("music", name);
-    music_request_play(name, 1);
+    current_music = name;
+    if (!is_quiet) {
+        music_request_play(name, 1);
+    }
 }
 
 static void on_music_stopped(int fade_ticks)
 {
     write_cue("music_stop", "-");
-    music_request_stop(fade_ticks);
+    current_music = NULL;
+    music_request_stop(is_quiet ? 0 : fade_ticks);
 }
 
 static void on_sound_played(int kind)
@@ -427,12 +518,16 @@ static void on_sound_played(int kind)
         return;
     }
     write_cue("sound", name);
-    sound_request_play(name);
+    if (!is_quiet) {
+        sound_request_play(name);
+    }
 }
 
 static void on_soul_vision_changed(int is_on)
 {
     soul_vision_is_on = is_on;
+    script_view_soul_changed(is_on);
+    run_log_write("script soul_vision on=%d tick=%u", is_on, tick);
 }
 
 static void on_marked(const char *what, const char *name)
@@ -441,35 +536,56 @@ static void on_marked(const char *what, const char *name)
         write_cue("demo_end", name);
         return;
     }
+    script_player_note_mark(what, name);
     run_log_write("script %s name=%s", what, name);
 }
 
 static const struct script_outputs bridge_outputs = {
-    NULL,
-    on_stage_cleared,
-    on_room_loaded,
-    on_camera_cut,
-    on_actor_changed,
-    on_brightness_changed,
-    on_mask_fade_changed,
-    on_beam_created,
-    on_beam_width_ramped,
-    on_beam_base_ramped,
-    on_beam_deleted,
-    on_iris_created,
-    on_iris_radius_ramped,
-    on_iris_deleted,
-    on_effect_spawned,
-    on_narration_changed,
-    on_balloon_opened,
-    on_balloon_closed,
-    on_music_prepared,
-    on_music_started,
-    on_music_stopped,
-    on_sound_played,
-    on_soul_vision_changed,
-    on_marked
+    .stage_cleared = on_stage_cleared,
+    .room_loaded = on_room_loaded,
+    .camera_cut = on_camera_cut,
+    .camera_moved = on_camera_moved,
+    .shake_changed = on_shake_changed,
+    .screen_filter_changed = on_screen_filter_changed,
+    .mask_fade_color_changed = on_mask_fade_color_changed,
+    .actor_changed = on_actor_changed,
+    .brightness_changed = on_brightness_changed,
+    .mask_fade_changed = on_mask_fade_changed,
+    .beam_created = on_beam_created,
+    .beam_width_ramped = on_beam_width_ramped,
+    .beam_base_ramped = on_beam_base_ramped,
+    .beam_deleted = on_beam_deleted,
+    .iris_created = on_iris_created,
+    .iris_radius_ramped = on_iris_radius_ramped,
+    .iris_deleted = on_iris_deleted,
+    .effect_spawned = on_effect_spawned,
+    .effect_deleted = on_effect_deleted,
+    .narration_changed = on_narration_changed,
+    .balloon_opened = on_balloon_opened,
+    .balloon_closed = on_balloon_closed,
+    .music_prepared = on_music_prepared,
+    .music_started = on_music_started,
+    .music_stopped = on_music_stopped,
+    .music_volume_changed = on_music_volume_changed,
+    .sound_played = on_sound_played,
+    .sounds_stopped = on_sounds_stopped,
+    .soul_vision_changed = on_soul_vision_changed,
+    .marked = on_marked,
+    .talk_changed = on_talk_changed
 };
+
+void script_bridge_set_quiet(int should_be_quiet)
+{
+    if (is_quiet && !should_be_quiet && current_music != NULL) {
+        music_request_prepare(current_music);
+        music_request_play(current_music, 1);
+    }
+    if (!is_quiet && should_be_quiet) {
+        music_request_stop(0);
+        sound_request_stop();
+    }
+    is_quiet = should_be_quiet;
+}
 
 const struct script_outputs *script_bridge_outputs(void)
 {
@@ -489,6 +605,10 @@ void script_bridge_start(const struct script_tables *new_tables)
     soul_vision_is_on = 0;
     mask_is_on = 0;
     logged_once_count = 0;
+    current_music = NULL;
+    shake_level = 0;
+    shake_ticks_left = 0;
+    script_view_start(new_tables);
     memset(open_balloon_rows, 0, sizeof(open_balloon_rows));
     memset(pending_overlays, 0, sizeof(pending_overlays));
     scene_stage_clear_room();
@@ -549,7 +669,7 @@ static void apply_mask_rule(void)
     int should_be_on;
 
     effects = scene_stage_effects();
-    should_be_on = any_beam_exists(effects) || effects->iris_is_on || mask_fade_is_alive || zoom_ticks_left > 0 || soul_vision_is_on;
+    should_be_on = any_beam_exists(effects) || effects->iris_is_on || mask_fade_is_alive || zoom_ticks_left > 0;
     if (should_be_on != mask_is_on) {
         mask_is_on = should_be_on;
         write_cue("mask", should_be_on ? "on" : "off");
@@ -567,6 +687,10 @@ void script_bridge_finish_tick(void)
     }
     scene_effects_advance(scene_stage_effects(), MICROSECONDS_PER_TICK);
     scene_layers_advance(scene_stage_layers(), MICROSECONDS_PER_TICK);
+    script_view_advance();
+    if (shake_ticks_left > 0) {
+        shake_ticks_left = shake_ticks_left - 1;
+    }
     tick = tick + 1;
 }
 

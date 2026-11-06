@@ -16,6 +16,11 @@ LIBS    := -lvitaGL -lstdc++ -lSceLibKernel_stub -lSceAppMgr_stub -lSceAppUtil_s
 
 STB_VORBIS_SOURCE := src/third_party/stb_vorbis.c
 STB_VORBIS_DEFINES := -DSTB_VORBIS_NO_STDIO -DSTB_VORBIS_NO_PUSHDATA_API
+ifeq ($(FAST_FORWARD),1)
+CFLAGS += -DFAST_FORWARD_BUILD
+BUILD_ID := $(BUILD_ID)-ff
+endif
+
 SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
 OBJS := $(patsubst src/%.c,build/obj/%.o,$(SRCS))
 
@@ -117,8 +122,8 @@ test-all: test
 golden: build/tests/golden/script_replay
 	@mkdir -p build/golden
 	@test -f ../extracted/trace/vm_golden/golden_trace.tsv || { echo "no golden trace in extracted/trace/vm_golden"; exit 2; }
-	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1_opening/scripts --timing ds --rows build/golden/rows_ds.tsv --cues build/golden/cues_ds.tsv
-	python3 -I tools/script_golden_check.py build/golden/rows_ds.tsv --stop-tick 5896
+	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1/scripts --timing ds --rows build/golden/rows_ds.tsv --cues build/golden/cues_ds.tsv --stop-tick 6056 --close-talk-at 5643 --close-talk-at 5823 --close-talk-at 6002
+	python3 -I tools/script_golden_check.py build/golden/rows_ds.tsv --stop-tick 7095
 
 clean:
 	rm -rf build

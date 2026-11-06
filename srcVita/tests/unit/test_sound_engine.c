@@ -338,7 +338,9 @@ static void test_too_many_clips_are_logged_and_never_hold_up_the_preload(void)
         add_clip(name);
         sound_request_prepare(name);
     }
-    CHECK_HAS_TEXT(log_text(), "sound too_many_clips name=clip_32");
+    snprintf(name, sizeof(name), "name=clip_%d", SOUND_CLIP_MAX);
+    CHECK_HAS_TEXT(log_text(), name);
+    CHECK_HAS_TEXT(log_text(), "sound too_many_clips");
     pump(SOUND_CLIP_MAX);
     CHECK(sound_prepare_is_done());
     CHECK_INT(count_in_log("sound loaded"), SOUND_CLIP_MAX);

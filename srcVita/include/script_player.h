@@ -3,7 +3,6 @@
 
 #include "scene_player.h"
 
-#define SCRIPT_PLAYER_LINE_MAX 160
 
 void script_player_init(const char *scripts_folder);
 int script_player_is_available(void);
@@ -14,7 +13,11 @@ void script_player_set_paused(int should_pause);
 int script_player_is_paused(void);
 int script_player_is_active(void);
 enum scene_playback_state script_player_status(void);
-const char *script_player_halt_line(void);
+void script_player_skip_ahead(void);
+void script_player_press(void);
+void script_player_set_fast_forward(int ticks_per_frame);
+void script_player_run_until(const char *kind, const char *name);
+void script_player_note_mark(const char *what, const char *name);
 unsigned int script_player_tick(void);
 void script_player_shutdown(void);
 

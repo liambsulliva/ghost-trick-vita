@@ -3,16 +3,20 @@
 
 #define FIXED_ONE 4096.0f
 #define RADIUS_UNITS_TO_PIXELS (3.0f / 128.0f)
-#define CARD_EFFECT_ID 66
-#define ZOOM_EFFECT_ID 85
-#define STREETLIGHT_EFFECT_ID 90
-#define SOUL_SPARK_EFFECT_ID 31
-#define CORE_EFFECT_ID 4
 #define BEAM_MODE_WIDTH 1
 #define BEAM_MODE_BASE 4
 #define IRIS_MODE_RADIUS 1
 #define MASK_ALPHA_FULL 0x1f
 #define KEEP_CAMERA_AXIS 0xffffu
+#define FIXED_ONE_INT 4096
+#define CAMERA_CUT_SPEED 0x3e8000
+#define DS_VIEW_WIDTH 256
+#define DS_VIEW_HEIGHT 192
+
+static int signed_word(unsigned int word)
+{
+    return word >= 0x8000u ? (int)word - 0x10000 : (int)word;
+}
 
 static float fixed_to_float(unsigned int value)
 {
@@ -24,38 +28,35 @@ static float radius_to_pixels(unsigned int value)
     return (float)value * RADIUS_UNITS_TO_PIXELS;
 }
 
-static void note_effect_once(struct script_machine *machine, int id, const char *name)
-{
-    if (machine->noted_effects[id / 8] & (1u << (id % 8))) {
-        return;
-    }
-    machine->noted_effects[id / 8] = (unsigned char)(machine->noted_effects[id / 8] | (1u << (id % 8)));
-    if (machine->outputs->marked != NULL) {
-        machine->outputs->marked("effect_not_drawn", name);
-    }
-}
-
 static void spawn_effect(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
+    const struct script_object *object;
     const char *name;
-    int id;
+    float x;
+    float y;
 
-    id = (int)words[0];
     name = script_machine_string(machine, vm, words[9]);
-    if (name == NULL) {
+    if (name == NULL || machine->outputs->effect_spawned == NULL) {
         return;
     }
-    if (id == CARD_EFFECT_ID || id == ZOOM_EFFECT_ID) {
-        if (machine->outputs->effect_spawned != NULL) {
-            machine->outputs->effect_spawned(id, name);
-        }
-        return;
+    x = fixed_to_float(script_machine_u32(words, 1));
+    y = fixed_to_float(script_machine_u32(words, 3));
+    object = script_machine_current_object(machine, vm);
+    if (object != NULL && object->actor.exists && signed_word(words[10]) >= 0) {
+        x = x + (float)(object->actor.x + object->actor.core_x);
+        y = y + (float)(object->actor.y + object->actor.core_y);
     }
-    if (id == STREETLIGHT_EFFECT_ID || id == SOUL_SPARK_EFFECT_ID || id == CORE_EFFECT_ID) {
-        note_effect_once(machine, id, name);
-        return;
+    machine->outputs->effect_spawned((int)words[0], name, x, y);
+}
+
+static void delete_effect(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+{
+    const char *name;
+
+    name = script_machine_string(machine, vm, words[0]);
+    if (name != NULL && machine->outputs->effect_deleted != NULL) {
+        machine->outputs->effect_deleted(name);
     }
-    script_machine_halt(machine, vm, "effect_not_ported", name);
 }
 
 static void create_beam(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
@@ -89,7 +90,7 @@ static void ramp_beam(struct script_machine *machine, struct script_vm *vm, cons
             machine->outputs->beam_base_ramped(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)), ticks);
         }
     } else {
-        script_machine_halt(machine, vm, "beam_mode_not_ported", name);
+        script_machine_note(machine, vm, "beam_mode_not_ported", name);
     }
 }
 
@@ -122,7 +123,7 @@ static void ramp_iris(struct script_machine *machine, struct script_vm *vm, cons
         return;
     }
     if (script_machine_u32(words, 7) != IRIS_MODE_RADIUS) {
-        script_machine_halt(machine, vm, "iris_mode_not_ported", name);
+        script_machine_note(machine, vm, "iris_mode_not_ported", name);
         return;
     }
     if (machine->outputs->iris_radius_ramped != NULL) {
@@ -140,18 +141,39 @@ static void delete_iris(struct script_machine *machine, struct script_vm *vm, co
     }
 }
 
-static int signed_word(unsigned int word)
+static int clamped_axis(int value, int room_size, int view_size)
 {
-    return word >= 0x8000u ? (int)word - 0x10000 : (int)word;
+    int largest;
+
+    if (room_size <= 0) {
+        return value;
+    }
+    largest = room_size > view_size ? room_size - view_size : 0;
+    if (value > largest) {
+        return largest;
+    }
+    return value < 0 ? 0 : value;
+}
+
+static int clamped_x(const struct script_machine *machine, int x)
+{
+    return clamped_axis(x, machine->room >= 0 && machine->room < SCRIPT_ROOM_ID_MAX ? machine->room_bounds[machine->room].width : 0, DS_VIEW_WIDTH);
+}
+
+static int clamped_y(const struct script_machine *machine, int y)
+{
+    return clamped_axis(y, machine->room >= 0 && machine->room < SCRIPT_ROOM_ID_MAX ? machine->room_bounds[machine->room].height : 0, DS_VIEW_HEIGHT);
 }
 
 static void load_room(struct script_machine *machine, const unsigned int *words)
 {
+    machine->room = (int)words[0];
+    machine->pan_is_active = 0;
     if (words[1] != KEEP_CAMERA_AXIS) {
-        machine->camera_x = signed_word(words[1]);
+        machine->camera_x = machine->world_origin_x + signed_word(words[1]);
     }
     if (words[2] != KEEP_CAMERA_AXIS) {
-        machine->camera_y = signed_word(words[2]);
+        machine->camera_y = machine->world_origin_y + signed_word(words[2]);
     }
     if (machine->outputs->room_loaded != NULL) {
         machine->outputs->room_loaded((int)words[0], machine->camera_x, machine->camera_y);
@@ -160,10 +182,129 @@ static void load_room(struct script_machine *machine, const unsigned int *words)
 
 static void cut_camera(struct script_machine *machine, const unsigned int *words)
 {
-    machine->camera_x = signed_word(words[0]);
-    machine->camera_y = signed_word(words[1]);
+    machine->pan_is_active = 0;
+    machine->camera_x = clamped_x(machine, machine->world_origin_x + signed_word(words[0]));
+    machine->camera_y = clamped_y(machine, machine->world_origin_y + signed_word(words[1]));
     if (machine->outputs->camera_cut != NULL) {
         machine->outputs->camera_cut(machine->camera_x, machine->camera_y);
+    }
+}
+
+static void begin_pan(struct script_machine *machine, int target_x, int target_y, int speed_fixed, int sends_hosei_end)
+{
+    int delta_x;
+    int delta_y;
+    int longest;
+    int ticks;
+
+    target_x = clamped_x(machine, target_x);
+    target_y = clamped_y(machine, target_y);
+    delta_x = target_x - machine->camera_x;
+    delta_y = target_y - machine->camera_y;
+    if (speed_fixed >= CAMERA_CUT_SPEED || (delta_x == 0 && delta_y == 0)) {
+        machine->camera_x = target_x;
+        machine->camera_y = target_y;
+        machine->pan_is_active = 0;
+        if (machine->outputs->camera_moved != NULL) {
+            machine->outputs->camera_moved(target_x, target_y);
+        }
+        script_machine_send(machine, "*", "camera", "end");
+        if (sends_hosei_end) {
+            script_machine_send(machine, "*", "SYSTEM", "hosei end");
+        }
+        return;
+    }
+    if (speed_fixed <= 0) {
+        speed_fixed = FIXED_ONE_INT;
+    }
+    longest = delta_x < 0 ? -delta_x : delta_x;
+    if ((delta_y < 0 ? -delta_y : delta_y) > longest) {
+        longest = delta_y < 0 ? -delta_y : delta_y;
+    }
+    ticks = (longest * FIXED_ONE_INT) / speed_fixed;
+    if (ticks < 1) {
+        ticks = 1;
+    }
+    machine->pan_is_active = 1;
+    machine->pan_ticks_left = ticks;
+    machine->pan_x_fixed = machine->camera_x * FIXED_ONE_INT;
+    machine->pan_y_fixed = machine->camera_y * FIXED_ONE_INT;
+    machine->pan_step_x_fixed = delta_x * FIXED_ONE_INT / ticks;
+    machine->pan_step_y_fixed = delta_y * FIXED_ONE_INT / ticks;
+    machine->pan_target_x = target_x;
+    machine->pan_target_y = target_y;
+    machine->pan_sends_hosei_end = sends_hosei_end;
+}
+
+static void pan_to_position(struct script_machine *machine, const unsigned int *words)
+{
+    int target_x;
+    int target_y;
+
+    target_x = words[0] == KEEP_CAMERA_AXIS ? machine->camera_x : machine->world_origin_x + signed_word(words[0]);
+    target_y = words[1] == KEEP_CAMERA_AXIS ? machine->camera_y : machine->world_origin_y + signed_word(words[1]);
+    begin_pan(machine, target_x, target_y, (int)script_machine_u32(words, 2), 0);
+}
+
+static void pan_to_object(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+{
+    const char *name;
+    const struct script_object *object;
+    int point;
+    int target_x;
+    int target_y;
+
+    name = script_machine_string(machine, vm, words[0]);
+    if (name == NULL) {
+        return;
+    }
+    object = script_machine_find_object(machine, name);
+    if (object == NULL || !object->actor.exists) {
+        script_machine_send(machine, "*", "SYSTEM", "hosei end");
+        return;
+    }
+    point = signed_word(words[1]);
+    if (point < 0 || point >= SCRIPT_ACTOR_POINT_MAX) {
+        point = 0;
+    }
+    target_x = signed_word(words[2]) < 0 ? machine->camera_x : object->actor.x + object->actor.points[point][0] - signed_word(words[2]);
+    target_y = signed_word(words[3]) < 0 ? machine->camera_y : object->actor.y + object->actor.points[point][1] - signed_word(words[3]);
+    begin_pan(machine, target_x, target_y, (int)script_machine_u32(words, 4), 1);
+}
+
+void script_machine_scroll_camera(struct script_machine *machine, int delta_x, int delta_y)
+{
+    machine->camera_x = clamped_x(machine, machine->camera_x + delta_x);
+    machine->camera_y = clamped_y(machine, machine->camera_y + delta_y);
+    if (machine->outputs->camera_moved != NULL) {
+        machine->outputs->camera_moved(machine->camera_x, machine->camera_y);
+    }
+}
+
+void script_machine_update_camera(struct script_machine *machine)
+{
+    if (machine->shake_ticks_left > 0) {
+        machine->shake_ticks_left = machine->shake_ticks_left - 1;
+    }
+    if (!machine->pan_is_active || machine->pause_bit) {
+        return;
+    }
+    machine->pan_ticks_left = machine->pan_ticks_left - 1;
+    machine->pan_x_fixed = machine->pan_x_fixed + machine->pan_step_x_fixed;
+    machine->pan_y_fixed = machine->pan_y_fixed + machine->pan_step_y_fixed;
+    machine->camera_x = machine->pan_x_fixed / FIXED_ONE_INT;
+    machine->camera_y = machine->pan_y_fixed / FIXED_ONE_INT;
+    if (machine->pan_ticks_left <= 0) {
+        machine->camera_x = machine->pan_target_x;
+        machine->camera_y = machine->pan_target_y;
+        machine->pan_is_active = 0;
+        script_machine_send(machine, "*", "camera", "end");
+        if (machine->pan_sends_hosei_end) {
+            script_machine_send(machine, "*", "SYSTEM", "hosei end");
+        }
+    }
+    if (machine->outputs->camera_moved != NULL) {
+        machine->outputs->camera_moved(machine->camera_x, machine->camera_y);
     }
 }
 
@@ -173,6 +314,51 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
     unsigned int length_with_force;
 
     switch (op) {
+    case 0xa:
+        if (machine->fade_count > 0) {
+            return SCRIPT_STEP_MOVED_THEN_YIELD;
+        }
+        break;
+    case 0x11:
+    case 0x12:
+        if (machine->outputs->mask_fade_color_changed != NULL) {
+            machine->outputs->mask_fade_color_changed(1);
+        }
+        script_fades_set_mask(machine, op == 0x11 ? 0 : MASK_ALPHA_FULL, (int)words[0]);
+        break;
+    case 0x13:
+        if (machine->outputs->screen_filter_changed != NULL) {
+            machine->outputs->screen_filter_changed((int)(words[0] & 7));
+        }
+        break;
+    case 0x2a:
+        machine->shake_level = (int)words[0];
+        machine->shake_ticks_left = (int)words[1];
+        if (machine->outputs->shake_changed != NULL) {
+            machine->outputs->shake_changed((int)words[0], (int)words[1]);
+        }
+        break;
+    case 0x2b:
+        script_fades_add(machine, vm, 2, 4);
+        break;
+    case 0xc7:
+        pan_to_position(machine, words);
+        break;
+    case 0xce:
+        pan_to_object(machine, vm, words);
+        break;
+    case 0xcf:
+        if (machine->pan_is_active) {
+            return SCRIPT_STEP_MOVED_THEN_YIELD;
+        }
+        break;
+    case 0xd0:
+        machine->pan_is_active = 0;
+        break;
+    case 0xd7:
+        machine->world_origin_x = signed_word(words[0]);
+        machine->world_origin_y = signed_word(words[1]);
+        break;
     case 0xb:
     case 0xc:
     case 0xd:
@@ -189,6 +375,7 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         spawn_effect(machine, vm, words);
         break;
     case 0xb1:
+        delete_effect(machine, vm, words);
         break;
     case 0xbb:
         create_beam(machine, vm, words);

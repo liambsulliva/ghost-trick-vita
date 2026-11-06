@@ -4,7 +4,7 @@
 #define SOUND_RATE 44100
 #define SOUND_GRAIN_FRAMES 512
 #define SOUND_VOICE_MAX 4
-#define SOUND_CLIP_MAX 32
+#define SOUND_CLIP_MAX 128
 #define SOUND_START_QUEUE_MAX 8
 
 void sound_engine_init(const char *sound_folder);

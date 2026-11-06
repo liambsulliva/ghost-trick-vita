@@ -200,7 +200,7 @@ static void draw_plates(const struct scene_stage *stage, const struct screen_vie
 
     for (index = 0; index < stage->plate_count; index++) {
         plate = &stage->plates[index];
-        draw_texture_or_placeholder(plate->texture_name, world_area_to_screen(view, plate->x, plate->y, plate->width, plate->height), whole_texture_area());
+        draw_texture_or_placeholder(stage->soul_mode_is_on && plate->soul_texture_name[0] != '\0' ? plate->soul_texture_name : plate->texture_name, world_area_to_screen(view, plate->x, plate->y, plate->width, plate->height), whole_texture_area());
     }
 }
 
@@ -550,6 +550,15 @@ int scene_view_snapshot_stage(const struct scene_stage *stage)
     draw_stage_layers(stage);
     renderer_snapshot_end();
     return 1;
+}
+
+void scene_view_world_to_screen(const struct scene_stage *stage, float x, float y, float *screen_x, float *screen_y)
+{
+    struct screen_view view;
+
+    view = view_of_stage(stage);
+    *screen_x = (x - view.left) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    *screen_y = (y - view.top) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
 }
 
 void scene_view_draw(const struct scene_stage *stage)

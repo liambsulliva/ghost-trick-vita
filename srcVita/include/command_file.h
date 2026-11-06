@@ -14,12 +14,18 @@ enum command_kind {
     COMMAND_HUD_ON,
     COMMAND_HUD_OFF,
     COMMAND_MUSIC_STARVE,
+    COMMAND_FAST_FORWARD,
+    COMMAND_FAST_FORWARD_UNTIL,
+    COMMAND_RESUME,
+    COMMAND_SKIP_AHEAD,
+    COMMAND_PRESS,
     COMMAND_UNKNOWN
 };
 
 struct command {
     enum command_kind kind;
     char name[ASSET_NAME_MAX];
+    char detail[16];
     int number;
 };
 
