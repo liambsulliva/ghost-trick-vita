@@ -221,6 +221,25 @@ class UploadAssetsTests(DeviceFreeTestCase):
         self.assertEqual(vita_loop.load_upload_record(), {"a": "1"})
 
 
+class LaunchTests(DeviceFreeTestCase):
+    def app_writes_a_new_log(self, command):
+        self.ftp.files[vita_loop.LOG_PATH] = b"--- launch 2\nnew\n"
+        return "ok"
+
+    def test_launch_sets_the_last_log_aside_and_finds_the_new_run(self):
+        self.ftp.files[vita_loop.LOG_PATH] = b"--- launch 1\nold\n"
+        self.ftp.files[vita_loop.PREVIOUS_LOG_PATH] = b"--- launch 0\nolder\n"
+        self.send_device_command.side_effect = self.app_writes_a_new_log
+        self.assertEqual(vita_loop.launch(5), 0)
+        self.assertEqual(self.ftp.files[vita_loop.PREVIOUS_LOG_PATH], b"--- launch 1\nold\n")
+        self.assertEqual(vita_loop.latest_run_lines(), ["--- launch 2", "new"])
+
+    def test_the_first_launch_has_no_log_to_set_aside(self):
+        self.send_device_command.side_effect = self.app_writes_a_new_log
+        self.assertEqual(vita_loop.launch(5), 0)
+        self.assertNotIn(vita_loop.PREVIOUS_LOG_PATH, self.ftp.files)
+
+
 class ActionTests(DeviceFreeTestCase):
     def run_main(self, *arguments):
         with mock.patch.object(sys, "argv", ["vita_loop.py"] + list(arguments)):

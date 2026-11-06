@@ -16,6 +16,7 @@ APP_FOLDER = "/ux0:/app/" + TITLE_ID
 DATA_FOLDER = "/ux0:/data/ghosttrick"
 INSTALL_FOLDER = DATA_FOLDER + "/install"
 LOG_PATH = DATA_FOLDER + "/run.log"
+PREVIOUS_LOG_PATH = DATA_FOLDER + "/run_previous.log"
 COMMANDS_PATH = DATA_FOLDER + "/commands.txt"
 CAPTURE_FOLDER = DATA_FOLDER + "/captures"
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -67,6 +68,7 @@ def open_ftp():
     connection = ftplib.FTP()
     connection.connect(VITA_HOST, FTP_PORT, timeout=60)
     connection.login("anonymous", "anonymous")
+    connection.voidcmd("TYPE I")
     return connection
 
 
@@ -285,8 +287,19 @@ def clear_pending_commands():
         connection.close()
 
 
+def set_aside_old_log():
+    connection = open_ftp()
+    try:
+        delete_if_present(connection, PREVIOUS_LOG_PATH)
+        if remote_size_or_none(connection, LOG_PATH) is not None:
+            connection.rename(LOG_PATH, PREVIOUS_LOG_PATH)
+    finally:
+        connection.close()
+
+
 def launch(seconds=30):
     clear_pending_commands()
+    set_aside_old_log()
     markers_before = count_launch_markers()
     print("launch:", send_device_command("launch " + TITLE_ID))
     deadline = time.time() + seconds
