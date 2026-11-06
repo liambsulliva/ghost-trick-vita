@@ -31,6 +31,8 @@
 #define CURSOR_BOB_PIXELS 4.0f
 #define RING_PULSE_TICKS 60u
 #define RING_SMALLEST_SIZE 0.75f
+#define SOUL_CURSOR_TEXTURE "soul_ring"
+#define SOUL_CURSOR_SIZE 120.0f
 
 struct view_effect {
     int in_use;
@@ -55,12 +57,16 @@ static int talk_is_showing;
 static int soul_is_on;
 static struct view_effect effects[VIEW_EFFECT_MAX];
 static unsigned int age_ticks;
+static int cursor_is_shown;
+static float cursor_x;
+static float cursor_y;
 
 void script_view_start(const struct script_tables *new_tables)
 {
     tables = new_tables;
     talk_is_showing = 0;
     soul_is_on = 0;
+    cursor_is_shown = 0;
     age_ticks = 0;
     memset(effects, 0, sizeof(effects));
     scene_stage_set_soul_mode(0);
@@ -80,6 +86,13 @@ void script_view_soul_changed(int is_on)
 {
     soul_is_on = is_on;
     scene_stage_set_soul_mode(is_on);
+}
+
+void script_view_cursor_moved(int is_shown, float x, float y)
+{
+    cursor_is_shown = is_shown;
+    cursor_x = x;
+    cursor_y = y;
 }
 
 static struct view_effect *find_free_effect(void)
@@ -296,9 +309,26 @@ static void draw_talk(void)
     }
 }
 
+static void draw_soul_cursor(void)
+{
+    float screen_x;
+    float screen_y;
+    float pulse;
+    float size;
+
+    if (!soul_is_on || !cursor_is_shown) {
+        return;
+    }
+    scene_view_world_to_screen(scene_stage_view(), cursor_x, cursor_y, &screen_x, &screen_y);
+    pulse = (float)(age_ticks % RING_PULSE_TICKS) / (float)RING_PULSE_TICKS;
+    size = SOUL_CURSOR_SIZE * (RING_SMALLEST_SIZE + (1.0f - RING_SMALLEST_SIZE) * pulse);
+    draw_named_texture(SOUL_CURSOR_TEXTURE, screen_x - size * 0.5f, screen_y - size * 0.5f, size, size, white);
+}
+
 void script_view_draw(void)
 {
     draw_effects();
+    draw_soul_cursor();
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {
         draw_talk();
     }

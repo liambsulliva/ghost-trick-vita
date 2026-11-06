@@ -591,6 +591,27 @@ void script_player_press(void)
     }
 }
 
+void script_player_ghost_button(void)
+{
+    if (phase == PHASE_RUNNING && data != NULL) {
+        script_soul_note_ghost(&data->machine);
+    }
+}
+
+void script_player_direction(int direction_x, int direction_y)
+{
+    if (phase == PHASE_RUNNING && data != NULL) {
+        script_soul_note_direction(&data->machine, direction_x, direction_y);
+    }
+}
+
+void script_player_held_direction(int held_x, int held_y)
+{
+    if (phase == PHASE_RUNNING && data != NULL) {
+        script_soul_set_held(&data->machine, held_x, held_y);
+    }
+}
+
 void script_player_set_fast_forward(int ticks_per_frame)
 {
     ticks_per_frame_when_fast = ticks_per_frame;

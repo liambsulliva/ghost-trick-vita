@@ -16,13 +16,15 @@ LIBS    := -lvitaGL -lstdc++ -lSceLibKernel_stub -lSceAppMgr_stub -lSceAppUtil_s
 
 STB_VORBIS_SOURCE := src/third_party/stb_vorbis.c
 STB_VORBIS_DEFINES := -DSTB_VORBIS_NO_STDIO -DSTB_VORBIS_NO_PUSHDATA_API
+OBJECT_FOLDER := build/obj
 ifeq ($(FAST_FORWARD),1)
 CFLAGS += -DFAST_FORWARD_BUILD
 BUILD_ID := $(BUILD_ID)-ff
+OBJECT_FOLDER := build/obj_fast_forward
 endif
 
 SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
-OBJS := $(patsubst src/%.c,build/obj/%.o,$(SRCS))
+OBJS := $(patsubst src/%.c,$(OBJECT_FOLDER)/%.o,$(SRCS))
 
 LIVEAREA_FOLDER := build/sce_sys
 LIVEAREA_IMAGES := $(LIVEAREA_FOLDER)/icon0.png $(LIVEAREA_FOLDER)/livearea/contents/bg.png $(LIVEAREA_FOLDER)/livearea/contents/startup.png
@@ -43,16 +45,16 @@ TEST_RUNS := $(addprefix run-,$(TEST_BINS))
 
 all: check-sdk build/$(TARGET).vpk
 
-build/obj/vita/build_info.o: always-rebuild
+$(OBJECT_FOLDER)/vita/build_info.o: always-rebuild
 
-build/obj/third_party/stb_vorbis.o: CFLAGS += -w -DNDEBUG $(STB_VORBIS_DEFINES)
+$(OBJECT_FOLDER)/third_party/stb_vorbis.o: CFLAGS += -w -DNDEBUG $(STB_VORBIS_DEFINES)
 
 check-sdk:
 ifeq ($(strip $(VITASDK)),)
 	$(error VITASDK is not set; point it at the VitaSDK install)
 endif
 
-build/obj/%.o: src/%.c $(wildcard include/*.h)
+$(OBJECT_FOLDER)/%.o: src/%.c $(wildcard include/*.h)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 

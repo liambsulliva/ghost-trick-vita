@@ -36,7 +36,11 @@ static void spawn_effect(struct script_machine *machine, struct script_vm *vm, c
     float y;
 
     name = script_machine_string(machine, vm, words[9]);
-    if (name == NULL || machine->outputs->effect_spawned == NULL) {
+    if (name == NULL) {
+        return;
+    }
+    script_soul_effect_spawned(machine, (int)words[0], name);
+    if (machine->outputs->effect_spawned == NULL) {
         return;
     }
     x = fixed_to_float(script_machine_u32(words, 1));
@@ -376,6 +380,14 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         break;
     case 0xb1:
         delete_effect(machine, vm, words);
+        break;
+    case 0xb2:
+        if (script_machine_string(machine, vm, words[0]) != NULL) {
+            script_soul_effect_signalled(machine, script_machine_string(machine, vm, words[0]));
+        }
+        break;
+    case 0xd8:
+        script_soul_set_countdown(machine, words[0] != 0);
         break;
     case 0xbb:
         create_beam(machine, vm, words);

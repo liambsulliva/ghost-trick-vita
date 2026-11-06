@@ -164,8 +164,23 @@ void script_narration_start(struct script_narration *narration, const struct scr
     load_page(narration, 0);
 }
 
+static int groups_before_current_page(const struct script_narration *narration)
+{
+    int page;
+    int groups;
+
+    groups = 0;
+    for (page = 0; page < narration->page; page++) {
+        groups = groups + narration->cues->pages[narration->message->first_page + page].group_count;
+    }
+    return groups;
+}
+
 static void tell(const struct script_narration *narration, script_narration_report report, void *listener, enum script_narration_event event, int group)
 {
+    if (event == SCRIPT_NARRATION_GROUP_IN) {
+        group = group + groups_before_current_page(narration);
+    }
     report(listener, narration->message->label, event, group);
 }
 
@@ -241,12 +256,16 @@ static int step_hold(struct script_narration *narration, script_narration_report
                 group_is_done = 1;
             }
         }
+        if (narration->limit == 0 && narration->press_is_pending) {
+            group_is_done = 1;
+        }
     } else if (narration->counter >= narration->wait[narration->group]) {
         group_is_done = 1;
     }
     if (!group_is_done) {
         return 0;
     }
+    narration->press_is_pending = 0;
     narration->counter = 0;
     narration->count_to_limit = 0;
     narration->group = narration->group + 1;
@@ -288,6 +307,26 @@ static void step_text_out(struct script_narration *narration, script_narration_r
     narration->timer = 0;
     narration->speed = GROUP_SPEED;
     narration->group_was_reported = 0;
+}
+
+int script_narration_wants_a_press(const struct script_narration *narration)
+{
+    return narration->is_running && narration->state == STATE_HOLD && narration->group >= narration->group_count && narration->limit == 0;
+}
+
+void script_narration_note_press(struct script_narration *narration)
+{
+    narration->press_is_pending = 1;
+}
+
+void script_narration_finish_soon(struct script_narration *narration)
+{
+    if (!narration->is_running) {
+        return;
+    }
+    narration->state = STATE_DIM_OUT;
+    narration->level = LEVEL_DIM_TOP;
+    narration->speed = -DIM_SPEED;
 }
 
 int script_narration_step(struct script_narration *narration, script_narration_report report, void *listener)

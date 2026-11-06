@@ -454,6 +454,7 @@ void script_talk_close_when_due(struct script_machine *machine)
     talk->phase = SCRIPT_TALK_CLOSED;
     talk->message = NULL;
     machine->talk_is_open = 0;
+    script_machine_send(machine, "*", "message", "end");
     if (!machine->soul_state_keeps_pause) {
         machine->pause_bit = 0;
     }

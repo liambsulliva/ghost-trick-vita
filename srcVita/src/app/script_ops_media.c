@@ -5,12 +5,21 @@
 #define FIXED_ONE 4096.0f
 #define SOUND_KIND_NONE 0
 #define SOUND_KIND_REFUSED 33
+#define PARAGRAPH_ARG_COUNT 8
+
+static const char *const paragraph_args[PARAGRAPH_ARG_COUNT] = { "paragraph0", "paragraph1", "paragraph2", "paragraph3", "paragraph4", "paragraph5", "paragraph6", "paragraph7" };
 
 void script_narration_report_to_outputs(void *listener, const char *label, enum script_narration_event event, int group)
 {
     struct script_machine *machine;
 
     machine = listener;
+    if (event == SCRIPT_NARRATION_GROUP_IN && group >= 0 && group < PARAGRAPH_ARG_COUNT) {
+        script_machine_send(machine, "*", "monologue", paragraph_args[group]);
+    }
+    if (event == SCRIPT_NARRATION_DIM_OUT) {
+        script_machine_send(machine, "*", "message", "end");
+    }
     if (machine->outputs->narration_changed != NULL) {
         machine->outputs->narration_changed(label, event, group);
     }

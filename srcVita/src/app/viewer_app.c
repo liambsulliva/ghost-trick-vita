@@ -430,11 +430,38 @@ static void replay_what_finished(void)
     }
 }
 
+static int axis_of(unsigned int buttons, unsigned int negative, unsigned int positive)
+{
+    if (buttons & positive) {
+        return 1;
+    }
+    return (buttons & negative) ? -1 : 0;
+}
+
+static void send_script_directions(const struct input_state *input)
+{
+    int pressed_x;
+    int pressed_y;
+
+    pressed_x = axis_of(input->pressed, INPUT_LEFT, INPUT_RIGHT);
+    pressed_y = axis_of(input->pressed, INPUT_UP, INPUT_DOWN);
+    if (pressed_x != 0 || pressed_y != 0) {
+        script_player_direction(pressed_x, pressed_y);
+    }
+    script_player_held_direction(axis_of(input->held, INPUT_LEFT, INPUT_RIGHT), axis_of(input->held, INPUT_UP, INPUT_DOWN));
+}
+
 static void update_player_controls(const struct input_state *input)
 {
     if ((input->pressed & (INPUT_L | INPUT_R)) && (input->held & (INPUT_L | INPUT_R)) == (INPUT_L | INPUT_R)) {
         script_player_skip_ahead();
         return;
+    }
+    if (script_player_is_active()) {
+        send_script_directions(input);
+        if (input->pressed & (INPUT_TRIANGLE | INPUT_CIRCLE)) {
+            script_player_ghost_button();
+        }
     }
     if (!(input->pressed & INPUT_CROSS)) {
         return;

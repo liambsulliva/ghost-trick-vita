@@ -20,7 +20,6 @@
 #define STUCK_AFTER_QUIET_TICKS 240
 #define DEBUG_ARG_PREFIX "debug"
 #define STUCK_AFTER_ANY_TICKS 3000
-#define STUCK_AFTER_ANY_TICKS_WHEN_AUTOMATIC 600
 #define STUCK_PUSHES_BEFORE_LEAVING_THE_SCRIPT 60
 
 static const char *vm_kind_name(enum script_vm_kind kind)
@@ -256,7 +255,7 @@ void script_machine_send(struct script_machine *machine, const char *target, con
 
 static int gameapp_verb_is_known(const char *verb)
 {
-    static const char *const verbs[] = { "Button", "Message", "SVTUTO", "SoulVision", "Exception", "CustomSoulVision", "FreeCamera" };
+    static const char *const verbs[] = { "Button", "Message", "SVTUTO", "SoulVision", "Exception", "CustomSoulVision", "FreeCamera", "Timeleap" };
     unsigned int index;
 
     for (index = 0; index < sizeof(verbs) / sizeof(verbs[0]); index++) {
@@ -788,6 +787,11 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
     case 0x68:
         machine->mode_byte = MODE_BYTE_NORMAL;
         return SCRIPT_STEP_NEXT_THEN_YIELD;
+    case 0xe1:
+        if (vm->owner != NULL) {
+            vm->owner->is_dead = 1;
+        }
+        return SCRIPT_STEP_NEXT;
     case 0x74:
         if (words[0] == 0 || (int)words[0] > machine->chapter_mark) {
             machine->chapter_mark = (int)words[0];
@@ -1443,13 +1447,18 @@ static void push_when_stuck(struct script_machine *machine)
     if (something_is_running_to_a_known_end(machine)) {
         machine->last_timer_tick = machine->tick;
     }
-    if (quiet_ticks < (machine->auto_press ? STUCK_AFTER_ANY_TICKS_WHEN_AUTOMATIC : STUCK_AFTER_ANY_TICKS) && (quiet_ticks < STUCK_AFTER_QUIET_TICKS || machine->tick - machine->last_timer_tick < STUCK_AFTER_QUIET_TICKS)) {
+    if (quiet_ticks < STUCK_AFTER_ANY_TICKS && (quiet_ticks < STUCK_AFTER_QUIET_TICKS || machine->tick - machine->last_timer_tick < STUCK_AFTER_QUIET_TICKS)) {
         return;
     }
     machine->last_new_site_tick = machine->tick;
     machine->last_timer_tick = machine->tick;
     machine->push_count = machine->push_count + 1;
     machine->pushes_in_this_script = machine->pushes_in_this_script + 1;
+    if (machine->narration.is_running) {
+        script_narration_finish_soon(&machine->narration);
+        script_machine_note(machine, NULL, "stuck_ended_narration", "");
+        return;
+    }
     if (machine->talk.phase != SCRIPT_TALK_CLOSED) {
         script_talk_close_now(machine);
         script_machine_note(machine, NULL, "stuck_closed_talk", "");

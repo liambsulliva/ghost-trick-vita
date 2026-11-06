@@ -140,6 +140,7 @@ struct script_object {
     struct script_message messages[SCRIPT_MESSAGE_MAX];
     int message_count;
     int is_sleeping;
+    int is_dead;
     struct script_actor actor;
 };
 
@@ -172,6 +173,13 @@ struct script_recent_fetch {
     const char *object_name;
 };
 
+struct script_timed_event {
+    const char *target;
+    const char *verb;
+    const char *arg;
+    long long at;
+};
+
 struct script_soul {
     int is_on;
     int player_opened_soul_view;
@@ -190,6 +198,14 @@ struct script_soul {
     int held_y;
     long long start_message_at;
     unsigned int next_auto_try_tick;
+    int action_is_due_in;
+    int action_object;
+    int action_slot;
+    int countdown_is_running;
+    int countdown_step;
+    int countdown_ticks;
+    struct script_timed_event phone_event;
+    struct script_timed_event time_jump_event;
 };
 
 struct script_machine {
@@ -312,6 +328,9 @@ void script_soul_note_direction(struct script_machine *machine, int direction_x,
 void script_soul_set_held(struct script_machine *machine, int held_x, int held_y);
 void script_soul_reset(struct script_machine *machine);
 void script_soul_set_first_core(struct script_machine *machine, int object_index);
+void script_soul_set_countdown(struct script_machine *machine, int is_on);
+void script_soul_effect_spawned(struct script_machine *machine, int effect_id, const char *name);
+void script_soul_effect_signalled(struct script_machine *machine, const char *name);
 void script_soul_report_cursor(struct script_machine *machine);
 int script_soul_waits_on_the_player(const struct script_machine *machine);
 void script_talk_open(struct script_machine *machine, const char *label);

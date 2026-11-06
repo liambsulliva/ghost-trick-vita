@@ -159,6 +159,38 @@ The main thread never touches the decoder. It posts a request to the mailbox and
 - Nothing logs while holding the lock, so a slow log write cannot hold up the other threads.
 - music_starve is the one exception: it does not change the generation, and the worker clears it when it reads it.
 
+## Fast forward build
+
+An agent can play through the game far faster than a person with this build:
+
+```bash
+make -C srcVita FAST_FORWARD=1
+```
+
+It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`, so it never mixes with the normal build. It reads these extra lines from the commands file, which `vita_loop.py app-command` writes:
+
+| Line | What it does |
+|---|---|
+| `ff <n>` | Run `n` script ticks per frame, pressing buttons by itself |
+| `ff_until script <name>`, `ff_until act <name>`, `ff_until tick <n>` | Fast forward until that point, then pause |
+| `resume` | Carry on from a pause |
+| `skip` | Same as L and R together: push on to the next act or script |
+| `press <hex>` | Press a button mask for one frame |
+
+Automatic play closes dialogue, walks tutorial cores and tries each trick in turn, through the same inputs a player uses. Sounds stay quiet at speed.
+
+The Mac replay does the same with no device:
+
+```bash
+make -C srcVita build/tests/golden/script_replay
+```
+
+```bash
+srcVita/build/tests/golden/script_replay --scripts extracted/vita_assets/chapter1/scripts --timing remaster --auto-press --marks --stop-tick 500000
+```
+
+Its `mark` lines say which scripts and acts began, which tricks fired and when the stuck check had to push.
+
 ## Debug controls
 
 SELECT turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the scene. SELECT turns them off again, which resumes a paused scene and restarts one you browsed away from.
