@@ -39,6 +39,8 @@ export VITASDK=/usr/local/vitasdk PATH="/usr/local/vitasdk/bin:$PATH"
 make -C srcVita -j8
 ```
 
+This writes the installable package to `srcVita/build/ghosttrick.vpk`. It holds only the app. The art goes on the Vita separately, as [the top-level README](../README.md#run-it-on-a-vita) explains, and the Vita also needs its shader compiler at `ur0:data/libshacccg.suprx`.
+
 The tests run on the Mac and need no SDK. The first command runs the C tests, and the second also runs the converter and tool tests, which need Python's `numpy` and ImageMagick's `magick`.
 
 ```bash
@@ -57,21 +59,13 @@ Every mutation should be caught. A survivor means the tests have a gap.
 
 ## Make the assets
 
-The converter reads your own copy of the remaster's Android files from `extracted/remaster_apk/`. It also needs ImageMagick's `magick`.
-
-```bash
-make -C srcVita/tools/assets
-```
-
-```bash
-python3 -I srcVita/tools/assets/convert_assets.py --set chapter1_opening --output extracted/vita_assets/chapter1_opening
-```
+[The top-level README](../README.md#run-it-on-a-vita) explains how to copy the game files out of your Android package, convert them and put them on the Vita. The app loads them from `ux0:data/ghosttrick/assets/`.
 
 `tools/assets/chapter1_opening.json` lists what goes into the set and scripts the scene.
 
 ## Run on the Vita
 
-The loop needs Vita Companion on the Vita, at 10.0.0.151. It uses FTP on port 1337 and the command port 1338, which stay up while the app runs, so nobody has to touch the device.
+This loop is for working on the app. It needs Vita Companion on the Vita, at the address in `VITA_HOST` (10.0.0.151 if unset). It uses FTP on port 1337 and the command port 1338, which stay up while the app runs, so nobody has to touch the device.
 
 ```bash
 python3 -I srcVita/tools/vita_loop.py upload-assets extracted/vita_assets/chapter1_opening
@@ -99,7 +93,7 @@ python3 -I srcVita/tools/vita_loop.py launch
 python3 -I srcVita/tools/vita_loop.py log
 ```
 
-The log is `ux0:data/ghosttrick/run.log`. Each second it records frame timing, free memory and texture totals, and each animation reports which frames it showed and how many arrived late. Run `vita_loop.py` with `--help` for the other commands, including `capture <name>`, which saves the screen and pulls it back as a BMP.
+The log is `ux0:data/ghosttrick/run.log`. Each second it records frame timing, free memory, texture totals and how often the displayed picture really changed (`screen flips=... changed=... longest_still=...`). Moving objects log each frame change with the frames passed over, and each animation reports which frames it showed and how many arrived late. Run `vita_loop.py` with `--help` for the other commands, including `capture <name>`, which saves the screen and pulls it back as a BMP.
 
 ## Check against the reference video
 
