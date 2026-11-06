@@ -6,6 +6,17 @@ The first target is **a playable Chapter 1 build for on-device feedback**. The r
 
 The current work is an autonomous function-matching campaign across the full prepared code inventory, with local checkpoint commits. Chapter 1 remains the first playable release target.
 
+## Legal disclaimer
+
+This is an unofficial fan project, not affiliated with or endorsed by Capcom, Nintendo or Sony. *Ghost Trick* belongs to Capcom, and all trademarks belong to their owners.
+
+This repository contains only original work. It contains **no ROM files and no extracted Nintendo or Capcom assets**: no game art, music, sound, text, fonts or script data. Two things in it are worth knowing about:
+
+- `src/` holds C/C++ reconstructed from a study of the DS game's compiled code, along with the symbol and layout data in `config/`. It is not the game's original source code.
+- `srcVita/src/third_party/stb_vorbis.c` is an open-source library by its own author, under its own license.
+
+**You must source these files yourself**, from your own legally obtained copy of the game. This project does not provide them or say where to get them. Please don't post game files, or links to them, in this repository.
+
 ## Decompilation progress
 
 [![Ghost Trick function matching progress](docs/progress-treemap.svg)](https://liambsulliva.github.io/ghost-trick-vita/)
