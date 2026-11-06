@@ -16,7 +16,7 @@ static int frame_can_be_shown(const struct animation_frame *frame)
         return 1;
     }
     texture = texture_cache_use_or_start_loading(frame->texture_name);
-    return texture == NULL || texture->state != CACHED_TEXTURE_LOADING;
+    return texture != NULL && texture->state != CACHED_TEXTURE_LOADING;
 }
 
 static struct scene_object *find_object(const char *name)

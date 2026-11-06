@@ -5,12 +5,34 @@
 
 #define NEW_FOLDER_MODE 0777
 #define NEW_FILE_MODE 0666
+#define READ_CHUNK_BYTES (64u * 1024u)
+
+static int read_in_chunks(SceUID fd, unsigned char *buffer, unsigned int length)
+{
+    unsigned int done;
+    unsigned int wanted;
+    int got;
+
+    done = 0;
+    while (done < length) {
+        wanted = length - done;
+        if (wanted > READ_CHUNK_BYTES) {
+            wanted = READ_CHUNK_BYTES;
+        }
+        got = sceIoRead(fd, buffer + done, wanted);
+        if (got <= 0) {
+            return 0;
+        }
+        done = done + (unsigned int)got;
+    }
+    return 1;
+}
 
 int file_read_whole(const char *path, unsigned char **data, unsigned int *size)
 {
     SceUID fd;
     SceOff length;
-    int read_bytes;
+    int read_all;
     unsigned char *buffer;
 
     fd = sceIoOpen(path, SCE_O_RDONLY, 0);
@@ -31,9 +53,9 @@ int file_read_whole(const char *path, unsigned char **data, unsigned int *size)
         sceIoClose(fd);
         return FILE_ERR_MEMORY;
     }
-    read_bytes = sceIoRead(fd, buffer, (unsigned int)length);
+    read_all = read_in_chunks(fd, buffer, (unsigned int)length);
     sceIoClose(fd);
-    if (read_bytes != (int)length) {
+    if (!read_all) {
         mem_free(buffer);
         return FILE_ERR_READ;
     }

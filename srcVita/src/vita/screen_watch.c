@@ -5,6 +5,8 @@
 #include "screen_changes.h"
 #include "screen_watch.h"
 
+#define VCOUNT_MASK 0xFFFF
+
 static struct screen_changes changes;
 static int vcount_at_window_start;
 static unsigned long long hash_us_total;
@@ -59,6 +61,6 @@ void screen_watch_publish(void)
         hash_us_average = hash_us_total / changes.flips;
     }
     run_log_write("screen flips=%u changed=%u same_buffer=%u longest_still=%u vblanks=%d hash_us_avg=%llu hash_us_max=%llu",
-        changes.flips, changes.changed, changes.same_buffer, changes.longest_still, sceDisplayGetVcount() - vcount_at_window_start, hash_us_average, hash_us_longest);
+        changes.flips, changes.changed, changes.same_buffer, changes.longest_still, (sceDisplayGetVcount() - vcount_at_window_start) & VCOUNT_MASK, hash_us_average, hash_us_longest);
     start_window();
 }

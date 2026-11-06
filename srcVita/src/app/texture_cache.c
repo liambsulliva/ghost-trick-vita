@@ -14,6 +14,9 @@ static char folder[FILE_PATH_MAX];
 static unsigned int budget;
 static unsigned int current_frame;
 static unsigned int next_request_id;
+static unsigned int reads_in_flight;
+static int out_of_memory_was_logged;
+static int cache_full_was_logged;
 static struct texture_cache_totals totals;
 
 static struct cached_texture *find_entry_by_name(const char *name)
@@ -119,6 +122,70 @@ static void mark_missing(struct cached_texture *entry, const char *reason, int c
     totals.missing = totals.missing + 1;
 }
 
+static void forget_until_asked_again(struct cached_texture *entry)
+{
+    if (!out_of_memory_was_logged) {
+        run_log_write("texture read_out_of_memory name=%s", entry->name);
+        out_of_memory_was_logged = 1;
+    }
+    entry->state = CACHED_TEXTURE_MISSING;
+    entry->in_use = 0;
+}
+
+static int is_wanted_sooner(const struct cached_texture *entry, const struct cached_texture *other)
+{
+    if (entry->last_used_frame != other->last_used_frame) {
+        return entry->last_used_frame > other->last_used_frame;
+    }
+    return entry->request_id < other->request_id;
+}
+
+static struct cached_texture *find_waiting_entry_wanted_soonest(void)
+{
+    struct cached_texture *soonest;
+    int index;
+
+    soonest = NULL;
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
+        if (!entries[index].in_use || entries[index].state != CACHED_TEXTURE_LOADING || entries[index].read_is_started) {
+            continue;
+        }
+        if (soonest == NULL || is_wanted_sooner(&entries[index], soonest)) {
+            soonest = &entries[index];
+        }
+    }
+    return soonest;
+}
+
+static void start_read(struct cached_texture *entry)
+{
+    char path[FILE_PATH_MAX];
+
+    if (!file_path_join(path, folder, entry->name, ".gtex")) {
+        mark_missing(entry, "path_too_long", 0);
+        return;
+    }
+    if (!background_reader_submit(entry->request_id, path)) {
+        mark_missing(entry, "read_refused", 0);
+        return;
+    }
+    entry->read_is_started = 1;
+    reads_in_flight = reads_in_flight + 1;
+}
+
+static void start_waiting_reads(void)
+{
+    struct cached_texture *entry;
+
+    while (reads_in_flight < TEXTURE_CACHE_READS_AT_ONCE) {
+        entry = find_waiting_entry_wanted_soonest();
+        if (entry == NULL) {
+            return;
+        }
+        start_read(entry);
+    }
+}
+
 static renderer_texture create_texture_from_file(const struct texture_file_header *header, const unsigned char *pixel_data)
 {
     int width;
@@ -144,6 +211,10 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     unsigned int memory_bytes;
     int result;
 
+    if (finished->result == FILE_ERR_MEMORY) {
+        forget_until_asked_again(entry);
+        return;
+    }
     if (finished->result != FILE_OK) {
         mark_missing(entry, "read", finished->result);
         return;
@@ -154,8 +225,8 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
         return;
     }
     memory_bytes = texture_file_memory_bytes(&header);
-    make_room_for(memory_bytes);
     upload_started_us = clock_now_us();
+    make_room_for(memory_bytes);
     entry->texture = create_texture_from_file(&header, &finished->data[TEXTURE_FILE_HEADER_SIZE]);
     if (entry->texture == RENDERER_NO_TEXTURE) {
         mark_missing(entry, "upload", 0);
@@ -167,6 +238,7 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     entry->state = CACHED_TEXTURE_READY;
     totals.bytes_in_use = totals.bytes_in_use + entry->memory_bytes;
     totals.loads = totals.loads + 1;
+    out_of_memory_was_logged = 0;
 
     upload_us = clock_now_us() - upload_started_us;
     wait_us = clock_now_us() - entry->requested_at_us;
@@ -183,11 +255,13 @@ static void handle_finished_read(const struct finished_read *finished)
 {
     struct cached_texture *entry;
 
+    reads_in_flight = reads_in_flight - 1;
     entry = find_entry_by_request(finished->request_id);
     if (entry != NULL) {
         upload_read_data(entry, finished);
     }
     mem_free(finished->data);
+    start_waiting_reads();
 }
 
 void texture_cache_init(const char *texture_folder, unsigned int budget_bytes)
@@ -198,6 +272,9 @@ void texture_cache_init(const char *texture_folder, unsigned int budget_bytes)
     budget = budget_bytes;
     current_frame = 1;
     next_request_id = 1;
+    reads_in_flight = 0;
+    out_of_memory_was_logged = 0;
+    cache_full_was_logged = 0;
     if (!background_reader_start()) {
         run_log_write("reader thread_failed");
     }
@@ -211,32 +288,26 @@ void texture_cache_begin_frame(void)
 const struct cached_texture *texture_cache_use_or_start_loading(const char *name)
 {
     struct cached_texture *entry;
-    char path[FILE_PATH_MAX];
-    unsigned int request_id;
 
     entry = find_entry_by_name(name);
     if (entry != NULL) {
         entry->last_used_frame = current_frame;
         return entry;
     }
-    if (!file_path_join(path, folder, name, ".gtex")) {
-        run_log_write("texture path_too_long name=%s", name);
-        return NULL;
-    }
-    if (!background_reader_submit(next_request_id, path)) {
-        run_log_write("texture read_queue_full name=%s", name);
-        return NULL;
-    }
-    request_id = next_request_id;
-    next_request_id = next_request_id + 1;
     entry = claim_free_entry();
     if (entry == NULL) {
-        run_log_write("texture_cache full name=%s", name);
+        if (!cache_full_was_logged) {
+            run_log_write("texture_cache full name=%s", name);
+            cache_full_was_logged = 1;
+        }
         return NULL;
     }
+    cache_full_was_logged = 0;
     snprintf(entry->name, sizeof(entry->name), "%s", name);
     entry->state = CACHED_TEXTURE_LOADING;
-    entry->request_id = request_id;
+    entry->request_id = next_request_id;
+    next_request_id = next_request_id + 1;
+    entry->read_is_started = 0;
     entry->texture = RENDERER_NO_TEXTURE;
     entry->memory_bytes = 0;
     entry->width = 0;
@@ -244,6 +315,7 @@ const struct cached_texture *texture_cache_use_or_start_loading(const char *name
     entry->last_used_frame = current_frame;
     entry->requested_at_us = clock_now_us();
     entry->in_use = 1;
+    start_waiting_reads();
     return entry;
 }
 
@@ -272,6 +344,17 @@ void texture_cache_upload_finished_reads(unsigned int upload_limit)
     }
 }
 
+void texture_cache_drop_waiting_reads(void)
+{
+    int index;
+
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
+        if (entries[index].in_use && entries[index].state == CACHED_TEXTURE_LOADING && !entries[index].read_is_started) {
+            entries[index].in_use = 0;
+        }
+    }
+}
+
 void texture_cache_read_totals(struct texture_cache_totals *totals_out)
 {
     *totals_out = totals;
@@ -296,7 +379,8 @@ void texture_cache_clear(void)
     struct finished_read finished;
     int index;
 
-    while (texture_cache_loading_count() > 0) {
+    texture_cache_drop_waiting_reads();
+    while (reads_in_flight > 0) {
         background_reader_wait_for_finished(&finished);
         handle_finished_read(&finished);
     }

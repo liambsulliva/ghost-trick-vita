@@ -6,6 +6,7 @@
 
 #define TEXTURE_CACHE_ENTRY_MAX 512
 #define TEXTURE_CACHE_DEFAULT_BUDGET_BYTES (128u * 1024u * 1024u)
+#define TEXTURE_CACHE_READS_AT_ONCE 2u
 
 enum cached_texture_state {
     CACHED_TEXTURE_LOADING,
@@ -23,6 +24,7 @@ struct cached_texture {
     unsigned int memory_bytes;
     unsigned int last_used_frame;
     unsigned long long requested_at_us;
+    int read_is_started;
     int in_use;
 };
 
@@ -40,6 +42,7 @@ void texture_cache_begin_frame(void);
 const struct cached_texture *texture_cache_use_or_start_loading(const char *name);
 const struct cached_texture *texture_cache_load_now(const char *name);
 void texture_cache_upload_finished_reads(unsigned int upload_limit);
+void texture_cache_drop_waiting_reads(void);
 int texture_cache_loading_count(void);
 void texture_cache_read_totals(struct texture_cache_totals *totals);
 void texture_cache_clear(void);

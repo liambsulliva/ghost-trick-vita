@@ -1,8 +1,12 @@
 #include <stdio.h>
+#include <string.h>
+#include "background_reader.h"
 #include "fakes/fake_platform.h"
 #include "fakes/fake_reader.h"
 #include "fakes/fake_renderer.h"
 #include "fakes/fake_texture_files.h"
+#include "file.h"
+#include "run_log.h"
 #include "test_support.h"
 #include "texture_cache.h"
 
@@ -56,7 +60,7 @@ static void test_uploads_respect_the_limit_per_frame(void)
     CHECK_INT(fake_renderer_textures_created(), 2);
 }
 
-static void test_refused_read_can_be_requested_again_later(void)
+static void test_read_the_reader_refuses_is_marked_missing(void)
 {
     const struct cached_texture *entry;
 
@@ -66,10 +70,167 @@ static void test_refused_read_can_be_requested_again_later(void)
     fake_files_add_rgba_texture("tex/a.gtex", 2, 2);
     texture_cache_init("tex", 1024);
     fake_reader_refuse_submits(1);
-    CHECK(texture_cache_use_or_start_loading("a") == NULL);
-    fake_reader_refuse_submits(0);
-    entry = texture_cache_load_now("a");
+    entry = texture_cache_use_or_start_loading("a");
+    CHECK_INT(entry->state, CACHED_TEXTURE_MISSING);
+    CHECK_INT(texture_cache_loading_count(), 0);
+}
+
+static void test_name_too_long_for_a_path_is_marked_missing(void)
+{
+    const struct cached_texture *entry;
+    char folder[FILE_PATH_MAX];
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    memset(folder, 'f', sizeof(folder) - 4);
+    folder[sizeof(folder) - 4] = '\0';
+    texture_cache_init(folder, 1024);
+    entry = texture_cache_use_or_start_loading("a_name_that_does_not_fit");
+    CHECK_INT(entry->state, CACHED_TEXTURE_MISSING);
+    CHECK_INT(fake_reader_pending_count(), 0);
+}
+
+static void add_textures_named_a_to(char last_name)
+{
+    char path[16];
+    char name;
+
+    for (name = 'a'; name <= last_name; name++) {
+        snprintf(path, sizeof(path), "tex/%c.gtex", name);
+        fake_files_add_rgba_texture(path, 2, 2);
+    }
+}
+
+static void test_only_a_few_reads_run_at_once_and_the_rest_wait(void)
+{
+    const struct cached_texture *waiting;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_textures_named_a_to('d');
+    texture_cache_init("tex", 1024);
+    fake_reader_hold_reads(1);
+    texture_cache_use_or_start_loading("a");
+    texture_cache_use_or_start_loading("b");
+    waiting = texture_cache_use_or_start_loading("c");
+    texture_cache_use_or_start_loading("d");
+    CHECK_INT(fake_reader_pending_count(), TEXTURE_CACHE_READS_AT_ONCE);
+    CHECK_INT(texture_cache_loading_count(), 4);
+    CHECK_INT(waiting->state, CACHED_TEXTURE_LOADING);
+    fake_reader_release_reads(1);
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(fake_reader_pending_count(), TEXTURE_CACHE_READS_AT_ONCE);
+    CHECK_TEXT(fake_reader_pending_path(1), "tex/c.gtex");
+    CHECK_INT(texture_cache_loading_count(), 3);
+}
+
+static void test_page_used_this_frame_is_read_before_older_requests(void)
+{
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_textures_named_a_to('e');
+    texture_cache_init("tex", 1024);
+    fake_reader_hold_reads(1);
+    texture_cache_use_or_start_loading("a");
+    texture_cache_use_or_start_loading("b");
+    texture_cache_use_or_start_loading("c");
+    texture_cache_use_or_start_loading("d");
+    texture_cache_use_or_start_loading("e");
+    texture_cache_begin_frame();
+    texture_cache_use_or_start_loading("d");
+    fake_reader_release_reads(1);
+    texture_cache_upload_finished_reads(1);
+    CHECK_TEXT(fake_reader_pending_path(1), "tex/d.gtex");
+    fake_reader_release_reads(1);
+    texture_cache_upload_finished_reads(1);
+    CHECK_TEXT(fake_reader_pending_path(1), "tex/c.gtex");
+}
+
+static void test_more_pages_than_the_read_queue_all_load_without_refusals(void)
+{
+    struct texture_cache_totals totals;
+    char path[32];
+    char name[16];
+    int index;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    for (index = 0; index < BACKGROUND_READER_QUEUE_MAX * 2; index++) {
+        snprintf(path, sizeof(path), "tex/t%d.gtex", index);
+        fake_files_add_rgba_texture(path, 2, 2);
+    }
+    texture_cache_init("tex", 1024 * 1024);
+    for (index = 0; index < BACKGROUND_READER_QUEUE_MAX * 2; index++) {
+        snprintf(name, sizeof(name), "t%d", index);
+        CHECK(texture_cache_use_or_start_loading(name) != NULL);
+    }
+    while (texture_cache_loading_count() > 0) {
+        texture_cache_upload_finished_reads(1);
+    }
+    texture_cache_read_totals(&totals);
+    CHECK_INT(totals.loads, BACKGROUND_READER_QUEUE_MAX * 2);
+    CHECK_INT(totals.missing, 0);
+}
+
+static void test_dropping_waiting_reads_leaves_reads_in_flight_alone(void)
+{
+    const struct cached_texture *in_flight;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_textures_named_a_to('d');
+    texture_cache_init("tex", 1024);
+    fake_reader_hold_reads(1);
+    in_flight = texture_cache_use_or_start_loading("a");
+    texture_cache_use_or_start_loading("b");
+    texture_cache_use_or_start_loading("c");
+    texture_cache_use_or_start_loading("d");
+    texture_cache_drop_waiting_reads();
+    CHECK_INT(texture_cache_loading_count(), 2);
+    fake_reader_release_reads(2);
+    texture_cache_upload_finished_reads(2);
+    CHECK_INT(in_flight->state, CACHED_TEXTURE_READY);
+    CHECK_INT(fake_reader_pending_count(), 0);
+    CHECK_INT(fake_renderer_textures_created(), 2);
+    CHECK_INT(texture_cache_use_or_start_loading("c")->state, CACHED_TEXTURE_LOADING);
+    CHECK_INT(fake_reader_pending_count(), 1);
+}
+
+static void test_read_out_of_memory_is_tried_again_when_asked_for_again(void)
+{
+    const struct cached_texture *entry;
+    struct texture_cache_totals totals;
+    const char *log_text;
+    const char *first_line;
+    unsigned int size;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    fake_files_add_rgba_texture("tex/a.gtex", 2, 2);
+    run_log_open("run.log");
+    texture_cache_init("tex", 1024);
+    fake_reader_run_out_of_memory_on_reads(2);
+    texture_cache_use_or_start_loading("a");
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(texture_cache_loading_count(), 0);
+    texture_cache_use_or_start_loading("a");
+    texture_cache_upload_finished_reads(1);
+    entry = texture_cache_use_or_start_loading("a");
+    texture_cache_upload_finished_reads(1);
     CHECK_INT(entry->state, CACHED_TEXTURE_READY);
+    texture_cache_read_totals(&totals);
+    CHECK_INT(totals.missing, 0);
+    run_log_flush();
+    log_text = (const char *)fake_files_contents("run.log", &size);
+    first_line = strstr(log_text, "read_out_of_memory");
+    CHECK(first_line != NULL);
+    CHECK(strstr(first_line + 1, "read_out_of_memory") == NULL);
 }
 
 static void test_clear_waits_for_reads_in_flight(void)
@@ -112,7 +273,7 @@ static void test_loading_textures_are_never_evicted(void)
     CHECK_INT(totals.bytes_in_use, 16);
 }
 
-static void test_read_refused_by_a_full_cache_keeps_its_own_request_id(void)
+static void test_full_cache_turns_a_page_away_without_reading_it(void)
 {
     const struct cached_texture *entry;
     char path[64];
@@ -134,39 +295,12 @@ static void test_read_refused_by_a_full_cache_keeps_its_own_request_id(void)
         texture_cache_load_now(name);
     }
     CHECK(texture_cache_use_or_start_loading("refused") == NULL);
+    CHECK_INT(fake_reader_pending_count(), 0);
     texture_cache_begin_frame();
     entry = texture_cache_load_now("later");
     CHECK_INT(entry->state, CACHED_TEXTURE_READY);
     CHECK_INT(entry->width, 2);
     CHECK_INT(fake_reader_pending_count(), 0);
-}
-
-static void test_a_refused_read_evicts_nothing_from_a_full_cache(void)
-{
-    struct texture_cache_totals totals;
-    char path[64];
-    char name[32];
-    int index;
-
-    fake_files_reset();
-    fake_renderer_reset();
-    fake_reader_reset();
-    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
-        snprintf(path, sizeof(path), "tex/t%d.gtex", index);
-        fake_files_add_rgba_texture(path, 2, 2);
-    }
-    fake_files_add_rgba_texture("tex/refused.gtex", 2, 2);
-    texture_cache_init("tex", 1024 * 1024);
-    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
-        snprintf(name, sizeof(name), "t%d", index);
-        texture_cache_load_now(name);
-    }
-    texture_cache_begin_frame();
-    fake_reader_refuse_submits(1);
-    CHECK(texture_cache_use_or_start_loading("refused") == NULL);
-    fake_reader_refuse_submits(0);
-    texture_cache_read_totals(&totals);
-    CHECK_INT(totals.evictions, 0);
 }
 
 static void test_cache_loads_once_and_reuses(void)
@@ -334,11 +468,16 @@ int main(void)
     test_requested_texture_stays_loading_until_its_read_finishes();
     test_requesting_twice_only_reads_once();
     test_uploads_respect_the_limit_per_frame();
-    test_refused_read_can_be_requested_again_later();
+    test_read_the_reader_refuses_is_marked_missing();
+    test_name_too_long_for_a_path_is_marked_missing();
+    test_only_a_few_reads_run_at_once_and_the_rest_wait();
+    test_page_used_this_frame_is_read_before_older_requests();
+    test_more_pages_than_the_read_queue_all_load_without_refusals();
+    test_dropping_waiting_reads_leaves_reads_in_flight_alone();
+    test_read_out_of_memory_is_tried_again_when_asked_for_again();
     test_clear_waits_for_reads_in_flight();
     test_loading_textures_are_never_evicted();
-    test_read_refused_by_a_full_cache_keeps_its_own_request_id();
-    test_a_refused_read_evicts_nothing_from_a_full_cache();
+    test_full_cache_turns_a_page_away_without_reading_it();
     test_cache_loads_once_and_reuses();
     test_cache_budget_counts_rounded_up_compressed_memory();
     test_cache_eviction_skips_entries_that_are_not_ready();

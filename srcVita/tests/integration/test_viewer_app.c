@@ -900,7 +900,7 @@ static void test_scene_with_more_textures_than_the_read_queue_loads_them_all(voi
     run_frames_until_scene_is_no_longer_preloading();
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
     CHECK_HAS_TEXT(log_text(), "scene ready name=opening");
-    CHECK_HAS_TEXT(log_text(), "texture read_queue_full name=t64");
+    CHECK(strstr(log_text(), "texture missing") == NULL);
     for (index = 0; index < 130; index++) {
         snprintf(name, sizeof(name), "t%d", index);
         texture = texture_cache_use_or_start_loading(name);

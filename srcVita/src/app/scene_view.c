@@ -155,7 +155,10 @@ static void draw_texture_or_placeholder(const char *texture_name, struct rendere
     const struct cached_texture *texture;
 
     texture = texture_cache_use_or_start_loading(texture_name);
-    if (texture == NULL || texture->state == CACHED_TEXTURE_MISSING) {
+    if (texture == NULL) {
+        return;
+    }
+    if (texture->state == CACHED_TEXTURE_MISSING) {
         renderer_draw_filled_rect(screen_area, missing_texture_color);
         return;
     }

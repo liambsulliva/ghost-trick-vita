@@ -38,7 +38,7 @@ static void log_memory_and_textures(void)
 
     device_stats_read(&stats);
     texture_cache_read_totals(&totals);
-    run_log_write("memory video_free=%u video_total=%u main_free=%u main_total=%u", stats.video_memory_free, stats.video_memory_total, stats.main_memory_free, stats.main_memory_total);
+    run_log_write("memory video_free=%u video_total=%u main_free=%u main_total=%u heap_used=%u", stats.video_memory_free, stats.video_memory_total, stats.main_memory_free, stats.main_memory_total, stats.heap_used);
     run_log_write("textures bytes=%u loads=%u evictions=%u missing=%u longest_wait_us=%llu longest_upload_us=%llu", totals.bytes_in_use, totals.loads, totals.evictions, totals.missing, totals.longest_wait_us, totals.longest_upload_us);
 }
 

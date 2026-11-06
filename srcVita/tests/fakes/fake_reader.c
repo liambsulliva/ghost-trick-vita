@@ -15,6 +15,7 @@ static int released_count;
 static int reads_are_held;
 static int submits_are_refused;
 static int start_should_fail;
+static int reads_out_of_memory;
 
 void fake_reader_reset(void)
 {
@@ -23,6 +24,7 @@ void fake_reader_reset(void)
     reads_are_held = 0;
     submits_are_refused = 0;
     start_should_fail = 0;
+    reads_out_of_memory = 0;
 }
 
 void fake_reader_hold_reads(int should_hold)
@@ -43,6 +45,16 @@ int fake_reader_pending_count(void)
 void fake_reader_release_reads(int count)
 {
     released_count = released_count + count;
+}
+
+void fake_reader_run_out_of_memory_on_reads(int count)
+{
+    reads_out_of_memory = count;
+}
+
+const char *fake_reader_pending_path(int index)
+{
+    return pending[index].path;
 }
 
 void fake_reader_fail_start(int should_fail)
@@ -73,7 +85,12 @@ static void complete_first_pending(struct finished_read *finished)
     finished->request_id = pending[0].request_id;
     finished->data = NULL;
     finished->size = 0;
-    finished->result = file_read_whole(pending[0].path, &finished->data, &finished->size);
+    if (reads_out_of_memory > 0) {
+        reads_out_of_memory = reads_out_of_memory - 1;
+        finished->result = FILE_ERR_MEMORY;
+    } else {
+        finished->result = file_read_whole(pending[0].path, &finished->data, &finished->size);
+    }
     for (index = 1; index < pending_count; index++) {
         pending[index - 1] = pending[index];
     }

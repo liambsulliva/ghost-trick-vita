@@ -137,6 +137,7 @@ int viewer_app_show_animation(const char *name)
         return 0;
     }
     leave_scene_for_browsing();
+    texture_cache_drop_waiting_reads();
     if (animation_library_is_full()) {
         scene_stage_clear_room();
         animation_library_clear();
