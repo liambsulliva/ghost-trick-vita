@@ -14,6 +14,7 @@ int script_player_is_paused(void);
 int script_player_is_active(void);
 enum scene_playback_state script_player_status(void);
 void script_player_skip_ahead(void);
+int script_player_is_holding_for_art(void);
 void script_player_press(void);
 void script_player_ghost_button(void);
 void script_player_tap_balloon(int is_right);

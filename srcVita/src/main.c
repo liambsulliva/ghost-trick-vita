@@ -14,6 +14,7 @@
 #include "memory.h"
 #include "music_engine.h"
 #include "renderer.h"
+#include "audio_thread.h"
 #include "run_log.h"
 #include "screen_capture.h"
 #include "screen_watch.h"
@@ -22,6 +23,8 @@
 #include "texture_cache.h"
 #include "timing.h"
 #include "viewer_app.h"
+
+#define ART_HOLD_SLEEP_US 4000
 
 #ifdef FAST_FORWARD_BUILD
 #define COMMAND_POLL_FRAMES 6
@@ -210,12 +213,18 @@ static void run_main_loop(void)
         viewer_app_update(&input, last_frame_us);
         update_ended_us = clock_now_us();
 
-        renderer_begin_frame(clear_color);
-        viewer_app_draw();
-        draw_ended_us = clock_now_us();
+        if (script_player_is_holding_for_art()) {
+            audio_thread_sleep_us(ART_HOLD_SLEEP_US);
+            draw_ended_us = clock_now_us();
+            present_ended_us = draw_ended_us;
+        } else {
+            renderer_begin_frame(clear_color);
+            viewer_app_draw();
+            draw_ended_us = clock_now_us();
 
-        renderer_end_frame();
-        present_ended_us = clock_now_us();
+            renderer_end_frame();
+            present_ended_us = clock_now_us();
+        }
 
         last_frame_us = frame_timer_tick(&frame_timer);
         screen_watch_note_frame();

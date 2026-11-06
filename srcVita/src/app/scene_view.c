@@ -640,6 +640,57 @@ int scene_view_snapshot_stage(const struct scene_stage *stage)
     return 1;
 }
 
+static int area_is_on_screen(struct renderer_rect area)
+{
+    float left;
+    float right;
+
+    left = area.width < 0.0f ? area.x + area.width : area.x;
+    right = area.width < 0.0f ? area.x : area.x + area.width;
+    return right > 0.0f && left < (float)RENDERER_WIDTH && area.y + area.height > 0.0f && area.y < (float)RENDERER_HEIGHT;
+}
+
+static int texture_is_still_loading(const char *texture_name)
+{
+    const struct cached_texture *texture;
+
+    texture = texture_cache_use_or_start_loading(texture_name);
+    return texture != NULL && texture->state == CACHED_TEXTURE_LOADING;
+}
+
+int scene_view_visible_art_is_loading(const struct scene_stage *stage)
+{
+    struct screen_view view;
+    int index;
+
+    view = view_of_stage(stage);
+    for (index = 0; index < stage->plate_count; index++) {
+        const struct scene_plate *plate;
+
+        plate = &stage->plates[index];
+        if (area_is_on_screen(world_area_to_screen(&view, plate->x, plate->y, plate->width, plate->height)) && texture_is_still_loading(plate->texture_name)) {
+            return 1;
+        }
+    }
+    for (index = 0; index < SCENE_OBJECT_MAX; index++) {
+        const struct scene_object *object;
+        const struct animation_frame *frame;
+
+        object = &stage->objects[index];
+        if (!object->in_use) {
+            continue;
+        }
+        frame = animation_player_current_frame(&object->player);
+        if (frame == NULL || animation_frame_is_blank(frame)) {
+            continue;
+        }
+        if (area_is_on_screen(world_area_to_screen(&view, object->is_flipped ? object->x - frame->x - frame->width : object->x + frame->x, object->y + frame->y, frame->width, frame->height)) && texture_is_still_loading(frame->texture_name)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void scene_view_world_to_screen(const struct scene_stage *stage, float x, float y, float *screen_x, float *screen_y)
 {
     struct screen_view view;

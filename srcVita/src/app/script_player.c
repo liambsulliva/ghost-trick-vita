@@ -26,6 +26,7 @@
 #define FIXED_TABLE_COUNT 8
 #define FILES_PER_SCRIPT 3
 #define FAST_FORWARD_BUDGET_US 12000ULL
+#define ART_WAIT_MOST_US 700000ULL
 #define LOG_FOR_TOOLS_SCRIPT_READY "script ready name=%s preload_us=%llu texture_bytes=%u missing=%u"
 
 enum script_player_phase {
@@ -57,6 +58,8 @@ static int is_active;
 static int is_paused;
 static int read_step;
 static int auto_play_is_on;
+static int is_holding_for_art;
+static unsigned long long art_wait_us;
 static int preload_row;
 static int preload_passes;
 static const char *preload_music_name;
@@ -511,6 +514,26 @@ void script_player_play(const char *entry_name)
     phase = PHASE_READING;
 }
 
+static int art_gate_holds(unsigned long long elapsed_us)
+{
+    is_holding_for_art = 0;
+    if (ticks_per_frame_when_fast > 0 || !scene_view_visible_art_is_loading(scene_stage_view())) {
+        art_wait_us = 0;
+        return 0;
+    }
+    if (art_wait_us >= ART_WAIT_MOST_US) {
+        return 0;
+    }
+    art_wait_us = art_wait_us + elapsed_us;
+    is_holding_for_art = 1;
+    return 1;
+}
+
+int script_player_is_holding_for_art(void)
+{
+    return is_holding_for_art;
+}
+
 void script_player_update(unsigned long long elapsed_us)
 {
     if (phase == PHASE_READING) {
@@ -533,7 +556,9 @@ void script_player_update(unsigned long long elapsed_us)
         elapsed_us = LONGEST_UPDATE_US;
     }
     if (phase == PHASE_RUNNING) {
-        run_ticks(elapsed_us);
+        if (!art_gate_holds(elapsed_us)) {
+            run_ticks(elapsed_us);
+        }
         return;
     }
     scene_effects_advance(scene_stage_effects(), elapsed_us);
