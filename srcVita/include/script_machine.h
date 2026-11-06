@@ -214,6 +214,8 @@ struct script_soul {
     unsigned int auto_reading_ticks;
     int auto_core_was_chosen;
     int drag_ticks_left;
+    int drag_stream_ticks;
+    unsigned char tried_cores[SCRIPT_OBJECT_MAX][SCRIPT_CORE_SLOT_COUNT];
     int drag_object;
     int drag_slot;
     float drag_from_x;

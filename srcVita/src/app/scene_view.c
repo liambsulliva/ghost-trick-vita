@@ -198,8 +198,8 @@ static void draw_texture_or_placeholder(const char *texture_name, struct rendere
 struct held_pose {
     char object_name[ASSET_NAME_MAX];
     char texture_name[ASSET_NAME_MAX];
-    float left_from_object;
-    float top_from_object;
+    float world_left;
+    float world_top;
     float width;
     float height;
     struct renderer_rect texture_area;
@@ -296,15 +296,15 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
     if (draw_when_ready(frame->texture_name, world_area_to_screen(view, left, object->y + frame->y, frame->width, frame->height), texture_area, tinted_object)) {
         snprintf(held->object_name, sizeof(held->object_name), "%s", object->name);
         snprintf(held->texture_name, sizeof(held->texture_name), "%s", frame->texture_name);
-        held->left_from_object = left - object->x;
-        held->top_from_object = frame->y;
+        held->world_left = left;
+        held->world_top = object->y + frame->y;
         held->width = frame->width;
         held->height = frame->height;
         held->texture_area = texture_area;
         return;
     }
     if (strcmp(held->object_name, object->name) == 0) {
-        draw_when_ready(held->texture_name, world_area_to_screen(view, object->x + held->left_from_object, object->y + held->top_from_object, held->width, held->height), held->texture_area, tinted_object);
+        draw_when_ready(held->texture_name, world_area_to_screen(view, held->world_left, held->world_top, held->width, held->height), held->texture_area, tinted_object);
     }
 }
 

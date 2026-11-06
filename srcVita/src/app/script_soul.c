@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include "script_machine.h"
@@ -10,7 +11,13 @@
 #define PACED_TUTORIAL_TICKS 30u
 #define PACED_TICKS_TO_READ_A_PAGE 120u
 #define NO_CORE (-1)
-#define SOUL_DRAG_TICKS 30
+#define SOUL_BEAM_TICKS 6
+#define SOUL_STREAM_DS_PIXELS_PER_TICK 6
+#define SOUL_STREAM_TICKS_LEAST 8
+#define SOUL_STREAM_TICKS_MOST 20
+#define CAMERA_VIEW_WIDTH 256
+#define CAMERA_VIEW_HEIGHT 192
+#define CAMERA_VIEW_MARGIN 24
 #define PACED_SOUL_VIEW_TICKS 120u
 #define PACED_LIVING_WORLD_TICKS 300u
 #define TRICK_ACTION_AFTER_TICKS 8
@@ -85,6 +92,22 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
     player_moved_in_tutorial(machine);
 }
 
+static int stream_ticks_for_distance(float distance)
+{
+    int ticks;
+
+    ticks = (int)(distance / (float)SOUL_STREAM_DS_PIXELS_PER_TICK);
+    if (ticks < SOUL_STREAM_TICKS_LEAST) {
+        return SOUL_STREAM_TICKS_LEAST;
+    }
+    return ticks > SOUL_STREAM_TICKS_MOST ? SOUL_STREAM_TICKS_MOST : ticks;
+}
+
+static int point_is_in_camera_view(const struct script_machine *machine, float x, float y)
+{
+    return x >= (float)(machine->camera_x - CAMERA_VIEW_MARGIN) && x <= (float)(machine->camera_x + CAMERA_VIEW_WIDTH + CAMERA_VIEW_MARGIN) && y >= (float)(machine->camera_y - CAMERA_VIEW_MARGIN) && y <= (float)(machine->camera_y + CAMERA_VIEW_HEIGHT + CAMERA_VIEW_MARGIN);
+}
+
 static void drag_soul_to(struct script_machine *machine, int object_index, int slot)
 {
     struct script_soul *soul;
@@ -100,11 +123,12 @@ static void drag_soul_to(struct script_machine *machine, int object_index, int s
         return;
     }
     core_position(machine, soul->active_object, &soul->drag_from_x, &soul->drag_from_y);
+    core_position(machine, object_index, &target_x, &target_y);
     soul->drag_object = object_index;
     soul->drag_slot = slot;
-    soul->drag_ticks_left = SOUL_DRAG_TICKS;
-    if (soul->player_opened_soul_view && !soul->camera_follow_is_off) {
-        core_position(machine, object_index, &target_x, &target_y);
+    soul->drag_stream_ticks = stream_ticks_for_distance(sqrtf((target_x - soul->drag_from_x) * (target_x - soul->drag_from_x) + (target_y - soul->drag_from_y) * (target_y - soul->drag_from_y)));
+    soul->drag_ticks_left = SOUL_BEAM_TICKS + soul->drag_stream_ticks;
+    if (soul->player_opened_soul_view && !soul->camera_follow_is_off && !point_is_in_camera_view(machine, target_x, target_y)) {
         script_machine_pan_camera_to(machine, (int)target_x, (int)target_y);
     }
 }
@@ -119,19 +143,24 @@ static void report_soul_view(struct script_machine *machine)
         if (soul->is_on && soul->drag_ticks_left > 0) {
             float target_x;
             float target_y;
-            float along;
 
             core_position(machine, soul->drag_object, &target_x, &target_y);
-            along = 1.0f - (float)soul->drag_ticks_left / (float)SOUL_DRAG_TICKS;
-            machine->outputs->soul_cursor_moved(1, soul->drag_from_x + (target_x - soul->drag_from_x) * along, soul->drag_from_y + (target_y - soul->drag_from_y) * along, soul->drag_from_x, soul->drag_from_y, 1);
+            if (soul->drag_ticks_left > soul->drag_stream_ticks) {
+                machine->outputs->soul_cursor_moved(1, soul->drag_from_x, soul->drag_from_y, target_x, target_y, SCRIPT_SOUL_BEAM);
+            } else {
+                float along;
+
+                along = 1.0f - (float)soul->drag_ticks_left / (float)soul->drag_stream_ticks;
+                machine->outputs->soul_cursor_moved(1, soul->drag_from_x + (target_x - soul->drag_from_x) * along, soul->drag_from_y + (target_y - soul->drag_from_y) * along, soul->drag_from_x, soul->drag_from_y, SCRIPT_SOUL_STREAM);
+            }
         } else if (soul->is_on && soul->active_object != NO_CORE) {
             float x;
             float y;
 
             core_position(machine, soul->active_object, &x, &y);
-            machine->outputs->soul_cursor_moved(1, x, y, x, y, 0);
+            machine->outputs->soul_cursor_moved(1, x, y, x, y, SCRIPT_SOUL_RESTING);
         } else {
-            machine->outputs->soul_cursor_moved(0, 0.0f, 0.0f, 0.0f, 0.0f, 0);
+            machine->outputs->soul_cursor_moved(0, 0.0f, 0.0f, 0.0f, 0.0f, SCRIPT_SOUL_RESTING);
         }
     }
     if (!soul->is_on || machine->outputs->soul_core_marked == NULL) {
@@ -165,31 +194,61 @@ static void finish_drag_when_due(struct script_machine *machine)
     }
 }
 
-static void step_to_next_core(struct script_machine *machine)
+static int find_nearest_untried_core(struct script_machine *machine, int *found_object, int *found_slot)
 {
     const struct script_soul *soul;
-    int candidates;
-    int position;
+    float from_x;
+    float from_y;
+    float best;
+    int object_index;
+    int slot;
+    int is_found;
 
     soul = &machine->soul;
-    candidates = machine->object_count * SCRIPT_CORE_SLOT_COUNT;
-    if (candidates == 0) {
-        return;
+    from_x = 0.0f;
+    from_y = 0.0f;
+    if (soul->active_object != NO_CORE) {
+        core_position(machine, soul->active_object, &from_x, &from_y);
     }
-    position = soul->active_object == NO_CORE ? -1 : soul->active_object * SCRIPT_CORE_SLOT_COUNT + soul->active_slot;
-    while (candidates > 0) {
-        int object_index;
-        int slot;
+    best = 0.0f;
+    is_found = 0;
+    for (object_index = 0; object_index < machine->object_count; object_index++) {
+        for (slot = 0; slot < SCRIPT_CORE_SLOT_COUNT; slot++) {
+            float x;
+            float y;
+            float distance;
 
-        position = (position + 1) % (machine->object_count * SCRIPT_CORE_SLOT_COUNT);
-        object_index = position / SCRIPT_CORE_SLOT_COUNT;
-        slot = position % SCRIPT_CORE_SLOT_COUNT;
-        if (object_can_be_a_core(&machine->objects[object_index], slot)) {
-            drag_soul_to(machine, object_index, slot);
+            if (!object_can_be_a_core(&machine->objects[object_index], slot) || soul->tried_cores[object_index][slot] || (object_index == soul->active_object && slot == soul->active_slot)) {
+                continue;
+            }
+            core_position(machine, object_index, &x, &y);
+            distance = (x - from_x) * (x - from_x) + (y - from_y) * (y - from_y);
+            if (!is_found || distance < best) {
+                best = distance;
+                *found_object = object_index;
+                *found_slot = slot;
+                is_found = 1;
+            }
+        }
+    }
+    return is_found;
+}
+
+static void step_to_next_core(struct script_machine *machine)
+{
+    struct script_soul *soul;
+    int object_index;
+    int slot;
+
+    soul = &machine->soul;
+    if (!find_nearest_untried_core(machine, &object_index, &slot)) {
+        memset(soul->tried_cores, 0, sizeof(soul->tried_cores));
+        if (!find_nearest_untried_core(machine, &object_index, &slot)) {
             return;
         }
-        candidates = candidates - 1;
     }
+    soul->tried_cores[object_index][slot] = 1;
+    drag_soul_to(machine, object_index, slot);
 }
 
 static long long off_axis_cost(int along, int across)

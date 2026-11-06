@@ -5,6 +5,7 @@
 #include "scene_stage.h"
 #include "scene_view.h"
 #include "script_talk.h"
+#include "script_outputs.h"
 #include "script_view.h"
 #include "texture_cache.h"
 
@@ -61,8 +62,11 @@
 #define SCANLINE_COUNT 135
 #define SCANLINE_SPACING 4.0f
 #define SCANLINE_HEIGHT 2.0f
-#define DRAG_DOT_COUNT 10
-#define DRAG_DOT_SIZE 30.0f
+#define SOUL_MOTION_DOT_COUNT 14
+#define SOUL_BEAM_RADIUS 5.0f
+#define SOUL_STREAM_LENGTH 0.7f
+#define SOUL_STREAM_RADIUS 18.0f
+#define SOUL_STREAM_RADIUS_LEAST 3.0f
 
 struct view_effect {
     int in_use;
@@ -95,7 +99,7 @@ static int soul_is_on;
 static struct view_effect effects[VIEW_EFFECT_MAX];
 static unsigned int age_ticks;
 static int cursor_is_shown;
-static int cursor_is_dragging;
+static int cursor_motion;
 static float cursor_x;
 static float cursor_y;
 static float cursor_from_x;
@@ -129,14 +133,14 @@ void script_view_soul_changed(int is_on)
     scene_stage_set_soul_mode(is_on);
 }
 
-void script_view_cursor_moved(int is_shown, float x, float y, float from_x, float from_y, int is_dragging)
+void script_view_cursor_moved(int is_shown, float x, float y, float from_x, float from_y, int motion)
 {
     cursor_is_shown = is_shown;
     cursor_x = x;
     cursor_y = y;
     cursor_from_x = from_x;
     cursor_from_y = from_y;
-    cursor_is_dragging = is_dragging;
+    cursor_motion = motion;
 }
 
 void script_view_core_marked(int object_index, float x, float y)
@@ -428,25 +432,6 @@ static void draw_core_marks(void)
     }
 }
 
-static void draw_drag_line(void)
-{
-    static const struct renderer_color dot = { 0.45f, 0.9f, 1.0f, 0.9f };
-    int index;
-
-    if (!cursor_is_dragging) {
-        return;
-    }
-    for (index = 0; index < DRAG_DOT_COUNT; index++) {
-        float along;
-        float screen_x;
-        float screen_y;
-
-        along = (float)index / (float)DRAG_DOT_COUNT;
-        scene_view_world_to_screen(scene_stage_view(), cursor_from_x + (cursor_x - cursor_from_x) * along, cursor_from_y + (cursor_y - cursor_from_y) * along, &screen_x, &screen_y);
-        draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, DRAG_DOT_SIZE, dot);
-    }
-}
-
 static void draw_blob(float center_x, float center_y, float radius)
 {
     float size;
@@ -481,7 +466,7 @@ static void draw_soul_base(float x, float y, unsigned int step)
 
 static void draw_soul_wisp(float x, float y, unsigned int step)
 {
-    int index;
+    unsigned int index;
 
     for (index = 0; index < SOUL_WISP_COUNT; index++) {
         unsigned int age;
@@ -492,9 +477,9 @@ static void draw_soul_wisp(float x, float y, unsigned int step)
         float sway;
         float radius;
 
-        age = step + (unsigned int)index * SOUL_WISP_LIFE_STEPS / SOUL_WISP_COUNT;
+        age = step + index * SOUL_WISP_LIFE_STEPS / SOUL_WISP_COUNT;
         cycle = age / SOUL_WISP_LIFE_STEPS;
-        seed = (unsigned int)index * 97u + cycle * 13u;
+        seed = index * 97u + cycle * 13u;
         along = (float)(age % SOUL_WISP_LIFE_STEPS) / (float)SOUL_WISP_LIFE_STEPS;
         rise = SOUL_WISP_START_RISE + SOUL_WISP_RISE * along * (0.75f + 0.5f * seeded_fraction(seed, 2u));
         sway = sinf(seeded_fraction(seed, 3u) * SOUL_TWO_PI + along * SOUL_WISP_SWAY_TURNS) * (SOUL_WISP_SWAY_NEAR + SOUL_WISP_SWAY_FAR * along);
@@ -512,6 +497,28 @@ static void draw_soul_body(float x, float y)
     step = age_ticks / SOUL_ANIMATION_TICKS_PER_STEP;
     draw_soul_wisp(x, y, step);
     draw_soul_base(x, y, step);
+}
+
+static void draw_soul_motion(float screen_x, float screen_y)
+{
+    float other_x;
+    float other_y;
+    int index;
+
+    if (cursor_motion == SCRIPT_SOUL_RESTING) {
+        return;
+    }
+    scene_view_world_to_screen(scene_stage_view(), cursor_from_x, cursor_from_y, &other_x, &other_y);
+    for (index = 1; index <= SOUL_MOTION_DOT_COUNT; index++) {
+        float along;
+
+        along = (float)index / (float)SOUL_MOTION_DOT_COUNT;
+        if (cursor_motion == SCRIPT_SOUL_BEAM) {
+            draw_blob(screen_x + (other_x - screen_x) * along, screen_y + (other_y - screen_y) * along, SOUL_BEAM_RADIUS);
+        } else {
+            draw_blob(screen_x + (other_x - screen_x) * along * SOUL_STREAM_LENGTH, screen_y + (other_y - screen_y) * along * SOUL_STREAM_LENGTH, SOUL_STREAM_RADIUS * (1.0f - along) + SOUL_STREAM_RADIUS_LEAST);
+        }
+    }
 }
 
 static void draw_scanlines(void)
@@ -543,8 +550,8 @@ static void draw_soul(void)
     if (!cursor_is_shown) {
         return;
     }
-    draw_drag_line();
     scene_view_world_to_screen(scene_stage_view(), cursor_x, cursor_y, &screen_x, &screen_y);
+    draw_soul_motion(screen_x, screen_y);
     draw_soul_body(screen_x, screen_y);
     draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, SOUL_ORB_SIZE, orb);
 }
