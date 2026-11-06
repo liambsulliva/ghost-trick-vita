@@ -13,7 +13,13 @@ def run_magick(arguments):
     return subprocess.run(["magick"] + arguments, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
 
-def normalize_image(source_path, output_path):
+def normalize_capture(source_path, output_path):
+    result = run_magick([source_path, "-gravity", "center", "-crop", SCREEN_SIZE + "+0+0", "+repage", "-alpha", "off", output_path])
+    if result.returncode != 0:
+        raise RuntimeError("could not read " + source_path + ": " + result.stderr.strip())
+
+
+def normalize_reference(source_path, output_path):
     result = run_magick([source_path, "-resize", SCREEN_SIZE + "!", "-alpha", "off", output_path])
     if result.returncode != 0:
         raise RuntimeError("could not read " + source_path + ": " + result.stderr.strip())
@@ -48,8 +54,8 @@ def main():
     difference_path = os.path.join(arguments.output, arguments.name + "_difference.png")
     side_by_side_path = os.path.join(arguments.output, arguments.name + "_side_by_side.png")
 
-    normalize_image(arguments.capture, capture_path)
-    normalize_image(arguments.reference, reference_path)
+    normalize_capture(arguments.capture, capture_path)
+    normalize_reference(arguments.reference, reference_path)
     score = difference_score(capture_path, reference_path, difference_path)
     make_side_by_side(capture_path, reference_path, difference_path, side_by_side_path)
 
