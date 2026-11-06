@@ -61,11 +61,12 @@
 #define CORE_ORB_SIZE 40.0f
 #define TOOLTIP_RING_TEXTURE "soul_tooltip_ring"
 #define TOOLTIP_NO_ACTION "-"
-#define TOOLTIP_RING_SIZE 150.0f
+#define TOOLTIP_RING_SIZE 135.0f
 #define TOOLTIP_UNKNOWN_OBJECT "?"
-#define TOOLTIP_RING_RADIUS 50.0f
-#define TOOLTIP_LINE_LENGTH 110.0f
-#define TOOLTIP_BEND_RISE 26.0f
+#define TOOLTIP_LINE_START 24.0f
+#define TOOLTIP_LINE_END 135.0f
+#define TOOLTIP_BEND_RISE 85.0f
+#define TOOLTIP_BEND_STOPS_ABOVE_CORE 22.0f
 #define TOOLTIP_BEND_LENGTH 120.0f
 #define LIGHTNING_POINT_COUNT 36
 #define LIGHTNING_WAVES 14.0f
@@ -590,7 +591,7 @@ static void draw_soul_motion(float screen_x, float screen_y)
 
 static void draw_label_text(const char *texture_name, float width, float height, float x, float y, struct renderer_color tint)
 {
-    draw_named_texture(texture_name, x, y, width * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL, height * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL, tint);
+    draw_named_texture(texture_name, x, y, width, height, tint);
 }
 
 static void draw_tooltip_line(float x, float y, float width, float height, struct renderer_color tint)
@@ -607,7 +608,7 @@ static void draw_tooltip_line(float x, float y, float width, float height, struc
 static void draw_tooltip(float screen_x, float screen_y)
 {
     struct renderer_color tint;
-    float name_height;
+    float line_end;
 
     if (tooltip_label == NULL) {
         return;
@@ -615,19 +616,19 @@ static void draw_tooltip(float screen_x, float screen_y)
     tint = white;
     tint.alpha = tooltip_alpha;
     draw_centered(TOOLTIP_RING_TEXTURE, screen_x, screen_y, TOOLTIP_RING_SIZE, tint);
-    name_height = tooltip_label->name_height * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
     if (strcmp(tooltip_label->action_texture, TOOLTIP_NO_ACTION) == 0) {
         float corner_y;
 
-        corner_y = screen_y - TOOLTIP_RING_RADIUS - TOOLTIP_BEND_RISE;
-        draw_tooltip_line(screen_x, corner_y, TOOLTIP_LINE_THICKNESS, TOOLTIP_BEND_RISE, tint);
+        corner_y = screen_y - TOOLTIP_BEND_RISE;
+        draw_tooltip_line(screen_x, corner_y, TOOLTIP_LINE_THICKNESS, TOOLTIP_BEND_RISE - TOOLTIP_BEND_STOPS_ABOVE_CORE, tint);
         draw_tooltip_line(screen_x - TOOLTIP_BEND_LENGTH, corner_y, TOOLTIP_BEND_LENGTH + TOOLTIP_LINE_THICKNESS, TOOLTIP_LINE_THICKNESS, tint);
-        draw_label_text(tooltip_label->name_texture, tooltip_label->name_width, tooltip_label->name_height, screen_x - TOOLTIP_BEND_LENGTH, corner_y - name_height, tint);
+        draw_label_text(tooltip_label->name_texture, tooltip_label->name_width, tooltip_label->name_height, screen_x - TOOLTIP_BEND_LENGTH, corner_y - tooltip_label->name_height, tint);
         return;
     }
-    draw_tooltip_line(screen_x + TOOLTIP_RING_RADIUS, screen_y - TOOLTIP_LINE_THICKNESS / 2.0f, TOOLTIP_LINE_LENGTH, TOOLTIP_LINE_THICKNESS, tint);
-    draw_label_text(tooltip_label->name_texture, tooltip_label->name_width, tooltip_label->name_height, screen_x + TOOLTIP_RING_RADIUS, screen_y - name_height, tint);
-    draw_label_text(tooltip_label->action_texture, tooltip_label->action_width, tooltip_label->action_height, screen_x + TOOLTIP_RING_RADIUS, screen_y, tint);
+    line_end = screen_x + TOOLTIP_LINE_END;
+    draw_tooltip_line(screen_x + TOOLTIP_LINE_START, screen_y - TOOLTIP_LINE_THICKNESS / 2.0f, TOOLTIP_LINE_END - TOOLTIP_LINE_START, TOOLTIP_LINE_THICKNESS, tint);
+    draw_label_text(tooltip_label->name_texture, tooltip_label->name_width, tooltip_label->name_height, line_end - tooltip_label->name_width, screen_y - tooltip_label->name_height, tint);
+    draw_label_text(tooltip_label->action_texture, tooltip_label->action_width, tooltip_label->action_height, line_end - tooltip_label->action_width, screen_y, tint);
 }
 
 static void draw_flat_dot(float center_x, float center_y, float radius, struct renderer_color color)
