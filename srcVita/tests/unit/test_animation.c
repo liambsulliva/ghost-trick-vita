@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "animation.h"
+#include "animation_library.h"
 #include "fakes/fake_platform.h"
 #include "test_support.h"
 
@@ -212,12 +213,28 @@ static void test_animation_that_fails_to_parse_keeps_no_memory(void)
     CHECK(animation.frames == NULL);
 }
 
+static void test_clearing_the_library_gives_back_every_block(void)
+{
+    const char text[] = "frame a 1 0 0 1 1 0 0 1 1\nframe b 1 0 0 1 1 0 0 1 1\n";
+
+    fake_files_reset();
+    fake_memory_reset();
+    fake_files_add("anims/a.anim", (const unsigned char *)text, sizeof(text) - 1);
+    animation_library_init("anims");
+    CHECK(animation_library_load("a") != NULL);
+    CHECK_INT(fake_memory_blocks_in_use(), 2);
+    animation_library_clear();
+    CHECK_INT(fake_memory_blocks_in_use(), 0);
+    fake_files_reset();
+}
+
 int main(void)
 {
     test_animation_parses_all_fields();
     test_animation_holds_as_many_frames_as_its_file_has_up_to_the_limit();
     test_animation_only_asks_for_memory_for_its_own_frames();
     test_animation_that_fails_to_parse_keeps_no_memory();
+    test_clearing_the_library_gives_back_every_block();
     test_animation_rejects_bad_input();
     test_player_holds_each_frame_for_its_ticks();
     test_player_loops_and_catches_up_after_a_stall();

@@ -418,6 +418,45 @@ static void test_slow_reads_hold_the_frame_and_get_reported_as_late(void)
     CHECK_HAS_TEXT(log_text(), "frames_shown=2 frames_total=2 late_frames=1");
 }
 
+static void test_choosing_another_animation_drops_the_old_ones_unread_pages(void)
+{
+    set_up_platform();
+    set_up_browsing_assets();
+    add_text_file("assets/animations/walk.anim", "animation walk\nloops 1\nframe page_a 6 0 0 10 10 0 0 1 1\nframe page_b 6 0 0 10 10 0 0 1 1\nframe page_c 6 0 0 10 10 0 0 1 1\nframe page_d 6 0 0 10 10 0 0 1 1\n");
+    add_texture("page_a", 8, 8);
+    add_texture("page_b", 8, 8);
+    add_texture("page_c", 8, 8);
+    add_texture("page_d", 8, 8);
+    fake_reader_hold_reads(1);
+    viewer_app_start("assets");
+    CHECK_INT(texture_cache_loading_count(), 4);
+    viewer_app_show_animation("idle");
+    CHECK_INT(texture_cache_loading_count(), TEXTURE_CACHE_READS_AT_ONCE + 1);
+    viewer_app_stop();
+}
+
+static void test_frame_whose_page_a_full_cache_turned_away_waits_instead_of_drawing_magenta(void)
+{
+    char name[16];
+    int index;
+
+    set_up_platform();
+    set_up_browsing_assets();
+    add_text_file("assets/animations/idle.anim", "animation idle\nloops 0\nframe walk_page 6 0 0 10 10 0 0 1 1\nframe page_turned_away 6 0 0 10 10 0 0 1 1\n");
+    viewer_app_start("assets");
+    run_frames(5);
+    fake_reader_hold_reads(1);
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
+        snprintf(name, sizeof(name), "t%d", index);
+        texture_cache_use_or_start_loading(name);
+    }
+    scene_stage_set_object("extra", "idle", 0.0f, 0.0f, 0, 0);
+    run_frames(20);
+    viewer_app_stop();
+    CHECK_HAS_TEXT(log_text(), "texture_cache full name=");
+    CHECK_HAS_TEXT(log_text(), "object=extra name=idle frames_shown=1 frames_total=2");
+}
+
 static void test_old_background_stays_until_the_new_one_has_loaded(void)
 {
     set_up_platform();
@@ -1903,6 +1942,8 @@ int main(void)
     test_list_widget_opens_selects_and_closes();
     test_list_widget_closes_after_a_selection();
     test_slow_reads_hold_the_frame_and_get_reported_as_late();
+    test_choosing_another_animation_drops_the_old_ones_unread_pages();
+    test_frame_whose_page_a_full_cache_turned_away_waits_instead_of_drawing_magenta();
     test_old_background_stays_until_the_new_one_has_loaded();
     test_status_text_reaches_the_hud();
     test_scene_waits_for_textures_before_running();
