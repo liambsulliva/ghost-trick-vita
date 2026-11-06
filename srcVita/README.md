@@ -1,32 +1,136 @@
 # srcVita
 
-Baseline PS Vita app: thin wrappers over vitaGL and VitaSDK primitives. The final VPK is built from this folder. Game assets are bundled later from the gitignored `extracted/` tree. Nothing from the ROM or remaster files lives here.
+The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real Vita and plays the opening of Chapter 1 at 60 fps, using art converted from the remaster.
 
-## Primitives
+The opening is a script for now, not the game running. The DS game logic, text boxes, audio and player input are not connected yet. See [What is missing](#what-is-missing).
 
-| Primitive | Files | DS boundary it replaces | Status |
-|---|---|---|---|
-| renderer | `include/renderer.h`, `src/renderer.c` | The DS 2D/3D draw path. The DS call names are not yet identified in `src/`; the boundary is described by role. | built |
-| input | `include/input.h`, `src/input.c` | The DS pad read the game polls each frame. Call names not yet identified in `src/`. | built |
-| timing | `include/timing.h`, `src/timing.c` | The DS frame and tick timing used for fixed-rate logic. Call names not yet identified in `src/`. | built |
-| file | `include/file.h`, `src/file.c` | The DS file read used to load game data. Path prefix is `FILE_APP_PREFIX` (`app0:/`). Call names not yet identified in `src/`. | built |
-| memory | `include/memory.h`, `src/memory.c` | The DS allocator `func_0202f624(size)`, which callers check for NULL (see `src/base/alloc_38.c`). | built |
-| audio | `include/audio.h`, `src/audio.c` | The DS sound driver. Call names not yet identified in `src/`. | stub |
+No game data lives in this folder. Converted assets, captures and reference video stay in the ignored `extracted/` and `build/` folders.
 
-`built` means the source compiles under host syntax checks with stub Vita headers. No build has run against VitaSDK yet, and nothing has run on a device.
+## Where things are
 
-## Build
+| Path | What it holds |
+|---|---|
+| `src/main.c` | The main loop: read input, update, draw, log |
+| `src/vita/` | Everything that calls the Vita SDK or vitaGL |
+| `src/app/` | Everything else. It has no Vita calls, so the tests can run it on a Mac |
+| `include/` | Headers for both |
+| `tests/unit`, `tests/widget`, `tests/integration` | C tests, from one function up to the whole app |
+| `tests/fakes/` | Stand-ins for `src/vita` that the C tests link against |
+| `tests/tools/` | Tests for the asset converter |
+| `tools/assets/` | The asset converter |
+| `tools/vita_loop.py` | Installs, launches and reads back from the Vita |
+| `tools/longplay_check.py` | Compares the Vita's screen against the reference video |
+| `tools/mutation_check.py` | Breaks the code on purpose to prove the tests notice |
+| `docs/asset_format.md` | The file formats shared by the converter and the app |
 
-Requires VitaSDK with `$VITASDK/bin` on `PATH`.
+A good first read is `src/app/viewer_app.c`, then `scene_player.c` and `scene_view.c`.
+
+## Build and test
+
+You need VitaSDK with vitaGL, vitaShaRK, SceShaccCgExt, libmathneon and taihen installed.
 
 ```bash
-VITASDK=/path/to/vitasdk PATH="$VITASDK/bin:$PATH" ./build.sh
+export VITASDK=/usr/local/vitasdk PATH="/usr/local/vitasdk/bin:$PATH"
 ```
 
-`build.sh` runs `make` and prints the path of `build/ghosttrick.vpk`. `param.sfo` is generated into `build/` by `vita-mksfoex` from the title and title ID in the `Makefile`. The title ID `GHTR00001` is a placeholder.
+```bash
+make -C srcVita -j8
+```
 
-## Notes
+The tests run on the Mac and need no SDK.
 
-- `src/main.c` draws a checker texture, one coloured triangle and one textured quad, then exits on START.
-- The texture comes from a generated buffer, not a file.
-- The heap size in `src/memory.c` is set by `_newlib_heap_size_user`. The value is a placeholder.
+```bash
+make -C srcVita test
+```
+
+```bash
+make -C srcVita/tools/assets test
+```
+
+```bash
+python3 -I srcVita/tools/mutation_check.py
+```
+
+Every mutation should be caught. A survivor means the tests have a gap.
+
+## Make the assets
+
+The converter reads your own copy of the remaster's Android files from `extracted/remaster_apk/`. It also needs ImageMagick's `magick`.
+
+```bash
+make -C srcVita/tools/assets
+```
+
+```bash
+python3 -I srcVita/tools/assets/convert_assets.py --set chapter1_opening --output extracted/vita_assets/chapter1_opening
+```
+
+`tools/assets/chapter1_opening.json` lists what goes into the set and scripts the scene.
+
+## Run on the Vita
+
+The loop needs Vita Companion on the Vita, at 10.0.0.151. It uses FTP on port 1337 and the command port 1338, which stay up while the app runs, so nobody has to touch the device.
+
+```bash
+python3 -I srcVita/tools/vita_loop.py upload-assets extracted/vita_assets/chapter1_opening
+```
+
+```bash
+python3 -I srcVita/tools/vita_loop.py install
+```
+
+After the first install, `deploy` swaps in a new `eboot.bin`, which is much faster. Quit before launching, because launching a running app does not restart it.
+
+```bash
+python3 -I srcVita/tools/vita_loop.py deploy
+```
+
+```bash
+python3 -I srcVita/tools/vita_loop.py quit
+```
+
+```bash
+python3 -I srcVita/tools/vita_loop.py launch
+```
+
+```bash
+python3 -I srcVita/tools/vita_loop.py log
+```
+
+The log is `ux0:data/ghosttrick/run.log`. Each second it records frame timing, free memory and texture totals, and each animation reports which frames it showed and how many arrived late. Run `vita_loop.py` with `--help` for the other commands, including `capture <name>`, which saves the screen and pulls it back as a BMP.
+
+## Check against the reference video
+
+This needs the reference video at `extracted/reference/chapter1_720p60.mp4`, plus `ffmpeg`, `magick` and Python's `numpy`.
+
+```bash
+python3 -I srcVita/tools/longplay_check.py
+```
+
+It uploads temporary scenes that hold one exact pose, captures each on the Vita, deletes them, and compares each capture with the matching video frame. It fails if a sprite sits more than 0.4 DS pixels from the video, if the picture differs too much, or if motion frames match the video out of order. Side-by-side images land in `build/longplay_check/`. Use `--score-only` to re-score saved captures without the device.
+
+## Measured on the Vita
+
+| What | Result |
+|---|---|
+| Frame rate through the full scene | 59.9 fps, about 16.68 ms a frame, no slow frames outside captures |
+| Draw time | about 0.4 ms a frame |
+| Late or skipped animation frames | none (14 of 14 and 38 of 38 frames shown) |
+| Scene preload | about 2.4 s for 39 textures, none missing |
+| Asset size | 8.6 MB of files, about 20 MB of texture memory |
+| Free memory during the scene | about 66 MB video, 147 MB main |
+| Sprite placement against the video | 0 offset on all 29 object and motion measurements |
+
+vitaGL rounds compressed textures up to power-of-two sizes, so a texture can take about twice its file size in memory. The cache counts the rounded size, and the converter crops each atlas page to the cells in use.
+
+## What is missing
+
+- **Game logic.** The scene is a fixed script. Running the DS scene scripts needs a VM for 57 opcodes, and the DS logic still has to be brought up behind these Vita layers.
+- **The opening's spotlights and narration.** The real opening hides most of the room behind black with spotlight shapes, and shows narration over it. Here the room is fully lit, and the art for the spotlight shapes has not been identified.
+- **Text boxes, speech bubbles, effects and the HUD.** None are drawn yet.
+- **Audio.** `src/vita/audio.c` is a stub.
+- **Input.** Buttons only drive the debug viewer: LEFT, RIGHT, UP and DOWN browse, CROSS pauses, TRIANGLE toggles the HUD, R opens the list, L restarts the scene, SQUARE saves a capture and START quits.
+
+Some scene timing is hand-tuned rather than taken from the game: message holds use a fixed length, card fades were borrowed from Chapter 2, and the scene ends with a pan across the room so every object gets seen. The side bars are the remaster's art darkened to 0.46, a value measured from the video whose cause is unknown.
+
+The converter was built and checked with the Android files only. The Steam copy has not been compared.

@@ -30,10 +30,11 @@ Verified functions are recorded in [config/decomp_progress.json](config/decomp_p
 ## Working on the port
 
 - [Handoff and local setup](HANDOFF.md)
+- [The Vita app: build, test, run on the device](srcVita/README.md)
 - [Asset inventory and build baseline](docs/inventory.md)
 - [DS-to-remaster animation mapping](docs/frame_mapping.md)
 - [Decompilation workflow references](docs/decomp_workflow.md)
 
 The decompilation workflow draws on [ds-decomp](https://github.com/AetiasHax/ds-decomp) and the compiler-driven, AI-assisted process in [sm64ds-decomp](https://github.com/tangosdev/sm64ds-decomp). Their game-specific compiler pins and ARM-only matching assumptions are not applied blindly to Ghost Trick's mostly Thumb code.
 
-Build inputs come from the user's own copies. ROMs, extracted assets, proprietary tools and reference footage stay local and gitignored. The current remaster format research must still be checked against the user's Steam copy. The Vita application is not ready for installation yet.
+Build inputs come from the user's own copies. ROMs, extracted assets, proprietary tools and reference footage stay local and gitignored. The current remaster format research must still be checked against the user's Steam copy. The Vita app in [srcVita](srcVita/README.md) installs and runs on real hardware, where it plays the opening of Chapter 1 at 60 fps from locally converted remaster art. It is a scripted scene so far: the DS game logic, text, audio and input are not connected yet.

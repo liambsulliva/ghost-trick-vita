@@ -22,21 +22,29 @@ The scene scripts (`stNN/*_Expand.xml`, `1LMG` bytecode) refer to on-screen obje
 
 ## Remaster side: how animations are stored
 
-`charfiles/2d/<group>/stNN/<object>/stNN_<object>_<anim>/`, with one texture per frame plus one `.user` file per animation.
+`charfiles/2d/<group>/stNN/<object>/stNN_<object>_<anim>/`, with one or more atlas pages plus one `.user` file per animation. A page is a grid of cells, and each frame is one cell.
 
-- 415 stage-scoped objects, 2,552 animations, 8,263 frame textures.
+- 415 stage-scoped objects, 2,552 animations, 8,263 atlas pages.
 - Animation IDs are sparse per object. For example, the stage 1 bicycle has 0 and 4 to 9, which suggests the numbers come from an older scheme.
 
-One `.user` file, stage 1 bicycle animation 6, decoded:
+Each `.user` file is a list of RSZ objects: a sheet, the frame records, and an animation root. Stage 1 bicycle animation 6 has 5 pages and 195 records.
 
-- A resource list of the animation's 5 frame textures, then RSZ instance data.
-- 195 keyframe records. Each holds:
-  - an array of the 5 texture names
-  - an atlas size (2048×2048) and a rectangle (232×348)
-  - a time counter that moves in steps of 2 or 4 ticks
-  - an x/y position in DS-scale pixels (x 122 to 468, y 61 to 140)
-  - a keyframe index
-  - several packed 16-bit pairs that look like DS sprite (OAM) attributes
+- The sheet lists the page textures, the atlas size, the cell size and how many cells each page holds. The bicycle uses a 2048×2048 atlas with 232×348 cells.
+- A record holds 20 16-bit values, a reference to the sheet, an x/y position, a cell number and three small adjust values. A record with `s[0] == 0` and position (0, 0) draws nothing.
+- The root lists the records and holds five trailing values. `tail[1]` is the DS frame count, and `tail[3]` and `tail[4]` shift the whole animation.
+
+A cell's place on its page comes from the grid: `x = (local % columns) * cell_width`, `y = (local / columns) * cell_height`.
+
+A frame's top-left corner, in DS pixels relative to its object:
+
+```
+left = pos.x / 4 - 256 - (s[1] - s[6]) / 2 + tail[3] / 4
+top  = pos.y / 4 - 128 - (s[2] - s[7]) / 2 + tail[4] / 4
+```
+
+A difference of exactly ±1 between `s[1]` and `s[6]`, or `s[2]` and `s[7]`, adds nothing. Frame size is the cell size divided by 4, because the remaster draws at 4× DS pixels. `tail[3]` and `tail[4]` were fitted on five objects, not derived from code, and the record's adjust values are unused because they gave wrong positions. Records run at 60 ticks per second, and a DS frame lasts 4 ticks, so a timeline has 1, 2 or 4 records per DS frame. Flipping is a DS runtime flag, and looping comes from the DS motion table.
+
+`srcVita/tools/assets/frame_layout.py` is the working version of these rules.
 
 The timing and coordinates look DS-derived. Capcom appears to have converted DS animation behavior into the remaster and drawn new art for each frame.
 

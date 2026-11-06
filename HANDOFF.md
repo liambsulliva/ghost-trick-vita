@@ -90,10 +90,10 @@ Updated 2026-11-04. This is a compacted copy of the 2026-10-31 handoff, which wa
 **Game data and legal**
 - Game-derived data stays out of git and chat: no dialogue or story text, no art, no rendering of game characters. `tools/rom_audit.py` enforces the git side. `extracted/` and `toolchain/` are gitignored.
 - DS overlay 0 (DS Protect, anti-piracy) is out of scope.
-- The Android APK in `~/Developer/` is a modified third-party repack. Use it for format research only, and recheck results on the user's Steam copy.
+- The Android APK in `~/Developer/` is a modified third-party repack. Use it for format research, and recheck results on the user's Steam copy. On 2026-11-05 the user asked for the Vita app to be built from these assets, so `srcVita/tools/assets` converts from it into the ignored `extracted/vita_assets/`.
 
 **Hardware and network**
-- The Vita is off to save battery. Ask the user to turn it on before any device test.
+- The Vita is off to save battery when no one is using it. Decomp campaign tests still ask first. The `srcVita` device loop on branch `vita-app` is authorized to run without asking (user, 2026-11-05); see `srcVita/README.md`.
 - The user runs a VPN that drops connections. When the user says "VPN connected, continue", retry the same command.
 
 ## How to match
@@ -353,7 +353,7 @@ Do not decide these yourself.
 
 **Next steps for the port** (`docs/chapter1.md`)
 1. Trace Chapter 1's entry, its completion transition and its resource dependencies, starting at the `st01_game000` oracle path.
-2. Set up VitaSDK and build an installable viewer with a small converted asset set. Measure frame time and free memory. Ask the user to power on the Vita when the build is ready. The repo has no Vita application yet.
+2. Set up VitaSDK and build an installable viewer with a small converted asset set. Measure frame time and free memory. Done on 2026-11-05: `srcVita/` installs, runs at 60 fps on the device and plays the opening scene from a script.
 3. Bring up the Chapter 1 DS logic with Vita replacements for file, memory, timing, input, renderer and audio. Leave DS Protect out.
 4. Implement only the chapter's required art, motions, default poses and single-screen UI. Calibrate timing and placement against the reference video.
 5. Package an opening-to-completion build with working retry and checkpoints, then collect the user's on-device feedback.
