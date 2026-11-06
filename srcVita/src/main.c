@@ -97,6 +97,8 @@ static int run_one_command(const struct command *command)
         music_request_starve(command->number);
         run_log_write(LOG_FOR_TOOLS_MUSIC_STARVE_COMMAND, command->number);
 #ifdef FAST_FORWARD_BUILD
+    } else if (command->kind == COMMAND_AUTO_PLAY) {
+        script_player_set_auto_play(command->number);
     } else if (command->kind == COMMAND_FAST_FORWARD) {
         script_player_set_fast_forward(command->number);
     } else if (command->kind == COMMAND_FAST_FORWARD_UNTIL) {

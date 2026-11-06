@@ -19,6 +19,7 @@ void script_player_ghost_button(void);
 void script_player_tap_balloon(int is_right);
 void script_player_direction(int direction_x, int direction_y);
 void script_player_held_direction(int held_x, int held_y);
+void script_player_set_auto_play(int is_on);
 void script_player_set_fast_forward(int ticks_per_frame);
 void script_player_run_until(const char *kind, const char *name);
 void script_player_note_mark(const char *what, const char *name);

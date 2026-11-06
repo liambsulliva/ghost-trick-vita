@@ -21,6 +21,7 @@
 #define DEBUG_ARG_PREFIX "debug"
 #define STUCK_AFTER_ANY_TICKS 3000
 #define STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT 18000
+#define STUCK_AFTER_TICKS_WHEN_PLAYING_AT_A_HUMAN_PACE 3600
 #define STUCK_PUSHES_BEFORE_LEAVING_THE_SCRIPT 60
 
 static const char *vm_kind_name(enum script_vm_kind kind)
@@ -1249,7 +1250,7 @@ static int something_is_running_to_a_known_end(const struct script_machine *mach
 
 static int game_waits_on_a_press_that_works(const struct script_machine *machine)
 {
-    if (machine->auto_press) {
+    if (machine->auto_press == SCRIPT_AUTO_FAST) {
         return 0;
     }
     if (script_soul_waits_on_the_player(machine)) {
@@ -1441,14 +1442,20 @@ static void push_when_stuck(struct script_machine *machine)
         return;
     }
     if (game_waits_on_a_press_that_works(machine)) {
-        machine->last_new_site_tick = machine->tick;
+        if (machine->auto_press == SCRIPT_AUTO_OFF) {
+            machine->last_new_site_tick = machine->tick;
+            machine->last_timer_tick = machine->tick;
+            return;
+        }
         machine->last_timer_tick = machine->tick;
-        return;
+        if (quiet_ticks < STUCK_AFTER_ANY_TICKS) {
+            return;
+        }
     }
     if (something_is_running_to_a_known_end(machine)) {
         machine->last_timer_tick = machine->tick;
     }
-    if (!machine->auto_press && script_soul_world_is_playable(machine) && quiet_ticks < STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT) {
+    if (machine->auto_press != SCRIPT_AUTO_FAST && script_soul_world_is_playable(machine) && quiet_ticks < (machine->auto_press == SCRIPT_AUTO_PACED ? STUCK_AFTER_TICKS_WHEN_PLAYING_AT_A_HUMAN_PACE : STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT)) {
         return;
     }
     if (quiet_ticks < STUCK_AFTER_ANY_TICKS && (quiet_ticks < STUCK_AFTER_QUIET_TICKS || machine->tick - machine->last_timer_tick < STUCK_AFTER_QUIET_TICKS)) {

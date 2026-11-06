@@ -7,6 +7,9 @@
 #define NORMAL_PLAY_MODE 3
 #define AUTO_TRICK_TICKS 30u
 #define AUTO_TUTORIAL_TICKS 3u
+#define PACED_TRICK_TICKS 90u
+#define PACED_TUTORIAL_TICKS 30u
+#define PACED_TICKS_TO_READ_A_PAGE 120u
 #define NO_CORE (-1)
 #define TRICK_ACTION_AFTER_TICKS 8
 #define TIME_JUMP_AFTER_TICKS 30
@@ -493,15 +496,37 @@ static void move_free_camera(struct script_machine *machine)
     script_machine_scroll_camera(machine, soul->held_x * CAMERA_FREE_SPEED_PIXELS, soul->held_y * CAMERA_FREE_SPEED_PIXELS);
 }
 
+static void press_when_the_page_has_been_read(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (machine->auto_press == SCRIPT_AUTO_FAST) {
+        machine->press_is_pending = 1;
+        return;
+    }
+    if (machine->talk.phase != SCRIPT_TALK_WAITING && !script_narration_wants_a_press(&machine->narration)) {
+        soul->auto_reading_ticks = 0;
+        return;
+    }
+    soul->auto_reading_ticks = soul->auto_reading_ticks + 1;
+    if (soul->auto_reading_ticks >= PACED_TICKS_TO_READ_A_PAGE) {
+        soul->auto_reading_ticks = 0;
+        machine->press_is_pending = 1;
+        machine->last_new_site_tick = machine->tick;
+    }
+}
+
 static void play_automatically(struct script_machine *machine)
 {
     struct script_soul *soul;
 
     soul = &machine->soul;
     if ((machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine)) || script_narration_wants_a_press(&machine->narration)) {
-        machine->press_is_pending = 1;
+        press_when_the_page_has_been_read(machine);
         return;
     }
+    soul->auto_reading_ticks = 0;
     if (soul->camera_tutorial_is_on) {
         script_machine_scroll_camera(machine, CAMERA_FREE_SPEED_PIXELS, CAMERA_FREE_SPEED_PIXELS);
         return;
@@ -510,11 +535,11 @@ static void play_automatically(struct script_machine *machine)
         return;
     }
     if (soul->tutorial_mode != TUTORIAL_NONE) {
-        soul->next_auto_try_tick = machine->tick + AUTO_TUTORIAL_TICKS;
+        soul->next_auto_try_tick = machine->tick + (machine->auto_press == SCRIPT_AUTO_FAST ? AUTO_TUTORIAL_TICKS : PACED_TUTORIAL_TICKS);
         machine->press_is_pending = 1;
         return;
     }
-    soul->next_auto_try_tick = machine->tick + AUTO_TRICK_TICKS;
+    soul->next_auto_try_tick = machine->tick + (machine->auto_press == SCRIPT_AUTO_FAST ? AUTO_TRICK_TICKS : PACED_TRICK_TICKS);
     if (soul->is_on && soul->player_opened_soul_view) {
         step_to_next_core(machine);
         machine->press_is_pending = 1;
@@ -545,7 +570,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         soul->start_message_at = -1;
         script_machine_send(machine, "*", "SYSTEM", "SV_START");
     }
-    if (machine->auto_press) {
+    if (machine->auto_press != SCRIPT_AUTO_OFF) {
         play_automatically(machine);
     }
     if (machine->press_is_pending) {

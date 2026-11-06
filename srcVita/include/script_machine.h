@@ -179,6 +179,12 @@ struct script_recent_fetch {
     const char *object_name;
 };
 
+enum script_auto_play {
+    SCRIPT_AUTO_OFF,
+    SCRIPT_AUTO_FAST,
+    SCRIPT_AUTO_PACED
+};
+
 struct script_timed_event {
     const char *target;
     const char *verb;
@@ -205,6 +211,7 @@ struct script_soul {
     int held_y;
     long long start_message_at;
     unsigned int next_auto_try_tick;
+    unsigned int auto_reading_ticks;
     int action_is_due_in;
     int action_object;
     int action_slot;

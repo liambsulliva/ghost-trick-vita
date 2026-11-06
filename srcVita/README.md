@@ -161,7 +161,7 @@ The main thread never touches the decoder. It posts a request to the mailbox and
 
 ## Fast forward build
 
-An agent can play through the game far faster than a person with this build:
+An agent can play through the game by itself with this build, at normal speed or far faster than a person:
 
 ```bash
 make -C srcVita FAST_FORWARD=1
@@ -171,6 +171,7 @@ It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`,
 
 | Line | What it does |
 |---|---|
+| `auto_play`, `auto_play off` | Play by itself at normal speed, with sound and pauses long enough to read each page |
 | `ff <n>` | Run `n` script ticks per frame, pressing buttons by itself |
 | `ff_until script <name>`, `ff_until act <name>`, `ff_until tick <n>` | Fast forward until that point, then pause |
 | `resume` | Carry on from a pause |

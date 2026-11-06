@@ -56,6 +56,7 @@ static int is_available;
 static int is_active;
 static int is_paused;
 static int read_step;
+static int auto_play_is_on;
 static int preload_row;
 static int preload_passes;
 static const char *preload_music_name;
@@ -248,11 +249,19 @@ static void request_audio(void)
     }
 }
 
+static enum script_auto_play wanted_auto_play(void)
+{
+    if (ticks_per_frame_when_fast > 0) {
+        return SCRIPT_AUTO_FAST;
+    }
+    return auto_play_is_on ? SCRIPT_AUTO_PACED : SCRIPT_AUTO_OFF;
+}
+
 static void begin_loading_animations(void)
 {
     script_bridge_start(&data->tables);
     data->machine.timing = data->tables.timing;
-    data->machine.auto_press = ticks_per_frame_when_fast > 0;
+    data->machine.auto_press = wanted_auto_play();
     memcpy(data->machine.room_bounds, data->tables.room_bounds, sizeof(data->machine.room_bounds));
     request_audio();
     preload_row = 0;
@@ -388,7 +397,7 @@ static void stop_at_the_run_until_point(void)
     run_log_write("script reached tick=%u point=%s", data->machine.tick, run_until_name);
     run_until_kind[0] = '\0';
     ticks_per_frame_when_fast = 0;
-    data->machine.auto_press = 0;
+    data->machine.auto_press = wanted_auto_play();
     script_bridge_set_quiet(0);
     is_paused = 1;
 }
@@ -619,11 +628,20 @@ void script_player_held_direction(int held_x, int held_y)
     }
 }
 
+void script_player_set_auto_play(int is_on)
+{
+    auto_play_is_on = is_on;
+    if (data != NULL) {
+        data->machine.auto_press = wanted_auto_play();
+    }
+    run_log_write("script auto_play on=%d", is_on);
+}
+
 void script_player_set_fast_forward(int ticks_per_frame)
 {
     ticks_per_frame_when_fast = ticks_per_frame;
     if (data != NULL) {
-        data->machine.auto_press = ticks_per_frame > 0;
+        data->machine.auto_press = wanted_auto_play();
     }
     script_bridge_set_quiet(ticks_per_frame > 0);
     if (ticks_per_frame > 0) {

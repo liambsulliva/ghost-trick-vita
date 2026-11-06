@@ -232,7 +232,9 @@ int main(int argument_count, char **arguments)
             talk_close_ticks[talk_close_count] = (unsigned int)atoi(arguments[++index]);
             talk_close_count = talk_close_count + 1;
         } else if (strcmp(arguments[index], "--auto-press") == 0) {
-            auto_press = 1;
+            auto_press = SCRIPT_AUTO_FAST;
+        } else if (strcmp(arguments[index], "--auto-paced") == 0) {
+            auto_press = SCRIPT_AUTO_PACED;
         } else if (strcmp(arguments[index], "--marks") == 0) {
             marks_to_stdout = 1;
         } else if (strcmp(arguments[index], "--rows") == 0) {

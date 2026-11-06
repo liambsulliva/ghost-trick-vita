@@ -74,6 +74,11 @@ static int read_fast_forward_command(const char *line, struct command *command)
     char kind[16];
     char name[ASSET_NAME_MAX];
 
+    if (strcmp(line, "auto_play") == 0 || strcmp(line, "auto_play off") == 0) {
+        command->kind = COMMAND_AUTO_PLAY;
+        command->number = strcmp(line, "auto_play") == 0;
+        return 1;
+    }
     if (sscanf(line, "ff %d", &command->number) == 1) {
         command->kind = COMMAND_FAST_FORWARD;
         return 1;
