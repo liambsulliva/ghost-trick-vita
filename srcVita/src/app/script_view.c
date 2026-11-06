@@ -82,11 +82,17 @@
 #define LIGHTNING_LUMP_RADIUS_SPREAD 16.0f
 #define TOOLTIP_LINE_THICKNESS 2.0f
 #define FILM_STRIP_TEXTURE "film_strip"
-#define FILM_BAND_HEIGHT 34.0f
-#define FILM_TILE_SIZE 60.0f
-#define FILM_TILE_TOP -13.0f
+#define FILM_CORNER_TEXTURE "film_corner"
+#define FILM_TILE_SIZE 45.0f
+#define FILM_FIRST_TILE_X -31.5f
+#define FILM_TILE_ABOVE_SCREEN 5.8f
+#define FILM_CORNER_WIDTH 45.0f
+#define FILM_CORNER_WHOLE_HEIGHT 56.25f
+#define FILM_CORNER_FIRST_V 0.1625f
+#define FILM_CORNER_TOP 31.5f
+#define FILM_CORNER_BEYOND_SCREEN 19.7f
 #define MOVIE_FRAMES_LOADED_AHEAD 4
-#define MOVIE_NAME_EXTRA 16
+#define MOVIE_NAME_EXTRA 20
 #define SWIRL_TEXTURE "swirl_back"
 #define SWIRL_PARTICLE_TEXTURE "swirl_particle"
 #define SWIRL_SIZE 1200.0f
@@ -125,7 +131,6 @@ struct view_core_mark {
     int is_dead;
 };
 
-static const struct renderer_color film_band_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 static const struct renderer_color movie_black = { 0.0f, 0.0f, 0.0f, 1.0f };
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color text_colors[SCRIPT_TALK_COLOR_COUNT] = {
@@ -848,22 +853,46 @@ static void draw_swirl(void)
     }
 }
 
+static void draw_film_corner(float x, int is_at_left, int is_at_bottom)
+{
+    const struct cached_texture *texture;
+    struct renderer_rect area;
+    struct renderer_rect part;
+
+    texture = texture_cache_use_or_start_loading(FILM_CORNER_TEXTURE);
+    if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
+        return;
+    }
+    area.x = x;
+    area.width = FILM_CORNER_WIDTH;
+    area.height = FILM_CORNER_WHOLE_HEIGHT * (1.0f - FILM_CORNER_FIRST_V);
+    area.y = is_at_bottom ? (float)RENDERER_HEIGHT - FILM_CORNER_TOP - area.height : FILM_CORNER_TOP;
+    part.x = is_at_left ? 1.0f : 0.0f;
+    part.width = is_at_left ? -1.0f : 1.0f;
+    part.y = is_at_bottom ? 1.0f : FILM_CORNER_FIRST_V;
+    part.height = is_at_bottom ? FILM_CORNER_FIRST_V - 1.0f : 1.0f - FILM_CORNER_FIRST_V;
+    renderer_draw_sprite(texture->texture, area, part, white);
+}
+
 static void draw_film_frame(void)
 {
-    struct renderer_rect line;
-    int index;
+    float left_corner_x;
+    float right_corner_x;
+    float tile_x;
 
     if (!film_frame_is_on) {
         return;
     }
-    line.x = 0.0f;
-    line.y = 0.0f;
-    line.width = (float)RENDERER_WIDTH;
-    line.height = FILM_BAND_HEIGHT;
-    renderer_draw_filled_rect(line, film_band_color);
-    for (index = 0; (float)index * FILM_TILE_SIZE < (float)RENDERER_WIDTH; index++) {
-        draw_named_texture(FILM_STRIP_TEXTURE, (float)index * FILM_TILE_SIZE, FILM_TILE_TOP, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
+    for (tile_x = FILM_FIRST_TILE_X; tile_x < (float)RENDERER_WIDTH; tile_x += FILM_TILE_SIZE) {
+        draw_named_texture(FILM_STRIP_TEXTURE, tile_x, -FILM_TILE_ABOVE_SCREEN, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
+        draw_named_texture(FILM_STRIP_TEXTURE, tile_x, (float)RENDERER_HEIGHT - FILM_TILE_SIZE + FILM_TILE_ABOVE_SCREEN, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
     }
+    left_corner_x = -FILM_CORNER_BEYOND_SCREEN;
+    right_corner_x = (float)RENDERER_WIDTH + FILM_CORNER_BEYOND_SCREEN - FILM_CORNER_WIDTH;
+    draw_film_corner(left_corner_x, 1, 0);
+    draw_film_corner(right_corner_x, 0, 0);
+    draw_film_corner(left_corner_x, 1, 1);
+    draw_film_corner(right_corner_x, 0, 1);
 }
 
 static int movie_frame_is_ready(int frame, const struct cached_texture **texture)
