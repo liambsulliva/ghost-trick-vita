@@ -2,7 +2,7 @@
 
 The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real Vita and plays the opening of Chapter 1 at 60 fps, using art converted from the remaster.
 
-The opening is a script for now, not the game running. The DS game logic, text boxes, audio and player input are not connected yet. See [What is missing](#what-is-missing).
+The opening is a hand-written scene for now, not the game running. It has the opening's music, sounds, narration, balloons and spotlights. The DS game logic, talk text boxes and player input are not connected yet. See [What is missing](#what-is-missing).
 
 No game data lives in this folder. Converted assets, captures, reference video and the text key stay in the ignored `extracted/` and `build/` folders.
 
@@ -179,11 +179,10 @@ vitaGL rounds compressed textures up to power-of-two sizes, so a texture can tak
 
 ## What is missing
 
-- **Game logic.** The scene is a fixed script. Running the DS scene scripts needs a VM for 57 opcodes, and the DS logic still has to be brought up behind these Vita layers.
-- **The opening's spotlights and narration.** The real opening hides most of the room behind black with spotlight shapes, and shows narration over it. Here the room is fully lit, and the art for the spotlight shapes has not been identified.
-- **Text boxes, speech bubbles, effects and the HUD.** None are drawn yet.
+- **Game logic.** The scene is a fixed script. Running the DS scene scripts needs a VM. The saved trace runs 61 distinct opcodes from boot to the end of the opening and 63 in all, and Chapter 1's scripts hold 152, of which 89 no trace has run. The DS logic still has to be brought up behind these Vita layers.
+- **Talk text boxes, most effects and the HUD.** None are drawn yet. The opening's narration and its balloons are.
 - **Player input.** There is nothing to play yet. CROSS skips to the next step of the script, or replays the scene once it has ended. SQUARE saves a capture and START quits.
 
-Some scene timing is hand-tuned rather than taken from the game: message holds use a fixed length, card fades were borrowed from Chapter 2, and the scene ends with a pan across the room so every object gets seen.
+The scene's timing is hand-tuned against the reference video rather than taken from the game.
 
 The converter was built and checked with the Android files only. The Steam copy has not been compared.

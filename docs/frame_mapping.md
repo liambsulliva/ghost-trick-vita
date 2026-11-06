@@ -58,7 +58,7 @@ The only matches were short coincidences. One relative-x run matched 8 of 193 ke
 
 This search did not find the remaster's baked position track. The later motion-table decode below does find DS frame durations and position commands; runtime playback combines them with the object and script state.
 
-The later frame-count comparison rules out a per-frame texture replacement. The DS code owns object world position and game logic, while the renderer plays the corresponding remaster timeline, including its local positions and timing. The reference video is still needed to calibrate that playback.
+The later frame-count comparison rules out a per-frame texture replacement. The DS code owns object world position and game logic, while the DS motion table picks which remaster record to show on each tick, with that record's local position. The rule is in [DS frames do not map one to one onto remaster frames](#ds-frames-do-not-map-one-to-one-onto-remaster-frames).
 
 ## Debug strings in the code
 
@@ -127,7 +127,7 @@ None of the three holds animation sequences, meaning which frames make up animat
 
 The DS animates with many pre-drawn frames. The remaster uses a few drawings moved by keyframes: bicycle animation 6 plays 5 textures across 195 keyframes, each with its own position.
 
-**What this means for the port:** a per-frame texture swap is not possible. The hook has to sit at the start of an animation: when DS code starts animation N on object X, the port plays the remaster's whole `stNN_X_N` timeline, with its textures, keyframe positions and timing, in place of the DS frames. The DS code still owns the object's world position and game logic.
+**What this means for the port:** a per-frame texture swap is not possible. The DS motion table drives the remaster record by record: `record = frame * rpf + (ticks_since_frame_started * rpf) / 4`, where `rpf` is the timeline's records per DS frame, 1, 2 or 4. The 4 is how long a frame word holds, and this rule is checked only for such frames: all 12,904 frame words in Chapter 1's 12 chain files hold 4 ticks. Across all 929 files, 397 of 335,467 frame words in 51 files hold something else, from 0 to 60 ticks, including 3 words in `st01_game020`, which is outside the chain. How those map onto records is still open, and the player skips a word that holds 0. Playing a whole timeline when a motion starts fails on the 185 variant tables, which select part of a shared timeline, and on the 7 reversed tables (data). The DS code still owns the object's world position and game logic.
 
 ## Looking for the DS animation ID (two hypotheses ruled out)
 
@@ -165,7 +165,7 @@ Run `python3 -I tools/map_motions.py` to write the full mapping, unmatched folde
 
 The next gap investigation found object-local labels such as `guitar_wait.mtbl.xml` and `door_wait.mtbl.xml`, plus names without a numeric suffix such as `st06_sofa.mtbl.xml`. The new `motion_uses.tsv` report records their calling objects. `idle_candidates.tsv` proposes an existing `stNN_<object>_000` resource only when the calling object and shorter table name agree. This identifies candidates for 23 of the 63 unmatched stems, leaving 40 without a candidate. The confirmed naming totals remain 4,007/4,070.
 
-These are default-pose candidates, not verified animation aliases. All 339 candidate tables contain just frame 0 for four ticks, and 13 starts in the saved stage 1 trace use them. The remaster's bicycle `_000` resource references four textures, so starting its whole timeline for the DS's one-frame `bicycle_wait` could introduce unwanted movement. The hook needs stage, object and label context, plus a verified way to select and hold the default pose. Check this against the video and Steam before promoting candidates.
+These are default-pose candidates, not verified animation aliases. All 339 candidate tables contain just frame 0 for four ticks, and 13 starts in the saved stage 1 trace use them. Under the record rule a default pose is `record = frame * rpf` of the resolved folder, so the four textures of the remaster's bicycle `_000` resource add no movement to the DS's one-frame `bicycle_wait`. The hook still needs stage, object and label context. Check this against the video and Steam before promoting candidates.
 
 All 75 unresolved play-motion targets are zero. The VM turns zero into the script header pointer rather than a null pointer; its later-scene behavior remains unverified. See `docs/lmg_format.md` for the code path. The tool reports these explicitly as `zero_target` and does not turn them into mappings.
 

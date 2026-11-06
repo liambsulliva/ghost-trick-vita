@@ -26,13 +26,21 @@ The sizes add up exactly to the file size in every one of the 929 files.
 
 **Strings** (code). An operand that names a string is a u16 byte offset into the string table: `func_02027c28` returns `table_base + value`. Offset 0 is always `*`. The earlier attempt to read strings from 0x740a missed the table start (in stage 1 `game000` the table begins at 0x7408) and also read operands at the wrong boundaries.
 
-**Labels** (code, `func_02027c98`, lookup in `func_02027d4c`). A u32 count, then that many `(name_offset, target)` pairs, then a block of names. `name_offset` is relative to the start of the name block. `target` is a file offset into the code. The names are compiler labels (`_L$0004`), block names (`st01_game000`, `game`, `gameAct000`, `bicycle`, `bicycleAct010`), message IDs (`m01_0000`) and motion tables (`st01_bicycle_004.mtbl.xml`). Code looks labels up by name at runtime, for example to start an act.
+**Labels** (code, `func_02027c98`, lookup in `func_02027d4c`). A u32 count, then that many `(name_offset, target)` pairs, then a block of names. `name_offset` is relative to the start of the name block. `target` is a file offset into the code. The names are compiler labels (`_L$0004`), block names (`st01_game000`, `game`, `gameAct000`, `bicycle`, `bicycleAct010`), message IDs (`m01_0000`) and motion tables (`st01_bicycle_004.mtbl.xml`). Message and data paths look labels up by name at runtime: `func_02028518`, ops `0x38` and `0x7a`, and native code. No control opcode uses labels. Acts are reached by file offset through `0x23` (code).
 
 **Language files** (`*.en.xml`, `*.fr.xml` and so on) use the same container. Their code section holds only message blocks, labelled `mNN_NNNN`. The loader (`func_02051cd4`) loads the base script first and then the language file.
 
 ## The virtual machine
 
-The interpreter is `func_02023fdc` (Thumb, 9.5 KB). Its machine object holds `+4` code base (file + 0x34), `+8` pc in halfwords, `+0xc` wait counter, `+0x1c/+0x20` a 4-deep call stack. It reads the u16 at `code[pc]`, rejects values above 0x16a, and dispatches through a 363-entry halfword jump table at `0x02024020`. Each handler advances pc by a fixed amount (code). Some handlers call virtual methods: the base vtable is at `0x020a4cb4`, and two subclasses at `0x020abe14` and `0x020abec4` change a few lengths. The table in the decoder uses the `0x020abe14` subclass, which is the one that runs scene scripts.
+The interpreter is `func_02023fdc` (Thumb, 9.5 KB). Its machine object holds `+4` code base (file + 0x34), `+8` pc in halfwords, `+0xc` wait counter, `+0x1c/+0x20` a 4-deep call stack. It reads the u16 at `code[pc]`, rejects values above 0x16a, and dispatches through a 363-entry halfword jump table at `0x02024020`. Each handler advances pc by a fixed amount (code). Some handlers call virtual methods, and a few lengths change by subclass. The table in the decoder uses the lengths of the `0x020abe14` subclass.
+
+| Vtable | Runs (code, trace) |
+|---|---|
+| `0x020a4cb4` | base, never alone in the trace |
+| `0x020abdbc` | the script's root |
+| `0x020abec4` | each object's main body |
+| `0x020abe14` | one pass per act start, which registers that act's handlers |
+| `0x020abe6c` | handler bodies |
 
 **Opcode lengths** come from symbolically executing every handler in the disassembly and recording how much each path adds to pc. They were checked in three ways:
 1. A melonDS trace of 32,180 VM steps in stage 1 (`tools/trace_lmg.py`): every executed offset lands on an instruction boundary.
@@ -52,15 +60,15 @@ The interpreter is `func_02023fdc` (Thumb, 9.5 KB). Its machine object holds `+4
 | `0x19` | `19, 22, end:u32, name:str` | act (`bicycleAct010`). Registered by vtable `+0x20`, body at +5 words |
 | `0x1a` | `1a, 22, end:u32, sender:str, event:str` | event handler (`SYSTEM` `GAME START`, `core1` `action`, `EVENT` `shot`). Registered by `func_020511c0`, body at +6 words |
 
-Blocks end with `0x113` (handler), `0x112` (act) and `0x0000`. These ops do not advance and wait (code); what ends a block is not fully worked out.
+Blocks end with `0x113` (handler), `0x112` (act) and `0x0000`. These ops do not advance and wait (code). A main VM parks on `0x112` until a handler's `0x19` repoints it, so an object never falls through into the next act. The act scanner stops by peeking at that same `0x112` without fetching it. A handler ends when its pc sits on `0x113` with its wait at 0, also checked without a fetch, and its pc then goes back to the body start. `0x0000` never moves on.
 
 **Other opcodes worth knowing:**
 - `0x1d` `target:str, verb:str, arg:str` sends a message (`game EVENT next`).
 - `0x2f n` waits n frames.
-- `0x117` `mtbl:u32, a, b` plays a motion table on the current object. Its handler at `0x020254f0` calls `func_020280c8`, which calls `func_0205991c`, which stores the table pointer at object `+0x148`.
+- `0x117` `mtbl:u32, flag_a, flag_b` plays a motion table on the current object. Flag A keeps point 0 fixed in the world when the table starts. Flag B waits for the current frame's remaining ticks before switching. Its handler at `0x020254f0` calls `func_020280c8`, which calls `func_0205991c`, which stores the table pointer at object `+0x148`. That field is a queue the object's update takes up in the same tick.
 - `0x12e` is followed by a goto over an inline data block. The block looks like Shift-JIS text and is probably a developer comment.
 
-String operand positions in the decoder come from tracking operands that flow into `func_02027c28` (35 opcodes). U32 operand positions come from tracking operands passed to the unaligned u32 reader `func_020265c4` (29 opcodes). For `0xb0` this probably picks up a pair of s16 values, not an offset. All other operands are shown as signed 16-bit numbers. Opcode names other than those above are not assigned.
+String operand positions in the decoder come from tracking operands that flow into `func_02027c28` (35 opcodes). U32 operand positions come from tracking operands passed to the unaligned u32 reader `func_020265c4` (29 opcodes). For `0xb0` the decoder's u32 is the first of four u32 20.12 values, x, y, scale x and scale y, not an offset (code). The first operand of `0xbb` to `0xc0` is also a string, read inside a callee, so the decoder does not mark it (code, data). All other operands are shown as signed 16-bit numbers. Opcode names other than those above are not assigned.
 
 ## Motion tables (`*.mtbl.xml`)
 
@@ -71,13 +79,15 @@ Motion tables are data blocks inside the code section, each starting at a label 
 
 | Tag | Length | Use in the player |
 |---|---|---|
-| -3 | 3 | begin, `(a, b)`, via `func_02008734`. For example, `a` is 0xea7 to 0xead across the bicycle's tables |
-| -4 | 5 | box or two points; the start scan jumps here |
-| -12 | 3 | set object offset `(x, y)`, in pixels shifted by 12 |
-| -11 | 4 | set offset of layer `n` `(n, x, y)` |
-| -16 | 4 | `func_02059170(obj, a, b, c)` |
+| -3 | 3 | begin, `(resource_id, core_count)`, via `func_02008734`, which loads the cell set and then makes cores up to `core_count`. For example, `resource_id` is 0xea7 to 0xead across the bicycle's tables |
+| -4 | 5 | `(ax, ay, bx, by)`, flag A's start point and the point a loop carries on from; the start scan jumps here |
+| -12 | 3 | set point 0 `(x, y)`, in pixels shifted by 12 |
+| -11 | 4 | set point `n` `(n, x, y)` |
+| -16 | 4 | set core `n`'s local position, `func_02059170(obj, n, x, y)` |
 | -5 | 3 | frame plus explicit duration |
-| -13, -10, -6 | 2 | set a single value |
+| -10 | 2 | set a core's value: top 4 bits the core index, low 12 bits the value |
+| -13 | 2 | set the byte at object `+0xc2` |
+| -6 | 2 | set the byte at object `+0xdf` |
 | -9 | 3 | sound or effect id |
 | -8 | 11 | spawn an effect, with a string at word 6 |
 | -7 | 4 | send a message (three strings) |

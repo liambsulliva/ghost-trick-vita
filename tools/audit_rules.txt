@@ -44,3 +44,8 @@ magic 0 44445320 DDS texture
 name text_key.bin
 ext .so
 magic 0 7f454c46 ELF library
+ext .lmg
+ext .cues
+ext .motions
+ext .preload
+magic 0 7469636b0973657109766d golden trace

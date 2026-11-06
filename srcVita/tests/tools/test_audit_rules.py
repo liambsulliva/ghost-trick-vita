@@ -38,6 +38,11 @@ PLANTED_FILES = {
     "work_file.rgba": b"plain",
     "ogg_stream.txt": b"OggS" + PADDING,
     "dds_image.txt": b"DDS " + PADDING,
+    "a.lmg": b"plain",
+    "a.cues": b"plain",
+    "a.motions": b"plain",
+    "a.preload": b"plain",
+    "golden_rows.txt": b"tick\tseq\tvm\tcode_base" + PADDING,
 }
 NAMES_GIT_WOULD_QUOTE_OR_STRIP = ["caf\u00e9", 'quo"te', "ta\tb", "new\nline", "ends with a space "]
 

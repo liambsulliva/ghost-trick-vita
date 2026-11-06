@@ -27,7 +27,7 @@ No. Neither version uses skeletal animation for characters, so there is nothing 
 - `charfiles/3d/` is not 3D models. It holds face cut-ins, backlog, profiles, chapter cards, ending and effect images.
 - `SDF` (348 entries, 424 MB) is not animation. In the file list, `.sdf` and `.vsdf` live under `systems/`, so it is most likely shader data.
 
-**What this means for the port.** DS frame counts differ from the remaster's, so the renderer must start a whole remaster timeline when the DS starts a named motion table. The DS keeps world position and game logic. `tools/map_motions.py` matches 4,007 of 4,070 distinct animation stems in the Android file list, with 63 unmatched. These are naming matches; Steam assets and variant timing still need verification. See `docs/lmg_format.md` for the exact matching rule and coverage. What the remaster adds is higher-resolution 2D art, Ogg audio and new UI layouts.
+**What this means for the port.** DS frame counts differ from the remaster's, so the DS motion table drives the remaster record by record, as `docs/frame_mapping.md` explains. The DS keeps world position and game logic. `tools/map_motions.py` matches 4,007 of 4,070 distinct animation stems in the Android file list, with 63 unmatched. These are naming matches; Steam assets and variant timing still need verification. See `docs/lmg_format.md` for the exact matching rule and coverage. What the remaster adds is higher-resolution 2D art, Ogg audio and new UI layouts.
 
 ## Blockers
 

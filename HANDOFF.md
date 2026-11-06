@@ -338,7 +338,7 @@ Do not decide these yourself.
 
 **Assets and formats**
 - Remaster names are MurmurHash3 (seed 0xFFFFFFFF) of UTF-16LE `natives/android/<path>.<ext>.<version>`. `tools/re_names.py` names 82% of `re_chunk_000.pak`. Versions are in `tools/re_versions_android.txt`.
-- Characters live under `charfiles/2d/<group>/stNN/<object>/…`: per-frame textures plus one `.user` RSZ timeline. DS frames do not map one to one onto remaster frames. Bicycle has 94 DS frames and 32 remaster textures. When the DS starts an animation, the port plays the whole remaster timeline.
+- Characters live under `charfiles/2d/<group>/stNN/<object>/…`: per-frame textures plus one `.user` RSZ timeline. DS frames do not map one to one onto remaster frames. Bicycle has 94 DS frames and 32 remaster textures. The DS motion table drives the remaster record by record: `record = frame * rpf + (ticks_since_frame_started * rpf) / 4`. That rule is checked for frames that hold 4 ticks, the only kind in Chapter 1's chain. `docs/frame_mapping.md` has the counts for the rest of the game.
 - DS graphics: `cpac_2d.bin` and `cpac_3d.bin` (Capcom pack, KEY/DAT blocks). `extracted/cpac_checked/` has 24,853 2D entries. See `docs/cpac_format.md`.
 - Motion tables are labelled blocks named `stNN_<object>_<NNN>.mtbl.xml`. Frame words are `frame = v & 0x3ff` and `ticks = v >> 10`; commands use tags −1 to −16. The table player is `func_02007cd4`. Opcode 0x117 leads to func_020280c8 and func_0205991c, which store the table pointer at object `+0x148`.
 - Scene scripts are `1LMG` bytecode for a 16-bit VM, not XML. All 929 decode with `tools/lmg_decode.py`. See `docs/lmg_format.md`.
@@ -348,7 +348,7 @@ Do not decide these yourself.
 
 **Open items, not solved**
 - 75 motion calls target zero, and 104 jumps go to 0. The VM turns zero into a pointer to the script header, with no zero check. Do not label these as stop commands. Their reachability is unknown.
-- The meaning of header field +0x04, most opcode names, and motion-command meanings beyond their lengths.
+- The meaning of header field +0x04, and most opcode names. `docs/lmg_format.md` lists the motion commands as read so far.
 - Cross-stage naming is ambiguous. For example, a stage 13 guitar wait has both guitar 000 and 999 as candidates.
 
 **Next steps for the port** (`docs/chapter1.md`)
