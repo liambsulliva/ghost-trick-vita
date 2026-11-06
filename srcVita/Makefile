@@ -29,8 +29,12 @@ FAKE_SRCS   := $(wildcard tests/fakes/*.c)
 TEST_SRCS   := $(wildcard tests/unit/*.c) $(wildcard tests/integration/*.c)
 TEST_BINS   := $(patsubst tests/%.c,build/tests/%,$(TEST_SRCS))
 STB_VORBIS_TEST_OBJECT := build/test_objects/stb_vorbis.o
+TEST_HEADERS := $(wildcard include/*.h) $(wildcard tests/*.h) $(wildcard tests/fakes/*.h) $(wildcard tests/fixtures/*.h)
+APP_TEST_OBJECTS := $(patsubst src/app/%.c,build/test_objects/app/%.o,$(APP_SRCS))
+FAKE_TEST_OBJECTS := $(patsubst tests/fakes/%.c,build/test_objects/fakes/%.o,$(FAKE_SRCS))
+TEST_RUNS := $(addprefix run-,$(TEST_BINS))
 
-.PHONY: all clean check-sdk test test-binaries test-all always-rebuild
+.PHONY: all clean check-sdk test test-binaries test-parallel test-all always-rebuild $(TEST_RUNS)
 
 all: check-sdk build/$(TARGET).vpk
 
@@ -75,14 +79,33 @@ $(STB_VORBIS_TEST_OBJECT): $(STB_VORBIS_SOURCE)
 	@mkdir -p $(dir $@)
 	$(HOST_CC) -std=c99 -w -g -O0 -ffp-contract=off -include alloca.h $(STB_VORBIS_DEFINES) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -c $< -o $@
 
-build/tests/%: tests/%.c $(APP_SRCS) $(FAKE_SRCS) $(STB_VORBIS_TEST_OBJECT) $(wildcard include/*.h) $(wildcard tests/*.h) $(wildcard tests/fakes/*.h) $(wildcard tests/fixtures/*.h)
+build/test_objects/app/%.o: src/app/%.c $(TEST_HEADERS)
 	@mkdir -p $(dir $@)
-	$(HOST_CC) $(HOST_CFLAGS) $< $(APP_SRCS) $(FAKE_SRCS) $(STB_VORBIS_TEST_OBJECT) -o $@
+	$(HOST_CC) $(HOST_CFLAGS) -c $< -o $@
+
+build/test_objects/fakes/%.o: tests/fakes/%.c $(TEST_HEADERS)
+	@mkdir -p $(dir $@)
+	$(HOST_CC) $(HOST_CFLAGS) -c $< -o $@
+
+build/test_objects/tests/%.o: tests/%.c $(TEST_HEADERS)
+	@mkdir -p $(dir $@)
+	$(HOST_CC) $(HOST_CFLAGS) -c $< -o $@
+
+build/tests/%: build/test_objects/tests/%.o $(APP_TEST_OBJECTS) $(FAKE_TEST_OBJECTS) $(STB_VORBIS_TEST_OBJECT)
+	@mkdir -p $(dir $@)
+	$(HOST_CC) $(HOST_CFLAGS) $^ -o $@
+
+.SECONDARY:
 
 test-binaries: $(TEST_BINS)
 
 test: $(TEST_BINS)
 	@failed=0; for test_binary in $(TEST_BINS); do $$test_binary || failed=1; done; exit $$failed
+
+$(TEST_RUNS): run-%: %
+	@$*
+
+test-parallel: $(TEST_RUNS)
 
 test-all: test
 	$(MAKE) -C tools/assets test

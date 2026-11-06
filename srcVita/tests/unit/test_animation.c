@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "animation.h"
+#include "fakes/fake_platform.h"
 #include "test_support.h"
 
 static void test_animation_parses_all_fields(void)
@@ -151,9 +152,72 @@ static void test_player_holds_the_current_frame_until_the_next_is_ready(void)
     CHECK_INT(animation_player_count_shown_frames(&player), 2);
 }
 
+static char *text_with_frames(unsigned int frame_count, unsigned int *size)
+{
+    char *text;
+    unsigned int index;
+    unsigned int used;
+
+    text = malloc((frame_count + 1) * 40);
+    used = 0;
+    for (index = 0; index < frame_count; index++) {
+        used = used + (unsigned int)snprintf(&text[used], 40, "frame a %u 0 0 1 1 0 0 1 1\n", index + 1);
+    }
+    *size = used;
+    return text;
+}
+
+static void test_animation_holds_as_many_frames_as_its_file_has_up_to_the_limit(void)
+{
+    static struct animation animation;
+    unsigned int size;
+    char *text;
+
+    fake_memory_reset();
+    text = text_with_frames(ANIMATION_FRAME_MAX, &size);
+    CHECK_INT(animation_parse(text, size, &animation), ANIMATION_OK);
+    CHECK_INT(animation.frame_count, ANIMATION_FRAME_MAX);
+    CHECK_INT(animation.frames[ANIMATION_FRAME_MAX - 1].ticks, ANIMATION_FRAME_MAX);
+    animation_free_frames(&animation);
+    CHECK(animation.frames == NULL);
+    CHECK_INT(fake_memory_blocks_in_use(), 0);
+    free(text);
+}
+
+static void test_animation_only_asks_for_memory_for_its_own_frames(void)
+{
+    static struct animation animation;
+    unsigned int size;
+    char *text;
+
+    fake_memory_reset();
+    text = text_with_frames(3, &size);
+    fake_memory_set_largest_block(3 * sizeof(struct animation_frame));
+    CHECK_INT(animation_parse(text, size, &animation), ANIMATION_OK);
+    animation_free_frames(&animation);
+    fake_memory_set_largest_block(3 * sizeof(struct animation_frame) - 1);
+    CHECK_INT(animation_parse(text, size, &animation), ANIMATION_ERR_NO_MEMORY);
+    fake_memory_reset();
+    free(text);
+}
+
+static void test_animation_that_fails_to_parse_keeps_no_memory(void)
+{
+    static struct animation animation;
+    const char bad_second_frame[] = "frame a 1 0 0 1 1 0 0 1 1\nframe b 0 0 0 1 1 0 0 1 1\n";
+
+    fake_memory_reset();
+    CHECK_INT(animation_parse(bad_second_frame, sizeof(bad_second_frame) - 1, &animation), ANIMATION_ERR_BAD_TICKS);
+    CHECK_INT(fake_memory_blocks_in_use(), 0);
+    CHECK(animation.frames == NULL);
+}
+
 int main(void)
 {
     test_animation_parses_all_fields();
+    test_animation_holds_as_many_frames_as_its_file_has_up_to_the_limit();
+    test_animation_only_asks_for_memory_for_its_own_frames();
+    test_animation_that_fails_to_parse_keeps_no_memory();
     test_animation_rejects_bad_input();
     test_player_holds_each_frame_for_its_ticks();
     test_player_loops_and_catches_up_after_a_stall();

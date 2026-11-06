@@ -7,8 +7,8 @@ import tempfile
 
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEST_TIME_LIMIT_SECONDS = 60
-BUILD_ARGUMENTS = ["-B", "-j8", "test-binaries"]
-TEST_ARGUMENTS = ["test"]
+BUILD_ARGUMENTS = ["-j8", "test-binaries"]
+TEST_ARGUMENTS = ["-j8", "test-parallel"]
 PYTHON_TOOL_BUILD_ARGUMENTS = ["-C", "tools/assets", "-j8", "../../build/tools/music_reference", "../../build/tools/music_log_writer"]
 PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "test_audio_*.py"]
 
@@ -16,6 +16,10 @@ MUTATIONS = [
     ("src/app/animation.c", "frame_index + 1 < animation->frame_count", "frame_index < animation->frame_count"),
     ("src/app/animation.c", "player->time_in_frame_us < duration_us", "player->time_in_frame_us <= duration_us"),
     ("src/app/animation.c", "frame->ticks == 0", "frame->ticks == 99"),
+    ("src/app/animation.c", "frame_total > ANIMATION_FRAME_MAX", "frame_total > ANIMATION_FRAME_MAX + 1"),
+    ("src/app/animation.c", "frame_total * sizeof(struct animation_frame)", "(frame_total + 1) * sizeof(struct animation_frame)"),
+    ("src/app/animation.c", "if (result != ANIMATION_OK) {\n        animation_free_frames(animation);\n    }", ""),
+    ("src/app/animation_library.c", "animation_free_frames(loaded_animations[index]);", ""),
     ("src/app/texture_cache.c", "entries[index].last_used_frame == current_frame", "0"),
     ("src/app/texture_cache.c", "entries[index].last_used_frame < oldest->last_used_frame", "entries[index].last_used_frame > oldest->last_used_frame"),
     ("src/app/texture_cache.c", "totals.bytes_in_use + bytes_needed > budget", "totals.bytes_in_use + bytes_needed > budget * 100"),
@@ -383,7 +387,14 @@ def python_mutation_outcome(folder, path):
     return "caught"
 
 
-def run_mutations(folder, mutations, outcome_of, survivors, invalid):
+def forget_test_object_of(folder, relative_path):
+    object_name = os.path.splitext(os.path.basename(relative_path))[0] + ".o"
+    object_path = os.path.join(folder, "build", "test_objects", "app", object_name)
+    if os.path.exists(object_path):
+        os.remove(object_path)
+
+
+def run_mutations(folder, mutations, outcome_of, survivors, invalid, source_changed=lambda relative_path: None):
     for relative_path, old_text, new_text in mutations:
         path = os.path.join(folder, relative_path)
         with open(path, encoding="utf-8") as source:
@@ -393,6 +404,7 @@ def run_mutations(folder, mutations, outcome_of, survivors, invalid):
             continue
         with open(path, "w", encoding="utf-8") as output:
             output.write(original.replace(old_text, new_text, 1))
+        source_changed(relative_path)
         outcome = outcome_of(path)
         print(outcome, relative_path, "|", old_text[:60].replace("\n", " "), flush=True)
         if outcome == "survived":
@@ -401,6 +413,7 @@ def run_mutations(folder, mutations, outcome_of, survivors, invalid):
             invalid.append((relative_path, old_text))
         with open(path, "w", encoding="utf-8") as output:
             output.write(original)
+        source_changed(relative_path)
 
 
 def main():
@@ -413,7 +426,7 @@ def main():
         if not make_succeeds(folder, BUILD_ARGUMENTS) or not make_succeeds(folder, TEST_ARGUMENTS):
             print("baseline tests fail; stopping")
             return 1
-        run_mutations(folder, MUTATIONS, lambda path: mutation_outcome(folder), survivors, invalid)
+        run_mutations(folder, MUTATIONS, lambda path: mutation_outcome(folder), survivors, invalid, lambda relative_path: forget_test_object_of(folder, relative_path))
         if not make_succeeds(folder, PYTHON_TOOL_BUILD_ARGUMENTS) or not command_succeeds(folder, PYTHON_TEST_COMMAND):
             print("baseline python tests fail; stopping")
             return 1

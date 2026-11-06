@@ -40,6 +40,53 @@ class PythonMutationOutcomeTests(unittest.TestCase):
         self.assertEqual(self.outcome_for_source("x = 1\n", True), "survived")
 
 
+class SingleFileRebuildTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.folder = temporary.name
+        self.source_path = os.path.join(self.folder, "src", "app", "thing.c")
+        self.object_path = os.path.join(self.folder, "build", "test_objects", "app", "thing.o")
+        os.makedirs(os.path.dirname(self.source_path))
+        os.makedirs(os.path.dirname(self.object_path))
+        with open(self.source_path, "w", encoding="utf-8") as output:
+            output.write("int a = 1;\n")
+        self.write_object()
+
+    def write_object(self):
+        with open(self.object_path, "w", encoding="utf-8") as output:
+            output.write("stale")
+
+    def run_one_mutation(self, outcome_of):
+        mutation_check.run_mutations(self.folder, [("src/app/thing.c", "a = 1", "a = 2")], outcome_of, [], [], lambda relative_path: mutation_check.forget_test_object_of(self.folder, relative_path))
+
+    def test_the_object_is_gone_before_the_mutated_source_is_built(self):
+        seen = []
+
+        def outcome_of(path):
+            seen.append(os.path.exists(self.object_path))
+            self.write_object()
+            return "caught"
+
+        self.run_one_mutation(outcome_of)
+        self.assertEqual(seen, [False])
+
+    def test_the_mutated_object_is_gone_once_the_source_is_restored(self):
+        def outcome_of(path):
+            self.write_object()
+            return "caught"
+
+        self.run_one_mutation(outcome_of)
+        self.assertFalse(os.path.exists(self.object_path))
+        with open(self.source_path, encoding="utf-8") as source:
+            self.assertEqual(source.read(), "int a = 1;\n")
+
+    def test_a_missing_object_is_not_an_error(self):
+        os.remove(self.object_path)
+        mutation_check.forget_test_object_of(self.folder, "src/app/thing.c")
+        self.assertFalse(os.path.exists(self.object_path))
+
+
 class MakefileCopyTests(unittest.TestCase):
     def test_the_copy_of_the_makefile_loses_werror(self):
         with tempfile.TemporaryDirectory() as folder:

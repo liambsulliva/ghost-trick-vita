@@ -94,6 +94,7 @@ void animation_library_clear(void)
     int index;
 
     for (index = 0; index < loaded_count; index++) {
+        animation_free_frames(loaded_animations[index]);
         mem_free(loaded_animations[index]);
     }
     loaded_count = 0;

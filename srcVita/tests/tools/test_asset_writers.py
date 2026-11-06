@@ -57,7 +57,7 @@ class AnimWriterTests(unittest.TestCase):
 
     def test_too_many_frames_are_refused(self):
         with self.assertRaises(ValueError):
-            asset_writers.anim_text("x", 0, [asset_writers.blank_frame(1)] * 513)
+            asset_writers.anim_text("x", 0, [asset_writers.blank_frame(1)] * 1025)
 
     def test_an_animation_needs_frames(self):
         with self.assertRaises(ValueError):

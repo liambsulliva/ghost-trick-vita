@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "animation.h"
+#include "memory.h"
 #include "text_lines.h"
 
 #define ANIMATION_LINE_MAX 256
@@ -33,9 +34,6 @@ static int read_one_line(const char *line, struct animation *animation)
     if (text_line_starts_with(line, "frame ")) {
         int result;
 
-        if (animation->frame_count >= ANIMATION_FRAME_MAX) {
-            return ANIMATION_ERR_TOO_MANY_FRAMES;
-        }
         result = read_frame_line(line, &animation->frames[animation->frame_count]);
         if (result == ANIMATION_OK) {
             animation->frame_count = animation->frame_count + 1;
@@ -45,15 +43,28 @@ static int read_one_line(const char *line, struct animation *animation)
     return ANIMATION_ERR_BAD_LINE;
 }
 
-int animation_parse(const char *text, unsigned int text_size, struct animation *animation)
+static unsigned int count_frame_lines(const char *text, unsigned int text_size)
+{
+    char line[ANIMATION_LINE_MAX];
+    unsigned int offset;
+    unsigned int count;
+
+    count = 0;
+    offset = 0;
+    while (offset < text_size) {
+        offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
+        if (text_line_starts_with(line, "frame ")) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+static int read_all_lines(const char *text, unsigned int text_size, struct animation *animation)
 {
     char line[ANIMATION_LINE_MAX];
     unsigned int offset;
     int result;
-
-    animation->name[0] = '\0';
-    animation->loops = 0;
-    animation->frame_count = 0;
 
     offset = 0;
     while (offset < text_size) {
@@ -67,6 +78,39 @@ int animation_parse(const char *text, unsigned int text_size, struct animation *
         return ANIMATION_ERR_EMPTY;
     }
     return ANIMATION_OK;
+}
+
+int animation_parse(const char *text, unsigned int text_size, struct animation *animation)
+{
+    unsigned int frame_total;
+    int result;
+
+    animation->name[0] = '\0';
+    animation->loops = 0;
+    animation->frame_count = 0;
+    animation->frames = NULL;
+
+    frame_total = count_frame_lines(text, text_size);
+    if (frame_total > ANIMATION_FRAME_MAX) {
+        return ANIMATION_ERR_TOO_MANY_FRAMES;
+    }
+    if (frame_total > 0) {
+        animation->frames = mem_alloc(frame_total * sizeof(struct animation_frame));
+        if (animation->frames == NULL) {
+            return ANIMATION_ERR_NO_MEMORY;
+        }
+    }
+    result = read_all_lines(text, text_size, animation);
+    if (result != ANIMATION_OK) {
+        animation_free_frames(animation);
+    }
+    return result;
+}
+
+void animation_free_frames(struct animation *animation)
+{
+    mem_free(animation->frames);
+    animation->frames = NULL;
 }
 
 int animation_frame_is_blank(const struct animation_frame *frame)

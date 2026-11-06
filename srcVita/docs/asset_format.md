@@ -84,7 +84,7 @@ frame - 2 0 0 0 0 0 0 0 0
 | u, v | Top-left corner of the cell in the texture, from 0 to 1 |
 | u_size, v_size | Size of the cell in the texture, from 0 to 1 |
 
-An animation has at most 512 frames.
+An animation has at most 1024 frames.
 
 The converter crops each atlas page to the cells the set actually uses, so `u` and `v` are measured against the cropped texture rather than the original page. A pose held alone on a page comes out as `0 0 1 1`.
 

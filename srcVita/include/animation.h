@@ -3,7 +3,7 @@
 
 #include "asset_name.h"
 
-#define ANIMATION_FRAME_MAX 512
+#define ANIMATION_FRAME_MAX 1024
 #define TICKS_PER_SECOND 60
 #define MICROSECONDS_PER_TICK (1000000ULL / TICKS_PER_SECOND)
 #define ANIMATION_BLANK_TEXTURE "-"
@@ -13,6 +13,7 @@
 #define ANIMATION_ERR_BAD_LINE -2
 #define ANIMATION_ERR_TOO_MANY_FRAMES -3
 #define ANIMATION_ERR_BAD_TICKS -4
+#define ANIMATION_ERR_NO_MEMORY -5
 
 struct animation_frame {
     char texture_name[ASSET_NAME_MAX];
@@ -31,7 +32,7 @@ struct animation {
     char name[ASSET_NAME_MAX];
     int loops;
     unsigned int frame_count;
-    struct animation_frame frames[ANIMATION_FRAME_MAX];
+    struct animation_frame *frames;
 };
 
 typedef int (*animation_frame_ready_check)(const struct animation_frame *frame);
@@ -47,6 +48,7 @@ struct animation_player {
 };
 
 int animation_parse(const char *text, unsigned int text_size, struct animation *animation);
+void animation_free_frames(struct animation *animation);
 int animation_frame_is_blank(const struct animation_frame *frame);
 void animation_player_start(struct animation_player *player, const struct animation *animation);
 void animation_player_advance(struct animation_player *player, unsigned long long elapsed_us, animation_frame_ready_check frame_is_ready);
