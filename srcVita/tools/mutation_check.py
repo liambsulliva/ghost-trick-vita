@@ -1,13 +1,15 @@
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEST_TIME_LIMIT_SECONDS = 60
 
 MUTATIONS = [
-    ("src/app/animation.c", "player->frame_index + 1 < animation->frame_count", "player->frame_index < animation->frame_count"),
+    ("src/app/animation.c", "frame_index + 1 < animation->frame_count", "frame_index < animation->frame_count"),
     ("src/app/animation.c", "player->time_in_frame_us < duration_us", "player->time_in_frame_us <= duration_us"),
     ("src/app/animation.c", "player->is_paused", "0"),
     ("src/app/animation.c", "frame->ticks == 0", "frame->ticks == 99"),
@@ -20,7 +22,7 @@ MUTATIONS = [
     ("src/app/animation.c", "player->late_frame_count = player->late_frame_count + 1;", ""),
     ("src/app/animation.c", "frame_is_ready != NULL && !frame_is_ready(&animation->frames[next_index])", "0"),
     ("src/app/viewer_app.c", "texture_cache_upload_finished_reads(UPLOADS_PER_FRAME);", ""),
-    ("src/app/texture_file.c", "header->pixel_data_size != header->width * header->height * 4", "0"),
+    ("src/app/texture_file.c", "header->pixel_data_size != expected_pixel_data_size(header)", "0"),
     ("src/app/texture_file.c", "header->width > TEXTURE_FILE_MAX_DIMENSION || header->height > TEXTURE_FILE_MAX_DIMENSION", "0"),
     ("src/app/ui_list.c", "moved = moved + list->item_count;", "moved = 0;"),
     ("src/app/ui_list.c", "list->first_visible = list->selected - list->visible_rows + 1;", "list->first_visible = list->selected;"),
@@ -44,12 +46,21 @@ MUTATIONS = [
     ("src/app/texture_file.c", "header->format != TEXTURE_FILE_FORMAT_RGBA8888 && !dimensions_are_multiples_of_block(header)", "0"),
     ("src/app/debug_font.c", "(column >> y) & 1", "(column >> x) & 1"),
     ("src/app/run_log.c", "log_line_count = log_line_count + 1;", ""),
+    ("src/app/texture_file.c", "allocated.width = round_up_to_power_of_two(header->width);", "allocated.width = header->width;"),
+    ("src/app/texture_file.c", "allocated.height = round_up_to_power_of_two(header->height);", "allocated.height = header->height;"),
+    ("src/app/texture_cache.c", "make_room_for(memory_bytes);", "make_room_for(header.pixel_data_size);"),
+    ("src/app/texture_cache.c", "entry->bytes = memory_bytes;", "entry->bytes = header.pixel_data_size;"),
 ]
 
 
 def tests_pass(folder):
-    result = subprocess.run(["make", "-B", "-j8", "test"], cwd=folder, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    return result.returncode == 0
+    process = subprocess.Popen(["make", "-B", "-j8", "test"], cwd=folder, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    try:
+        return process.wait(timeout=TEST_TIME_LIMIT_SECONDS) == 0
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        process.wait()
+        return False
 
 
 def main():
@@ -71,7 +82,7 @@ def main():
             with open(path, "w", encoding="utf-8") as output:
                 output.write(original.replace(old_text, new_text, 1))
             caught = not tests_pass(folder)
-            print("caught  " if caught else "SURVIVED", relative_path, "|", old_text[:60].replace("\n", " "))
+            print("caught  " if caught else "SURVIVED", relative_path, "|", old_text[:60].replace("\n", " "), flush=True)
             if not caught:
                 survivors.append((relative_path, old_text))
             with open(path, "w", encoding="utf-8") as output:

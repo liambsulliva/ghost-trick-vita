@@ -1,9 +1,11 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include "animation.h"
 #include "asset_manifest.h"
 #include "fakes/fake_platform.h"
 #include "fakes/fake_reader.h"
 #include "fakes/fake_renderer.h"
+#include "scene.h"
 #include "test_support.h"
 #include "text_lines.h"
 #include "texture_cache.h"
@@ -122,6 +124,34 @@ static void test_texture_header_checks_compressed_sizes(void)
     write_u32(&file[4], 6);
     write_u32(&file[16], 24);
     CHECK_INT(texture_file_read_header(file, sizeof(file), &header), TEXTURE_FILE_ERR_BAD_SIZE);
+}
+
+static void test_compressed_memory_is_charged_at_power_of_two_size(void)
+{
+    struct texture_file_header header;
+
+    header.width = 720;
+    header.height = 540;
+    header.format = TEXTURE_FILE_FORMAT_DXT1;
+    header.pixel_data_size = 194400;
+    CHECK_INT(texture_file_memory_bytes(&header), 524288);
+
+    header.width = 2880;
+    header.height = 2880;
+    header.format = TEXTURE_FILE_FORMAT_DXT5;
+    header.pixel_data_size = 8294400;
+    CHECK_INT(texture_file_memory_bytes(&header), 16777216);
+
+    header.width = 16;
+    header.height = 8;
+    header.pixel_data_size = 128;
+    CHECK_INT(texture_file_memory_bytes(&header), 128);
+
+    header.width = 3;
+    header.height = 3;
+    header.format = TEXTURE_FILE_FORMAT_RGBA8888;
+    header.pixel_data_size = 36;
+    CHECK_INT(texture_file_memory_bytes(&header), 36);
 }
 
 static void test_animation_parses_all_fields(void)
@@ -392,6 +422,64 @@ static void test_loading_textures_are_never_evicted(void)
     CHECK_INT(totals.bytes_in_use, 16);
 }
 
+static int parse_scene_text(const char *text)
+{
+    static struct scene scene;
+
+    return scene_parse(text, (unsigned int)strlen(text), &scene);
+}
+
+static void test_scene_parse_reads_every_kind_of_step(void)
+{
+    const char text[] =
+        "scene opening\n"
+        "side_bars left right\n"
+        "room 11\n"
+        "plate st01 0 384 256 192\n"
+        "object linne idle 281.5 353 900 1\n"
+        "remove_object linne\n"
+        "camera 0 192\n"
+        "camera_pan 768 224 600\n"
+        "card chapter\n"
+        "hide_card\n"
+        "fade_out 20\n"
+        "fade_in 40\n"
+        "wait 90\n";
+    static struct scene scene;
+
+    CHECK_INT(scene_parse(text, sizeof(text) - 1, &scene), SCENE_OK);
+    CHECK_INT(scene.step_count, 12);
+    CHECK_INT(scene.steps[3].kind, SCENE_STEP_OBJECT);
+    CHECK_INT(scene.steps[6].kind, SCENE_STEP_CAMERA_PAN);
+    CHECK_INT(scene.steps[6].number, 600);
+    CHECK_INT(scene.steps[11].kind, SCENE_STEP_WAIT);
+    CHECK_INT(scene.steps[11].number, 90);
+}
+
+static void test_scene_parse_rejects_durations_that_are_not_positive(void)
+{
+    CHECK_INT(parse_scene_text("scene s\ncamera_pan 0 0 0\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nfade_out 0\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nfade_in -1\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nwait 0\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nnot_a_step 1\n"), SCENE_ERR_BAD_LINE);
+}
+
+static void test_scene_parse_stops_at_the_step_limit(void)
+{
+    static char text[32 + (SCENE_STEP_MAX + 1) * 10];
+    size_t used;
+    int index;
+
+    used = (size_t)sprintf(text, "scene s\n");
+    for (index = 0; index < SCENE_STEP_MAX; index++) {
+        used = used + (size_t)sprintf(&text[used], "hide_card\n");
+    }
+    CHECK_INT(parse_scene_text(text), SCENE_OK);
+    sprintf(&text[used], "hide_card\n");
+    CHECK_INT(parse_scene_text(text), SCENE_ERR_TOO_MANY_STEPS);
+}
+
 static void test_manifest_lists_assets(void)
 {
     const char text[] = "scene opening\nbackground room\n\nanimation walk\nanimation idle\n";
@@ -435,6 +523,62 @@ static void test_cache_loads_once_and_reuses(void)
     texture_cache_read_totals(&totals);
     CHECK_INT(totals.loads, 1);
     CHECK_INT(totals.bytes_in_use, 16);
+}
+
+static void add_dxt5_texture_file(const char *path, unsigned int width, unsigned int height)
+{
+    unsigned int pixel_bytes;
+    unsigned char *file;
+
+    pixel_bytes = (width / 4) * (height / 4) * 16;
+    file = calloc(1, TEXTURE_FILE_HEADER_SIZE + pixel_bytes);
+    memcpy(file, "GTEX", 4);
+    write_u32(&file[4], width);
+    write_u32(&file[8], height);
+    write_u32(&file[12], TEXTURE_FILE_FORMAT_DXT5);
+    write_u32(&file[16], pixel_bytes);
+    fake_files_add(path, file, TEXTURE_FILE_HEADER_SIZE + pixel_bytes);
+    free(file);
+}
+
+static void test_cache_budget_counts_rounded_up_compressed_memory(void)
+{
+    struct texture_cache_totals totals;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_dxt5_texture_file("tex/a.gtex", 12, 8);
+    add_dxt5_texture_file("tex/b.gtex", 12, 8);
+    texture_cache_init("tex", 230);
+    texture_cache_load_now("a");
+    texture_cache_read_totals(&totals);
+    CHECK_INT(totals.bytes_in_use, 128);
+    texture_cache_begin_frame();
+    texture_cache_load_now("b");
+    texture_cache_read_totals(&totals);
+    CHECK_INT(totals.evictions, 1);
+    CHECK_INT(totals.bytes_in_use, 128);
+}
+
+static void test_cache_eviction_skips_entries_that_are_not_ready(void)
+{
+    struct texture_cache_totals totals;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_texture_file("tex/a.gtex", 2, 2);
+    add_texture_file("tex/b.gtex", 2, 2);
+    texture_cache_init("tex", 16);
+    texture_cache_load_now("not_there");
+    texture_cache_begin_frame();
+    texture_cache_load_now("a");
+    texture_cache_begin_frame();
+    texture_cache_load_now("b");
+    texture_cache_read_totals(&totals);
+    CHECK_INT(totals.evictions, 1);
+    CHECK_INT(totals.missing, 1);
 }
 
 static void test_cache_evicts_least_recently_used_when_over_budget(void)
@@ -542,6 +686,7 @@ int main(void)
     test_texture_header_accepts_a_valid_file();
     test_texture_header_rejects_bad_files();
     test_texture_header_checks_compressed_sizes();
+    test_compressed_memory_is_charged_at_power_of_two_size();
     test_animation_parses_all_fields();
     test_animation_rejects_bad_input();
     test_player_holds_each_frame_for_its_ticks();
@@ -556,9 +701,14 @@ int main(void)
     test_refused_read_can_be_requested_again_later();
     test_clear_waits_for_reads_in_flight();
     test_loading_textures_are_never_evicted();
+    test_scene_parse_reads_every_kind_of_step();
+    test_scene_parse_rejects_durations_that_are_not_positive();
+    test_scene_parse_stops_at_the_step_limit();
     test_manifest_lists_assets();
     test_manifest_rejects_unknown_lines();
     test_cache_loads_once_and_reuses();
+    test_cache_budget_counts_rounded_up_compressed_memory();
+    test_cache_eviction_skips_entries_that_are_not_ready();
     test_cache_evicts_least_recently_used_when_over_budget();
     test_cache_never_evicts_what_this_frame_uses();
     test_cache_remembers_missing_files_and_only_tries_once();

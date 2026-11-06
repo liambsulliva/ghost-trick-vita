@@ -24,5 +24,6 @@ struct texture_file_header {
 };
 
 int texture_file_read_header(const unsigned char *data, unsigned int size, struct texture_file_header *header);
+unsigned int texture_file_memory_bytes(const struct texture_file_header *header);
 
 #endif

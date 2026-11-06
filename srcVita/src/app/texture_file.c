@@ -39,6 +39,30 @@ static unsigned int expected_pixel_data_size(const struct texture_file_header *h
     return header->width * header->height * 4;
 }
 
+static unsigned int round_up_to_power_of_two(unsigned int value)
+{
+    unsigned int rounded;
+
+    rounded = 1;
+    while (rounded < value) {
+        rounded = rounded * 2;
+    }
+    return rounded;
+}
+
+unsigned int texture_file_memory_bytes(const struct texture_file_header *header)
+{
+    struct texture_file_header allocated;
+
+    if (header->format == TEXTURE_FILE_FORMAT_RGBA8888) {
+        return header->pixel_data_size;
+    }
+    allocated = *header;
+    allocated.width = round_up_to_power_of_two(header->width);
+    allocated.height = round_up_to_power_of_two(header->height);
+    return expected_pixel_data_size(&allocated);
+}
+
 int texture_file_read_header(const unsigned char *data, unsigned int size, struct texture_file_header *header)
 {
     if (size < TEXTURE_FILE_HEADER_SIZE) {

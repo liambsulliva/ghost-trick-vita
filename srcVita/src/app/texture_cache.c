@@ -141,6 +141,7 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     unsigned long long upload_started_us;
     unsigned long long upload_us;
     unsigned long long wait_us;
+    unsigned int memory_bytes;
     int result;
 
     if (finished->result != FILE_OK) {
@@ -152,7 +153,8 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
         mark_missing(entry, "header", result);
         return;
     }
-    make_room_for(header.pixel_data_size);
+    memory_bytes = texture_file_memory_bytes(&header);
+    make_room_for(memory_bytes);
     upload_started_us = timing_now_us();
     entry->texture = create_texture_from_file(&header, &finished->data[TEXTURE_FILE_HEADER_SIZE]);
     if (entry->texture == RENDERER_NO_TEXTURE) {
@@ -161,7 +163,7 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     }
     entry->width = header.width;
     entry->height = header.height;
-    entry->bytes = header.pixel_data_size;
+    entry->bytes = memory_bytes;
     entry->state = CACHED_TEXTURE_READY;
     totals.bytes_in_use = totals.bytes_in_use + entry->bytes;
     totals.loads = totals.loads + 1;
@@ -174,7 +176,7 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     if (wait_us > totals.longest_wait_us) {
         totals.longest_wait_us = wait_us;
     }
-    run_log_write("texture loaded name=%s width=%u height=%u bytes=%u wait_us=%llu upload_us=%llu", entry->name, header.width, header.height, header.pixel_data_size, wait_us, upload_us);
+    run_log_write("texture loaded name=%s width=%u height=%u bytes=%u memory=%u wait_us=%llu upload_us=%llu", entry->name, header.width, header.height, header.pixel_data_size, memory_bytes, wait_us, upload_us);
 }
 
 static void handle_finished_read(const struct finished_read *finished)
