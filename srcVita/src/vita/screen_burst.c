@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <psp2/display.h>
+#include <psp2/io/fcntl.h>
 #include <psp2/kernel/threadmgr.h>
 #include "clock.h"
 #include "file.h"
@@ -23,6 +24,7 @@
 #define BURST_WRITER_STACK 0x4000
 #define BURST_SOURCE_BYTES_PER_PIXEL 4u
 #define BURST_SOURCE_PIXELS_PER_PICTURE_PIXEL 2u
+#define US_PER_SECOND 1000000ull
 
 static unsigned char *pictures[BURST_QUEUE_LENGTH];
 static unsigned int picture_sizes[BURST_QUEUE_LENGTH];
@@ -34,6 +36,7 @@ static int is_on;
 static unsigned int session;
 static unsigned int dropped;
 static unsigned long long started_us;
+static unsigned long long stops_at_us;
 static unsigned long long last_copy_us;
 static unsigned long long longest_copy_us;
 
@@ -53,6 +56,7 @@ static unsigned int read_sequence(const unsigned char *picture)
 static int write_waiting_pictures(SceSize argument_size, void *arguments)
 {
     char path[FILE_PATH_MAX];
+    char unfinished_path[FILE_PATH_MAX];
     unsigned int queue_index;
 
     (void)argument_size;
@@ -61,7 +65,11 @@ static int write_waiting_pictures(SceSize argument_size, void *arguments)
         sceKernelWaitSema(pictures_waiting, 1, NULL);
         queue_index = pictures_written % BURST_QUEUE_LENGTH;
         snprintf(path, sizeof(path), BURST_FOLDER_NAME "/f%03u.rgb", read_sequence(pictures[queue_index]) % BURST_SLOTS);
-        file_write_whole(path, pictures[queue_index], picture_sizes[queue_index]);
+        snprintf(unfinished_path, sizeof(unfinished_path), BURST_FOLDER_NAME "/unfinished.tmp");
+        if (file_write_whole(unfinished_path, pictures[queue_index], picture_sizes[queue_index]) == FILE_OK) {
+            sceIoRemove(path);
+            sceIoRename(unfinished_path, path);
+        }
         pictures_written = pictures_written + 1;
     }
     return 0;
@@ -91,16 +99,22 @@ static int get_ready(void)
     return 1;
 }
 
-void screen_burst_set_on(int is_turning_on)
+static void stop_burst(void)
 {
-    if (!is_turning_on) {
-        if (is_on) {
-            run_log_write("burst off pictures=%u dropped=%u longest_copy_us=%llu", pictures_copied, dropped, longest_copy_us);
-        }
-        is_on = 0;
+    if (is_on) {
+        run_log_write("burst off pictures=%u dropped=%u longest_copy_us=%llu", pictures_copied, dropped, longest_copy_us);
+    }
+    is_on = 0;
+}
+
+void screen_burst_run_for_seconds(int seconds)
+{
+    if (seconds <= 0) {
+        stop_burst();
         return;
     }
     if (is_on) {
+        stops_at_us = clock_now_us() + (unsigned long long)seconds * US_PER_SECOND;
         return;
     }
     if (!get_ready()) {
@@ -115,6 +129,7 @@ void screen_burst_set_on(int is_turning_on)
     dropped = 0;
     longest_copy_us = 0;
     started_us = clock_now_us();
+    stops_at_us = started_us + (unsigned long long)seconds * US_PER_SECOND;
     last_copy_us = 0;
     session = (unsigned int)started_us;
     is_on = 1;
@@ -156,6 +171,10 @@ void screen_burst_note_frame(void)
         return;
     }
     now_us = clock_now_us();
+    if (now_us >= stops_at_us) {
+        stop_burst();
+        return;
+    }
     if (last_copy_us != 0 && now_us - last_copy_us < BURST_US_BETWEEN_FRAMES) {
         return;
     }

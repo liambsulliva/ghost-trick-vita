@@ -30,7 +30,10 @@ BURST_HEADER_SIZE = 20
 BURST_BYTES_PER_PIXEL = 2
 BURST_ON_TEXT = "burst on session="
 BURST_OFF_TEXT = "burst off pictures="
-SECONDS_BETWEEN_BURST_READS = 0.05
+SECONDS_BETWEEN_BURST_READS = 0.1
+SECONDS_AFTER_LOST_CONNECTION = 3
+BURST_SECONDS_PAST_THE_TOOL = 30
+CONNECTION_ERRORS = (OSError, EOFError, ftplib.Error)
 SECONDS_TO_DRAIN_AFTER_LAST_PICTURE = 15
 JPEG_QUALITY = "70"
 FULL_CAPTURE_NAME = "full%03d"
@@ -437,11 +440,17 @@ def every_565_color_as_rgb():
     return table
 
 
-def read_burst_picture(connection, slot_path, session, least_sequence):
+def size_or_none(connection, path):
     try:
-        data = download_bytes(connection, slot_path)
+        return connection.size(path)
     except ftplib.error_perm:
         return None
+
+
+def read_burst_picture(connection, slot_path, session, least_sequence):
+    if size_or_none(connection, slot_path) is None:
+        return None
+    data = download_bytes(connection, slot_path)
     if len(data) < BURST_HEADER_SIZE or data[:len(BURST_MAGIC)] != BURST_MAGIC:
         return None
     found_session, sequence, elapsed_ms, size = struct.unpack_from("<IIII", data, len(BURST_MAGIC))
@@ -464,46 +473,68 @@ def note_picture_time(output_folder, text):
         times.write(time.strftime("%H:%M:%S") + " " + text + "\n")
 
 
+def capture_one_full_size(name, output_folder):
+    if request_capture(name, output_folder) != 0:
+        return False
+    bmp_path = os.path.join(output_folder, name + ".bmp")
+    subprocess.run(["magick", bmp_path, "-resize", "50%", "-quality", JPEG_QUALITY, os.path.join(output_folder, name + ".jpg")], check=True)
+    os.remove(bmp_path)
+    note_picture_time(output_folder, name)
+    connection = open_ftp()
+    try:
+        delete_if_present(connection, CAPTURE_FOLDER + "/" + name + ".bmp")
+    finally:
+        connection.close()
+    return True
+
+
 def capture_full_size_until_stopped(stop, output_folder, seconds_between):
     slot = 0
     while not stop.is_set():
         started = time.time()
-        name = FULL_CAPTURE_NAME % slot
-        if request_capture(name, output_folder) == 0:
-            bmp_path = os.path.join(output_folder, name + ".bmp")
-            subprocess.run(["magick", bmp_path, "-resize", "50%", "-quality", JPEG_QUALITY, os.path.join(output_folder, name + ".jpg")], check=True)
-            os.remove(bmp_path)
-            note_picture_time(output_folder, name)
-            connection = open_ftp()
-            try:
-                delete_if_present(connection, CAPTURE_FOLDER + "/" + name + ".bmp")
-            finally:
-                connection.close()
-            slot = (slot + 1) % BURST_SLOTS
-        stop.wait(max(0.0, seconds_between - (time.time() - started)))
+        try:
+            if capture_one_full_size(FULL_CAPTURE_NAME % slot, output_folder):
+                slot = (slot + 1) % BURST_SLOTS
+        except CONNECTION_ERRORS as error:
+            print("full-size capture lost the connection:", error)
+        stop.wait(max(1.0, seconds_between - (time.time() - started)))
 
 
-def pull_burst_pictures(connection, session, next_sequence, output_folder, rgb_of_color, keep_going):
+def pull_burst_pictures(session, next_sequence, output_folder, rgb_of_color, keep_going):
     saved = 0
+    connection = None
     while keep_going(next_sequence):
         slot_path = BURST_FOLDER + "/" + BURST_PICTURE_NAME % (next_sequence % BURST_SLOTS) + ".rgb"
-        picture = read_burst_picture(connection, slot_path, session, next_sequence)
+        try:
+            if connection is None:
+                connection = open_ftp()
+            picture = read_burst_picture(connection, slot_path, session, next_sequence)
+        except CONNECTION_ERRORS as error:
+            print("burst lost the connection:", error)
+            connection = None
+            time.sleep(SECONDS_AFTER_LOST_CONNECTION)
+            continue
         if picture is None:
             time.sleep(SECONDS_BETWEEN_BURST_READS)
             continue
         name = BURST_PICTURE_NAME % (picture["sequence"] % BURST_SLOTS)
         save_burst_picture(picture, os.path.join(output_folder, name + ".jpg"), rgb_of_color)
         note_picture_time(output_folder, "%s sequence=%d device_ms=%d" % (name, picture["sequence"], picture["elapsed_ms"]))
-        delete_if_present(connection, slot_path)
+        try:
+            delete_if_present(connection, slot_path)
+        except CONNECTION_ERRORS:
+            connection = None
         next_sequence = picture["sequence"] + 1
         saved = saved + 1
+    if connection is not None:
+        connection.close()
     return next_sequence, saved
 
 
 def request_burst(seconds, output_folder, full_every):
     os.makedirs(output_folder, exist_ok=True)
     lines_before = count_lines_containing(BURST_ON_TEXT)
-    write_app_commands("burst on\n")
+    write_app_commands("burst %d\n" % (seconds + BURST_SECONDS_PAST_THE_TOOL))
     line = wait_for_text(BURST_ON_TEXT, SECONDS_FOR_APP_TO_READ_COMMANDS * 3, lines_before)
     if line is None:
         print("burst not acknowledged")
@@ -515,21 +546,19 @@ def request_burst(seconds, output_folder, full_every):
     if full_every > 0:
         full_size.start()
     rgb_of_color = every_565_color_as_rgb()
-    connection = open_ftp()
     started = time.time()
     try:
-        next_sequence, saved = pull_burst_pictures(connection, session, 0, output_folder, rgb_of_color, lambda sequence: time.time() - started < seconds)
+        next_sequence, saved = pull_burst_pictures(session, 0, output_folder, rgb_of_color, lambda sequence: time.time() - started < seconds)
         stop.set()
         if full_every > 0:
             full_size.join()
-        write_app_commands("burst off\n")
+        write_app_commands("burst 0\n")
         off_line = wait_for_text(BURST_OFF_TEXT, SECONDS_FOR_APP_TO_READ_COMMANDS * 3, off_lines_before)
         total = next_sequence if off_line is None else int(off_line.split(BURST_OFF_TEXT)[1].split()[0])
         give_up_at = time.time() + (total - next_sequence) + SECONDS_TO_DRAIN_AFTER_LAST_PICTURE
-        next_sequence, drained = pull_burst_pictures(connection, session, next_sequence, output_folder, rgb_of_color, lambda sequence: sequence < total and time.time() < give_up_at)
+        next_sequence, drained = pull_burst_pictures(session, next_sequence, output_folder, rgb_of_color, lambda sequence: sequence < total and time.time() < give_up_at)
     finally:
         stop.set()
-        connection.close()
     print("burst device pictures", total, "saved", saved + drained, "in", int(time.time() - started), "seconds")
     print(off_line if off_line is not None else "burst off not acknowledged")
     return 0

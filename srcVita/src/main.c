@@ -114,7 +114,7 @@ static int run_one_command(const struct command *command)
     } else if (command->kind == COMMAND_PRESS) {
         injected_buttons = (unsigned int)command->number;
     } else if (command->kind == COMMAND_BURST) {
-        screen_burst_set_on(command->number);
+        screen_burst_run_for_seconds(command->number);
 #endif
     } else if (command->kind == COMMAND_QUIT) {
         run_log_write("command quit");

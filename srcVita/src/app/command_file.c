@@ -97,9 +97,8 @@ static int read_fast_forward_command(const char *line, struct command *command)
         command->kind = COMMAND_SKIP_AHEAD;
         return 1;
     }
-    if (strcmp(line, "burst on") == 0 || strcmp(line, "burst off") == 0) {
+    if (sscanf(line, "burst %d", &command->number) == 1) {
         command->kind = COMMAND_BURST;
-        command->number = strcmp(line, "burst on") == 0;
         return 1;
     }
     if (sscanf(line, "press %x", (unsigned int *)&command->number) == 1) {
