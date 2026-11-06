@@ -13,8 +13,10 @@ SCREEN_CENTER_X = SCREEN_WIDTH / 2
 GAME_PICTURE_TOP_ON_SCREEN = 2
 CLIP_PIXELS_PER_DS_PIXEL = 3.75
 SCREEN_PIXELS_PER_CLIP_PIXEL = frame_layout.SCREEN_PIXELS_PER_DS_PIXEL / CLIP_PIXELS_PER_DS_PIXEL
-NARRATION_PIXELS_PER_EM = 38.5
-NARRATION_MAX_INK_WIDTH = 840
+CLIP_SIZED_PIXELS_PER_EM = 38.5
+NARRATION_PIXELS_PER_EM = 29.8
+NARRATION_SCALE_FROM_CLIP_SIZE = NARRATION_PIXELS_PER_EM / CLIP_SIZED_PIXELS_PER_EM
+NARRATION_MAX_INK_WIDTH = SCREEN_WIDTH * 2 / 3
 NARRATION_COLOR = (255, 255, 255)
 LINE_PITCH_IN_CLIP = 67
 PARAGRAPH_LINE_HEIGHT_IN_CLIP = 79
@@ -52,13 +54,23 @@ def first_line_ink_top(pos_y):
     return GAME_PICTURE_TOP_ON_SCREEN + (FIRST_LINE_TOP_BASE_IN_CLIP + FIRST_LINE_TOP_PER_POS_Y_IN_CLIP * pos_y) * SCREEN_PIXELS_PER_CLIP_PIXEL
 
 
-def ink_tops_by_paragraph(paragraphs, pos_y):
+def clip_sized_ink_tops(paragraphs, pos_y):
     tops = []
     paragraph_top = first_line_ink_top(pos_y)
     for paragraph in paragraphs:
         tops.append([paragraph_top + line_index * LINE_PITCH_IN_CLIP * SCREEN_PIXELS_PER_CLIP_PIXEL for line_index in range(len(paragraph))])
         paragraph_top = paragraph_top + (len(paragraph) * PARAGRAPH_LINE_HEIGHT_IN_CLIP + LINE_PITCH_IN_CLIP) * SCREEN_PIXELS_PER_CLIP_PIXEL
     return tops
+
+
+def ink_tops_by_paragraph(paragraphs, pos_y):
+    clip_sized_tops = clip_sized_ink_tops(paragraphs, pos_y)
+    line_tops = [top for tops in clip_sized_tops for top in tops]
+    if not line_tops:
+        return clip_sized_tops
+    message_middle = (line_tops[0] + line_tops[-1] + TALLEST_INK_ABOVE_BASELINE_EM * CLIP_SIZED_PIXELS_PER_EM) / 2
+    shrunk_tops = [[message_middle + (top - message_middle) * NARRATION_SCALE_FROM_CLIP_SIZE for top in tops] for tops in clip_sized_tops]
+    return shrunk_tops
 
 
 def texture_top_for_ink_top(ink_top, baseline_row, pixels_per_em):

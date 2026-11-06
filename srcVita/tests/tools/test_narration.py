@@ -17,10 +17,10 @@ RUN_THE_TOOL = "run python3 -I srcVita/tools/assets/extract_text_key.py with you
 FONT_PACK_PATH = "font.oft"
 FILE_PATH = "text.msg"
 KEY = bytes(range(10, 18))
-NARRATION_LINE_HEIGHT = 52
-GLYPH_ADVANCE_IN_NARRATION_PIXELS = 23.0
-GLYPH_INK_IN_NARRATION_PIXELS = 19.25
-NARRATION_WIDTH_LIMIT_WITH_PADDING = 848
+NARRATION_LINE_HEIGHT = 40
+GLYPH_ADVANCE_IN_NARRATION_PIXELS = 18.0
+GLYPH_INK_IN_NARRATION_PIXELS = 14.9
+NARRATION_WIDTH_LIMIT_WITH_PADDING = 648
 
 
 def line_record(line_id, top_y, natural_width=100.0):
@@ -44,17 +44,34 @@ class LayoutTests(unittest.TestCase):
 
     def test_lines_in_a_paragraph_are_one_pitch_apart(self):
         tops = narration.ink_tops_by_paragraph([["a", "b", "c"]], 25)
-        self.assertAlmostEqual(tops[0][1] - tops[0][0], 50.25)
-        self.assertAlmostEqual(tops[0][2] - tops[0][1], 50.25)
+        self.assertAlmostEqual(tops[0][1] - tops[0][0], 50.25 * narration.NARRATION_SCALE_FROM_CLIP_SIZE)
+        self.assertAlmostEqual(tops[0][2] - tops[0][1], 50.25 * narration.NARRATION_SCALE_FROM_CLIP_SIZE)
 
     def test_the_next_paragraph_depends_on_the_lines_above_it(self):
         one_line = narration.ink_tops_by_paragraph([["a"], ["b"]], 25)
         two_lines = narration.ink_tops_by_paragraph([["a", "a"], ["b"]], 25)
         three_lines = narration.ink_tops_by_paragraph([["a", "a", "a"], ["b"], ["c"]], 25)
-        self.assertAlmostEqual(one_line[1][0] - one_line[0][0], (79 + 67) * 0.75)
-        self.assertAlmostEqual(two_lines[1][0] - two_lines[0][0], (158 + 67) * 0.75)
-        self.assertAlmostEqual(three_lines[1][0] - three_lines[0][0], (237 + 67) * 0.75)
-        self.assertAlmostEqual(three_lines[2][0] - three_lines[1][0], (79 + 67) * 0.75)
+        scale = narration.NARRATION_SCALE_FROM_CLIP_SIZE
+        self.assertAlmostEqual(one_line[1][0] - one_line[0][0], (79 + 67) * 0.75 * scale)
+        self.assertAlmostEqual(two_lines[1][0] - two_lines[0][0], (158 + 67) * 0.75 * scale)
+        self.assertAlmostEqual(three_lines[1][0] - three_lines[0][0], (237 + 67) * 0.75 * scale)
+        self.assertAlmostEqual(three_lines[2][0] - three_lines[1][0], (79 + 67) * 0.75 * scale)
+
+    def test_shrinking_keeps_a_message_centred_where_the_clip_has_it(self):
+        ink_height_at_clip_size = narration.TALLEST_INK_ABOVE_BASELINE_EM * narration.CLIP_SIZED_PIXELS_PER_EM
+        ink_height = narration.TALLEST_INK_ABOVE_BASELINE_EM * narration.NARRATION_PIXELS_PER_EM
+        for paragraphs in ([["a"]], [["a", "b", "c"]], [["a", "b"], ["c"]]):
+            clip_tops = [top for tops in narration.clip_sized_ink_tops(paragraphs, 40) for top in tops]
+            tops = [top for line_tops in narration.ink_tops_by_paragraph(paragraphs, 40) for top in line_tops]
+            self.assertAlmostEqual(tops[0] + tops[-1] + ink_height, clip_tops[0] + clip_tops[-1] + ink_height_at_clip_size)
+
+    def test_a_message_with_no_lines_has_no_tops(self):
+        self.assertEqual(narration.ink_tops_by_paragraph([], 40), [])
+
+    def test_text_is_smaller_than_the_clip_and_stays_within_two_thirds_of_the_screen(self):
+        self.assertEqual(narration.NARRATION_PIXELS_PER_EM, 29.8)
+        self.assertEqual(narration.CLIP_SIZED_PIXELS_PER_EM, 38.5)
+        self.assertEqual(narration.NARRATION_MAX_INK_WIDTH, 640)
 
     def test_the_texture_top_puts_the_tallest_ink_on_the_wanted_row(self):
         self.assertEqual(narration.texture_top_for_ink_top(100.0, 39, 38.5), 93)
@@ -130,7 +147,7 @@ class ConversionTests(unittest.TestCase):
         self.assertEqual([result["name"] for result in results], ["text_m_0", "text_m_1", "text_m_2"])
         paragraphs = lines["m"]["paragraphs"]
         self.assertEqual([[line["id"] for line in paragraph] for paragraph in paragraphs], [[1, 2], [3]])
-        self.assertEqual(paragraphs[0][1]["top_y"] - paragraphs[0][0]["top_y"], 50)
+        self.assertEqual(paragraphs[0][1]["top_y"] - paragraphs[0][0]["top_y"], 39)
         self.assertEqual(lines["m"]["pos_y"], 25)
         for result in results:
             gtex_bytes = self.read_gtex(result["name"])
@@ -144,7 +161,7 @@ class ConversionTests(unittest.TestCase):
         lines, results = self.convert(self.packs_with([("entry", raw)]), [{"name": "m", "file": FILE_PATH, "entry": "entry"}])
         self.assertEqual(len(results), 2)
         first, second = lines["m"]["paragraphs"][0]
-        self.assertAlmostEqual(second["top_y"] - first["top_y"], 2 * 50.25, delta=1)
+        self.assertAlmostEqual(second["top_y"] - first["top_y"], 2 * 50.25 * narration.NARRATION_SCALE_FROM_CLIP_SIZE, delta=1)
 
     def test_narration_without_a_position_is_refused(self):
         with self.assertRaises(narration.NarrationError):
@@ -298,10 +315,10 @@ class SummaryTests(unittest.TestCase):
         return output.getvalue()
 
     def test_a_line_over_the_limit_is_named(self):
-        lines = {"m": {"paragraphs": [[line_record(1, 0, 840.0), line_record(2, 0, 840.5)]]}}
+        lines = {"m": {"paragraphs": [[line_record(1, 0, 640.0), line_record(2, 0, 640.5)]]}}
         text = self.summary(lines)
-        self.assertIn("1 messages, 2 lines, widest 840.5 px", text)
-        self.assertIn("squeezed: tex_2 840.5 px", text)
+        self.assertIn("1 messages, 2 lines, widest 640.5 px", text)
+        self.assertIn("squeezed: tex_2 640.5 px", text)
         self.assertNotIn("tex_1", text)
 
     def test_no_narration_prints_nothing(self):

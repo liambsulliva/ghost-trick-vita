@@ -139,10 +139,10 @@ The preload waits for the first `music` track and every `sound` the scene names,
 
 Each line of narration becomes its own `.gtex` named `text_<message>_<line>`, in DXT5, white with its shape in alpha. The app has no fonts and draws these like any other texture. Bubble text works the same way, in its own color.
 
-- Size is 38.5 screen pixels per em. A line is at most 840 pixels wide, and only a wider line is squeezed, by exactly enough to fit.
+- Size is 29.8 screen pixels per em, smaller than the clip's 38.5, so that the opening's widest line fills about 2/3 of the screen. A line is at most 640 pixels wide, and only a wider line is squeezed, by exactly enough to fit.
 - Lines are centred on the 960 pixel screen. Every line of one size has the same texture height and baseline.
-- The first line's ink starts at `2 + 0.75 x (8 + 3.77 x posY)` screen pixels, from the clip's 720p measurement scaled to the screen, plus the 2 pixels that centre the 540 pixel picture on the 544 pixel screen.
-- Lines in a paragraph are 50.25 pixels apart. The next paragraph starts `59.25 x lines + 50.25` pixels below the first line of the one above.
+- At the clip's size, the first line's ink starts at `2 + 0.75 x (8 + 3.77 x posY)` screen pixels, from the clip's 720p measurement scaled to the screen, plus the 2 pixels that centre the 540 pixel picture on the 544 pixel screen.
+- At the clip's size, lines in a paragraph are 50.25 pixels apart, and the next paragraph starts `59.25 x lines + 50.25` pixels below the first line of the one above. These places are then pulled in by `29.8 / 38.5` about the middle of the message, so each message stays centred where the clip has it.
 - Bubble art and bubble text are placed to land on whole screen pixels, because the screen filters textures linearly and a fractional place would soften them. With the camera at `0 192` in a room 384 DS pixels tall, screen `x` is `2.8125 x` and screen `y` is `2.8125 x (y - 190.5778)`. Under the mask with no iris open the view stays centred on the DS window, so with the same camera screen `x` is `2.8125 x (x + 42.6667)` and screen `y` is `2.8125 x (y - 191.2889)`.
 
 The set description names what to render, and its steps use these forms, which the converter expands into the steps above:
