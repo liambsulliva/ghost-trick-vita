@@ -129,9 +129,9 @@ static void on_sounds_stopped(void)
 
 static void on_music_volume_changed(int volume, int ticks)
 {
-    (void)volume;
-    (void)ticks;
-    log_once("music_volume_not_ported", "-");
+    if (!is_quiet) {
+        music_request_volume(volume, ticks);
+    }
 }
 
 static void on_talk_changed(const struct script_talk_view *view)

@@ -34,6 +34,9 @@
 #define LOG_FOR_TOOLS_MUSIC_STOPPED "music stopped name=%s reason=%s submitted=%llu grains=%u crc_total=%08x late=%u"
 
 struct music_wish {
+    int volume_generation;
+    int volume_gain;
+    int volume_ticks;
     unsigned int generation;
     char track_name[ASSET_NAME_MAX];
     int should_play;
@@ -74,6 +77,8 @@ static char folder[FILE_PATH_MAX];
 static int worker_is_running;
 
 static struct music_wish mailbox;
+static int handled_volume_generation;
+static int playing_gain = PCM_RAMP_FULL_GAIN;
 static char prepared_name[ASSET_NAME_MAX];
 
 static struct music_source source;
@@ -159,6 +164,15 @@ void music_request_play(const char *name, int is_looping)
 void music_request_stop(int fade_ticks)
 {
     post_wish("", 0, 0, fade_ticks);
+}
+
+void music_request_volume(int volume_out_of_256, int ticks)
+{
+    audio_mailbox_lock();
+    mailbox.volume_generation = mailbox.volume_generation + 1;
+    mailbox.volume_gain = volume_out_of_256 * PCM_RAMP_FULL_GAIN / MUSIC_VOLUME_FULL;
+    mailbox.volume_ticks = ticks;
+    audio_mailbox_unlock();
 }
 
 void music_request_starve(int milliseconds)
@@ -429,7 +443,7 @@ static void ramp_in_again_if_the_submit_will_miss_its_deadline(unsigned long lon
 
     submit_expected_us = decode_ended_us + playback.decode_end_to_submit_us;
     if (time_since_the_on_time_return(submit_expected_us, playback.last_submit_ended_us) > SUBMIT_DEADLINE_US + LATE_SLACK_US && !is_stopping) {
-        begin_ramp(0, PCM_RAMP_FULL_GAIN, RAMP_IN_FRAMES);
+        begin_ramp(0, playing_gain, RAMP_IN_FRAMES);
     }
 }
 
@@ -493,7 +507,8 @@ static void start_playing(int is_looping)
         abandon_playback();
         return;
     }
-    begin_ramp(0, PCM_RAMP_FULL_GAIN, RAMP_IN_FRAMES);
+    playing_gain = PCM_RAMP_FULL_GAIN;
+    begin_ramp(0, playing_gain, RAMP_IN_FRAMES);
 }
 
 static void act_on_wish(const struct music_wish *wish)
@@ -533,6 +548,11 @@ int music_engine_step(void)
             fade_generation = wish.generation;
             is_stopping = 1;
             begin_ramp(ramp.gain, 0, (unsigned int)wish.fade_ticks * FRAMES_PER_TICK);
+        }
+        if (wish.volume_generation != handled_volume_generation && !is_stopping) {
+            handled_volume_generation = wish.volume_generation;
+            playing_gain = wish.volume_gain;
+            begin_ramp(ramp.gain, playing_gain, (unsigned int)wish.volume_ticks * FRAMES_PER_TICK);
         }
         if (wish.starve_ms > 0) {
             audio_thread_sleep_us((unsigned int)wish.starve_ms * 1000);
