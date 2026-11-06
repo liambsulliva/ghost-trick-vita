@@ -13,6 +13,7 @@
 #include "scene_stage.h"
 #include "script_bridge.h"
 #include "script_machine.h"
+#include "scene_view.h"
 #include "script_player.h"
 #include "script_tables.h"
 #include "sound_engine.h"
