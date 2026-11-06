@@ -6,6 +6,7 @@
 #include "script_narration.h"
 #include "script_opcodes.h"
 #include "script_outputs.h"
+#include "script_route.h"
 #include "script_talk.h"
 
 #define SCRIPT_SOURCE_MAX 32
@@ -192,6 +193,8 @@ struct script_timed_event {
     long long at;
 };
 
+#define SCRIPT_ROUTE_ACTS_SEEN_MAX 64
+
 struct script_soul {
     int is_on;
     int player_opened_soul_view;
@@ -210,15 +213,24 @@ struct script_soul {
     int held_x;
     int held_y;
     long long start_message_at;
-    unsigned int next_auto_try_tick;
     unsigned int auto_reading_ticks;
-    int auto_core_was_chosen;
+    int tip_is_out;
+    float tip_x;
+    float tip_y;
+    int route_step;
+    const char *route_script;
+    unsigned int route_dwell_until;
+    unsigned int route_step_began_at;
+    int route_wait_is_over;
+    int tricks_fired;
+    int route_tricks_when_step_began;
+    const char *acts_seen[SCRIPT_ROUTE_ACTS_SEEN_MAX];
+    int acts_seen_count;
     int tooltip_is_on;
     int flash_ticks_left;
     int sparks_elapsed_ticks;
     int drag_ticks_left;
     int drag_stream_ticks;
-    unsigned char tried_cores[SCRIPT_OBJECT_MAX][SCRIPT_CORE_SLOT_COUNT];
     int drag_object;
     int drag_slot;
     float drag_from_x;
@@ -316,6 +328,7 @@ struct script_machine {
     unsigned int last_timer_tick;
     unsigned int push_count;
     int auto_press;
+    const struct script_route *route;
     int demo_soul_is_on;
     unsigned int random_state;
 };
@@ -358,6 +371,8 @@ void script_soul_note_tap(struct script_machine *machine, int tap_group);
 void script_soul_note_direction(struct script_machine *machine, int direction_x, int direction_y);
 void script_soul_set_held(struct script_machine *machine, int held_x, int held_y);
 void script_soul_reset(struct script_machine *machine);
+void script_soul_script_began(struct script_machine *machine, const char *script);
+void script_soul_act_began(struct script_machine *machine, const char *act_name);
 void script_soul_set_first_core(struct script_machine *machine, int object_index);
 void script_soul_set_countdown(struct script_machine *machine, int is_on);
 void script_soul_effect_spawned(struct script_machine *machine, int effect_id, const char *name);

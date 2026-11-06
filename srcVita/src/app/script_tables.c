@@ -306,6 +306,11 @@ int script_tables_read_soul(struct script_tables *tables, const char *text, unsi
     return read_all_lines(tables, text, text_size, read_soul_line);
 }
 
+int script_tables_read_route(struct script_tables *tables, const char *text, unsigned int text_size)
+{
+    return script_route_read(&tables->route, text, text_size);
+}
+
 const struct script_soul_style *script_tables_soul_style(const struct script_tables *tables, unsigned int class_id, int is_human, int has_core, int is_active, int is_dead)
 {
     unsigned int wanted_class;

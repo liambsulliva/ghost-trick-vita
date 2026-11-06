@@ -6,10 +6,18 @@
 #define SOUL_VISION_MESSAGE_AFTER_TICKS 90
 #define DEMO_MODE 2
 #define NORMAL_PLAY_MODE 3
-#define AUTO_TRICK_TICKS 30u
-#define AUTO_TUTORIAL_TICKS 3u
-#define PACED_TUTORIAL_TICKS 30u
 #define PACED_TICKS_TO_READ_A_PAGE 120u
+#define ROUTE_WAIT_MOST_TICKS 10800u
+#define ROUTE_ACTION_MOST_TICKS 1800u
+#define ROUTE_STEER_DEAD_ZONE 3.0f
+#define SOUL_REACH_DS_PIXELS 48.0f
+#define SOUL_TIP_DS_PIXELS_PER_TICK 6.0f
+#define SOUL_TIP_PICKUP_NEAR 16.0f
+#define SOUL_TIP_PICKUP_FAR 35.0f
+#define SOUL_TIP_PICKUP_OFF_LINE 3.0f
+#define SOUL_TIP_SHORTEST_PICKUP 1.0f
+#define SOUL_TIP_LENGTH_FOR_SHORTEST_PICKUP 4.0f
+#define SOUL_TIP_LENGTH_FOR_ANY_PICKUP 32.0f
 #define NO_CORE (-1)
 #define SOUL_BEAM_TICKS 6
 #define SOUL_LIGHTNING_TICKS 72
@@ -22,8 +30,6 @@
 #define CAMERA_VIEW_WIDTH 256
 #define CAMERA_VIEW_HEIGHT 192
 #define CAMERA_VIEW_MARGIN 24
-#define PACED_SOUL_VIEW_TICKS 120u
-#define PACED_LIVING_WORLD_TICKS 300u
 #define TRICK_ACTION_AFTER_TICKS 8
 #define TIME_JUMP_AFTER_TICKS 30
 #define TIME_JUMP_MOVIE "time_jump"
@@ -166,7 +172,11 @@ static void report_soul_view(struct script_machine *machine)
             float y;
 
             core_position(machine, soul->active_object, &x, &y);
-            machine->outputs->soul_cursor_moved(1, x, y, x, y, SCRIPT_SOUL_RESTING);
+            if (soul->tip_is_out) {
+                machine->outputs->soul_cursor_moved(1, x, y, soul->tip_x, soul->tip_y, SCRIPT_SOUL_BEAM);
+            } else {
+                machine->outputs->soul_cursor_moved(1, x, y, x, y, SCRIPT_SOUL_RESTING);
+            }
         } else {
             machine->outputs->soul_cursor_moved(0, 0.0f, 0.0f, 0.0f, 0.0f, SCRIPT_SOUL_RESTING);
         }
@@ -241,117 +251,175 @@ static void report_possession_effects(struct script_machine *machine)
     }
 }
 
-static int find_nearest_untried_core(struct script_machine *machine, int *found_object, int *found_slot)
+static int nearest_core_to_camera(const struct script_machine *machine)
 {
-    const struct script_soul *soul;
-    float from_x;
-    float from_y;
+    float camera_x;
+    float camera_y;
     float best;
+    int best_object;
     int object_index;
-    int slot;
-    int is_found;
 
-    soul = &machine->soul;
-    from_x = 0.0f;
-    from_y = 0.0f;
-    if (soul->active_object != NO_CORE) {
-        core_position(machine, soul->active_object, &from_x, &from_y);
-    }
+    camera_x = (float)machine->camera_x + (float)CAMERA_VIEW_WIDTH / 2.0f;
+    camera_y = (float)machine->camera_y + (float)CAMERA_VIEW_HEIGHT / 2.0f;
     best = 0.0f;
-    is_found = 0;
+    best_object = NO_CORE;
     for (object_index = 0; object_index < machine->object_count; object_index++) {
-        for (slot = 0; slot < SCRIPT_CORE_SLOT_COUNT; slot++) {
-            float x;
-            float y;
-            float distance;
+        float x;
+        float y;
+        float distance;
 
-            if (!object_can_be_a_core(&machine->objects[object_index], slot) || soul->tried_cores[object_index][slot] || (object_index == soul->active_object && slot == soul->active_slot)) {
-                continue;
-            }
-            core_position(machine, object_index, &x, &y);
-            distance = (x - from_x) * (x - from_x) + (y - from_y) * (y - from_y);
-            if (!is_found || distance < best) {
-                best = distance;
-                *found_object = object_index;
-                *found_slot = slot;
-                is_found = 1;
-            }
+        if (!object_can_be_a_core(&machine->objects[object_index], 0)) {
+            continue;
+        }
+        core_position(machine, object_index, &x, &y);
+        distance = (x - camera_x) * (x - camera_x) + (y - camera_y) * (y - camera_y);
+        if (best_object == NO_CORE || distance < best) {
+            best = distance;
+            best_object = object_index;
         }
     }
-    return is_found;
+    return best_object;
 }
 
-static void step_to_next_core(struct script_machine *machine)
+static int core_is_within_tip_pickup(float root_x, float root_y, float tip_x, float tip_y, float core_x, float core_y)
 {
-    struct script_soul *soul;
-    int object_index;
-    int slot;
+    float along_x;
+    float along_y;
+    float length_squared;
+    float fraction;
+    float off_x;
+    float off_y;
+    float distance;
 
-    soul = &machine->soul;
-    if (!find_nearest_untried_core(machine, &object_index, &slot)) {
-        memset(soul->tried_cores, 0, sizeof(soul->tried_cores));
-        if (!find_nearest_untried_core(machine, &object_index, &slot)) {
-            return;
-        }
+    distance = sqrtf((core_x - tip_x) * (core_x - tip_x) + (core_y - tip_y) * (core_y - tip_y));
+    if (distance <= SOUL_TIP_PICKUP_NEAR) {
+        return 1;
     }
-    soul->tried_cores[object_index][slot] = 1;
-    drag_soul_to(machine, object_index, slot);
+    if (distance > SOUL_TIP_PICKUP_FAR) {
+        return 0;
+    }
+    along_x = tip_x - root_x;
+    along_y = tip_y - root_y;
+    length_squared = along_x * along_x + along_y * along_y;
+    if (length_squared <= 0.0f) {
+        return 0;
+    }
+    fraction = ((core_x - root_x) * along_x + (core_y - root_y) * along_y) / length_squared;
+    if (fraction < 0.0f || fraction > 1.0f) {
+        return 0;
+    }
+    off_x = root_x + along_x * fraction - core_x;
+    off_y = root_y + along_y * fraction - core_y;
+    return sqrtf(off_x * off_x + off_y * off_y) <= SOUL_TIP_PICKUP_OFF_LINE;
 }
 
-static long long off_axis_cost(int along, int across)
+static int short_tip_cannot_pick_up(float tip_length, float distance)
 {
-    return (long long)along * along + 4LL * (long long)across * across;
+    float pickup;
+    float length_needed;
+
+    pickup = SOUL_TIP_SHORTEST_PICKUP;
+    length_needed = SOUL_TIP_LENGTH_FOR_SHORTEST_PICKUP;
+    while (length_needed <= SOUL_TIP_LENGTH_FOR_ANY_PICKUP) {
+        if (tip_length < length_needed && distance > pickup) {
+            return 1;
+        }
+        pickup = pickup * 2.0f;
+        length_needed = length_needed * 2.0f;
+    }
+    return 0;
 }
 
-static void step_to_core_in_direction(struct script_machine *machine, int direction_x, int direction_y)
+static int core_under_the_tip(const struct script_machine *machine, float root_x, float root_y, int *found_slot)
 {
     const struct script_soul *soul;
-    int from_x;
-    int from_y;
-    int object_index;
+    float best;
     int best_object;
-    int best_slot;
-    long long best_cost;
+    int object_index;
 
     soul = &machine->soul;
-    if (soul->active_object == NO_CORE) {
-        step_to_next_core(machine);
-        return;
-    }
-    from_x = machine->objects[soul->active_object].actor.x + machine->objects[soul->active_object].actor.core_x;
-    from_y = machine->objects[soul->active_object].actor.y + machine->objects[soul->active_object].actor.core_y;
+    best = 0.0f;
     best_object = NO_CORE;
-    best_slot = 0;
-    best_cost = 0;
     for (object_index = 0; object_index < machine->object_count; object_index++) {
-        const struct script_object *object;
+        float x;
+        float y;
+        float distance;
         int slot;
 
-        object = &machine->objects[object_index];
+        if (object_index == soul->active_object) {
+            continue;
+        }
         for (slot = 0; slot < SCRIPT_CORE_SLOT_COUNT; slot++) {
-            int along;
-            int across;
-            long long cost;
-
-            if (!object_can_be_a_core(object, slot) || object_index == soul->active_object) {
-                continue;
+            if (object_can_be_a_core(&machine->objects[object_index], slot)) {
+                break;
             }
-            along = (object->actor.x + object->actor.core_x - from_x) * direction_x + (object->actor.y + object->actor.core_y - from_y) * direction_y;
-            across = (object->actor.x + object->actor.core_x - from_x) * direction_y - (object->actor.y + object->actor.core_y - from_y) * direction_x;
-            if (along <= 0) {
-                continue;
-            }
-            cost = off_axis_cost(along, across);
-            if (best_object == NO_CORE || cost < best_cost) {
-                best_object = object_index;
-                best_slot = slot;
-                best_cost = cost;
-            }
-            break;
+        }
+        if (slot == SCRIPT_CORE_SLOT_COUNT) {
+            continue;
+        }
+        core_position(machine, object_index, &x, &y);
+        if (!core_is_within_tip_pickup(root_x, root_y, soul->tip_x, soul->tip_y, x, y)) {
+            continue;
+        }
+        distance = sqrtf((x - soul->tip_x) * (x - soul->tip_x) + (y - soul->tip_y) * (y - soul->tip_y));
+        if (short_tip_cannot_pick_up(sqrtf((soul->tip_x - root_x) * (soul->tip_x - root_x) + (soul->tip_y - root_y) * (soul->tip_y - root_y)), distance)) {
+            continue;
+        }
+        if (best_object == NO_CORE || distance < best) {
+            best = distance;
+            best_object = object_index;
+            *found_slot = slot;
         }
     }
-    if (best_object != NO_CORE) {
-        drag_soul_to(machine, best_object, best_slot);
+    return best_object;
+}
+
+static void clamp_tip_to_reach(struct script_soul *soul, float root_x, float root_y)
+{
+    float along_x;
+    float along_y;
+    float length;
+
+    along_x = soul->tip_x - root_x;
+    along_y = soul->tip_y - root_y;
+    length = sqrtf(along_x * along_x + along_y * along_y);
+    if (length > SOUL_REACH_DS_PIXELS) {
+        soul->tip_x = root_x + along_x * SOUL_REACH_DS_PIXELS / length;
+        soul->tip_y = root_y + along_y * SOUL_REACH_DS_PIXELS / length;
+    }
+}
+
+static void move_soul_tip(struct script_machine *machine)
+{
+    struct script_soul *soul;
+    float root_x;
+    float root_y;
+    int found_object;
+    int found_slot;
+
+    soul = &machine->soul;
+    if (!soul->is_on || soul->active_object == NO_CORE || soul->drag_ticks_left > 0 || (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent)) {
+        soul->tip_is_out = 0;
+        return;
+    }
+    if (soul->held_x == 0 && soul->held_y == 0) {
+        soul->tip_is_out = 0;
+        return;
+    }
+    core_position(machine, soul->active_object, &root_x, &root_y);
+    if (!soul->tip_is_out) {
+        soul->tip_x = root_x;
+        soul->tip_y = root_y;
+        soul->tip_is_out = 1;
+    }
+    soul->tip_x = soul->tip_x + (float)soul->held_x * SOUL_TIP_DS_PIXELS_PER_TICK;
+    soul->tip_y = soul->tip_y + (float)soul->held_y * SOUL_TIP_DS_PIXELS_PER_TICK;
+    clamp_tip_to_reach(soul, root_x, root_y);
+    found_slot = 0;
+    found_object = core_under_the_tip(machine, root_x, root_y, &found_slot);
+    if (found_object != NO_CORE) {
+        soul->tip_is_out = 0;
+        drag_soul_to(machine, found_object, found_slot);
     }
 }
 
@@ -365,6 +433,7 @@ static void fire_trick(struct script_machine *machine)
         return;
     }
     object = &machine->objects[soul->active_object];
+    soul->tricks_fired = soul->tricks_fired + 1;
     if (machine->outputs->marked != NULL) {
         machine->outputs->marked("trick", object->name);
     }
@@ -620,8 +689,6 @@ static void take_press(struct script_machine *machine)
     if (soul->tutorial_mode != TUTORIAL_NONE) {
         if (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent) {
             player_moved_in_tutorial(machine);
-        } else {
-            step_to_next_core(machine);
         }
         return;
     }
@@ -637,25 +704,18 @@ static void take_press(struct script_machine *machine)
     }
 }
 
-static void take_direction(struct script_machine *machine, int direction_x, int direction_y)
+static void take_direction(struct script_machine *machine)
 {
     struct script_soul *soul;
 
     soul = &machine->soul;
-    if (soul->tutorial_mode != TUTORIAL_NONE) {
-        if (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent) {
-            player_moved_in_tutorial(machine);
-        } else {
-            step_to_core_in_direction(machine, direction_x, direction_y);
-        }
+    if (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent) {
+        player_moved_in_tutorial(machine);
         return;
     }
-    if (!soul->is_on && script_soul_world_is_playable(machine)) {
+    if (soul->tutorial_mode == TUTORIAL_NONE && !soul->is_on && script_soul_world_is_playable(machine)) {
         soul->player_opened_soul_view = 1;
         set_soul_view(machine, 1);
-    }
-    if (soul->is_on) {
-        step_to_core_in_direction(machine, direction_x, direction_y);
     }
 }
 
@@ -672,7 +732,12 @@ static void take_ghost_button(struct script_machine *machine)
         soul->player_opened_soul_view = 1;
         set_soul_view(machine, 1);
         if (soul->active_object == NO_CORE) {
-            step_to_next_core(machine);
+            int first_core;
+
+            first_core = nearest_core_to_camera(machine);
+            if (first_core != NO_CORE) {
+                arrive_at_core(machine, first_core, 0);
+            }
         }
     }
 }
@@ -712,11 +777,296 @@ static void press_when_the_page_has_been_read(struct script_machine *machine)
     }
 }
 
+static int object_named(const struct script_machine *machine, const char *name)
+{
+    int index;
+
+    for (index = 0; index < machine->object_count; index++) {
+        if (strcmp(machine->objects[index].name, name) == 0) {
+            return index;
+        }
+    }
+    return NO_CORE;
+}
+
+static const struct script_route_step *current_route_step(const struct script_machine *machine)
+{
+    const struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (machine->route == NULL || soul->route_script == NULL || soul->route_step < 0 || soul->route_step >= machine->route->step_count) {
+        return NULL;
+    }
+    if (strcmp(machine->route->steps[soul->route_step].script, soul->route_script) != 0) {
+        return NULL;
+    }
+    return &machine->route->steps[soul->route_step];
+}
+
+static void mark_route_step(struct script_machine *machine, const char *what, const struct script_route_step *step)
+{
+    char detail[SCRIPT_ROUTE_NAME_MAX + 32];
+
+    if (machine->outputs->marked == NULL) {
+        return;
+    }
+    snprintf(detail, sizeof(detail), "%d:%s:%s", machine->soul.route_step, script_route_action_name(step->action), step->object[0] != '\0' ? step->object : "-");
+    machine->outputs->marked(what, detail);
+}
+
+static void go_to_route_step(struct script_machine *machine, int step_index, int dwell_ticks)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    soul->route_step = step_index;
+    soul->route_step_began_at = machine->tick;
+    soul->route_dwell_until = machine->tick + (machine->auto_press == SCRIPT_AUTO_FAST ? 0u : (unsigned int)dwell_ticks);
+    soul->route_wait_is_over = 0;
+    soul->route_tricks_when_step_began = soul->tricks_fired;
+}
+
+static void finish_route_step(struct script_machine *machine, const struct script_route_step *step)
+{
+    const struct script_route_step *next;
+    int dwell_ticks;
+
+    mark_route_step(machine, "route_step_done", step);
+    machine->last_new_site_tick = machine->tick;
+    next = machine->soul.route_step + 1 < machine->route->step_count ? &machine->route->steps[machine->soul.route_step + 1] : NULL;
+    dwell_ticks = next != NULL ? next->dwell_ticks : 0;
+    go_to_route_step(machine, machine->soul.route_step + 1, dwell_ticks);
+}
+
+static int route_act_was_seen(const struct script_soul *soul, const char *act_name)
+{
+    int index;
+
+    for (index = 0; index < soul->acts_seen_count; index++) {
+        if (strcmp(soul->acts_seen[index], act_name) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int route_wait_is_satisfied(const struct script_machine *machine, const struct script_route_step *step)
+{
+    const struct script_soul *soul;
+
+    soul = &machine->soul;
+    switch (step->wait) {
+    case SCRIPT_ROUTE_WAIT_PLAYABLE:
+        return script_soul_world_is_playable(machine);
+    case SCRIPT_ROUTE_WAIT_TUTORIAL_TOUCH:
+        return soul->tutorial_mode == TUTORIAL_TOUCH_CHECK;
+    case SCRIPT_ROUTE_WAIT_TUTORIAL_MOVE:
+        return soul->tutorial_mode == TUTORIAL_MOVE;
+    case SCRIPT_ROUTE_WAIT_ACT:
+        return route_act_was_seen(soul, step->wait_name);
+    case SCRIPT_ROUTE_WAIT_CORE:
+        return machine->active_core_name != NULL && strcmp(machine->active_core_name, step->wait_name) == 0;
+    default:
+        return 1;
+    }
+}
+
+static void steer_tip_toward_object(struct script_machine *machine, int object_index)
+{
+    struct script_soul *soul;
+    float from_x;
+    float from_y;
+    float target_x;
+    float target_y;
+
+    soul = &machine->soul;
+    if (soul->tip_is_out) {
+        from_x = soul->tip_x;
+        from_y = soul->tip_y;
+    } else {
+        core_position(machine, soul->active_object, &from_x, &from_y);
+    }
+    core_position(machine, object_index, &target_x, &target_y);
+    soul->held_x = target_x > from_x + ROUTE_STEER_DEAD_ZONE ? 1 : (target_x < from_x - ROUTE_STEER_DEAD_ZONE ? -1 : 0);
+    soul->held_y = target_y > from_y + ROUTE_STEER_DEAD_ZONE ? 1 : (target_y < from_y - ROUTE_STEER_DEAD_ZONE ? -1 : 0);
+}
+
+static int run_route_move(struct script_machine *machine, const struct script_route_step *step)
+{
+    struct script_soul *soul;
+    int object_index;
+
+    soul = &machine->soul;
+    object_index = object_named(machine, step->object);
+    if (object_index == NO_CORE || !object_can_be_a_core(&machine->objects[object_index], step->slot)) {
+        return 0;
+    }
+    if (soul->active_object == object_index && soul->drag_ticks_left == 0) {
+        soul->active_slot = step->slot;
+        return 1;
+    }
+    if (!soul->is_on) {
+        if (script_soul_world_is_playable(machine)) {
+            soul->ghost_is_pending = 1;
+        }
+        return 0;
+    }
+    if (soul->drag_ticks_left == 0 && soul->active_object != NO_CORE) {
+        steer_tip_toward_object(machine, object_index);
+    }
+    return 0;
+}
+
+static int run_route_action(struct script_machine *machine, const struct script_route_step *step)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    switch (step->action) {
+    case SCRIPT_ROUTE_MOVE:
+        return run_route_move(machine, step);
+    case SCRIPT_ROUTE_TRICK:
+        if (soul->tricks_fired != soul->route_tricks_when_step_began) {
+            return 1;
+        }
+        if (machine->active_core_name != NULL && strcmp(machine->active_core_name, step->object) == 0 && soul->drag_ticks_left == 0) {
+            machine->press_is_pending = 1;
+        }
+        return 0;
+    case SCRIPT_ROUTE_GHOST_ON:
+        if (soul->is_on) {
+            return 1;
+        }
+        if (script_soul_world_is_playable(machine)) {
+            soul->ghost_is_pending = 1;
+        }
+        return 0;
+    case SCRIPT_ROUTE_GHOST_OFF:
+        if (!soul->is_on) {
+            return 1;
+        }
+        soul->ghost_is_pending = 1;
+        return 0;
+    case SCRIPT_ROUTE_TAP_LEFT:
+    case SCRIPT_ROUTE_TAP_RIGHT:
+        if (!script_balloons_can_be_tapped(machine, step->action == SCRIPT_ROUTE_TAP_LEFT ? SCRIPT_TAP_GROUP_LEFT : SCRIPT_TAP_GROUP_RIGHT)) {
+            return 0;
+        }
+        soul->tap_group_is_pending = step->action == SCRIPT_ROUTE_TAP_LEFT ? SCRIPT_TAP_GROUP_LEFT : SCRIPT_TAP_GROUP_RIGHT;
+        return 1;
+    default:
+        return 1;
+    }
+}
+
+static void give_up_on_route_step(struct script_machine *machine, const struct script_route_step *step)
+{
+    struct script_soul *soul;
+    int object_index;
+
+    soul = &machine->soul;
+    mark_route_step(machine, "route_step_failed", step);
+    if (step->action == SCRIPT_ROUTE_MOVE && soul->is_on) {
+        object_index = object_named(machine, step->object);
+        if (object_index != NO_CORE && object_can_be_a_core(&machine->objects[object_index], step->slot)) {
+            mark_route_step(machine, "route_hop_beyond_reach", step);
+            arrive_at_core(machine, object_index, step->slot);
+        }
+    }
+    finish_route_step(machine, step);
+}
+
+static void run_route(struct script_machine *machine)
+{
+    struct script_soul *soul;
+    const struct script_route_step *step;
+
+    soul = &machine->soul;
+    step = current_route_step(machine);
+    if (step == NULL || machine->tick < soul->route_dwell_until) {
+        return;
+    }
+    if (!soul->route_wait_is_over) {
+        if (!route_wait_is_satisfied(machine, step)) {
+            if (step->wait != SCRIPT_ROUTE_WAIT_PLAYABLE && machine->tick - soul->route_step_began_at > ROUTE_WAIT_MOST_TICKS) {
+                give_up_on_route_step(machine, step);
+            }
+            return;
+        }
+        soul->route_wait_is_over = 1;
+        soul->route_step_began_at = machine->tick;
+    }
+    if (run_route_action(machine, step)) {
+        finish_route_step(machine, step);
+    } else if (machine->tick - soul->route_step_began_at > ROUTE_ACTION_MOST_TICKS) {
+        give_up_on_route_step(machine, step);
+    }
+}
+
+void script_soul_script_began(struct script_machine *machine, const char *script)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    soul->route_script = script;
+    soul->acts_seen_count = 0;
+    soul->route_step = machine->route != NULL ? script_route_first_step_of_script(machine->route, script) : -1;
+    soul->route_step_began_at = machine->tick;
+    soul->route_dwell_until = machine->tick;
+    soul->route_wait_is_over = 0;
+    soul->route_tricks_when_step_began = soul->tricks_fired;
+    if (machine->auto_press != SCRIPT_AUTO_OFF && machine->route != NULL && soul->route_step < 0 && machine->outputs->marked != NULL) {
+        machine->outputs->marked("route_has_no_steps", script);
+    }
+}
+
+static void skip_route_ahead_to_act(struct script_machine *machine, const char *act_name)
+{
+    const struct script_soul *soul;
+    int index;
+
+    soul = &machine->soul;
+    if (current_route_step(machine) == NULL) {
+        return;
+    }
+    for (index = soul->route_step + 1; index < machine->route->step_count; index++) {
+        const struct script_route_step *step;
+
+        step = &machine->route->steps[index];
+        if (strcmp(step->script, soul->route_script) != 0) {
+            return;
+        }
+        if (step->wait == SCRIPT_ROUTE_WAIT_ACT && strcmp(step->wait_name, act_name) == 0) {
+            mark_route_step(machine, "route_resynced_past", &machine->route->steps[soul->route_step]);
+            go_to_route_step(machine, index, step->dwell_ticks);
+            return;
+        }
+    }
+}
+
+void script_soul_act_began(struct script_machine *machine, const char *act_name)
+{
+    struct script_soul *soul;
+    const struct script_route_step *step;
+
+    soul = &machine->soul;
+    if (soul->acts_seen_count < SCRIPT_ROUTE_ACTS_SEEN_MAX) {
+        soul->acts_seen[soul->acts_seen_count] = act_name;
+        soul->acts_seen_count = soul->acts_seen_count + 1;
+    }
+    step = current_route_step(machine);
+    if (step != NULL && !(step->wait == SCRIPT_ROUTE_WAIT_ACT && strcmp(step->wait_name, act_name) == 0)) {
+        skip_route_ahead_to_act(machine, act_name);
+    }
+}
+
 static void play_automatically(struct script_machine *machine)
 {
     struct script_soul *soul;
 
     soul = &machine->soul;
+    soul->held_x = 0;
+    soul->held_y = 0;
     if ((machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine)) || script_narration_wants_a_press(&machine->narration)) {
         press_when_the_page_has_been_read(machine);
         return;
@@ -726,49 +1076,11 @@ static void play_automatically(struct script_machine *machine)
         script_machine_scroll_camera(machine, CAMERA_FREE_SPEED_PIXELS, CAMERA_FREE_SPEED_PIXELS);
         return;
     }
-    if (machine->tick < soul->next_auto_try_tick) {
-        return;
-    }
-    if (soul->tutorial_mode != TUTORIAL_NONE) {
-        soul->next_auto_try_tick = machine->tick + (machine->auto_press == SCRIPT_AUTO_FAST ? AUTO_TUTORIAL_TICKS : PACED_TUTORIAL_TICKS);
+    if (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent) {
         machine->press_is_pending = 1;
         return;
     }
-    if (machine->auto_press == SCRIPT_AUTO_FAST) {
-        soul->next_auto_try_tick = machine->tick + AUTO_TRICK_TICKS;
-    }
-    if (soul->is_on && soul->player_opened_soul_view) {
-        if (machine->auto_press == SCRIPT_AUTO_FAST) {
-            step_to_next_core(machine);
-            machine->press_is_pending = 1;
-        } else if (!soul->auto_core_was_chosen) {
-            soul->auto_core_was_chosen = 1;
-            step_to_next_core(machine);
-            soul->next_auto_try_tick = machine->tick + PACED_SOUL_VIEW_TICKS;
-        } else if (soul->drag_ticks_left == 0) {
-            soul->auto_core_was_chosen = 0;
-            machine->press_is_pending = 1;
-            soul->next_auto_try_tick = machine->tick + PACED_LIVING_WORLD_TICKS;
-        }
-        return;
-    }
-    if (machine->pause_bit) {
-        return;
-    }
-    if (script_balloons_can_be_tapped(machine, SCRIPT_TAP_GROUP_RIGHT)) {
-        soul->tap_group_is_pending = SCRIPT_TAP_GROUP_RIGHT;
-        return;
-    }
-    if (script_balloons_can_be_tapped(machine, SCRIPT_TAP_GROUP_LEFT)) {
-        soul->tap_group_is_pending = SCRIPT_TAP_GROUP_LEFT;
-        return;
-    }
-    if (script_soul_world_is_playable(machine)) {
-        soul->ghost_is_pending = 1;
-        if (machine->auto_press != SCRIPT_AUTO_FAST) {
-            soul->next_auto_try_tick = machine->tick + PACED_SOUL_VIEW_TICKS;
-        }
-    }
+    run_route(machine);
 }
 
 void script_soul_step_before_tasks(struct script_machine *machine)
@@ -798,10 +1110,11 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         soul->tap_group_is_pending = 0;
     }
     if (soul->direction_x != 0 || soul->direction_y != 0) {
-        take_direction(machine, soul->direction_x, soul->direction_y);
+        take_direction(machine);
         soul->direction_x = 0;
         soul->direction_y = 0;
     }
+    move_soul_tip(machine);
     move_free_camera(machine);
     finish_drag_when_due(machine);
     report_soul_view(machine);
@@ -837,6 +1150,7 @@ void script_soul_set_held(struct script_machine *machine, int held_x, int held_y
 void script_soul_reset(struct script_machine *machine)
 {
     memset(&machine->soul, 0, sizeof(machine->soul));
+    machine->soul.route_step = -1;
     machine->soul.active_object = NO_CORE;
     machine->soul.start_message_at = -1;
     machine->soul.trick_is_on = 1;

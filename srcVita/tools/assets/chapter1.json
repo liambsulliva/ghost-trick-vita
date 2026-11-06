@@ -747,5 +747,46 @@
       "width": 640,
       "height": 360
     }
-  ]
+  ],
+  "route": {
+    "dwell_ticks": 90,
+    "steps": [
+      {
+        "script": "st01-st01_game000_Expand",
+        "action": "move",
+        "object": "shadanki",
+        "wait": "tutorial:touch"
+      },
+      {
+        "script": "st01-st01_game000_Expand",
+        "action": "trick",
+        "object": "shadanki",
+        "wait": "playable"
+      },
+      {
+        "script": "st01-st01_game000_Expand",
+        "action": "move",
+        "object": "guitar",
+        "wait": "tutorial:move"
+      },
+      {
+        "script": "st01-st01_game000_Expand",
+        "action": "trick",
+        "object": "guitar",
+        "wait": "playable"
+      },
+      {
+        "script": "st01-st01_game000_Expand",
+        "action": "move",
+        "object": "cicel",
+        "wait": "tutorial:move"
+      },
+      {
+        "script": "st01-st01_game000_Expand",
+        "action": "trick",
+        "object": "cicel",
+        "wait": "playable"
+      }
+    ]
+  }
 }

@@ -124,6 +124,7 @@ static void begin_script(struct script_machine *machine, const struct script_sou
     if (machine->outputs->marked != NULL) {
         machine->outputs->marked("script_begun", source->name);
     }
+    script_soul_script_began(machine, source->name);
     machine->object_count = 0;
     machine->actor_count = 0;
     machine->gameapp_count = 0;
@@ -447,6 +448,9 @@ static void start_act(struct script_machine *machine, struct script_vm *vm, cons
     act_name = script_machine_string(machine, vm, words[3]);
     if (act_name != NULL && machine->outputs->marked != NULL) {
         machine->outputs->marked("act_begun", act_name);
+    }
+    if (act_name != NULL) {
+        script_soul_act_began(machine, act_name);
     }
     if (act_name != NULL && machine->stop_act != NULL && strcmp(act_name, machine->stop_act) == 0) {
         machine->stop_is_requested = 1;

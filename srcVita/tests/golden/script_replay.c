@@ -155,6 +155,29 @@ static void add_every_script_of_the_chain(const char *folder)
     fclose(source);
 }
 
+static struct script_route replay_route;
+
+static void read_route(const char *folder)
+{
+    char path[FILE_NAME_MAX];
+    static char text[SCRIPT_ROUTE_STEP_MAX * 256];
+    FILE *source;
+    size_t size;
+
+    snprintf(path, sizeof(path), "%s/route_steps.txt", folder);
+    source = fopen(path, "r");
+    if (source == NULL) {
+        return;
+    }
+    size = fread(text, 1, sizeof(text), source);
+    fclose(source);
+    if (!script_route_read(&replay_route, text, (unsigned int)size)) {
+        printf("route_steps.txt is invalid\n");
+        return;
+    }
+    machine.route = &replay_route;
+}
+
 static void read_room_bounds(const char *folder)
 {
     char path[FILE_NAME_MAX];
@@ -251,6 +274,9 @@ int main(int argument_count, char **arguments)
     add_every_script_of_the_chain(folder);
     read_room_bounds(folder);
     read_talk_book(folder);
+    if (auto_press != SCRIPT_AUTO_OFF) {
+        read_route(folder);
+    }
     if (!script_machine_start(&machine, "route")) {
         printf("cannot start route\n");
         return 1;

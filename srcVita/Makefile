@@ -130,5 +130,10 @@ golden: build/tests/golden/script_replay
 	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1/scripts --timing ds --rows build/golden/rows_ds.tsv --cues build/golden/cues_ds.tsv --stop-tick 6056 --close-talk-at 5643 --close-talk-at 5823 --close-talk-at 6002
 	python3 -I tools/script_golden_check.py build/golden/rows_ds.tsv --stop-tick 7095
 
+route-check: build/tests/golden/script_replay
+	@mkdir -p build/golden
+	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1/scripts --timing remaster --auto-paced --marks --stop-tick 140000 > build/golden/route_marks.txt
+	python3 -I tools/route_check.py build/golden/route_marks.txt ../extracted/vita_assets/chapter1/scripts/route_steps.txt
+
 clean:
 	rm -rf build

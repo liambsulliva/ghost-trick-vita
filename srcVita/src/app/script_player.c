@@ -209,6 +209,7 @@ static void read_next_file(void)
         read_text_table("effects", ".txt", script_tables_read_effects, 0);
         read_text_table("soul", ".txt", script_tables_read_soul, 0);
         read_text_table("core_labels", ".txt", script_tables_read_core_labels, 0);
+        read_text_table("route_steps", ".txt", script_tables_read_route, 0);
         break;
     case 7:
         read_talk_book();
@@ -270,6 +271,7 @@ static void begin_loading_animations(void)
     script_bridge_start(&data->tables);
     data->machine.timing = data->tables.timing;
     data->machine.auto_press = wanted_auto_play();
+    data->machine.route = data->tables.route.step_count > 0 ? &data->tables.route : NULL;
     memcpy(data->machine.room_bounds, data->tables.room_bounds, sizeof(data->machine.room_bounds));
     time_jump = script_tables_find_movie(&data->tables, "time_jump");
     data->machine.time_jump_movie_ticks = time_jump != NULL ? time_jump->frame_count * time_jump->ticks_per_frame : 0;

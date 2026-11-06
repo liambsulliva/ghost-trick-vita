@@ -171,7 +171,7 @@ It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`,
 
 | Line | What it does |
 |---|---|
-| `auto_play`, `auto_play off` | Play by itself at normal speed, with sound and pauses long enough to read each page |
+| `auto_play`, `auto_play off` | Play by itself at normal speed, following the baked route in `route_steps.txt` with the same inputs a player has, and pausing long enough to read each page |
 | `ff <n>` | Run `n` script ticks per frame, pressing buttons by itself |
 | `ff_until script <name>`, `ff_until act <name>`, `ff_until tick <n>` | Fast forward until that point, then pause |
 | `resume` | Carry on from a pause |
@@ -179,7 +179,7 @@ It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`,
 | `press <hex>` | Press a button mask for one frame |
 | `burst <seconds>`, `burst 0` | Record a half-size picture of the screen five times a second for that long, into one file on the Vita. It then pauses the script until `resume`. `vita_loop.py burst` drives this, so nothing talks to the Vita while it records |
 
-Automatic play closes dialogue, walks tutorial cores and tries each trick in turn, through the same inputs a player uses. Sounds stay quiet at speed.
+Automatic play closes dialogue and follows the route in `tools/assets/chapter1.json`, baked to `route_steps.txt`, through the same inputs a player uses. Each step waits for a named game state. A step it can't finish logs `route_step_failed` and play carries on, and `make route-check` fails if a replay stops matching the route. Sounds stay quiet at speed.
 
 The Mac replay does the same with no device:
 

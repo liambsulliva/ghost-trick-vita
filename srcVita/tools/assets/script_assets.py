@@ -34,6 +34,7 @@ TEXT_LINES_FILE = SCRIPTS_FOLDER + "/text_lines.txt"
 BALLOONS_FILE = SCRIPTS_FOLDER + "/balloons.txt"
 SOUL_FILE = SCRIPTS_FOLDER + "/soul.txt"
 CORE_LABELS_FILE = SCRIPTS_FOLDER + "/core_labels.txt"
+ROUTE_FILE = SCRIPTS_FOLDER + "/route_steps.txt"
 EFFECTS_FILE = SCRIPTS_FOLDER + "/effects.txt"
 CHAPTER_PRELOADED_MESSAGES = 6
 CHAPTER_PRELOADED_ROOMS = 2
@@ -315,6 +316,14 @@ def movies_text(movies):
     return "".join("movie %s %d %d\n" % (movie["name"], movie.get("frames", 0), TICKS_PER_SECOND // movie["fps"]) for movie in movies)
 
 
+def route_steps_text(route):
+    default_dwell_ticks = route.get("dwell_ticks", 0)
+    lines = []
+    for step in route["steps"]:
+        lines.append("step %s %s %s %d %s %d\n" % (step["script"], step["action"], step.get("object", "-"), step.get("slot", 0), step.get("wait", "-"), step.get("dwell_ticks", default_dwell_ticks)))
+    return "".join(lines)
+
+
 def flipbooks_text(flipbooks):
     return "".join("flipbook %s %d %d %d %d %s %s %s\n" % (book["name"], book["ticks_per_frame"], book["frames"], book["columns"], book["rows"], asset_writers.format_number(book["cell_width"]), asset_writers.format_number(book["cell_height"]), " ".join(book["pages"])) for book in flipbooks)
 
@@ -449,6 +458,8 @@ def table_files(set_description, output_folder, motion_lines, narration_lines, t
     if "core_labels" in set_description:
         texts[CORE_LABELS_FILE] = core_labels_text(set_description["core_labels"], texture_sizes)
         extra_textures.append(set_description["soul_view"]["ring"])
+    if "route" in set_description:
+        texts[ROUTE_FILE] = route_steps_text(set_description["route"])
     texts[EFFECTS_FILE] = movies_text(set_description.get("movies", [])) + flipbooks_text(set_description.get("flipbooks", [])) + effects_text(set_description.get("effects", []))
     if "chapter" in set_description:
         texts[PRELOAD_FILE] = chapter_preload_text(set_description, section, narration_lines, extra_textures)
