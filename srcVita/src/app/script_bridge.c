@@ -47,6 +47,7 @@ static int white_level;
 static int mask_fade_is_alive;
 static int zoom_ticks_left;
 #define NO_SOUL_TEXTURE "-"
+#define SCREEN_FILTER_GRAYSCALE 1
 #define HUMAN_CLASS_ID 0x5a390072u
 #define ALL_SOUND_LOOPS "*"
 
@@ -95,6 +96,9 @@ static void on_stage_cleared(void)
     memset(open_balloon_rows, 0, sizeof(open_balloon_rows));
     memset(pending_overlays, 0, sizeof(pending_overlays));
     script_view_talk_changed(NULL);
+    script_view_film_frame_changed(0);
+    script_view_swirl_changed(0);
+    scene_stage_set_mono_mode(0);
     sound_request_stop_loop(ALL_SOUND_LOOPS);
 }
 
@@ -111,10 +115,7 @@ static void on_shake_changed(int level, int ticks)
 
 static void on_screen_filter_changed(int mode)
 {
-    char text[16];
-
-    snprintf(text, sizeof(text), "%d", mode);
-    log_once("screen_filter_not_drawn", text);
+    scene_stage_set_mono_mode(mode == SCREEN_FILTER_GRAYSCALE);
 }
 
 static void on_mask_fade_color_changed(int is_white)
@@ -610,6 +611,9 @@ static const struct script_outputs bridge_outputs = {
     .soul_core_marked = script_view_core_marked,
     .soul_tooltip_changed = script_view_tooltip_changed,
     .soul_flash_changed = script_view_soul_flash_changed,
+    .film_frame_changed = script_view_film_frame_changed,
+    .swirl_changed = script_view_swirl_changed,
+    .movie_started = script_view_movie_started,
     .soul_sparks_changed = script_view_soul_sparks_changed,
     .soul_object_styled = on_soul_object_styled,
     .marked = on_marked,

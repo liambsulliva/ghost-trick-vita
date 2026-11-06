@@ -42,6 +42,7 @@ struct scene_stage {
     float camera_y;
     float fade_amount;
     int soul_mode_is_on;
+    int mono_mode_is_on;
     char card_texture[ASSET_NAME_MAX];
     struct scene_effects effects;
     struct scene_layers layers;
@@ -56,6 +57,7 @@ void scene_stage_clear_plates(void);
 void scene_stage_add_plate(const char *texture_name, float x, float y, float width, float height);
 void scene_stage_set_last_plate_soul_texture(const char *texture_name);
 void scene_stage_set_soul_mode(int is_on);
+void scene_stage_set_mono_mode(int is_on);
 void scene_stage_set_object_flipped(const char *object_name, int is_flipped);
 void scene_stage_set_object_soul_tint(const char *object_name, float red, float green, float blue, float alpha, int is_flat);
 int scene_stage_set_object(const char *object_name, const char *animation_name, float x, float y, int layer, int is_flipped);

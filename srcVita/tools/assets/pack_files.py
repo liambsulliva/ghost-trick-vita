@@ -106,6 +106,15 @@ class PackSet:
         entry = self.entries.get(path_hash_key(path))
         if entry is None:
             raise KeyError("not in the packs: " + path)
+        return self.read_entry(entry, path)
+
+    def read_by_key(self, key):
+        entry = self.entries.get(tuple(key))
+        if entry is None:
+            raise KeyError("not in the packs: " + str(key))
+        return self.read_entry(entry, str(key))
+
+    def read_entry(self, entry, path):
         with open(entry.file_path, "rb") as source:
             source.seek(entry.base_offset + entry.offset)
             stored = source.read(entry.stored_size)

@@ -157,6 +157,21 @@ int script_tables_read_text_lines(struct script_tables *tables, const char *text
     return read_all_lines(tables, text, text_size, read_text_line);
 }
 
+static int read_movie_line(struct script_tables *tables, const char *line)
+{
+    struct script_movie *movie;
+
+    if (tables->movie_count >= SCRIPT_MOVIE_MAX) {
+        return 1;
+    }
+    movie = &tables->movies[tables->movie_count];
+    if (sscanf(line, "movie " NAME_SCAN " %d %d", movie->name, &movie->frame_count, &movie->ticks_per_frame) != 3) {
+        return 0;
+    }
+    tables->movie_count = tables->movie_count + 1;
+    return 1;
+}
+
 static int read_flipbook_line(struct script_tables *tables, const char *line)
 {
     struct script_flipbook *book;
@@ -184,6 +199,9 @@ static int read_effect_line(struct script_tables *tables, const char *line)
     if (text_line_starts_with(line, "flipbook ")) {
         return read_flipbook_line(tables, line);
     }
+    if (text_line_starts_with(line, "movie ")) {
+        return read_movie_line(tables, line);
+    }
 
     if (tables->effect_row_count >= SCRIPT_EFFECT_ROW_MAX) {
         return 1;
@@ -209,6 +227,18 @@ static int read_effect_line(struct script_tables *tables, const char *line)
 int script_tables_read_effects(struct script_tables *tables, const char *text, unsigned int text_size)
 {
     return read_all_lines(tables, text, text_size, read_effect_line);
+}
+
+const struct script_movie *script_tables_find_movie(const struct script_tables *tables, const char *name)
+{
+    int index;
+
+    for (index = 0; index < tables->movie_count; index++) {
+        if (strcmp(tables->movies[index].name, name) == 0) {
+            return &tables->movies[index];
+        }
+    }
+    return NULL;
 }
 
 const struct script_flipbook *script_tables_find_flipbook(const struct script_tables *tables, const char *name)

@@ -26,6 +26,7 @@
 #define PACED_LIVING_WORLD_TICKS 300u
 #define TRICK_ACTION_AFTER_TICKS 8
 #define TIME_JUMP_AFTER_TICKS 30
+#define TIME_JUMP_MOVIE "time_jump"
 #define COUNTDOWN_STEP_TICKS 90
 #define COUNTDOWN_LAST_STEP 3
 #define PHONE_EFFECT_ID 49
@@ -368,6 +369,9 @@ static void fire_trick(struct script_machine *machine)
         machine->outputs->marked("trick", object->name);
     }
     if (object->is_dead) {
+        if (machine->outputs->swirl_changed != NULL) {
+            machine->outputs->swirl_changed(1);
+        }
         script_machine_send(machine, "*", "timeleap", "start");
         return;
     }
@@ -566,8 +570,15 @@ void script_soul_run_command(struct script_machine *machine, const char *verb, c
         run_custom_soul_command(machine, arg);
     } else if (strcmp(verb, "FreeCamera") == 0) {
         machine->soul.camera_tutorial_is_on = strcmp(arg, "TutorialStart") == 0;
+    } else if (strcmp(verb, "Timeleap") == 0 && strcmp(arg, "BREAK") == 0) {
+        if (machine->outputs->swirl_changed != NULL) {
+            machine->outputs->swirl_changed(0);
+        }
     } else if (strcmp(verb, "Timeleap") == 0 && strcmp(arg, "SELECT") == 0) {
-        schedule_native_event(machine, &machine->soul.time_jump_event, "timeleap", "jump", TIME_JUMP_AFTER_TICKS);
+        if (machine->outputs->movie_started != NULL && machine->time_jump_movie_ticks > 0) {
+            machine->outputs->movie_started(TIME_JUMP_MOVIE);
+        }
+        schedule_native_event(machine, &machine->soul.time_jump_event, "timeleap", "jump", machine->time_jump_movie_ticks > 0 ? machine->time_jump_movie_ticks : TIME_JUMP_AFTER_TICKS);
     }
 }
 

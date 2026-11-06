@@ -195,6 +195,8 @@ static void draw_texture_or_placeholder(const char *texture_name, struct rendere
     }
 }
 
+#define MONO_PLATE_SUFFIX "-mono"
+
 struct held_pose {
     char object_name[ASSET_NAME_MAX];
     char texture_name[ASSET_NAME_MAX];
@@ -244,6 +246,7 @@ static void draw_plates(const struct scene_stage *stage, const struct screen_vie
     int index;
 
     for (index = 0; index < stage->plate_count; index++) {
+        char mono_name[ASSET_NAME_MAX];
         const char *wanted;
         const char *other;
         struct renderer_rect screen_area;
@@ -251,7 +254,11 @@ static void draw_plates(const struct scene_stage *stage, const struct screen_vie
 
         plate = &stage->plates[index];
         wanted = stage->soul_mode_is_on && plate->soul_texture_name[0] != '\0' ? plate->soul_texture_name : plate->texture_name;
-        other = wanted == plate->texture_name ? plate->soul_texture_name : plate->texture_name;
+        if (stage->mono_mode_is_on && !stage->soul_mode_is_on) {
+            snprintf(mono_name, sizeof(mono_name), "%s" MONO_PLATE_SUFFIX, plate->texture_name);
+            wanted = mono_name;
+        }
+        other = wanted == plate->soul_texture_name ? plate->texture_name : plate->soul_texture_name;
         screen_area = world_area_to_screen(view, plate->x, plate->y, plate->width, plate->height);
         texture_area.x = 0.0f;
         texture_area.y = 0.0f;

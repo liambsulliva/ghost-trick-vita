@@ -209,6 +209,30 @@
       "source": "natives/android/charfiles/3d/04_item/soultentacle_iml4.tex.691230823",
       "width": 256,
       "height": 64
+    },
+    {
+      "name": "film_strip",
+      "source": "natives/android/charfiles/3d/04_item/demofilmtexture_iml4.tex.691230823",
+      "width": 64,
+      "height": 64
+    },
+    {
+      "name": "film_corner",
+      "source": "natives/android/charfiles/3d/04_item/demofilmpoint_iml4.tex.691230823",
+      "width": 64,
+      "height": 80
+    },
+    {
+      "name": "swirl_back",
+      "source": "natives/android/charfiles/3d/06_id/07_rollback/death-back-eff_iml3.tex.691230823",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "name": "swirl_particle",
+      "source": "natives/android/charfiles/3d/06_id/07_rollback/deadkaiwaryu_iml4.tex.691230823",
+      "width": 128,
+      "height": 128
     }
   ],
   "composed_textures": [
@@ -711,5 +735,22 @@
       ]
     },
     "unknown_text": "???"
+  },
+  "movies": [
+    {
+      "name": "time_jump",
+      "pack_key": [
+        395138614,
+        3624828312
+      ],
+      "fps": 20,
+      "width": 640,
+      "height": 360
+    }
+  ],
+  "mono_ramp": {
+    "white_percent": 100,
+    "dark": "#000000",
+    "bright": "#ffffff"
   }
 }

@@ -81,6 +81,20 @@
 #define LIGHTNING_LUMP_RADIUS_LEAST 8.0f
 #define LIGHTNING_LUMP_RADIUS_SPREAD 16.0f
 #define TOOLTIP_LINE_THICKNESS 2.0f
+#define FILM_STRIP_TEXTURE "film_strip"
+#define FILM_BAND_HEIGHT 34.0f
+#define FILM_TILE_SIZE 60.0f
+#define FILM_TILE_TOP -13.0f
+#define MOVIE_FRAMES_LOADED_AHEAD 4
+#define SWIRL_TEXTURE "swirl_back"
+#define SWIRL_PARTICLE_TEXTURE "swirl_particle"
+#define SWIRL_SIZE 1200.0f
+#define SWIRL_TURN_PER_TICK 0.004f
+#define SWIRL_PARTICLE_COUNT 14
+#define SWIRL_PARTICLE_LIFE_TICKS 300.0f
+#define SWIRL_PARTICLE_REACH 560.0f
+#define SWIRL_PARTICLE_SIZE_LEAST 10.0f
+#define SWIRL_PARTICLE_SIZE_SPREAD 16.0f
 #define SCANLINE_COUNT 135
 #define SCANLINE_SPACING 4.0f
 #define SCANLINE_HEIGHT 2.0f
@@ -110,6 +124,8 @@ struct view_core_mark {
     int is_dead;
 };
 
+static const struct renderer_color film_band_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+static const struct renderer_color movie_black = { 0.0f, 0.0f, 0.0f, 1.0f };
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color text_colors[SCRIPT_TALK_COLOR_COUNT] = {
     { 0.0f, 0.0f, 0.0f, 1.0f },
@@ -129,6 +145,11 @@ static int cursor_motion;
 static const struct script_core_label *tooltip_label;
 static float tooltip_alpha;
 static float flash_alpha;
+static int film_frame_is_on;
+static int swirl_is_on;
+static const struct script_movie *playing_movie;
+static unsigned int movie_started_at_tick;
+static int movie_last_ready_frame;
 static int sparks_elapsed_ticks;
 static float sparks_x;
 static float sparks_y;
@@ -185,6 +206,23 @@ void script_view_tooltip_changed(const char *object_name, float alpha)
             tooltip_label = script_tables_find_core_label(tables, TOOLTIP_UNKNOWN_OBJECT);
         }
     }
+}
+
+void script_view_film_frame_changed(int is_on)
+{
+    film_frame_is_on = is_on;
+}
+
+void script_view_swirl_changed(int is_on)
+{
+    swirl_is_on = is_on;
+}
+
+void script_view_movie_started(const char *name)
+{
+    playing_movie = script_tables_find_movie(tables, name);
+    movie_started_at_tick = age_ticks;
+    movie_last_ready_frame = -1;
 }
 
 void script_view_soul_flash_changed(float alpha)
@@ -771,11 +809,110 @@ static void draw_soul(void)
     }
 }
 
+static void draw_swirl(void)
+{
+    const struct cached_texture *texture;
+    float angle;
+    float reach_x;
+    float reach_y;
+    float center_x;
+    float center_y;
+    int index;
+
+    if (!swirl_is_on) {
+        return;
+    }
+    texture = texture_cache_use_or_start_loading(SWIRL_TEXTURE);
+    if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
+        return;
+    }
+    center_x = (float)RENDERER_WIDTH / 2.0f;
+    center_y = (float)RENDERER_HEIGHT / 2.0f;
+    angle = (float)age_ticks * SWIRL_TURN_PER_TICK;
+    reach_x = cosf(angle) * SWIRL_SIZE / 2.0f;
+    reach_y = sinf(angle) * SWIRL_SIZE / 2.0f;
+    renderer_draw_beam(texture->texture, center_x - reach_x, center_y - reach_y, center_x + reach_x, center_y + reach_y, SWIRL_SIZE / 2.0f, white);
+    for (index = 0; index < SWIRL_PARTICLE_COUNT; index++) {
+        float phase;
+        float direction;
+        float distance;
+        float size;
+
+        phase = (float)age_ticks / SWIRL_PARTICLE_LIFE_TICKS + seeded_fraction((unsigned int)index, 9u);
+        phase = phase - floorf(phase);
+        direction = seeded_fraction((unsigned int)index, 10u) * SOUL_TWO_PI + (float)age_ticks * SWIRL_TURN_PER_TICK;
+        distance = phase * SWIRL_PARTICLE_REACH;
+        size = SWIRL_PARTICLE_SIZE_LEAST + seeded_fraction((unsigned int)index, 11u) * SWIRL_PARTICLE_SIZE_SPREAD;
+        draw_centered(SWIRL_PARTICLE_TEXTURE, center_x + cosf(direction) * distance, center_y + sinf(direction) * distance, size, white);
+    }
+}
+
+static void draw_film_frame(void)
+{
+    struct renderer_rect line;
+    int index;
+
+    if (!film_frame_is_on) {
+        return;
+    }
+    line.x = 0.0f;
+    line.y = 0.0f;
+    line.width = (float)RENDERER_WIDTH;
+    line.height = FILM_BAND_HEIGHT;
+    renderer_draw_filled_rect(line, film_band_color);
+    for (index = 0; (float)index * FILM_TILE_SIZE < (float)RENDERER_WIDTH; index++) {
+        draw_named_texture(FILM_STRIP_TEXTURE, (float)index * FILM_TILE_SIZE, FILM_TILE_TOP, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
+    }
+}
+
+static int movie_frame_is_ready(int frame, const struct cached_texture **texture)
+{
+    char name[ASSET_NAME_MAX];
+
+    snprintf(name, sizeof(name), "movie_%s_%03d", playing_movie->name, frame);
+    *texture = texture_cache_use_or_start_loading(name);
+    return *texture != NULL && (*texture)->state == CACHED_TEXTURE_READY;
+}
+
+static void draw_movie(void)
+{
+    const struct cached_texture *texture;
+    struct renderer_rect area;
+    int frame;
+    int ahead;
+
+    if (playing_movie == NULL) {
+        return;
+    }
+    frame = (int)((age_ticks - movie_started_at_tick) / (unsigned int)playing_movie->ticks_per_frame);
+    if (frame >= playing_movie->frame_count) {
+        playing_movie = NULL;
+        return;
+    }
+    for (ahead = 1; ahead <= MOVIE_FRAMES_LOADED_AHEAD && frame + ahead < playing_movie->frame_count; ahead++) {
+        movie_frame_is_ready(frame + ahead, &texture);
+    }
+    area.x = 0.0f;
+    area.y = 0.0f;
+    area.width = (float)RENDERER_WIDTH;
+    area.height = (float)RENDERER_HEIGHT;
+    if (movie_frame_is_ready(frame, &texture)) {
+        movie_last_ready_frame = frame;
+    } else if (movie_last_ready_frame < 0 || !movie_frame_is_ready(movie_last_ready_frame, &texture)) {
+        renderer_draw_filled_rect(area, movie_black);
+        return;
+    }
+    renderer_draw_sprite(texture->texture, area, whole_texture(), white);
+}
+
 void script_view_draw(void)
 {
     draw_effects();
+    draw_swirl();
+    draw_film_frame();
     draw_soul();
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {
         draw_talk();
     }
+    draw_movie();
 }

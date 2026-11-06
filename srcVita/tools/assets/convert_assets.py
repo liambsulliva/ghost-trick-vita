@@ -25,6 +25,8 @@ import talk_assets
 import texture_encoder
 import timeline_file
 
+MONO_PLATE_SUFFIX = "-mono"
+MOVIE_CODE_FILES = ["convert_assets.py", "texture_encoder.py"]
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
 REPOSITORY_FOLDER = os.path.dirname(SRC_VITA_FOLDER)
@@ -88,9 +90,47 @@ def add_plate_jobs(jobs, plates, soul_ramp):
             jobs[plate["soul_plate"]] = {"name": plate["soul_plate"], "source": plate["source"], "soul_ramp": soul_ramp}
 
 
+def add_mono_plate_jobs(jobs, plates, mono_ramp):
+    for plate in plates:
+        name = plate["name"] + MONO_PLATE_SUFFIX
+        jobs[name] = {"name": name, "source": plate["source"], "soul_ramp": mono_ramp}
+
+
 def add_screen_texture_jobs(jobs, screen_textures):
     for texture in screen_textures:
         jobs[texture["name"]] = dict(texture)
+
+
+def bake_movie_frames(packs, record, movie):
+    with tempfile.TemporaryDirectory() as work_folder:
+        return bake_movie_frames_in(packs, work_folder, record, movie)
+
+
+def bake_movie_frames_in(packs, work_folder, record, movie):
+    source = packs.read_by_key(movie["pack_key"])
+    source_path = os.path.join(work_folder, movie["name"] + ".mov")
+    with open(source_path, "wb") as output:
+        output.write(source)
+    width = movie["width"]
+    height = movie["height"]
+    frames = subprocess.run(["ffmpeg", "-v", "error", "-i", source_path, "-vf", "fps=%d,scale=%d:%d" % (movie["fps"], width, height), "-f", "rawvideo", "-pix_fmt", "rgba", "-"], capture_output=True, check=True).stdout
+    os.remove(source_path)
+    code = bake_record.code_fingerprint(MOVIE_CODE_FILES)
+    frame_size = width * height * 4
+    results = []
+    for index in range(len(frames) // frame_size):
+        name = "movie_%s_%03d" % (movie["name"], index)
+        relative_path = "textures/" + name + ".gtex"
+        pixels = frames[index * frame_size:(index + 1) * frame_size]
+        key = record.key_for(code, {"width": width, "height": height}, pixels)
+        gtex_bytes = record.read_if_current(relative_path, key)
+        if gtex_bytes is None:
+            blocks = texture_encoder.encode_rgba(work_folder, name, width, height, pixels, "dxt1")
+            gtex_bytes = asset_writers.gtex_bytes(width, height, asset_writers.FORMAT_DXT1, blocks)
+            record.store(relative_path, key, gtex_bytes)
+        results.append(bake_record.result_of_own_size(name, gtex_bytes))
+    movie["frames"] = len(results)
+    return results
 
 
 def code_fingerprint_with_magick(file_names):
@@ -356,6 +396,8 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
     crops = add_atlas_page_jobs(jobs, animations, timelines)
     atlas_page_names = list(jobs)
     add_plate_jobs(jobs, plates, set_description.get("soul_view", {}).get("ramp"))
+    if "mono_ramp" in set_description:
+        add_mono_plate_jobs(jobs, plates, set_description["mono_ramp"])
     used_faces = talk_assets.faces_the_set_will_use(packs, set_description, text_key)
     chapter_assets.add_face_textures(set_description, used_faces) if used_faces else None
     add_screen_texture_jobs(jobs, set_description.get("screen_textures", []))
@@ -379,6 +421,8 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         failures = failures + text_failures + composed_failures + talk_failures
         if failures:
             raise ConversionFailed(failures)
+        for movie in set_description.get("movies", []):
+            talk_results = talk_results + bake_movie_frames(packs, record, movie)
         texture_results = sorted(texture_results + text_results + composed_results + talk_results, key=lambda result: result["name"])
         steps = expand_steps(set_description, plate_size_lookup(texture_results, plates))
         steps = narration.expand_text_steps(steps, narration_lines, {result["name"]: (result["width"], result["height"]) for result in texture_results})

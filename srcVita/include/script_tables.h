@@ -12,6 +12,7 @@
 #define SCRIPT_TEXT_ROW_MAX 256
 #define SCRIPT_BALLOON_ROW_MAX 256
 #define SCRIPT_FLIPBOOK_MAX 8
+#define SCRIPT_MOVIE_MAX 8
 #define SCRIPT_CORE_LABEL_MAX 64
 #define SCRIPT_FLIPBOOK_PAGE_MAX 3
 #define SCRIPT_SOUL_STYLE_MAX 16
@@ -63,6 +64,12 @@ struct script_soul_style {
     float blue;
     float alpha;
     int is_flat;
+};
+
+struct script_movie {
+    char name[ASSET_NAME_MAX];
+    int frame_count;
+    int ticks_per_frame;
 };
 
 struct script_core_label {
@@ -141,6 +148,8 @@ struct script_tables {
     int effect_row_count;
     struct script_flipbook flipbooks[SCRIPT_FLIPBOOK_MAX];
     int flipbook_count;
+    struct script_movie movies[SCRIPT_MOVIE_MAX];
+    int movie_count;
     struct script_soul_style soul_styles[SCRIPT_SOUL_STYLE_MAX];
     int soul_style_count;
     struct script_core_label core_labels[SCRIPT_CORE_LABEL_MAX];
@@ -169,6 +178,7 @@ int script_tables_read_balloons(struct script_tables *tables, const char *text, 
 int script_tables_read_preload(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_motions(struct script_tables *tables, const char *file_name, const char *text, unsigned int text_size);
 const struct script_motion_row *script_tables_find_motion(const struct script_tables *tables, const char *file_name, unsigned int table_offset);
+const struct script_movie *script_tables_find_movie(const struct script_tables *tables, const char *name);
 const struct script_flipbook *script_tables_find_flipbook(const struct script_tables *tables, const char *name);
 int script_tables_read_soul(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_core_labels(struct script_tables *tables, const char *text, unsigned int text_size);

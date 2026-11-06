@@ -387,6 +387,12 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
     case 0xb1:
         delete_effect(machine, vm, words);
         break;
+    case 0x6f:
+    case 0x70:
+        if (machine->outputs->film_frame_changed != NULL) {
+            machine->outputs->film_frame_changed(op == 0x6f);
+        }
+        break;
     case 0xb2:
         if (script_machine_string(machine, vm, words[0]) != NULL) {
             script_soul_effect_signalled(machine, script_machine_string(machine, vm, words[0]));
