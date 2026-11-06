@@ -70,6 +70,24 @@ class DeviceFreeTestCase(unittest.TestCase):
         self.patch(vita_loop.time, "time", side_effect=itertools.count(0, 1))
 
 
+class FirstInstallTests(DeviceFreeTestCase):
+    def install_with_reply(self, reply):
+        self.patch(vita_loop, "app_is_installed", return_value=False)
+        self.patch(vita_loop, "make_folders")
+        self.patch(vita_loop, "stage_package")
+        self.send_device_command.return_value = reply
+        with contextlib.redirect_stdout(io.StringIO()):
+            return vita_loop.first_install()
+
+    def test_promote_gets_long_enough_to_answer(self):
+        self.assertEqual(self.install_with_reply("Promoted."), 0)
+        self.send_device_command.assert_called_once_with("promote ux0:data/ghosttrick/install", vita_loop.SECONDS_FOR_PROMOTE_REPLY)
+        self.assertGreater(vita_loop.SECONDS_FOR_PROMOTE_REPLY, 30)
+
+    def test_a_refused_promote_is_a_failure(self):
+        self.assertEqual(self.install_with_reply("Error: Could not promote directory."), 1)
+
+
 class SceneReadyTextTests(unittest.TestCase):
     def test_it_does_not_match_a_longer_scene_name(self):
         line = "scene ready name=check_room7_middle preload_us=1"

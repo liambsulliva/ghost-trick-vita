@@ -23,6 +23,8 @@ BUILD_FOLDER = os.path.join(SRC_VITA_FOLDER, "build")
 ASSETS_FOLDER = DATA_FOLDER + "/assets"
 UPLOAD_RECORD_PATH = os.path.join(BUILD_FOLDER, "uploaded_assets.json")
 SECONDS_FOR_APP_TEARDOWN = 3
+SECONDS_FOR_DEVICE_REPLY = 3
+SECONDS_FOR_PROMOTE_REPLY = 60
 SECONDS_FOR_APP_TO_READ_COMMANDS = 5
 COMMAND_FILE_POLL_SECONDS = 0.2
 LAUNCH_MARKER = "--- launch"
@@ -45,10 +47,10 @@ def capture_done_text(name):
     return "capture name=" + name + " result=0 "
 
 
-def send_device_command(text):
+def send_device_command(text, reply_seconds=SECONDS_FOR_DEVICE_REPLY):
     with socket.create_connection((VITA_HOST, COMMAND_PORT), timeout=10) as connection:
         connection.sendall(text.encode("ascii") + b"\n")
-        connection.settimeout(3)
+        connection.settimeout(reply_seconds)
         reply = b""
         try:
             while True:
@@ -150,7 +152,7 @@ def first_install():
         stage_package(connection)
     finally:
         connection.close()
-    reply = send_device_command("promote " + INSTALL_FOLDER.replace("/ux0:/", "ux0:", 1))
+    reply = send_device_command("promote " + INSTALL_FOLDER.replace("/ux0:/", "ux0:", 1), SECONDS_FOR_PROMOTE_REPLY)
     print("promote:", reply)
     return 0 if "Promoted" in reply else 1
 
