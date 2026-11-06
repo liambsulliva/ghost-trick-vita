@@ -111,6 +111,12 @@ python3 -I srcVita/tools/longplay_check.py
 
 It first checks that the Vita has the same `eboot.bin` and manifest as this machine. Then it uploads temporary scenes that hold one exact pose, captures each on the Vita, deletes them, and compares each capture with the matching video frame. Each measured sprite is also captured alone, so only its own pixels are scored. Only the DS camera's 720 by 540 window is compared, because the video shows no more than that. The check fails if a sprite sits more than 0.4 DS pixels from the video, if a sprite or the picture differs too much, if motion frames match the video out of order, or if the screen's left and right edges are wrong: wide rooms must have art there, and the close-up and chapter card must have black. Side-by-side images land in `build/longplay_check/`. Use `--score-only` to re-score saved captures without the device.
 
+## Debug controls
+
+SELECT turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the scene. SELECT turns them off again, which resumes a paused scene and restarts one you browsed away from.
+
+They stay off during normal play, so that no button can stall the scene. The log records every button press, pause and skipped hold, as `input pressed buttons=...`, `scene paused` and `scene hold_skipped`.
+
 ## Measured on the Vita
 
 | What | Result |
@@ -131,7 +137,7 @@ vitaGL rounds compressed textures up to power-of-two sizes, so a texture can tak
 - **The opening's spotlights and narration.** The real opening hides most of the room behind black with spotlight shapes, and shows narration over it. Here the room is fully lit, and the art for the spotlight shapes has not been identified.
 - **Text boxes, speech bubbles, effects and the HUD.** None are drawn yet.
 - **Audio.** Nothing plays yet.
-- **Input.** Buttons only drive the debug viewer: LEFT, RIGHT, UP and DOWN browse, CROSS pauses, TRIANGLE toggles the HUD, R opens the list, L restarts the scene, SQUARE saves a capture and START quits.
+- **Player input.** There is nothing to play yet. CROSS skips to the next step of the script, or replays the scene once it has ended. SQUARE saves a capture and START quits.
 
 Some scene timing is hand-tuned rather than taken from the game: message holds use a fixed length, card fades were borrowed from Chapter 2, and the scene ends with a pan across the room so every object gets seen.
 

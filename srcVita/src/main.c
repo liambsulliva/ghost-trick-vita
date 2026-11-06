@@ -19,7 +19,6 @@
 #include "viewer_app.h"
 
 #define COMMAND_POLL_FRAMES 30
-#define FIRST_CAPTURE_FRAME 120
 #define CAPTURE_NAME_MAX 64
 #define FIRST_TIMED_FRAME 2
 #define LOG_FOR_TOOLS_CAPTURE_DONE "capture name=%s result=%d took_us=%llu"
@@ -178,9 +177,6 @@ static void run_main_loop(void)
         }
         if (frame_stats_window_is_full(&stats)) {
             publish_frame_stats(&stats);
-        }
-        if (frame_number == FIRST_CAPTURE_FRAME) {
-            save_capture("first_frames");
         }
         if (frame_number % COMMAND_POLL_FRAMES == 0) {
             quit_requested = run_pending_commands();

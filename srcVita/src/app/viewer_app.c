@@ -38,6 +38,11 @@
 #define BROWSE_OBJECT_X 128.0f
 #define BROWSE_OBJECT_Y 176.0f
 #define BROWSE_OBJECT_LAYER 0
+#define SCENE_END_FIRST_LINE "End of the opening"
+#define SCENE_END_SECOND_LINE "Press X to watch it again"
+#define SCENE_END_FIRST_LINE_Y 240.0f
+#define SCENE_END_SECOND_LINE_Y 280.0f
+#define SCENE_END_TEXT_SCALE 3.0f
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color highlight = { 0.25f, 0.86f, 0.75f, 1.0f };
@@ -54,6 +59,7 @@ static unsigned long long pending_background_started_us;
 static int current_animation_index;
 static int hud_is_visible;
 static int list_is_open;
+static int debug_controls_are_on;
 
 static void asset_subfolder_path(char *path, const char *subfolder)
 {
@@ -214,6 +220,7 @@ void viewer_app_start(const char *folder)
     current_animation_index = 0;
     hud_is_visible = 1;
     list_is_open = 0;
+    debug_controls_are_on = 1;
     status_text[0] = '\0';
 
     texture_cache_init(texture_folder, TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
@@ -231,6 +238,7 @@ void viewer_app_start(const char *folder)
     ui_list_init(&animation_list, manifest->animation_count, LIST_VISIBLE_ROWS);
     if (manifest->scene_count > 0) {
         hud_is_visible = 0;
+        debug_controls_are_on = 0;
         scene_player_play(manifest->scene_names[0]);
         return;
     }
@@ -301,6 +309,38 @@ static void update_list(const struct input_state *input)
     }
 }
 
+static int manifest_has_a_scene(void)
+{
+    return manifest != NULL && manifest->scene_count > 0;
+}
+
+static void set_debug_controls(int should_be_on)
+{
+    debug_controls_are_on = should_be_on;
+    hud_is_visible = should_be_on;
+    list_is_open = 0;
+    run_log_write("debug controls %s", should_be_on ? "on" : "off");
+    if (should_be_on) {
+        return;
+    }
+    scene_player_set_paused(0);
+    if (scene_player_status() == SCENE_PLAYER_IDLE && manifest_has_a_scene()) {
+        viewer_app_play_scene(manifest->scene_names[0]);
+    }
+}
+
+static void update_player_controls(const struct input_state *input)
+{
+    if (!(input->pressed & INPUT_CROSS)) {
+        return;
+    }
+    if (scene_player_status() == SCENE_PLAYER_FINISHED && manifest_has_a_scene()) {
+        viewer_app_play_scene(manifest->scene_names[0]);
+        return;
+    }
+    scene_player_skip_hold();
+}
+
 static void update_browse_controls(const struct input_state *input)
 {
     if (input->pressed & INPUT_LEFT) {
@@ -328,7 +368,7 @@ static void update_general_controls(const struct input_state *input)
     if ((input->pressed & INPUT_R) && manifest != NULL && manifest->animation_count > 0) {
         list_is_open = 1;
     }
-    if ((input->pressed & INPUT_L) && manifest != NULL && manifest->scene_count > 0) {
+    if ((input->pressed & INPUT_L) && manifest_has_a_scene()) {
         viewer_app_play_scene(manifest->scene_names[0]);
     }
 }
@@ -337,11 +377,19 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
 {
     texture_cache_upload_finished_reads(UPLOADS_PER_FRAME);
     texture_cache_begin_frame();
+    if (input->pressed != 0) {
+        run_log_write("input pressed buttons=0x%04x", input->pressed);
+    }
+    if (input->pressed & INPUT_SELECT) {
+        set_debug_controls(!debug_controls_are_on);
+    }
     if (list_is_open) {
         update_list(input);
-    } else {
+    } else if (debug_controls_are_on) {
         update_browse_controls(input);
         update_general_controls(input);
+    } else {
+        update_player_controls(input);
     }
     switch_to_pending_background_when_ready();
     scene_player_update(elapsed_us);
@@ -401,7 +449,7 @@ static void write_second_hud_line(char *line, unsigned int line_size)
         return;
     }
     if (scene_player_status() == SCENE_PLAYER_RUNNING) {
-        snprintf(line, line_size, "scene step %d", scene_player_next_step());
+        snprintf(line, line_size, "scene step %d%s", scene_player_next_step(), scene_player_is_paused() ? " paused" : "");
         return;
     }
     write_first_object_line(line, line_size);
@@ -441,12 +489,24 @@ static void draw_list(void)
     }
 }
 
+static void draw_centred_scene_end_line(float y, const char *text)
+{
+    float width;
+
+    width = (float)strlen(text) * DEBUG_FONT_CELL_WIDTH * SCENE_END_TEXT_SCALE;
+    debug_font_draw_text(((float)RENDERER_WIDTH - width) / 2.0f, y, SCENE_END_TEXT_SCALE, white, text);
+}
+
 void viewer_app_draw(void)
 {
     if (manifest == NULL) {
         draw_no_assets_screen();
     } else if (scene_player_status() != SCENE_PLAYER_PRELOADING) {
         scene_view_draw(scene_stage_view());
+    }
+    if (scene_player_status() == SCENE_PLAYER_FINISHED && !debug_controls_are_on) {
+        draw_centred_scene_end_line(SCENE_END_FIRST_LINE_Y, SCENE_END_FIRST_LINE);
+        draw_centred_scene_end_line(SCENE_END_SECOND_LINE_Y, SCENE_END_SECOND_LINE);
     }
     if (hud_is_visible || scene_player_status() == SCENE_PLAYER_PRELOADING) {
         draw_hud();

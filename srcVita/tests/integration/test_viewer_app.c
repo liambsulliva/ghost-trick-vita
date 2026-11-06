@@ -21,6 +21,7 @@
 #define CARD_WIDTH 72
 #define PLACEHOLDER_TEXTURE_WIDTH 64
 #define STATUS_TEXT_VISIBLE_CHARACTERS 11
+#define SCENE_END_PROMPT_VISIBLE_CHARACTERS 35
 #define FRAMES_LONGER_THAN_EVERY_PRELOAD_PASS 16
 #define HALF_BUDGET_TEXTURE_WIDTH 4096
 
@@ -686,9 +687,148 @@ static void test_browsing_stops_a_running_scene(void)
     draw_frame();
     CHECK(find_draw_with_texture_width(CARD_WIDTH) == NULL);
     CHECK(find_draw_with_texture_width(CHARACTER_WIDTH) != NULL);
+    press(INPUT_SELECT);
     press(INPUT_L);
     run_frames(4);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+    viewer_app_stop();
+}
+
+static void test_cross_skips_the_current_hold_instead_of_pausing(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nwait 6000\nwait 6000\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames(4);
+    CHECK_INT(scene_player_next_step(), 1);
+    press(INPUT_CROSS);
+    CHECK(!scene_player_is_paused());
+    CHECK_HAS_TEXT(log_text(), "scene hold_skipped next_step=1");
+    run_frames(1);
+    CHECK_INT(scene_player_next_step(), 2);
+    press(INPUT_CROSS);
+    run_frames(1);
+    CHECK_INT(scene_player_next_step(), 3);
+    viewer_app_stop();
+}
+
+static void test_skipping_a_fade_or_pan_finishes_it_at_once(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nfade_out 6000\ncamera_pan 200 0 6000\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames(4);
+    press(INPUT_CROSS);
+    run_frames(1);
+    CHECK(scene_stage_view()->fade_amount == 1.0f);
+    press(INPUT_CROSS);
+    run_frames(1);
+    CHECK(scene_stage_view()->camera_x == 200.0f);
+    viewer_app_stop();
+}
+
+static void test_buttons_a_player_might_press_never_stall_the_scene(void)
+{
+    static const unsigned int buttons[] = { INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_CIRCLE, INPUT_TRIANGLE, INPUT_L, INPUT_R };
+    unsigned int index;
+
+    set_up_platform();
+    set_up_scene_assets("scene opening\ncard card\nwait 6\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames(4);
+    for (index = 0; index < sizeof(buttons) / sizeof(buttons[0]); index++) {
+        press(buttons[index]);
+        CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+        CHECK(!scene_player_is_paused());
+    }
+    run_frames(20);
+    CHECK_INT(scene_player_next_step(), 3);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(CARD_WIDTH) != NULL);
+    viewer_app_stop();
+}
+
+static void test_the_end_of_a_scene_says_so_and_cross_plays_it_again(void)
+{
+    int draws_before;
+    int draws_at_the_end;
+
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nwait 30\nfade_out 6\n");
+    viewer_app_start("assets");
+    run_frames(8);
+    draw_frame();
+    draws_before = fake_renderer_draw_count();
+    run_frames(60);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
+    draw_frame();
+    draws_at_the_end = fake_renderer_draw_count();
+    CHECK_INT(draws_at_the_end, draws_before + 1 + SCENE_END_PROMPT_VISIBLE_CHARACTERS);
+    press(INPUT_CROSS);
+    CHECK(scene_player_status() != SCENE_PLAYER_FINISHED);
+    CHECK_INT(scene_player_next_step(), 0);
+    run_frames(4);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+    CHECK(scene_stage_view()->fade_amount == 0.0f);
+    viewer_app_stop();
+}
+
+static void test_select_turns_the_debug_controls_on_and_off(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\ncard card\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames(4);
+    press(INPUT_SELECT);
+    CHECK_HAS_TEXT(log_text(), "debug controls on");
+    press(INPUT_CROSS);
+    CHECK(scene_player_is_paused());
+    CHECK_HAS_TEXT(log_text(), "scene paused next_step=");
+    press(INPUT_SELECT);
+    CHECK_HAS_TEXT(log_text(), "debug controls off");
+    CHECK(!scene_player_is_paused());
+    CHECK_HAS_TEXT(log_text(), "scene resumed next_step=");
+    viewer_app_stop();
+}
+
+static void test_leaving_debug_controls_after_browsing_plays_the_scene_again(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\ncard card\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames(4);
+    press(INPUT_SELECT);
+    press(INPUT_DOWN);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_IDLE);
+    press(INPUT_SELECT);
+    CHECK(scene_player_status() != SCENE_PLAYER_IDLE);
+    CHECK_INT(scene_player_next_step(), 0);
+    viewer_app_stop();
+}
+
+static void test_a_list_left_open_closes_when_debug_controls_go_off(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\ncard card\nwait 6\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames(4);
+    press(INPUT_SELECT);
+    press(INPUT_R);
+    press(INPUT_SELECT);
+    press(INPUT_CROSS);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+    CHECK_HAS_TEXT(log_text(), "scene hold_skipped");
+    viewer_app_stop();
+}
+
+static void test_every_button_press_is_logged(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\ncard card\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames(4);
+    press(INPUT_CROSS);
+    CHECK_HAS_TEXT(log_text(), "input pressed buttons=0x0010");
     viewer_app_stop();
 }
 
@@ -915,6 +1055,7 @@ static void test_replaying_a_paused_scene_starts_it_unpaused(void)
     set_up_scene_assets("scene opening\ncard card\nwait 6000\n");
     viewer_app_start("assets");
     run_frames(4);
+    press(INPUT_SELECT);
     press(INPUT_CROSS);
     CHECK(scene_player_is_paused());
     press(INPUT_L);
@@ -1009,6 +1150,14 @@ int main(void)
     test_scene_fades_and_pans_over_time();
     test_scene_survives_bad_files_and_missing_assets();
     test_browsing_stops_a_running_scene();
+    test_cross_skips_the_current_hold_instead_of_pausing();
+    test_skipping_a_fade_or_pan_finishes_it_at_once();
+    test_buttons_a_player_might_press_never_stall_the_scene();
+    test_the_end_of_a_scene_says_so_and_cross_plays_it_again();
+    test_select_turns_the_debug_controls_on_and_off();
+    test_leaving_debug_controls_after_browsing_plays_the_scene_again();
+    test_a_list_left_open_closes_when_debug_controls_go_off();
+    test_every_button_press_is_logged();
     test_scene_with_more_textures_than_the_read_queue_loads_them_all();
     test_scene_with_more_textures_than_cache_entries_says_so_and_still_plays();
     test_scene_larger_than_the_memory_budget_says_so_and_still_plays();

@@ -296,8 +296,20 @@ void scene_player_stop(void)
     reset_script_progress();
 }
 
+void scene_player_skip_hold(void)
+{
+    if (status != SCENE_PLAYER_RUNNING) {
+        return;
+    }
+    script.hold_remaining_us = 0;
+    run_log_write("scene hold_skipped next_step=%d", script.next_step);
+}
+
 void scene_player_set_paused(int should_pause)
 {
+    if (should_pause != is_paused) {
+        run_log_write("scene %s next_step=%d", should_pause ? "paused" : "resumed", script.next_step);
+    }
     is_paused = should_pause;
 }
 
