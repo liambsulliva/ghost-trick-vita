@@ -1448,11 +1448,9 @@ static void push_when_stuck(struct script_machine *machine)
     if (something_is_running_to_a_known_end(machine)) {
         machine->last_timer_tick = machine->tick;
     }
-    if (!machine->auto_press && script_soul_world_is_playable(machine)) {
-        if (quiet_ticks < STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT) {
-            return;
-        }
-    } else
+    if (!machine->auto_press && script_soul_world_is_playable(machine) && quiet_ticks < STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT) {
+        return;
+    }
     if (quiet_ticks < STUCK_AFTER_ANY_TICKS && (quiet_ticks < STUCK_AFTER_QUIET_TICKS || machine->tick - machine->last_timer_tick < STUCK_AFTER_QUIET_TICKS)) {
         return;
     }

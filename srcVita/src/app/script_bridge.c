@@ -46,6 +46,8 @@ static int black_level;
 static int white_level;
 static int mask_fade_is_alive;
 static int zoom_ticks_left;
+#define NO_SOUL_TEXTURE "-"
+
 static int soul_vision_is_on;
 static int mask_is_on;
 static int shake_level;
@@ -153,7 +155,9 @@ static void on_room_loaded(int room, int camera_x, int camera_y)
         plate = &tables->room_plates[index];
         if (plate->room == room) {
             scene_stage_add_plate(plate->texture_name, plate->x, plate->y, plate->width, plate->height);
-            scene_stage_set_last_plate_soul_texture(plate->soul_texture_name);
+            if (strcmp(plate->soul_texture_name, NO_SOUL_TEXTURE) != 0) {
+                scene_stage_set_last_plate_soul_texture(plate->soul_texture_name);
+            }
             found = 1;
         }
     }
