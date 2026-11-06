@@ -4,6 +4,31 @@
 #define DXT5_BYTES_PER_BLOCK 16
 #define DXT1_BYTES_PER_BLOCK 8
 
+#define DXT1_INDEX_LOW_BITS 0x55555555u
+#define DXT1_INDEX_HIGH_BITS 0xaaaaaaaau
+#define LUMA_RED_WEIGHT 54u
+#define LUMA_GREEN_WEIGHT 183u
+#define LUMA_BLUE_WEIGHT 19u
+#define LUMA_WEIGHT_SHIFT 8u
+#define RGBA_BYTES_PER_PIXEL 4u
+
+static unsigned int read_u16_little_endian(const unsigned char *bytes)
+{
+    return (unsigned int)bytes[0] | ((unsigned int)bytes[1] << 8);
+}
+
+static void write_u16_little_endian(unsigned char *bytes, unsigned int value)
+{
+    bytes[0] = (unsigned char)(value & 0xffu);
+    bytes[1] = (unsigned char)(value >> 8);
+}
+
+static void write_u32_little_endian(unsigned char *bytes, unsigned int value)
+{
+    write_u16_little_endian(bytes, value & 0xffffu);
+    write_u16_little_endian(&bytes[2], value >> 16);
+}
+
 static unsigned int read_u32_little_endian(const unsigned char *bytes)
 {
     unsigned int value;
@@ -48,6 +73,95 @@ static unsigned int round_up_to_power_of_two(unsigned int value)
         rounded = rounded * 2;
     }
     return rounded;
+}
+
+static unsigned int luma_of(unsigned int red, unsigned int green, unsigned int blue)
+{
+    return (red * LUMA_RED_WEIGHT + green * LUMA_GREEN_WEIGHT + blue * LUMA_BLUE_WEIGHT) >> LUMA_WEIGHT_SHIFT;
+}
+
+static unsigned int gray_565_of(unsigned int color)
+{
+    unsigned int red;
+    unsigned int green;
+    unsigned int blue;
+    unsigned int gray;
+
+    red = (color >> 11) & 0x1fu;
+    green = (color >> 5) & 0x3fu;
+    blue = color & 0x1fu;
+    gray = luma_of((red << 3) | (red >> 2), (green << 2) | (green >> 4), (blue << 3) | (blue >> 2)) >> 3;
+    return (gray << 11) | (((gray << 1) | (gray >> 4)) << 5) | gray;
+}
+
+static void make_color_block_gray(unsigned char *block)
+{
+    write_u16_little_endian(block, gray_565_of(read_u16_little_endian(block)));
+    write_u16_little_endian(&block[2], gray_565_of(read_u16_little_endian(&block[2])));
+}
+
+static unsigned int swap_first_two_palette_entries(unsigned int indices)
+{
+    unsigned int first_two;
+
+    first_two = ~(indices & DXT1_INDEX_HIGH_BITS) >> 1 & DXT1_INDEX_LOW_BITS;
+    return indices ^ first_two;
+}
+
+static void make_dxt1_block_gray(unsigned char *block)
+{
+    unsigned int first;
+    unsigned int second;
+    unsigned int gray_first;
+    unsigned int gray_second;
+    unsigned int indices;
+    int has_four_colors;
+
+    first = read_u16_little_endian(block);
+    second = read_u16_little_endian(&block[2]);
+    has_four_colors = first > second;
+    gray_first = gray_565_of(first);
+    gray_second = gray_565_of(second);
+    indices = read_u32_little_endian(&block[4]);
+    if (has_four_colors && gray_first == gray_second) {
+        indices = 0;
+    } else if (has_four_colors && gray_first < gray_second) {
+        indices = indices ^ DXT1_INDEX_LOW_BITS;
+    } else if (!has_four_colors && gray_first > gray_second) {
+        indices = swap_first_two_palette_entries(indices);
+    }
+    if ((has_four_colors && gray_first < gray_second) || (!has_four_colors && gray_first > gray_second)) {
+        write_u16_little_endian(block, gray_second);
+        write_u16_little_endian(&block[2], gray_first);
+    } else {
+        write_u16_little_endian(block, gray_first);
+        write_u16_little_endian(&block[2], gray_second);
+    }
+    write_u32_little_endian(&block[4], indices);
+}
+
+void texture_file_make_grayscale(const struct texture_file_header *header, unsigned char *pixel_data)
+{
+    unsigned int offset;
+
+    if (header->format == TEXTURE_FILE_FORMAT_DXT5) {
+        for (offset = 0; offset < header->pixel_data_size; offset += DXT5_BYTES_PER_BLOCK) {
+            make_color_block_gray(&pixel_data[offset + DXT5_BYTES_PER_BLOCK - DXT1_BYTES_PER_BLOCK]);
+        }
+    } else if (header->format == TEXTURE_FILE_FORMAT_DXT1) {
+        for (offset = 0; offset < header->pixel_data_size; offset += DXT1_BYTES_PER_BLOCK) {
+            make_dxt1_block_gray(&pixel_data[offset]);
+        }
+    } else {
+        for (offset = 0; offset < header->pixel_data_size; offset += RGBA_BYTES_PER_PIXEL) {
+            unsigned int gray;
+
+            gray = luma_of(pixel_data[offset], pixel_data[offset + 1], pixel_data[offset + 2]);
+            pixel_data[offset] = (unsigned char)gray;
+            pixel_data[offset + 1] = (unsigned char)gray;
+            pixel_data[offset + 2] = (unsigned char)gray;
+        }
+    }
 }
 
 unsigned int texture_file_memory_bytes(const struct texture_file_header *header)

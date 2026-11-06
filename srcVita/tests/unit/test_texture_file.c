@@ -102,8 +102,119 @@ static void test_compressed_memory_is_charged_at_power_of_two_size(void)
     CHECK_INT(texture_file_memory_bytes(&header), 36);
 }
 
+#define GRAY_6_AS_565 0x3186u
+#define GRAY_22_AS_565 0xb5b6u
+#define PURE_RED_565 0xf800u
+#define NEARLY_RED_565 0xf000u
+#define PURE_GREEN_565 0x07e0u
+
+static void write_dxt1_block(unsigned char *block, unsigned int first, unsigned int second, unsigned int indices)
+{
+    block[0] = (unsigned char)(first & 0xffu);
+    block[1] = (unsigned char)(first >> 8);
+    block[2] = (unsigned char)(second & 0xffu);
+    block[3] = (unsigned char)(second >> 8);
+    block[4] = (unsigned char)(indices & 0xffu);
+    block[5] = (unsigned char)((indices >> 8) & 0xffu);
+    block[6] = (unsigned char)((indices >> 16) & 0xffu);
+    block[7] = (unsigned char)(indices >> 24);
+}
+
+static unsigned int u16_of(const unsigned char *bytes)
+{
+    return (unsigned int)bytes[0] | ((unsigned int)bytes[1] << 8);
+}
+
+static struct texture_file_header header_of_one_block(unsigned int format, unsigned int bytes)
+{
+    struct texture_file_header header;
+
+    header.width = 4;
+    header.height = 4;
+    header.format = format;
+    header.pixel_data_size = bytes;
+    return header;
+}
+
+static void test_grayscale_averages_rgba_and_keeps_alpha(void)
+{
+    unsigned char pixel[4] = { 255, 0, 0, 128 };
+    struct texture_file_header header;
+
+    header = header_of_one_block(TEXTURE_FILE_FORMAT_RGBA8888, 4);
+    texture_file_make_grayscale(&header, pixel);
+    CHECK_INT(pixel[0], 53);
+    CHECK_INT(pixel[1], 53);
+    CHECK_INT(pixel[2], 53);
+    CHECK_INT(pixel[3], 128);
+}
+
+static void test_grayscale_leaves_dxt5_alpha_and_indices_alone(void)
+{
+    unsigned char block[16];
+    struct texture_file_header header;
+    int index;
+
+    for (index = 0; index < 8; index++) {
+        block[index] = (unsigned char)(index + 1);
+    }
+    write_dxt1_block(&block[8], PURE_RED_565, PURE_GREEN_565, 0xe4u);
+    header = header_of_one_block(TEXTURE_FILE_FORMAT_DXT5, 16);
+    texture_file_make_grayscale(&header, block);
+    for (index = 0; index < 8; index++) {
+        CHECK_INT(block[index], index + 1);
+    }
+    CHECK_INT(u16_of(&block[8]), GRAY_6_AS_565);
+    CHECK_INT(u16_of(&block[10]), GRAY_22_AS_565);
+    CHECK_INT(block[12], 0xe4);
+}
+
+static void test_grayscale_keeps_a_four_color_dxt1_block_opaque(void)
+{
+    unsigned char block[8];
+    struct texture_file_header header;
+
+    write_dxt1_block(block, PURE_RED_565, PURE_GREEN_565, 0xe4u);
+    header = header_of_one_block(TEXTURE_FILE_FORMAT_DXT1, 8);
+    texture_file_make_grayscale(&header, block);
+    CHECK_INT(u16_of(block), GRAY_22_AS_565);
+    CHECK_INT(u16_of(&block[2]), GRAY_6_AS_565);
+    CHECK_INT(block[4], 0xb1);
+}
+
+static void test_grayscale_never_leaves_a_transparent_index_in_an_opaque_dxt1_block(void)
+{
+    unsigned char block[8];
+    struct texture_file_header header;
+
+    write_dxt1_block(block, PURE_RED_565, NEARLY_RED_565, 0xe4u);
+    header = header_of_one_block(TEXTURE_FILE_FORMAT_DXT1, 8);
+    texture_file_make_grayscale(&header, block);
+    CHECK_INT(u16_of(block), GRAY_6_AS_565);
+    CHECK_INT(u16_of(&block[2]), GRAY_6_AS_565);
+    CHECK_INT(block[4], 0);
+}
+
+static void test_grayscale_keeps_a_three_color_dxt1_block_transparent(void)
+{
+    unsigned char block[8];
+    struct texture_file_header header;
+
+    write_dxt1_block(block, PURE_GREEN_565, PURE_RED_565, 0xe4u);
+    header = header_of_one_block(TEXTURE_FILE_FORMAT_DXT1, 8);
+    texture_file_make_grayscale(&header, block);
+    CHECK_INT(u16_of(block), GRAY_6_AS_565);
+    CHECK_INT(u16_of(&block[2]), GRAY_22_AS_565);
+    CHECK_INT(block[4], 0xe1);
+}
+
 int main(void)
 {
+    test_grayscale_averages_rgba_and_keeps_alpha();
+    test_grayscale_leaves_dxt5_alpha_and_indices_alone();
+    test_grayscale_keeps_a_four_color_dxt1_block_opaque();
+    test_grayscale_never_leaves_a_transparent_index_in_an_opaque_dxt1_block();
+    test_grayscale_keeps_a_three_color_dxt1_block_transparent();
     test_texture_header_accepts_a_valid_file();
     test_texture_header_rejects_bad_files();
     test_texture_header_checks_compressed_sizes();

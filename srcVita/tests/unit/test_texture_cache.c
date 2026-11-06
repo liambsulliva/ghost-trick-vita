@@ -31,6 +31,21 @@ static void test_requested_texture_stays_loading_until_its_read_finishes(void)
     CHECK_INT(fake_renderer_textures_created(), 1);
 }
 
+static void test_grayscale_name_reads_the_plain_file(void)
+{
+    const struct cached_texture *entry;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    fake_files_add_rgba_texture("tex/a.gtex", 2, 2);
+    texture_cache_init("tex", 1024);
+    entry = texture_cache_use_or_start_loading("a" TEXTURE_CACHE_GRAYSCALE_SUFFIX);
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(entry->state, CACHED_TEXTURE_READY);
+    CHECK_INT(entry->width, 2);
+}
+
 static void test_requesting_twice_only_reads_once(void)
 {
     fake_files_reset();
@@ -483,6 +498,7 @@ static void test_cache_clear_destroys_every_texture(void)
 int main(void)
 {
     test_requested_texture_stays_loading_until_its_read_finishes();
+    test_grayscale_name_reads_the_plain_file();
     test_requesting_twice_only_reads_once();
     test_uploads_respect_the_limit_per_frame();
     test_read_the_reader_refuses_is_marked_missing();

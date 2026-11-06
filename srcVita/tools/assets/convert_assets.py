@@ -25,7 +25,6 @@ import talk_assets
 import texture_encoder
 import timeline_file
 
-MONO_PLATE_SUFFIX = "-mono"
 MOVIE_CODE_FILES = ["convert_assets.py", "texture_encoder.py"]
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
@@ -88,12 +87,6 @@ def add_plate_jobs(jobs, plates, soul_ramp):
         jobs[plate["name"]] = {"name": plate["name"], "source": plate["source"]}
         if "soul_plate" in plate:
             jobs[plate["soul_plate"]] = {"name": plate["soul_plate"], "source": plate["source"], "soul_ramp": soul_ramp}
-
-
-def add_mono_plate_jobs(jobs, plates, mono_ramp):
-    for plate in plates:
-        name = plate["name"] + MONO_PLATE_SUFFIX
-        jobs[name] = {"name": name, "source": plate["source"], "soul_ramp": mono_ramp}
 
 
 def add_screen_texture_jobs(jobs, screen_textures):
@@ -396,8 +389,6 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
     crops = add_atlas_page_jobs(jobs, animations, timelines)
     atlas_page_names = list(jobs)
     add_plate_jobs(jobs, plates, set_description.get("soul_view", {}).get("ramp"))
-    if "mono_ramp" in set_description:
-        add_mono_plate_jobs(jobs, plates, set_description["mono_ramp"])
     used_faces = talk_assets.faces_the_set_will_use(packs, set_description, text_key)
     chapter_assets.add_face_textures(set_description, used_faces) if used_faces else None
     add_screen_texture_jobs(jobs, set_description.get("screen_textures", []))

@@ -1,6 +1,8 @@
 #ifndef TEXTURE_CACHE_H
 #define TEXTURE_CACHE_H
 
+#define TEXTURE_CACHE_GRAYSCALE_SUFFIX "-mono"
+
 #include "asset_name.h"
 #include "renderer.h"
 

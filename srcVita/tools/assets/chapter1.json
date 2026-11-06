@@ -747,10 +747,5 @@
       "width": 640,
       "height": 360
     }
-  ],
-  "mono_ramp": {
-    "white_percent": 100,
-    "dark": "#000000",
-    "bright": "#ffffff"
-  }
+  ]
 }

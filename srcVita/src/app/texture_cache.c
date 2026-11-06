@@ -157,11 +157,26 @@ static struct cached_texture *find_waiting_entry_wanted_soonest(void)
     return soonest;
 }
 
+static int name_asks_for_grayscale(const char *name)
+{
+    size_t name_length;
+    size_t suffix_length;
+
+    name_length = strlen(name);
+    suffix_length = strlen(TEXTURE_CACHE_GRAYSCALE_SUFFIX);
+    return name_length > suffix_length && strcmp(&name[name_length - suffix_length], TEXTURE_CACHE_GRAYSCALE_SUFFIX) == 0;
+}
+
 static void start_read(struct cached_texture *entry)
 {
     char path[FILE_PATH_MAX];
+    char file_name[ASSET_NAME_MAX];
 
-    if (!file_path_join(path, folder, entry->name, ".gtex")) {
+    snprintf(file_name, sizeof(file_name), "%s", entry->name);
+    if (name_asks_for_grayscale(file_name)) {
+        file_name[strlen(file_name) - strlen(TEXTURE_CACHE_GRAYSCALE_SUFFIX)] = '\0';
+    }
+    if (!file_path_join(path, folder, file_name, ".gtex")) {
         mark_missing(entry, "path_too_long", 0);
         return;
     }
@@ -227,6 +242,9 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     memory_bytes = texture_file_memory_bytes(&header);
     upload_started_us = clock_now_us();
     make_room_for(memory_bytes);
+    if (name_asks_for_grayscale(entry->name)) {
+        texture_file_make_grayscale(&header, &finished->data[TEXTURE_FILE_HEADER_SIZE]);
+    }
     entry->texture = create_texture_from_file(&header, &finished->data[TEXTURE_FILE_HEADER_SIZE]);
     if (entry->texture == RENDERER_NO_TEXTURE) {
         mark_missing(entry, "upload", 0);
