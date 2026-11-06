@@ -941,6 +941,33 @@ static void test_time_past_the_end_of_a_hold_counts_towards_the_next_hold(void)
     viewer_app_stop();
 }
 
+static void test_each_frame_change_of_a_moving_object_is_logged(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nobject hero walk 100 150 1 0\nwait 6000\n");
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    run_frames(10);
+    CHECK_HAS_TEXT(log_text(), "frame_change object=hero from=0 to=1 passed_over=0");
+    viewer_app_stop();
+}
+
+static void test_a_long_frame_logs_the_frames_it_passed_over_and_does_not_count_them_as_shown(void)
+{
+    set_up_platform();
+    add_text_file("assets/animations/three.anim", "animation three\nloops 0\nframe walk_page 6 0 0 10 10 0 0 1 1\nframe walk_page 6 0 0 10 10 0 0 1 1\nframe walk_page 6 0 0 10 10 0 0 1 1\n");
+    set_up_scene_assets("scene opening\nobject hero three 100 150 1 0\nwait 6000\nremove_object hero\n");
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    update_with_elapsed_time(0);
+    update_with_elapsed_time(13 * 16667);
+    CHECK_HAS_TEXT(log_text(), "frame_change object=hero from=0 to=2 passed_over=1");
+    press(INPUT_CROSS);
+    run_frames(1);
+    CHECK_HAS_TEXT(log_text(), "animation coverage object=hero name=three frames_shown=2 frames_total=3");
+    viewer_app_stop();
+}
+
 static void test_the_first_update_does_not_shorten_the_first_hold(void)
 {
     set_up_platform();
@@ -1162,6 +1189,8 @@ int main(void)
     test_scene_with_more_textures_than_cache_entries_says_so_and_still_plays();
     test_scene_larger_than_the_memory_budget_says_so_and_still_plays();
     test_time_past_the_end_of_a_hold_counts_towards_the_next_hold();
+    test_each_frame_change_of_a_moving_object_is_logged();
+    test_a_long_frame_logs_the_frames_it_passed_over_and_does_not_count_them_as_shown();
     test_the_first_update_does_not_shorten_the_first_hold();
     test_a_scene_that_fails_to_play_leaves_the_room_alone();
     test_a_long_stall_only_counts_as_half_a_second();

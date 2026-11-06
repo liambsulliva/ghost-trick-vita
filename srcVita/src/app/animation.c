@@ -102,7 +102,7 @@ static int next_frame_index(const struct animation *animation, unsigned int fram
     return -1;
 }
 
-void animation_player_advance(struct animation_player *player, unsigned long long elapsed_us, animation_frame_ready_check frame_is_ready)
+static void move_to_frame_for_elapsed_time(struct animation_player *player, unsigned long long elapsed_us, animation_frame_ready_check frame_is_ready)
 {
     const struct animation *animation;
     unsigned long long duration_us;
@@ -135,6 +135,13 @@ void animation_player_advance(struct animation_player *player, unsigned long lon
         player->waiting_for_frame = 0;
         player->time_in_frame_us = player->time_in_frame_us - duration_us;
         player->frame_index = (unsigned int)next_index;
+    }
+}
+
+void animation_player_advance(struct animation_player *player, unsigned long long elapsed_us, animation_frame_ready_check frame_is_ready)
+{
+    move_to_frame_for_elapsed_time(player, elapsed_us, frame_is_ready);
+    if (player->animation != NULL) {
         player->frame_was_shown[player->frame_index] = 1;
     }
 }

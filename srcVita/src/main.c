@@ -14,6 +14,7 @@
 #include "renderer.h"
 #include "run_log.h"
 #include "screen_capture.h"
+#include "screen_watch.h"
 #include "texture_cache.h"
 #include "timing.h"
 #include "viewer_app.h"
@@ -118,6 +119,7 @@ static void publish_frame_stats(struct frame_stats *stats)
     frame_stats_format(stats, log_text, sizeof(log_text));
     run_log_write("%s", log_text);
     log_memory_and_textures();
+    screen_watch_publish();
 
     average_frame_us = stats->total_frame_us / stats->frame_count;
     snprintf(status_text, sizeof(status_text), "frame %llu.%llums slow %u", average_frame_us / 1000, average_frame_us / 100 % 10, stats->slow_frame_count);
@@ -147,6 +149,7 @@ static void run_main_loop(void)
     quit_requested = 0;
     frame_stats_reset(&stats);
     frame_timer_start(&frame_timer);
+    screen_watch_start();
 
     while (!quit_requested) {
         frame_started_us = clock_now_us();
@@ -171,6 +174,7 @@ static void run_main_loop(void)
         present_ended_us = clock_now_us();
 
         last_frame_us = frame_timer_tick(&frame_timer);
+        screen_watch_note_frame();
         frame_number = frame_number + 1;
         if (frame_number >= FIRST_TIMED_FRAME) {
             frame_stats_add_frame(&stats, last_frame_us, update_ended_us - frame_started_us, draw_ended_us - update_ended_us, present_ended_us - draw_ended_us);

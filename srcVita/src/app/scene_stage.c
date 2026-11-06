@@ -169,13 +169,29 @@ void scene_stage_set_fade(float fade_amount)
     stage.fade_amount = fade_amount;
 }
 
+static unsigned int frames_passed_over(unsigned int from, unsigned int to, unsigned int frame_count)
+{
+    return (to + frame_count - from - 1) % frame_count;
+}
+
+static void advance_object(struct scene_object *object, unsigned long long elapsed_us)
+{
+    unsigned int previous_frame;
+
+    previous_frame = object->player.frame_index;
+    animation_player_advance(&object->player, elapsed_us, frame_can_be_shown);
+    if (object->player.frame_index != previous_frame) {
+        run_log_write("frame_change object=%s from=%u to=%u passed_over=%u", object->name, previous_frame, object->player.frame_index, frames_passed_over(previous_frame, object->player.frame_index, object->player.animation->frame_count));
+    }
+}
+
 void scene_stage_advance_objects(unsigned long long elapsed_us)
 {
     int index;
 
     for (index = 0; index < SCENE_OBJECT_MAX; index++) {
         if (stage.objects[index].in_use) {
-            animation_player_advance(&stage.objects[index].player, elapsed_us, frame_can_be_shown);
+            advance_object(&stage.objects[index], elapsed_us);
         }
     }
 }
