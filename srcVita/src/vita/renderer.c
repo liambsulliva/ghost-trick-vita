@@ -26,6 +26,7 @@ static struct batch_vertex batch_vertices[BATCH_QUAD_MAX * VERTICES_PER_QUAD];
 static int batch_quad_count;
 static renderer_texture batch_texture;
 static renderer_texture white_texture;
+static int batch_is_flat;
 static renderer_texture snapshot_texture;
 static GLuint snapshot_framebuffer;
 
@@ -205,7 +206,29 @@ void renderer_texture_destroy(renderer_texture texture)
     glDeleteTextures(1, &gl_texture);
 }
 
-void renderer_draw_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color tint)
+static void set_flat_drawing(int is_flat)
+{
+    if (batch_is_flat == is_flat) {
+        return;
+    }
+    flush_batch();
+    batch_is_flat = is_flat;
+    if (!is_flat) {
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+        return;
+    }
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_REPLACE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_SRC0_RGB, GL_PRIMARY_COLOR);
+    glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
+    glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_SRC0_ALPHA, GL_TEXTURE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+    glTexEnvi(GL_TEXTURE_ENV, GL_SRC1_ALPHA, GL_PRIMARY_COLOR);
+    glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
+}
+
+static void queue_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color tint)
 {
     struct batch_vertex *quad;
     float left;
@@ -238,6 +261,18 @@ void renderer_draw_sprite(renderer_texture texture, struct renderer_rect screen_
     set_vertex(&quad[4], right, bottom, u_right, v_bottom, tint);
     set_vertex(&quad[5], left, bottom, u_left, v_bottom, tint);
     batch_quad_count = batch_quad_count + 1;
+}
+
+void renderer_draw_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color tint)
+{
+    set_flat_drawing(0);
+    queue_sprite(texture, screen_area, texture_area, tint);
+}
+
+void renderer_draw_flat_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color)
+{
+    set_flat_drawing(1);
+    queue_sprite(texture, screen_area, texture_area, color);
 }
 
 void renderer_draw_filled_rect(struct renderer_rect screen_area, struct renderer_color color)

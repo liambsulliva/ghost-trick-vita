@@ -411,7 +411,7 @@ def expand_set(set_description, packs, rom_path, text_key):
             for label in script.strings_of_ops(BALLOON_LABEL_OPS):
                 if label in entries and all(row["name"] != "bubble_" + label for row in bubble_rows):
                     bubble_rows.append(dict(balloon_style["text"], joins_lines=True, name="bubble_" + label, file=entries[label][0][0], entry=entries[label][0][1]))
-                    balloon_rows.append({"label": label, "delay": balloon_style["delay"], "parts": [dict(balloon_style["art"]), dict(balloon_style["text_part"], texture="bubble_" + label)]})
+                    balloon_rows.append({"label": label, "delay": balloon_style["delay"], "parts": [dict(balloon_style["art"], fits="bubble_" + label), dict(balloon_style["text_part"], texture="bubble_" + label)]})
     expanded["narration"] = narration_rows
     expanded["bubble_text"] = bubble_rows
     expanded["script_balloons"] = balloon_rows

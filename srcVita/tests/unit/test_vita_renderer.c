@@ -557,3 +557,10 @@ int main(void)
     fake_files_reset();
     return test_finish("unit/vita_renderer");
 }
+
+void glTexEnvi(GLenum target, GLenum name, GLint value)
+{
+    (void)target;
+    (void)name;
+    (void)value;
+}

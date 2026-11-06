@@ -187,6 +187,11 @@ static struct fake_draw *record_draw(renderer_texture texture, int is_filled_rec
     return draw;
 }
 
+void renderer_draw_flat_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color)
+{
+    renderer_draw_sprite(texture, screen_area, texture_area, color);
+}
+
 void renderer_draw_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color tint)
 {
     record_draw(texture, 0, screen_area, texture_area, tint);

@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "script_tables.h"
+
+#define SOUL_CORE_CLASS_ID 0x4080f0cdu
+#define SOUL_ACTIVE_STYLE_NAME "active"
 #include "text_lines.h"
 
 #define TABLE_LINE_MAX 320
@@ -153,17 +156,40 @@ int script_tables_read_text_lines(struct script_tables *tables, const char *text
     return read_all_lines(tables, text, text_size, read_text_line);
 }
 
+static int read_flipbook_line(struct script_tables *tables, const char *line)
+{
+    struct script_flipbook *book;
+    int found;
+
+    if (tables->flipbook_count >= SCRIPT_FLIPBOOK_MAX) {
+        return 1;
+    }
+    book = &tables->flipbooks[tables->flipbook_count];
+    memset(book, 0, sizeof(*book));
+    found = sscanf(line, "flipbook " NAME_SCAN " %d %d %d %d %f %f " NAME_SCAN " " NAME_SCAN " " NAME_SCAN, book->name, &book->ticks_per_frame, &book->frame_count, &book->columns, &book->rows, &book->cell_width, &book->cell_height, book->pages[0], book->pages[1], book->pages[2]);
+    if (found < 8) {
+        return 0;
+    }
+    book->page_count = found - 7;
+    tables->flipbook_count = tables->flipbook_count + 1;
+    return 1;
+}
+
 static int read_effect_line(struct script_tables *tables, const char *line)
 {
     struct script_effect_row *row;
     char kind[16];
+
+    if (text_line_starts_with(line, "flipbook ")) {
+        return read_flipbook_line(tables, line);
+    }
 
     if (tables->effect_row_count >= SCRIPT_EFFECT_ROW_MAX) {
         return 1;
     }
     row = &tables->effect_rows[tables->effect_row_count];
     memset(row, 0, sizeof(*row));
-    if (sscanf(line, "effect %d %15s " NAME_SCAN " %d %f %f %f", &row->id, kind, row->texture_name, &row->ticks, &row->end_zoom, &row->width, &row->height) != 7) {
+    if (sscanf(line, "effect %d %15s " NAME_SCAN " %d %f %f %f %d", &row->id, kind, row->texture_name, &row->ticks, &row->end_zoom, &row->width, &row->height, &row->only_in_soul_view) < 7) {
         return 0;
     }
     if (strcmp(kind, "card") == 0) {
@@ -182,6 +208,58 @@ static int read_effect_line(struct script_tables *tables, const char *line)
 int script_tables_read_effects(struct script_tables *tables, const char *text, unsigned int text_size)
 {
     return read_all_lines(tables, text, text_size, read_effect_line);
+}
+
+const struct script_flipbook *script_tables_find_flipbook(const struct script_tables *tables, const char *name)
+{
+    int index;
+
+    for (index = 0; index < tables->flipbook_count; index++) {
+        if (strcmp(tables->flipbooks[index].name, name) == 0) {
+            return &tables->flipbooks[index];
+        }
+    }
+    return NULL;
+}
+
+static int read_soul_line(struct script_tables *tables, const char *line)
+{
+    struct script_soul_style *style;
+
+    if (tables->soul_style_count >= SCRIPT_SOUL_STYLE_MAX) {
+        return 1;
+    }
+    style = &tables->soul_styles[tables->soul_style_count];
+    memset(style, 0, sizeof(*style));
+    if (sscanf(line, "class %x %f %f %f %f %d", &style->class_id, &style->red, &style->green, &style->blue, &style->alpha, &style->is_flat) == 6 || sscanf(line, "object " NAME_SCAN " %f %f %f %f %d", style->object_name, &style->red, &style->green, &style->blue, &style->alpha, &style->is_flat) == 6) {
+        tables->soul_style_count = tables->soul_style_count + 1;
+    }
+    return 1;
+}
+
+int script_tables_read_soul(struct script_tables *tables, const char *text, unsigned int text_size)
+{
+    return read_all_lines(tables, text, text_size, read_soul_line);
+}
+
+const struct script_soul_style *script_tables_soul_style(const struct script_tables *tables, unsigned int class_id, int is_human, int has_core, int is_active)
+{
+    unsigned int wanted_class;
+    int index;
+
+    wanted_class = has_core && !is_human ? SOUL_CORE_CLASS_ID : class_id;
+    for (index = 0; index < tables->soul_style_count; index++) {
+        const struct script_soul_style *style;
+
+        style = &tables->soul_styles[index];
+        if (is_active && strcmp(style->object_name, SOUL_ACTIVE_STYLE_NAME) == 0) {
+            return style;
+        }
+        if (!is_active && style->object_name[0] == '\0' && style->class_id == wanted_class) {
+            return style;
+        }
+    }
+    return NULL;
 }
 
 const struct script_effect_row *script_tables_find_effect(const struct script_tables *tables, int id)

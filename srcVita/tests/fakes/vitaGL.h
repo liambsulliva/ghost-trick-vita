@@ -73,4 +73,21 @@ void glDeleteFramebuffers(GLsizei count, const GLuint *framebuffers);
 void glBindFramebuffer(GLenum target, GLuint framebuffer);
 void glFramebufferTexture2D(GLenum target, GLenum attachment, GLenum texture_target, GLuint texture, GLint level);
 
+#define GL_TEXTURE_ENV 0x2300
+#define GL_TEXTURE_ENV_MODE 0x2200
+#define GL_MODULATE 0x2100
+#define GL_COMBINE 0x8570
+#define GL_COMBINE_RGB 0x8571
+#define GL_COMBINE_ALPHA 0x8572
+#define GL_REPLACE 0x1E01
+#define GL_PRIMARY_COLOR 0x8577
+#define GL_TEXTURE 0x1702
+#define GL_SRC0_RGB 0x8580
+#define GL_SRC0_ALPHA 0x8588
+#define GL_SRC1_ALPHA 0x8589
+#define GL_OPERAND0_RGB 0x8590
+#define GL_OPERAND0_ALPHA 0x8598
+#define GL_OPERAND1_ALPHA 0x8599
+#define GL_SRC_COLOR 0x0300
+void glTexEnvi(GLenum target, GLenum name, GLint value);
 #endif

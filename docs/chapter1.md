@@ -48,3 +48,7 @@ The reference video is downloaded and verified as AV1, 1280×720, 60 fps, 33,598
 Step 2 is done: [srcVita](../srcVita/README.md) runs on the Vita and plays the chapter's opening scene at 60 fps from converted remaster art, checked against the reference video. That scene is a script, so steps 3 to 5 are still open. The Steam copy is not on this Mac. Existing asset research uses the Android repack only for format inspection; retain that work but do not treat it as authoritative Steam validation. These are concrete next dependencies, not reasons to resume full-game research.
 
 The prior BFM phase milestones remain recorded in `docs/inventory.md`. The user has now prioritized this chapter test, so a full matching-decomp campaign and later-stage mapping investigations are deferred. Downloading proprietary Metrowerks tools still requires their explicit approval.
+
+## Roadmap after Chapter 1
+
+- **Original or remastered soundtrack.** Let the player choose between the remaster's soundtrack and the DS original. This is not urgent. The app plays the remaster's music today.

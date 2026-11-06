@@ -1,5 +1,7 @@
 #include <limits.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 #include "iris_pattern.h"
 #include "memory.h"
 #include "run_log.h"
@@ -193,20 +195,85 @@ static void draw_texture_or_placeholder(const char *texture_name, struct rendere
     }
 }
 
+struct held_pose {
+    char object_name[ASSET_NAME_MAX];
+    char texture_name[ASSET_NAME_MAX];
+    float left_from_object;
+    float top_from_object;
+    float width;
+    float height;
+    struct renderer_rect texture_area;
+};
+
+static int draw_when_ready(const char *texture_name, struct renderer_rect screen_area, struct renderer_rect texture_area, const struct scene_object *tinted_object)
+{
+    const struct cached_texture *texture;
+
+    texture = texture_cache_use_or_start_loading(texture_name);
+    if (texture == NULL) {
+        return 0;
+    }
+    if (texture->state == CACHED_TEXTURE_MISSING) {
+        renderer_draw_filled_rect(screen_area, missing_texture_color);
+        return 1;
+    }
+    if (texture->state != CACHED_TEXTURE_READY) {
+        return 0;
+    }
+    if (tinted_object != NULL) {
+        struct renderer_color color;
+
+        color.red = tinted_object->soul_red;
+        color.green = tinted_object->soul_green;
+        color.blue = tinted_object->soul_blue;
+        color.alpha = tinted_object->soul_alpha;
+        if (tinted_object->soul_is_flat) {
+            renderer_draw_flat_sprite(texture->texture, screen_area, texture_area, color);
+        } else {
+            renderer_draw_sprite(texture->texture, screen_area, texture_area, color);
+        }
+    } else {
+        renderer_draw_sprite(texture->texture, screen_area, texture_area, white);
+    }
+    return 1;
+}
+
 static void draw_plates(const struct scene_stage *stage, const struct screen_view *view)
 {
     const struct scene_plate *plate;
     int index;
 
     for (index = 0; index < stage->plate_count; index++) {
+        const char *wanted;
+        const char *other;
+        struct renderer_rect screen_area;
+        struct renderer_rect texture_area;
+
         plate = &stage->plates[index];
-        draw_texture_or_placeholder(stage->soul_mode_is_on && plate->soul_texture_name[0] != '\0' ? plate->soul_texture_name : plate->texture_name, world_area_to_screen(view, plate->x, plate->y, plate->width, plate->height), whole_texture_area());
+        wanted = stage->soul_mode_is_on && plate->soul_texture_name[0] != '\0' ? plate->soul_texture_name : plate->texture_name;
+        other = wanted == plate->texture_name ? plate->soul_texture_name : plate->texture_name;
+        screen_area = world_area_to_screen(view, plate->x, plate->y, plate->width, plate->height);
+        texture_area.x = 0.0f;
+        texture_area.y = 0.0f;
+        texture_area.width = 1.0f;
+        texture_area.height = 1.0f;
+        if (other[0] != '\0') {
+            texture_cache_use_or_start_loading(other);
+        }
+        if (draw_when_ready(wanted, screen_area, texture_area, NULL) || other[0] == '\0') {
+            continue;
+        }
+        draw_when_ready(other, screen_area, texture_area, NULL);
     }
 }
 
-static void draw_object(const struct screen_view *view, const struct scene_object *object)
+static struct held_pose held_poses[SCENE_OBJECT_MAX];
+
+static void draw_object(const struct scene_stage *stage, const struct screen_view *view, const struct scene_object *object)
 {
     const struct animation_frame *frame;
+    struct held_pose *held;
+    const struct scene_object *tinted_object;
     struct renderer_rect texture_area;
     float left;
 
@@ -214,6 +281,8 @@ static void draw_object(const struct screen_view *view, const struct scene_objec
     if (frame == NULL || animation_frame_is_blank(frame)) {
         return;
     }
+    held = &held_poses[object - stage->objects];
+    tinted_object = stage->soul_mode_is_on && object->has_soul_tint ? object : NULL;
     texture_area.x = frame->u;
     texture_area.y = frame->v;
     texture_area.width = frame->u_size;
@@ -224,7 +293,19 @@ static void draw_object(const struct screen_view *view, const struct scene_objec
         texture_area.x = frame->u + frame->u_size;
         texture_area.width = -frame->u_size;
     }
-    draw_texture_or_placeholder(frame->texture_name, world_area_to_screen(view, left, object->y + frame->y, frame->width, frame->height), texture_area);
+    if (draw_when_ready(frame->texture_name, world_area_to_screen(view, left, object->y + frame->y, frame->width, frame->height), texture_area, tinted_object)) {
+        snprintf(held->object_name, sizeof(held->object_name), "%s", object->name);
+        snprintf(held->texture_name, sizeof(held->texture_name), "%s", frame->texture_name);
+        held->left_from_object = left - object->x;
+        held->top_from_object = frame->y;
+        held->width = frame->width;
+        held->height = frame->height;
+        held->texture_area = texture_area;
+        return;
+    }
+    if (strcmp(held->object_name, object->name) == 0) {
+        draw_when_ready(held->texture_name, world_area_to_screen(view, object->x + held->left_from_object, object->y + held->top_from_object, held->width, held->height), held->texture_area, tinted_object);
+    }
 }
 
 static int find_lowest_layer_above(const struct scene_stage *stage, int layer, int *found_layer)
@@ -256,7 +337,7 @@ static void draw_objects_in_layer_order(const struct scene_stage *stage, const s
         layer = next_layer;
         for (index = 0; index < SCENE_OBJECT_MAX; index++) {
             if (stage->objects[index].in_use && stage->objects[index].layer == layer) {
-                draw_object(view, &stage->objects[index]);
+                draw_object(stage, view, &stage->objects[index]);
             }
         }
     }

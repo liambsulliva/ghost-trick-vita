@@ -7,10 +7,12 @@
 #define NORMAL_PLAY_MODE 3
 #define AUTO_TRICK_TICKS 30u
 #define AUTO_TUTORIAL_TICKS 3u
-#define PACED_TRICK_TICKS 90u
 #define PACED_TUTORIAL_TICKS 30u
 #define PACED_TICKS_TO_READ_A_PAGE 120u
 #define NO_CORE (-1)
+#define SOUL_DRAG_TICKS 30
+#define PACED_SOUL_VIEW_TICKS 120u
+#define PACED_LIVING_WORLD_TICKS 300u
 #define TRICK_ACTION_AFTER_TICKS 8
 #define TIME_JUMP_AFTER_TICKS 30
 #define COUNTDOWN_STEP_TICKS 90
@@ -55,41 +57,112 @@ static int object_can_be_a_core(const struct script_object *object, int slot)
     return object_has_a_trick(object, slot) || (slot == 0 && object->actor.has_core);
 }
 
-static void set_active_core(struct script_machine *machine, int object_index, int slot)
+static void player_moved_in_tutorial(struct script_machine *machine);
+
+static void core_position(const struct script_machine *machine, int object_index, float *x, float *y)
+{
+    const struct script_actor *actor;
+
+    actor = &machine->objects[object_index].actor;
+    *x = (float)(actor->x + actor->core_x);
+    *y = (float)(actor->y + actor->core_y);
+}
+
+static void arrive_at_core(struct script_machine *machine, int object_index, int slot)
 {
     struct script_soul *soul;
 
     soul = &machine->soul;
-    if (soul->active_object == object_index && soul->active_slot == slot) {
-        return;
-    }
     soul->active_object = object_index;
     soul->active_slot = slot;
-    machine->active_core_name = object_index == NO_CORE ? NULL : machine->objects[object_index].name;
-    if (machine->outputs->marked != NULL && object_index != NO_CORE) {
+    machine->active_core_name = machine->objects[object_index].name;
+    if (machine->outputs->marked != NULL) {
         machine->outputs->marked("core", machine->objects[object_index].name);
     }
-    if (soul->is_on && object_index != NO_CORE) {
+    if (soul->is_on) {
         script_machine_send(machine, "*", "SYSTEM", "SV_CHGCORE");
     }
-    script_soul_report_cursor(machine);
+    player_moved_in_tutorial(machine);
 }
 
-void script_soul_report_cursor(struct script_machine *machine)
+static void drag_soul_to(struct script_machine *machine, int object_index, int slot)
 {
-    const struct script_soul *soul;
-    const struct script_actor *actor;
+    struct script_soul *soul;
+    float target_x;
+    float target_y;
 
-    if (machine->outputs->soul_cursor_moved == NULL) {
-        return;
-    }
     soul = &machine->soul;
-    if (!soul->is_on || soul->active_object == NO_CORE) {
-        machine->outputs->soul_cursor_moved(0, 0.0f, 0.0f);
+    if (soul->drag_ticks_left > 0) {
         return;
     }
-    actor = &machine->objects[soul->active_object].actor;
-    machine->outputs->soul_cursor_moved(1, (float)(actor->x + actor->core_x), (float)(actor->y + actor->core_y));
+    if (machine->auto_press == SCRIPT_AUTO_FAST || !soul->is_on || soul->active_object == NO_CORE || soul->active_object == object_index) {
+        arrive_at_core(machine, object_index, slot);
+        return;
+    }
+    core_position(machine, soul->active_object, &soul->drag_from_x, &soul->drag_from_y);
+    soul->drag_object = object_index;
+    soul->drag_slot = slot;
+    soul->drag_ticks_left = SOUL_DRAG_TICKS;
+    if (soul->player_opened_soul_view && !soul->camera_follow_is_off) {
+        core_position(machine, object_index, &target_x, &target_y);
+        script_machine_pan_camera_to(machine, (int)target_x, (int)target_y);
+    }
+}
+
+static void report_soul_view(struct script_machine *machine)
+{
+    struct script_soul *soul;
+    int index;
+
+    soul = &machine->soul;
+    if (machine->outputs->soul_cursor_moved != NULL) {
+        if (soul->is_on && soul->drag_ticks_left > 0) {
+            float target_x;
+            float target_y;
+            float along;
+
+            core_position(machine, soul->drag_object, &target_x, &target_y);
+            along = 1.0f - (float)soul->drag_ticks_left / (float)SOUL_DRAG_TICKS;
+            machine->outputs->soul_cursor_moved(1, soul->drag_from_x + (target_x - soul->drag_from_x) * along, soul->drag_from_y + (target_y - soul->drag_from_y) * along, soul->drag_from_x, soul->drag_from_y, 1);
+        } else if (soul->is_on && soul->active_object != NO_CORE) {
+            float x;
+            float y;
+
+            core_position(machine, soul->active_object, &x, &y);
+            machine->outputs->soul_cursor_moved(1, x, y, x, y, 0);
+        } else {
+            machine->outputs->soul_cursor_moved(0, 0.0f, 0.0f, 0.0f, 0.0f, 0);
+        }
+    }
+    if (!soul->is_on || machine->outputs->soul_core_marked == NULL) {
+        return;
+    }
+    for (index = 0; index < machine->object_count; index++) {
+        if (machine->outputs->soul_object_styled != NULL && machine->objects[index].actor.exists) {
+            machine->outputs->soul_object_styled(machine->objects[index].name, machine->objects[index].actor.class_id, machine->objects[index].actor.has_core, index == soul->active_object);
+        }
+        if (index != soul->active_object && object_can_be_a_core(&machine->objects[index], 0)) {
+            float x;
+            float y;
+
+            core_position(machine, index, &x, &y);
+            machine->outputs->soul_core_marked(index, x, y);
+        }
+    }
+}
+
+static void finish_drag_when_due(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->drag_ticks_left <= 0) {
+        return;
+    }
+    soul->drag_ticks_left = soul->drag_ticks_left - 1;
+    if (soul->drag_ticks_left == 0) {
+        arrive_at_core(machine, soul->drag_object, soul->drag_slot);
+    }
 }
 
 static void step_to_next_core(struct script_machine *machine)
@@ -112,7 +185,7 @@ static void step_to_next_core(struct script_machine *machine)
         object_index = position / SCRIPT_CORE_SLOT_COUNT;
         slot = position % SCRIPT_CORE_SLOT_COUNT;
         if (object_can_be_a_core(&machine->objects[object_index], slot)) {
-            set_active_core(machine, object_index, slot);
+            drag_soul_to(machine, object_index, slot);
             return;
         }
         candidates = candidates - 1;
@@ -172,7 +245,7 @@ static void step_to_core_in_direction(struct script_machine *machine, int direct
         }
     }
     if (best_object != NO_CORE) {
-        set_active_core(machine, best_object, best_slot);
+        drag_soul_to(machine, best_object, best_slot);
     }
 }
 
@@ -294,7 +367,6 @@ static void set_soul_view(struct script_machine *machine, int is_on)
         soul->start_message_at = (long long)machine->tick + 1;
         machine->soul_sound_at = (long long)machine->tick + 1;
     }
-    script_soul_report_cursor(machine);
 }
 
 static void enter_scripted_soul_view(struct script_machine *machine)
@@ -349,7 +421,11 @@ static void run_button_command(struct script_machine *machine, const char *arg)
 
 static void run_exception_command(struct script_machine *machine, const char *arg)
 {
-    if (strcmp(arg, "BreakTalk") == 0) {
+    if (strcmp(arg, "CoreHoseiOff") == 0) {
+        machine->soul.camera_follow_is_off = 1;
+    } else if (strcmp(arg, "CoreHoseiOn") == 0) {
+        machine->soul.camera_follow_is_off = 0;
+    } else if (strcmp(arg, "BreakTalk") == 0) {
         machine->pause_bit = 0;
         machine->soul_state_keeps_pause = 0;
     } else if (strcmp(arg, "ForceDemo") == 0) {
@@ -425,10 +501,11 @@ static void take_press(struct script_machine *machine)
         return;
     }
     if (soul->tutorial_mode != TUTORIAL_NONE) {
-        if (soul->tutorial_mode != TUTORIAL_TOUCH_CHECK || soul->tutorial_click_was_sent) {
+        if (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent) {
+            player_moved_in_tutorial(machine);
+        } else {
             step_to_next_core(machine);
         }
-        player_moved_in_tutorial(machine);
         return;
     }
     if (soul->is_on && soul->player_opened_soul_view) {
@@ -449,10 +526,11 @@ static void take_direction(struct script_machine *machine, int direction_x, int 
 
     soul = &machine->soul;
     if (soul->tutorial_mode != TUTORIAL_NONE) {
-        if (soul->tutorial_mode != TUTORIAL_TOUCH_CHECK || soul->tutorial_click_was_sent) {
+        if (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent) {
+            player_moved_in_tutorial(machine);
+        } else {
             step_to_core_in_direction(machine, direction_x, direction_y);
         }
-        player_moved_in_tutorial(machine);
         return;
     }
     if (!soul->is_on && script_soul_world_is_playable(machine)) {
@@ -539,10 +617,22 @@ static void play_automatically(struct script_machine *machine)
         machine->press_is_pending = 1;
         return;
     }
-    soul->next_auto_try_tick = machine->tick + (machine->auto_press == SCRIPT_AUTO_FAST ? AUTO_TRICK_TICKS : PACED_TRICK_TICKS);
+    if (machine->auto_press == SCRIPT_AUTO_FAST) {
+        soul->next_auto_try_tick = machine->tick + AUTO_TRICK_TICKS;
+    }
     if (soul->is_on && soul->player_opened_soul_view) {
-        step_to_next_core(machine);
-        machine->press_is_pending = 1;
+        if (machine->auto_press == SCRIPT_AUTO_FAST) {
+            step_to_next_core(machine);
+            machine->press_is_pending = 1;
+        } else if (!soul->auto_core_was_chosen) {
+            soul->auto_core_was_chosen = 1;
+            step_to_next_core(machine);
+            soul->next_auto_try_tick = machine->tick + PACED_SOUL_VIEW_TICKS;
+        } else if (soul->drag_ticks_left == 0) {
+            soul->auto_core_was_chosen = 0;
+            machine->press_is_pending = 1;
+            soul->next_auto_try_tick = machine->tick + PACED_LIVING_WORLD_TICKS;
+        }
         return;
     }
     if (machine->pause_bit) {
@@ -558,6 +648,9 @@ static void play_automatically(struct script_machine *machine)
     }
     if (script_soul_world_is_playable(machine)) {
         soul->ghost_is_pending = 1;
+        if (machine->auto_press != SCRIPT_AUTO_FAST) {
+            soul->next_auto_try_tick = machine->tick + PACED_SOUL_VIEW_TICKS;
+        }
     }
 }
 
@@ -593,6 +686,8 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         soul->direction_y = 0;
     }
     move_free_camera(machine);
+    finish_drag_when_due(machine);
+    report_soul_view(machine);
     send_trick_action_when_due(machine);
     run_countdown(machine);
     send_timed_native_event(machine, &soul->phone_event);

@@ -68,7 +68,9 @@ struct script_outputs {
     void (*sound_loop_stopped)(const char *loop_tag);
     void (*music_volume_changed)(int volume, int ticks);
     void (*soul_vision_changed)(int is_on);
-    void (*soul_cursor_moved)(int is_shown, float x, float y);
+    void (*soul_cursor_moved)(int is_shown, float x, float y, float from_x, float from_y, int is_dragging);
+    void (*soul_core_marked)(int object_index, float x, float y);
+    void (*soul_object_styled)(const char *object_name, unsigned int class_id, int has_core, int is_active);
     void (*marked)(const char *what, const char *name);
     void (*talk_changed)(const struct script_talk_view *view);
     void (*effect_deleted)(const char *name);

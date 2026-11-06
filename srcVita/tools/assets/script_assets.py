@@ -37,6 +37,8 @@ EFFECTS_FILE = SCRIPTS_FOLDER + "/effects.txt"
 CHAPTER_PRELOADED_MESSAGES = 6
 CHAPTER_PRELOADED_ROOMS = 2
 NARRATION_OP = 0x5d
+BUBBLE_MARGIN_WIDTH = 30
+BUBBLE_MARGIN_HEIGHT = 21
 MOTION_LABEL_SUFFIX = ".mtbl.xml"
 FLAGS_SCRIPT = "flags.xml"
 LANGUAGE_SUFFIX_FORMAT = ".%s.xml.lz"
@@ -307,8 +309,12 @@ def soul_text(soul_view):
     return "\n".join(lines) + "\n"
 
 
+def flipbooks_text(flipbooks):
+    return "".join("flipbook %s %d %d %d %d %s %s %s\n" % (book["name"], book["ticks_per_frame"], book["frames"], book["columns"], book["rows"], asset_writers.format_number(book["cell_width"]), asset_writers.format_number(book["cell_height"]), " ".join(book["pages"])) for book in flipbooks)
+
+
 def effects_text(effects):
-    return "".join("effect %d %s %s %d %s %s %s\n" % (row["id"], row["kind"], row["texture"], row["ticks"], asset_writers.format_number(row["end_zoom"]), asset_writers.format_number(row["width"]), asset_writers.format_number(row["height"])) for row in effects)
+    return "".join("effect %d %s %s %d %s %s %s %d\n" % (row["id"], row["kind"], row["texture"], row["ticks"], asset_writers.format_number(row["end_zoom"]), asset_writers.format_number(row["width"]), asset_writers.format_number(row["height"]), row.get("only_in_soul_view", 0)) for row in effects)
 
 
 def chapter_preload_text(set_description, section, narration_lines, extra_textures):
@@ -362,6 +368,10 @@ def balloons_text(balloons, texture_sizes):
             if part["texture"] not in texture_sizes:
                 continue
             width, height = texture_sizes[part["texture"]]
+            if part.get("fits") in texture_sizes:
+                text_width, text_height = texture_sizes[part["fits"]]
+                width = max(width, text_width + BUBBLE_MARGIN_WIDTH)
+                height = max(height, text_height + BUBBLE_MARGIN_HEIGHT)
             lines.append("part %s %s %s %s %s %d %d" % (part["texture"], asset_writers.format_number(part["dx"]), asset_writers.format_number(part["dy"]), asset_writers.format_number(width / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), asset_writers.format_number(height / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), part["after"], part["grow"]))
     return "\n".join(lines) + "\n"
 
@@ -416,7 +426,7 @@ def table_files(set_description, output_folder, motion_lines, narration_lines, t
     if "soul_view" in set_description:
         texts[SOUL_FILE] = soul_text(set_description["soul_view"])
         extra_textures.append(set_description["soul_view"]["ring"])
-    texts[EFFECTS_FILE] = effects_text(set_description.get("effects", []))
+    texts[EFFECTS_FILE] = flipbooks_text(set_description.get("flipbooks", [])) + effects_text(set_description.get("effects", []))
     if "chapter" in set_description:
         texts[PRELOAD_FILE] = chapter_preload_text(set_description, section, narration_lines, extra_textures)
     else:

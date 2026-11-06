@@ -21,7 +21,6 @@ BOTTOM_TEXT_LEFT = 40
 TOP_BOX_TOP = 6
 TOP_BOX_HEIGHT = 132
 TOP_TEXT_LEFT = 212
-FLIPPED_FACE_TEXT_LEFT = 340
 ATLAS_WIDTH = 1024
 ATLAS_CELL_GAP = 4
 COLOR_BLACK = 0
@@ -293,7 +292,7 @@ def bake_talk(packs, set_description, text_key, work_folder, record, code):
                 is_top_box = 1 if face is None else 0
                 box_top = TOP_BOX_TOP if is_top_box else BOTTOM_BOX_TOP
                 box_height = TOP_BOX_HEIGHT if is_top_box else BOTTOM_BOX_HEIGHT
-                text_left = TOP_TEXT_LEFT if is_top_box else (FLIPPED_FACE_TEXT_LEFT if flip else BOTTOM_TEXT_LEFT)
+                text_left = TOP_TEXT_LEFT if is_top_box else BOTTOM_TEXT_LEFT
                 rows.append("page %s %d %d %d %d %d" % (face_name, flip, is_top_box, one_section["reveal_is_fade"], one_section["ending"], len(one_section["lines"])))
                 tops = line_tops(len(one_section["lines"]), box_top, box_height)
                 for line, top in zip(one_section["lines"], tops):

@@ -165,6 +165,21 @@ void scene_stage_set_soul_mode(int is_on)
     stage.soul_mode_is_on = is_on;
 }
 
+void scene_stage_set_object_soul_tint(const char *object_name, float red, float green, float blue, float alpha, int is_flat)
+{
+    struct scene_object *object;
+
+    object = find_object(object_name);
+    if (object != NULL) {
+        object->has_soul_tint = 1;
+        object->soul_red = red;
+        object->soul_green = green;
+        object->soul_blue = blue;
+        object->soul_alpha = alpha;
+        object->soul_is_flat = is_flat;
+    }
+}
+
 void scene_stage_set_last_plate_soul_texture(const char *texture_name)
 {
     if (stage.plate_count > 0) {

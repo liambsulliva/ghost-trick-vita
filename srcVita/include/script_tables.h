@@ -11,6 +11,9 @@
 #define SCRIPT_AUDIO_ROW_MAX 256
 #define SCRIPT_TEXT_ROW_MAX 256
 #define SCRIPT_BALLOON_ROW_MAX 256
+#define SCRIPT_FLIPBOOK_MAX 8
+#define SCRIPT_FLIPBOOK_PAGE_MAX 3
+#define SCRIPT_SOUL_STYLE_MAX 16
 #define SCRIPT_BALLOON_PART_MAX 4
 #define SCRIPT_MOTION_ROW_MAX 1024
 #define SCRIPT_PRELOAD_ROW_MAX 1024
@@ -36,6 +39,29 @@ struct script_effect_row {
     float end_zoom;
     float width;
     float height;
+    int only_in_soul_view;
+};
+
+struct script_flipbook {
+    char name[ASSET_NAME_MAX];
+    char pages[SCRIPT_FLIPBOOK_PAGE_MAX][ASSET_NAME_MAX];
+    int page_count;
+    int ticks_per_frame;
+    int frame_count;
+    int columns;
+    int rows;
+    float cell_width;
+    float cell_height;
+};
+
+struct script_soul_style {
+    char object_name[ASSET_NAME_MAX];
+    unsigned int class_id;
+    float red;
+    float green;
+    float blue;
+    float alpha;
+    int is_flat;
 };
 
 struct script_room_plate {
@@ -102,6 +128,10 @@ struct script_tables {
     struct script_room_bounds room_bounds[SCRIPT_ROOM_ID_MAX];
     struct script_effect_row effect_rows[SCRIPT_EFFECT_ROW_MAX];
     int effect_row_count;
+    struct script_flipbook flipbooks[SCRIPT_FLIPBOOK_MAX];
+    int flipbook_count;
+    struct script_soul_style soul_styles[SCRIPT_SOUL_STYLE_MAX];
+    int soul_style_count;
     struct script_audio_row music_rows[SCRIPT_AUDIO_ROW_MAX];
     int music_row_count;
     struct script_audio_row sound_rows[SCRIPT_AUDIO_ROW_MAX];
@@ -126,6 +156,9 @@ int script_tables_read_balloons(struct script_tables *tables, const char *text, 
 int script_tables_read_preload(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_motions(struct script_tables *tables, const char *file_name, const char *text, unsigned int text_size);
 const struct script_motion_row *script_tables_find_motion(const struct script_tables *tables, const char *file_name, unsigned int table_offset);
+const struct script_flipbook *script_tables_find_flipbook(const struct script_tables *tables, const char *name);
+int script_tables_read_soul(struct script_tables *tables, const char *text, unsigned int text_size);
+const struct script_soul_style *script_tables_soul_style(const struct script_tables *tables, unsigned int class_id, int is_human, int has_core, int is_active);
 const struct script_effect_row *script_tables_find_effect(const struct script_tables *tables, int id);
 const char *script_tables_music_name(const struct script_tables *tables, int id);
 const char *script_tables_sound_name(const struct script_tables *tables, int kind);

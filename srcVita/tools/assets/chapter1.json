@@ -37,47 +37,57 @@
     {
       "id": 4,
       "kind": "ring",
-      "texture": "soul_ring",
+      "texture": "soul_glow",
       "ticks": 0,
       "end_zoom": 1,
-      "width": 180,
-      "height": 180
+      "width": 110,
+      "height": 110
     },
     {
       "id": 7,
       "kind": "ring",
-      "texture": "soul_ring",
+      "texture": "soul_glow",
       "ticks": 70,
       "end_zoom": 1,
-      "width": 120,
-      "height": 120
+      "width": 110,
+      "height": 110
     },
     {
       "id": 11,
       "kind": "ring",
-      "texture": "soul_ring",
+      "texture": "soul_glow",
       "ticks": 100,
       "end_zoom": 1,
-      "width": 120,
-      "height": 120
+      "width": 110,
+      "height": 110
     },
     {
       "id": 12,
       "kind": "ring",
-      "texture": "soul_ring",
+      "texture": "soul_glow",
       "ticks": 100,
       "end_zoom": 1,
-      "width": 120,
-      "height": 120
+      "width": 110,
+      "height": 110
     },
     {
       "id": 13,
       "kind": "ring",
-      "texture": "soul_ring",
+      "texture": "soul_glow",
       "ticks": 70,
       "end_zoom": 1,
-      "width": 120,
-      "height": 120
+      "width": 110,
+      "height": 110
+    },
+    {
+      "id": 31,
+      "kind": "ring",
+      "texture": "soul_dim",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 190,
+      "height": 190,
+      "only_in_soul_view": 1
     }
   ],
   "screen_textures": [
@@ -117,6 +127,47 @@
       ],
       "width": 24,
       "height": 52
+    },
+    {
+      "name": "soul_dim_00",
+      "source": "natives/android/charfiles/3d/05_effect/cmn_shig_01/23_cmn_shig_01_00_iml4.tex.691230823",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "name": "soul_dim_01",
+      "source": "natives/android/charfiles/3d/05_effect/cmn_shig_01/23_cmn_shig_01_01_iml4.tex.691230823",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "name": "soul_dim_02",
+      "source": "natives/android/charfiles/3d/05_effect/cmn_shig_01/23_cmn_shig_01_02_iml4.tex.691230823",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "name": "soul_glow",
+      "source": "natives/android/charfiles/3d/04_item/coretest03_00_iml4.tex.691230823",
+      "width": 128,
+      "height": 128
+    },
+    {
+      "name": "soul_orb",
+      "source": "natives/android/charfiles/3d/04_item/coretest03_01_iml4.tex.691230823",
+      "width": 64,
+      "height": 64
+    },
+    {
+      "name": "soul_blob",
+      "source": "natives/android/charfiles/3d/04_item/coretest03_01_iml4.tex.691230823",
+      "width": 64,
+      "height": 64,
+      "flat_color": [
+        0,
+        173,
+        244
+      ]
     }
   ],
   "composed_textures": [
@@ -391,17 +442,17 @@
     },
     "classes": {
       "5a390072": [
-        0.8,
-        0.53,
-        0.16,
-        0.86,
+        0.7,
+        0.38,
+        0.03,
+        1,
         1
       ],
       "4080f0cd": [
-        0.16,
-        0.38,
-        0.68,
-        0.92,
+        0.17,
+        0.41,
+        0.66,
+        1,
         1
       ],
       "4d5b0354": [
@@ -434,16 +485,9 @@
       ]
     },
     "objects": {
-      "cicel": [
-        0.68,
-        0.71,
-        0.95,
-        1,
-        1
-      ],
-      "cbag": [
-        0.68,
-        0.71,
+      "active": [
+        0.66,
+        0.72,
         0.95,
         1,
         1
@@ -498,5 +542,21 @@
         ]
       }
     }
-  }
+  },
+  "flipbooks": [
+    {
+      "name": "soul_dim",
+      "ticks_per_frame": 16,
+      "frames": 10,
+      "columns": 2,
+      "rows": 2,
+      "cell_width": 0.3906,
+      "cell_height": 0.3906,
+      "pages": [
+        "soul_dim_00",
+        "soul_dim_01",
+        "soul_dim_02"
+      ]
+    }
+  ]
 }

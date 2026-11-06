@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include "script_machine.h"
 
+#define SOUL_CAMERA_SPEED_FIXED 0x6000
 #define FIXED_ONE 4096.0f
 #define RADIUS_UNITS_TO_PIXELS (3.0f / 128.0f)
 #define BEAM_MODE_WIDTH 1
@@ -276,6 +277,11 @@ static void pan_to_object(struct script_machine *machine, struct script_vm *vm, 
     begin_pan(machine, target_x, target_y, (int)script_machine_u32(words, 4), 1);
 }
 
+void script_machine_pan_camera_to(struct script_machine *machine, int center_x, int center_y)
+{
+    begin_pan(machine, center_x - DS_VIEW_WIDTH / 2, center_y - DS_VIEW_HEIGHT / 2, SOUL_CAMERA_SPEED_FIXED, 0);
+}
+
 void script_machine_scroll_camera(struct script_machine *machine, int delta_x, int delta_y)
 {
     machine->camera_x = clamped_x(machine, machine->camera_x + delta_x);
@@ -290,7 +296,7 @@ void script_machine_update_camera(struct script_machine *machine)
     if (machine->shake_ticks_left > 0) {
         machine->shake_ticks_left = machine->shake_ticks_left - 1;
     }
-    if (!machine->pan_is_active || machine->pause_bit) {
+    if (!machine->pan_is_active || (machine->pause_bit && !machine->soul.is_on)) {
         return;
     }
     machine->pan_ticks_left = machine->pan_ticks_left - 1;

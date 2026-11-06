@@ -10,6 +10,9 @@ TEX_HEADER_SIZE = 40
 TEX_WIDTH_OFFSET = 8
 
 
+HARD_EDGE_ALPHA = 128
+
+
 def read_tex_size(tex_bytes):
     if tex_bytes[:4] != b"TEX\0" or len(tex_bytes) < TEX_HEADER_SIZE:
         raise ValueError("not a TEX file")
@@ -68,7 +71,17 @@ def apply_soul_ramp(rgba_path, width, height, ramp):
     os.replace(ramped_path, rgba_path)
 
 
-def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, crop=None, soul_ramp=None):
+def apply_flat_color(rgba_path, color):
+    with open(rgba_path, "rb") as source:
+        pixels = bytearray(source.read())
+    for offset in range(0, len(pixels), 4):
+        pixels[offset:offset + 3] = bytes(color)
+        pixels[offset + 3] = 255 if pixels[offset + 3] >= HARD_EDGE_ALPHA else 0
+    with open(rgba_path, "wb") as output:
+        output.write(pixels)
+
+
+def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, crop=None, soul_ramp=None, flat_color=None):
     tex_path = os.path.join(work_folder, name + ".tex")
     rgba_path = os.path.join(work_folder, name + ".rgba")
     dds_path = os.path.join(work_folder, name + ".dds")
@@ -77,6 +90,8 @@ def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, 
     is_opaque = run_texture_tool(tool_path, tex_path, rgba_path, width, height, crop)
     if soul_ramp is not None:
         apply_soul_ramp(rgba_path, width, height, soul_ramp)
+    if flat_color is not None:
+        apply_flat_color(rgba_path, flat_color)
     with open(rgba_path, "rb") as source:
         rgba_pixels = source.read()
     if is_opaque:

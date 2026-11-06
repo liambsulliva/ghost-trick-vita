@@ -126,10 +126,12 @@ def convert_one_texture(packs, work_folder, job, record, code):
     settings = {"width": width, "height": height, "crop": job.get("crop")}
     if "soul_ramp" in job:
         settings["soul_ramp"] = job["soul_ramp"]
+    if "flat_color" in job:
+        settings["flat_color"] = job["flat_color"]
     key = record.key_for(code, settings, tex_bytes)
     gtex_bytes = record.read_if_current(relative_path, key)
     if gtex_bytes is None:
-        gtex_bytes, _ = texture_encoder.convert_tex_to_gtex(TEXTURE_TOOL_PATH, work_folder, job["name"], tex_bytes, width, height, job.get("crop"), job.get("soul_ramp"))
+        gtex_bytes, _ = texture_encoder.convert_tex_to_gtex(TEXTURE_TOOL_PATH, work_folder, job["name"], tex_bytes, width, height, job.get("crop"), job.get("soul_ramp"), flat_color=job.get("flat_color"))
         record.store(relative_path, key, gtex_bytes)
     return bake_record.texture_result(job["name"], source_size, gtex_bytes)
 

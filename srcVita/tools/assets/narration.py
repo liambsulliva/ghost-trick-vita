@@ -15,6 +15,7 @@ CLIP_PIXELS_PER_DS_PIXEL = 3.75
 SCREEN_PIXELS_PER_CLIP_PIXEL = frame_layout.SCREEN_PIXELS_PER_DS_PIXEL / CLIP_PIXELS_PER_DS_PIXEL
 CLIP_SIZED_PIXELS_PER_EM = 38.5
 NARRATION_PIXELS_PER_EM = 29.8
+BUBBLE_CHARACTERS_PER_LINE = 20
 NARRATION_SCALE_FROM_CLIP_SIZE = NARRATION_PIXELS_PER_EM / CLIP_SIZED_PIXELS_PER_EM
 NARRATION_MAX_INK_WIDTH = SCREEN_WIDTH * 2 / 3
 NARRATION_COLOR = (255, 255, 255)
@@ -150,8 +151,38 @@ def read_narration_message(request, raw_text):
     return message
 
 
+def wrapped_bubble_lines(lines):
+    wrapped = []
+    for line in lines:
+        current = ""
+        for word in line.split():
+            if current and len(current) + 1 + len(word) > BUBBLE_CHARACTERS_PER_LINE:
+                wrapped.append(current)
+                current = word
+            else:
+                current = (current + " " + word).strip()
+        if current:
+            wrapped.append(current)
+    return wrapped
+
+
+def stacked_lines(rendered):
+    width = max(line["width"] for line in rendered)
+    height = sum(line["height"] for line in rendered)
+    pixels = bytearray(width * height * 4)
+    top = 0
+    for line in rendered:
+        left = (width - line["width"]) // 2
+        for row in range(line["height"]):
+            start = (top + row) * width * 4 + left * 4
+            pixels[start:start + line["width"] * 4] = line["pixels"][row * line["width"] * 4:(row + 1) * line["width"] * 4]
+        top = top + line["height"]
+    return {"width": width, "height": height, "pixels": bytes(pixels)}
+
+
 def read_bubble_message(request, raw_text):
     message = parse_requested_message(request, raw_text)
+    message["lines"] = wrapped_bubble_lines([text.strip() for paragraph in message["paragraphs"] for text in paragraph if text.strip()])
     if request.get("joins_lines"):
         message["paragraphs"] = [[" ".join(text.strip() for paragraph in message["paragraphs"] for text in paragraph if text.strip())]]
     if len(message["paragraphs"]) != 1 or len(message["paragraphs"][0]) != 1:
@@ -221,8 +252,20 @@ def bake_narration_message(fonts, work_folder, record, code, font_path, request,
 
 
 def bake_bubble_text(fonts, work_folder, record, code, request, message):
-    result, _ = bake_line(fonts, work_folder, record, code, request["name"], request["font"], message["paragraphs"][0][0], request["pixels_per_em"], SCREEN_WIDTH, tuple(request["color"]))
-    return result
+    color = tuple(request["color"])
+    lines = message.get("lines") or [message["paragraphs"][0][0]]
+    if len(lines) == 1:
+        result, _ = bake_line(fonts, work_folder, record, code, request["name"], request["font"], lines[0], request["pixels_per_em"], SCREEN_WIDTH, color)
+        return result
+    relative_path = "textures/" + request["name"] + ".gtex"
+    settings = {"font": bake_record.sha256_of_bytes(fonts.pack_bytes(request["font"])), "pixels_per_em": request["pixels_per_em"], "color": list(color)}
+    key = record.key_for(code, settings, "\n".join(lines).encode("utf-8"))
+    gtex_bytes = record.read_if_current(relative_path, key)
+    if gtex_bytes is None:
+        rendered = [line_renderer.render_line(work_folder, "%s_%d" % (request["name"], index), fonts.decoded_path(request["font"]), line, request["pixels_per_em"], SCREEN_WIDTH, color) for index, line in enumerate(lines)]
+        gtex_bytes = encode_line(work_folder, request["name"], stacked_lines(rendered))
+        record.store(relative_path, key, gtex_bytes, {})
+    return bake_record.result_of_own_size(request["name"], gtex_bytes)
 
 
 def bake_text_textures(packs, set_description, messages, work_folder, record, code):

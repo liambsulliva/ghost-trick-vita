@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include "renderer.h"
@@ -31,8 +32,37 @@
 #define CURSOR_BOB_PIXELS 4.0f
 #define RING_PULSE_TICKS 60u
 #define RING_SMALLEST_SIZE 0.75f
-#define SOUL_CURSOR_TEXTURE "soul_ring"
-#define SOUL_CURSOR_SIZE 120.0f
+#define VIEW_CORE_MARK_MAX 64
+#define SOUL_BLOB_TEXTURE "soul_blob"
+#define SOUL_GLOW_TEXTURE "soul_glow"
+#define SOUL_ORB_TEXTURE "soul_orb"
+#define SOUL_BLOB_DISC_FRACTION 0.59f
+#define SOUL_ORB_SIZE 56.0f
+#define SOUL_TWO_PI 6.2831853f
+#define SOUL_ANIMATION_TICKS_PER_STEP 4u
+#define SOUL_BASE_RISE 4.0f
+#define SOUL_BASE_RADIUS 28.0f
+#define SOUL_BASE_LUMP_COUNT 7
+#define SOUL_BASE_LUMP_REACH 13.0f
+#define SOUL_BASE_LUMP_JITTER 3.0f
+#define SOUL_BASE_LUMP_RADIUS 19.0f
+#define SOUL_WISP_COUNT 10u
+#define SOUL_WISP_LIFE_STEPS 15u
+#define SOUL_WISP_START_RISE 22.0f
+#define SOUL_WISP_RISE 70.0f
+#define SOUL_WISP_SWAY_TURNS 5.0f
+#define SOUL_WISP_SWAY_NEAR 1.5f
+#define SOUL_WISP_SWAY_FAR 13.0f
+#define SOUL_WISP_RADIUS_LEAST 13.0f
+#define SOUL_WISP_RADIUS_SPREAD 10.0f
+#define SOUL_WISP_RADIUS_SMALLEST 1.0f
+#define CORE_GLOW_SIZE 84.0f
+#define CORE_ORB_SIZE 40.0f
+#define SCANLINE_COUNT 135
+#define SCANLINE_SPACING 4.0f
+#define SCANLINE_HEIGHT 2.0f
+#define DRAG_DOT_COUNT 10
+#define DRAG_DOT_SIZE 30.0f
 
 struct view_effect {
     int in_use;
@@ -41,6 +71,13 @@ struct view_effect {
     float x;
     float y;
     int age_ticks;
+};
+
+struct view_core_mark {
+    float x;
+    float y;
+    unsigned int marked_at_tick;
+    int is_set;
 };
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -58,8 +95,12 @@ static int soul_is_on;
 static struct view_effect effects[VIEW_EFFECT_MAX];
 static unsigned int age_ticks;
 static int cursor_is_shown;
+static int cursor_is_dragging;
 static float cursor_x;
 static float cursor_y;
+static float cursor_from_x;
+static float cursor_from_y;
+static struct view_core_mark core_marks[VIEW_CORE_MARK_MAX];
 
 void script_view_start(const struct script_tables *new_tables)
 {
@@ -88,11 +129,24 @@ void script_view_soul_changed(int is_on)
     scene_stage_set_soul_mode(is_on);
 }
 
-void script_view_cursor_moved(int is_shown, float x, float y)
+void script_view_cursor_moved(int is_shown, float x, float y, float from_x, float from_y, int is_dragging)
 {
     cursor_is_shown = is_shown;
     cursor_x = x;
     cursor_y = y;
+    cursor_from_x = from_x;
+    cursor_from_y = from_y;
+    cursor_is_dragging = is_dragging;
+}
+
+void script_view_core_marked(int object_index, float x, float y)
+{
+    if (object_index >= 0 && object_index < VIEW_CORE_MARK_MAX) {
+        core_marks[object_index].x = x;
+        core_marks[object_index].y = y;
+        core_marks[object_index].marked_at_tick = age_ticks;
+        core_marks[object_index].is_set = 1;
+    }
 }
 
 static struct view_effect *find_free_effect(void)
@@ -176,14 +230,55 @@ static void draw_named_texture(const char *name, float x, float y, float width, 
     renderer_draw_sprite(texture->texture, area, whole_texture(), tint);
 }
 
+static void draw_flipbook(const struct script_flipbook *book, unsigned int age, float center_x, float center_y, float width, float height, struct renderer_color tint)
+{
+    const struct cached_texture *texture;
+    struct renderer_rect area;
+    struct renderer_rect uv;
+    int frame;
+    int cells;
+    int page;
+    int cell;
+
+    if (book->ticks_per_frame <= 0 || book->frame_count <= 0 || book->columns <= 0 || book->rows <= 0) {
+        return;
+    }
+    frame = (int)(age / (unsigned int)book->ticks_per_frame) % book->frame_count;
+    cells = book->columns * book->rows;
+    page = frame / cells;
+    cell = frame % cells;
+    if (page >= book->page_count) {
+        return;
+    }
+    texture = texture_cache_use_or_start_loading(book->pages[page]);
+    if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
+        return;
+    }
+    area.x = center_x - width / 2.0f;
+    area.y = center_y - height / 2.0f;
+    area.width = width;
+    area.height = height;
+    uv.x = (float)(cell % book->columns) * book->cell_width;
+    uv.y = (float)(cell / book->columns) * book->cell_height;
+    uv.width = book->cell_width;
+    uv.height = book->cell_height;
+    renderer_draw_sprite(texture->texture, area, uv, tint);
+}
+
 static void draw_effect(const struct view_effect *effect)
 {
+    const struct script_flipbook *book;
     float screen_x;
     float screen_y;
     float pulse;
     float size;
 
     scene_view_world_to_screen(scene_stage_view(), effect->x, effect->y, &screen_x, &screen_y);
+    book = script_tables_find_flipbook(tables, effect->row->texture_name);
+    if (book != NULL) {
+        draw_flipbook(book, (unsigned int)effect->age_ticks, screen_x, screen_y, effect->row->width, effect->row->height, white);
+        return;
+    }
     pulse = (float)((unsigned int)effect->age_ticks % RING_PULSE_TICKS) / (float)RING_PULSE_TICKS;
     size = RING_SMALLEST_SIZE + (1.0f - RING_SMALLEST_SIZE) * pulse;
     draw_named_texture(effect->row->texture_name, screen_x - effect->row->width * size / 2.0f, screen_y - effect->row->height * size / 2.0f, effect->row->width * size, effect->row->height * size, white);
@@ -194,7 +289,7 @@ static void draw_effects(void)
     int index;
 
     for (index = 0; index < VIEW_EFFECT_MAX; index++) {
-        if (effects[index].in_use && effects[index].row->kind == SCRIPT_EFFECT_RING) {
+        if (effects[index].in_use && effects[index].row->kind == SCRIPT_EFFECT_RING && (soul_is_on || !effects[index].row->only_in_soul_view)) {
             draw_effect(&effects[index]);
         }
     }
@@ -269,12 +364,12 @@ static void draw_face(const struct script_talk_page *page)
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
         return;
     }
-    area.x = page->face_is_flipped ? 0.0f : FACE_X;
+    area.x = page->face_is_flipped ? FACE_X : 0.0f;
     area.y = FACE_Y + (1.0f - talk.slide) * FACE_HEIGHT;
     area.width = FACE_WIDTH;
     area.height = FACE_HEIGHT;
     uv = whole_texture();
-    if (page->face_is_flipped) {
+    if (!page->face_is_flipped) {
         uv.x = 1.0f;
         uv.width = -1.0f;
     }
@@ -309,26 +404,155 @@ static void draw_talk(void)
     }
 }
 
-static void draw_soul_cursor(void)
+static void draw_centered(const char *texture_name, float center_x, float center_y, float size, struct renderer_color tint)
 {
-    float screen_x;
-    float screen_y;
-    float pulse;
-    float size;
+    draw_named_texture(texture_name, center_x - size / 2.0f, center_y - size / 2.0f, size, size, tint);
+}
 
-    if (!soul_is_on || !cursor_is_shown) {
+static void draw_core_marks(void)
+{
+    static const struct renderer_color glow = { 0.13f, 0.39f, 0.75f, 0.9f };
+    static const struct renderer_color orb = { 0.73f, 0.74f, 0.94f, 1.0f };
+    int index;
+
+    for (index = 0; index < VIEW_CORE_MARK_MAX; index++) {
+        float screen_x;
+        float screen_y;
+
+        if (!core_marks[index].is_set || age_ticks - core_marks[index].marked_at_tick > 1u) {
+            continue;
+        }
+        scene_view_world_to_screen(scene_stage_view(), core_marks[index].x, core_marks[index].y, &screen_x, &screen_y);
+        draw_centered(SOUL_GLOW_TEXTURE, screen_x, screen_y, CORE_GLOW_SIZE, glow);
+        draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, CORE_ORB_SIZE, orb);
+    }
+}
+
+static void draw_drag_line(void)
+{
+    static const struct renderer_color dot = { 0.45f, 0.9f, 1.0f, 0.9f };
+    int index;
+
+    if (!cursor_is_dragging) {
         return;
     }
+    for (index = 0; index < DRAG_DOT_COUNT; index++) {
+        float along;
+        float screen_x;
+        float screen_y;
+
+        along = (float)index / (float)DRAG_DOT_COUNT;
+        scene_view_world_to_screen(scene_stage_view(), cursor_from_x + (cursor_x - cursor_from_x) * along, cursor_from_y + (cursor_y - cursor_from_y) * along, &screen_x, &screen_y);
+        draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, DRAG_DOT_SIZE, dot);
+    }
+}
+
+static void draw_blob(float center_x, float center_y, float radius)
+{
+    float size;
+
+    size = 2.0f * radius / SOUL_BLOB_DISC_FRACTION;
+    draw_named_texture(SOUL_BLOB_TEXTURE, center_x - size / 2.0f, center_y - size / 2.0f, size, size, white);
+}
+
+static float seeded_fraction(unsigned int seed, unsigned int salt)
+{
+    unsigned int value;
+
+    value = (seed * 31u + salt) * 2654435761u;
+    value = value ^ (value >> 13);
+    return (float)((value >> 8) & 1023u) / 1023.0f;
+}
+
+static void draw_soul_base(float x, float y, unsigned int step)
+{
+    int index;
+
+    draw_blob(x, y - SOUL_BASE_RISE, SOUL_BASE_RADIUS);
+    for (index = 0; index < SOUL_BASE_LUMP_COUNT; index++) {
+        float angle;
+        float reach;
+
+        angle = (float)index * SOUL_TWO_PI / (float)SOUL_BASE_LUMP_COUNT + seeded_fraction(step, (unsigned int)index) * 0.5f;
+        reach = SOUL_BASE_LUMP_REACH + seeded_fraction(step, (unsigned int)index + 16u) * SOUL_BASE_LUMP_JITTER;
+        draw_blob(x + cosf(angle) * reach, y - SOUL_BASE_RISE + sinf(angle) * reach, SOUL_BASE_LUMP_RADIUS);
+    }
+}
+
+static void draw_soul_wisp(float x, float y, unsigned int step)
+{
+    int index;
+
+    for (index = 0; index < SOUL_WISP_COUNT; index++) {
+        unsigned int age;
+        unsigned int cycle;
+        unsigned int seed;
+        float along;
+        float rise;
+        float sway;
+        float radius;
+
+        age = step + (unsigned int)index * SOUL_WISP_LIFE_STEPS / SOUL_WISP_COUNT;
+        cycle = age / SOUL_WISP_LIFE_STEPS;
+        seed = (unsigned int)index * 97u + cycle * 13u;
+        along = (float)(age % SOUL_WISP_LIFE_STEPS) / (float)SOUL_WISP_LIFE_STEPS;
+        rise = SOUL_WISP_START_RISE + SOUL_WISP_RISE * along * (0.75f + 0.5f * seeded_fraction(seed, 2u));
+        sway = sinf(seeded_fraction(seed, 3u) * SOUL_TWO_PI + along * SOUL_WISP_SWAY_TURNS) * (SOUL_WISP_SWAY_NEAR + SOUL_WISP_SWAY_FAR * along);
+        radius = (SOUL_WISP_RADIUS_LEAST + seeded_fraction(seed, 1u) * SOUL_WISP_RADIUS_SPREAD) * (1.0f - along);
+        if (radius >= SOUL_WISP_RADIUS_SMALLEST) {
+            draw_blob(x + sway, y - rise, radius);
+        }
+    }
+}
+
+static void draw_soul_body(float x, float y)
+{
+    unsigned int step;
+
+    step = age_ticks / SOUL_ANIMATION_TICKS_PER_STEP;
+    draw_soul_wisp(x, y, step);
+    draw_soul_base(x, y, step);
+}
+
+static void draw_scanlines(void)
+{
+    static const struct renderer_color line_color = { 0.0f, 0.0f, 0.0f, 0.16f };
+    struct renderer_rect lines[SCANLINE_COUNT];
+    int index;
+
+    for (index = 0; index < SCANLINE_COUNT; index++) {
+        lines[index].x = 0.0f;
+        lines[index].y = (float)index * SCANLINE_SPACING;
+        lines[index].width = (float)RENDERER_WIDTH;
+        lines[index].height = SCANLINE_HEIGHT;
+    }
+    renderer_draw_filled_rects(lines, SCANLINE_COUNT, line_color);
+}
+
+static void draw_soul(void)
+{
+    static const struct renderer_color orb = { 0.73f, 0.74f, 0.94f, 1.0f };
+    float screen_x;
+    float screen_y;
+
+    if (!soul_is_on || tables == NULL) {
+        return;
+    }
+    draw_scanlines();
+    draw_core_marks();
+    if (!cursor_is_shown) {
+        return;
+    }
+    draw_drag_line();
     scene_view_world_to_screen(scene_stage_view(), cursor_x, cursor_y, &screen_x, &screen_y);
-    pulse = (float)(age_ticks % RING_PULSE_TICKS) / (float)RING_PULSE_TICKS;
-    size = SOUL_CURSOR_SIZE * (RING_SMALLEST_SIZE + (1.0f - RING_SMALLEST_SIZE) * pulse);
-    draw_named_texture(SOUL_CURSOR_TEXTURE, screen_x - size * 0.5f, screen_y - size * 0.5f, size, size, white);
+    draw_soul_body(screen_x, screen_y);
+    draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, SOUL_ORB_SIZE, orb);
 }
 
 void script_view_draw(void)
 {
     draw_effects();
-    draw_soul_cursor();
+    draw_soul();
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {
         draw_talk();
     }

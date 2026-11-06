@@ -47,6 +47,7 @@ static int white_level;
 static int mask_fade_is_alive;
 static int zoom_ticks_left;
 #define NO_SOUL_TEXTURE "-"
+#define HUMAN_CLASS_ID 0x5a390072u
 #define ALL_SOUND_LOOPS "*"
 
 static int soul_vision_is_on;
@@ -198,6 +199,16 @@ static int record_of(const struct script_actor_view *actor, int records_per_fram
         return 0;
     }
     return actor->frame_word_index * records_per_frame + (actor->ticks_into_frame * records_per_frame) / DS_TICKS_PER_FRAME;
+}
+
+static void on_soul_object_styled(const char *object_name, unsigned int class_id, int has_core, int is_active)
+{
+    const struct script_soul_style *style;
+
+    style = script_tables_soul_style(tables, class_id, class_id == HUMAN_CLASS_ID, has_core, is_active);
+    if (style != NULL) {
+        scene_stage_set_object_soul_tint(object_name, style->red, style->green, style->blue, style->alpha, style->is_flat);
+    }
 }
 
 static void on_actor_changed(const struct script_actor_view *actor)
@@ -596,6 +607,8 @@ static const struct script_outputs bridge_outputs = {
     .sounds_stopped = on_sounds_stopped,
     .soul_vision_changed = on_soul_vision_changed,
     .soul_cursor_moved = script_view_cursor_moved,
+    .soul_core_marked = script_view_core_marked,
+    .soul_object_styled = on_soul_object_styled,
     .marked = on_marked,
     .talk_changed = on_talk_changed
 };
