@@ -16,6 +16,7 @@
 #include "renderer.h"
 #include "audio_thread.h"
 #include "run_log.h"
+#include "screen_burst.h"
 #include "screen_capture.h"
 #include "screen_watch.h"
 #include "script_player.h"
@@ -112,6 +113,8 @@ static int run_one_command(const struct command *command)
         script_player_skip_ahead();
     } else if (command->kind == COMMAND_PRESS) {
         injected_buttons = (unsigned int)command->number;
+    } else if (command->kind == COMMAND_BURST) {
+        screen_burst_set_on(command->number);
 #endif
     } else if (command->kind == COMMAND_QUIT) {
         run_log_write("command quit");
@@ -228,6 +231,9 @@ static void run_main_loop(void)
 
         last_frame_us = frame_timer_tick(&frame_timer);
         screen_watch_note_frame();
+#ifdef FAST_FORWARD_BUILD
+        screen_burst_note_frame();
+#endif
         frame_number = frame_number + 1;
         if (frame_number >= FIRST_TIMED_FRAME) {
             frame_stats_add_frame(&stats, last_frame_us, update_ended_us - frame_started_us, draw_ended_us - update_ended_us, present_ended_us - draw_ended_us);

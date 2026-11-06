@@ -177,6 +177,7 @@ It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`,
 | `resume` | Carry on from a pause |
 | `skip` | Same as L and R together: push on to the next act or script |
 | `press <hex>` | Press a button mask for one frame |
+| `burst on`, `burst off` | Save a half-size picture of the screen five times a second, to numbered slots that overwrite the oldest after 1000 |
 
 Automatic play closes dialogue, walks tutorial cores and tries each trick in turn, through the same inputs a player uses. Sounds stay quiet at speed.
 

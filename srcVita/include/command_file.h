@@ -20,6 +20,7 @@ enum command_kind {
     COMMAND_RESUME,
     COMMAND_SKIP_AHEAD,
     COMMAND_PRESS,
+    COMMAND_BURST,
     COMMAND_UNKNOWN
 };
 
