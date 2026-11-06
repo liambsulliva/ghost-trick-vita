@@ -615,7 +615,7 @@ static void draw_text_lines(const struct scene_stage *stage)
     }
 }
 
-static void draw_stage_layers(const struct scene_stage *stage)
+static void draw_world_layers(const struct scene_stage *stage)
 {
     struct screen_view view;
 
@@ -623,6 +623,13 @@ static void draw_stage_layers(const struct scene_stage *stage)
     draw_plates(stage, &view);
     draw_objects_in_layer_order(stage, &view);
     draw_black_around_art(&view);
+}
+
+static void draw_layers_over_the_world(const struct scene_stage *stage)
+{
+    struct screen_view view;
+
+    view = view_of_stage(stage);
     draw_mask_or_iris(&stage->effects, &view);
     draw_overlays(stage, &view);
     draw_dim(&stage->effects);
@@ -651,7 +658,8 @@ int scene_view_snapshot_stage(const struct scene_stage *stage)
     if (!renderer_snapshot_begin()) {
         return 0;
     }
-    draw_stage_layers(stage);
+    draw_world_layers(stage);
+    draw_layers_over_the_world(stage);
     renderer_snapshot_end();
     return 1;
 }
@@ -717,11 +725,16 @@ void scene_view_world_to_screen(const struct scene_stage *stage, float x, float 
     *screen_y = (y - view.top) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
 }
 
-void scene_view_draw(const struct scene_stage *stage)
+void scene_view_draw_world(const struct scene_stage *stage)
+{
+    draw_world_layers(stage);
+}
+
+void scene_view_draw_covers(const struct scene_stage *stage)
 {
     struct renderer_color fade_color;
 
-    draw_stage_layers(stage);
+    draw_layers_over_the_world(stage);
     draw_dissolve(&stage->effects);
     draw_text_lines(stage);
     draw_flash(&stage->effects);

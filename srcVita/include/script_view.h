@@ -18,6 +18,7 @@ void script_view_tooltip_changed(const char *object_name, float alpha);
 void script_view_effect_spawned(const struct script_effect_row *row, const char *name, float x, float y);
 void script_view_effect_deleted(const char *name);
 void script_view_advance(void);
-void script_view_draw(void);
+void script_view_draw_on_world(void);
+void script_view_draw_on_covers(void);
 
 #endif

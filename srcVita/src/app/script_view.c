@@ -935,12 +935,16 @@ static void draw_movie(void)
     renderer_draw_sprite(texture->texture, area, whole_texture(), white);
 }
 
-void script_view_draw(void)
+void script_view_draw_on_world(void)
 {
     draw_effects();
     draw_swirl();
     draw_film_frame();
     draw_soul();
+}
+
+void script_view_draw_on_covers(void)
+{
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {
         draw_talk();
     }

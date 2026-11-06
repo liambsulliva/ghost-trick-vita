@@ -652,9 +652,13 @@ void viewer_app_draw(void)
     if (manifest == NULL) {
         draw_no_assets_screen();
     } else if (playback_status() != SCENE_PLAYER_PRELOADING) {
-        scene_view_draw(scene_stage_view());
+        scene_view_draw_world(scene_stage_view());
         if (script_player_is_active()) {
-            script_view_draw();
+            script_view_draw_on_world();
+        }
+        scene_view_draw_covers(scene_stage_view());
+        if (script_player_is_active()) {
+            script_view_draw_on_covers();
         }
     }
     if (playback_status() == SCENE_PLAYER_FINISHED && !debug_controls_are_on && !scene_layers_text_is_fading_out(scene_stage_layers())) {
