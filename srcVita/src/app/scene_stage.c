@@ -154,12 +154,6 @@ void scene_stage_set_camera(float x, float y)
     stage.camera_y = y;
 }
 
-void scene_stage_set_side_bars(const char *left_texture_name, const char *right_texture_name)
-{
-    snprintf(stage.left_bar_texture, sizeof(stage.left_bar_texture), "%s", left_texture_name);
-    snprintf(stage.right_bar_texture, sizeof(stage.right_bar_texture), "%s", right_texture_name);
-}
-
 void scene_stage_show_card(const char *texture_name)
 {
     snprintf(stage.card_texture, sizeof(stage.card_texture), "%s", texture_name);

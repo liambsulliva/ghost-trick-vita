@@ -123,9 +123,6 @@ class DxtEncodingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             texture_encoder.block_data_from_dds(dds, 4, 4, "dxt5")
 
-    def test_scaling_colors_leaves_alpha_alone(self):
-        self.assertEqual(texture_encoder.scale_colors(bytes([100, 200, 255, 77]), 0.5), bytes([50, 100, 128, 77]))
-
 
 class TexToGtexTests(unittest.TestCase):
     def setUp(self):

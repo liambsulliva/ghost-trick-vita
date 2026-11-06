@@ -35,15 +35,24 @@ def only_sprite_capture():
 
 
 def view_check():
-    return {"name": "view", "camera": (0, 0), "time": "00:00:01.000", "measure": ["hero"], "max_error": 6.0, "expected_gain": 1.0, "placed_objects": [OBJECT_POSE]}
+    return {"name": "view", "camera": (0, 0), "time": "00:00:01.000", "measure": ["hero"], "max_error": 6.0, "expected_gain": 1.0, "fills_width": True, "placed_objects": [OBJECT_POSE]}
+
+
+def screen_with_edges(brightness):
+    screen = numpy.full((longplay_check.SCREEN_HEIGHT, longplay_check.SCREEN_WIDTH, 3), 128.0, dtype=numpy.float32)
+    screen[:, :longplay_check.SCREEN_EDGE_COLUMNS] = brightness
+    screen[:, -longplay_check.SCREEN_EDGE_COLUMNS:] = brightness
+    return screen
 
 
 class ScoringTestCase(unittest.TestCase):
     def setUp(self):
         self.captures = {}
+        self.whole_screen = screen_with_edges(128.0)
         self.output = io.StringIO()
         for target, name, keywords in (
             (longplay_check, "read_capture", {"side_effect": lambda name: self.captures[name]}),
+            (longplay_check, "read_whole_screen", {"side_effect": lambda name: self.whole_screen}),
             (longplay_check, "write_pair_image", {}),
             (longplay_check, "first_drawn_frame", {"return_value": FIRST_FRAME}),
         ):
@@ -91,13 +100,42 @@ class ViewCheckTests(ScoringTestCase):
         self.assertFalse(self.score(capture, reference))
         self.assertIn("brightness gain 2.00", self.output.getvalue())
 
-    def test_wrong_side_bars_fail(self):
+    def test_black_edges_fail_when_the_room_should_fill_the_width(self):
         reference = with_sprite(noise_image(1), noise_image(2))
-        capture = reference.copy()
-        capture[:, :longplay_check.PLAYFIELD_LEFT] = 0
-        capture[:, longplay_check.PLAYFIELD_RIGHT:] = 0
-        self.assertFalse(self.score(capture, reference))
-        self.assertIn("side bars", self.output.getvalue())
+        self.whole_screen = screen_with_edges(0.0)
+        self.assertFalse(self.score(reference.copy(), reference))
+        self.assertIn("screen edges", self.output.getvalue())
+
+    def test_art_at_the_edges_fails_when_the_shot_should_have_black_beside_it(self):
+        reference = with_sprite(noise_image(1), noise_image(2))
+        self.captures["view"] = reference.copy()
+        self.captures["view_only_hero"] = only_sprite_capture()
+        check = view_check()
+        check["fills_width"] = False
+        with mock.patch.object(longplay_check, "read_clip_frames", return_value=[reference]):
+            self.assertFalse(longplay_check.score_view_check(check))
+
+
+class CameraWindowTests(unittest.TestCase):
+    WIDE_PLATE = "plate upper 0 0 1024 384\n"
+
+    def test_a_card_with_no_room_sits_in_the_middle_of_the_screen(self):
+        self.assertEqual(longplay_check.camera_window_on_screen("scene s\ncard c\n"), (120, 2))
+
+    def test_the_left_end_of_a_room_starts_at_the_screen_edge(self):
+        self.assertEqual(longplay_check.camera_window_on_screen(self.WIDE_PLATE + "camera 0 192\n"), (0, 4))
+
+    def test_the_middle_of_a_room_keeps_the_camera_centred(self):
+        self.assertEqual(longplay_check.camera_window_on_screen(self.WIDE_PLATE + "camera 344 96\n"), (120, 2))
+
+    def test_the_right_end_of_a_room_stops_at_the_screen_edge(self):
+        self.assertEqual(longplay_check.camera_window_on_screen(self.WIDE_PLATE + "camera 768 0\n"), (240, 0))
+
+    def test_a_narrow_plate_is_centred_and_the_plate_above_it_is_ignored(self):
+        self.assertEqual(longplay_check.camera_window_on_screen(self.WIDE_PLATE + "plate close 0 384 256 192\ncamera 0 384\n"), (120, 2))
+
+    def test_two_plates_the_camera_straddles_count_as_one_piece_of_art(self):
+        self.assertEqual(longplay_check.camera_window_on_screen(self.WIDE_PLATE + "plate lower 0 384 1024 384\ncamera 0 224\n"), (0, 2))
 
 
 class MotionCheckTests(ScoringTestCase):

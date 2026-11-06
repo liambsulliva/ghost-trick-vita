@@ -75,7 +75,7 @@ def convert_one_texture(packs, work_folder, job):
     else:
         width, height = frame_layout.target_size(source_size[0], source_size[1])
     gtex_bytes, texture_format = texture_encoder.convert_tex_to_gtex(
-        TEXTURE_TOOL_PATH, work_folder, job["name"], tex_bytes, width, height, job.get("crop"), job.get("brightness", 1.0))
+        TEXTURE_TOOL_PATH, work_folder, job["name"], tex_bytes, width, height, job.get("crop"))
     return {
         "name": job["name"],
         "source_size": source_size,
@@ -134,8 +134,6 @@ def expand_steps(set_description, plate_sizes):
 def check_steps_refer_to_known_assets(steps, texture_names, animation_names):
     for step in steps:
         kind = step[0]
-        if kind == "side_bars" and (step[1] not in texture_names or step[2] not in texture_names):
-            raise ValueError("side_bars names an unknown texture")
         if kind in ("plate", "card") and step[1] not in texture_names:
             raise ValueError(kind + " names an unknown texture: " + step[1])
         if kind == "object" and step[2] not in animation_names:

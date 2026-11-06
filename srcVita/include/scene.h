@@ -12,7 +12,6 @@
 #define SCENE_ERR_NO_NAME -4
 
 enum scene_step_kind {
-    SCENE_STEP_SIDE_BARS,
     SCENE_STEP_ROOM,
     SCENE_STEP_PLATE,
     SCENE_STEP_OBJECT,
@@ -31,7 +30,6 @@ struct scene_step {
     char object_name[ASSET_NAME_MAX];
     char animation_name[ASSET_NAME_MAX];
     char texture_name[ASSET_NAME_MAX];
-    char right_bar_texture_name[ASSET_NAME_MAX];
     float x;
     float y;
     float width;

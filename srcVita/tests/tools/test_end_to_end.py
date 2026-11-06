@@ -57,7 +57,7 @@ def tiny_set_description():
         "message_hold_ticks": 30,
         "screen_textures": [
             {"name": "card", "source": PLATE_PATH, "width": 64, "height": 48, "list_as_background": True},
-            {"name": "bar_left", "source": PLATE_PATH, "width": 8, "height": 16, "crop": [0, 0, 32, 64], "brightness": 0.5},
+            {"name": "card_corner", "source": PLATE_PATH, "width": 8, "height": 16, "crop": [0, 0, 32, 64]},
         ],
         "plates": [{"name": "plate", "source": PLATE_PATH}],
         "animations": [
@@ -67,7 +67,6 @@ def tiny_set_description():
         "objects": {"a": {"layer": 3, "flip": 1}},
         "object_groups": {"everyone": [["a", "st01_a_000", 10, 20]]},
         "steps": [
-            ["side_bars", "bar_left", "bar_left"],
             ["card", "card"],
             ["hide_card"],
             ["room", 1],
@@ -122,7 +121,6 @@ class EndToEndTests(unittest.TestCase):
         ]) + "\n")
         self.assertEqual(self.read_text("scenes", "opening.scene"), "\n".join([
             "scene opening",
-            "side_bars bar_left bar_left",
             "card card",
             "hide_card",
             "room 1",
@@ -145,12 +143,12 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(self.read_gtex_header("st01_a_000_01"), ((24, 24, 1, 576), 596))
         self.assertEqual(self.read_gtex_header("plate"), ((92, 44, 2, 2024), 2044))
         self.assertEqual(self.read_gtex_header("card"), ((64, 48, 2, 1536), 1556))
-        self.assertEqual(self.read_gtex_header("bar_left"), ((8, 16, 2, 64), 84))
+        self.assertEqual(self.read_gtex_header("card_corner"), ((8, 16, 2, 64), 84))
 
-    def test_brightness_darkens_the_stored_colors(self):
+    def test_stored_colors_keep_their_source_brightness(self):
         self.convert(tiny_set_description())
         self.assertAlmostEqual(self.first_pixel_red("card"), 167, delta=6)
-        self.assertAlmostEqual(self.first_pixel_red("bar_left"), 83, delta=6)
+        self.assertAlmostEqual(self.first_pixel_red("card_corner"), 167, delta=6)
 
     def test_a_cell_outside_its_page_is_refused(self):
         set_description = tiny_set_description()

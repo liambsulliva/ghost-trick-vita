@@ -8,22 +8,6 @@
       "width": 720,
       "height": 540,
       "list_as_background": true
-    },
-    {
-      "name": "side_bar_left",
-      "source": "natives/android/gui/ui000200/tex/bg_08_iml4.tex.691230823",
-      "width": 120,
-      "height": 540,
-      "crop": [0, 0, 240, 1080],
-      "brightness": 0.46
-    },
-    {
-      "name": "side_bar_right",
-      "source": "natives/android/gui/ui000200/tex/bg_08_iml4.tex.691230823",
-      "width": 120,
-      "height": 540,
-      "crop": [1680, 0, 240, 1080],
-      "brightness": 0.46
     }
   ],
   "plates": [
@@ -126,7 +110,6 @@
     ]
   },
   "steps": [
-    ["side_bars", "side_bar_left", "side_bar_right"],
     ["fade_out", 1],
     ["wait", 90],
     ["card", "chapter_card"],
@@ -179,7 +162,7 @@
     ["wait", 180],
     ["camera_pan", 768, 224, 600],
     ["wait", 120],
-    ["camera_pan", 0, 192, 600],
+    ["camera_pan", 0, 224, 600],
     ["wait", 120],
     ["fade_out", 60]
   ]

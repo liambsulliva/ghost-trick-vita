@@ -13,7 +13,6 @@ static void test_scene_parse_reads_every_kind_of_step(void)
 {
     const char text[] =
         "scene opening\n"
-        "side_bars left right\n"
         "room 11\n"
         "plate st01 0 384 256 192\n"
         "object linne idle 281.5 353 900 1\n"
@@ -28,12 +27,12 @@ static void test_scene_parse_reads_every_kind_of_step(void)
     static struct scene scene;
 
     CHECK_INT(scene_parse(text, sizeof(text) - 1, &scene), SCENE_OK);
-    CHECK_INT(scene.step_count, 12);
-    CHECK_INT(scene.steps[3].kind, SCENE_STEP_OBJECT);
-    CHECK_INT(scene.steps[6].kind, SCENE_STEP_CAMERA_PAN);
-    CHECK_INT(scene.steps[6].ticks, 600);
-    CHECK_INT(scene.steps[11].kind, SCENE_STEP_WAIT);
-    CHECK_INT(scene.steps[11].ticks, 90);
+    CHECK_INT(scene.step_count, 11);
+    CHECK_INT(scene.steps[2].kind, SCENE_STEP_OBJECT);
+    CHECK_INT(scene.steps[5].kind, SCENE_STEP_CAMERA_PAN);
+    CHECK_INT(scene.steps[5].ticks, 600);
+    CHECK_INT(scene.steps[10].kind, SCENE_STEP_WAIT);
+    CHECK_INT(scene.steps[10].ticks, 90);
 }
 
 static void test_scene_parse_rejects_durations_that_are_not_positive(void)

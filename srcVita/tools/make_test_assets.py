@@ -14,8 +14,6 @@ ATLAS_SIZE = 512
 CELL_SIZE = 256
 CELL_COLUMNS = 2
 CELL_COUNT = 4
-BAR_WIDTH = 120
-BAR_HEIGHT = 544
 MARKER_SIZE = 90
 
 
@@ -65,12 +63,6 @@ def atlas_pixels():
     return pixels
 
 
-def bar_pixels(color):
-    pixels = bytearray(BAR_WIDTH * BAR_HEIGHT * 4)
-    fill_rectangle(pixels, BAR_WIDTH, 0, 0, BAR_WIDTH, BAR_HEIGHT, color)
-    return pixels
-
-
 def write_binary(path, data):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as output:
@@ -85,10 +77,6 @@ def write_dxt_texture(folder, name, width, height, pixels, texture_format, compr
     with tempfile.TemporaryDirectory() as work_folder:
         data = texture_encoder.encode_rgba(work_folder, name, width, height, pixels, compression)
     write_binary(os.path.join(folder, "textures", name + ".gtex"), asset_writers.gtex_bytes(width, height, texture_format, data))
-
-
-def write_rgba_texture(folder, name, width, height, pixels):
-    write_binary(os.path.join(folder, "textures", name + ".gtex"), asset_writers.gtex_bytes(width, height, asset_writers.FORMAT_RGBA8888, pixels))
 
 
 def animation_text(name, texture_name):
@@ -113,7 +101,6 @@ def animation_text(name, texture_name):
 def scene_text():
     lines = [
         "scene test_opening",
-        "side_bars test_left_bar test_right_bar",
         "card test_room_green",
         "wait 60",
         "hide_card",
@@ -138,8 +125,6 @@ def main():
     write_dxt_texture(folder, "test_room_blue", ROOM_WIDTH, ROOM_HEIGHT, room_pixels((120, 170, 255)), asset_writers.FORMAT_DXT1, "dxt1")
     write_dxt_texture(folder, "test_room_green", ROOM_WIDTH, ROOM_HEIGHT, room_pixels((130, 255, 170)), asset_writers.FORMAT_DXT1, "dxt1")
     write_dxt_texture(folder, "test_atlas", ATLAS_SIZE, ATLAS_SIZE, atlas_pixels(), asset_writers.FORMAT_DXT5, "dxt5")
-    write_rgba_texture(folder, "test_left_bar", BAR_WIDTH, BAR_HEIGHT, bar_pixels((20, 60, 70, 255)))
-    write_rgba_texture(folder, "test_right_bar", BAR_WIDTH, BAR_HEIGHT, bar_pixels((70, 60, 20, 255)))
     write_text(os.path.join(folder, "animations", "test_orbit.anim"), animation_text("test_orbit", "test_atlas"))
     write_text(os.path.join(folder, "scenes", "test_opening.scene"), scene_text())
     write_text(os.path.join(folder, "manifest.txt"), "scene test_opening\nbackground test_room_blue\nbackground test_room_green\nanimation test_orbit\n")

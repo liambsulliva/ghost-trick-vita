@@ -72,10 +72,9 @@ class AnimWriterTests(unittest.TestCase):
 
 class SceneWriterTests(unittest.TestCase):
     def test_steps_become_lines(self):
-        steps = [["side_bars", "left", "right"], ["room", 11], ["plate", "st01-00", 0, 0, 1024, 384], ["object", "linne", "st01_linne_004", 281, 385.5, 900, 0], ["camera_pan", 0, 192, 60], ["hide_card"]]
+        steps = [["room", 11], ["plate", "st01-00", 0, 0, 1024, 384], ["object", "linne", "st01_linne_004", 281, 385.5, 900, 0], ["camera_pan", 0, 192, 60], ["hide_card"]]
         self.assertEqual(asset_writers.scene_text("opening", steps), "\n".join([
             "scene opening",
-            "side_bars left right",
             "room 11",
             "plate st01-00 0 0 1024 384",
             "object linne st01_linne_004 281 385.5 900 0",

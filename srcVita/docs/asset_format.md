@@ -30,7 +30,13 @@ Names use only letters, digits, `_` and `-`, and are at most 95 characters. All 
 
 The DS game logic works in DS pixels, so positions in these files do too. The remaster's art is 4 times the size of DS pixels.
 
-The camera shows 256 by 192 DS pixels. On the Vita that view fills a playfield of 720 by 540 screen pixels, at x 120 and y 2, so one DS pixel is 2.8125 screen pixels. Art is converted to exactly that scale wherever possible, which means 0.703125 times its remaster size.
+One DS pixel is 2.8125 screen pixels on the Vita. Art is converted to exactly that scale wherever possible, which means 0.703125 times its remaster size.
+
+The DS camera covers 256 by 192 DS pixels, which is 720 by 540 screen pixels. The Vita's screen is 960 by 544, so it shows more of the room than the DS did, about 341 by 193 DS pixels. Scene files still give the DS camera, and the app works out the wider view from it:
+
+- The art around the camera is every plate that overlaps the DS camera's 256 by 192 window. A plate that only touches that window does not count.
+- If the art is bigger than the screen, the DS window stays centred on screen, and the view slides to stay inside the art. Nothing is stretched, and the screen is always full.
+- If the art is smaller than the screen, it is centred with black around it. Room 11's close-up plate and the chapter card are like this, because no art exists beyond their edges.
 
 ## Textures: `.gtex`
 
@@ -83,17 +89,16 @@ A scene is a list of steps that run in order. Most take effect immediately. `wai
 | Step | Meaning |
 |---|---|
 | `scene <name>` | Names the scene. Must be the first line |
-| `side_bars <left_texture> <right_texture>` | Art for the two bars beside the playfield |
 | `room <room_id>` | Starts a new room: clears its plates and objects |
 | `plate <texture> <x> <y> <width> <height>` | Adds a background plate to the room, in DS pixels. Later plates draw over earlier ones |
 | `object <object_name> <animation> <x> <y> <layer> <flip>` | Adds an object, or changes the one with that name. Lower layers draw first. `flip` is 1 to mirror it horizontally, otherwise 0 |
 | `remove_object <object_name>` | Removes an object |
 | `camera <x> <y>` | Moves the camera's top-left corner, in DS pixels |
 | `camera_pan <x> <y> <ticks>` | Moves the camera there in a straight line |
-| `card <texture>` | Shows a full-playfield image over the room |
+| `card <texture>` | Shows a 720 by 540 image, centred over black, over the room |
 | `hide_card` | Removes the card |
-| `fade_out <ticks>` | Fades the playfield to black |
-| `fade_in <ticks>` | Fades the playfield back in |
+| `fade_out <ticks>` | Fades the screen to black |
+| `fade_in <ticks>` | Fades the screen back in |
 | `wait <ticks>` | Waits |
 
 A scene has at most 1024 steps.

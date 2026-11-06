@@ -33,8 +33,6 @@ struct scene_stage {
     float camera_y;
     float fade_amount;
     char card_texture[ASSET_NAME_MAX];
-    char left_bar_texture[ASSET_NAME_MAX];
-    char right_bar_texture[ASSET_NAME_MAX];
 };
 
 void scene_stage_reset(void);
@@ -44,7 +42,6 @@ void scene_stage_add_plate(const char *texture_name, float x, float y, float wid
 int scene_stage_set_object(const char *object_name, const char *animation_name, float x, float y, int layer, int is_flipped);
 void scene_stage_remove_object(const char *object_name);
 void scene_stage_set_camera(float x, float y);
-void scene_stage_set_side_bars(const char *left_texture_name, const char *right_texture_name);
 void scene_stage_show_card(const char *texture_name);
 void scene_stage_hide_card(void);
 void scene_stage_set_fade(float fade_amount);

@@ -71,9 +71,6 @@ static void begin_pan(float target_x, float target_y, int ticks)
 static void run_step(const struct scene_step *step)
 {
     switch (step->kind) {
-    case SCENE_STEP_SIDE_BARS:
-        scene_stage_set_side_bars(step->texture_name, step->right_bar_texture_name);
-        break;
     case SCENE_STEP_ROOM:
         run_log_write("scene room id=%d", step->room_id);
         scene_stage_clear_room();
@@ -161,10 +158,6 @@ static void preload_step_assets(const struct scene_step *step)
     const struct animation *animation;
 
     switch (step->kind) {
-    case SCENE_STEP_SIDE_BARS:
-        texture_cache_use_or_start_loading(step->texture_name);
-        texture_cache_use_or_start_loading(step->right_bar_texture_name);
-        break;
     case SCENE_STEP_PLATE:
     case SCENE_STEP_CARD:
         texture_cache_use_or_start_loading(step->texture_name);

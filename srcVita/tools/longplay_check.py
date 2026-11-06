@@ -20,11 +20,18 @@ CLIP_PATH = os.path.join(REPOSITORY_FOLDER, "extracted", "reference", "chapter1_
 OUTPUT_FOLDER = os.path.join(SRC_VITA_FOLDER, "build", "longplay_check")
 CHECK_FILES_FOLDER = os.path.join(OUTPUT_FOLDER, "files")
 
+SCREEN_WIDTH = 960
+SCREEN_HEIGHT = 544
 COMPARED_WIDTH = 960
 COMPARED_HEIGHT = 540
 PLAYFIELD_LEFT = 120
 PLAYFIELD_RIGHT = 840
 SCREEN_PIXELS_PER_DS_PIXEL = 2.8125
+DS_CAMERA_WIDTH = 256.0
+DS_CAMERA_HEIGHT = 192.0
+SCREEN_EDGE_COLUMNS = 8
+SMALLEST_ART_SHARE_AT_A_FILLED_EDGE = 0.5
+LARGEST_ART_SHARE_AT_A_BLACK_EDGE = 0.01
 UPLOADER_WATERMARK = (817, 491, 949, 531)
 SPOTLIGHT_BLACK_LIMIT = 14
 SHIFT_SEARCH_PIXELS = 9
@@ -34,7 +41,6 @@ MAX_SHIFT_DS_PIXELS = 0.4
 MAX_SPRITE_ERROR = 15.0
 MAX_MOTION_ERROR = 12.0
 MAX_GAIN_DIFFERENCE = 0.1
-MAX_SIDE_BAR_ERROR = 5.5
 HOLD_FOREVER_TICKS = 1000000
 SECONDS_TO_SETTLE = 1.0
 MOTION_WINDOW_START = "00:00:40.200"
@@ -53,12 +59,12 @@ LOAD_FAILURE_MARKERS = [
 CLOSE_UP_POSES = [["cicel", "st01_cicel_999", 284, 578], ["cbag", "st01_cbag_999", 350, 577]]
 
 VIEW_CHECKS = [
-    {"name": "check_card", "is_card": True, "time": "00:00:10.500", "measure": [], "max_error": 6.0, "expected_gain": 1.0},
-    {"name": "check_before_shot", "room": 11, "camera": (0, 192), "pose_group": "standing_before_the_shot", "time": "00:00:40.250", "spotlight": True, "measure": ["linne", "killer", "shadanki"], "max_error": 9.0, "expected_gain": 0.96},
-    {"name": "check_close_up", "room": 11, "camera": (0, 384), "pose_group": "standing_after_the_shot", "extra_poses": CLOSE_UP_POSES, "time": "00:01:07.000", "spotlight": True, "measure": ["cicel", "cbag"], "max_error": 12.0, "expected_gain": 0.48},
-    {"name": "check_room7", "room": 7, "camera": (0, 192), "pose_group": "standing_after_the_shot", "time": "00:01:11.000", "measure": ["linne", "killer", "cicel", "cbag", "shadanki"], "max_error": 7.0, "expected_gain": 0.96},
-    {"name": "check_room7_middle", "room": 7, "camera": (344, 192), "pose_group": "standing_after_the_shot", "time": "00:06:27.000", "spotlight": True, "measure": ["craneTopA", "hasigo", "bicycle", "switchA", "switchB", "craneBottomA"], "max_error": 7.0, "expected_gain": 0.97},
-    {"name": "check_room7_right", "room": 7, "camera": (624, 192), "pose_group": "standing_after_the_shot", "time": "00:24:00.000", "spotlight": True, "measure": ["kasa"], "max_error": 12.0, "expected_gain": 1.0},
+    {"name": "check_card", "is_card": True, "time": "00:00:10.500", "measure": [], "max_error": 6.0, "expected_gain": 1.0, "fills_width": False},
+    {"name": "check_before_shot", "room": 11, "camera": (0, 192), "pose_group": "standing_before_the_shot", "time": "00:00:40.250", "spotlight": True, "measure": ["linne", "killer", "shadanki"], "max_error": 9.0, "expected_gain": 0.96, "fills_width": True},
+    {"name": "check_close_up", "room": 11, "camera": (0, 384), "pose_group": "standing_after_the_shot", "extra_poses": CLOSE_UP_POSES, "time": "00:01:07.000", "spotlight": True, "measure": ["cicel", "cbag"], "max_error": 12.0, "expected_gain": 0.48, "fills_width": False},
+    {"name": "check_room7", "room": 7, "camera": (0, 192), "pose_group": "standing_after_the_shot", "time": "00:01:11.000", "measure": ["linne", "killer", "cicel", "cbag", "shadanki"], "max_error": 7.0, "expected_gain": 0.96, "fills_width": True},
+    {"name": "check_room7_middle", "room": 7, "camera": (344, 192), "pose_group": "standing_after_the_shot", "time": "00:06:27.000", "spotlight": True, "measure": ["craneTopA", "hasigo", "bicycle", "switchA", "switchB", "craneBottomA"], "max_error": 7.0, "expected_gain": 0.97, "fills_width": True},
+    {"name": "check_room7_right", "room": 7, "camera": (624, 192), "pose_group": "standing_after_the_shot", "time": "00:24:00.000", "spotlight": True, "measure": ["kasa"], "max_error": 12.0, "expected_gain": 1.0, "fills_width": True},
 ]
 
 MOTION_CHECKS = [
@@ -103,7 +109,7 @@ def object_line(set_description, pose):
 
 
 def check_scene_text(set_description, plates, check):
-    lines = ["scene " + check["name"], "side_bars side_bar_left side_bar_right"]
+    lines = ["scene " + check["name"]]
     if check.get("is_card"):
         lines.append("card chapter_card")
     else:
@@ -258,10 +264,56 @@ def capture_on_device(scene_names):
         vita_loop.quit_and_wait()
 
 
-def read_capture(name):
-    command = ["magick", os.path.join(OUTPUT_FOLDER, name + ".bmp"), "-gravity", "center", "-crop", "%dx%d+0+0" % (COMPARED_WIDTH, COMPARED_HEIGHT), "+repage", "-depth", "8", "rgb:-"]
+def plates_and_camera_of_scene(scene_text):
+    plates = []
+    camera = (0.0, 0.0)
+    for line in scene_text.splitlines():
+        fields = line.split()
+        if fields[:1] == ["plate"]:
+            plates.append(tuple(float(value) for value in fields[2:6]))
+        elif fields[:1] == ["camera"]:
+            camera = (float(fields[1]), float(fields[2]))
+    return plates, camera
+
+
+def art_around_camera(plates, camera):
+    overlapping = [
+        (x, y, x + width, y + height)
+        for x, y, width, height in plates
+        if x < camera[0] + DS_CAMERA_WIDTH and x + width > camera[0] and y < camera[1] + DS_CAMERA_HEIGHT and y + height > camera[1]
+    ]
+    if not overlapping:
+        return camera[0], camera[1], camera[0] + DS_CAMERA_WIDTH, camera[1] + DS_CAMERA_HEIGHT
+    return min(art[0] for art in overlapping), min(art[1] for art in overlapping), max(art[2] for art in overlapping), max(art[3] for art in overlapping)
+
+
+def view_start_along_axis(camera_start, camera_length, view_length, art_start, art_end):
+    if art_end - art_start <= view_length:
+        return art_start - (view_length - (art_end - art_start)) / 2.0
+    return max(art_start, min(camera_start - (view_length - camera_length) / 2.0, art_end - view_length))
+
+
+def camera_window_on_screen(scene_text):
+    plates, camera = plates_and_camera_of_scene(scene_text)
+    art_left, art_top, art_right, art_bottom = art_around_camera(plates, camera)
+    view_left = view_start_along_axis(camera[0], DS_CAMERA_WIDTH, SCREEN_WIDTH / SCREEN_PIXELS_PER_DS_PIXEL, art_left, art_right)
+    view_top = view_start_along_axis(camera[1], DS_CAMERA_HEIGHT, SCREEN_HEIGHT / SCREEN_PIXELS_PER_DS_PIXEL, art_top, art_bottom)
+    return round((camera[0] - view_left) * SCREEN_PIXELS_PER_DS_PIXEL), round((camera[1] - view_top) * SCREEN_PIXELS_PER_DS_PIXEL)
+
+
+def read_whole_screen(name):
+    command = ["magick", os.path.join(OUTPUT_FOLDER, name + ".bmp"), "-depth", "8", "rgb:-"]
     pixels = subprocess.run(command, capture_output=True, check=True).stdout
-    return numpy.frombuffer(pixels, dtype=numpy.uint8).reshape(COMPARED_HEIGHT, COMPARED_WIDTH, 3).astype(numpy.float32)
+    return numpy.frombuffer(pixels, dtype=numpy.uint8).reshape(SCREEN_HEIGHT, SCREEN_WIDTH, 3).astype(numpy.float32)
+
+
+def read_capture(name):
+    whole_screen = read_whole_screen(name)
+    left, top = camera_window_on_screen(read_text(os.path.join(CHECK_FILES_FOLDER, "scenes", name + ".scene")))
+    window_width = PLAYFIELD_RIGHT - PLAYFIELD_LEFT
+    compared = numpy.zeros((COMPARED_HEIGHT, COMPARED_WIDTH, 3), dtype=numpy.float32)
+    compared[:, PLAYFIELD_LEFT:PLAYFIELD_RIGHT] = whole_screen[top:top + COMPARED_HEIGHT, left:left + window_width]
+    return compared
 
 
 def read_clip_frames(start, seconds=None):
@@ -353,12 +405,21 @@ def write_pair_image(name, capture, reference):
     subprocess.run(["magick", "-size", "%dx%d" % (pair.shape[1], pair.shape[0]), "-depth", "8", "rgb:-", path], input=pair.tobytes(), check=True)
 
 
-def side_bar_error(capture, reference):
-    side_bars = numpy.zeros((COMPARED_HEIGHT, COMPARED_WIDTH), dtype=bool)
-    side_bars[:, 0:PLAYFIELD_LEFT] = True
-    side_bars[:, PLAYFIELD_RIGHT:COMPARED_WIDTH] = True
-    compared = side_bars & comparable_pixels(reference, False)
-    return float(numpy.abs(capture[compared] - reference[compared]).mean())
+def share_of_art_at_screen_edges(whole_screen):
+    edges = numpy.concatenate((whole_screen[:, :SCREEN_EDGE_COLUMNS], whole_screen[:, -SCREEN_EDGE_COLUMNS:]), axis=1)
+    return float((edges.max(axis=2) > SPOTLIGHT_BLACK_LIMIT).mean())
+
+
+def screen_edges_are_as_expected(check):
+    share = share_of_art_at_screen_edges(read_whole_screen(check["name"]))
+    if check["fills_width"]:
+        is_acceptable = share >= SMALLEST_ART_SHARE_AT_A_FILLED_EDGE
+        expected = "at least %.2f" % SMALLEST_ART_SHARE_AT_A_FILLED_EDGE
+    else:
+        is_acceptable = share <= LARGEST_ART_SHARE_AT_A_BLACK_EDGE
+        expected = "at most %.2f" % LARGEST_ART_SHARE_AT_A_BLACK_EDGE
+    print("%s     %-16s art share %.2f, expected %s" % ("ok  " if is_acceptable else "FAIL", "screen edges", share, expected))
+    return is_acceptable
 
 
 def score_view_check(check):
@@ -372,10 +433,7 @@ def score_view_check(check):
     gain = brightness_gain(capture[compared], reference[compared])
     passed = error <= check["max_error"] and abs(gain - check["expected_gain"]) <= MAX_GAIN_DIFFERENCE
     print("%s %-22s error %5.2f of 255, limit %.1f, brightness gain %.2f, expected %.2f" % ("ok  " if passed else "FAIL", check["name"], error, check["max_error"], gain, check["expected_gain"]))
-    bar_error = side_bar_error(capture, reference)
-    bars_are_acceptable = bar_error <= MAX_SIDE_BAR_ERROR
-    passed = passed and bars_are_acceptable
-    print("%s     %-16s error %5.2f of 255, limit %.1f" % ("ok  " if bars_are_acceptable else "FAIL", "side bars", bar_error, MAX_SIDE_BAR_ERROR))
+    passed = screen_edges_are_as_expected(check) and passed
     for object_name in check["measure"]:
         rectangle = sprite_rectangle(check, object_name)
         shift = None

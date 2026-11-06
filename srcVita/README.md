@@ -25,6 +25,8 @@ No game data lives in this folder. Converted assets, captures and reference vide
 
 A good first read is `src/app/viewer_app.c`, then `scene_player.c` and `scene_view.c`.
 
+The scene fills the Vita's 960 by 544 screen at 2.8125 screen pixels per DS pixel, so wide rooms show about 85 more DS pixels across than the DS did. Art that stops short of the screen, such as room 11's close-up and the chapter card, is centred with black around it and never stretched. `docs/asset_format.md` has the rule.
+
 ## Build and test
 
 You need VitaSDK with vitaGL, vitaShaRK, SceShaccCgExt, libmathneon and taihen installed.
@@ -107,7 +109,7 @@ This needs the reference video at `extracted/reference/chapter1_720p60.mp4`, plu
 python3 -I srcVita/tools/longplay_check.py
 ```
 
-It first checks that the Vita has the same `eboot.bin` and manifest as this machine. Then it uploads temporary scenes that hold one exact pose, captures each on the Vita, deletes them, and compares each capture with the matching video frame. Each measured sprite is also captured alone, so only its own pixels are scored. The check fails if a sprite sits more than 0.4 DS pixels from the video, if a sprite or the picture differs too much, or if motion frames match the video out of order. Side-by-side images land in `build/longplay_check/`. Use `--score-only` to re-score saved captures without the device.
+It first checks that the Vita has the same `eboot.bin` and manifest as this machine. Then it uploads temporary scenes that hold one exact pose, captures each on the Vita, deletes them, and compares each capture with the matching video frame. Each measured sprite is also captured alone, so only its own pixels are scored. Only the DS camera's 720 by 540 window is compared, because the video shows no more than that. The check fails if a sprite sits more than 0.4 DS pixels from the video, if a sprite or the picture differs too much, if motion frames match the video out of order, or if the screen's left and right edges are wrong: wide rooms must have art there, and the close-up and chapter card must have black. Side-by-side images land in `build/longplay_check/`. Use `--score-only` to re-score saved captures without the device.
 
 ## Measured on the Vita
 
@@ -131,6 +133,6 @@ vitaGL rounds compressed textures up to power-of-two sizes, so a texture can tak
 - **Audio.** Nothing plays yet.
 - **Input.** Buttons only drive the debug viewer: LEFT, RIGHT, UP and DOWN browse, CROSS pauses, TRIANGLE toggles the HUD, R opens the list, L restarts the scene, SQUARE saves a capture and START quits.
 
-Some scene timing is hand-tuned rather than taken from the game: message holds use a fixed length, card fades were borrowed from Chapter 2, and the scene ends with a pan across the room so every object gets seen. The side bars are the remaster's art darkened to 0.46, a value measured from the video whose cause is unknown.
+Some scene timing is hand-tuned rather than taken from the game: message holds use a fixed length, card fades were borrowed from Chapter 2, and the scene ends with a pan across the room so every object gets seen.
 
 The converter was built and checked with the Android files only. The Steam copy has not been compared.

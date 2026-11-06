@@ -19,7 +19,6 @@
 #define ROOM_B_WIDTH 100
 #define CHARACTER_WIDTH 32
 #define CARD_WIDTH 72
-#define BAR_WIDTH 16
 #define PLACEHOLDER_TEXTURE_WIDTH 64
 #define STATUS_TEXT_VISIBLE_CHARACTERS 11
 #define FRAMES_LONGER_THAN_EVERY_PRELOAD_PASS 16
@@ -54,8 +53,6 @@ static void set_up_textures_and_animations(void)
     add_texture("walk_page", CHARACTER_WIDTH, 32);
     add_texture("idle_page", CHARACTER_WIDTH, 32);
     add_texture("card", CARD_WIDTH, 48);
-    add_texture("left_bar", BAR_WIDTH, 32);
-    add_texture("right_bar", BAR_WIDTH, 32);
     add_text_file("assets/animations/walk.anim", "animation walk\nloops 1\nframe walk_page 6 -10 -20 30 40 0 0 0.5 1\nframe walk_page 6 -6 -20 30 40 0.5 0 0.5 1\n");
     add_text_file("assets/animations/idle.anim", "animation idle\nloops 1\nframe idle_page 6 0 0 10 10 0 0 1 1\nframe - 6 0 0 0 0 0 0 0 0\n");
 }
@@ -144,6 +141,16 @@ static int index_of_draw_with_texture_width(int width)
     return -1;
 }
 
+static float screen_x_when_camera_is_centred(float world_x, float camera_x)
+{
+    return ((float)RENDERER_WIDTH - SCENE_VIEW_DS_SCREEN_WIDTH * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL) / 2.0f + (world_x - camera_x) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+}
+
+static float screen_y_when_camera_is_centred(float world_y, float camera_y)
+{
+    return ((float)RENDERER_HEIGHT - SCENE_VIEW_DS_SCREEN_HEIGHT * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL) / 2.0f + (world_y - camera_y) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+}
+
 static int nearly_equal(float first, float second)
 {
     float difference;
@@ -169,10 +176,14 @@ static void test_app_without_assets_shows_placeholder_and_says_so(void)
     CHECK_INT(fake_renderer_textures_alive(), 0);
 }
 
-static void test_browsing_draws_background_then_character_in_playfield(void)
+static void test_browsing_draws_a_small_background_centred_with_the_character_over_it(void)
 {
     const struct fake_draw *background;
     const struct fake_draw *character;
+    float background_width;
+    float background_height;
+    float left;
+    float top;
 
     set_up_platform();
     set_up_browsing_assets();
@@ -186,11 +197,15 @@ static void test_browsing_draws_background_then_character_in_playfield(void)
     CHECK(background != NULL);
     CHECK(character != NULL);
     CHECK(index_of_draw_with_texture_width(ROOM_A_WIDTH) < index_of_draw_with_texture_width(CHARACTER_WIDTH));
-    CHECK(background->screen_area.x == SCENE_VIEW_PLAYFIELD_X);
-    CHECK(background->screen_area.y == SCENE_VIEW_PLAYFIELD_Y);
+    background_width = ROOM_A_WIDTH;
+    background_height = 54.0f;
+    left = ((float)RENDERER_WIDTH - background_width) / 2.0f;
+    top = ((float)RENDERER_HEIGHT - background_height) / 2.0f;
+    CHECK(nearly_equal(background->screen_area.x, left));
+    CHECK(nearly_equal(background->screen_area.y, top));
     CHECK(nearly_equal(background->screen_area.width, ROOM_A_WIDTH));
-    CHECK(character->screen_area.x == SCENE_VIEW_PLAYFIELD_X + (128.0f - 10.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
-    CHECK(character->screen_area.y == SCENE_VIEW_PLAYFIELD_Y + (176.0f - 20.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
+    CHECK(nearly_equal(character->screen_area.x, left + (128.0f - 10.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL));
+    CHECK(nearly_equal(character->screen_area.y, top + (176.0f - 20.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL));
     CHECK(character->screen_area.width == 30.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
     CHECK(character->screen_area.height == 40.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
     CHECK(character->texture_area.width == 0.5f);
@@ -444,28 +459,148 @@ static void test_scene_waits_for_textures_before_running(void)
     viewer_app_stop();
 }
 
-static void test_scene_applies_camera_flip_layers_and_bars(void)
+static void test_scene_applies_camera_flip_and_layers(void)
 {
     const struct fake_draw *hero;
     const struct fake_draw *back;
     const struct fake_draw *front;
 
     set_up_platform();
-    set_up_scene_assets("scene opening\nside_bars left_bar right_bar\nroom 1\nplate room_a 0 0 256 192\nobject hero walk 100 150 2 1\nobject front idle 50 40 5 0\nobject back idle 60 40 1 0\ncamera 10 20\nwait 600\n");
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nobject hero walk 200 150 2 1\nobject front idle 150 40 5 0\nobject back idle 160 40 1 0\ncamera 100 20\nwait 600\n");
     viewer_app_start("assets");
     run_frames(8);
     draw_frame();
     back = fake_renderer_draw(1);
     hero = fake_renderer_draw(2);
     front = fake_renderer_draw(3);
-    CHECK(back->screen_area.x == SCENE_VIEW_PLAYFIELD_X + (60.0f - 10.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
-    CHECK(front->screen_area.x == SCENE_VIEW_PLAYFIELD_X + (50.0f - 10.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
-    CHECK(hero->screen_area.x == SCENE_VIEW_PLAYFIELD_X + (100.0f + 10.0f - 30.0f - 10.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
-    CHECK(hero->screen_area.y == SCENE_VIEW_PLAYFIELD_Y + (150.0f - 20.0f - 20.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
+    CHECK(nearly_equal(back->screen_area.x, screen_x_when_camera_is_centred(160.0f, 100.0f)));
+    CHECK(nearly_equal(front->screen_area.x, screen_x_when_camera_is_centred(150.0f, 100.0f)));
+    CHECK(nearly_equal(hero->screen_area.x, screen_x_when_camera_is_centred(200.0f + 10.0f - 30.0f, 100.0f)));
+    CHECK(nearly_equal(hero->screen_area.y, screen_y_when_camera_is_centred(150.0f - 20.0f, 20.0f)));
     CHECK(hero->texture_area.width == -0.5f);
     CHECK(hero->texture_area.x == 0.5f);
-    CHECK_INT(count_draws_with_texture_width(BAR_WIDTH), 2);
-    CHECK(fake_renderer_draw(fake_renderer_draw_count() - 1)->screen_area.x == SCENE_VIEW_PLAYFIELD_X + SCENE_VIEW_PLAYFIELD_WIDTH);
+    viewer_app_stop();
+}
+
+static int count_filled_rects(void)
+{
+    int count;
+    int index;
+
+    count = 0;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        if (fake_renderer_draw(index)->is_filled_rect) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+static const struct fake_draw *draw_plate_with_camera(const char *scene_text)
+{
+    set_up_platform();
+    set_up_scene_assets(scene_text);
+    viewer_app_start("assets");
+    run_frames(8);
+    draw_frame();
+    return find_draw_with_texture_width(ROOM_A_WIDTH);
+}
+
+static void test_a_wide_room_at_its_left_end_fills_the_screen_from_its_left_edge(void)
+{
+    const struct fake_draw *plate;
+
+    plate = draw_plate_with_camera("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 0 192\nwait 600\n");
+    CHECK(nearly_equal(plate->screen_area.x, 0.0f));
+    CHECK(nearly_equal(plate->screen_area.y + plate->screen_area.height, RENDERER_HEIGHT));
+    CHECK_INT(count_filled_rects(), 0);
+    viewer_app_stop();
+}
+
+static void test_a_wide_room_keeps_the_camera_centred_in_the_middle(void)
+{
+    const struct fake_draw *plate;
+
+    plate = draw_plate_with_camera("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 344 96\nwait 600\n");
+    CHECK(nearly_equal(plate->screen_area.x, screen_x_when_camera_is_centred(0.0f, 344.0f)));
+    CHECK(nearly_equal(plate->screen_area.y, screen_y_when_camera_is_centred(0.0f, 96.0f)));
+    CHECK_INT(count_filled_rects(), 0);
+    viewer_app_stop();
+}
+
+static void test_a_wide_room_stops_at_its_right_edge(void)
+{
+    const struct fake_draw *plate;
+
+    plate = draw_plate_with_camera("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 768 0\nwait 600\n");
+    CHECK(nearly_equal(plate->screen_area.x + plate->screen_area.width, RENDERER_WIDTH));
+    CHECK(nearly_equal(plate->screen_area.y, 0.0f));
+    CHECK_INT(count_filled_rects(), 0);
+    viewer_app_stop();
+}
+
+static void test_art_narrower_than_the_screen_is_centred_with_black_on_every_side(void)
+{
+    const struct fake_draw *plate;
+    const struct fake_draw *last;
+
+    plate = draw_plate_with_camera("scene opening\nroom 1\nplate room_b 0 0 1024 384\nplate room_a 0 384 256 192\nobject hero walk 300 500 1 0\ncamera 0 384\nwait 600\n");
+    CHECK(nearly_equal(plate->screen_area.x, 120.0f));
+    CHECK(nearly_equal(plate->screen_area.y, 2.0f));
+    CHECK(nearly_equal(plate->screen_area.width, 720.0f));
+    CHECK(nearly_equal(plate->screen_area.height, 540.0f));
+    CHECK_INT(count_filled_rects(), 4);
+    last = fake_renderer_draw(fake_renderer_draw_count() - 1);
+    CHECK(last->is_filled_rect);
+    CHECK(index_of_draw_with_texture_width(CHARACTER_WIDTH) < fake_renderer_draw_count() - 4);
+    viewer_app_stop();
+}
+
+static void test_a_plate_just_below_the_camera_does_not_count_as_art(void)
+{
+    const struct fake_draw *plate;
+
+    plate = draw_plate_with_camera("scene opening\nroom 1\nplate room_a 0 0 1024 384\nplate room_b 0 384 256 192\ncamera 0 192\nwait 600\n");
+    CHECK(nearly_equal(plate->screen_area.y + plate->screen_area.height, RENDERER_HEIGHT));
+    CHECK_INT(count_filled_rects(), 0);
+    viewer_app_stop();
+}
+
+static void test_a_card_is_centred_at_its_own_shape_over_black(void)
+{
+    const struct fake_draw *card;
+
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncard card\nwait 600\n");
+    viewer_app_start("assets");
+    run_frames(8);
+    draw_frame();
+    card = find_draw_with_texture_width(CARD_WIDTH);
+    CHECK(nearly_equal(card->screen_area.x, 120.0f));
+    CHECK(nearly_equal(card->screen_area.y, 2.0f));
+    CHECK(nearly_equal(card->screen_area.width, SCENE_VIEW_CARD_WIDTH));
+    CHECK(nearly_equal(card->screen_area.height, SCENE_VIEW_CARD_HEIGHT));
+    CHECK(index_of_draw_with_texture_width(ROOM_A_WIDTH) < index_of_draw_with_texture_width(CARD_WIDTH));
+    CHECK(fake_renderer_draw(index_of_draw_with_texture_width(CARD_WIDTH) - 1)->is_filled_rect);
+    CHECK(nearly_equal(fake_renderer_draw(index_of_draw_with_texture_width(CARD_WIDTH) - 1)->screen_area.width, RENDERER_WIDTH));
+    viewer_app_stop();
+}
+
+static void test_a_fade_covers_the_whole_screen(void)
+{
+    const struct fake_draw *fade;
+
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nfade_out 6\nwait 600\n");
+    viewer_app_start("assets");
+    run_frames(20);
+    draw_frame();
+    fade = fake_renderer_draw(fake_renderer_draw_count() - 1);
+    CHECK(fade->is_filled_rect);
+    CHECK(nearly_equal(fade->screen_area.x, 0.0f));
+    CHECK(nearly_equal(fade->screen_area.width, RENDERER_WIDTH));
+    CHECK(nearly_equal(fade->screen_area.height, RENDERER_HEIGHT));
+    CHECK(fade->color.alpha == 1.0f);
     viewer_app_stop();
 }
 
@@ -847,7 +982,7 @@ static void test_long_run_keeps_memory_bounded(void)
 int main(void)
 {
     test_app_without_assets_shows_placeholder_and_says_so();
-    test_browsing_draws_background_then_character_in_playfield();
+    test_browsing_draws_a_small_background_centred_with_the_character_over_it();
     test_browsing_plays_animation_over_time_and_reports_coverage();
     test_coverage_reports_unplayed_frames();
     test_blank_frames_draw_nothing();
@@ -862,7 +997,14 @@ int main(void)
     test_old_background_stays_until_the_new_one_has_loaded();
     test_status_text_reaches_the_hud();
     test_scene_waits_for_textures_before_running();
-    test_scene_applies_camera_flip_layers_and_bars();
+    test_scene_applies_camera_flip_and_layers();
+    test_a_wide_room_at_its_left_end_fills_the_screen_from_its_left_edge();
+    test_a_wide_room_keeps_the_camera_centred_in_the_middle();
+    test_a_wide_room_stops_at_its_right_edge();
+    test_art_narrower_than_the_screen_is_centred_with_black_on_every_side();
+    test_a_plate_just_below_the_camera_does_not_count_as_art();
+    test_a_card_is_centred_at_its_own_shape_over_black();
+    test_a_fade_covers_the_whole_screen();
     test_scene_runs_steps_in_order_and_finishes();
     test_scene_fades_and_pans_over_time();
     test_scene_survives_bad_files_and_missing_assets();

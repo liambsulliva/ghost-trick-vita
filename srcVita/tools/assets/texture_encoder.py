@@ -28,15 +28,6 @@ def run_texture_tool(tool_path, tex_path, rgba_path, width, height, crop=None):
     return fields[3] == "1"
 
 
-def scale_colors(rgba_pixels, brightness):
-    scaled = bytearray(rgba_pixels)
-    for index in range(0, len(scaled), 4):
-        scaled[index] = min(255, int(scaled[index] * brightness + 0.5))
-        scaled[index + 1] = min(255, int(scaled[index + 1] * brightness + 0.5))
-        scaled[index + 2] = min(255, int(scaled[index + 2] * brightness + 0.5))
-    return bytes(scaled)
-
-
 def compress_with_magick(rgba_path, dds_path, width, height, compression):
     command = ["magick", "-size", "%dx%d" % (width, height), "-depth", "8", "rgba:" + rgba_path]
     if compression == "dxt1":
@@ -71,7 +62,7 @@ def encode_rgba(work_folder, name, width, height, rgba_pixels, compression):
     return block_data_from_dds(dds_bytes, width, height, compression)
 
 
-def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, crop=None, brightness=1.0):
+def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, crop=None):
     tex_path = os.path.join(work_folder, name + ".tex")
     rgba_path = os.path.join(work_folder, name + ".rgba")
     dds_path = os.path.join(work_folder, name + ".dds")
@@ -80,8 +71,6 @@ def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, 
     is_opaque = run_texture_tool(tool_path, tex_path, rgba_path, width, height, crop)
     with open(rgba_path, "rb") as source:
         rgba_pixels = source.read()
-    if brightness != 1.0:
-        rgba_pixels = scale_colors(rgba_pixels, brightness)
     if is_opaque:
         texture_format = asset_writers.FORMAT_DXT1
         compression = "dxt1"

@@ -7,10 +7,6 @@
 
 static int read_step(const char *line, struct scene_step *step)
 {
-    if (text_line_starts_with(line, "side_bars ")) {
-        step->kind = SCENE_STEP_SIDE_BARS;
-        return sscanf(line, "side_bars " ASSET_NAME_SCAN " " ASSET_NAME_SCAN, step->texture_name, step->right_bar_texture_name) == 2;
-    }
     if (text_line_starts_with(line, "room ")) {
         step->kind = SCENE_STEP_ROOM;
         return sscanf(line, "room %d", &step->room_id) == 1;
