@@ -4,6 +4,10 @@ TITLE_ID := GHTR00001
 APP_VER  := 01.00
 BUILD_ID := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(shell git diff --quiet HEAD -- . 2>/dev/null || echo -dirty)-$(shell date +%Y%m%d%H%M%S)
 
+ifeq ($(FAST_FORWARD),1)
+BUILD_ID := $(BUILD_ID)-ff
+endif
+
 PREFIX  := arm-vita-eabi
 CC      := $(PREFIX)-gcc
 CFLAGS  := -Wall -Wextra -O2 -Iinclude -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -DBUILD_ID=\"$(BUILD_ID)\"
@@ -19,7 +23,6 @@ STB_VORBIS_DEFINES := -DSTB_VORBIS_NO_STDIO -DSTB_VORBIS_NO_PUSHDATA_API
 OBJECT_FOLDER := build/obj
 ifeq ($(FAST_FORWARD),1)
 CFLAGS += -DFAST_FORWARD_BUILD
-BUILD_ID := $(BUILD_ID)-ff
 OBJECT_FOLDER := build/obj_fast_forward
 endif
 

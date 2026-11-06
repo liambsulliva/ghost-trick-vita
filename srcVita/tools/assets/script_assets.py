@@ -34,7 +34,6 @@ TEXT_LINES_FILE = SCRIPTS_FOLDER + "/text_lines.txt"
 BALLOONS_FILE = SCRIPTS_FOLDER + "/balloons.txt"
 SOUL_FILE = SCRIPTS_FOLDER + "/soul.txt"
 EFFECTS_FILE = SCRIPTS_FOLDER + "/effects.txt"
-CHAPTER_PRELOADED_TABLES = 32
 CHAPTER_PRELOADED_MESSAGES = 6
 CHAPTER_PRELOADED_ROOMS = 2
 NARRATION_OP = 0x5d
@@ -312,13 +311,7 @@ def effects_text(effects):
     return "".join("effect %d %s %s %d %s %s %s\n" % (row["id"], row["kind"], row["texture"], row["ticks"], asset_writers.format_number(row["end_zoom"]), asset_writers.format_number(row["width"]), asset_writers.format_number(row["height"])) for row in effects)
 
 
-def chapter_preload_text(set_description, section, balloons, narration_lines, soul_plates, extra_textures):
-    tables = []
-    for names in set_description.get("script_table_names", {}).values():
-        if names:
-            tables = list(dict.fromkeys(name for name in names if name in section["motion_tables"]))[:CHAPTER_PRELOADED_TABLES]
-            break
-    lines = ["animation " + table_animation_name(name) for name in tables]
+def chapter_preload_text(set_description, section, narration_lines, extra_textures):
     textures = list(extra_textures)
     textures.append(section["card_texture"])
     for label in list(narration_lines)[:CHAPTER_PRELOADED_MESSAGES]:
@@ -326,7 +319,7 @@ def chapter_preload_text(set_description, section, balloons, narration_lines, so
             textures.extend(line["texture"] for line in paragraph)
     for room_plates in list(section.get("room_plates", {}).values())[:CHAPTER_PRELOADED_ROOMS]:
         textures.extend(plate[0] for plate in room_plates)
-    lines.extend("texture " + name for name in dict.fromkeys(textures))
+    lines = ["texture " + name for name in dict.fromkeys(textures)]
     lines.extend("sound " + name for name in dict.fromkeys(section.get("sound_kinds", {}).values()))
     return "\n".join(lines) + "\n"
 
@@ -425,7 +418,7 @@ def table_files(set_description, output_folder, motion_lines, narration_lines, t
         extra_textures.append(set_description["soul_view"]["ring"])
     texts[EFFECTS_FILE] = effects_text(set_description.get("effects", []))
     if "chapter" in set_description:
-        texts[PRELOAD_FILE] = chapter_preload_text(set_description, section, balloons, narration_lines, soul_plates, extra_textures)
+        texts[PRELOAD_FILE] = chapter_preload_text(set_description, section, narration_lines, extra_textures)
     else:
         texts[PRELOAD_FILE] = preload_text(section, balloons, narration_lines, animation_names, soul_plates, extra_textures)
     return {relative_path: text.encode("ascii") for relative_path, text in texts.items()}
