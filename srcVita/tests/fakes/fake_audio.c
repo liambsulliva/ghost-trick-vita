@@ -5,7 +5,6 @@
 
 #define FAKE_SAMPLES_PER_FRAME 2
 #define FAKE_EVENTS_MAX 4096
-#define FAKE_DEFAULT_WAITING_GRAINS 1
 #define FAKE_US_PER_SECOND 1000000ULL
 #define FAKE_FIRST_GRAIN_CAPACITY 64
 #define FAKE_GRAIN_LIMIT 16384
@@ -14,9 +13,8 @@ struct fake_port {
     int open_failure_code;
     int submit_failure_code;
     int grains_until_submit_failure;
-    int frames_waiting_is_set;
-    int frames_waiting;
     unsigned long long extra_block_us;
+    unsigned long long queue_ends_us;
     int is_open;
     int open_count;
     int rate;
@@ -93,12 +91,6 @@ void fake_audio_port_fail_submit_after(enum audio_port_kind kind, int grain_coun
     ports[kind].submit_failure_code = code;
 }
 
-void fake_audio_port_set_frames_waiting(enum audio_port_kind kind, int frames)
-{
-    ports[kind].frames_waiting_is_set = 1;
-    ports[kind].frames_waiting = frames;
-}
-
 void fake_audio_port_add_block_once_us(enum audio_port_kind kind, unsigned long long extra_us)
 {
     ports[kind].extra_block_us = extra_us;
@@ -158,6 +150,7 @@ int audio_port_open(enum audio_port_kind kind, int rate, int frames_per_grain)
     port->open_count = port->open_count + 1;
     port->rate = rate;
     port->grain_frames = frames_per_grain;
+    port->queue_ends_us = 0;
     return (int)kind;
 }
 
@@ -165,6 +158,9 @@ int audio_port_submit(enum audio_port_kind kind, const short *stereo_frames)
 {
     struct fake_port *port;
     size_t grain_samples;
+    unsigned long long now_us;
+    unsigned long long grain_starts_us;
+    unsigned long long grain_returns_us;
 
     port = &ports[kind];
     if (port->submit_failure_code != 0) {
@@ -185,25 +181,24 @@ int audio_port_submit(enum audio_port_kind kind, const short *stereo_frames)
     memcpy(&port->grains[(size_t)port->grain_count * grain_samples], stereo_frames, grain_samples * sizeof(short));
     port->grain_count = port->grain_count + 1;
     add_event(port, "submit");
-    fake_clock_advance_us((unsigned long long)port->grain_frames * FAKE_US_PER_SECOND / (unsigned long long)port->rate + port->extra_block_us);
+    now_us = fake_clock_peek_us();
+    grain_starts_us = port->queue_ends_us > now_us ? port->queue_ends_us : now_us;
+    port->queue_ends_us = grain_starts_us + (unsigned long long)port->grain_frames * FAKE_US_PER_SECOND / (unsigned long long)port->rate;
+    grain_returns_us = grain_starts_us + (kind == AUDIO_PORT_MUSIC ? FAKE_AUDIO_MUSIC_SHORTEST_BLOCK_US : FAKE_AUDIO_SOUND_SHORTEST_BLOCK_US);
+    fake_clock_advance_us(grain_returns_us - now_us + port->extra_block_us);
     port->extra_block_us = 0;
     return 0;
 }
 
-int audio_port_frames_waiting(enum audio_port_kind kind)
-{
-    struct fake_port *port;
-
-    port = &ports[kind];
-    if (port->frames_waiting_is_set) {
-        return port->frames_waiting;
-    }
-    return port->grain_frames * FAKE_DEFAULT_WAITING_GRAINS;
-}
-
 void audio_port_drain(enum audio_port_kind kind)
 {
+    unsigned long long now_us;
+
     add_event(&ports[kind], "drain");
+    now_us = fake_clock_peek_us();
+    if (ports[kind].queue_ends_us > now_us) {
+        fake_clock_advance_us(ports[kind].queue_ends_us - now_us);
+    }
 }
 
 void audio_port_close(enum audio_port_kind kind)
@@ -218,7 +213,6 @@ void audio_port_read_facts(enum audio_port_kind kind, struct audio_port_facts *f
     facts->grain = ports[kind].grain_frames;
     facts->mode = 1;
     facts->adopt = 1;
-    facts->system_volume = 20;
 }
 
 int audio_thread_start(enum audio_thread_kind kind, audio_thread_step step)

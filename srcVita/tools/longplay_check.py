@@ -1,4 +1,5 @@
 import argparse
+import ftplib
 import json
 import os
 import subprocess
@@ -256,14 +257,28 @@ def device_matches_local_files():
 
 
 def capture_one_scene(scene_name):
-    vita_loop.write_app_commands("play_scene " + scene_name + "\n")
-    if vita_loop.wait_for_text(vita_loop.scene_ready_text(scene_name), 30) is None:
-        print("scene never became ready:", scene_name)
+    try:
+        vita_loop.write_app_commands("play_scene " + scene_name + "\n")
+        if vita_loop.wait_for_text(vita_loop.scene_ready_text(scene_name), 30) is None:
+            print("scene never became ready:", scene_name)
+            return False
+        time.sleep(SECONDS_TO_SETTLE)
+        return vita_loop.request_capture(scene_name, OUTPUT_FOLDER) == 0
+    except vita_loop.CommandNotRead as problem:
+        print(problem)
         return False
-    time.sleep(SECONDS_TO_SETTLE)
-    if vita_loop.request_capture(scene_name, OUTPUT_FOLDER) != 0:
-        return False
-    return True
+
+
+def report_whether_the_app_is_alive():
+    size_before, size_after = vita_loop.log_growth_over(vita_loop.SECONDS_TO_WATCH_THE_LOG)
+    if size_after is not None and size_before is not None and size_after > size_before:
+        print("the log is still growing: %d to %d bytes in %d s" % (size_before, size_after, vita_loop.SECONDS_TO_WATCH_THE_LOG))
+    else:
+        print("the log is not growing: %s to %s bytes in %d s" % (size_before, size_after, vita_loop.SECONDS_TO_WATCH_THE_LOG))
+    if vita_loop.commands_file_is_waiting():
+        print("the commands file is still waiting, so the app has not read it")
+    else:
+        print("the commands file was consumed")
 
 
 def run_log_shows_no_load_failures():
@@ -273,22 +288,57 @@ def run_log_shows_no_load_failures():
     return not failure_lines
 
 
+def report_why_the_run_stopped():
+    report_whether_the_app_is_alive()
+    run_log_shows_no_load_failures()
+
+
+def capture_path(name):
+    return os.path.join(OUTPUT_FOLDER, name + ".bmp")
+
+
+def forget_old_captures(scene_names):
+    for scene_name in scene_names:
+        for path in (capture_path(scene_name), pair_image_path(scene_name)):
+            if os.path.exists(path):
+                os.remove(path)
+
+
+def capture_every_scene(scene_names, captured_names):
+    if vita_loop.launch() != 0:
+        return False
+    if vita_loop.wait_for_text(vita_loop.SCENE_READY_TEXT, 60) is None:
+        print("the first scene never became ready")
+        report_why_the_run_stopped()
+        return False
+    for scene_name in scene_names:
+        if not capture_one_scene(scene_name):
+            report_why_the_run_stopped()
+            return False
+        captured_names.append(scene_name)
+    return run_log_shows_no_load_failures()
+
+
+def quit_if_the_device_answers():
+    try:
+        vita_loop.quit_and_wait()
+    except ftplib.all_errors as problem:
+        print("could not quit the app:", problem)
+
+
 def capture_on_device(scene_names):
+    captured_names = []
     vita_loop.quit_and_wait()
     if not device_matches_local_files():
-        return False
+        return False, captured_names
+    forget_old_captures(scene_names)
     try:
-        if vita_loop.launch() != 0:
-            return False
-        if vita_loop.wait_for_text(vita_loop.SCENE_READY_TEXT, 60) is None:
-            print("the first scene never became ready")
-            return False
-        for scene_name in scene_names:
-            if not capture_one_scene(scene_name):
-                return False
-        return run_log_shows_no_load_failures()
+        return capture_every_scene(scene_names, captured_names), captured_names
+    except ftplib.all_errors as problem:
+        print("the device stopped answering:", problem)
+        return False, captured_names
     finally:
-        vita_loop.quit_and_wait()
+        quit_if_the_device_answers()
 
 
 def plates_and_camera_of_scene(scene_text):
@@ -343,7 +393,7 @@ def camera_window_on_screen(scene_text):
 
 
 def read_whole_screen(name):
-    command = ["magick", os.path.join(OUTPUT_FOLDER, name + ".bmp"), "-depth", "8", "rgb:-"]
+    command = ["magick", capture_path(name), "-depth", "8", "rgb:-"]
     pixels = subprocess.run(command, capture_output=True, check=True).stdout
     return numpy.frombuffer(pixels, dtype=numpy.uint8).reshape(SCREEN_HEIGHT, SCREEN_WIDTH, 3).astype(numpy.float32)
 
@@ -440,10 +490,13 @@ def shift_is_acceptable(shift):
     return abs(shift[0]) <= MAX_SHIFT_DS_PIXELS and abs(shift[1]) <= MAX_SHIFT_DS_PIXELS
 
 
+def pair_image_path(name):
+    return os.path.join(OUTPUT_FOLDER, name + "_pair.png")
+
+
 def write_pair_image(name, capture, reference):
     pair = numpy.concatenate((capture, reference), axis=0).astype(numpy.uint8)
-    path = os.path.join(OUTPUT_FOLDER, name + "_pair.png")
-    subprocess.run(["magick", "-size", "%dx%d" % (pair.shape[1], pair.shape[0]), "-depth", "8", "rgb:-", path], input=pair.tobytes(), check=True)
+    subprocess.run(["magick", "-size", "%dx%d" % (pair.shape[1], pair.shape[0]), "-depth", "8", "rgb:-", pair_image_path(name)], input=pair.tobytes(), check=True)
 
 
 def share_of_art_at_screen_edges(whole_screen):
@@ -463,7 +516,14 @@ def screen_edges_are_as_expected(check):
     return is_acceptable
 
 
-def score_view_check(check):
+def print_not_captured(name):
+    print("FAIL %-22s not captured" % name)
+
+
+def score_view_check(check, captured_names):
+    if check["name"] not in captured_names:
+        print_not_captured(check["name"])
+        return False
     capture = read_capture(check["name"])
     reference = read_clip_frames(check["time"])[0]
     comparable = comparable_pixels(reference, check.get("spotlight", False))
@@ -476,6 +536,10 @@ def score_view_check(check):
     print("%s %-22s error %5.2f of 255, limit %.1f, brightness gain %.2f, expected %.2f" % ("ok  " if passed else "FAIL", check["name"], error, check["max_error"], gain, check["expected_gain"]))
     passed = screen_edges_are_as_expected(check) and passed
     for object_name in check["measure"]:
+        if only_object_scene_name(check["name"], object_name) not in captured_names:
+            print_not_captured(only_object_scene_name(check["name"], object_name))
+            passed = False
+            continue
         rectangle = sprite_rectangle(check, object_name)
         shift = None
         sprite_error = None
@@ -506,11 +570,17 @@ def find_best_clip_frame(capture, frames, rectangle, sprite_pixels):
     return best_index, best_error
 
 
-def score_motion_checks(checks):
+def score_motion_checks(checks, captured_names):
     frames = read_clip_frames(MOTION_WINDOW_START, MOTION_WINDOW_SECONDS)
     latest_index = {}
     all_passed = True
     for check in checks:
+        names_needed = [check["name"], only_object_scene_name(check["name"], check["object"])]
+        names_missing = [name for name in names_needed if name not in captured_names]
+        if names_missing:
+            print_not_captured(names_missing[0])
+            all_passed = False
+            continue
         capture = read_capture(check["name"])
         rectangle = sprite_rectangle(check, check["object"])
         sprite_pixels = sprite_pixels_of_object(check["name"], check["object"])
@@ -635,7 +705,10 @@ def screen_is_black_beside_camera_window(check):
     return is_acceptable
 
 
-def score_mask_check(check):
+def score_mask_check(check, captured_names):
+    if check["name"] not in captured_names:
+        print_not_captured(check["name"])
+        return False
     capture = read_capture(check["name"])
     reference = read_clip_frames(check["time"])[0]
     overlap = lit_area_overlap(capture, reference)
@@ -648,26 +721,42 @@ def score_mask_check(check):
     return passed
 
 
+def delete_check_files_if_the_device_answers():
+    try:
+        delete_check_files_from_device()
+    except ftplib.all_errors as problem:
+        print("could not delete the check files from the device:", problem)
+
+
+def saved_capture_names(scene_names):
+    return [name for name in scene_names if os.path.exists(capture_path(name))]
+
+
 def main():
     parser = argparse.ArgumentParser(description="Compares the Vita's screen against the reference video, one held pose at a time.")
     parser.add_argument("--score-only", action="store_true", help="score the captures already in build/longplay_check without using the device")
     arguments = parser.parse_args()
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
     view_checks, motion_checks, mask_checks, only_object_scene_names = write_check_files()
-    if not arguments.score_only:
-        scene_names = [check["name"] for check in view_checks + motion_checks + mask_checks] + only_object_scene_names
+    scene_names = [check["name"] for check in view_checks + motion_checks + mask_checks] + only_object_scene_names
+    capture_run_was_clean = True
+    if arguments.score_only:
+        captured_names = saved_capture_names(scene_names)
+    else:
         try:
             upload_check_files()
-            captured = capture_on_device(scene_names)
+            capture_run_was_clean, captured_names = capture_on_device(scene_names)
         finally:
-            delete_check_files_from_device()
-        if not captured:
+            delete_check_files_if_the_device_answers()
+        if len(captured_names) == 0 and not capture_run_was_clean:
             return 1
-    views_passed = [score_view_check(check) for check in view_checks]
-    motion_passed = score_motion_checks(motion_checks)
-    masks_passed = [score_mask_check(check) for check in mask_checks]
+        if not capture_run_was_clean:
+            print("scoring the %d of %d captures this run took" % (len(captured_names), len(scene_names)))
+    views_passed = [score_view_check(check, captured_names) for check in view_checks]
+    motion_passed = score_motion_checks(motion_checks, captured_names)
+    masks_passed = [score_mask_check(check, captured_names) for check in mask_checks]
     print("pair images:", OUTPUT_FOLDER)
-    return 0 if all(views_passed) and motion_passed and all(masks_passed) else 1
+    return 0 if capture_run_was_clean and all(views_passed) and motion_passed and all(masks_passed) else 1
 
 
 if __name__ == "__main__":

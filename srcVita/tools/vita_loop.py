@@ -28,6 +28,7 @@ SECONDS_FOR_APP_TEARDOWN = 3
 SECONDS_FOR_DEVICE_REPLY = 3
 SECONDS_FOR_PROMOTE_REPLY = 60
 SECONDS_FOR_APP_TO_READ_COMMANDS = 5
+SECONDS_TO_WATCH_THE_LOG = 3
 COMMAND_FILE_POLL_SECONDS = 0.2
 LAUNCH_MARKER = "--- launch"
 SCENE_READY_TEXT = "scene ready"
@@ -342,13 +343,17 @@ def wait_for_text(wanted, seconds, lines_to_skip=0):
     return None
 
 
+class CommandNotRead(RuntimeError):
+    pass
+
+
 def wait_for_app_to_read_commands(connection):
     deadline = time.time() + SECONDS_FOR_APP_TO_READ_COMMANDS
     while time.time() < deadline:
         if remote_size_or_none(connection, COMMANDS_PATH) is None:
             return
         time.sleep(COMMAND_FILE_POLL_SECONDS)
-    raise RuntimeError("the app has not read the previous command in " + COMMANDS_PATH)
+    raise CommandNotRead("the app has not read the previous command in " + COMMANDS_PATH)
 
 
 def write_app_commands(text):
@@ -359,6 +364,24 @@ def write_app_commands(text):
         connection.storbinary("STOR " + temporary_path, io.BytesIO(text.encode("ascii")))
         delete_if_present(connection, COMMANDS_PATH)
         connection.rename(temporary_path, COMMANDS_PATH)
+    finally:
+        connection.close()
+
+
+def log_growth_over(seconds):
+    connection = open_ftp()
+    try:
+        size_before = remote_size_or_none(connection, LOG_PATH)
+        time.sleep(seconds)
+        return size_before, remote_size_or_none(connection, LOG_PATH)
+    finally:
+        connection.close()
+
+
+def commands_file_is_waiting():
+    connection = open_ftp()
+    try:
+        return remote_size_or_none(connection, COMMANDS_PATH) is not None
     finally:
         connection.close()
 

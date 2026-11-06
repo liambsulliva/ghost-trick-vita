@@ -12,7 +12,7 @@ LIBS    := -lvitaGL -lstdc++ -lSceLibKernel_stub -lSceAppMgr_stub -lSceAppUtil_s
            -lc -lSceCommonDialog_stub -lm -lSceGxm_stub -lSceDisplay_stub -lSceSysmodule_stub \
            -lvitashark -lSceShaccCgExt -ltaihen_stub -lSceShaccCg_stub \
            -lSceKernelDmacMgr_stub -lSceCtrl_stub -lSceIofilemgr_stub -lSceProcessmgr_stub \
-           -lSceAudio_stub -lScePower_stub -lSceAVConfig_stub
+           -lSceAudio_stub -lScePower_stub
 
 STB_VORBIS_SOURCE := src/third_party/stb_vorbis.c
 STB_VORBIS_DEFINES := -DSTB_VORBIS_NO_STDIO -DSTB_VORBIS_NO_PUSHDATA_API
@@ -29,7 +29,7 @@ FAKE_SRCS   := $(wildcard tests/fakes/*.c)
 TEST_SRCS   := $(wildcard tests/unit/*.c) $(wildcard tests/integration/*.c)
 TEST_BINS   := $(patsubst tests/%.c,build/tests/%,$(TEST_SRCS))
 STB_VORBIS_TEST_OBJECT := build/test_objects/stb_vorbis.o
-TEST_HEADERS := $(wildcard include/*.h) $(wildcard tests/*.h) $(wildcard tests/fakes/*.h) $(wildcard tests/fixtures/*.h)
+TEST_HEADERS := $(wildcard include/*.h) $(wildcard tests/*.h) $(wildcard tests/fakes/*.h) $(wildcard tests/fakes/psp2/*.h) $(wildcard tests/fakes/psp2/kernel/*.h) $(wildcard tests/fixtures/*.h)
 APP_TEST_OBJECTS := $(patsubst src/app/%.c,build/test_objects/app/%.o,$(APP_SRCS))
 FAKE_TEST_OBJECTS := $(patsubst tests/fakes/%.c,build/test_objects/fakes/%.o,$(FAKE_SRCS))
 TEST_RUNS := $(addprefix run-,$(TEST_BINS))
@@ -89,7 +89,10 @@ build/test_objects/fakes/%.o: tests/fakes/%.c $(TEST_HEADERS)
 
 build/test_objects/tests/%.o: tests/%.c $(TEST_HEADERS)
 	@mkdir -p $(dir $@)
-	$(HOST_CC) $(HOST_CFLAGS) -c $< -o $@
+	$(HOST_CC) $(HOST_CFLAGS) -Itests/fakes -c $< -o $@
+
+build/test_objects/tests/integration/test_main_loop.o: src/main.c
+build/test_objects/tests/unit/test_vita_calls.o: src/vita/keep_awake.c src/vita/system_state.c
 
 build/tests/%: build/test_objects/tests/%.o $(APP_TEST_OBJECTS) $(FAKE_TEST_OBJECTS) $(STB_VORBIS_TEST_OBJECT)
 	@mkdir -p $(dir $@)

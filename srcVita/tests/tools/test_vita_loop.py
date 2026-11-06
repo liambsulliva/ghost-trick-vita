@@ -140,9 +140,23 @@ class CommandFileTests(DeviceFreeTestCase):
     def test_writing_refuses_to_drop_a_command_the_app_never_read(self):
         self.make_time_run_out()
         self.ftp.files[vita_loop.COMMANDS_PATH] = b"old\n"
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(vita_loop.CommandNotRead):
             vita_loop.write_app_commands("new\n")
         self.assertEqual(self.ftp.files[vita_loop.COMMANDS_PATH], b"old\n")
+
+    def test_a_waiting_commands_file_is_seen(self):
+        self.assertFalse(vita_loop.commands_file_is_waiting())
+        self.ftp.files[vita_loop.COMMANDS_PATH] = b"old\n"
+        self.assertTrue(vita_loop.commands_file_is_waiting())
+
+    def test_log_growth_compares_the_size_before_and_after_the_wait(self):
+        self.ftp.files[vita_loop.LOG_PATH] = b"12345"
+        self.sleep.side_effect = lambda seconds: self.ftp.files.update({vita_loop.LOG_PATH: b"1234567"})
+        self.assertEqual(vita_loop.log_growth_over(3), (5, 7))
+        self.sleep.assert_called_once_with(3)
+
+    def test_log_growth_of_a_missing_log_is_none(self):
+        self.assertEqual(vita_loop.log_growth_over(3), (None, None))
 
 
 class UploadAssetsTests(DeviceFreeTestCase):

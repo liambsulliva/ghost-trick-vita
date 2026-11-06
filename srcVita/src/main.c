@@ -10,17 +10,20 @@
 #include "file_path.h"
 #include "frame_stats.h"
 #include "input.h"
+#include "keep_awake.h"
 #include "memory.h"
 #include "music_engine.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "screen_capture.h"
 #include "screen_watch.h"
+#include "system_watch.h"
 #include "texture_cache.h"
 #include "timing.h"
 #include "viewer_app.h"
 
 #define COMMAND_POLL_FRAMES 30
+#define KEEP_AWAKE_FRAMES 30
 #define CAPTURE_NAME_MAX 64
 #define FIRST_TIMED_FRAME 2
 #define LOG_FOR_TOOLS_CAPTURE_DONE "capture name=%s result=%d took_us=%llu"
@@ -125,6 +128,7 @@ static void publish_frame_stats(struct frame_stats *stats)
     run_log_write("%s", log_text);
     log_memory_and_textures();
     screen_watch_publish();
+    system_watch_poll();
 
     average_frame_us = stats->total_frame_us / stats->frame_count;
     snprintf(status_text, sizeof(status_text), "frame %llu.%llums slow %u", average_frame_us / 1000, average_frame_us / 100 % 10, stats->slow_frame_count);
@@ -157,6 +161,9 @@ static void run_main_loop(void)
     screen_watch_start();
 
     while (!quit_requested) {
+        if (frame_number % KEEP_AWAKE_FRAMES == 0) {
+            keep_awake_tick();
+        }
         frame_started_us = clock_now_us();
         input_poll(&input);
         if (input.pressed & INPUT_START) {
@@ -198,10 +205,12 @@ int main(void)
 {
     int full_resolution;
 
+    keep_awake_tick();
     file_make_folder(FILE_DATA_FOLDER);
     file_make_folder(CAPTURE_FOLDER);
     run_log_open(LOG_PATH);
     run_log_write("build id=%s", build_info_id());
+    system_watch_start();
 
     full_resolution = renderer_init();
     run_log_write("renderer ready full_resolution=%d", full_resolution);

@@ -21,6 +21,16 @@
 #define BUSY_PORT_CODE ((int)0x80260002)
 #define GRAINS_LONGER_THAN_THE_CLIP (SINE_MONO_FRAMES / SOUND_GRAIN_FRAMES + 2)
 #define LARGEST_BLOCK_THAT_HOLDS_THE_FILE_BUT_NOT_THE_FRAMES 8192
+#define GRAIN_US_AS_THE_FAKE_ADVANCES 11609
+#define LATE_SLACK_US 2000
+#define LATE_PERIOD_US (11610 + LATE_SLACK_US)
+#define FIRST_BLOCK_US FAKE_AUDIO_SOUND_SHORTEST_BLOCK_US
+#define DEADLINE_AFTER_A_RETURN_US 11499
+#define STRETCH_MOST_PORT_OPENS_SHOW_US 7260
+#define LATE_RETURN_WITH_NO_GAP_US 9500
+#define LATE_RETURN_PAST_THE_DEADLINE_US 14000
+#define SLIP_ONE_PORT_OPEN_SHOWED_US 21500
+#define SHORT_REAL_GAP_US 3000
 
 static short clip_frames[SINE_MONO_FRAMES * 2];
 
@@ -138,7 +148,7 @@ static void test_prepare_decodes_the_whole_clip_then_opens_the_port_with_a_zero_
     CHECK(fake_audio_port_is_open(AUDIO_PORT_SOUND));
     CHECK_INT(fake_audio_port_rate(AUDIO_PORT_SOUND), SOUND_RATE);
     CHECK_INT(fake_audio_port_grain_frames(AUDIO_PORT_SOUND), SOUND_GRAIN_FRAMES);
-    CHECK_HAS_TEXT(log_text(), "sound port result=0x00000001 rate=44100 grain=512 mode=1 adopt=1 system_volume=20");
+    CHECK_HAS_TEXT(log_text(), "sound port result=0x00000001 rate=44100 grain=512 mode=1 adopt=1");
     CHECK_INT(count_in_log("sound thread priority=64 mask=0x00040000 cpu=2 arm_mhz=333 fpscr=0x00000000"), 1);
     CHECK_INT(grains_played(), 1);
     CHECK(grain_is_silent(played_grain(0)));
@@ -446,17 +456,169 @@ static void test_a_clip_that_promises_frames_and_decodes_none_is_refused_and_fre
     finish();
 }
 
-static void test_each_window_line_counts_its_grains_and_underruns(void)
+static void test_each_window_line_counts_its_grains_and_its_largest_period(void)
 {
     set_up();
     prepare_one_clip_and_open_the_port("ping");
     pump(WINDOW_GRAINS - 1);
-    CHECK_HAS_TEXT(log_text(), "sound window index=0 at=0 grains=88 rest=512 wall_us=");
-    CHECK_HAS_TEXT(log_text(), "underruns=0 voices_max=0 started=0 dropped=0 mix_us_max=0");
-    fake_audio_port_set_frames_waiting(AUDIO_PORT_SOUND, 0);
+    CHECK_HAS_TEXT(log_text(), "sound window index=0 at=0 grains=88 wall_us=");
+    CHECK_HAS_TEXT(log_text(), "late=0 voices_max=0 started=0 dropped=0 mix_us_max=0");
+    CHECK_HAS_TEXT(log_text(), "period_us_max=11609");
     pump(WINDOW_GRAINS);
-    CHECK_HAS_TEXT(log_text(), "sound window index=1 at=45056 grains=88 rest=0 wall_us=");
-    CHECK_HAS_TEXT(log_text(), "underruns=88 ");
+    CHECK_HAS_TEXT(log_text(), "sound window index=1 at=45056 grains=88 wall_us=");
+    finish();
+}
+
+static void test_a_submit_inside_the_deadline_is_not_late(void)
+{
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    fake_clock_advance_us(11000);
+    pump(WINDOW_GRAINS - 1);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    CHECK_HAS_TEXT(log_text(), "period_us_max=11609");
+    finish();
+}
+
+static void test_a_period_at_the_limit_is_not_late(void)
+{
+    char wanted[64];
+
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    fake_clock_advance_us(LATE_PERIOD_US - FIRST_BLOCK_US);
+    pump(WINDOW_GRAINS - 1);
+    snprintf(wanted, sizeof(wanted), "period_us_max=%d", LATE_PERIOD_US);
+    CHECK_HAS_TEXT(log_text(), wanted);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    finish();
+}
+
+static void test_a_stretch_the_next_period_brings_back_to_the_slack_is_not_late(void)
+{
+    char wanted[64];
+
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    fake_clock_advance_us(LATE_PERIOD_US - FIRST_BLOCK_US + 1);
+    pump(WINDOW_GRAINS - 1);
+    snprintf(wanted, sizeof(wanted), "period_us_max=%d", LATE_PERIOD_US + 1);
+    CHECK_HAS_TEXT(log_text(), wanted);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    finish();
+}
+
+static void test_a_stretch_exactly_at_the_slack_starts_no_count(void)
+{
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    fake_clock_advance_us(LATE_PERIOD_US - FIRST_BLOCK_US);
+    pump(1);
+    fake_audio_port_add_block_once_us(AUDIO_PORT_SOUND, 3);
+    pump(WINDOW_GRAINS - 2);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    finish();
+}
+
+static void test_a_period_past_the_limit_is_late_in_the_window_and_stopped_lines(void)
+{
+    char wanted[64];
+
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    fake_clock_advance_us(LATE_PERIOD_US - FIRST_BLOCK_US + 2);
+    pump(WINDOW_GRAINS - 1);
+    snprintf(wanted, sizeof(wanted), "period_us_max=%d", LATE_PERIOD_US + 2);
+    CHECK_HAS_TEXT(log_text(), wanted);
+    CHECK_HAS_TEXT(log_text(), "late=1 voices_max=0 ");
+    sound_request_stop();
+    pump(1);
+    CHECK_HAS_TEXT(log_text(), " late=1\n");
+    finish();
+}
+
+static void test_the_stretch_most_port_opens_show_is_paid_back_and_is_not_late(void)
+{
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    pump(7);
+    fake_audio_port_add_block_once_us(AUDIO_PORT_SOUND, STRETCH_MOST_PORT_OPENS_SHOW_US);
+    pump(WINDOW_GRAINS - 8);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    finish();
+}
+
+static void test_any_late_return_the_next_period_pays_back_is_not_late(void)
+{
+    char wanted[64];
+
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    pump(20);
+    fake_audio_port_add_block_once_us(AUDIO_PORT_SOUND, LATE_RETURN_WITH_NO_GAP_US);
+    pump(WINDOW_GRAINS - 21);
+    snprintf(wanted, sizeof(wanted), "period_us_max=%d", GRAIN_US_AS_THE_FAKE_ADVANCES + LATE_RETURN_WITH_NO_GAP_US);
+    CHECK_HAS_TEXT(log_text(), wanted);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    finish();
+}
+
+static void test_a_return_too_late_for_the_next_submit_is_late(void)
+{
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    fake_audio_port_add_block_once_us(AUDIO_PORT_SOUND, LATE_RETURN_PAST_THE_DEADLINE_US);
+    pump(WINDOW_GRAINS - 1);
+    CHECK_HAS_TEXT(log_text(), "late=1 ");
+    finish();
+}
+
+static void test_the_slip_one_port_open_showed_stays_and_is_late_once(void)
+{
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    fake_clock_advance_us(DEADLINE_AFTER_A_RETURN_US + SLIP_ONE_PORT_OPEN_SHOWED_US);
+    pump(WINDOW_GRAINS - 1);
+    CHECK_HAS_TEXT(log_text(), "late=1 ");
+    finish();
+}
+
+static void test_a_short_real_gap_mid_play_is_late(void)
+{
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    pump(20);
+    fake_clock_advance_us(DEADLINE_AFTER_A_RETURN_US + SHORT_REAL_GAP_US);
+    pump(WINDOW_GRAINS - 21);
+    CHECK_HAS_TEXT(log_text(), "late=1 ");
+    finish();
+}
+
+static void test_the_first_grain_after_idle_has_no_period_to_be_late_on(void)
+{
+    set_up();
+    add_clip("ping");
+    sound_request_prepare("ping");
+    pump(1);
+    fake_audio_port_add_block_once_us(AUDIO_PORT_SOUND, LATE_PERIOD_US);
+    pump(WINDOW_GRAINS);
+    CHECK_HAS_TEXT(log_text(), "sound window index=0 at=0 grains=88 ");
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    CHECK_HAS_TEXT(log_text(), "period_us_max=11609");
+    finish();
+}
+
+static void test_the_last_window_is_timed_before_the_drain(void)
+{
+    char wanted[64];
+
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    pump(3);
+    sound_request_stop();
+    pump(1);
+    snprintf(wanted, sizeof(wanted), "grains=6 wall_us=%llu ", FIRST_BLOCK_US + 5 * GRAIN_US_AS_THE_FAKE_ADVANCES);
+    CHECK_HAS_TEXT(log_text(), wanted);
     finish();
 }
 
@@ -660,7 +822,19 @@ int main(void)
     test_a_flipped_bit_in_a_header_is_refused_and_the_other_clips_still_load();
     test_a_clip_of_only_headers_is_a_decoder_failure_not_a_memory_failure();
     test_a_clip_that_promises_frames_and_decodes_none_is_refused_and_freed();
-    test_each_window_line_counts_its_grains_and_underruns();
+    test_each_window_line_counts_its_grains_and_its_largest_period();
+    test_a_submit_inside_the_deadline_is_not_late();
+    test_a_period_at_the_limit_is_not_late();
+    test_a_stretch_the_next_period_brings_back_to_the_slack_is_not_late();
+    test_a_stretch_exactly_at_the_slack_starts_no_count();
+    test_a_period_past_the_limit_is_late_in_the_window_and_stopped_lines();
+    test_the_stretch_most_port_opens_show_is_paid_back_and_is_not_late();
+    test_any_late_return_the_next_period_pays_back_is_not_late();
+    test_a_return_too_late_for_the_next_submit_is_late();
+    test_the_slip_one_port_open_showed_stays_and_is_late_once();
+    test_a_short_real_gap_mid_play_is_late();
+    test_the_first_grain_after_idle_has_no_period_to_be_late_on();
+    test_the_last_window_is_timed_before_the_drain();
     test_a_stop_fades_the_voices_sends_a_zero_grain_drains_and_closes();
     test_a_stop_forgets_voices_and_starts_still_waiting();
     test_a_stop_while_the_port_is_closed_forgets_starts_still_waiting();

@@ -15,17 +15,19 @@
 
 #define SAMPLES_PER_FRAME 2
 #define BYTES_PER_FRAME (SAMPLES_PER_FRAME * (unsigned int)sizeof(short))
+#define GRAIN_US 11610LL
+#define LATE_SLACK_US 2000LL
 #define WINDOW_GRAINS 88
 #define IDLE_SLEEP_US 5000
 #define QUIT_WAIT_US 500000
 #define LOG_NO_FRAMES "sound decoder_failed name=%s error=no_frames"
 #define LOG_FOR_TOOLS_SOUND_THREAD "sound thread priority=%d mask=0x%08x cpu=%d arm_mhz=%d fpscr=0x%08x"
-#define LOG_FOR_TOOLS_SOUND_PORT "sound port result=0x%08x rate=%d grain=%d mode=%d adopt=%d system_volume=%d"
+#define LOG_FOR_TOOLS_SOUND_PORT "sound port result=0x%08x rate=%d grain=%d mode=%d adopt=%d"
 #define LOG_FOR_TOOLS_SOUND_LOADED "sound loaded name=%s bytes=%u frames=%u channels=%u rate=%u read_us=%llu decode_us=%llu"
 #define LOG_FOR_TOOLS_SOUND_STARTED "sound started name=%s voice=%d at=%llu waited_us=%llu"
 #define LOG_FOR_TOOLS_SOUND_DROPPED "sound dropped name=%s reason=%s"
-#define LOG_FOR_TOOLS_SOUND_WINDOW "sound window index=%u at=%llu grains=%u rest=%d wall_us=%llu underruns=%u voices_max=%d started=%u dropped=%u mix_us_max=%llu block_us_max=%llu gap_us_max=%llu"
-#define LOG_FOR_TOOLS_SOUND_STOPPED "sound stopped reason=%s submitted=%llu grains=%u underruns=%u"
+#define LOG_FOR_TOOLS_SOUND_WINDOW "sound window index=%u at=%llu grains=%u wall_us=%llu late=%u voices_max=%d started=%u dropped=%u mix_us_max=%llu block_us_max=%llu gap_us_max=%llu period_us_max=%llu"
+#define LOG_FOR_TOOLS_SOUND_STOPPED "sound stopped reason=%s submitted=%llu grains=%u late=%u"
 
 struct sound_start {
     char name[ASSET_NAME_MAX];
@@ -68,21 +70,22 @@ struct sound_totals {
     unsigned long long frames_submitted;
     unsigned long long started_us;
     unsigned long long last_submit_ended_us;
+    long long last_stretch_us;
     unsigned int grains_submitted;
-    unsigned int underruns;
+    unsigned int late;
 };
 
 struct window_totals {
     unsigned int index;
     unsigned long long first_frame;
     unsigned int grains;
-    int rest;
     int voices_max;
     unsigned int started;
     unsigned int dropped;
     unsigned long long mix_us_max;
     unsigned long long block_us_max;
     unsigned long long gap_us_max;
+    unsigned long long period_us_max;
 };
 
 static char folder[FILE_PATH_MAX];
@@ -414,28 +417,39 @@ static void log_window_if_any(void)
     if (window.grains == 0) {
         return;
     }
-    run_log_write(LOG_FOR_TOOLS_SOUND_WINDOW, window.index, window.first_frame, window.grains, window.rest, clock_now_us() - totals.started_us, totals.underruns, window.voices_max, window.started, window.dropped, window.mix_us_max, window.block_us_max, window.gap_us_max);
+    run_log_write(LOG_FOR_TOOLS_SOUND_WINDOW, window.index, window.first_frame, window.grains, clock_now_us() - totals.started_us, totals.late, window.voices_max, window.started, window.dropped, window.mix_us_max, window.block_us_max, window.gap_us_max, window.period_us_max);
     next_index = window.index + 1;
     memset(&window, 0, sizeof(window));
     window.index = next_index;
 }
 
+static void note_period_since(unsigned long long previous_return_us)
+{
+    unsigned long long period_us;
+    long long stretch_us;
+
+    period_us = totals.last_submit_ended_us - previous_return_us;
+    window.period_us_max = larger_of(window.period_us_max, period_us);
+    stretch_us = (long long)period_us - GRAIN_US;
+    if (totals.last_stretch_us > LATE_SLACK_US && totals.last_stretch_us + stretch_us > LATE_SLACK_US) {
+        totals.late = totals.late + 1;
+    }
+    totals.last_stretch_us = stretch_us;
+}
+
 static int submit_grain(unsigned long long mix_us)
 {
     unsigned long long submit_started_us;
+    unsigned long long previous_return_us;
     unsigned long long block_us;
-    int rest;
     int result;
 
-    rest = audio_port_frames_waiting(AUDIO_PORT_SOUND);
-    if (rest == 0 && totals.grains_submitted > 0) {
-        totals.underruns = totals.underruns + 1;
-    }
     if (window.grains == 0) {
         window.first_frame = totals.frames_submitted;
     }
+    previous_return_us = totals.last_submit_ended_us;
     submit_started_us = clock_now_us();
-    window.gap_us_max = larger_of(window.gap_us_max, submit_started_us - totals.last_submit_ended_us);
+    window.gap_us_max = larger_of(window.gap_us_max, submit_started_us - previous_return_us);
     result = audio_port_submit(AUDIO_PORT_SOUND, grain);
     totals.last_submit_ended_us = clock_now_us();
     if (result < 0) {
@@ -443,9 +457,11 @@ static int submit_grain(unsigned long long mix_us)
         return 0;
     }
     block_us = totals.last_submit_ended_us - submit_started_us;
+    if (totals.grains_submitted > 0) {
+        note_period_since(previous_return_us);
+    }
     totals.frames_submitted = totals.frames_submitted + SOUND_GRAIN_FRAMES;
     totals.grains_submitted = totals.grains_submitted + 1;
-    window.rest = rest;
     window.grains = window.grains + 1;
     window.mix_us_max = larger_of(window.mix_us_max, mix_us);
     window.block_us_max = larger_of(window.block_us_max, block_us);
@@ -458,7 +474,7 @@ static int submit_grain(unsigned long long mix_us)
 static void mark_port_closed(const char *reason)
 {
     log_window_if_any();
-    run_log_write(LOG_FOR_TOOLS_SOUND_STOPPED, reason, totals.frames_submitted, totals.grains_submitted, totals.underruns);
+    run_log_write(LOG_FOR_TOOLS_SOUND_STOPPED, reason, totals.frames_submitted, totals.grains_submitted, totals.late);
     memset(voices, 0, sizeof(voices));
     port_is_open = 0;
 }
@@ -486,6 +502,7 @@ static void close_port_cleanly(void)
         give_up_on_port();
         return;
     }
+    log_window_if_any();
     audio_port_drain(AUDIO_PORT_SOUND);
     audio_port_close(AUDIO_PORT_SOUND);
     mark_port_closed("stop");
@@ -503,7 +520,7 @@ static void open_port(void)
         return;
     }
     audio_port_read_facts(AUDIO_PORT_SOUND, &facts);
-    run_log_write(LOG_FOR_TOOLS_SOUND_PORT, (unsigned int)result, facts.rate, facts.grain, facts.mode, facts.adopt, facts.system_volume);
+    run_log_write(LOG_FOR_TOOLS_SOUND_PORT, (unsigned int)result, facts.rate, facts.grain, facts.mode, facts.adopt);
     memset(&totals, 0, sizeof(totals));
     memset(&window, 0, sizeof(window));
     totals.started_us = clock_now_us();

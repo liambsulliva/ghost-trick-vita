@@ -38,6 +38,11 @@ void fake_clock_set_tick_per_read_us(unsigned long long tick_us)
     tick_per_read_us = tick_us;
 }
 
+unsigned long long fake_clock_peek_us(void)
+{
+    return fake_now_us;
+}
+
 unsigned long long clock_now_us(void)
 {
     unsigned long long now_us;

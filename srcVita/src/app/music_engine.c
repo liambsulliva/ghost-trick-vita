@@ -16,9 +16,9 @@
 #define FRAMES_PER_TICK (MUSIC_RATE / 60)
 #define SAMPLES_PER_FRAME 2
 #define GRAIN_BYTES (MUSIC_GRAIN_FRAMES * SAMPLES_PER_FRAME * (unsigned int)sizeof(short))
-#define GRAIN_US 92880ULL
-#define GAP_LIMIT_US GRAIN_US
-#define BLOCK_LIMIT_US (2 * GRAIN_US)
+#define GRAIN_US 92880LL
+#define LATE_SLACK_US 1000LL
+#define SUBMIT_DEADLINE_US 22080LL
 #define RAMP_IN_FRAMES 512
 #define WINDOW_GRAINS 11
 #define IDLE_SLEEP_US 10000
@@ -26,12 +26,12 @@
 #define LOOP_TEXT_MAX 64
 #define NO_LOOP_POINT -1
 #define LOG_FOR_TOOLS_MUSIC_THREAD "music thread priority=%d mask=0x%08x cpu=%d arm_mhz=%d fpscr=0x%08x"
-#define LOG_FOR_TOOLS_MUSIC_PORT "music port result=0x%08x rate=%d grain=%d mode=%d adopt=%d system_volume=%d"
+#define LOG_FOR_TOOLS_MUSIC_PORT "music port result=0x%08x rate=%d grain=%d mode=%d adopt=%d"
 #define LOG_FOR_TOOLS_MUSIC_LOADED "music loaded name=%s bytes=%u read_us=%llu open_us=%llu frames=%u rate=%u channels=%u loop_start=%d loop_last=%d decoder_bytes=%u"
 #define LOG_FOR_TOOLS_MUSIC_STARTED "music started name=%s looping=%d loop_start=%d loop_last=%d"
 #define LOG_FOR_TOOLS_MUSIC_RAMP "music ramp at=%llu frames=%u from=%d to=%d"
-#define LOG_FOR_TOOLS_MUSIC_WINDOW "music window name=%s index=%u at=%llu source_frame=%u grains=%u frames=%u crc32=%08x crc_total=%08x rest=%d wall_us=%llu underruns=%u late=%u loops=%u decode_us_avg=%llu decode_us_max=%llu block_us_avg=%llu block_us_max=%llu gap_us_max=%llu"
-#define LOG_FOR_TOOLS_MUSIC_STOPPED "music stopped name=%s reason=%s submitted=%llu grains=%u crc_total=%08x underruns=%u late=%u"
+#define LOG_FOR_TOOLS_MUSIC_WINDOW "music window name=%s index=%u at=%llu source_frame=%u grains=%u frames=%u crc32=%08x crc_total=%08x wall_us=%llu late=%u loops=%u decode_us_avg=%llu decode_us_max=%llu block_us_avg=%llu block_us_max=%llu gap_us_max=%llu period_us_max=%llu"
+#define LOG_FOR_TOOLS_MUSIC_STOPPED "music stopped name=%s reason=%s submitted=%llu grains=%u crc_total=%08x late=%u"
 
 struct music_wish {
     unsigned int generation;
@@ -46,11 +46,13 @@ struct music_wish {
 struct playback_totals {
     unsigned long long frames_submitted;
     unsigned long long started_us;
+    unsigned long long last_submit_started_us;
     unsigned long long last_submit_ended_us;
-    unsigned long long last_block_us;
+    unsigned long long decode_end_to_submit_us;
+    long long last_stretch_us;
+    long long return_lateness_us;
     unsigned int grains_submitted;
     unsigned int crc_total;
-    unsigned int underruns;
     unsigned int late;
 };
 
@@ -60,12 +62,12 @@ struct window_totals {
     unsigned int first_source_frame;
     unsigned int grains;
     unsigned int crc;
-    int rest;
     unsigned long long decode_us_total;
     unsigned long long decode_us_max;
     unsigned long long block_us_total;
     unsigned long long block_us_max;
     unsigned long long gap_us_max;
+    unsigned long long period_us_max;
 };
 
 static char folder[FILE_PATH_MAX];
@@ -304,7 +306,7 @@ static void log_window_if_any(void)
     if (window.grains == 0) {
         return;
     }
-    run_log_write(LOG_FOR_TOOLS_MUSIC_WINDOW, loaded_name, window.index, window.first_frame, window.first_source_frame, window.grains, window.grains * MUSIC_GRAIN_FRAMES, window.crc, playback.crc_total, window.rest, clock_now_us() - playback.started_us, playback.underruns, playback.late, source.loop_count, window.decode_us_total / window.grains, window.decode_us_max, window.block_us_total / window.grains, window.block_us_max, window.gap_us_max);
+    run_log_write(LOG_FOR_TOOLS_MUSIC_WINDOW, loaded_name, window.index, window.first_frame, window.first_source_frame, window.grains, window.grains * MUSIC_GRAIN_FRAMES, window.crc, playback.crc_total, clock_now_us() - playback.started_us, playback.late, source.loop_count, window.decode_us_total / window.grains, window.decode_us_max, window.block_us_total / window.grains, window.block_us_max, window.gap_us_max, window.period_us_max);
     next_index = window.index + 1;
     memset(&window, 0, sizeof(window));
     window.index = next_index;
@@ -323,20 +325,54 @@ static unsigned long long larger_of(unsigned long long first, unsigned long long
     return first > second ? first : second;
 }
 
+static void count_a_stretch_the_next_period_did_not_pay_back(long long stretch_us)
+{
+    if (playback.last_stretch_us > LATE_SLACK_US && playback.last_stretch_us + stretch_us > LATE_SLACK_US) {
+        playback.late = playback.late + 1;
+    }
+    playback.last_stretch_us = stretch_us;
+}
+
+static long long time_since_the_on_time_return(unsigned long long now_us, unsigned long long return_us)
+{
+    return (long long)(now_us - return_us) + playback.return_lateness_us;
+}
+
+static void note_how_late_the_return_was(unsigned long long previous_return_us, unsigned long long submit_started_us, long long stretch_us)
+{
+    long long since_on_time_return_us;
+    long long submit_missed_by_us;
+
+    since_on_time_return_us = time_since_the_on_time_return(submit_started_us, previous_return_us);
+    submit_missed_by_us = since_on_time_return_us > SUBMIT_DEADLINE_US ? since_on_time_return_us - SUBMIT_DEADLINE_US : 0;
+    playback.return_lateness_us = stretch_us > submit_missed_by_us ? stretch_us - submit_missed_by_us : 0;
+}
+
+static void note_period_and_gap(unsigned long long previous_return_us, unsigned long long submit_started_us)
+{
+    unsigned long long period_us;
+    long long stretch_us;
+
+    window.gap_us_max = larger_of(window.gap_us_max, submit_started_us - previous_return_us);
+    period_us = playback.last_submit_ended_us - previous_return_us;
+    window.period_us_max = larger_of(window.period_us_max, period_us);
+    stretch_us = (long long)period_us - GRAIN_US;
+    count_a_stretch_the_next_period_did_not_pay_back(stretch_us);
+    note_how_late_the_return_was(previous_return_us, submit_started_us, stretch_us);
+}
+
 static int submit_grain(unsigned long long decode_us)
 {
     unsigned long long submit_started_us;
+    unsigned long long previous_return_us;
     unsigned long long block_us;
-    int rest;
     int result;
 
-    rest = audio_port_frames_waiting(AUDIO_PORT_MUSIC);
-    if (rest == 0 && playback.grains_submitted > 0) {
-        playback.underruns = playback.underruns + 1;
-    }
     window.crc = crc32_add(window.crc, (const unsigned char *)grain, GRAIN_BYTES);
     playback.crc_total = crc32_add(playback.crc_total, (const unsigned char *)grain, GRAIN_BYTES);
+    previous_return_us = playback.last_submit_ended_us;
     submit_started_us = clock_now_us();
+    playback.last_submit_started_us = submit_started_us;
     result = audio_port_submit(AUDIO_PORT_MUSIC, grain);
     playback.last_submit_ended_us = clock_now_us();
     if (result < 0) {
@@ -344,10 +380,11 @@ static int submit_grain(unsigned long long decode_us)
         return 0;
     }
     block_us = playback.last_submit_ended_us - submit_started_us;
-    playback.last_block_us = block_us;
+    if (playback.grains_submitted > 0) {
+        note_period_and_gap(previous_return_us, submit_started_us);
+    }
     playback.frames_submitted = playback.frames_submitted + MUSIC_GRAIN_FRAMES;
     playback.grains_submitted = playback.grains_submitted + 1;
-    window.rest = rest;
     window.grains = window.grains + 1;
     window.decode_us_total = window.decode_us_total + decode_us;
     window.decode_us_max = larger_of(window.decode_us_max, decode_us);
@@ -361,7 +398,7 @@ static int submit_grain(unsigned long long decode_us)
 
 static void mark_playback_stopped(const char *reason)
 {
-    run_log_write(LOG_FOR_TOOLS_MUSIC_STOPPED, loaded_name, reason, playback.frames_submitted, playback.grains_submitted, playback.crc_total, playback.underruns, playback.late);
+    run_log_write(LOG_FOR_TOOLS_MUSIC_STOPPED, loaded_name, reason, playback.frames_submitted, playback.grains_submitted, playback.crc_total, playback.late);
     is_playing = 0;
 }
 
@@ -386,17 +423,13 @@ static void finish_playback(const char *reason)
     mark_playback_stopped(reason);
 }
 
-static void ramp_in_again_after_a_gap(unsigned long long now_us)
+static void ramp_in_again_if_the_submit_will_miss_its_deadline(unsigned long long decode_ended_us)
 {
-    unsigned long long gap_us;
+    unsigned long long submit_expected_us;
 
-    gap_us = now_us - playback.last_submit_ended_us;
-    window.gap_us_max = larger_of(window.gap_us_max, gap_us);
-    if (gap_us > GAP_LIMIT_US || playback.last_block_us > BLOCK_LIMIT_US) {
-        playback.late = playback.late + 1;
-        if (!is_stopping) {
-            begin_ramp(0, PCM_RAMP_FULL_GAIN, RAMP_IN_FRAMES);
-        }
+    submit_expected_us = decode_ended_us + playback.decode_end_to_submit_us;
+    if (time_since_the_on_time_return(submit_expected_us, playback.last_submit_ended_us) > SUBMIT_DEADLINE_US + LATE_SLACK_US && !is_stopping) {
+        begin_ramp(0, PCM_RAMP_FULL_GAIN, RAMP_IN_FRAMES);
     }
 }
 
@@ -409,11 +442,14 @@ static void play_one_grain(void)
     decode_started_us = clock_now_us();
     music_source_fill(&source, grain, MUSIC_GRAIN_FRAMES);
     decode_ended_us = clock_now_us();
-    ramp_in_again_after_a_gap(decode_ended_us);
+    ramp_in_again_if_the_submit_will_miss_its_deadline(decode_ended_us);
     pcm_ramp_apply(&ramp, grain, MUSIC_GRAIN_FRAMES);
     if (!submit_grain(decode_ended_us - decode_started_us)) {
         abandon_playback();
-    } else if (source.has_ended) {
+        return;
+    }
+    playback.decode_end_to_submit_us = playback.last_submit_started_us - decode_ended_us;
+    if (source.has_ended) {
         finish_playback("end");
     } else if (pcm_ramp_has_faded_out(&ramp)) {
         finish_playback("stop");
@@ -431,7 +467,7 @@ static int open_port(void)
         return 0;
     }
     audio_port_read_facts(AUDIO_PORT_MUSIC, &facts);
-    run_log_write(LOG_FOR_TOOLS_MUSIC_PORT, (unsigned int)result, facts.rate, facts.grain, facts.mode, facts.adopt, facts.system_volume);
+    run_log_write(LOG_FOR_TOOLS_MUSIC_PORT, (unsigned int)result, facts.rate, facts.grain, facts.mode, facts.adopt);
     return 1;
 }
 

@@ -13,11 +13,14 @@ SOUND_GRAIN_FRAMES = 512
 MUSIC_GRAIN_US = MUSIC_GRAIN_FRAMES * 1000000 / MUSIC_RATE
 RATE_TOLERANCE = 0.005
 FEWEST_WINDOWS_FOR_A_RATE_FIT = 5
-DECODE_SHARE_LIMIT = 0.40
-DECODE_US_MAX_LIMIT = 46000
-GRAIN_TIME_TOLERANCE = 0.20
+DECODE_SHARE_LIMIT = 0.20
+DECODE_US_MAX_LIMIT = 18000
+LARGEST_WORK_PER_GRAIN_US = 3000
+LARGEST_OVERRUN_PER_GRAIN_US = 500
+LONGEST_SOUND_RETURN_TO_SUBMIT_US = 11000
 LONGEST_SOUND_WAIT_US = 25000
 SHORTEST_CAPTURE_STALL_US = 100000
+WINDOWS_A_STARVE_CAN_LAND_IN = 2
 FALLBACK_ADVICE = "fallback: first try scePowerSetArmClockFrequency(444); if it still misses, put the ADPCM decoder behind vorbis_stream"
 BLOCKING_ADVICE = "the assumption that sceAudioOutOutput returns while a grain is still queued looks wrong; the design then needs a decode-ahead thread and a small ring"
 ERROR_LINE_STARTS = (
@@ -90,6 +93,22 @@ def read_playbacks(messages):
     return playbacks
 
 
+class SoundPort:
+    def __init__(self, index):
+        self.name = "sound port %d" % index
+        self.windows = []
+
+
+def read_sound_ports(messages):
+    ports = []
+    for message in messages:
+        if message.startswith("sound port "):
+            ports.append(SoundPort(len(ports)))
+        elif message.startswith("sound window ") and len(ports) > 0:
+            ports[-1].windows.append(fields_of(message))
+    return ports
+
+
 def position_of(messages, start_of_line):
     for position, message in enumerate(messages):
         if message.startswith(start_of_line):
@@ -156,9 +175,9 @@ def check_checksums(playbacks, assets_folder, reference_path):
     return problems
 
 
-def fitted_rate(windows):
+def fitted_rate(windows, grain_frames):
     times = [number(window, "wall_us") / 1000000.0 for window in windows]
-    positions = [number(window, "at") + number(window, "frames") - number(window, "rest") for window in windows]
+    positions = [number(window, "at") + number(window, "grains") * grain_frames for window in windows]
     time_mean = sum(times) / len(times)
     position_mean = sum(positions) / len(positions)
     spread = sum((time - time_mean) ** 2 for time in times)
@@ -169,65 +188,40 @@ def fitted_rate(windows):
 
 def windows_between_gaps(windows):
     segments = [[]]
-    previous_trouble = None
+    previous_late = None
     for window in windows:
-        trouble = number(window, "late") + number(window, "underruns")
-        if previous_trouble is not None and trouble != previous_trouble:
+        late = number(window, "late")
+        if previous_late is not None and late != previous_late:
+            segments[-1].pop()
             segments.append([])
-        previous_trouble = trouble
+        previous_late = late
         segments[-1].append(window)
     return segments
 
 
-def check_rate(playbacks):
+def fitted_rates_of(port, grain_frames):
+    rates = []
+    for segment in windows_between_gaps(port.windows[1:]):
+        if len(segment) >= FEWEST_WINDOWS_FOR_A_RATE_FIT:
+            rates.append((segment, fitted_rate(segment, grain_frames)))
+    return rates
+
+
+def rate_problems(ports, grain_frames):
     problems = []
     was_fitted = False
-    for playback in playbacks:
-        for segment in windows_between_gaps(playback.windows[1:]):
-            if len(segment) < FEWEST_WINDOWS_FOR_A_RATE_FIT:
-                continue
+    for port in ports:
+        for segment, rate in fitted_rates_of(port, grain_frames):
             was_fitted = True
-            rate = fitted_rate(segment)
             if abs(rate - MUSIC_RATE) > MUSIC_RATE * RATE_TOLERANCE:
-                problems.append("%s plays at %.1f frames per second from window %s" % (playback.name, rate, segment[0]["index"]))
-    if not was_fitted and len(playbacks) > 0:
+                problems.append("%s plays at %.1f frames per second from window %s" % (port.name, rate, segment[0]["index"]))
+    if not was_fitted and len(ports) > 0:
         problems.append("no stretch of %d windows without a gap to fit a rate on" % FEWEST_WINDOWS_FOR_A_RATE_FIT)
     return problems
 
 
-def trouble_of(window):
-    return number(window, "underruns") + number(window, "late")
-
-
-def check_no_gaps_outside_the_starve_test(playbacks, messages):
-    problems = []
-    starve_position = position_of(messages, "command music_starve")
-    allowed_rises = 1
-    for playback in playbacks:
-        previous_trouble = 0
-        for window in playback.windows:
-            trouble = trouble_of(window)
-            if trouble > previous_trouble:
-                if starve_position is not None and window["log_position"] > starve_position and allowed_rises > 0:
-                    allowed_rises = allowed_rises - 1
-                else:
-                    problems.append("%s window %s has underruns=%s late=%s outside the starve test" % (playback.name, window["index"], window["underruns"], window["late"]))
-            previous_trouble = trouble
-    return problems
-
-
-def check_starve_test_fired(playbacks, messages):
-    starve_position = position_of(messages, "command music_starve")
-    if starve_position is None:
-        return ["this run has no music_starve command, so a count of zero proves nothing"]
-    for playback in playbacks:
-        previous_trouble = 0
-        for window in playback.windows:
-            trouble = trouble_of(window)
-            if window["log_position"] > starve_position and trouble > previous_trouble:
-                return []
-            previous_trouble = trouble
-    return ["music_starve raised neither underruns nor late"]
+def check_rate(playbacks, sound_ports):
+    return rate_problems(playbacks, MUSIC_GRAIN_FRAMES) + rate_problems(sound_ports, SOUND_GRAIN_FRAMES)
 
 
 def music_played_on_both_sides_of(playback, position):
@@ -235,6 +229,50 @@ def music_played_on_both_sides_of(playback, position):
     window_before = any(window["log_position"] < position for window in playback.windows)
     window_after = any(window["log_position"] > position for window in playback.windows)
     return window_before and window_after and not stopped_before
+
+
+def rise_in_late(windows, index):
+    return number(windows[index], "late") - number(windows[index - 1], "late")
+
+
+def window_the_starve_raised_late_in(playbacks, messages):
+    starve_position = position_of(messages, "command music_starve")
+    if starve_position is None:
+        return None
+    starve_us = number(fields_of(messages[starve_position]), "ms") * 1000
+    for playback in playbacks:
+        if not music_played_on_both_sides_of(playback, starve_position):
+            continue
+        windows = playback.windows
+        first_after = min(index for index, window in enumerate(windows) if window["log_position"] > starve_position)
+        for index in range(first_after, min(first_after + WINDOWS_A_STARVE_CAN_LAND_IN, len(windows))):
+            if number(windows[index], "gap_us_max") >= starve_us:
+                for rise_index in range(index, min(index + 2, len(windows))):
+                    if rise_in_late(windows, rise_index) == 1:
+                        return windows[rise_index]
+                return None
+    return None
+
+
+def check_no_gaps_outside_the_starve_test(playbacks, messages):
+    problems = []
+    forgiven_window = window_the_starve_raised_late_in(playbacks, messages)
+    for playback in playbacks:
+        previous_late = 0
+        for window in playback.windows:
+            late = number(window, "late")
+            if late > previous_late and window is not forgiven_window:
+                problems.append("%s window %s has late=%s outside the starve test" % (playback.name, window["index"], window["late"]))
+            previous_late = late
+    return problems
+
+
+def check_starve_test_fired(playbacks, messages):
+    if position_of(messages, "command music_starve") is None:
+        return ["this run has no music_starve command, so a count of zero proves nothing"]
+    if window_the_starve_raised_late_in(playbacks, messages) is None:
+        return ["music_starve did not raise late by one with a gap at least that long while music played"]
+    return []
 
 
 def check_capture_stall_was_survived(playbacks, messages):
@@ -267,8 +305,6 @@ def check_port_facts(messages):
             problems.append("music port mode=%s" % fields["mode"])
         if number(fields, "adopt") != 1:
             problems.append("music port adopt=%s" % fields["adopt"])
-        if number(fields, "system_volume") == 0:
-            problems.append("music port system_volume=0; turn the volume up and run again")
     for fields in sound_ports:
         if number(fields, "rate") != MUSIC_RATE or number(fields, "grain") != SOUND_GRAIN_FRAMES:
             problems.append("sound port is rate=%s grain=%s" % (fields["rate"], fields["grain"]))
@@ -305,16 +341,19 @@ def check_budget(playbacks):
 
 def check_blocking(playbacks):
     problems = []
+    windows_checked = 0
     for playback in playbacks:
         for segment in windows_between_gaps(playback.windows[1:]):
             for window in segment[1:]:
                 if number(window, "grains") < 2:
                     continue
-                if number(window, "rest") <= 0:
-                    problems.append("%s window %s has rest=%s; %s" % (playback.name, window["index"], window["rest"], BLOCKING_ADVICE))
+                windows_checked = windows_checked + 1
                 grain_time = number(window, "block_us_avg") + number(window, "decode_us_avg")
-                if abs(grain_time - MUSIC_GRAIN_US) > MUSIC_GRAIN_US * GRAIN_TIME_TOLERANCE:
+                left_for_other_work = MUSIC_GRAIN_US - grain_time
+                if left_for_other_work > LARGEST_WORK_PER_GRAIN_US or left_for_other_work < -LARGEST_OVERRUN_PER_GRAIN_US:
                     problems.append("%s window %s spends %d us per grain, a grain lasts %d us; %s" % (playback.name, window["index"], grain_time, MUSIC_GRAIN_US, BLOCKING_ADVICE))
+    if windows_checked == 0 and len(playbacks) > 0:
+        problems.append("no window without a gap to check the blocking on")
     return problems
 
 
@@ -382,12 +421,21 @@ def check_cues_played_in_scene_order(messages, assets_folder, step_kind, started
 
 def check_sound_windows(messages):
     problems = []
-    windows = [fields_of(message) for message in messages if message.startswith("sound window ")]
-    if len(windows) == 0:
+    ports = read_sound_ports(messages)
+    if not any(port.windows for port in ports):
         problems.append("no sound window lines")
-    for window in windows:
-        if number(window, "underruns") > 0:
-            problems.append("sound window %s has underruns=%s" % (window["index"], window["underruns"]))
+    for port in ports:
+        previous_late = 0
+        previous_voices = 0
+        for window in port.windows:
+            late = number(window, "late")
+            voices = number(window, "voices_max")
+            if late > previous_late and (voices > 0 or previous_voices > 0):
+                problems.append("%s window %s has late=%s while a voice played" % (port.name, window["index"], window["late"]))
+            previous_late = late
+            previous_voices = voices
+            if number(window, "gap_us_max") > LONGEST_SOUND_RETURN_TO_SUBMIT_US:
+                problems.append("%s window %s submits %s us after a return, the limit is %d us" % (port.name, window["index"], window["gap_us_max"], LONGEST_SOUND_RETURN_TO_SUBMIT_US))
     for message in messages:
         if message.startswith("sound dropped "):
             problems.append(message)
@@ -402,10 +450,11 @@ def check_sound_windows(messages):
 
 def run_checks(messages, assets_folder, reference_path):
     playbacks = read_playbacks(messages)
+    sound_ports = read_sound_ports(messages)
     return [
         ("windows are contiguous", check_windows_are_contiguous(playbacks)),
         ("checksums match the reference", check_checksums(playbacks, assets_folder, reference_path)),
-        ("position follows the wall clock", check_rate(playbacks)),
+        ("position follows the wall clock", check_rate(playbacks, sound_ports)),
         ("no gaps outside the starve test", check_no_gaps_outside_the_starve_test(playbacks, messages)),
         ("the starve test fired the detector", check_starve_test_fired(playbacks, messages)),
         ("a capture stall did not reach the audio", check_capture_stall_was_survived(playbacks, messages)),
@@ -421,9 +470,27 @@ def run_checks(messages, assets_folder, reference_path):
     ]
 
 
-def print_budget_numbers(messages):
-    worst_share, worst_decode_us = measured_budget(read_playbacks(messages))
+def largest_period_of(port):
+    return max((number(window, "period_us_max") for window in port.windows), default=0)
+
+
+def print_port_numbers(label, port, grain_frames):
+    rates = fitted_rates_of(port, grain_frames)
+    if len(rates) == 0:
+        rate_text = "no stretch of %d windows to fit a rate on" % FEWEST_WINDOWS_FOR_A_RATE_FIT
+    else:
+        rate_text = ", ".join("%.2f frames per second over %d windows" % (rate, len(segment)) for segment, rate in rates)
+    print("measured: %s %s, largest period %d us, late %d" % (label, rate_text, largest_period_of(port), number(port.windows[-1], "late") if port.windows else 0))
+
+
+def print_measured_numbers(messages):
+    playbacks = read_playbacks(messages)
+    worst_share, worst_decode_us = measured_budget(playbacks)
     print("measured: worst decode share %.1f%%, decode_us_max %d us" % (worst_share * 100, worst_decode_us))
+    for playback in playbacks:
+        print_port_numbers("music port " + playback.name, playback, MUSIC_GRAIN_FRAMES)
+    for port in read_sound_ports(messages):
+        print_port_numbers(port.name, port, SOUND_GRAIN_FRAMES)
 
 
 def main():
@@ -443,7 +510,7 @@ def main():
         print("FAIL", name)
         for problem in problems:
             print("    " + problem)
-    print_budget_numbers(messages)
+    print_measured_numbers(messages)
     return 1 if failed else 0
 
 

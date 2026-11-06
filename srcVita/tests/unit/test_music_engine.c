@@ -18,8 +18,13 @@
 #define RAMP_IN_FRAMES 512
 #define WINDOW_GRAINS 11
 #define GRAIN_US_AS_THE_FAKE_ADVANCES 92879
-#define GAP_LIMIT_US 92880
-#define BLOCK_LIMIT_US (2 * 92880)
+#define FIRST_BLOCK_US FAKE_AUDIO_MUSIC_SHORTEST_BLOCK_US
+#define LATE_SLACK_US 1000
+#define LATE_PERIOD_US (92880 + LATE_SLACK_US)
+#define SUBMIT_DEADLINE_US 22080
+#define LATE_RETURN_WITH_NO_GAP_US 5000
+#define LATE_RETURN_THAT_EATS_THE_DEADLINE_US 15000
+#define SUBMIT_AFTER_THE_LATE_RETURN_AT_THE_LIMIT_US 8081
 #define BUSY_PORT_CODE ((int)0x80260002)
 #define LOOP_START 11025
 #define LOOP_LAST 33074
@@ -174,7 +179,7 @@ static void test_playback_starts_with_a_zero_grain_then_ramps_in_then_matches_th
     CHECK(fake_audio_port_is_open(AUDIO_PORT_MUSIC));
     CHECK_INT(fake_audio_port_rate(AUDIO_PORT_MUSIC), MUSIC_RATE);
     CHECK_INT(fake_audio_port_grain_frames(AUDIO_PORT_MUSIC), MUSIC_GRAIN_FRAMES);
-    CHECK_HAS_TEXT(log_text(), "music port result=0x00000000 rate=44100 grain=4096 mode=1 adopt=1 system_volume=20");
+    CHECK_HAS_TEXT(log_text(), "music port result=0x00000000 rate=44100 grain=4096 mode=1 adopt=1");
     CHECK_HAS_TEXT(log_text(), "music started name=song looping=0 loop_start=-1 loop_last=-1");
     CHECK_HAS_TEXT(log_text(), "music ramp at=4096 frames=512 from=0 to=32768");
     CHECK_INT(grains_played(), 1);
@@ -211,12 +216,12 @@ static void test_each_window_line_describes_exactly_what_was_submitted(void)
     fake_clock_set_tick_per_read_us(1000);
     music_request_play("song", 1);
     pump(WINDOW_GRAINS);
-    snprintf(wanted, sizeof(wanted), "music window name=song index=0 at=0 source_frame=0 grains=11 frames=45056 crc32=%08x crc_total=%08x rest=4096 wall_us=", crc_of_grains(0, WINDOW_GRAINS), crc_of_grains(0, WINDOW_GRAINS));
+    snprintf(wanted, sizeof(wanted), "music window name=song index=0 at=0 source_frame=0 grains=11 frames=45056 crc32=%08x crc_total=%08x wall_us=", crc_of_grains(0, WINDOW_GRAINS), crc_of_grains(0, WINDOW_GRAINS));
     CHECK_HAS_TEXT(log_text(), wanted);
-    CHECK_HAS_TEXT(log_text(), "underruns=0 late=0 loops=0 decode_us_avg=909 decode_us_max=1000 block_us_avg=93879 block_us_max=93879 gap_us_max=");
+    CHECK_HAS_TEXT(log_text(), "late=0 loops=0 decode_us_avg=909 decode_us_max=1000 ");
     pump(WINDOW_GRAINS);
     CHECK_INT(grains_played(), WINDOW_GRAINS * 2);
-    snprintf(wanted, sizeof(wanted), "music window name=song index=1 at=45056 source_frame=40960 grains=11 frames=45056 crc32=%08x crc_total=%08x rest=4096 wall_us=", crc_of_grains(WINDOW_GRAINS, WINDOW_GRAINS), crc_of_grains(0, WINDOW_GRAINS * 2));
+    snprintf(wanted, sizeof(wanted), "music window name=song index=1 at=45056 source_frame=40960 grains=11 frames=45056 crc32=%08x crc_total=%08x wall_us=", crc_of_grains(WINDOW_GRAINS, WINDOW_GRAINS), crc_of_grains(0, WINDOW_GRAINS * 2));
     CHECK_HAS_TEXT(log_text(), wanted);
     CHECK_HAS_TEXT(log_text(), "loops=1 ");
     fake_clock_set_tick_per_read_us(0);
@@ -231,7 +236,7 @@ static void test_wall_time_comes_from_the_first_submit(void)
     add_track("song");
     music_request_play("song", 1);
     pump(WINDOW_GRAINS);
-    snprintf(wanted, sizeof(wanted), "wall_us=%d ", GRAIN_US_AS_THE_FAKE_ADVANCES * WINDOW_GRAINS);
+    snprintf(wanted, sizeof(wanted), "wall_us=%llu ", FIRST_BLOCK_US + GRAIN_US_AS_THE_FAKE_ADVANCES * (WINDOW_GRAINS - 1));
     CHECK_HAS_TEXT(log_text(), wanted);
     finish();
 }
@@ -246,34 +251,70 @@ static void test_the_stopped_line_totals_every_grain_and_the_last_window_is_not_
     pump(4);
     music_request_stop(0);
     pump_until_port_closes();
-    snprintf(wanted, sizeof(wanted), "music stopped name=song reason=stop submitted=%d grains=%d crc_total=%08x underruns=0 late=0", grains_played() * MUSIC_GRAIN_FRAMES, grains_played(), crc_of_grains(0, grains_played()));
+    snprintf(wanted, sizeof(wanted), "music stopped name=song reason=stop submitted=%d grains=%d crc_total=%08x late=0", grains_played() * MUSIC_GRAIN_FRAMES, grains_played(), crc_of_grains(0, grains_played()));
     CHECK_HAS_TEXT(log_text(), wanted);
     snprintf(wanted, sizeof(wanted), "music window name=song index=0 at=0 source_frame=0 grains=%d ", grains_played());
     CHECK_HAS_TEXT(log_text(), wanted);
     finish();
 }
 
-static void test_a_port_with_nothing_waiting_counts_as_an_underrun_except_before_the_first_grain(void)
+static void test_the_first_grain_after_idle_has_no_period_to_be_late_on(void)
 {
     set_up();
     add_track("song");
-    fake_audio_port_set_frames_waiting(AUDIO_PORT_MUSIC, 0);
+    fake_clock_set_us(1000000);
     music_request_play("song", 1);
     pump(WINDOW_GRAINS);
-    CHECK_HAS_TEXT(log_text(), "rest=0 ");
-    CHECK_HAS_TEXT(log_text(), "underruns=10 ");
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    CHECK_HAS_TEXT(log_text(), "period_us_max=92879");
+    CHECK(strstr(log_text(), "gap_us_max=1000000") == NULL);
+    finish();
+}
+
+static void test_each_window_reports_its_own_largest_period(void)
+{
+    char wanted[64];
+
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
+    pump(3);
+    fake_clock_advance_us(SUBMIT_DEADLINE_US + 500);
+    pump(WINDOW_GRAINS - 3);
+    snprintf(wanted, sizeof(wanted), "period_us_max=%llu", FIRST_BLOCK_US + SUBMIT_DEADLINE_US + 500);
+    CHECK_HAS_TEXT(log_text(), wanted);
+    pump(WINDOW_GRAINS);
+    CHECK_HAS_TEXT(log_text(), "index=1 ");
+    CHECK_INT(count_in_log(wanted), 1);
+    CHECK_HAS_TEXT(log_text(), "period_us_max=92879");
+    finish();
+}
+
+static void test_a_submit_inside_the_deadline_does_not_stretch_the_period(void)
+{
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
+    pump(3);
+    fake_clock_advance_us(SUBMIT_DEADLINE_US - 1000);
+    pump(WINDOW_GRAINS - 3);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    CHECK_HAS_TEXT(log_text(), "period_us_max=92879");
     CHECK_INT(count_in_log("music ramp"), 1);
     finish();
 }
 
-static void test_a_rest_error_is_not_an_underrun(void)
+static void test_the_gap_is_measured_up_to_the_start_of_the_next_submit(void)
 {
     set_up();
     add_track("song");
-    fake_audio_port_set_frames_waiting(AUDIO_PORT_MUSIC, -5);
     music_request_play("song", 1);
-    pump(WINDOW_GRAINS);
-    CHECK_HAS_TEXT(log_text(), "underruns=0 ");
+    pump(2);
+    fake_clock_set_tick_per_read_us(1000);
+    pump(1);
+    fake_clock_set_tick_per_read_us(0);
+    pump(WINDOW_GRAINS - 3);
+    CHECK_HAS_TEXT(log_text(), "gap_us_max=2000 ");
     finish();
 }
 
@@ -298,45 +339,236 @@ static void test_a_gap_counts_as_late_and_ramps_the_next_grain_in_again(void)
     }
     CHECK(memcmp(&grain[RAMP_IN_FRAMES * 2], &linear[(MUSIC_GRAIN_FRAMES * 3 + RAMP_IN_FRAMES) * 2], (MUSIC_GRAIN_FRAMES - RAMP_IN_FRAMES) * 4) == 0);
     pump(WINDOW_GRAINS - 5);
-    CHECK_HAS_TEXT(log_text(), "underruns=0 late=1 ");
+    CHECK_HAS_TEXT(log_text(), " late=1 ");
     CHECK_HAS_TEXT(log_text(), "gap_us_max=300000");
     CHECK_INT(count_in_log("music ramp"), 2);
     finish();
 }
 
-static void test_the_gap_limit_is_one_grain(void)
+static void test_a_period_at_the_limit_is_not_late(void)
 {
+    char wanted[64];
+
     set_up();
     add_track("song");
     music_request_play("song", 1);
     pump(3);
-    fake_clock_advance_us(GAP_LIMIT_US);
-    pump(1);
+    fake_clock_advance_us(LATE_PERIOD_US - FIRST_BLOCK_US);
+    pump(WINDOW_GRAINS - 3);
+    snprintf(wanted, sizeof(wanted), "period_us_max=%d", LATE_PERIOD_US);
+    CHECK_HAS_TEXT(log_text(), wanted);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
     CHECK_INT(count_in_log("music ramp"), 1);
-    fake_clock_advance_us(GAP_LIMIT_US + 1);
+    finish();
+}
+
+static void test_a_stretch_the_next_period_brings_back_to_the_slack_is_not_late(void)
+{
+    char wanted[64];
+
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
+    pump(3);
+    fake_clock_advance_us(LATE_PERIOD_US - FIRST_BLOCK_US + 1);
+    pump(WINDOW_GRAINS - 3);
+    snprintf(wanted, sizeof(wanted), "period_us_max=%d", LATE_PERIOD_US + 1);
+    CHECK_HAS_TEXT(log_text(), wanted);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    finish();
+}
+
+static void test_a_period_past_the_limit_is_late_once_and_its_grain_ramps_in(void)
+{
+    char wanted[64];
+
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
+    pump(3);
+    fake_clock_advance_us(LATE_PERIOD_US - FIRST_BLOCK_US + 2);
     pump(1);
+    CHECK_INT(count_in_log("music ramp"), 2);
+    CHECK_HAS_TEXT(log_text(), "music ramp at=12288 frames=512 from=0 to=32768");
+    pump(WINDOW_GRAINS - 4);
+    snprintf(wanted, sizeof(wanted), "period_us_max=%d", LATE_PERIOD_US + 2);
+    CHECK_HAS_TEXT(log_text(), wanted);
+    CHECK_HAS_TEXT(log_text(), " late=1 ");
     CHECK_INT(count_in_log("music ramp"), 2);
     finish();
 }
 
-static void test_a_stall_inside_the_port_also_counts_as_a_gap(void)
+static void test_a_stretch_exactly_at_the_slack_starts_no_count(void)
 {
     set_up();
     add_track("song");
     music_request_play("song", 1);
     pump(3);
-    fake_audio_port_add_block_once_us(AUDIO_PORT_MUSIC, BLOCK_LIMIT_US - GRAIN_US_AS_THE_FAKE_ADVANCES);
+    fake_clock_advance_us(LATE_PERIOD_US - FIRST_BLOCK_US);
     pump(1);
-    CHECK_INT(count_in_log("music ramp"), 1);
+    fake_audio_port_add_block_once_us(AUDIO_PORT_MUSIC, 3);
+    pump(WINDOW_GRAINS - 4);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    finish();
+}
+
+static void test_a_gap_on_the_last_grain_of_a_window_counts_in_the_next_window(void)
+{
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
+    pump(WINDOW_GRAINS - 1);
+    fake_clock_advance_us(300000);
     pump(1);
-    CHECK_INT(count_in_log("music ramp"), 1);
-    fake_audio_port_add_block_once_us(AUDIO_PORT_MUSIC, BLOCK_LIMIT_US - GRAIN_US_AS_THE_FAKE_ADVANCES + 1);
+    CHECK_HAS_TEXT(log_text(), "index=0 ");
+    CHECK_HAS_TEXT(log_text(), "gap_us_max=300000");
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    pump(WINDOW_GRAINS);
+    CHECK_HAS_TEXT(log_text(), "index=1 ");
+    CHECK_HAS_TEXT(log_text(), " late=1 ");
+    finish();
+}
+
+static void test_a_sustained_stretch_counts_each_grain(void)
+{
+    int grain_index;
+
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
     pump(1);
-    CHECK_INT(count_in_log("music ramp"), 1);
+    for (grain_index = 1; grain_index < WINDOW_GRAINS; grain_index++) {
+        fake_clock_advance_us(SUBMIT_DEADLINE_US + 2000);
+        pump(1);
+    }
+    CHECK_HAS_TEXT(log_text(), " late=9 ");
+    finish();
+}
+
+static void test_the_ramp_goes_on_the_grain_whose_submit_will_miss_the_deadline(void)
+{
+    set_up();
+    add_track("song");
+    fake_clock_set_tick_per_read_us(1000);
+    music_request_play("song", 1);
+    pump(3);
+    fake_clock_advance_us(SUBMIT_DEADLINE_US + LATE_SLACK_US - 2000 - 1000 + 1);
     pump(1);
     CHECK_INT(count_in_log("music ramp"), 2);
-    pump(WINDOW_GRAINS);
-    CHECK_HAS_TEXT(log_text(), "late=1 ");
+    CHECK_HAS_TEXT(log_text(), "music ramp at=12288 frames=512 from=0 to=32768");
+    fake_clock_set_tick_per_read_us(0);
+    finish();
+}
+
+static void test_a_submit_expected_right_at_the_deadline_needs_no_ramp(void)
+{
+    set_up();
+    add_track("song");
+    fake_clock_set_tick_per_read_us(1000);
+    music_request_play("song", 1);
+    pump(3);
+    fake_clock_advance_us(SUBMIT_DEADLINE_US + LATE_SLACK_US - 2000 - 1000);
+    pump(1);
+    CHECK_INT(count_in_log("music ramp"), 1);
+    fake_clock_set_tick_per_read_us(0);
+    finish();
+}
+
+static void test_a_return_late_inside_the_slack_is_not_late(void)
+{
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
+    pump(3);
+    fake_audio_port_add_block_once_us(AUDIO_PORT_MUSIC, LATE_PERIOD_US - GRAIN_US_AS_THE_FAKE_ADVANCES);
+    pump(WINDOW_GRAINS - 3);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    CHECK_INT(count_in_log("music ramp"), 1);
+    finish();
+}
+
+static void test_a_late_return_the_next_period_pays_back_is_no_gap_and_gets_no_ramp(void)
+{
+    char wanted[64];
+
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
+    pump(3);
+    fake_audio_port_add_block_once_us(AUDIO_PORT_MUSIC, LATE_RETURN_WITH_NO_GAP_US);
+    pump(WINDOW_GRAINS - 3);
+    CHECK_INT(count_in_log("music ramp"), 1);
+    CHECK(memcmp(played_grain(4), &linear[MUSIC_GRAIN_FRAMES * 3 * 2], GRAIN_BYTES) == 0);
+    snprintf(wanted, sizeof(wanted), "period_us_max=%d", GRAIN_US_AS_THE_FAKE_ADVANCES + LATE_RETURN_WITH_NO_GAP_US);
+    CHECK_HAS_TEXT(log_text(), wanted);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    CHECK(strstr(log_text(), "late=1") == NULL);
+    finish();
+}
+
+static void test_a_submit_inside_what_a_late_return_leaves_of_the_deadline_gets_no_ramp(void)
+{
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
+    pump(3);
+    fake_audio_port_add_block_once_us(AUDIO_PORT_MUSIC, LATE_RETURN_THAT_EATS_THE_DEADLINE_US);
+    pump(1);
+    fake_clock_advance_us(SUBMIT_AFTER_THE_LATE_RETURN_AT_THE_LIMIT_US);
+    pump(WINDOW_GRAINS - 4);
+    CHECK_INT(count_in_log("music ramp"), 1);
+    CHECK_HAS_TEXT(log_text(), "late=0 ");
+    finish();
+}
+
+static void test_a_submit_past_what_a_late_return_leaves_of_the_deadline_is_late_and_ramps(void)
+{
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
+    pump(3);
+    fake_audio_port_add_block_once_us(AUDIO_PORT_MUSIC, LATE_RETURN_THAT_EATS_THE_DEADLINE_US);
+    pump(1);
+    fake_clock_advance_us(SUBMIT_AFTER_THE_LATE_RETURN_AT_THE_LIMIT_US + 1);
+    pump(1);
+    CHECK_INT(count_in_log("music ramp"), 2);
+    CHECK_HAS_TEXT(log_text(), "music ramp at=16384 frames=512 from=0 to=32768");
+    pump(WINDOW_GRAINS - 5);
+    CHECK_HAS_TEXT(log_text(), " late=1 ");
+    CHECK_INT(count_in_log("music ramp"), 2);
+    finish();
+}
+
+static void test_the_deadline_is_back_to_normal_once_a_late_return_is_paid_back(void)
+{
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
+    pump(3);
+    fake_audio_port_add_block_once_us(AUDIO_PORT_MUSIC, LATE_RETURN_WITH_NO_GAP_US);
+    pump(2);
+    fake_clock_advance_us(LATE_PERIOD_US - FIRST_BLOCK_US + 1);
+    pump(1);
+    CHECK_INT(count_in_log("music ramp"), 2);
+    CHECK_HAS_TEXT(log_text(), "music ramp at=20480 frames=512 from=0 to=32768");
+    finish();
+}
+
+static void test_a_gap_after_a_late_return_during_a_fade_counts_but_gets_no_ramp(void)
+{
+    set_up();
+    add_track("song");
+    music_request_play("song", 1);
+    pump(3);
+    music_request_stop(600);
+    pump(1);
+    fake_audio_port_add_block_once_us(AUDIO_PORT_MUSIC, LATE_PERIOD_US);
+    pump(2);
+    CHECK_INT(count_in_log("to=32768"), 1);
+    music_request_stop(0);
+    pump_until_port_closes();
+    CHECK_HAS_TEXT(log_text(), "music stopped name=song reason=stop ");
+    CHECK_HAS_TEXT(log_text(), "late=1");
     finish();
 }
 
@@ -351,7 +583,7 @@ static void test_starving_sleeps_once_and_the_detector_fires(void)
     CHECK_INT(count_in_log("music ramp"), 2);
     pump(WINDOW_GRAINS);
     CHECK_INT(count_in_log("music ramp"), 2);
-    CHECK_HAS_TEXT(log_text(), "late=1 ");
+    CHECK_HAS_TEXT(log_text(), " late=1 ");
     CHECK_HAS_TEXT(log_text(), "gap_us_max=300000");
     finish();
 }
@@ -844,11 +1076,25 @@ int main(void)
     test_each_window_line_describes_exactly_what_was_submitted();
     test_wall_time_comes_from_the_first_submit();
     test_the_stopped_line_totals_every_grain_and_the_last_window_is_not_lost();
-    test_a_port_with_nothing_waiting_counts_as_an_underrun_except_before_the_first_grain();
-    test_a_rest_error_is_not_an_underrun();
+    test_the_first_grain_after_idle_has_no_period_to_be_late_on();
+    test_each_window_reports_its_own_largest_period();
+    test_a_submit_inside_the_deadline_does_not_stretch_the_period();
+    test_the_gap_is_measured_up_to_the_start_of_the_next_submit();
     test_a_gap_counts_as_late_and_ramps_the_next_grain_in_again();
-    test_the_gap_limit_is_one_grain();
-    test_a_stall_inside_the_port_also_counts_as_a_gap();
+    test_a_period_at_the_limit_is_not_late();
+    test_a_stretch_the_next_period_brings_back_to_the_slack_is_not_late();
+    test_a_period_past_the_limit_is_late_once_and_its_grain_ramps_in();
+    test_a_stretch_exactly_at_the_slack_starts_no_count();
+    test_a_gap_on_the_last_grain_of_a_window_counts_in_the_next_window();
+    test_a_sustained_stretch_counts_each_grain();
+    test_the_ramp_goes_on_the_grain_whose_submit_will_miss_the_deadline();
+    test_a_submit_expected_right_at_the_deadline_needs_no_ramp();
+    test_a_return_late_inside_the_slack_is_not_late();
+    test_a_late_return_the_next_period_pays_back_is_no_gap_and_gets_no_ramp();
+    test_a_submit_inside_what_a_late_return_leaves_of_the_deadline_gets_no_ramp();
+    test_a_submit_past_what_a_late_return_leaves_of_the_deadline_is_late_and_ramps();
+    test_the_deadline_is_back_to_normal_once_a_late_return_is_paid_back();
+    test_a_gap_after_a_late_return_during_a_fade_counts_but_gets_no_ramp();
     test_starving_sleeps_once_and_the_detector_fires();
     test_a_loop_file_with_looping_on_seeks_after_the_last_frame();
     test_looping_without_a_loop_file_restarts_at_frame_zero();

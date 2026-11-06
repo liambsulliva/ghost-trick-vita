@@ -14,6 +14,12 @@ AUDIO_PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.
 ALL_PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py"]
 ALL_PYTHON_TEST_TIME_LIMIT_SECONDS = 600
 AUDIO_TOOL_FILES = ("audio_check.py", "audio_file.py")
+LONGPLAY_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "test_longplay_check.py"]
+TESTS_THAT_INCLUDE_THE_SOURCE = {
+    "src/main.c": ["integration/test_main_loop"],
+    "src/vita/keep_awake.c": ["unit/test_vita_calls"],
+    "src/vita/system_state.c": ["unit/test_vita_calls"],
+}
 
 MUTATIONS = [
     ("src/app/animation.c", "frame_index + 1 < animation->frame_count", "frame_index < animation->frame_count"),
@@ -234,13 +240,34 @@ MUTATIONS = [
     ("src/app/music_source.c", "source->loop_count = source->loop_count + 1;", ""),
     ("src/app/music_source.c", "if (source->next_frame != 0 && !vorbis_stream_seek(&source->stream, 0)) {\n        return 0;\n    }", ""),
     ("src/app/music_source.c", "} else if (just_went_back || !go_back_to_the_loop_start(source)) {", "} else if (!go_back_to_the_loop_start(source)) {"),
-    ("src/app/music_engine.c", "rest == 0 && playback.grains_submitted > 0", "0"),
-    ("src/app/music_engine.c", "rest == 0 && playback.grains_submitted > 0", "rest == 0"),
-    ("src/app/music_engine.c", "gap_us > GAP_LIMIT_US || ", ""),
-    ("src/app/music_engine.c", "gap_us > GAP_LIMIT_US", "gap_us >= GAP_LIMIT_US"),
-    ("src/app/music_engine.c", " || playback.last_block_us > BLOCK_LIMIT_US", ""),
-    ("src/app/music_engine.c", "playback.last_block_us > BLOCK_LIMIT_US", "playback.last_block_us >= BLOCK_LIMIT_US"),
-    ("src/app/music_engine.c", "if (!is_stopping) {\n            begin_ramp(0", "if (1) {\n            begin_ramp(0"),
+    ("src/app/music_engine.c", "#define GRAIN_US 92880LL", "#define GRAIN_US 92881LL"),
+    ("src/app/music_engine.c", "#define GRAIN_US 92880LL", "#define GRAIN_US 92879LL"),
+    ("src/app/music_engine.c", "#define LATE_SLACK_US 1000LL", "#define LATE_SLACK_US 1001LL"),
+    ("src/app/music_engine.c", "#define LATE_SLACK_US 1000LL", "#define LATE_SLACK_US 999LL"),
+    ("src/app/music_engine.c", "#define SUBMIT_DEADLINE_US 22080LL", "#define SUBMIT_DEADLINE_US 22081LL"),
+    ("src/app/music_engine.c", "#define SUBMIT_DEADLINE_US 22080LL", "#define SUBMIT_DEADLINE_US 22079LL"),
+    ("src/app/music_engine.c", "playback.last_stretch_us > LATE_SLACK_US && ", ""),
+    ("src/app/music_engine.c", "playback.last_stretch_us > LATE_SLACK_US && ", "playback.last_stretch_us >= LATE_SLACK_US && "),
+    ("src/app/music_engine.c", " && playback.last_stretch_us + stretch_us > LATE_SLACK_US", ""),
+    ("src/app/music_engine.c", "playback.last_stretch_us + stretch_us > LATE_SLACK_US", "playback.last_stretch_us + stretch_us >= LATE_SLACK_US"),
+    ("src/app/music_engine.c", "playback.late = playback.late + 1;", ""),
+    ("src/app/music_engine.c", "    playback.last_stretch_us = stretch_us;\n", ""),
+    ("src/app/music_engine.c", " + playback.return_lateness_us;", ";"),
+    ("src/app/music_engine.c", "playback.return_lateness_us = stretch_us > submit_missed_by_us ? stretch_us - submit_missed_by_us : 0;", "playback.return_lateness_us = 0;"),
+    ("src/app/music_engine.c", "playback.return_lateness_us = stretch_us > submit_missed_by_us ? stretch_us - submit_missed_by_us : 0;", "playback.return_lateness_us = stretch_us > 0 ? stretch_us : 0;"),
+    ("src/app/music_engine.c", "playback.return_lateness_us = stretch_us > submit_missed_by_us ? stretch_us - submit_missed_by_us : 0;", "playback.return_lateness_us = stretch_us - submit_missed_by_us;"),
+    ("src/app/music_engine.c", "since_on_time_return_us > SUBMIT_DEADLINE_US ? since_on_time_return_us - SUBMIT_DEADLINE_US : 0", "since_on_time_return_us - SUBMIT_DEADLINE_US"),
+    ("src/app/music_engine.c", "> SUBMIT_DEADLINE_US + LATE_SLACK_US && !is_stopping", ">= SUBMIT_DEADLINE_US + LATE_SLACK_US && !is_stopping"),
+    ("src/app/music_engine.c", "time_since_the_on_time_return(submit_expected_us, playback.last_submit_ended_us) > SUBMIT_DEADLINE_US + LATE_SLACK_US && !is_stopping", "0"),
+    ("src/app/music_engine.c", " && !is_stopping", ""),
+    ("src/app/music_engine.c", "submit_expected_us = decode_ended_us + playback.decode_end_to_submit_us;", "submit_expected_us = decode_ended_us;"),
+    ("src/app/music_engine.c", "    playback.decode_end_to_submit_us = playback.last_submit_started_us - decode_ended_us;\n", ""),
+    ("src/app/music_engine.c", "    playback.last_submit_started_us = submit_started_us;\n", ""),
+    ("src/app/music_engine.c", "if (playback.grains_submitted > 0) {\n        note_period_and_gap(previous_return_us, submit_started_us);", "if (1) {\n        note_period_and_gap(previous_return_us, submit_started_us);"),
+    ("src/app/music_engine.c", "window.gap_us_max = larger_of(window.gap_us_max, submit_started_us - previous_return_us);", ""),
+    ("src/app/music_engine.c", "submit_started_us - previous_return_us);", "submit_started_us - previous_return_us - 1000);"),
+    ("src/app/music_engine.c", "window.period_us_max = larger_of(window.period_us_max, period_us);", ""),
+    ("src/app/music_engine.c", "window.period_us_max = larger_of(window.period_us_max, period_us);", "window.period_us_max = period_us;"),
     ("src/app/music_engine.c", "window.grains == WINDOW_GRAINS", "0"),
     ("src/app/music_engine.c", "audio_port_drain(AUDIO_PORT_MUSIC);", ""),
     ("src/app/music_engine.c", "audio_port_close(AUDIO_PORT_MUSIC);\n    mark_playback_stopped(reason);", "mark_playback_stopped(reason);"),
@@ -275,7 +302,21 @@ MUTATIONS = [
     ("src/app/music_engine.c", "size >= sizeof(text)", "size > sizeof(text)"),
     ("src/app/music_engine.c", "size = sizeof(text) - 1;", "size = sizeof(text);"),
     ("src/app/music_engine.c", "if (!music_source_begin(&source, is_looping)) {", "music_source_begin(&source, is_looping);\n    if (0) {"),
-    ("src/app/sound_engine.c", "rest == 0 && totals.grains_submitted > 0", "0"),
+    ("src/app/sound_engine.c", "#define GRAIN_US 11610LL", "#define GRAIN_US 11611LL"),
+    ("src/app/sound_engine.c", "#define GRAIN_US 11610LL", "#define GRAIN_US 11609LL"),
+    ("src/app/sound_engine.c", "#define LATE_SLACK_US 2000LL", "#define LATE_SLACK_US 2001LL"),
+    ("src/app/sound_engine.c", "#define LATE_SLACK_US 2000LL", "#define LATE_SLACK_US 1999LL"),
+    ("src/app/sound_engine.c", "#define LATE_SLACK_US 2000LL", "#define LATE_SLACK_US 9000LL"),
+    ("src/app/sound_engine.c", "totals.last_stretch_us > LATE_SLACK_US && ", ""),
+    ("src/app/sound_engine.c", "totals.last_stretch_us > LATE_SLACK_US && ", "totals.last_stretch_us >= LATE_SLACK_US && "),
+    ("src/app/sound_engine.c", " && totals.last_stretch_us + stretch_us > LATE_SLACK_US", ""),
+    ("src/app/sound_engine.c", "totals.last_stretch_us + stretch_us > LATE_SLACK_US", "totals.last_stretch_us + stretch_us >= LATE_SLACK_US"),
+    ("src/app/sound_engine.c", "totals.late = totals.late + 1;", ""),
+    ("src/app/sound_engine.c", "    totals.last_stretch_us = stretch_us;\n", ""),
+    ("src/app/sound_engine.c", "if (totals.grains_submitted > 0) {\n        note_period_since(previous_return_us);", "if (1) {\n        note_period_since(previous_return_us);"),
+    ("src/app/sound_engine.c", "window.period_us_max = larger_of(window.period_us_max, period_us);", ""),
+    ("src/app/sound_engine.c", "window.period_us_max = larger_of(window.period_us_max, period_us);", "window.period_us_max = period_us;"),
+    ("src/app/sound_engine.c", "    log_window_if_any();\n    audio_port_drain(AUDIO_PORT_SOUND);", "    audio_port_drain(AUDIO_PORT_SOUND);"),
     ("src/app/sound_engine.c", "window.grains == WINDOW_GRAINS", "0"),
     ("src/app/sound_engine.c", "if (voice < 0) {", "if (0) {"),
     ("src/app/sound_engine.c", "voice->clip = NULL;", ""),
@@ -372,6 +413,22 @@ MUTATIONS = [
     ("src/app/viewer_app.c", " && !scene_layers_text_is_fading_out(scene_stage_layers())", ""),
     ("src/app/scene_layers.c", "layers->text_lines[index].in_use && layers->text_lines[index].fade_target_alpha <= 0.0f", "layers->text_lines[index].in_use"),
     ("src/app/scene_layers.c", "layers->text_lines[index].in_use && layers->text_lines[index].fade_target_alpha <= 0.0f", "layers->text_lines[index].fade_target_alpha <= 0.0f"),
+    ("src/app/system_watch.c", "state.overlay != last_logged.overlay || ", ""),
+    ("src/app/system_watch.c", " || state.bgm_adopt != last_logged.bgm_adopt", ""),
+    ("src/app/system_watch.c", "    last_logged = *state;\n", ""),
+    ("src/app/system_watch.c", "    system_state_read(&state);\n    log_state(&state);", "    system_state_read(&state);\n    last_logged = state;"),
+    ("src/main.c", "    keep_awake_tick();\n    file_make_folder", "    file_make_folder"),
+    ("src/main.c", "#define KEEP_AWAKE_FRAMES 30", "#define KEEP_AWAKE_FRAMES 31"),
+    ("src/main.c", "frame_number % KEEP_AWAKE_FRAMES == 0", "frame_number % KEEP_AWAKE_FRAMES == 1"),
+    ("src/main.c", "            keep_awake_tick();\n", ""),
+    ("src/main.c", "    system_watch_start();\n", ""),
+    ("src/main.c", "    system_watch_poll();\n", ""),
+    ("src/vita/keep_awake.c", "#define KEEP_AWAKE_TICK_KIND SCE_KERNEL_POWER_TICK_DEFAULT", "#define KEEP_AWAKE_TICK_KIND SCE_KERNEL_POWER_TICK_DISABLE_AUTO_SUSPEND"),
+    ("src/vita/keep_awake.c", "sceKernelPowerTick(KEEP_AWAKE_TICK_KIND);", ""),
+    ("src/vita/system_state.c", "state->overlay = SYSTEM_STATE_UNREADABLE;", "state->overlay = 0;"),
+    ("src/vita/system_state.c", "state->overlay = app_state.isSystemUiOverlaid;", "state->overlay = 0;"),
+    ("src/vita/system_state.c", "SCE_AUDIO_OUT_PORT_TYPE_BGM", "SCE_AUDIO_OUT_PORT_TYPE_VOICE"),
+    ("src/vita/system_state.c", "#define APP_STATE_SDK_VERSION 0x03600011", "#define APP_STATE_SDK_VERSION 0x03600010"),
 ]
 
 PYTHON_MUTATIONS = [
@@ -551,7 +608,21 @@ PYTHON_MUTATIONS = [
     ("tools/assets/chapter1_opening.json", '["dim_to", 1, 0],\n    ["wait", 4]', '["dim_to", 0, 0],\n    ["wait", 4]'),
     ("tools/assets/chapter1_opening.json", '"alert_burst", 41.6, 226.1333', '"alert_burst", 0.93, 226.1333'),
     ("tools/assets/chapter1_opening.json", '["narration_show", "m01_0040", 0, 60]', '["wait", 1],\n    ["narration_show", "m01_0040", 0, 60]'),
-    ("tools/audio_check.py", "allowed_rises = 1\n    for playback in playbacks:\n        previous_trouble = 0\n", "for playback in playbacks:\n        allowed_rises = 1\n        previous_trouble = 0\n"),
+    ("tools/audio_check.py", "            segments[-1].pop()\n", ""),
+    ("tools/audio_check.py", "if late > previous_late and window is not forgiven_window:", "if False:"),
+    ("tools/audio_check.py", "late > previous_late and window is not forgiven_window", "late > previous_late"),
+    ("tools/audio_check.py", "if window_the_starve_raised_late_in(playbacks, messages) is None:", "if False:"),
+    ("tools/audio_check.py", "if not music_played_on_both_sides_of(playback, starve_position):\n            continue\n", "pass\n"),
+    ("tools/audio_check.py", "WINDOWS_A_STARVE_CAN_LAND_IN = 2", "WINDOWS_A_STARVE_CAN_LAND_IN = 1"),
+    ("tools/audio_check.py", "WINDOWS_A_STARVE_CAN_LAND_IN = 2", "WINDOWS_A_STARVE_CAN_LAND_IN = 3"),
+    ("tools/audio_check.py", 'number(windows[index], "gap_us_max") >= starve_us', 'number(windows[index], "gap_us_max") > starve_us'),
+    ("tools/audio_check.py", 'number(windows[index], "gap_us_max") >= starve_us', "True"),
+    ("tools/audio_check.py", '"ms") * 1000', '"ms")'),
+    ("tools/audio_check.py", "range(index, min(index + 2, len(windows)))", "range(index, min(index + 3, len(windows)))"),
+    ("tools/audio_check.py", "range(index, min(index + 2, len(windows)))", "range(index, min(index + 1, len(windows)))"),
+    ("tools/audio_check.py", "range(index, min(index + 2, len(windows)))", "range(index, index + 2)"),
+    ("tools/audio_check.py", "min(first_after + WINDOWS_A_STARVE_CAN_LAND_IN, len(windows))", "first_after + WINDOWS_A_STARVE_CAN_LAND_IN"),
+    ("tools/audio_check.py", "rise_in_late(windows, rise_index) == 1", "rise_in_late(windows, rise_index) >= 1"),
     ("tools/audio_check.py", "window_before and window_after and not stopped_before", "window_after and not stopped_before"),
     ("tools/audio_check.py", "window_before and window_after and not stopped_before", "window_before and not stopped_before"),
     ("tools/audio_check.py", "window_before and window_after and not stopped_before", "window_before and window_after"),
@@ -560,13 +631,35 @@ PYTHON_MUTATIONS = [
     ("tools/audio_check.py", 'if number(fields, "adopt") != 1:\n            problems.append("music port', 'if False:\n            problems.append("music port'),
     ("tools/audio_check.py", 'if number(fields, "adopt") != 1:\n            problems.append("sound port', 'if False:\n            problems.append("sound port'),
     ("tools/audio_check.py", 'previous_wall_us = number(window, "wall_us")\n', "pass\n"),
-    ("tools/audio_check.py", '"at") + number(window, "frames") - number(window, "rest") for window', '"at") + number(window, "frames") for window'),
+    ("tools/audio_check.py", '"at") + number(window, "grains") * grain_frames for window', '"at") + number(window, "grains") * MUSIC_GRAIN_FRAMES for window'),
+    ("tools/audio_check.py", "DECODE_SHARE_LIMIT = 0.20", "DECODE_SHARE_LIMIT = 0.40"),
+    ("tools/audio_check.py", "DECODE_SHARE_LIMIT = 0.20", "DECODE_SHARE_LIMIT = 0.19"),
+    ("tools/audio_check.py", "DECODE_US_MAX_LIMIT = 18000", "DECODE_US_MAX_LIMIT = 46000"),
+    ("tools/audio_check.py", "DECODE_US_MAX_LIMIT = 18000", "DECODE_US_MAX_LIMIT = 17999"),
+    ("tools/audio_check.py", "LARGEST_WORK_PER_GRAIN_US = 3000", "LARGEST_WORK_PER_GRAIN_US = 3100"),
+    ("tools/audio_check.py", "LARGEST_WORK_PER_GRAIN_US = 3000", "LARGEST_WORK_PER_GRAIN_US = 2900"),
+    ("tools/audio_check.py", "LARGEST_OVERRUN_PER_GRAIN_US = 500", "LARGEST_OVERRUN_PER_GRAIN_US = 600"),
+    ("tools/audio_check.py", "LARGEST_OVERRUN_PER_GRAIN_US = 500", "LARGEST_OVERRUN_PER_GRAIN_US = 400"),
+    ("tools/audio_check.py", "LONGEST_SOUND_RETURN_TO_SUBMIT_US = 11000", "LONGEST_SOUND_RETURN_TO_SUBMIT_US = 11001"),
+    ("tools/audio_check.py", "LONGEST_SOUND_RETURN_TO_SUBMIT_US = 11000", "LONGEST_SOUND_RETURN_TO_SUBMIT_US = 10999"),
+    ("tools/audio_check.py", 'number(window, "block_us_avg") + number(window, "decode_us_avg")', 'number(window, "block_us_avg")'),
+    ("tools/audio_check.py", "if windows_checked == 0 and len(playbacks) > 0:", "if False:"),
+    ("tools/audio_check.py", "for window in segment[1:]:", "for window in segment:"),
+    ("tools/audio_check.py", "late > previous_late and (voices > 0 or previous_voices > 0)", "late > previous_late"),
+    ("tools/audio_check.py", "late > previous_late and (voices > 0 or previous_voices > 0)", "False"),
+    ("tools/audio_check.py", "(voices > 0 or previous_voices > 0)", "voices > 0"),
+    ("tools/audio_check.py", "(voices > 0 or previous_voices > 0)", "previous_voices > 0"),
+    ("tools/audio_check.py", "            previous_voices = voices\n", ""),
+    ("tools/audio_check.py", 'if not any(port.windows for port in ports):', "if False:"),
+    ("tools/audio_check.py", 'if number(window, "gap_us_max") > LONGEST_SOUND_RETURN_TO_SUBMIT_US:', "if False:"),
+    ("tools/audio_check.py", "rate_problems(playbacks, MUSIC_GRAIN_FRAMES) + rate_problems(sound_ports, SOUND_GRAIN_FRAMES)", "rate_problems(playbacks, MUSIC_GRAIN_FRAMES)"),
+    ("tools/audio_check.py", "rate_problems(playbacks, MUSIC_GRAIN_FRAMES) + rate_problems(sound_ports, SOUND_GRAIN_FRAMES)", "rate_problems(sound_ports, SOUND_GRAIN_FRAMES)"),
+    ("tools/audio_check.py", "fitted_rates_of(port, grain_frames):\n    rates = []\n    for segment in windows_between_gaps(port.windows[1:]):", "fitted_rates_of(port, grain_frames):\n    rates = []\n    for segment in [port.windows[1:]]:"),
     ("tools/audio_check.py", '"music bad_loop_file", ', ""),
     ("tools/audio_check.py", '"scene audio_wait_gave_up", ', ""),
-    ("tools/audio_check.py", 'if number(window, "rest") <= 0:', "if False:"),
     ("tools/audio_check.py", 'if window["source_frame"] != source_frame:', "if False:"),
     ("tools/audio_check.py", 'if number(fields, "waited_us") > LONGEST_SOUND_WAIT_US:', "if False:"),
-    ("tools/audio_check.py", "if previous_trouble is not None and trouble != previous_trouble:", "if False:"),
+    ("tools/audio_check.py", "if previous_late is not None and late != previous_late:", "if False:"),
     ("tools/audio_check.py", "            start = index\n", "            pass\n"),
     ("tools/audio_check.py", "if worst_share >= DECODE_SHARE_LIMIT:", "if False:"),
     ("tools/audio_check.py", 'if number(fields, "rate") != MUSIC_RATE or number(fields, "grain") != SOUND_GRAIN_FRAMES:', "if False:"),
@@ -577,6 +670,37 @@ PYTHON_MUTATIONS = [
     ("tools/assets/audio_file.py", 'if stream["rate"] != PLAYBACK_RATE:', "if False:"),
     ("tools/assets/audio_file.py", 'if struct.unpack_from("<I", data, OFFSET_OGG_SIZE)[0] != len(data) - WRAPPER_SIZE:', "if False:"),
     ("tools/assets/audio_file.py", '"ogg": data[WRAPPER_SIZE:],', '"ogg": data,'),
+    ("tools/longplay_check.py", "    report_whether_the_app_is_alive()\n    run_log_shows_no_load_failures()\n", "    run_log_shows_no_load_failures()\n"),
+    ("tools/longplay_check.py", "    report_whether_the_app_is_alive()\n    run_log_shows_no_load_failures()\n", "    report_whether_the_app_is_alive()\n"),
+    ("tools/longplay_check.py", "        print(\"the first scene never became ready\")\n        report_why_the_run_stopped()\n", "        print(\"the first scene never became ready\")\n"),
+    ("tools/longplay_check.py", "        if not capture_one_scene(scene_name):\n            report_why_the_run_stopped()\n", "        if not capture_one_scene(scene_name):\n"),
+    ("tools/longplay_check.py", "        captured_names.append(scene_name)\n", ""),
+    ("tools/longplay_check.py", "    forget_old_captures(scene_names)\n", ""),
+    ("tools/longplay_check.py", "for path in (capture_path(scene_name), pair_image_path(scene_name)):", "for path in (capture_path(scene_name),):"),
+    ("tools/longplay_check.py", "for path in (capture_path(scene_name), pair_image_path(scene_name)):", "for path in (pair_image_path(scene_name),):"),
+    ("tools/longplay_check.py", "            if os.path.exists(path):\n                os.remove(path)\n", "            os.remove(path)\n"),
+    ("tools/longplay_check.py", "    except ftplib.all_errors as problem:\n        print(\"the device stopped answering:\", problem)\n", "    except ZeroDivisionError as problem:\n        print(\"the device stopped answering:\", problem)\n"),
+    ("tools/longplay_check.py", "    except ftplib.all_errors as problem:\n        print(\"could not quit the app:\", problem)\n", "    except ZeroDivisionError as problem:\n        print(\"could not quit the app:\", problem)\n"),
+    ("tools/longplay_check.py", "    except ftplib.all_errors as problem:\n        print(\"could not delete the check files from the device:\", problem)\n", "    except ZeroDivisionError as problem:\n        print(\"could not delete the check files from the device:\", problem)\n"),
+    ("tools/longplay_check.py", "        quit_if_the_device_answers()\n", "        pass\n"),
+    ("tools/longplay_check.py", "captured_names = saved_capture_names(scene_names)", "captured_names = scene_names"),
+    ("tools/longplay_check.py", "return [name for name in scene_names if os.path.exists(capture_path(name))]", "return scene_names"),
+    ("tools/longplay_check.py", "size_after is not None and size_before is not None and size_after > size_before", "size_after != size_before"),
+    ("tools/longplay_check.py", "size_after is not None and size_before is not None and size_after > size_before", "False"),
+    ("tools/longplay_check.py", "if vita_loop.commands_file_is_waiting():", "if False:"),
+    ("tools/longplay_check.py", "    except vita_loop.CommandNotRead as problem:\n        print(problem)\n        return False\n", "    except ZeroDivisionError as problem:\n        print(problem)\n        return False\n"),
+    ("tools/longplay_check.py", "        if not capture_run_was_clean:\n            print(", "        if False:\n            print("),
+    ("tools/longplay_check.py", "if len(captured_names) == 0 and not capture_run_was_clean:", "if False:"),
+    ("tools/longplay_check.py", "return 0 if capture_run_was_clean and all(views_passed)", "return 0 if all(views_passed)"),
+    ("tools/longplay_check.py", "views_passed = [score_view_check(check, captured_names) for check in view_checks]", "views_passed = [score_view_check(check, scene_names) for check in view_checks]"),
+    ("tools/longplay_check.py", "motion_passed = score_motion_checks(motion_checks, captured_names)", "motion_passed = score_motion_checks(motion_checks, scene_names)"),
+    ("tools/longplay_check.py", "masks_passed = [score_mask_check(check, captured_names) for check in mask_checks]", "masks_passed = [score_mask_check(check, scene_names) for check in mask_checks]"),
+    ("tools/longplay_check.py", "def score_view_check(check, captured_names):\n    if check[\"name\"] not in captured_names:", "def score_view_check(check, captured_names):\n    if False:"),
+    ("tools/longplay_check.py", "def score_mask_check(check, captured_names):\n    if check[\"name\"] not in captured_names:", "def score_mask_check(check, captured_names):\n    if False:"),
+    ("tools/longplay_check.py", "names_missing = [name for name in names_needed if name not in captured_names]", "names_missing = []"),
+    ("tools/longplay_check.py", "if only_object_scene_name(check[\"name\"], object_name) not in captured_names:", "if False:"),
+    ("tools/longplay_check.py", "names_needed = [check[\"name\"], only_object_scene_name(check[\"name\"], check[\"object\"])]", "names_needed = [check[\"name\"]]"),
+    ("tools/longplay_check.py", "names_needed = [check[\"name\"], only_object_scene_name(check[\"name\"], check[\"object\"])]", "names_needed = [only_object_scene_name(check[\"name\"], check[\"object\"])]"),
 ]
 
 
@@ -611,7 +735,10 @@ def mutation_outcome(folder):
 
 
 def python_test_command_for(path):
-    return AUDIO_PYTHON_TEST_COMMAND if os.path.basename(path) in AUDIO_TOOL_FILES else ALL_PYTHON_TEST_COMMAND
+    name = os.path.basename(path)
+    if name == "longplay_check.py":
+        return LONGPLAY_TEST_COMMAND
+    return AUDIO_PYTHON_TEST_COMMAND if name in AUDIO_TOOL_FILES else ALL_PYTHON_TEST_COMMAND
 
 
 def time_limit_for(command):
@@ -631,11 +758,19 @@ def python_mutation_outcome(folder, path):
     return "caught"
 
 
+def python_baseline_passes(folder):
+    return make_succeeds(folder, PYTHON_TOOL_BUILD_ARGUMENTS) and command_succeeds(folder, ALL_PYTHON_TEST_COMMAND, ALL_PYTHON_TEST_TIME_LIMIT_SECONDS)
+
+
 def forget_test_object_of(folder, relative_path):
     object_name = os.path.splitext(os.path.basename(relative_path))[0] + ".o"
     object_path = os.path.join(folder, "build", "test_objects", "app", object_name)
     if os.path.exists(object_path):
         os.remove(object_path)
+    for test_name in TESTS_THAT_INCLUDE_THE_SOURCE.get(relative_path, []):
+        test_object_path = os.path.join(folder, "build", "test_objects", "tests", test_name + ".o")
+        if os.path.exists(test_object_path):
+            os.remove(test_object_path)
     shutil.rmtree(os.path.join(folder, "build", "tests"), ignore_errors=True)
 
 
@@ -679,7 +814,7 @@ def main():
             print("baseline tests fail; stopping")
             return 1
         run_mutations(folder, MUTATIONS, lambda path: mutation_outcome(folder), survivors, invalid, lambda relative_path: forget_test_object_of(folder, relative_path))
-        if not make_succeeds(folder, PYTHON_TOOL_BUILD_ARGUMENTS) or not command_succeeds(folder, ALL_PYTHON_TEST_COMMAND, ALL_PYTHON_TEST_TIME_LIMIT_SECONDS):
+        if not python_baseline_passes(folder):
             print("baseline python tests fail; stopping")
             return 1
         run_mutations(folder, PYTHON_MUTATIONS, lambda path: python_mutation_outcome(folder, path), survivors, invalid)

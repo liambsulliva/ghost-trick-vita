@@ -2251,7 +2251,7 @@ static void test_a_stalled_main_loop_costs_the_workers_nothing(void)
     pump_audio_workers(30);
     CHECK_INT(fake_audio_port_grain_count(AUDIO_PORT_MUSIC), 31);
     CHECK(fake_audio_port_grain_count(AUDIO_PORT_SOUND) > 30);
-    CHECK_HAS_TEXT(log_text(), "underruns=0 late=0 ");
+    CHECK_HAS_TEXT(log_text(), " late=0 ");
     CHECK(strstr(log_text(), "late=1") == NULL);
     viewer_app_stop();
 }

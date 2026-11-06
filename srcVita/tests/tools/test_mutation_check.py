@@ -1,11 +1,14 @@
 import contextlib
 import io
 import os
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
 
 import mutation_check
+
+SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class MutationOutcomeTests(unittest.TestCase):
@@ -73,6 +76,55 @@ class EntryTests(unittest.TestCase):
                 self.assertIn(old_text, source.read(), relative_path)
 
 
+class PythonTestChoiceTests(unittest.TestCase):
+    def test_a_longplay_mutation_runs_the_longplay_tests(self):
+        self.assertEqual(mutation_check.python_test_command_for("/x/tools/longplay_check.py"), mutation_check.LONGPLAY_TEST_COMMAND)
+
+    def test_an_audio_tool_runs_the_audio_tests(self):
+        self.assertEqual(mutation_check.python_test_command_for("/x/tools/audio_check.py"), mutation_check.AUDIO_PYTHON_TEST_COMMAND)
+
+
+class PythonBaselineTests(unittest.TestCase):
+    def main_when_this_command_fails(self, failing_command):
+        run_mutations = mock.Mock()
+        with mock.patch.object(mutation_check.shutil, "copytree"), \
+                mock.patch.object(mutation_check, "remove_werror_from_makefile"), \
+                mock.patch.object(mutation_check, "make_succeeds", return_value=True), \
+                mock.patch.object(mutation_check, "command_succeeds", side_effect=lambda folder, command, time_limit=None: command != failing_command), \
+                mock.patch.object(mutation_check, "run_mutations", run_mutations), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            result = mutation_check.main()
+        return result, output.getvalue(), run_mutations
+
+    def test_broken_tool_tests_stop_the_run_before_any_python_mutation(self):
+        result, output, run_mutations = self.main_when_this_command_fails(mutation_check.ALL_PYTHON_TEST_COMMAND)
+        self.assertEqual(result, 1)
+        self.assertIn("baseline python tests fail", output)
+        self.assertEqual([call[0][1] for call in run_mutations.call_args_list], [mutation_check.MUTATIONS])
+
+    def test_a_passing_baseline_runs_the_python_mutations(self):
+        result, _, run_mutations = self.main_when_this_command_fails(None)
+        self.assertEqual(result, 0)
+        self.assertEqual([call[0][1] for call in run_mutations.call_args_list], [mutation_check.MUTATIONS, mutation_check.PYTHON_MUTATIONS])
+
+
+class MakefileHeaderTests(unittest.TestCase):
+    def test_every_fake_header_makes_the_tests_rebuild(self):
+        with tempfile.TemporaryDirectory() as folder:
+            printer_path = os.path.join(folder, "print.mk")
+            with open(printer_path, "w", encoding="utf-8") as output:
+                output.write("print-test-headers:\n\t@echo $(TEST_HEADERS)\n")
+            result = subprocess.run(["make", "-s", "-f", "Makefile", "-f", printer_path, "print-test-headers"], cwd=SRC_VITA_FOLDER, check=True, stdout=subprocess.PIPE, universal_newlines=True)
+        listed = result.stdout.split()
+        fake_headers = []
+        for folder, _, names in os.walk(os.path.join(SRC_VITA_FOLDER, "tests", "fakes")):
+            for name in names:
+                if name.endswith(".h"):
+                    fake_headers.append(os.path.relpath(os.path.join(folder, name), SRC_VITA_FOLDER))
+        self.assertIn("tests/fakes/psp2/kernel/processmgr.h", fake_headers)
+        self.assertEqual([header for header in fake_headers if header not in listed], [])
+
+
 class SingleFileRebuildTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -128,6 +180,25 @@ class SingleFileRebuildTests(unittest.TestCase):
         self.assertFalse(os.path.exists(self.object_path))
         with open(self.source_path, encoding="utf-8") as source:
             self.assertEqual(source.read(), "int a = 1;\n")
+
+    def write_stale_file(self, *path_parts):
+        path = os.path.join(self.folder, "build", *path_parts)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as output:
+            output.write("stale")
+        return path
+
+    def test_a_test_that_includes_the_source_is_forgotten_only_with_that_source(self):
+        test_object_path = self.write_stale_file("test_objects", "tests", "integration", "test_main_loop.o")
+        mutation_check.forget_test_object_of(self.folder, "src/app/thing.c")
+        self.assertTrue(os.path.exists(test_object_path))
+        mutation_check.forget_test_object_of(self.folder, "src/main.c")
+        self.assertFalse(os.path.exists(test_object_path))
+
+    def test_every_test_binary_is_forgotten_because_make_skips_a_relink_within_the_same_second(self):
+        binary_paths = [self.write_stale_file("tests", "unit", "test_a"), self.write_stale_file("tests", "integration", "test_b")]
+        mutation_check.forget_test_object_of(self.folder, "src/app/thing.c")
+        self.assertEqual([os.path.exists(path) for path in binary_paths], [False, False])
 
     def test_a_missing_object_is_not_an_error(self):
         os.remove(self.object_path)

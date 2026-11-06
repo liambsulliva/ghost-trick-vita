@@ -4,6 +4,7 @@
 void fake_clock_set_us(unsigned long long now_us);
 void fake_clock_advance_us(unsigned long long elapsed_us);
 void fake_clock_set_tick_per_read_us(unsigned long long tick_us);
+unsigned long long fake_clock_peek_us(void);
 
 void fake_files_reset(void);
 void fake_files_add(const char *path, const unsigned char *data, unsigned int size);
