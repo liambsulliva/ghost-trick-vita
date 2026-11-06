@@ -15,6 +15,7 @@ AUDIO_PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.
 ALL_PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "--failfast"]
 ALL_PYTHON_TEST_TIME_LIMIT_SECONDS = 600
 AUDIO_TOOL_FILES = ("audio_check.py", "audio_file.py")
+REPOSITORY_TOOL_FILES = ("lz.py", "lmg_decode.py")
 LONGPLAY_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "--failfast", "test_longplay_check.py"]
 TESTS_THAT_INCLUDE_THE_SOURCE = {
     "src/main.c": ["integration/test_main_loop"],
@@ -614,6 +615,36 @@ PYTHON_MUTATIONS = [
     ("tools/assets/chapter1_opening.json", '"alert_mark", 51.2, 228.2667', '"alert_mark", 51.07, 228.2667'),
     ("tools/assets/chapter1_opening.json", '"alert_mark", 51.2, 228.2667', '"alert_mark", 51.2, 228.36'),
     ("tools/assets/convert_assets.py", "sys.exit(EXIT_CODE_BASE_FOR_SIGNALS + signal_number)", "sys.exit(1)"),
+    ("tools/assets/ds_rom.py", "if header[GAME_CODE_OFFSET:GAME_CODE_OFFSET + GAME_CODE_SIZE] != ACCEPTED_GAME_CODE:", "if False:"),
+    ("../tools/lz.py", "return lz11_decompress(data)", "return lz10_decompress(data)"),
+    ("tools/assets/script_assets.py", 'SCRIPT_CODE_FILES = ["ds_rom.py", "script_assets.py", "../../../tools/lz.py"]', 'SCRIPT_CODE_FILES = ["ds_rom.py", "script_assets.py"]'),
+    ("tools/assets/convert_assets.py", "bake_record.remove_files_not_listed(output_folder, OUTPUT_FOLDER_NAMES, wanted_paths)", 'bake_record.remove_files_not_listed(output_folder, [name for name in OUTPUT_FOLDER_NAMES if name != "scripts"], wanted_paths)'),
+    ("tools/assets/script_assets.py", "record.store(baked_path(path), key, plain)", 'record.store(baked_path(path), key, b"HEAD" + plain)'),
+    ("tools/assets/script_assets.py", "        if key is not None:\n            record.store(baked_path(path), key, plain)\n", "        record.store(baked_path(path), key, plain)\n"),
+    ("tools/assets/script_assets.py", "    store_new_scripts(record, scripts)\n", ""),
+    ("tools/assets/script_assets.py", "    check_script_changes(section, {path: plain for path, (plain, _) in scripts.items()})\n    store_new_scripts(record, scripts)\n", "    store_new_scripts(record, scripts)\n    check_script_changes(section, {path: plain for path, (plain, _) in scripts.items()})\n"),
+    ("tools/assets/script_assets.py", "        asset_writers.check_name(name)\n", "        pass\n"),
+    ("tools/assets/script_assets.py", "    except ValueError as error:\n        raise ScriptBakeError(path + \": \" + str(error)) from None\n    return SCRIPTS_FOLDER", "    except KeyError as error:\n        raise ScriptBakeError(path + \": \" + str(error)) from None\n    return SCRIPTS_FOLDER"),
+    ("tools/assets/script_assets.py", "stop_span[0] <= position < stop_span[1]", "stop_span[0] <= position"),
+    ("tools/assets/script_assets.py", "stop_span[0] <= position < stop_span[1]", "stop_span[0] <= position <= stop_span[1]"),
+    ("tools/assets/script_assets.py", "stop_span[0] <= position < stop_span[1]", "position < stop_span[1]"),
+    ("tools/assets/script_assets.py", "operands[ACT_END_LOW_OPERAND] | (operands[ACT_END_HIGH_OPERAND] << 16)", "operands[ACT_END_LOW_OPERAND]"),
+    ("tools/assets/script_assets.py", '    if errors:\n        raise ScriptBakeError(path + ": " + errors[0])\n', ""),
+    ("tools/assets/script_assets.py", 'SCRIPT_CODE_FILES = ["ds_rom.py", "script_assets.py", "../../../tools/lz.py"]', 'SCRIPT_CODE_FILES = ["script_assets.py", "../../../tools/lz.py"]'),
+    ("tools/assets/script_assets.py", 'SCRIPT_CODE_FILES = ["ds_rom.py", "script_assets.py", "../../../tools/lz.py"]', 'SCRIPT_CODE_FILES = ["ds_rom.py", "../../../tools/lz.py"]'),
+    ("tools/assets/ds_rom.py", "                    file_id = file_id + 1\n", ""),
+    ("tools/assets/ds_rom.py", "                    position = position + 2\n", "                    position = position + 2\n                    file_id = file_id + 1\n"),
+    ("tools/assets/ds_rom.py", "if size < 0 or offset + size > self.size:", "if offset + size > self.size:"),
+    ("tools/assets/ds_rom.py", "if size < 0 or offset + size > self.size:", "if size < 0:"),
+    ("tools/assets/script_assets.py", "return scripts_already_baked(output_folder)", "return []"),
+    ("tools/assets/bake_record.py", 'return relative_path.split("/")[0]', 'return "textures"'),
+    ("tools/assets/script_assets.py", 'flat = path.replace("/", "-")', "flat = path"),
+    ("tools/assets/script_assets.py", '    if flat.endswith(XML_SUFFIX):\n        return flat[:-len(XML_SUFFIX)]\n    return flat\n', '    return flat.replace(XML_SUFFIX, "")\n'),
+    ("tools/assets/script_assets.py", "if target not in known and not stopped_first:", "if target not in known:"),
+    ("tools/assets/script_assets.py", 'known = set(section["files"]) | set(section.get("never_taken", []))', 'known = set(section.get("never_taken", []))'),
+    ("tools/assets/script_assets.py", 'known = set(section["files"]) | set(section.get("never_taken", []))', 'known = set(section["files"])'),
+    ("tools/assets/script_assets.py", "    check_script_changes(section, {path: plain for path, (plain, _) in scripts.items()})\n", ""),
+    ("tools/vita_loop.py", '"music", "sounds", "scripts"):\n        if not os.path.isdir', '"music", "sounds"):\n        if not os.path.isdir'),
     ("tools/assets/convert_assets.py", "future.cancel()", "pass"),
     ("tools/assets/chapter1_opening.json", '"oval_bubble", 98.8444, 242.8444', '"oval_bubble", 98.93, 242.67'),
     ("tools/assets/chapter1_opening.json", '"oval_bubble_text", 113.7778, 251.0222', '"oval_bubble_text", 113.64, 250.93'),
@@ -630,10 +661,12 @@ PYTHON_MUTATIONS = [
     ("tools/assets/narration.py", 'except message_file.MessageFileError:\n            raise NarrationError("the saved text key', 'except KeyError:\n            raise NarrationError("the saved text key'),
     ("tools/assets/narration.py", "entry_names, text_key)", "entry_names, bytes(16))"),
     ("tools/assets/convert_assets.py", 'text_key = narration.load_text_key(set_description, arguments.apk_folder)\n        subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)\n', 'subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)\n        text_key = narration.load_text_key(set_description, arguments.apk_folder)\n'),
-    ("tools/assets/convert_assets.py", "except narration.NarrationError as error:", "except KeyError as error:"),
+    ("tools/assets/convert_assets.py", "except (narration.NarrationError, ds_rom.RomRefused, ", "except (KeyError, ds_rom.RomRefused, "),
+    ("tools/assets/convert_assets.py", "ds_rom.RomRefused, script_assets.ScriptBakeError) as error:", "script_assets.ScriptBakeError) as error:"),
+    ("tools/assets/convert_assets.py", "ds_rom.RomRefused, script_assets.ScriptBakeError) as error:", "ds_rom.RomRefused) as error:"),
     ("tools/assets/convert_assets.py", 'print("error: " + str(error), file=sys.stderr)\n        return 1', 'print("error: " + str(error), file=sys.stderr)\n        return 0'),
     ("tools/assets/convert_assets.py", "narration.read_text_messages(packs, set_description, text_key)", "narration.read_text_messages(packs, set_description, None)"),
-    ("tools/assets/convert_assets.py", "arguments.output, arguments.apk_folder, text_key)", "arguments.output, arguments.apk_folder, None)"),
+    ("tools/assets/convert_assets.py", "arguments.output, arguments.apk_folder, text_key, ", "arguments.output, arguments.apk_folder, None, "),
     ("tools/assets/extract_text_key.py", "os.path.dirname(os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER)))", "os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))"),
     ("tools/assets/extract_text_key.py", 'LIBRARY_MEMBER = "lib/arm64-v8a/libruntime.so"', 'LIBRARY_MEMBER = "lib/armeabi-v7a/libruntime.so"'),
     ("tools/assets/extract_text_key.py", "if first_bytes == LIBRARY_MAGIC:", "if False:"),
@@ -932,6 +965,13 @@ PYTHON_MUTATIONS += [
 ]
 
 
+def copy_repository_tools(temporary_root):
+    folder = os.path.join(temporary_root, "tools")
+    os.makedirs(folder)
+    for file_name in REPOSITORY_TOOL_FILES:
+        shutil.copyfile(os.path.join(os.path.dirname(SRC_VITA_FOLDER), "tools", file_name), os.path.join(folder, file_name))
+
+
 def main():
     survivors = []
     invalid = []
@@ -939,6 +979,7 @@ def main():
         use_private_temp_folder(temporary_root)
         folder = os.path.join(temporary_root, "srcVita")
         shutil.copytree(SRC_VITA_FOLDER, folder, ignore=shutil.ignore_patterns("build", "__pycache__"))
+        copy_repository_tools(temporary_root)
         remove_werror_from_makefile(folder)
         if not make_succeeds(folder, BUILD_ARGUMENTS) or not make_succeeds(folder, TEST_ARGUMENTS):
             print("baseline tests fail; stopping")

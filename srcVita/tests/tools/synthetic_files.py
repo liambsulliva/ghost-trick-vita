@@ -278,6 +278,112 @@ def message_file_bytes(entries, language_count=2, version=GMSG_VERSION, key=FAKE
     return bytes(header) + bytes(pointers) + bytes(entry_area) + bytes(encoded)
 
 
+LZ11_MINIMUM_MATCH = 3
+LZ11_MAXIMUM_MATCH = 16
+LZ11_WINDOW = 4096
+ROM_HEADER_SIZE = 0x200
+ROM_GAME_CODE_OFFSET = 12
+ROM_TABLES_OFFSET = 0x40
+USA_GAME_CODE = b"BGTE"
+SCRIPT_CODE_START = 0x34
+SCRIPT_ID = b"1LMG"
+
+
+def longest_earlier_match(plain, position):
+    best_length = 0
+    best_distance = 0
+    for distance in range(1, min(position, LZ11_WINDOW) + 1):
+        length = 0
+        while length < LZ11_MAXIMUM_MATCH and position + length < len(plain) and plain[position + length] == plain[position + length - distance]:
+            length = length + 1
+        if length > best_length:
+            best_length = length
+            best_distance = distance
+    return best_length, best_distance
+
+
+def lz11_bytes(plain):
+    output = bytearray([0x11]) + bytearray(struct.pack("<I", len(plain))[:3])
+    position = 0
+    while position < len(plain):
+        flags_position = len(output)
+        output.append(0)
+        for bit in range(8):
+            if position >= len(plain):
+                break
+            length, distance = longest_earlier_match(plain, position)
+            if length >= LZ11_MINIMUM_MATCH:
+                output[flags_position] |= 0x80 >> bit
+                output.append(((length - 1) << 4) | ((distance - 1) >> 8))
+                output.append((distance - 1) & 0xFF)
+                position = position + length
+            else:
+                output.append(plain[position])
+                position = position + 1
+    return bytes(output)
+
+
+def folder_tree_of(paths):
+    folders = {"": []}
+    for path in paths:
+        parts = path.split("/")
+        parent = ""
+        for part in parts[:-1]:
+            folder = parent + "/" + part if parent else part
+            if folder not in folders:
+                folders[folder] = []
+                folders[parent].append((part, None, folder))
+            parent = folder
+        folders[parent].append((parts[-1], path, None))
+    return folders
+
+
+def file_name_table(folders, file_ids):
+    folder_ids = {folder: 0xF000 + index for index, folder in enumerate(folders)}
+    main_table = bytearray()
+    sub_tables = bytearray()
+    next_file_id = 0
+    for folder, entries in folders.items():
+        parent_or_count = len(folders) if folder == "" else folder_ids[folder.rpartition("/")[0]]
+        main_table.extend(struct.pack("<IHH", 8 * len(folders) + len(sub_tables), next_file_id, parent_or_count))
+        for name, path, child in sorted(entries, key=lambda entry: entry[0]):
+            if child is None:
+                file_ids[path] = next_file_id
+                next_file_id = next_file_id + 1
+                sub_tables.extend(bytes([len(name)]) + name.encode("latin-1"))
+            else:
+                sub_tables.extend(bytes([0x80 | len(name)]) + name.encode("latin-1") + struct.pack("<H", folder_ids[child]))
+        sub_tables.append(0)
+    return bytes(main_table + sub_tables)
+
+
+def mini_rom_bytes(files, game_code=USA_GAME_CODE):
+    file_ids = {}
+    names = file_name_table(folder_tree_of(list(files)), file_ids)
+    names_offset = ROM_HEADER_SIZE
+    allocation_offset = names_offset + len(names) + (4 - len(names) % 4) % 4
+    allocation_size = 8 * len(files)
+    payload = bytearray()
+    payload_offset = allocation_offset + allocation_size
+    entries = [b""] * len(files)
+    for path, data in files.items():
+        entries[file_ids[path]] = struct.pack("<II", payload_offset + len(payload), payload_offset + len(payload) + len(data))
+        payload.extend(data)
+    header = bytearray(ROM_HEADER_SIZE)
+    header[ROM_GAME_CODE_OFFSET:ROM_GAME_CODE_OFFSET + len(game_code)] = game_code
+    struct.pack_into("<IIII", header, ROM_TABLES_OFFSET, names_offset, len(names), allocation_offset, allocation_size)
+    return bytes(header) + names + bytes(allocation_offset - names_offset - len(names)) + b"".join(entries) + bytes(payload)
+
+
+def script_file_bytes(code_words, strings):
+    string_table = b"".join(text.encode("latin-1") + b"\0" for text in strings)
+    code = struct.pack("<%dH" % len(code_words), *code_words)
+    header = bytearray(SCRIPT_CODE_START)
+    header[:len(SCRIPT_ID)] = SCRIPT_ID
+    struct.pack_into("<III", header, 8, len(code), len(string_table), 0)
+    return bytes(header) + code + string_table
+
+
 GLYPH_ADVANCE_EM = 0.6
 GLYPH_INK_LEFT_EM = 0.05
 GLYPH_INK_RIGHT_EM = 0.55

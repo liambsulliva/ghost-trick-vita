@@ -29,8 +29,8 @@ class BakeRecordTests(unittest.TestCase):
     def test_an_unchanged_file_is_reused_after_reopening(self):
         record = self.reopened()
         self.assertEqual(record.read_if_current(OUTPUT_PATH, self.key), b"baked")
-        self.assertEqual(record.reused_count, 1)
-        self.assertEqual(record.baked_count, 0)
+        self.assertEqual(record.reused_in("textures"), 1)
+        self.assertEqual(record.baked_in("textures"), 0)
 
     def test_a_key_changes_with_the_code_the_settings_or_the_source(self):
         self.assertNotEqual(self.record.key_for("other code", SETTINGS, SOURCE), self.key)
@@ -52,6 +52,16 @@ class BakeRecordTests(unittest.TestCase):
 
     def test_settings_order_does_not_change_the_key(self):
         self.assertEqual(self.record.key_for(CODE, {"crop": [0, 0, 8, 8], "width": 4}, SOURCE), self.key)
+
+    def test_scripts_baked_do_not_count_as_textures(self):
+        os.makedirs(os.path.join(self.folder, "scripts"))
+        record = self.reopened()
+        record.store("scripts/a.lmg", "script key", b"script")
+        self.assertEqual(record.baked_in("scripts"), 1)
+        self.assertEqual(record.baked_in("textures"), 0)
+        record.read_if_current("scripts/a.lmg", "script key")
+        self.assertEqual(record.reused_in("scripts"), 1)
+        self.assertEqual(record.reused_in("textures"), 0)
 
     def test_a_different_key_is_not_reused(self):
         self.assertIsNone(self.reopened().read_if_current(OUTPUT_PATH, "other key"))

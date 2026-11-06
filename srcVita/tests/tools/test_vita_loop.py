@@ -183,6 +183,12 @@ class UploadAssetsTests(DeviceFreeTestCase):
         relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
         self.assertEqual(relative_paths, ["manifest.txt", "textures/a.gtex", "animations/a.anim", "scenes/s.scene", "music/song.loop", "music/song.ogg", "sounds/ping.ogg"])
 
+    def test_baked_scripts_are_listed(self):
+        os.makedirs(os.path.join(self.set_folder, "scripts"))
+        self.write_file("scripts/a-b.lmg", b"script")
+        relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
+        self.assertIn("scripts/a-b.lmg", relative_paths)
+
     def test_a_file_left_half_written_by_the_converter_is_not_listed(self):
         self.write_file("music/song.ogg.new", b"half")
         self.write_file("scenes/s.scene.new", b"half")

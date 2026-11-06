@@ -1,7 +1,9 @@
 import contextlib
 import io
 import os
+import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -9,6 +11,11 @@ from unittest import mock
 import mutation_check
 
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PRINT_ENTRY_CHECK_SKIPPED = "import sys; sys.path[:0] = sys.argv[1:]; import test_mutation_check as tests; print(getattr(tests.EntryTests.test_every_entry_still_finds_its_text, '__unittest_skip__', False))"
+
+
+def beside_the_real_repository_tools(src_vita_folder):
+    return os.path.isfile(os.path.join(os.path.dirname(src_vita_folder), "tools", "rom_audit.py"))
 
 
 class MutationOutcomeTests(unittest.TestCase):
@@ -93,11 +100,11 @@ class EntryTests(unittest.TestCase):
 
     def test_python_entries_are_routed_to_the_tool_tests_and_c_entries_are_not(self):
         for relative_path, _, _ in mutation_check.PYTHON_MUTATIONS:
-            self.assertTrue(relative_path.startswith(("tools/", "tests/tools/")), relative_path)
+            self.assertTrue(relative_path.startswith(("tools/", "tests/tools/", "../tools/")), relative_path)
         for relative_path, _, _ in mutation_check.MUTATIONS:
-            self.assertFalse(relative_path.startswith("tools/"), relative_path)
+            self.assertFalse(relative_path.startswith(("tools/", "../tools/")), relative_path)
 
-    @unittest.skipUnless(os.path.isdir(os.path.join(os.path.dirname(mutation_check.SRC_VITA_FOLDER), "tools")), "a mutation run changes the text this reads")
+    @unittest.skipUnless(beside_the_real_repository_tools(mutation_check.SRC_VITA_FOLDER), "a mutation run changes the text this reads")
     def test_an_entry_for_this_tool_changes_its_code_and_not_the_entry_itself(self):
         with open(os.path.join(mutation_check.SRC_VITA_FOLDER, "tools", "mutation_check.py"), encoding="utf-8") as source:
             text = source.read()
@@ -107,11 +114,40 @@ class EntryTests(unittest.TestCase):
         for _, old_text, _ in entries:
             self.assertLess(text.index(old_text), entries_start, old_text)
 
-    @unittest.skipUnless(os.path.isdir(os.path.join(os.path.dirname(mutation_check.SRC_VITA_FOLDER), "tools")), "a mutation run changes the text this reads")
+    @unittest.skipUnless(beside_the_real_repository_tools(mutation_check.SRC_VITA_FOLDER), "a mutation run changes the text this reads")
     def test_every_entry_still_finds_its_text(self):
         for relative_path, old_text, _ in mutation_check.MUTATIONS + mutation_check.PYTHON_MUTATIONS:
             with open(os.path.join(mutation_check.SRC_VITA_FOLDER, relative_path), encoding="utf-8") as source:
                 self.assertIn(old_text, source.read(), relative_path)
+
+
+class RepositoryToolCopyTests(unittest.TestCase):
+    def test_copy_holds_the_repo_root_tools(self):
+        with tempfile.TemporaryDirectory() as temporary_root:
+            mutation_check.copy_repository_tools(temporary_root)
+            self.assertEqual(sorted(os.listdir(os.path.join(temporary_root, "tools"))), ["lmg_decode.py", "lz.py"])
+
+    def test_entry_text_check_is_skipped_beside_the_copied_tools(self):
+        with tempfile.TemporaryDirectory() as temporary_root:
+            mutation_check.copy_repository_tools(temporary_root)
+            copied_tests = os.path.join(temporary_root, "srcVita", "tests", "tools")
+            copied_tools = os.path.join(temporary_root, "srcVita", "tools")
+            os.makedirs(copied_tests)
+            os.makedirs(copied_tools)
+            shutil.copy(os.path.abspath(__file__), copied_tests)
+            shutil.copy(os.path.abspath(mutation_check.__file__), copied_tools)
+            printed = subprocess.run([sys.executable, "-I", "-B", "-c", PRINT_ENTRY_CHECK_SKIPPED, copied_tests, copied_tools], capture_output=True, text=True, check=True)
+        self.assertEqual(printed.stdout.strip(), "True")
+
+    def test_entry_text_check_runs_beside_the_real_tools(self):
+        skipped = getattr(EntryTests.test_every_entry_still_finds_its_text, "__unittest_skip__", False)
+        self.assertEqual(skipped, not beside_the_real_repository_tools(mutation_check.SRC_VITA_FOLDER))
+
+    def test_the_run_copies_the_repo_root_tools_before_it_tests_anything(self):
+        calls = []
+        with mock.patch.object(mutation_check.shutil, "copytree"), mock.patch.object(mutation_check, "copy_repository_tools", side_effect=lambda root: calls.append("copy")), mock.patch.object(mutation_check, "remove_werror_from_makefile", side_effect=lambda folder: calls.append("make ready")), mock.patch.object(mutation_check, "make_succeeds", return_value=False), contextlib.redirect_stdout(io.StringIO()):
+            mutation_check.main()
+        self.assertEqual(calls, ["copy", "make ready"])
 
 
 class PythonTestChoiceTests(unittest.TestCase):

@@ -392,7 +392,7 @@ class EndToEndTests(unittest.TestCase):
 
     def test_no_story_text_or_decoded_font_is_left_in_the_output(self):
         self.convert_text_set()
-        self.assertEqual(sorted(os.listdir(self.output_folder)), [bake_record.RECORD_FILE_NAME, "animations", "manifest.txt", "music", "scenes", "sounds", "textures"])
+        self.assertEqual(sorted(os.listdir(self.output_folder)), [bake_record.RECORD_FILE_NAME, "animations", "manifest.txt", "music", "scenes", "scripts", "sounds", "textures"])
         font_start = synthetic_files.box_font_bytes()[:64]
         for path in all_files_under(self.output_folder):
             with open(path, "rb") as source:

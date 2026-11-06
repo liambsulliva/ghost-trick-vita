@@ -235,8 +235,8 @@ class ConversionTests(unittest.TestCase):
         record = bake_record.BakeRecord(output_folder)
         lines, _, failures = narration.bake_text_textures(packs, set_description, messages, self.work_folder, record, "code")
         self.assertEqual(failures, [])
-        self.assertEqual(record.baked_count, 1)
-        self.assertEqual(record.reused_count, 0)
+        self.assertEqual(record.baked_in("textures"), 1)
+        self.assertEqual(record.reused_in("textures"), 0)
         self.assertEqual(lines["m"]["paragraphs"][0][0]["natural_width"], first_lines["m"]["paragraphs"][0][0]["natural_width"])
 
     def test_text_texture_names_match_what_is_baked(self):

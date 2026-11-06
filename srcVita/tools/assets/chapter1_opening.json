@@ -1,5 +1,13 @@
 {
   "scene_name": "opening",
+  "scripts": {
+    "entry": "route.xml",
+    "files": ["flags.xml", "route.xml", "st01/st01_root.xml", "st01/st01_game000_Expand.xml"],
+    "language": "en",
+    "stop_at_act": "gameAct020",
+    "never_taken": ["st01/tgs_root.xml", "test/stage_select.xml", "st01/st01_game001_Expand.xml", "st01/st01_game010_Expand.xml", "st01/st01_game011_Expand.xml", "st01/st01_game012_Expand.xml", "st01/st01_game013_Expand.xml", "st01/st01_game014_Expand.xml", "st01/st01_game015_Expand.xml", "st01/st01_game016_Expand.xml", "st01/st01_game020_Expand.xml", "st01/st01_game021_Expand.xml", "st01/st01_game022_Expand.xml"],
+    "timing": "ds"
+  },
   "screen_textures": [
     {
       "name": "chapter_card",

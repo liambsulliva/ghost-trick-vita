@@ -14,6 +14,7 @@ import convert_assets
 import narration
 import synthetic_files
 
+DEFAULT_DS_ROM_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "extracted", "ds_rom", "game.nds")
 SCREEN_PIXELS_PER_DS_PIXEL = 2.8125
 VIEW_TOP_WITH_THE_CAMERA_AT_192 = 384 - 544 / SCREEN_PIXELS_PER_DS_PIXEL
 SCREEN_LEFT_OF_THE_CENTRED_WINDOW = 120
@@ -558,13 +559,13 @@ class TextKeyTests(unittest.TestCase):
         code, errors = self.run_main(set_description)
         self.assertEqual(code, 0)
         self.assertEqual(errors, "")
-        self.assertEqual(self.calls, ["make", (set_description, "out", self.folder, synthetic_files.FAKE_TEXT_KEY)])
+        self.assertEqual(self.calls, ["make", (set_description, "out", self.folder, synthetic_files.FAKE_TEXT_KEY, DEFAULT_DS_ROM_PATH)])
 
     def test_a_set_without_text_runs_with_no_key_file(self):
         code, errors = self.run_main({})
         self.assertEqual(code, 0)
         self.assertEqual(errors, "")
-        self.assertEqual(self.calls, ["make", ({}, "out", self.folder, None)])
+        self.assertEqual(self.calls, ["make", ({}, "out", self.folder, None, DEFAULT_DS_ROM_PATH)])
 
     def test_a_key_file_that_cannot_be_read_stops_before_any_other_work(self):
         os.makedirs(os.path.join(self.folder, "text_key.bin"))

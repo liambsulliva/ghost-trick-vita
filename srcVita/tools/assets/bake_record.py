@@ -22,6 +22,10 @@ def texture_result(name, source_size, gtex_bytes):
     }
 
 
+def top_folder(relative_path):
+    return relative_path.split("/")[0]
+
+
 def result_of_own_size(name, gtex_bytes):
     width, height, _ = asset_writers.read_gtex_header(gtex_bytes)
     return texture_result(name, (width, height), gtex_bytes)
@@ -87,8 +91,8 @@ class BakeRecord:
         self.path = os.path.join(output_folder, RECORD_FILE_NAME)
         self.lock = threading.Lock()
         self.entries = self.load_entries()
-        self.reused_count = 0
-        self.baked_count = 0
+        self.reused_counts = {}
+        self.baked_counts = {}
 
     def load_entries(self):
         try:
@@ -116,8 +120,14 @@ class BakeRecord:
         if sha256_of_bytes(data) != entry["output"]:
             return None
         with self.lock:
-            self.reused_count = self.reused_count + 1
+            self.reused_counts[top_folder(relative_path)] = self.reused_in(top_folder(relative_path)) + 1
         return data
+
+    def reused_in(self, folder_name):
+        return self.reused_counts.get(folder_name, 0)
+
+    def baked_in(self, folder_name):
+        return self.baked_counts.get(folder_name, 0)
 
     def details_of(self, relative_path):
         return self.entries.get(relative_path, {}).get("details", {})
@@ -129,7 +139,7 @@ class BakeRecord:
             entry["details"] = details
         with self.lock:
             self.entries[relative_path] = entry
-            self.baked_count = self.baked_count + 1
+            self.baked_counts[top_folder(relative_path)] = self.baked_in(top_folder(relative_path)) + 1
 
     def forget_all_except(self, relative_paths):
         self.entries = {path: entry for path, entry in self.entries.items() if path in relative_paths}

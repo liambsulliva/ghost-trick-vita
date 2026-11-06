@@ -15,9 +15,11 @@ import asset_writers
 import audio_file
 import bake_record
 import bubble_art
+import ds_rom
 import frame_layout
 import narration
 import pack_files
+import script_assets
 import texture_encoder
 import timeline_file
 
@@ -25,9 +27,10 @@ ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
 REPOSITORY_FOLDER = os.path.dirname(SRC_VITA_FOLDER)
 DEFAULT_APK_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "remaster_apk")
+DEFAULT_DS_ROM_PATH = os.path.join(REPOSITORY_FOLDER, "extracted", "ds_rom", "game.nds")
 TEXTURE_TOOL_PATH = os.path.join(SRC_VITA_FOLDER, "build", "tools", "texture_tool")
 FORMAT_NAMES = {asset_writers.FORMAT_RGBA8888: "RGBA8888", asset_writers.FORMAT_DXT5: "DXT5", asset_writers.FORMAT_DXT1: "DXT1"}
-OUTPUT_FOLDER_NAMES = ("textures", "animations", "scenes", "music", "sounds")
+OUTPUT_FOLDER_NAMES = ("textures", "animations", "scenes", "music", "sounds", "scripts")
 TEXTURE_CODE_FILES = ["asset_writers.py", "astc_decode.c", "astc_decode.h", "etc_decode.c", "etc_decode.h", "texture_encoder.py", "texture_tool.c"]
 COMPOSED_CODE_FILES = TEXTURE_CODE_FILES + ["bubble_art.py"]
 TEXT_CODE_FILES = ["asset_writers.py", "font_file.py", "line_renderer.py", "message_file.py", "narration.py", "texture_encoder.py"]
@@ -263,10 +266,10 @@ def make_output_folders(output_folder):
         os.makedirs(os.path.join(output_folder, folder_name), exist_ok=True)
 
 
-def write_outputs(output_folder, record, texture_results, files, manifest):
+def write_outputs(output_folder, record, texture_results, files, manifest, script_paths):
     for relative_path, data in files.items():
         bake_record.write_if_different(os.path.join(output_folder, relative_path), data)
-    wanted_paths = set(files) | set("textures/" + result["name"] + ".gtex" for result in texture_results)
+    wanted_paths = set(files) | set("textures/" + result["name"] + ".gtex" for result in texture_results) | set(script_paths)
     bake_record.remove_files_not_listed(output_folder, OUTPUT_FOLDER_NAMES, wanted_paths)
     record.forget_all_except(wanted_paths)
     bake_record.write_if_different(os.path.join(output_folder, "manifest.txt"), manifest)
@@ -279,7 +282,7 @@ def print_summary(record, texture_results, animation_texts, steps, music_results
         format_name = FORMAT_NAMES[result["format"]]
         count, total_bytes = totals.get(format_name, (0, 0))
         totals[format_name] = (count + 1, total_bytes + result["byte_count"])
-    print("textures: %d, %d baked, %d unchanged" % (len(texture_results), record.baked_count, record.reused_count))
+    print("textures: %d, %d baked, %d unchanged" % (len(texture_results), record.baked_in("textures"), record.reused_in("textures")))
     for format_name in sorted(totals):
         print("  %s: %d files, %d bytes" % (format_name, totals[format_name][0], totals[format_name][1]))
     print("  total: %d bytes" % sum(result["byte_count"] for result in texture_results))
@@ -294,6 +297,8 @@ def print_summary(record, texture_results, animation_texts, steps, music_results
     print("scene steps: %d" % len(steps))
     print("music: %d files, %d bytes" % (len(music_results), sum(len(result["ogg"]) for result in music_results)))
     print("sounds: %d files, %d bytes" % (len(sound_results), sum(len(result["ogg"]) for result in sound_results)))
+    if record.baked_in("scripts") + record.reused_in("scripts") > 0:
+        print("scripts: %d baked" % record.baked_in("scripts"))
 
 
 def animation_texts_for(set_description, timelines, crops):
@@ -329,7 +334,7 @@ def delete_work_folder(work_folder):
         raise
 
 
-def convert_set_description(set_description, output_folder, apk_folder, text_key):
+def convert_set_description(set_description, output_folder, apk_folder, text_key, ds_rom_path=DEFAULT_DS_ROM_PATH):
     remove_old_work_folders()
     packs = pack_files.PackSet(apk_folder)
     animations = set_description.get("animations", [])
@@ -348,6 +353,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
     make_output_folders(output_folder)
     record = bake_record.BakeRecord(output_folder)
     try:
+        script_paths = script_assets.bake_or_keep_scripts(set_description, ds_rom_path, output_folder, record)
         work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
         try:
             texture_results, failures = convert_all_textures(packs, jobs, work_folder, record)
@@ -364,7 +370,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         check_steps_refer_to_known_assets(steps, set(result["name"] for result in texture_results), set(animation_texts.keys()), set(result["name"] for result in music_results), set(result["name"] for result in sound_results))
         files = audio_output_files(music_results, sound_results)
         files.update(text_output_files(set_description, animation_texts, steps))
-        write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts))
+        write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts), script_paths)
     finally:
         record.save()
     print_summary(record, texture_results, animation_texts, steps, music_results, sound_results)
@@ -383,8 +389,8 @@ def convert_and_report(set_description, arguments):
     try:
         text_key = narration.load_text_key(set_description, arguments.apk_folder)
         subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)
-        convert_set_description(set_description, arguments.output, arguments.apk_folder, text_key)
-    except narration.NarrationError as error:
+        convert_set_description(set_description, arguments.output, arguments.apk_folder, text_key, arguments.ds_rom)
+    except (narration.NarrationError, ds_rom.RomRefused, script_assets.ScriptBakeError) as error:
         print("error: " + str(error), file=sys.stderr)
         return 1
     except ConversionFailed as failed:
@@ -399,8 +405,9 @@ def main():
         signal.signal(stop_signal, exit_so_the_work_folder_is_deleted)
     parser = argparse.ArgumentParser(description="Converts the remaster's files named by a set description into Vita assets.")
     parser.add_argument("--set", required=True, help="a set description: its name in tools/assets without .json, or a path to a JSON file")
-    parser.add_argument("--output", required=True, help="folder to write manifest.txt, textures, animations, scenes, music and sounds into")
+    parser.add_argument("--output", required=True, help="folder to write manifest.txt, textures, animations, scenes, music, sounds and scripts into")
     parser.add_argument("--apk-folder", default=DEFAULT_APK_FOLDER, help="folder holding the remaster's pack files")
+    parser.add_argument("--ds-rom", default=DEFAULT_DS_ROM_PATH, help="your own USA DS ROM, read only for a set with a scripts section")
     arguments = parser.parse_args()
     set_description = load_set_description(arguments.set)
     exit_code = convert_and_report(set_description, arguments)

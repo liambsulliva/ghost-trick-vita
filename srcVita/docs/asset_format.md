@@ -10,6 +10,7 @@ scenes/<scene_name>.scene
 music/<track_name>.ogg
 music/<track_name>.loop
 sounds/<sound_name>.ogg
+scripts/<script_name>.lmg
 ```
 
 Names use only letters, digits, `_` and `-`, and are at most 95 characters. All text files use one command per line, with fields separated by a single space.
@@ -191,6 +192,25 @@ When the app opens an `.ogg` it first checks the CRC of every Ogg page, and the 
 ```
 
 A `music` step with `loop` 1 seeks to the first number after playing the frame named by the second. Without a `.loop` file it restarts at frame 0. The Ogg files' own `LoopStart` and `LoopEnd` tags are not read, because they say -1 on almost every stream.
+
+## Scripts: `.lmg`
+
+`scripts/<script_name>.lmg` is a DS scene script, byte for byte the decompressed file from your own USA DS ROM, in the format `docs/lmg_format.md` describes. Nothing in the app reads these yet. `scripts/` stays flat: a script's path becomes its name by turning `/` into `-` and dropping a final `.xml`, so `area9/area9_start.xml` becomes `area9-area9_start`. The result follows the name rule above, and the converter refuses a path whose name would not. `tests/fixtures/script_name_pairs.h` holds invented examples of the rule.
+
+A set lists its scripts in a `scripts` section. A set with no such section needs no ROM.
+
+| Field | Meaning |
+|---|---|
+| `entry` | The script a run starts on |
+| `files` | The scripts to bake |
+| `language` | The language of the message data |
+| `stop_at_act` | The act that ends a run |
+| `never_taken` | Script changes the opening's scripts hold but never make |
+| `timing` | The timing profile: `ds` or `remaster` |
+
+Every script change in a baked file has to name a file in `files` or `never_taken`, or sit inside the `stop_at_act` act. Otherwise the bake stops and names the change.
+
+The converter reads the ROM named by `--ds-rom`, by default `extracted/ds_rom/game.nds`. A missing ROM gives one warning, keeps any scripts already baked, and everything else still converts. A ROM with any game code but `BGTE` is refused, because no other region's scripts have been compared with the trace. The conversion then stops before it converts anything, and existing output stays as it was. A script that fails its checks stops the bake the same way: no script from that run is stored, and the last good ones stay.
 
 ## Source files
 
