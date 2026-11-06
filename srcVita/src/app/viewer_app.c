@@ -462,6 +462,12 @@ static void update_player_controls(const struct input_state *input)
         if (input->pressed & (INPUT_TRIANGLE | INPUT_CIRCLE)) {
             script_player_ghost_button();
         }
+        if (input->pressed & INPUT_L) {
+            script_player_tap_balloon(0);
+        }
+        if (input->pressed & INPUT_R) {
+            script_player_tap_balloon(1);
+        }
     }
     if (!(input->pressed & INPUT_CROSS)) {
         return;

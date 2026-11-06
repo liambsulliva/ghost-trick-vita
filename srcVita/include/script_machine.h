@@ -28,6 +28,8 @@
 #define SCRIPT_CALL_DEPTH_MAX 4
 #define SCRIPT_ROOM_ID_MAX 256
 #define SCRIPT_CORE_SLOT_COUNT 2
+#define SCRIPT_TAP_GROUP_LEFT 1
+#define SCRIPT_TAP_GROUP_RIGHT 2
 
 enum script_vm_kind {
     SCRIPT_VM_RUNNER,
@@ -159,6 +161,10 @@ struct script_balloon {
     float offset_x;
     float offset_y;
     int open_is_pending;
+    int tap_group;
+    const char *tap_target;
+    const char *tap_verb;
+    const char *tap_arg;
 };
 
 struct script_room_bounds {
@@ -192,6 +198,7 @@ struct script_soul {
     int tutorial_mode;
     int tutorial_click_was_sent;
     int ghost_is_pending;
+    int tap_group_is_pending;
     int direction_x;
     int direction_y;
     int held_x;
@@ -319,11 +326,14 @@ void script_fades_add(struct script_machine *machine, const struct script_vm *vm
 void script_fades_set_mask(struct script_machine *machine, int target_alpha, int frames);
 void script_balloons_count_down(struct script_machine *machine);
 void script_balloons_report_opened(struct script_machine *machine);
+void script_balloons_tap(struct script_machine *machine, int tap_group);
+int script_balloons_can_be_tapped(const struct script_machine *machine, int tap_group);
 void script_machine_note_press(struct script_machine *machine);
 void script_machine_scroll_camera(struct script_machine *machine, int delta_x, int delta_y);
 void script_soul_run_command(struct script_machine *machine, const char *verb, const char *arg);
 void script_soul_step_before_tasks(struct script_machine *machine);
 void script_soul_note_ghost(struct script_machine *machine);
+void script_soul_note_tap(struct script_machine *machine, int tap_group);
 void script_soul_note_direction(struct script_machine *machine, int direction_x, int direction_y);
 void script_soul_set_held(struct script_machine *machine, int held_x, int held_y);
 void script_soul_reset(struct script_machine *machine);
@@ -333,6 +343,7 @@ void script_soul_effect_spawned(struct script_machine *machine, int effect_id, c
 void script_soul_effect_signalled(struct script_machine *machine, const char *name);
 void script_soul_report_cursor(struct script_machine *machine);
 int script_soul_waits_on_the_player(const struct script_machine *machine);
+int script_soul_world_is_playable(const struct script_machine *machine);
 void script_talk_open(struct script_machine *machine, const char *label);
 void script_talk_step(struct script_machine *machine);
 void script_talk_note_press(struct script_machine *machine);

@@ -198,6 +198,7 @@ Its `mark` lines say which scripts and acts began, which tricks fired and when t
 | CROSS | Advance dialogue, or do the trick of the core you are in |
 | TRIANGLE or CIRCLE | Open or close the soul view |
 | D-pad | Pick a core in that direction. In the living world it opens the soul view first |
+| L or R | Tap the left or right balloon, when a script opens one that can be tapped |
 | L and R together | Skip ahead |
 | SQUARE | Save a capture |
 | START | Quit |

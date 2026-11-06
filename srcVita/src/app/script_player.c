@@ -598,6 +598,13 @@ void script_player_ghost_button(void)
     }
 }
 
+void script_player_tap_balloon(int is_right)
+{
+    if (phase == PHASE_RUNNING && data != NULL) {
+        script_soul_note_tap(&data->machine, is_right ? SCRIPT_TAP_GROUP_RIGHT : SCRIPT_TAP_GROUP_LEFT);
+    }
+}
+
 void script_player_direction(int direction_x, int direction_y)
 {
     if (phase == PHASE_RUNNING && data != NULL) {

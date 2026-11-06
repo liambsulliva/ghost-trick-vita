@@ -20,6 +20,7 @@
 #define STUCK_AFTER_QUIET_TICKS 240
 #define DEBUG_ARG_PREFIX "debug"
 #define STUCK_AFTER_ANY_TICKS 3000
+#define STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT 18000
 #define STUCK_PUSHES_BEFORE_LEAVING_THE_SCRIPT 60
 
 static const char *vm_kind_name(enum script_vm_kind kind)
@@ -1447,6 +1448,11 @@ static void push_when_stuck(struct script_machine *machine)
     if (something_is_running_to_a_known_end(machine)) {
         machine->last_timer_tick = machine->tick;
     }
+    if (!machine->auto_press && script_soul_world_is_playable(machine)) {
+        if (quiet_ticks < STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT) {
+            return;
+        }
+    } else
     if (quiet_ticks < STUCK_AFTER_ANY_TICKS && (quiet_ticks < STUCK_AFTER_QUIET_TICKS || machine->tick - machine->last_timer_tick < STUCK_AFTER_QUIET_TICKS)) {
         return;
     }

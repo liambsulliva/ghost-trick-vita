@@ -16,6 +16,7 @@ enum scene_playback_state script_player_status(void);
 void script_player_skip_ahead(void);
 void script_player_press(void);
 void script_player_ghost_button(void);
+void script_player_tap_balloon(int is_right);
 void script_player_direction(int direction_x, int direction_y);
 void script_player_held_direction(int held_x, int held_y);
 void script_player_set_fast_forward(int ticks_per_frame);

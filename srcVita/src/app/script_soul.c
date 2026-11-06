@@ -89,7 +89,7 @@ void script_soul_report_cursor(struct script_machine *machine)
     machine->outputs->soul_cursor_moved(1, (float)(actor->x + actor->core_x), (float)(actor->y + actor->core_y));
 }
 
-static void step_to_next_core_where(struct script_machine *machine, int (*allowed)(const struct script_object *object, int slot))
+static void step_to_next_core(struct script_machine *machine)
 {
     const struct script_soul *soul;
     int candidates;
@@ -108,29 +108,12 @@ static void step_to_next_core_where(struct script_machine *machine, int (*allowe
         position = (position + 1) % (machine->object_count * SCRIPT_CORE_SLOT_COUNT);
         object_index = position / SCRIPT_CORE_SLOT_COUNT;
         slot = position % SCRIPT_CORE_SLOT_COUNT;
-        if (object_can_be_a_core(&machine->objects[object_index], slot) && allowed(&machine->objects[object_index], slot)) {
+        if (object_can_be_a_core(&machine->objects[object_index], slot)) {
             set_active_core(machine, object_index, slot);
             return;
         }
         candidates = candidates - 1;
     }
-}
-
-static int any_core(const struct script_object *object, int slot)
-{
-    (void)object;
-    (void)slot;
-    return 1;
-}
-
-static void step_to_next_core(struct script_machine *machine)
-{
-    step_to_next_core_where(machine, any_core);
-}
-
-static void step_to_next_trick(struct script_machine *machine)
-{
-    step_to_next_core_where(machine, object_has_a_trick);
 }
 
 static long long off_axis_cost(int along, int across)
@@ -296,6 +279,9 @@ static void set_soul_view(struct script_machine *machine, int is_on)
 
     soul = &machine->soul;
     soul->is_on = is_on;
+    if (!is_on) {
+        soul->player_opened_soul_view = 0;
+    }
     machine->soul_state_keeps_pause = is_on;
     machine->pause_bit = is_on;
     if (machine->outputs->soul_vision_changed != NULL) {
@@ -417,7 +403,7 @@ static void player_moved_in_tutorial(struct script_machine *machine)
     }
 }
 
-static int world_is_playable(const struct script_machine *machine)
+int script_soul_world_is_playable(const struct script_machine *machine)
 {
     return !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && !machine->soul.input_is_off;
 }
@@ -443,12 +429,13 @@ static void take_press(struct script_machine *machine)
         return;
     }
     if (soul->is_on && soul->player_opened_soul_view) {
-        soul->player_opened_soul_view = 0;
         set_soul_view(machine, 0);
-        fire_trick(machine);
+        if (soul->trick_is_on) {
+            fire_trick(machine);
+        }
         return;
     }
-    if (world_is_playable(machine) && soul->trick_is_on) {
+    if (script_soul_world_is_playable(machine) && soul->trick_is_on) {
         fire_trick(machine);
     }
 }
@@ -465,7 +452,7 @@ static void take_direction(struct script_machine *machine, int direction_x, int 
         player_moved_in_tutorial(machine);
         return;
     }
-    if (!soul->is_on && world_is_playable(machine)) {
+    if (!soul->is_on && script_soul_world_is_playable(machine)) {
         soul->player_opened_soul_view = 1;
         set_soul_view(machine, 1);
     }
@@ -480,11 +467,10 @@ static void take_ghost_button(struct script_machine *machine)
 
     soul = &machine->soul;
     if (soul->is_on && soul->player_opened_soul_view) {
-        soul->player_opened_soul_view = 0;
         set_soul_view(machine, 0);
         return;
     }
-    if (!soul->is_on && world_is_playable(machine)) {
+    if (!soul->is_on && script_soul_world_is_playable(machine)) {
         soul->player_opened_soul_view = 1;
         set_soul_view(machine, 1);
         if (soul->active_object == NO_CORE) {
@@ -529,9 +515,24 @@ static void play_automatically(struct script_machine *machine)
         return;
     }
     soul->next_auto_try_tick = machine->tick + AUTO_TRICK_TICKS;
-    if (world_is_playable(machine) && soul->trick_is_on) {
-        step_to_next_trick(machine);
+    if (soul->is_on && soul->player_opened_soul_view) {
+        step_to_next_core(machine);
         machine->press_is_pending = 1;
+        return;
+    }
+    if (machine->pause_bit) {
+        return;
+    }
+    if (script_balloons_can_be_tapped(machine, SCRIPT_TAP_GROUP_RIGHT)) {
+        soul->tap_group_is_pending = SCRIPT_TAP_GROUP_RIGHT;
+        return;
+    }
+    if (script_balloons_can_be_tapped(machine, SCRIPT_TAP_GROUP_LEFT)) {
+        soul->tap_group_is_pending = SCRIPT_TAP_GROUP_LEFT;
+        return;
+    }
+    if (script_soul_world_is_playable(machine)) {
+        soul->ghost_is_pending = 1;
     }
 }
 
@@ -555,6 +556,12 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         soul->ghost_is_pending = 0;
         take_ghost_button(machine);
     }
+    if (soul->tap_group_is_pending != 0) {
+        if (!machine->pause_bit) {
+            script_balloons_tap(machine, soul->tap_group_is_pending);
+        }
+        soul->tap_group_is_pending = 0;
+    }
     if (soul->direction_x != 0 || soul->direction_y != 0) {
         take_direction(machine, soul->direction_x, soul->direction_y);
         soul->direction_x = 0;
@@ -570,6 +577,11 @@ void script_soul_step_before_tasks(struct script_machine *machine)
 void script_soul_note_ghost(struct script_machine *machine)
 {
     machine->soul.ghost_is_pending = 1;
+}
+
+void script_soul_note_tap(struct script_machine *machine, int tap_group)
+{
+    machine->soul.tap_group_is_pending = tap_group;
 }
 
 void script_soul_note_direction(struct script_machine *machine, int direction_x, int direction_y)
