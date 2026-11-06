@@ -12,12 +12,14 @@ enum command_kind {
     COMMAND_PLAY_SCENE,
     COMMAND_HUD_ON,
     COMMAND_HUD_OFF,
+    COMMAND_MUSIC_STARVE,
     COMMAND_UNKNOWN
 };
 
 struct command {
     enum command_kind kind;
     char name[ASSET_NAME_MAX];
+    int number;
 };
 
 int command_name_is_safe(const char *name);

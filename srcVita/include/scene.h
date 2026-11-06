@@ -30,7 +30,10 @@ enum scene_step_kind {
     SCENE_STEP_MASK_OFF,
     SCENE_STEP_IRIS,
     SCENE_STEP_DIM_TO,
-    SCENE_STEP_FLASH
+    SCENE_STEP_FLASH,
+    SCENE_STEP_MUSIC,
+    SCENE_STEP_MUSIC_STOP,
+    SCENE_STEP_SOUND
 };
 
 struct scene_step {
@@ -39,6 +42,7 @@ struct scene_step {
     char animation_name[ASSET_NAME_MAX];
     char texture_name[ASSET_NAME_MAX];
     char beam_name[ASSET_NAME_MAX];
+    char audio_name[ASSET_NAME_MAX];
     float x;
     float y;
     float width;
@@ -52,6 +56,7 @@ struct scene_step {
     int layer;
     int ticks;
     int is_flipped;
+    int is_looping;
 };
 
 struct scene {

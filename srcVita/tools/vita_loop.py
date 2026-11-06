@@ -201,7 +201,9 @@ def save_upload_record(record):
 
 def list_local_files(folder):
     files = [(os.path.join(folder, "manifest.txt"), "manifest.txt")]
-    for folder_name in ("textures", "animations", "scenes"):
+    for folder_name in ("textures", "animations", "scenes", "music", "sounds"):
+        if not os.path.isdir(os.path.join(folder, folder_name)):
+            continue
         for name in sorted(os.listdir(os.path.join(folder, folder_name))):
             if not name.startswith("."):
                 files.append((os.path.join(folder, folder_name, name), folder_name + "/" + name))

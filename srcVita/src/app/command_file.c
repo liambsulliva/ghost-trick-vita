@@ -1,5 +1,7 @@
+#include <stdio.h>
 #include <string.h>
 #include "command_file.h"
+#include "music_engine.h"
 #include "text_lines.h"
 
 #define COMMAND_LINE_MAX 160
@@ -52,12 +54,27 @@ static int read_named_command(const char *line, const char *prefix, enum command
     return 1;
 }
 
+static int read_music_starve_command(const char *line, struct command *command)
+{
+    char extra;
+
+    if (sscanf(line, "music_starve %d%c", &command->number, &extra) != 1) {
+        return 0;
+    }
+    if (command->number <= 0 || command->number > MUSIC_STARVE_MS_MAX) {
+        return 0;
+    }
+    command->kind = COMMAND_MUSIC_STARVE;
+    return 1;
+}
+
 unsigned int command_parse_next_line(const char *text, unsigned int text_size, unsigned int offset, struct command *command)
 {
     char line[COMMAND_LINE_MAX];
 
     command->kind = COMMAND_NONE;
     command->name[0] = '\0';
+    command->number = 0;
     if (offset >= text_size) {
         return offset;
     }
@@ -87,6 +104,9 @@ unsigned int command_parse_next_line(const char *text, unsigned int text_size, u
         return offset;
     }
     if (read_named_command(line, "show_animation ", COMMAND_SHOW_ANIMATION, command)) {
+        return offset;
+    }
+    if (read_music_starve_command(line, command)) {
         return offset;
     }
     command->kind = COMMAND_UNKNOWN;

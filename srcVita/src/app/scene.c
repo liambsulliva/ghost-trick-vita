@@ -93,6 +93,18 @@ static int read_step(const char *line, struct scene_step *step)
         step->kind = SCENE_STEP_WAIT;
         return sscanf(line, "wait %d", &step->ticks) == 1 && step->ticks > 0;
     }
+    if (text_line_starts_with(line, "music ")) {
+        step->kind = SCENE_STEP_MUSIC;
+        return sscanf(line, "music " ASSET_NAME_SCAN " %d", step->audio_name, &step->is_looping) == 2 && (step->is_looping == 0 || step->is_looping == 1);
+    }
+    if (text_line_starts_with(line, "music_stop ")) {
+        step->kind = SCENE_STEP_MUSIC_STOP;
+        return sscanf(line, "music_stop %d", &step->ticks) == 1 && step->ticks >= 0;
+    }
+    if (text_line_starts_with(line, "sound ")) {
+        step->kind = SCENE_STEP_SOUND;
+        return sscanf(line, "sound " ASSET_NAME_SCAN, step->audio_name) == 1;
+    }
     return read_effect_step(line, step);
 }
 

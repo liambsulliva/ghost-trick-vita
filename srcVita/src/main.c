@@ -11,6 +11,7 @@
 #include "frame_stats.h"
 #include "input.h"
 #include "memory.h"
+#include "music_engine.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "screen_capture.h"
@@ -23,6 +24,7 @@
 #define CAPTURE_NAME_MAX 64
 #define FIRST_TIMED_FRAME 2
 #define LOG_FOR_TOOLS_CAPTURE_DONE "capture name=%s result=%d took_us=%llu"
+#define LOG_FOR_TOOLS_MUSIC_STARVE_COMMAND "command music_starve ms=%d"
 
 #define LOG_PATH FILE_DATA_FOLDER "/run.log"
 #define COMMANDS_PATH FILE_DATA_FOLDER "/commands.txt"
@@ -76,6 +78,9 @@ static int run_one_command(const struct command *command)
         viewer_app_set_hud_visible(1);
     } else if (command->kind == COMMAND_HUD_OFF) {
         viewer_app_set_hud_visible(0);
+    } else if (command->kind == COMMAND_MUSIC_STARVE) {
+        music_request_starve(command->number);
+        run_log_write(LOG_FOR_TOOLS_MUSIC_STARVE_COMMAND, command->number);
     } else if (command->kind == COMMAND_QUIT) {
         run_log_write("command quit");
         return 1;

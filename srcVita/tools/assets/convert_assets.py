@@ -10,6 +10,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import asset_writers
+import audio_file
 import frame_layout
 import pack_files
 import texture_encoder
@@ -129,13 +130,27 @@ def expand_steps(set_description, plate_sizes):
     return steps
 
 
-def check_steps_refer_to_known_assets(steps, texture_names, animation_names):
+def check_steps_refer_to_known_assets(steps, texture_names, animation_names, music_names, sound_names):
     for step in steps:
         kind = step[0]
         if kind in ("plate", "card") and step[1] not in texture_names:
             raise ValueError(kind + " names an unknown texture: " + step[1])
         if kind == "object" and step[2] not in animation_names:
             raise ValueError("object names an unknown animation: " + step[2])
+        if kind == "music" and step[1] not in music_names:
+            raise ValueError("music step names an unknown track: " + step[1])
+        if kind == "sound" and step[1] not in sound_names:
+            raise ValueError("sound step names an unknown sound: " + step[1])
+
+
+def read_audio_streams(packs, entries):
+    results = []
+    for entry in entries:
+        asset_writers.check_name(entry["name"])
+        stream = audio_file.read_stream(packs.read(entry["source"]), entry["source"])
+        audio_file.check_playback_rate(stream, entry["source"])
+        results.append({"name": entry["name"], "ogg": stream["ogg"], "loop_points": stream["loop_points"]})
+    return results
 
 
 def write_text_file(path, text):
@@ -144,15 +159,31 @@ def write_text_file(path, text):
 
 
 def clear_output_folders(output_folder):
-    for folder_name in ("textures", "animations", "scenes"):
+    for folder_name in ("textures", "animations", "scenes", "music", "sounds"):
         folder = os.path.join(output_folder, folder_name)
         if os.path.isdir(folder):
             shutil.rmtree(folder)
         os.makedirs(folder)
 
 
-def write_outputs(output_folder, set_description, texture_results, animation_texts, steps):
+def write_ogg_file(folder, name, ogg_bytes):
+    with open(os.path.join(folder, name + ".ogg"), "wb") as output:
+        output.write(ogg_bytes)
+
+
+def write_audio(output_folder, music_results, sound_results):
+    music_folder = os.path.join(output_folder, "music")
+    for result in music_results:
+        write_ogg_file(music_folder, result["name"], result["ogg"])
+        if result["loop_points"] is not None:
+            write_text_file(os.path.join(music_folder, result["name"] + ".loop"), audio_file.loop_text(result["loop_points"]))
+    for result in sound_results:
+        write_ogg_file(os.path.join(output_folder, "sounds"), result["name"], result["ogg"])
+
+
+def write_outputs(output_folder, set_description, texture_results, animation_texts, steps, music_results, sound_results):
     clear_output_folders(output_folder)
+    write_audio(output_folder, music_results, sound_results)
     for result in texture_results:
         with open(os.path.join(output_folder, "textures", result["name"] + ".gtex"), "wb") as output:
             output.write(result["bytes"])
@@ -168,7 +199,7 @@ def write_outputs(output_folder, set_description, texture_results, animation_tex
     write_text_file(os.path.join(output_folder, "manifest.txt"), manifest)
 
 
-def print_summary(texture_results, animation_texts, steps):
+def print_summary(texture_results, animation_texts, steps, music_results, sound_results):
     totals = {}
     for result in texture_results:
         format_name = FORMAT_NAMES[result["format"]]
@@ -187,6 +218,8 @@ def print_summary(texture_results, animation_texts, steps):
     frame_count = sum(text.count("\nframe ") for text in animation_texts.values())
     print("animations: %d files, %d frames, %d bytes" % (len(animation_texts), frame_count, animation_bytes))
     print("scene steps: %d" % len(steps))
+    print("music: %d files, %d bytes" % (len(music_results), sum(len(result["ogg"]) for result in music_results)))
+    print("sounds: %d files, %d bytes" % (len(sound_results), sum(len(result["ogg"]) for result in sound_results)))
 
 
 def convert_set_description(set_description, output_folder, apk_folder):
@@ -205,15 +238,17 @@ def convert_set_description(set_description, output_folder, apk_folder):
         frames = frame_layout.frames_for_animation(timeline, animation.get("ds_frames"), crops)
         animation_texts[animation["name"]] = asset_writers.anim_text(animation["name"], animation.get("loops", 0), frames)
     steps = expand_steps(set_description, plate_size_lookup(texture_results, set_description["plates"]))
-    check_steps_refer_to_known_assets(steps, set(jobs.keys()), set(animation_texts.keys()))
-    write_outputs(output_folder, set_description, texture_results, animation_texts, steps)
-    print_summary(texture_results, animation_texts, steps)
+    music_results = read_audio_streams(packs, set_description.get("music", []))
+    sound_results = read_audio_streams(packs, set_description.get("sounds", []))
+    check_steps_refer_to_known_assets(steps, set(jobs.keys()), set(animation_texts.keys()), set(result["name"] for result in music_results), set(result["name"] for result in sound_results))
+    write_outputs(output_folder, set_description, texture_results, animation_texts, steps, music_results, sound_results)
+    print_summary(texture_results, animation_texts, steps, music_results, sound_results)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Converts the remaster's files named by a set description into Vita assets.")
     parser.add_argument("--set", required=True, help="name of a set description in tools/assets, without .json")
-    parser.add_argument("--output", required=True, help="folder to write manifest.txt, textures, animations and scenes into")
+    parser.add_argument("--output", required=True, help="folder to write manifest.txt, textures, animations, scenes, music and sounds into")
     parser.add_argument("--apk-folder", default=DEFAULT_APK_FOLDER, help="folder holding the remaster's pack files")
     arguments = parser.parse_args()
     subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)

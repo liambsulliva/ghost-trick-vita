@@ -6,14 +6,17 @@
 #include "file.h"
 #include "file_path.h"
 #include "memory.h"
+#include "music_engine.h"
 #include "run_log.h"
 #include "scene.h"
 #include "scene_player.h"
 #include "scene_stage.h"
+#include "sound_engine.h"
 #include "texture_cache.h"
 
 #define PRELOAD_PASS_MAX (TEXTURE_CACHE_ENTRY_MAX / BACKGROUND_READER_QUEUE_MAX)
 #define LONGEST_UPDATE_US 500000ULL
+#define LONGEST_AUDIO_PRELOAD_US 10000000ULL
 #define LOG_FOR_TOOLS_SCENE_READY "scene ready name=%s preload_us=%llu texture_bytes=%u missing=%u"
 
 struct script_progress {
@@ -37,6 +40,7 @@ static struct script_progress script;
 static int is_paused;
 static unsigned long long preload_started_us;
 static int preload_passes;
+static const char *preload_music_name;
 
 static void reset_script_progress(void)
 {
@@ -137,6 +141,15 @@ static void run_step(const struct scene_step *step)
         scene_effects_flash(scene_stage_effects(), step->brightness, step->ticks);
         run_log_write("scene flash ticks=%d", step->ticks);
         break;
+    case SCENE_STEP_MUSIC:
+        music_request_play(step->audio_name, step->is_looping);
+        break;
+    case SCENE_STEP_MUSIC_STOP:
+        music_request_stop(step->ticks);
+        break;
+    case SCENE_STEP_SOUND:
+        sound_request_play(step->audio_name);
+        break;
     }
 }
 
@@ -177,6 +190,7 @@ static void run_script(unsigned long long elapsed_us)
         if (script.hold_remaining_us == 0) {
             status = SCENE_PLAYER_FINISHED;
             scene_effects_advance(scene_stage_effects(), elapsed_us);
+            music_request_stop(MUSIC_QUICK_FADE_TICKS);
             run_log_write("scene finished name=%s", current_scene->name);
             return;
         }
@@ -215,11 +229,50 @@ static void request_scene_assets(void)
     }
 }
 
+static void stop_scene_audio(void)
+{
+    music_request_stop(MUSIC_QUICK_FADE_TICKS);
+    sound_request_stop();
+}
+
+static void request_scene_audio(void)
+{
+    const struct scene_step *step;
+    int index;
+
+    preload_music_name = NULL;
+    for (index = 0; index < current_scene->step_count; index++) {
+        step = &current_scene->steps[index];
+        if (step->kind == SCENE_STEP_MUSIC && preload_music_name == NULL) {
+            preload_music_name = step->audio_name;
+            music_request_prepare(preload_music_name);
+        }
+        if (step->kind == SCENE_STEP_SOUND) {
+            sound_request_prepare(step->audio_name);
+        }
+    }
+}
+
+static int scene_audio_is_ready(void)
+{
+    int is_ready;
+
+    is_ready = sound_prepare_is_done() && (preload_music_name == NULL || music_prepare_is_done(preload_music_name));
+    if (!is_ready && clock_now_us() - preload_started_us > LONGEST_AUDIO_PRELOAD_US) {
+        run_log_write("scene audio_wait_gave_up name=%s", current_scene->name);
+        return 1;
+    }
+    return is_ready;
+}
+
 static void finish_preloading_when_ready(void)
 {
     struct texture_cache_totals totals;
 
     if (texture_cache_loading_count() > 0) {
+        return;
+    }
+    if (!scene_audio_is_ready()) {
         return;
     }
     if (preload_passes < PRELOAD_PASS_MAX) {
@@ -298,6 +351,8 @@ int scene_player_play(const char *scene_name)
     is_paused = 0;
     preload_started_us = clock_now_us();
     preload_passes = 0;
+    stop_scene_audio();
+    request_scene_audio();
     request_scene_assets();
     status = SCENE_PLAYER_PRELOADING;
     run_log_write("scene started name=%s steps=%d", scene->name, scene->step_count);
@@ -326,6 +381,7 @@ void scene_player_update(unsigned long long elapsed_us)
 
 void scene_player_stop(void)
 {
+    stop_scene_audio();
     status = SCENE_PLAYER_IDLE;
     scene_stage_set_fade(0.0f);
     scene_stage_hide_card();

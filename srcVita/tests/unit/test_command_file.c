@@ -52,9 +52,31 @@ static void test_command_file_parses_each_line_in_order(void)
     CHECK_INT(offset, size);
 }
 
+static void test_music_starve_takes_a_positive_number_of_milliseconds(void)
+{
+    const char text[] = "music_starve 300\nmusic_starve 5000\nmusic_starve 0\nmusic_starve -5\nmusic_starve 5001\nmusic_starve\nmusic_starve 12x\nmusic_starve abc\n";
+    unsigned int size;
+    unsigned int offset;
+    struct command command;
+    int index;
+
+    size = sizeof(text) - 1;
+    offset = command_parse_next_line(text, size, 0, &command);
+    CHECK_INT(command.kind, COMMAND_MUSIC_STARVE);
+    CHECK_INT(command.number, 300);
+    offset = command_parse_next_line(text, size, offset, &command);
+    CHECK_INT(command.kind, COMMAND_MUSIC_STARVE);
+    CHECK_INT(command.number, 5000);
+    for (index = 0; index < 6; index++) {
+        offset = command_parse_next_line(text, size, offset, &command);
+        CHECK_INT(command.kind, COMMAND_UNKNOWN);
+    }
+}
+
 int main(void)
 {
     test_command_names_only_allow_plain_characters();
     test_command_file_parses_each_line_in_order();
+    test_music_starve_takes_a_positive_number_of_milliseconds();
     return test_finish("unit/command_file");
 }

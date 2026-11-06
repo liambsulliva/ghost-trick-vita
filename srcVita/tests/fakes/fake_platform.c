@@ -17,8 +17,10 @@ struct fake_file {
 
 static struct fake_file fake_files[FAKE_FILE_COUNT];
 static unsigned long long fake_now_us;
+static unsigned long long tick_per_read_us;
+static unsigned int largest_block_bytes;
+static int blocks_in_use;
 static int writes_should_fail;
-static int memory_blocks_in_use;
 static char fake_log_path[FILE_PATH_MAX];
 
 void fake_clock_set_us(unsigned long long now_us)
@@ -31,9 +33,18 @@ void fake_clock_advance_us(unsigned long long elapsed_us)
     fake_now_us = fake_now_us + elapsed_us;
 }
 
+void fake_clock_set_tick_per_read_us(unsigned long long tick_us)
+{
+    tick_per_read_us = tick_us;
+}
+
 unsigned long long clock_now_us(void)
 {
-    return fake_now_us;
+    unsigned long long now_us;
+
+    now_us = fake_now_us;
+    fake_now_us = fake_now_us + tick_per_read_us;
+    return now_us;
 }
 
 void log_sink_start(const char *path)
@@ -51,16 +62,32 @@ void log_sink_flush(void)
 {
 }
 
+void fake_memory_reset(void)
+{
+    largest_block_bytes = 0;
+    blocks_in_use = 0;
+}
+
+void fake_memory_set_largest_block(unsigned int bytes)
+{
+    largest_block_bytes = bytes;
+}
+
+int fake_memory_blocks_in_use(void)
+{
+    return blocks_in_use;
+}
+
 void *mem_alloc(unsigned int size)
 {
     void *block;
 
-    if (size == 0) {
+    if (size == 0 || (largest_block_bytes > 0 && size > largest_block_bytes)) {
         return NULL;
     }
     block = malloc(size);
     if (block != NULL) {
-        memory_blocks_in_use = memory_blocks_in_use + 1;
+        blocks_in_use = blocks_in_use + 1;
     }
     return block;
 }
@@ -68,14 +95,9 @@ void *mem_alloc(unsigned int size)
 void mem_free(void *block)
 {
     if (block != NULL) {
-        memory_blocks_in_use = memory_blocks_in_use - 1;
+        blocks_in_use = blocks_in_use - 1;
     }
     free(block);
-}
-
-int fake_memory_blocks_in_use(void)
-{
-    return memory_blocks_in_use;
 }
 
 static struct fake_file *find_file(const char *path)
@@ -157,7 +179,7 @@ int file_read_whole(const char *path, unsigned char **data, unsigned int *size)
     if (file->size == 0) {
         return FILE_ERR_SIZE;
     }
-    copy = malloc(file->size);
+    copy = mem_alloc(file->size);
     if (copy == NULL) {
         return FILE_ERR_MEMORY;
     }

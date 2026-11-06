@@ -7,6 +7,9 @@ manifest.txt
 textures/<texture_name>.gtex
 animations/<animation_name>.anim
 scenes/<scene_name>.scene
+music/<track_name>.ogg
+music/<track_name>.loop
+sounds/<sound_name>.ogg
 ```
 
 Names use only letters, digits, `_` and `-`, and are at most 95 characters. All text files use one command per line, with fields separated by a single space.
@@ -25,6 +28,8 @@ Names use only letters, digits, `_` and `-`, and are at most 95 characters. All 
 | `.gtex` | The texture file the converter writes |
 | background | A texture the manifest lists for the viewer to browse |
 | plate | A texture a scene places in a room, at a position in DS pixels |
+| grain | One block of audio frames handed to an audio port: 4096 frames for music, 512 for sounds |
+| cue | A `music`, `music_stop` or `sound` step, placed by splitting a `wait` |
 
 ## Coordinates
 
@@ -85,7 +90,7 @@ The converter crops each atlas page to the cells the set actually uses, so `u` a
 
 ## Scenes: `.scene`
 
-A scene is a list of steps that run in order. Most take effect immediately. `wait`, `fade_in`, `fade_out` and `camera_pan` hold the script for the number of ticks they name, at 60 ticks per second, while animations keep playing.
+A scene is a list of steps that run in order. Most take effect immediately. `wait`, `fade_in`, `fade_out` and `camera_pan` hold the script for the number of ticks they name, at 60 ticks per second, while animations keep playing. The audio steps never hold the script.
 
 `beam_animate`, `iris`, `dim_to` and `flash` do not hold the script. They run on their own timers while the script carries on with its next steps, and they stop when a pause stops the scene. Their ticks can be 0 to change at once. Positions are in DS pixels and pass through the same view as the art.
 
@@ -111,12 +116,17 @@ A scene is a list of steps that run in order. Most take effect immediately. `wai
 | `iris <center_x> <center_y> <radius> <ticks>` | Opens a soft-edged circle in place of the mask, starting from nothing, or from its current size if an iris is already open. Black starts at `radius`, the picture is clear inside half of it, and nothing is drawn once the clear part reaches every screen corner |
 | `dim_to <brightness> <ticks>` | Moves the picture's brightness, from 0 to 1, in a straight line. A full-screen black overlay does this |
 | `flash <brightness> <ticks>` | A full-screen white overlay starting at that brightness and falling to nothing |
+| `music <track> <loop>` | Plays a track, fading out any other first. `loop` is 1 to loop, otherwise 0 |
+| `music_stop <ticks>` | Fades the music out over that many ticks. 0 stops it at once |
+| `sound <sound>` | Starts a sound effect. Up to 4 play at once, and a fifth is logged and dropped |
 
 A scene has at most 1024 steps and 4 beams at once.
 
 Rooms do not change the mask or the beams. What draws over what, from the bottom: plates and objects, black around the art, the mask or iris, the dim, the flash, the card, the fade.
 
 A DS spotlight's `radius` becomes `half_width` as radius x 0.75 / 32, so 0x500 is 30 and 0xA00 is 60. The DS iris's radius 0x4000 is 384 by the same rule.
+
+The preload waits for the first `music` track and every `sound` the scene names, and goes on if a file is missing or will not decode. A later `music` step loads its track when it runs. Replaying the scene, leaving it for browsing and quitting stop all audio, and the music also stops when the script ends.
 
 ## Manifest: `manifest.txt`
 
@@ -128,9 +138,38 @@ background st01_00
 animation st01_example_000
 ```
 
+## Audio: `.ogg` and `.loop`
+
+`music/<track_name>.ogg` and `sounds/<sound_name>.ogg` are the remaster's own Ogg Vorbis files, unchanged apart from losing their wrapper. Every one must be 44100 Hz, and the converter and the app both refuse any other rate. Music plays on the BGM port and sounds on the VOICE port. Mono sounds play on both channels.
+
+When the app opens an `.ogg` it first checks the CRC of every Ogg page, and the file must be whole pages from its first byte to its last. A bad CRC, a cut page or extra bytes after the last page log `decoder_failed` with `error=-1`, and the decoder never sees those bytes, because it can write out of bounds on damaged headers. This guards against damage only: a file built with correct CRCs and bad contents still reaches the decoder. A sound with no audio frames logs `decoder_failed` with `error=no_frames`.
+
+`music/<track_name>.loop` exists only for a track whose wrapper sets its loop flag. It holds one line, the frame to go back to and the last frame to play:
+
+```
+1000 2000
+```
+
+A `music` step with `loop` 1 seeks to the first number after playing the frame named by the second. Without a `.loop` file it restarts at frame 0. The Ogg files' own `LoopStart` and `LoopEnd` tags are not read, because they say -1 on almost every stream.
+
 ## Source files
 
 The byte offsets the converter reads from the remaster's files, and only those. For what the fields mean see [frame_mapping.md](../../docs/frame_mapping.md), and for the format codes and pack names see [inventory.md](../../docs/inventory.md). Numbers are little-endian.
+
+`.asrc`, in `audio_file.py`, read only from the path under `natives/android/streaming/sound`, because the same name under `natives/android/sound` is a 16-byte stub:
+
+| Offset | Size | Use |
+|---|---|---|
+| 0 | 4 | The letters `srcd` |
+| 8 | 4 | Size of the Ogg file |
+| 12 | 4 | The letters `ogg` and a space |
+| 28 | 4 | Channels |
+| 36 | 4 | Sample rate |
+| 52 | 1 | Loop flag |
+| 53 | 4 | Loop start frame, not aligned |
+| 57 | 4 | Last frame, not aligned |
+| 78 | 4 | Where the Ogg file starts, which must be 86 |
+| 86 | | The Ogg file, starting with `OggS` |
 
 `.tex`, in `texture_tool.c` and `texture_encoder.py`:
 
@@ -169,3 +208,7 @@ KPKA packs, in `pack_files.py`:
 | 16 | | The entry table, 48 bytes per entry |
 
 An entry holds, in order, two 4-byte path hashes, then 8-byte values for the offset, stored size, plain size and attributes. The low 4 bits of the attributes are the compression method. The last 8 bytes are not read.
+
+## Test audio
+
+`tests/fixtures/sine_stereo_ogg.h` and `sine_mono_ogg.h` hold synthetic sine waves encoded with libvorbis at quality 0.1: 1 second of stereo at 440 and 660 Hz, and 0.25 seconds of mono at 880 Hz. They contain no game data. The stereo file's decoded CRC-32 is pinned in `tests/fixtures/fixture_facts.h`, and matched between arm64 and x86_64 builds with `-ffp-contract=off`. A test that edits a fixture and still wants it decoded calls `ogg_edit_refresh_crcs` from `tests/fixtures/ogg_edit.h` afterwards, because the app refuses a page whose CRC no longer matches.

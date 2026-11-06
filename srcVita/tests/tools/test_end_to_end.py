@@ -8,6 +8,7 @@ import unittest
 
 import convert_assets
 import synthetic_files
+import test_audio_file
 
 TESTS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(TESTS_FOLDER))
@@ -18,6 +19,10 @@ PAGE_1_PATH = "natives/android/charfiles/2d/01_human/st01/a/st01_a_000/st01_a_00
 PLATE_PATH = "natives/android/charfiles/2d/02_bg/st01/plate_iml4.tex.691230823"
 TEXTURE_FILE_HEADER_SIZE = 20
 DXT1_BLOCK_BYTES = 8
+SONG_PATH = "natives/android/streaming/sound/bgm_new/song.asrc.31"
+LOOPED_SONG_PATH = "natives/android/streaming/sound/bgm_new/looped_song.asrc.31"
+PING_PATH = "natives/android/streaming/sound/se_resource/sys/ping.asrc.31"
+ODD_RATE_PING_PATH = "natives/android/streaming/sound/se_resource/sys/odd.asrc.31"
 LOGICAL_PAGES = ["charfiles/2D/01_Human/st01/A/st01_A_000/st01_A_000_00_IML4.tex", "charfiles/2D/01_Human/st01/A/st01_A_000/st01_A_000_01_IML4.tex"]
 
 
@@ -48,6 +53,10 @@ def game_files():
         (PAGE_0_PATH, transparent_astc_tex(64, 64), True),
         (PAGE_1_PATH, transparent_astc_tex(32, 32), False),
         (PLATE_PATH, opaque_etc2_tex(128, 64), True),
+        (SONG_PATH, test_audio_file.wrapped(), False),
+        (LOOPED_SONG_PATH, test_audio_file.wrapped(loop_flag=1, loop_start=4, loop_last=9), True),
+        (PING_PATH, test_audio_file.wrapped(channels=1), False),
+        (ODD_RATE_PING_PATH, test_audio_file.wrapped(channels=1, rate=18000), False),
     ]
 
 
@@ -59,6 +68,8 @@ def tiny_set_description():
             {"name": "card_corner", "source": PLATE_PATH, "width": 8, "height": 16, "crop": [0, 0, 32, 64]},
         ],
         "plates": [{"name": "plate", "source": PLATE_PATH}],
+        "music": [{"name": "song", "source": SONG_PATH}, {"name": "looped_song", "source": LOOPED_SONG_PATH}],
+        "sounds": [{"name": "ping", "source": PING_PATH}],
         "animations": [
             {"name": "st01_a_000", "timeline": TIMELINE_PATH},
             {"name": "st01_a_000_f01", "timeline": TIMELINE_PATH, "ds_frames": [1]},
@@ -74,6 +85,9 @@ def tiny_set_description():
             ["object_group", "everyone"],
             ["wait", 30],
             ["object", "a", "st01_a_000_f01", 30, 40],
+            ["music", "song", 1],
+            ["sound", "ping"],
+            ["music_stop", 4],
         ],
     }
 
@@ -128,6 +142,9 @@ class EndToEndTests(unittest.TestCase):
             "object a st01_a_000 10 20 3 1",
             "wait 30",
             "object a st01_a_000_f01 30 40 3 1",
+            "music song 1",
+            "sound ping",
+            "music_stop 4",
         ]) + "\n")
         self.assertEqual(self.read_text("animations", "st01_a_000.anim"), "\n".join([
             "animation st01_a_000",
@@ -143,6 +160,47 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(self.read_gtex_header("plate"), ((92, 44, 2, 2024), 2044))
         self.assertEqual(self.read_gtex_header("card"), ((64, 48, 2, 1536), 1556))
         self.assertEqual(self.read_gtex_header("card_corner"), ((8, 16, 2, 64), 84))
+
+    def read_bytes(self, *parts):
+        with open(os.path.join(self.output_folder, *parts), "rb") as source:
+            return source.read()
+
+    def test_audio_is_written_without_its_wrapper_and_only_looped_tracks_get_a_loop_file(self):
+        self.convert(tiny_set_description())
+        self.assertEqual(self.read_bytes("music", "song.ogg"), test_audio_file.OGG_BYTES)
+        self.assertEqual(self.read_bytes("music", "looped_song.ogg"), test_audio_file.OGG_BYTES)
+        self.assertEqual(self.read_bytes("sounds", "ping.ogg"), test_audio_file.OGG_BYTES)
+        self.assertEqual(self.read_text("music", "looped_song.loop"), "4 9\n")
+        self.assertFalse(os.path.exists(os.path.join(self.output_folder, "music", "song.loop")))
+        self.assertFalse(os.path.exists(os.path.join(self.output_folder, "sounds", "ping.loop")))
+
+    def test_a_set_without_audio_still_converts(self):
+        set_description = tiny_set_description()
+        del set_description["music"]
+        del set_description["sounds"]
+        set_description["steps"] = [step for step in set_description["steps"] if step[0] not in ("music", "sound", "music_stop")]
+        self.convert(set_description)
+        self.assertEqual(os.listdir(os.path.join(self.output_folder, "music")), [])
+
+    def test_an_effect_at_another_rate_is_refused(self):
+        set_description = tiny_set_description()
+        set_description["sounds"] = [{"name": "ping", "source": ODD_RATE_PING_PATH}]
+        with self.assertRaisesRegex(ValueError, "18000 Hz"):
+            self.convert(set_description)
+
+    def test_a_music_step_naming_an_undeclared_track_is_refused(self):
+        set_description = tiny_set_description()
+        set_description["steps"].append(["music", "no_such_track", 0])
+        with self.assertRaises(ValueError):
+            self.convert(set_description)
+
+    def test_stale_audio_is_removed(self):
+        self.convert(tiny_set_description())
+        stale_path = os.path.join(self.output_folder, "sounds", "old.ogg")
+        with open(stale_path, "wb") as output:
+            output.write(b"old")
+        self.convert(tiny_set_description())
+        self.assertFalse(os.path.exists(stale_path))
 
     def test_stored_colors_keep_their_source_brightness(self):
         self.convert(tiny_set_description())

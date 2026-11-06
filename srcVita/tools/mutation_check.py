@@ -9,6 +9,8 @@ SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEST_TIME_LIMIT_SECONDS = 60
 BUILD_ARGUMENTS = ["-B", "-j8", "test-binaries"]
 TEST_ARGUMENTS = ["test"]
+PYTHON_TOOL_BUILD_ARGUMENTS = ["-C", "tools/assets", "-j8", "../../build/tools/music_reference", "../../build/tools/music_log_writer"]
+PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "test_audio_*.py"]
 
 MUTATIONS = [
     ("src/app/animation.c", "frame_index + 1 < animation->frame_count", "frame_index < animation->frame_count"),
@@ -193,17 +195,165 @@ MUTATIONS = [
     ("src/app/iris_pattern.c", "(distance_as_share_of_radius - IRIS_PATTERN_CLEAR_SHARE_OF_RADIUS) / (1.0f - IRIS_PATTERN_CLEAR_SHARE_OF_RADIUS)", "distance_as_share_of_radius"),
     ("src/app/iris_pattern.c", "solid_from = middle - 1.0f;", "solid_from = middle + 4.0f;"),
     ("src/app/iris_pattern.c", "from_middle_y = (float)y + 0.5f - middle;", "from_middle_y = 0.0f;"),
+    ("src/app/crc32.c", "crc = crc ^ 0xFFFFFFFFU;", ""),
+    ("src/app/crc32.c", "return crc ^ 0xFFFFFFFFU;", "return crc;"),
+    ("src/app/pcm_ramp.c", "ramp->start_gain + (int)(travelled / ramp->frames_total)", "ramp->target_gain"),
+    ("src/app/pcm_ramp.c", "#define GAIN_SHIFT 15", "#define GAIN_SHIFT 14"),
+    ("src/app/pcm_ramp.c", "ramp->gain = frames > 0 ? start_gain : target_gain;", "ramp->gain = start_gain;"),
+    ("src/app/pcm_ramp.c", "ramp->target_gain == 0 && ", ""),
+    ("src/app/pcm_ramp.c", "(long long)(ramp->target_gain - ramp->start_gain)", "(ramp->target_gain - ramp->start_gain)"),
+    ("src/app/pcm_mix.c", "sum = SAMPLE_MAX;", "sum = SAMPLE_MIN;"),
+    ("src/app/pcm_mix.c", "if (sum < SAMPLE_MIN) {", "if (0) {"),
+    ("src/app/vorbis_stream.c", "(int)(frame_count * STEREO_CHANNELS)", "(int)frame_count"),
+    ("src/app/vorbis_stream.c", "!ogg_pages_are_intact(data, size)", "0"),
+    ("src/app/ogg_pages.c", "size < HEADER_BYTES || ", ""),
+    ("src/app/ogg_pages.c", " || memcmp(data, CAPTURE_PATTERN, CAPTURE_PATTERN_BYTES) != 0", ""),
+    ("src/app/ogg_pages.c", "if (size < HEADER_BYTES + segment_count) {", "if (0) {"),
+    ("src/app/ogg_pages.c", "page_size = page_size + data[HEADER_BYTES + segment];", ""),
+    ("src/app/ogg_pages.c", "return page_size <= size ? page_size : 0;", "return page_size;"),
+    ("src/app/ogg_pages.c", "(crc << BITS_PER_BYTE) ^ ", ""),
+    ("src/app/ogg_pages.c", "crc = add_to_crc(crc, zero_crc, OGG_PAGE_CRC_BYTES);", "crc = add_to_crc(crc, &page[OGG_PAGE_CRC_OFFSET], OGG_PAGE_CRC_BYTES);"),
+    ("src/app/ogg_pages.c", "0x04c11db7U", "0x04c11db6U"),
+    ("src/app/ogg_pages.c", "0x130476dcU", "0x130476ddU"),
+    ("src/app/ogg_pages.c", "page_size == 0 || ", ""),
+    ("src/app/ogg_pages.c", " || ogg_page_crc(&data[offset], page_size) != stored_crc(&data[offset])", ""),
+    ("src/app/ogg_pages.c", "(unsigned int)bytes[3] << 24", "0"),
+    ("src/app/ogg_pages.c", "return size > 0;", "return 1;"),
+    ("src/app/music_source.c", "source->loop_last + 1 - source->next_frame", "source->loop_last - source->next_frame"),
+    ("src/app/music_source.c", "target = source->has_loop_points ? source->loop_start : 0;", "target = 0;"),
+    ("src/app/music_source.c", "if (!source->is_looping || !vorbis_stream_seek", "if (!vorbis_stream_seek"),
+    ("src/app/music_source.c", "memset(&stereo_frames[filled * SAMPLES_PER_FRAME], 0, (frame_count - filled) * SAMPLES_PER_FRAME * sizeof(short));", ""),
+    ("src/app/music_source.c", "source->loop_count = source->loop_count + 1;", ""),
+    ("src/app/music_source.c", "if (source->next_frame != 0 && !vorbis_stream_seek(&source->stream, 0)) {\n        return 0;\n    }", ""),
+    ("src/app/music_source.c", "} else if (just_went_back || !go_back_to_the_loop_start(source)) {", "} else if (!go_back_to_the_loop_start(source)) {"),
+    ("src/app/music_engine.c", "rest == 0 && playback.grains_submitted > 0", "0"),
+    ("src/app/music_engine.c", "rest == 0 && playback.grains_submitted > 0", "rest == 0"),
+    ("src/app/music_engine.c", "gap_us > GAP_LIMIT_US || ", ""),
+    ("src/app/music_engine.c", "gap_us > GAP_LIMIT_US", "gap_us >= GAP_LIMIT_US"),
+    ("src/app/music_engine.c", " || playback.last_block_us > BLOCK_LIMIT_US", ""),
+    ("src/app/music_engine.c", "playback.last_block_us > BLOCK_LIMIT_US", "playback.last_block_us >= BLOCK_LIMIT_US"),
+    ("src/app/music_engine.c", "if (!is_stopping) {\n            begin_ramp(0", "if (1) {\n            begin_ramp(0"),
+    ("src/app/music_engine.c", "window.grains == WINDOW_GRAINS", "0"),
+    ("src/app/music_engine.c", "audio_port_drain(AUDIO_PORT_MUSIC);", ""),
+    ("src/app/music_engine.c", "audio_port_close(AUDIO_PORT_MUSIC);\n    mark_playback_stopped(reason);", "mark_playback_stopped(reason);"),
+    ("src/app/music_engine.c", "audio_port_close(AUDIO_PORT_MUSIC);\n    mark_playback_stopped(\"submit_failed\");", "mark_playback_stopped(\"submit_failed\");"),
+    ("src/app/music_engine.c", "if (result < 0) {\n        run_log_write(\"music port_open_failed", "if (0) {\n        run_log_write(\"music port_open_failed"),
+    ("src/app/music_engine.c", "memset(grain, 0, sizeof(grain));\n    note_window_start();\n    if (!submit_grain(0)) {\n        abandon_playback();\n        return;\n    }\n    log_window_if_any();", "note_window_start();\n    if (!submit_grain(0)) {\n        abandon_playback();\n        return;\n    }\n    log_window_if_any();"),
+    ("src/app/music_engine.c", "memset(grain, 0, sizeof(grain));\n    note_window_start();\n    if (!submit_grain(0)) {\n        abandon_playback();\n        return;\n    }\n    begin_ramp", "note_window_start();\n    if (!submit_grain(0)) {\n        abandon_playback();\n        return;\n    }\n    begin_ramp"),
+    ("src/app/music_engine.c", "begin_ramp(0, PCM_RAMP_FULL_GAIN, RAMP_IN_FRAMES);\n}", "pcm_ramp_begin(&ramp, PCM_RAMP_FULL_GAIN, PCM_RAMP_FULL_GAIN, 0);\n}"),
+    ("src/app/music_engine.c", "(unsigned int)wish.fade_ticks * FRAMES_PER_TICK", "(unsigned int)wish.fade_ticks"),
+    ("src/app/music_engine.c", "if (wish.generation != fade_generation) {", "if (0) {"),
+    ("src/app/music_engine.c", "fade_generation = handled_generation;", ""),
+    ("src/app/music_engine.c", "mailbox.starve_ms = 0;", ""),
+    ("src/app/music_engine.c", "if (!worker_is_running) {\n        return 1;\n    }", ""),
+    ("src/app/music_engine.c", "is_done = strcmp(prepared_name, name) == 0;", "is_done = 1;"),
+    ("src/app/music_engine.c", "prepared_name[0] = '\\0';\n    audio_mailbox_unlock();", "audio_mailbox_unlock();"),
+    ("src/app/music_engine.c", "publish_prepared_name(wish->track_name);", ""),
+    ("src/app/music_engine.c", "source.stream.sample_rate != MUSIC_RATE", "0"),
+    ("src/app/music_engine.c", " || loop_last >= source.stream.frame_count", ""),
+    ("src/app/music_engine.c", "loop_last >= source.stream.frame_count", "loop_last > source.stream.frame_count"),
+    ("src/app/music_engine.c", "loop_start > loop_last || ", ""),
+    ("src/app/music_engine.c", "mem_free(track_data);", ""),
+    ("src/app/music_engine.c", "if (track_is_loaded && strcmp(loaded_name, wish->track_name) != 0) {", "if (0) {"),
+    ("src/app/music_engine.c", "if (!track_is_loaded && wish->track_name[0] != '\\0') {", "if (wish->track_name[0] != '\\0') {"),
+    ("src/app/music_engine.c", "wish->should_play && track_is_loaded", "track_is_loaded"),
+    ("src/app/music_engine.c", "window.decode_us_total / window.grains", "window.decode_us_total"),
+    ("src/app/music_engine.c", "playback.crc_total = crc32_add(playback.crc_total,", "playback.crc_total = crc32_add(0,"),
+    ("src/app/music_engine.c", "window.first_source_frame = source.next_frame;", ""),
+    ("src/app/music_engine.c", "is_stopping = 1;", ""),
+    ("src/app/music_engine.c", "is_stopping = 0;\n    fade_generation = handled_generation;", "fade_generation = handled_generation;"),
+    ("src/app/music_engine.c", "begin_ramp(ramp.gain, 0,", "begin_ramp(PCM_RAMP_FULL_GAIN, 0,"),
+    ("src/app/music_engine.c", "if (size >= sizeof(text)) {", "if (0) {"),
+    ("src/app/music_engine.c", "size >= sizeof(text)", "size > sizeof(text)"),
+    ("src/app/music_engine.c", "size = sizeof(text) - 1;", "size = sizeof(text);"),
+    ("src/app/music_engine.c", "if (!music_source_begin(&source, is_looping)) {", "music_source_begin(&source, is_looping);\n    if (0) {"),
+    ("src/app/sound_engine.c", "rest == 0 && totals.grains_submitted > 0", "0"),
+    ("src/app/sound_engine.c", "window.grains == WINDOW_GRAINS", "0"),
+    ("src/app/sound_engine.c", "if (voice < 0) {", "if (0) {"),
+    ("src/app/sound_engine.c", "voice->clip = NULL;", ""),
+    ("src/app/sound_engine.c", "pcm_mix_add(grain, &voice->clip->frames[voice->next_frame * SAMPLES_PER_FRAME], frames * SAMPLES_PER_FRAME);", ""),
+    ("src/app/sound_engine.c", "pcm_ramp_apply(&fade, grain, SOUND_GRAIN_FRAMES);", ""),
+    ("src/app/sound_engine.c", "audio_port_drain(AUDIO_PORT_SOUND);", ""),
+    ("src/app/sound_engine.c", "audio_port_close(AUDIO_PORT_SOUND);\n    mark_port_closed(\"stop\");", "mark_port_closed(\"stop\");"),
+    ("src/app/sound_engine.c", "stream.sample_rate != SOUND_RATE", "0"),
+    ("src/app/sound_engine.c", "mailbox.port_is_wanted = 0;\n    mailbox.start_count = 0;", "mailbox.port_is_wanted = 0;"),
+    ("src/app/sound_engine.c", "is_done = mailbox.clips_handled >= mailbox.clips_asked;", "is_done = 1;"),
+    ("src/app/sound_engine.c", "note_clip_is_handled();", ""),
+    ("src/app/sound_engine.c", "requests.port_is_wanted && !port_has_failed", "requests.port_is_wanted"),
+    ("src/app/sound_engine.c", "if (requests.stop_was_asked) {\n        port_has_failed = 0;\n    }", ""),
+    ("src/app/sound_engine.c", "if (strcmp(mailbox.clip_names[index], name) == 0) {", "if (0) {"),
+    ("src/app/sound_engine.c", "mem_free(clips[index].frames);", ""),
+    ("src/app/sound_engine.c", "mem_free(data);", ""),
+    ("src/app/sound_engine.c", "requests.stop_was_asked || requests.should_shut_down || requests.has_clip_to_load", "requests.stop_was_asked || requests.should_shut_down"),
+    ("src/app/sound_engine.c", "clock_now_us() - start->requested_us", "0ULL"),
+    ("src/app/sound_engine.c", "memset(voices, 0, sizeof(voices));\n    port_is_open = 0;", "port_is_open = 0;"),
+    ("src/app/sound_engine.c", "voices[voice].next_frame = 0;", ""),
+    ("src/app/sound_engine.c", "pcm_ramp_begin(&fade, PCM_RAMP_FULL_GAIN, 0, SOUND_GRAIN_FRAMES);", "pcm_ramp_begin(&fade, PCM_RAMP_FULL_GAIN, 0, 1);"),
+    ("src/app/sound_engine.c", "if (stream.frame_count == 0) {", "if (0) {"),
+    ("src/app/sound_engine.c", "if (clip->frame_count == 0) {", "if (0) {"),
+    ("src/app/sound_engine.c", "mem_free(clip->frames);", ""),
+    ("src/app/scene.c", "(step->is_looping == 0 || step->is_looping == 1)", "1"),
+    ("src/app/scene.c", "step->ticks >= 0", "1"),
+    ("src/app/scene_player.c", "music_request_play(step->audio_name, step->is_looping);", ""),
+    ("src/app/scene_player.c", "music_request_stop(step->ticks);", ""),
+    ("src/app/scene_player.c", "sound_request_play(step->audio_name);", ""),
+    ("src/app/scene_player.c", "music_request_prepare(preload_music_name);", ""),
+    ("src/app/scene_player.c", "sound_request_prepare(step->audio_name);", ""),
+    ("src/app/scene_player.c", "if (!scene_audio_is_ready()) {\n        return;\n    }", ""),
+    ("src/app/scene_player.c", "music_request_stop(MUSIC_QUICK_FADE_TICKS);\n            run_log_write(\"scene finished", "run_log_write(\"scene finished"),
+    ("src/app/scene_player.c", "stop_scene_audio();\n    request_scene_audio();", "request_scene_audio();"),
+    ("src/app/scene_player.c", "stop_scene_audio();\n    status = SCENE_PLAYER_IDLE;", "status = SCENE_PLAYER_IDLE;"),
+    ("src/app/scene_player.c", "clock_now_us() - preload_started_us > LONGEST_AUDIO_PRELOAD_US", "0"),
+    ("src/app/scene_player.c", "step->kind == SCENE_STEP_MUSIC && preload_music_name == NULL", "step->kind == SCENE_STEP_MUSIC"),
+    ("src/app/viewer_app.c", "music_shutdown();", ""),
+    ("src/app/viewer_app.c", "sound_shutdown();", ""),
+    ("src/app/viewer_app.c", "asset_subfolder_path(sound_folder, \"sounds\");", "asset_subfolder_path(sound_folder, \"music\");"),
+    ("src/app/command_file.c", "command->number <= 0 || command->number > MUSIC_STARVE_MS_MAX", "0"),
+    ("src/app/command_file.c", "\"music_starve %d%c\", &command->number, &extra", "\"music_starve %d\", &command->number"),
+]
+
+PYTHON_MUTATIONS = [
+    ("tools/audio_check.py", "allowed_rises = 1\n    for playback in playbacks:\n        previous_trouble = 0\n", "for playback in playbacks:\n        allowed_rises = 1\n        previous_trouble = 0\n"),
+    ("tools/audio_check.py", "window_before and window_after and not stopped_before", "window_after and not stopped_before"),
+    ("tools/audio_check.py", "window_before and window_after and not stopped_before", "window_before and not stopped_before"),
+    ("tools/audio_check.py", "window_before and window_after and not stopped_before", "window_before and window_after"),
+    ("tools/audio_check.py", 'if number(fields, "mode") != STEREO_PORT_MODE:\n            problems.append("music port', 'if False:\n            problems.append("music port'),
+    ("tools/audio_check.py", 'if number(fields, "mode") != STEREO_PORT_MODE:\n            problems.append("sound port', 'if False:\n            problems.append("sound port'),
+    ("tools/audio_check.py", 'if number(fields, "adopt") != 1:\n            problems.append("music port', 'if False:\n            problems.append("music port'),
+    ("tools/audio_check.py", 'if number(fields, "adopt") != 1:\n            problems.append("sound port', 'if False:\n            problems.append("sound port'),
+    ("tools/audio_check.py", 'previous_wall_us = number(window, "wall_us")\n', "pass\n"),
+    ("tools/audio_check.py", '"at") + number(window, "frames") - number(window, "rest") for window', '"at") + number(window, "frames") for window'),
+    ("tools/audio_check.py", '"music bad_loop_file", ', ""),
+    ("tools/audio_check.py", '"scene audio_wait_gave_up", ', ""),
+    ("tools/audio_check.py", 'if number(window, "rest") <= 0:', "if False:"),
+    ("tools/audio_check.py", 'if window["source_frame"] != source_frame:', "if False:"),
+    ("tools/audio_check.py", 'if number(fields, "waited_us") > LONGEST_SOUND_WAIT_US:', "if False:"),
+    ("tools/audio_check.py", "if previous_trouble is not None and trouble != previous_trouble:", "if False:"),
+    ("tools/audio_check.py", "            start = index\n", "            pass\n"),
+    ("tools/audio_check.py", "if worst_share >= DECODE_SHARE_LIMIT:", "if False:"),
+    ("tools/audio_check.py", 'if number(fields, "rate") != MUSIC_RATE or number(fields, "grain") != SOUND_GRAIN_FRAMES:', "if False:"),
+    ("tools/audio_check.py", 'return ["the capture stall came after the starve test, so it proves nothing"]', "pass"),
+    ("tools/audio_check.py", 'grain_time = number(window, "block_us_avg") + number(window, "decode_us_avg")', "grain_time = MUSIC_GRAIN_US"),
+    ("tools/audio_check.py", 'elif len(playback.windows) > 0 and playback.stopped["crc_total"] != playback.windows[-1]["crc_total"]:', "elif False:"),
+    ("tools/assets/audio_file.py", "if data[OFFSET_LOOP_FLAG] != 0:", "if True:"),
+    ("tools/assets/audio_file.py", 'if stream["rate"] != PLAYBACK_RATE:', "if False:"),
+    ("tools/assets/audio_file.py", 'if struct.unpack_from("<I", data, OFFSET_OGG_SIZE)[0] != len(data) - WRAPPER_SIZE:', "if False:"),
+    ("tools/assets/audio_file.py", '"ogg": data[WRAPPER_SIZE:],', '"ogg": data,'),
 ]
 
 
-def make_succeeds(folder, make_arguments):
-    process = subprocess.Popen(["make"] + make_arguments, cwd=folder, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+def command_succeeds(folder, command):
+    process = subprocess.Popen(command, cwd=folder, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     try:
         return process.wait(timeout=TEST_TIME_LIMIT_SECONDS) == 0
     except subprocess.TimeoutExpired:
         os.killpg(process.pid, signal.SIGKILL)
         process.wait()
         return False
+
+
+def make_succeeds(folder, make_arguments):
+    return command_succeeds(folder, ["make"] + make_arguments)
 
 
 def remove_werror_from_makefile(folder):
@@ -222,34 +372,53 @@ def mutation_outcome(folder):
     return "caught"
 
 
+def python_mutation_outcome(folder, path):
+    with open(path, encoding="utf-8") as source:
+        try:
+            compile(source.read(), path, "exec")
+        except SyntaxError:
+            return "invalid"
+    if command_succeeds(folder, PYTHON_TEST_COMMAND):
+        return "survived"
+    return "caught"
+
+
+def run_mutations(folder, mutations, outcome_of, survivors, invalid):
+    for relative_path, old_text, new_text in mutations:
+        path = os.path.join(folder, relative_path)
+        with open(path, encoding="utf-8") as source:
+            original = source.read()
+        if old_text not in original:
+            invalid.append((relative_path, old_text))
+            continue
+        with open(path, "w", encoding="utf-8") as output:
+            output.write(original.replace(old_text, new_text, 1))
+        outcome = outcome_of(path)
+        print(outcome, relative_path, "|", old_text[:60].replace("\n", " "), flush=True)
+        if outcome == "survived":
+            survivors.append((relative_path, old_text))
+        if outcome == "invalid":
+            invalid.append((relative_path, old_text))
+        with open(path, "w", encoding="utf-8") as output:
+            output.write(original)
+
+
 def main():
     survivors = []
     invalid = []
     with tempfile.TemporaryDirectory() as temporary_root:
         folder = os.path.join(temporary_root, "srcVita")
-        shutil.copytree(SRC_VITA_FOLDER, folder, ignore=shutil.ignore_patterns("build"))
+        shutil.copytree(SRC_VITA_FOLDER, folder, ignore=shutil.ignore_patterns("build", "__pycache__"))
         remove_werror_from_makefile(folder)
         if not make_succeeds(folder, BUILD_ARGUMENTS) or not make_succeeds(folder, TEST_ARGUMENTS):
             print("baseline tests fail; stopping")
             return 1
-        for relative_path, old_text, new_text in MUTATIONS:
-            path = os.path.join(folder, relative_path)
-            with open(path, encoding="utf-8") as source:
-                original = source.read()
-            if old_text not in original:
-                invalid.append((relative_path, old_text))
-                continue
-            with open(path, "w", encoding="utf-8") as output:
-                output.write(original.replace(old_text, new_text, 1))
-            outcome = mutation_outcome(folder)
-            print(outcome, relative_path, "|", old_text[:60].replace("\n", " "), flush=True)
-            if outcome == "survived":
-                survivors.append((relative_path, old_text))
-            if outcome == "invalid":
-                invalid.append((relative_path, old_text))
-            with open(path, "w", encoding="utf-8") as output:
-                output.write(original)
-    print("mutations:", len(MUTATIONS), "survivors:", len(survivors), "invalid:", len(invalid))
+        run_mutations(folder, MUTATIONS, lambda path: mutation_outcome(folder), survivors, invalid)
+        if not make_succeeds(folder, PYTHON_TOOL_BUILD_ARGUMENTS) or not command_succeeds(folder, PYTHON_TEST_COMMAND):
+            print("baseline python tests fail; stopping")
+            return 1
+        run_mutations(folder, PYTHON_MUTATIONS, lambda path: python_mutation_outcome(folder, path), survivors, invalid)
+    print("mutations:", len(MUTATIONS) + len(PYTHON_MUTATIONS), "survivors:", len(survivors), "invalid:", len(invalid))
     for entry in invalid:
         print("invalid", entry[0], entry[1][:60])
     return 1 if survivors or invalid else 0

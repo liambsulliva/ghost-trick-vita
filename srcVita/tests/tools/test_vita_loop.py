@@ -3,6 +3,7 @@ import ftplib
 import io
 import itertools
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -148,13 +149,16 @@ class UploadAssetsTests(DeviceFreeTestCase):
     def setUp(self):
         super().setUp()
         self.set_folder = os.path.join(self.folder.name, "set")
-        for folder_name in ("textures", "animations", "scenes"):
+        for folder_name in ("textures", "animations", "scenes", "music", "sounds"):
             os.makedirs(os.path.join(self.set_folder, folder_name))
         self.write_file("manifest.txt", b"scene s\n")
         self.write_file("textures/a.gtex", b"texture")
         self.write_file("textures/.DS_Store", b"finder")
         self.write_file("animations/a.anim", b"animation")
         self.write_file("scenes/s.scene", b"scene")
+        self.write_file("music/song.ogg", b"song")
+        self.write_file("music/song.loop", b"1 2")
+        self.write_file("sounds/ping.ogg", b"ping")
         self.write_file("stray.txt", b"stray")
 
     def write_file(self, relative_path, data):
@@ -163,13 +167,19 @@ class UploadAssetsTests(DeviceFreeTestCase):
 
     def test_only_asset_files_are_listed(self):
         relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
+        self.assertEqual(relative_paths, ["manifest.txt", "textures/a.gtex", "animations/a.anim", "scenes/s.scene", "music/song.loop", "music/song.ogg", "sounds/ping.ogg"])
+
+    def test_a_set_without_audio_folders_can_still_be_listed(self):
+        shutil.rmtree(os.path.join(self.set_folder, "music"))
+        shutil.rmtree(os.path.join(self.set_folder, "sounds"))
+        relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
         self.assertEqual(relative_paths, ["manifest.txt", "textures/a.gtex", "animations/a.anim", "scenes/s.scene"])
 
     def test_files_the_device_already_has_are_skipped(self):
         self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
-        self.assertIn("uploaded 4 skipped 0", self.output.getvalue())
+        self.assertIn("uploaded 7 skipped 0", self.output.getvalue())
         self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
-        self.assertIn("uploaded 0 skipped 4", self.output.getvalue())
+        self.assertIn("uploaded 0 skipped 7", self.output.getvalue())
 
     def test_a_file_missing_from_the_device_is_uploaded_again(self):
         vita_loop.upload_assets(self.set_folder)

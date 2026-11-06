@@ -11,9 +11,12 @@ LDFLAGS := -Wl,-q
 LIBS    := -lvitaGL -lstdc++ -lSceLibKernel_stub -lSceAppMgr_stub -lSceAppUtil_stub -lmathneon \
            -lc -lSceCommonDialog_stub -lm -lSceGxm_stub -lSceDisplay_stub -lSceSysmodule_stub \
            -lvitashark -lSceShaccCgExt -ltaihen_stub -lSceShaccCg_stub \
-           -lSceKernelDmacMgr_stub -lSceCtrl_stub -lSceIofilemgr_stub -lSceProcessmgr_stub
+           -lSceKernelDmacMgr_stub -lSceCtrl_stub -lSceIofilemgr_stub -lSceProcessmgr_stub \
+           -lSceAudio_stub -lScePower_stub -lSceAVConfig_stub
 
-SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c)
+STB_VORBIS_SOURCE := src/third_party/stb_vorbis.c
+STB_VORBIS_DEFINES := -DSTB_VORBIS_NO_STDIO -DSTB_VORBIS_NO_PUSHDATA_API
+SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
 OBJS := $(patsubst src/%.c,build/obj/%.o,$(SRCS))
 
 LIVEAREA_FOLDER := build/sce_sys
@@ -25,12 +28,15 @@ APP_SRCS    := $(wildcard src/app/*.c)
 FAKE_SRCS   := $(wildcard tests/fakes/*.c)
 TEST_SRCS   := $(wildcard tests/unit/*.c) $(wildcard tests/integration/*.c)
 TEST_BINS   := $(patsubst tests/%.c,build/tests/%,$(TEST_SRCS))
+STB_VORBIS_TEST_OBJECT := build/test_objects/stb_vorbis.o
 
 .PHONY: all clean check-sdk test test-binaries test-all always-rebuild
 
 all: check-sdk build/$(TARGET).vpk
 
 build/obj/vita/build_info.o: always-rebuild
+
+build/obj/third_party/stb_vorbis.o: CFLAGS += -w -DNDEBUG $(STB_VORBIS_DEFINES)
 
 check-sdk:
 ifeq ($(strip $(VITASDK)),)
@@ -65,9 +71,13 @@ build/$(TARGET).vpk: build/eboot.bin build/param.sfo $(LIVEAREA_IMAGES) sce_sys/
 		-a sce_sys/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml \
 		$@
 
-build/tests/%: tests/%.c $(APP_SRCS) $(FAKE_SRCS) $(wildcard include/*.h) $(wildcard tests/*.h) $(wildcard tests/fakes/*.h)
+$(STB_VORBIS_TEST_OBJECT): $(STB_VORBIS_SOURCE)
 	@mkdir -p $(dir $@)
-	$(HOST_CC) $(HOST_CFLAGS) $< $(APP_SRCS) $(FAKE_SRCS) -o $@
+	$(HOST_CC) -std=c99 -w -g -O0 -ffp-contract=off -include alloca.h $(STB_VORBIS_DEFINES) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -c $< -o $@
+
+build/tests/%: tests/%.c $(APP_SRCS) $(FAKE_SRCS) $(STB_VORBIS_TEST_OBJECT) $(wildcard include/*.h) $(wildcard tests/*.h) $(wildcard tests/fakes/*.h) $(wildcard tests/fixtures/*.h)
+	@mkdir -p $(dir $@)
+	$(HOST_CC) $(HOST_CFLAGS) $< $(APP_SRCS) $(FAKE_SRCS) $(STB_VORBIS_TEST_OBJECT) -o $@
 
 test-binaries: $(TEST_BINS)
 

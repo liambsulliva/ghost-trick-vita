@@ -1,10 +1,14 @@
 #include <stdlib.h>
 #include "animation_library.h"
+#include "fakes/fake_audio.h"
 #include "fakes/fake_platform.h"
 #include "fakes/fake_reader.h"
 #include "fakes/fake_renderer.h"
 #include "fakes/fake_texture_files.h"
 #include "file.h"
+#include "fixtures/fixture_facts.h"
+#include "fixtures/sine_mono_ogg.h"
+#include "fixtures/sine_stereo_ogg.h"
 #include "input.h"
 #include "run_log.h"
 #include "scene_player.h"
@@ -25,6 +29,7 @@
 #define FRAMES_LONGER_THAN_EVERY_PRELOAD_PASS 16
 #define HALF_BUDGET_TEXTURE_WIDTH 4096
 #define IRIS_TEXTURE_WIDTH 256
+#define AUDIO_SCENE "scene opening\nroom 1\nplate room_a 0 0 1024 384\nwait 6\nmusic song 1\nsound ping\nwait 6\nsound ping\nwait 6000\n"
 
 static void add_texture(const char *name, unsigned int width, unsigned int height)
 {
@@ -44,6 +49,8 @@ static void set_up_platform(void)
     fake_files_reset();
     fake_renderer_reset();
     fake_reader_reset();
+    fake_audio_reset();
+    fake_memory_reset();
     fake_clock_set_us(0);
     run_log_open("run.log");
 }
@@ -1645,6 +1652,222 @@ static void test_a_reader_thread_that_fails_to_start_is_logged(void)
     viewer_app_stop();
 }
 
+static void add_audio_files(void)
+{
+    fake_files_add("assets/music/song.ogg", sine_stereo_ogg, sizeof(sine_stereo_ogg));
+    fake_files_add("assets/sounds/ping.ogg", sine_mono_ogg, sizeof(sine_mono_ogg));
+}
+
+static void pump_audio_workers(int steps)
+{
+    fake_audio_thread_pump(AUDIO_THREAD_MUSIC, steps);
+    fake_audio_thread_pump(AUDIO_THREAD_SOUND, steps);
+}
+
+static void run_frames_and_workers_until_scene_runs(void)
+{
+    int frame;
+
+    for (frame = 0; frame < 64 && scene_player_status() == SCENE_PLAYER_PRELOADING; frame++) {
+        pump_audio_workers(1);
+        run_frames(1);
+    }
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+}
+
+static void test_a_scene_with_audio_plays_through_both_ports(void)
+{
+    set_up_platform();
+    set_up_scene_assets(AUDIO_SCENE);
+    add_audio_files();
+    viewer_app_start("assets");
+    run_frames(10);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_PRELOADING);
+    run_frames_and_workers_until_scene_runs();
+    CHECK_HAS_TEXT(log_text(), "scene ready name=opening");
+    run_frames(20);
+    pump_audio_workers(12);
+    CHECK_INT(fake_audio_port_rate(AUDIO_PORT_MUSIC), 44100);
+    CHECK_INT(fake_audio_port_grain_frames(AUDIO_PORT_MUSIC), 4096);
+    CHECK_INT(fake_audio_port_rate(AUDIO_PORT_SOUND), 44100);
+    CHECK_INT(fake_audio_port_grain_frames(AUDIO_PORT_SOUND), 512);
+    CHECK_INT(fake_audio_port_grain_count(AUDIO_PORT_MUSIC), 12);
+    CHECK_HAS_TEXT(log_text(), "music started name=song looping=1");
+    CHECK_HAS_TEXT(log_text(), "music window name=song index=0 at=0 source_frame=0 grains=11 ");
+    CHECK_HAS_TEXT(log_text(), "sound started name=ping voice=0");
+    CHECK_HAS_TEXT(log_text(), "sound started name=ping voice=1");
+    viewer_app_stop();
+    CHECK_INT(fake_memory_blocks_in_use(), 0);
+}
+
+static void test_a_stalled_main_loop_costs_the_workers_nothing(void)
+{
+    set_up_platform();
+    set_up_scene_assets(AUDIO_SCENE);
+    add_audio_files();
+    viewer_app_start("assets");
+    run_frames_and_workers_until_scene_runs();
+    run_frames(10);
+    pump_audio_workers(1);
+    pump_audio_workers(30);
+    CHECK_INT(fake_audio_port_grain_count(AUDIO_PORT_MUSIC), 31);
+    CHECK(fake_audio_port_grain_count(AUDIO_PORT_SOUND) > 30);
+    CHECK_HAS_TEXT(log_text(), "underruns=0 late=0 ");
+    CHECK(strstr(log_text(), "late=1") == NULL);
+    viewer_app_stop();
+}
+
+static void test_stopping_the_app_closes_both_ports_before_returning(void)
+{
+    set_up_platform();
+    set_up_scene_assets(AUDIO_SCENE);
+    add_audio_files();
+    viewer_app_start("assets");
+    run_frames_and_workers_until_scene_runs();
+    run_frames(10);
+    pump_audio_workers(3);
+    CHECK(fake_audio_port_is_open(AUDIO_PORT_MUSIC));
+    CHECK(fake_audio_port_is_open(AUDIO_PORT_SOUND));
+    viewer_app_stop();
+    CHECK(!fake_audio_port_is_open(AUDIO_PORT_MUSIC));
+    CHECK(!fake_audio_port_is_open(AUDIO_PORT_SOUND));
+    CHECK(!fake_audio_thread_is_alive(AUDIO_THREAD_MUSIC));
+    CHECK(!fake_audio_thread_is_alive(AUDIO_THREAD_SOUND));
+    CHECK_HAS_TEXT(fake_audio_port_events(AUDIO_PORT_MUSIC), "drain close ");
+    CHECK_HAS_TEXT(fake_audio_port_events(AUDIO_PORT_SOUND), "drain close ");
+    CHECK_HAS_TEXT(log_text(), "music stopped name=song reason=stop ");
+    CHECK_HAS_TEXT(log_text(), "sound stopped reason=stop ");
+}
+
+static void test_a_scene_with_missing_audio_files_still_plays_to_its_end(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nmusic song 1\nsound ping\nwait 30\n");
+    viewer_app_start("assets");
+    run_frames_and_workers_until_scene_runs();
+    CHECK_HAS_TEXT(log_text(), "music file_missing name=song");
+    CHECK_HAS_TEXT(log_text(), "sound file_missing name=ping");
+    run_frames(40);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) != NULL);
+    pump_audio_workers(5);
+    CHECK_INT(fake_audio_port_grain_count(AUDIO_PORT_MUSIC), 0);
+    viewer_app_stop();
+}
+
+static void test_a_scene_with_damaged_audio_files_still_plays_to_its_end(void)
+{
+    static unsigned char damaged_song[sizeof(sine_stereo_ogg)];
+    static unsigned char damaged_ping[sizeof(sine_mono_ogg)];
+
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nmusic song 1\nsound ping\nwait 30\n");
+    memcpy(damaged_song, sine_stereo_ogg, sizeof(sine_stereo_ogg));
+    damaged_song[SINE_STEREO_VENDOR_LENGTH_TOP_BYTE_OFFSET] ^= 0x80;
+    fake_files_add("assets/music/song.ogg", damaged_song, sizeof(damaged_song));
+    memcpy(damaged_ping, sine_mono_ogg, sizeof(sine_mono_ogg));
+    damaged_ping[SINE_MONO_VENDOR_LENGTH_TOP_BYTE_OFFSET] ^= 0x80;
+    fake_files_add("assets/sounds/ping.ogg", damaged_ping, sizeof(damaged_ping));
+    viewer_app_start("assets");
+    run_frames_and_workers_until_scene_runs();
+    CHECK_HAS_TEXT(log_text(), "music decoder_failed name=song error=-1");
+    CHECK_HAS_TEXT(log_text(), "sound decoder_failed name=ping error=-1");
+    run_frames(40);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(ROOM_A_WIDTH) != NULL);
+    pump_audio_workers(5);
+    CHECK_INT(fake_audio_port_grain_count(AUDIO_PORT_MUSIC), 0);
+    viewer_app_stop();
+    CHECK_INT(fake_memory_blocks_in_use(), 0);
+}
+
+static void test_a_port_that_will_not_open_leaves_the_scene_running(void)
+{
+    set_up_platform();
+    set_up_scene_assets(AUDIO_SCENE);
+    add_audio_files();
+    fake_audio_port_fail_open(AUDIO_PORT_MUSIC, -7);
+    fake_audio_port_fail_open(AUDIO_PORT_SOUND, -8);
+    viewer_app_start("assets");
+    run_frames_and_workers_until_scene_runs();
+    run_frames(20);
+    pump_audio_workers(3);
+    CHECK_HAS_TEXT(log_text(), "music port_open_failed code=0xfffffff9");
+    CHECK_HAS_TEXT(log_text(), "sound port_open_failed code=0xfffffff8");
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+    viewer_app_stop();
+    CHECK_INT(fake_memory_blocks_in_use(), 0);
+}
+
+static void test_running_out_of_memory_for_audio_leaves_the_scene_running(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\nmusic song 1\nsound ping\nwait 6000\n");
+    add_audio_files();
+    viewer_app_start("assets");
+    fake_memory_set_largest_block(64);
+    run_frames_and_workers_until_scene_runs();
+    CHECK_HAS_TEXT(log_text(), "music out_of_memory name=song");
+    CHECK_HAS_TEXT(log_text(), "sound out_of_memory name=ping");
+    fake_memory_set_largest_block(0);
+    run_frames(10);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
+    viewer_app_stop();
+}
+
+static void test_browsing_silences_the_scene_and_debug_off_plays_it_again(void)
+{
+    set_up_platform();
+    set_up_scene_assets(AUDIO_SCENE);
+    add_audio_files();
+    viewer_app_start("assets");
+    run_frames_and_workers_until_scene_runs();
+    run_frames(20);
+    pump_audio_workers(3);
+    CHECK(viewer_app_show_animation("walk"));
+    pump_audio_workers(2);
+    CHECK(!fake_audio_port_is_open(AUDIO_PORT_MUSIC));
+    CHECK(!fake_audio_port_is_open(AUDIO_PORT_SOUND));
+    press(INPUT_SELECT);
+    press(INPUT_SELECT);
+    run_frames_and_workers_until_scene_runs();
+    run_frames(20);
+    pump_audio_workers(2);
+    CHECK(fake_audio_port_is_open(AUDIO_PORT_MUSIC));
+    CHECK_HAS_TEXT(log_text(), "scene started name=opening");
+    viewer_app_stop();
+}
+
+static void test_cross_can_skip_every_hold_of_a_scene_with_audio_and_replay_it(void)
+{
+    int press_count;
+
+    set_up_platform();
+    set_up_scene_assets(AUDIO_SCENE);
+    add_audio_files();
+    viewer_app_start("assets");
+    run_frames_and_workers_until_scene_runs();
+    run_frames(1);
+    for (press_count = 0; press_count < 3; press_count++) {
+        press(INPUT_CROSS);
+        run_frames(1);
+        pump_audio_workers(1);
+    }
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
+    pump_audio_workers(2);
+    CHECK(!fake_audio_port_is_open(AUDIO_PORT_MUSIC));
+    press(INPUT_CROSS);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_PRELOADING);
+    run_frames_and_workers_until_scene_runs();
+    run_frames(20);
+    pump_audio_workers(2);
+    CHECK_INT(fake_audio_port_open_count(AUDIO_PORT_MUSIC), 2);
+    viewer_app_stop();
+    CHECK_INT(fake_memory_blocks_in_use(), 0);
+}
+
 static void test_long_run_keeps_memory_bounded(void)
 {
     int cycle;
@@ -1741,7 +1964,17 @@ int main(void)
     test_replaying_a_paused_scene_starts_it_unpaused();
     test_uploading_never_evicts_what_the_last_frame_drew();
     test_a_reader_thread_that_fails_to_start_is_logged();
+    test_a_scene_with_audio_plays_through_both_ports();
+    test_a_stalled_main_loop_costs_the_workers_nothing();
+    test_stopping_the_app_closes_both_ports_before_returning();
+    test_a_scene_with_missing_audio_files_still_plays_to_its_end();
+    test_a_scene_with_damaged_audio_files_still_plays_to_its_end();
+    test_a_port_that_will_not_open_leaves_the_scene_running();
+    test_running_out_of_memory_for_audio_leaves_the_scene_running();
+    test_browsing_silences_the_scene_and_debug_off_plays_it_again();
+    test_cross_can_skip_every_hold_of_a_scene_with_audio_and_replay_it();
     test_long_run_keeps_memory_bounded();
+    fake_audio_reset();
     fake_files_reset();
     return test_finish("integration/viewer_app");
 }

@@ -47,9 +47,16 @@ class StepExpansionTests(unittest.TestCase):
 
     def test_unknown_assets_are_refused(self):
         with self.assertRaises(ValueError):
-            convert_assets.check_steps_refer_to_known_assets([["card", "missing"]], set(), set())
+            convert_assets.check_steps_refer_to_known_assets([["card", "missing"]], set(), set(), set(), set())
         with self.assertRaises(ValueError):
-            convert_assets.check_steps_refer_to_known_assets([["object", "a", "missing", 0, 0, 0, 0]], set(), set())
+            convert_assets.check_steps_refer_to_known_assets([["object", "a", "missing", 0, 0, 0, 0]], set(), set(), set(), set())
+        with self.assertRaises(ValueError):
+            convert_assets.check_steps_refer_to_known_assets([["music", "missing", 1]], set(), set(), set(), set())
+        with self.assertRaises(ValueError):
+            convert_assets.check_steps_refer_to_known_assets([["sound", "missing"]], set(), set(), set(), set())
+
+    def test_declared_audio_is_accepted(self):
+        convert_assets.check_steps_refer_to_known_assets([["music", "song", 1], ["music_stop", 4], ["sound", "ping"]], set(), set(), {"song"}, {"ping"})
 
 
 def ticks_held_by(step):
@@ -148,9 +155,17 @@ class RealSetDescriptionTests(unittest.TestCase):
         plate_names = [plate["name"] for plate in set_description["plates"]]
         screen_names = [texture["name"] for texture in set_description["screen_textures"]]
         animation_names = set(animation["name"] for animation in set_description["animations"])
+        music_names = set(entry["name"] for entry in set_description["music"])
+        sound_names = set(entry["name"] for entry in set_description["sounds"])
         steps = convert_assets.expand_steps(set_description, {name: (1.0, 1.0) for name in plate_names})
-        convert_assets.check_steps_refer_to_known_assets(steps, set(plate_names + screen_names), animation_names)
+        convert_assets.check_steps_refer_to_known_assets(steps, set(plate_names + screen_names), animation_names, music_names, sound_names)
         self.assertLessEqual(len(steps), asset_writers.SCENE_STEP_MAX)
+
+    def test_chapter1_opening_reads_its_audio_from_the_streaming_folder(self):
+        set_description = convert_assets.load_set_description("chapter1_opening")
+        for entry in set_description["music"] + set_description["sounds"]:
+            self.assertTrue(entry["source"].startswith("natives/android/streaming/sound/"), entry["source"])
+            self.assertTrue(entry["source"].endswith(entry["name"] + ".asrc.31"), entry["source"])
 
 
 class TextureToolBuildTests(unittest.TestCase):

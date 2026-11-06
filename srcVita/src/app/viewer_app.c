@@ -8,11 +8,13 @@
 #include "file.h"
 #include "file_path.h"
 #include "memory.h"
+#include "music_engine.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "scene_player.h"
 #include "scene_stage.h"
 #include "scene_view.h"
+#include "sound_engine.h"
 #include "texture_cache.h"
 #include "ui_list.h"
 #include "viewer_app.h"
@@ -242,11 +244,15 @@ void viewer_app_start(const char *folder)
     char texture_folder[FILE_PATH_MAX];
     char animation_folder[FILE_PATH_MAX];
     char scene_folder[FILE_PATH_MAX];
+    char music_folder[FILE_PATH_MAX];
+    char sound_folder[FILE_PATH_MAX];
 
     snprintf(assets_folder, sizeof(assets_folder), "%s", folder);
     asset_subfolder_path(texture_folder, "textures");
     asset_subfolder_path(animation_folder, "animations");
     asset_subfolder_path(scene_folder, "scenes");
+    asset_subfolder_path(music_folder, "music");
+    asset_subfolder_path(sound_folder, "sounds");
     manifest = NULL;
     current_background_index = 0;
     pending_background_index = NO_PENDING_BACKGROUND;
@@ -259,6 +265,8 @@ void viewer_app_start(const char *folder)
     texture_cache_init(texture_folder, TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
     animation_library_init(animation_folder);
     scene_player_init(scene_folder);
+    music_engine_init(music_folder);
+    sound_engine_init(sound_folder);
     if (!debug_font_init()) {
         run_log_write("font failed");
     }
@@ -553,6 +561,8 @@ void viewer_app_draw(void)
 void viewer_app_stop(void)
 {
     scene_player_shutdown();
+    music_shutdown();
+    sound_shutdown();
     animation_library_clear();
     texture_cache_clear();
     debug_font_shutdown();

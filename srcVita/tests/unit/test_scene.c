@@ -143,6 +143,42 @@ static void test_scene_parse_stops_at_the_step_limit(void)
     CHECK_INT(parse_scene_text(text), SCENE_ERR_TOO_MANY_STEPS);
 }
 
+static void test_scene_parse_reads_audio_steps(void)
+{
+    const char text[] =
+        "scene opening\n"
+        "music song_a 1\n"
+        "music other 0\n"
+        "music_stop 4\n"
+        "music_stop 0\n"
+        "sound ping_a\n";
+    static struct scene scene;
+
+    CHECK_INT(scene_parse(text, sizeof(text) - 1, &scene), SCENE_OK);
+    CHECK_INT(scene.step_count, 5);
+    CHECK_INT(scene.steps[0].kind, SCENE_STEP_MUSIC);
+    CHECK_TEXT(scene.steps[0].audio_name, "song_a");
+    CHECK_INT(scene.steps[0].is_looping, 1);
+    CHECK_INT(scene.steps[1].is_looping, 0);
+    CHECK_INT(scene.steps[2].kind, SCENE_STEP_MUSIC_STOP);
+    CHECK_INT(scene.steps[2].ticks, 4);
+    CHECK_INT(scene.steps[3].ticks, 0);
+    CHECK_INT(scene.steps[4].kind, SCENE_STEP_SOUND);
+    CHECK_TEXT(scene.steps[4].audio_name, "ping_a");
+}
+
+static void test_scene_parse_rejects_bad_audio_steps(void)
+{
+    CHECK_INT(parse_scene_text("scene s\nmusic song\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nmusic song 2\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nmusic song -1\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nmusic song yes\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nmusic_stop -1\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nmusic_stop\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nsound\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\nsound \n"), SCENE_ERR_BAD_LINE);
+}
+
 int main(void)
 {
     test_scene_parse_reads_every_kind_of_step();
@@ -150,6 +186,8 @@ int main(void)
     test_scene_parse_reads_iris_dim_and_flash_steps();
     test_scene_parse_lets_effects_change_at_once();
     test_scene_parse_rejects_bad_effect_values();
+    test_scene_parse_reads_audio_steps();
+    test_scene_parse_rejects_bad_audio_steps();
     test_scene_parse_rejects_durations_that_are_not_positive();
     test_scene_parse_stops_at_the_step_limit();
     return test_finish("unit/scene");
