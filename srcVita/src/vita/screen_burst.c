@@ -9,12 +9,13 @@
 #include "memory.h"
 #include "run_log.h"
 #include "screen_burst.h"
+#include "screen_capture.h"
 
 #define BURST_FOLDER_NAME FILE_DATA_FOLDER "/captures/burst"
 #define BURST_MAGIC "GTB1"
 #define BURST_HEADER_SIZE 20u
-#define BURST_LARGEST_WIDTH 480u
-#define BURST_LARGEST_HEIGHT 272u
+#define BURST_LARGEST_WIDTH 240u
+#define BURST_LARGEST_HEIGHT 136u
 #define BURST_BYTES_PER_PIXEL 2u
 #define BURST_LARGEST_FILE (BURST_HEADER_SIZE + BURST_LARGEST_WIDTH * BURST_LARGEST_HEIGHT * BURST_BYTES_PER_PIXEL)
 #define BURST_US_BETWEEN_FRAMES 200000ull
@@ -23,8 +24,9 @@
 #define BURST_WRITER_PRIORITY 0x10000100
 #define BURST_WRITER_STACK 0x4000
 #define BURST_SOURCE_BYTES_PER_PIXEL 4u
-#define BURST_SOURCE_PIXELS_PER_PICTURE_PIXEL 2u
+#define BURST_SOURCE_PIXELS_PER_PICTURE_PIXEL 4u
 #define US_PER_SECOND 1000000ull
+#define BURST_US_BETWEEN_FULL_SIZE (6ull * US_PER_SECOND)
 
 static unsigned char *pictures[BURST_QUEUE_LENGTH];
 static unsigned int picture_sizes[BURST_QUEUE_LENGTH];
@@ -38,6 +40,8 @@ static unsigned int dropped;
 static unsigned long long started_us;
 static unsigned long long stops_at_us;
 static unsigned long long last_copy_us;
+static unsigned long long last_full_size_us;
+static unsigned int full_size_count;
 static unsigned long long longest_copy_us;
 
 static void write_u32(unsigned char *bytes, unsigned int value)
@@ -131,6 +135,8 @@ void screen_burst_run_for_seconds(int seconds)
     started_us = clock_now_us();
     stops_at_us = started_us + (unsigned long long)seconds * US_PER_SECOND;
     last_copy_us = 0;
+    last_full_size_us = started_us;
+    full_size_count = 0;
     session = (unsigned int)started_us;
     is_on = 1;
     run_log_write("burst on session=%u", session);
@@ -157,7 +163,20 @@ static void copy_half_size(unsigned char *destination, const unsigned char *sour
     }
 }
 
-void screen_burst_note_frame(void)
+static void save_full_size_when_due(unsigned long long now_us)
+{
+    char path[FILE_PATH_MAX];
+
+    if (now_us - last_full_size_us < BURST_US_BETWEEN_FULL_SIZE) {
+        return;
+    }
+    last_full_size_us = now_us;
+    snprintf(path, sizeof(path), BURST_FOLDER_NAME "/full%03u.bmp", full_size_count % BURST_SLOTS);
+    screen_capture_save_bmp(path);
+    full_size_count = full_size_count + 1;
+}
+
+int screen_burst_note_frame_and_say_if_it_ended(void)
 {
     SceDisplayFrameBuf frame_buffer;
     unsigned long long now_us;
@@ -168,29 +187,30 @@ void screen_burst_note_frame(void)
     unsigned int height;
 
     if (!is_on) {
-        return;
+        return 0;
     }
     now_us = clock_now_us();
     if (now_us >= stops_at_us) {
         stop_burst();
-        return;
+        return 1;
     }
+    save_full_size_when_due(now_us);
     if (last_copy_us != 0 && now_us - last_copy_us < BURST_US_BETWEEN_FRAMES) {
-        return;
+        return 0;
     }
     if (pictures_copied - pictures_written >= BURST_QUEUE_LENGTH) {
         dropped = dropped + 1;
-        return;
+        return 0;
     }
     memset(&frame_buffer, 0, sizeof(frame_buffer));
     frame_buffer.size = sizeof(frame_buffer);
     if (sceDisplayGetFrameBuf(&frame_buffer, SCE_DISPLAY_SETBUF_NEXTFRAME) < 0 || frame_buffer.base == NULL || frame_buffer.pixelformat != SCE_DISPLAY_PIXELFORMAT_A8B8G8R8) {
-        return;
+        return 0;
     }
     width = (unsigned int)frame_buffer.width / BURST_SOURCE_PIXELS_PER_PICTURE_PIXEL;
     height = (unsigned int)frame_buffer.height / BURST_SOURCE_PIXELS_PER_PICTURE_PIXEL;
     if (width > BURST_LARGEST_WIDTH || height > BURST_LARGEST_HEIGHT) {
-        return;
+        return 0;
     }
     last_copy_us = now_us;
     queue_index = pictures_copied % BURST_QUEUE_LENGTH;
@@ -208,4 +228,5 @@ void screen_burst_note_frame(void)
     if (copy_us > longest_copy_us) {
         longest_copy_us = copy_us;
     }
+    return 0;
 }

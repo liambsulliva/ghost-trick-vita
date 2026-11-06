@@ -232,7 +232,9 @@ static void run_main_loop(void)
         last_frame_us = frame_timer_tick(&frame_timer);
         screen_watch_note_frame();
 #ifdef FAST_FORWARD_BUILD
-        screen_burst_note_frame();
+        if (screen_burst_note_frame_and_say_if_it_ended()) {
+            script_player_set_paused(1);
+        }
 #endif
         frame_number = frame_number + 1;
         if (frame_number >= FIRST_TIMED_FRAME) {
