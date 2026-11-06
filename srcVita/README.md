@@ -191,6 +191,17 @@ srcVita/build/tests/golden/script_replay --scripts extracted/vita_assets/chapter
 
 Its `mark` lines say which scripts and acts began, which tricks fired and when the stuck check had to push.
 
+## Controls
+
+| Button | What it does |
+|---|---|
+| CROSS | Advance dialogue, or do the trick of the core you are in |
+| TRIANGLE or CIRCLE | Open or close the soul view |
+| D-pad | Pick a core in that direction. In the living world it opens the soul view first |
+| L and R together | Skip ahead |
+| SQUARE | Save a capture |
+| START | Quit |
+
 ## Debug controls
 
 SELECT turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the scene. SELECT turns them off again, which resumes a paused scene and restarts one you browsed away from.
@@ -201,9 +212,11 @@ They stay off during normal play, so that no button can stall the scene. The log
 
 `script_machine.c` and the `script_*` files beside it run the DS's own script bytes, one tick per 16,666 microseconds. The core has no SDK calls and no clock, and everything it tells the rest of the app goes through the `void` functions in `script_outputs.h`. On the Vita those are `script_bridge.c`, which drives the same stage, effects, text, overlays and audio the hand-written scene uses. In `tests/golden/script_replay.c` they print. `script_player.c` reads the files before tick zero, one per frame, and owns the clock.
 
-An op, table word, effect id or GameApp pair the VM does not know halts the whole machine by name. The last picture stays, a line at the bottom of the screen names the reason, the op, its offset, the tick, the file and the object, and the last 64 fetches go to the log. The loop keeps turning and the buttons still work.
+Nothing halts the game. An op, table word, effect id or GameApp pair the VM does not know writes one note to the log and the script carries on. If the script stops making progress, a stuck check closes the talk box, ends the narration, fires a waiting handler, moves on to the next act and at last the next script, so the chapter can always be finished. L and R together does the same on demand.
 
-From the Vita's commands file, `play_script route` plays the VM and `play_scene opening` plays the hand-written scene. X replays whichever one just finished, and it has no skip in script mode.
+`script_soul.c` is the player's side: soul view, core selection, tricks and the game events that only native code sends. Pressing the trick button sends `core|ready` at once and `core|action` 8 ticks later, as the DS does. A dead person's core sends `timeleap|start` instead.
+
+From the Vita's commands file, `play_script route` plays the VM and `play_scene opening` plays the hand-written scene. X replays whichever one just finished.
 
 `make -C srcVita golden` compares the VM's fetches with the saved DS trace, on a machine that has one in `extracted/trace/vm_golden/`. It exits 2 with a message otherwise.
 
@@ -223,9 +236,11 @@ vitaGL rounds compressed textures up to power-of-two sizes, so a texture can tak
 
 ## What is missing
 
-- **Game logic past the opening.** The VM runs the opening's 61 distinct opcodes and stops at the act after it. The saved trace holds 63 in all, and Chapter 1's scripts hold 152, of which 89 no trace has run. The first op it would halt on is `0x37`, the first dialogue.
-- **Talk text boxes, most effects and the HUD.** None are drawn yet. The opening's narration and its balloons are.
-- **Player input.** There is nothing to play yet. CROSS skips to the next step of the script, or replays the scene once it has ended. SQUARE saves a capture and START quits.
+- **Most effects.** Effect art uses a different file format from character art that has not been read, so only rings, the chapter card and the close-up dissolve are drawn. The rest are noted in the log.
+- **Soul view art past the rings.** Object tints and class gates are not drawn, and every core can be reached from every other, with no range limit.
+- **Some HUD pieces.** The countdown runs and sends its events but draws nothing, and the same goes for the `EyeCatch` banners and the time jump and phone screens.
+- **Touch.** The Vita's screens are not read. The D-pad and buttons do everything.
+- **A second chapter.** `chapter.xml` is not baked, so Chapter 1's end goes to an end screen.
 
 The hand-written scene's timing is hand-tuned against the reference video rather than taken from the game. The VM's comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.
 

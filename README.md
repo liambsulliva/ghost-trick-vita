@@ -40,7 +40,7 @@ Verified functions are recorded in [config/decomp_progress.json](config/decomp_p
 
 ## Run it on a Vita
 
-The VPK holds only the app. It has no game data in it, so it also needs art, sound and text converted from your own copy of the remaster's Android release. For now, the app plays the opening of Chapter 1 as a script, with its music, sounds and narration, and X skips ahead.
+The VPK holds only the app. It has no game data in it, so it also needs art, sound and text converted from your own copy of the remaster's Android release. The app plays Chapter 1 from the DS game's own scripts, with its music, sounds, narration and dialogue. [The app's README](srcVita/README.md#controls) lists the buttons.
 
 You need:
 
@@ -163,4 +163,4 @@ After updating this repository, repeat steps 3 and 4. The file formats can chang
 
 The decompilation workflow draws on [ds-decomp](https://github.com/AetiasHax/ds-decomp) and the compiler-driven, AI-assisted process in [sm64ds-decomp](https://github.com/tangosdev/sm64ds-decomp). Their game-specific compiler pins and ARM-only matching assumptions are not applied blindly to Ghost Trick's mostly Thumb code.
 
-Build inputs come from the user's own copies. ROMs, extracted assets, proprietary tools and reference footage stay local and gitignored. The current remaster format research has not yet been checked against a Steam copy. The Vita app in [srcVita](srcVita/README.md) installs and runs on real hardware, where it plays the opening of Chapter 1 at 60 fps from locally converted remaster art. It is a scripted scene so far: the DS game logic and input are not connected yet.
+Build inputs come from the user's own copies. ROMs, extracted assets, proprietary tools and reference footage stay local and gitignored. The current remaster format research has not yet been checked against a Steam copy. The Vita app in [srcVita](srcVita/README.md) installs and runs on real hardware, where it plays the opening of Chapter 1 at 60 fps from locally converted remaster art. The DS scripts now run the whole chapter, with player input connected. Most effects are not drawn yet.
