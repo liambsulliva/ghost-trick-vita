@@ -47,6 +47,7 @@ static int white_level;
 static int mask_fade_is_alive;
 static int zoom_ticks_left;
 #define NO_SOUL_TEXTURE "-"
+#define ALL_SOUND_LOOPS "*"
 
 static int soul_vision_is_on;
 static int mask_is_on;
@@ -93,6 +94,7 @@ static void on_stage_cleared(void)
     memset(open_balloon_rows, 0, sizeof(open_balloon_rows));
     memset(pending_overlays, 0, sizeof(pending_overlays));
     script_view_talk_changed(NULL);
+    sound_request_stop_loop(ALL_SOUND_LOOPS);
 }
 
 static void on_camera_moved(int x, int y)
@@ -124,6 +126,23 @@ static void on_sounds_stopped(void)
 {
     if (!is_quiet) {
         sound_request_stop();
+    }
+}
+
+static void on_sound_loop_started(int kind, const char *loop_tag)
+{
+    const char *name;
+
+    name = script_tables_sound_name(tables, kind);
+    if (name != NULL && !is_quiet) {
+        sound_request_loop(name, loop_tag);
+    }
+}
+
+static void on_sound_loop_stopped(const char *loop_tag)
+{
+    if (!is_quiet) {
+        sound_request_stop_loop(loop_tag);
     }
 }
 
@@ -571,6 +590,8 @@ static const struct script_outputs bridge_outputs = {
     .music_started = on_music_started,
     .music_stopped = on_music_stopped,
     .music_volume_changed = on_music_volume_changed,
+    .sound_loop_started = on_sound_loop_started,
+    .sound_loop_stopped = on_sound_loop_stopped,
     .sound_played = on_sound_played,
     .sounds_stopped = on_sounds_stopped,
     .soul_vision_changed = on_soul_vision_changed,

@@ -64,6 +64,8 @@ struct script_outputs {
     void (*music_stopped)(int fade_ticks);
     void (*sound_played)(int kind);
     void (*sounds_stopped)(void);
+    void (*sound_loop_started)(int kind, const char *loop_tag);
+    void (*sound_loop_stopped)(const char *loop_tag);
     void (*music_volume_changed)(int volume, int ticks);
     void (*soul_vision_changed)(int is_on);
     void (*soul_cursor_moved)(int is_shown, float x, float y);

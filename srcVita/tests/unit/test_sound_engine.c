@@ -207,8 +207,26 @@ static void test_two_sounds_at_once_add_together(void)
     finish();
 }
 
-static void test_a_fifth_sound_is_dropped_and_logged(void)
+static void test_a_loop_keeps_playing_until_it_is_stopped_by_its_tag(void)
 {
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    sound_request_loop("ping", "se_rain");
+    pump(WINDOW_GRAINS);
+    CHECK_INT(count_in_log("sound started name=ping"), 1);
+    CHECK_HAS_TEXT(log_text(), "voices_max=1 started=1 dropped=0 ");
+    sound_request_stop_loop("se_other");
+    pump(WINDOW_GRAINS);
+    CHECK_HAS_TEXT(log_text(), "voices_max=1 started=0 dropped=0 ");
+    sound_request_stop_loop("se_rain");
+    pump(WINDOW_GRAINS * 2);
+    CHECK_HAS_TEXT(log_text(), "voices_max=0 started=0 dropped=0 ");
+    finish();
+}
+
+static void test_one_sound_past_the_voice_limit_is_dropped_and_logged(void)
+{
+    char expected[64];
     int index;
 
     set_up();
@@ -221,7 +239,8 @@ static void test_a_fifth_sound_is_dropped_and_logged(void)
     CHECK_HAS_TEXT(log_text(), "voice=3 ");
     CHECK_HAS_TEXT(log_text(), "sound dropped name=ping reason=all_voices_busy");
     pump(WINDOW_GRAINS);
-    CHECK_HAS_TEXT(log_text(), "voices_max=4 started=4 dropped=1 ");
+    snprintf(expected, sizeof(expected), "voices_max=%d started=%d dropped=1 ", SOUND_VOICE_MAX, SOUND_VOICE_MAX);
+    CHECK_HAS_TEXT(log_text(), expected);
     finish();
 }
 
@@ -810,7 +829,8 @@ int main(void)
     test_a_started_sound_plays_in_the_next_grain_on_both_channels_and_then_ends();
     test_the_wait_before_a_sound_starts_is_logged();
     test_two_sounds_at_once_add_together();
-    test_a_fifth_sound_is_dropped_and_logged();
+    test_one_sound_past_the_voice_limit_is_dropped_and_logged();
+    test_a_loop_keeps_playing_until_it_is_stopped_by_its_tag();
     test_a_finished_voice_is_free_again_and_plays_from_the_top();
     test_a_voice_that_played_a_long_clip_plays_a_shorter_one_from_its_start();
     test_more_starts_than_the_queue_holds_are_dropped_and_logged();

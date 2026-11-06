@@ -248,6 +248,34 @@ static void play_sound(struct script_machine *machine, int kind)
     }
 }
 
+static void play_named_sound(struct script_machine *machine, struct script_vm *vm, int kind, unsigned int name_word)
+{
+    const char *tag;
+
+    tag = script_machine_string(machine, vm, name_word);
+    if (tag == NULL || tag[0] == '*' || tag[0] == '\0' || machine->outputs->sound_loop_started == NULL) {
+        play_sound(machine, kind);
+        return;
+    }
+    if (kind != SOUND_KIND_NONE && kind != SOUND_KIND_REFUSED) {
+        machine->outputs->sound_loop_started(kind, tag);
+    }
+}
+
+static void stop_named_sounds(struct script_machine *machine, struct script_vm *vm, unsigned int name_word)
+{
+    const char *tag;
+
+    tag = script_machine_string(machine, vm, name_word);
+    if (tag != NULL && tag[0] != '*' && machine->outputs->sound_loop_stopped != NULL) {
+        machine->outputs->sound_loop_stopped(tag);
+        return;
+    }
+    if (machine->outputs->sounds_stopped != NULL) {
+        machine->outputs->sounds_stopped();
+    }
+}
+
 enum script_step_result script_ops_media_run(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words)
 {
     const char *label;
@@ -297,12 +325,10 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         break;
     case 0x10c:
     case 0x10d:
-        play_sound(machine, (int)words[0]);
+        play_named_sound(machine, vm, (int)words[0], words[3]);
         break;
     case 0x10e:
-        if (machine->outputs->sounds_stopped != NULL) {
-            machine->outputs->sounds_stopped();
-        }
+        stop_named_sounds(machine, vm, words[1]);
         break;
     case 0x39:
         if (machine->talk_is_open) {
