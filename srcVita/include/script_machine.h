@@ -213,6 +213,7 @@ struct script_soul {
     unsigned int next_auto_try_tick;
     unsigned int auto_reading_ticks;
     int auto_core_was_chosen;
+    int tooltip_is_on;
     int drag_ticks_left;
     int drag_stream_ticks;
     unsigned char tried_cores[SCRIPT_OBJECT_MAX][SCRIPT_CORE_SLOT_COUNT];

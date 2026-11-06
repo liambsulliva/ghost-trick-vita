@@ -168,6 +168,23 @@
         173,
         244
       ]
+    },
+    {
+      "name": "soul_tooltip_ring",
+      "source": "natives/android/charfiles/3d/05_effect/cmn_tell_coreeff01/23_cmn_tell_coreeff01_00_iml4.tex.691230823",
+      "crop": [
+        384,
+        384,
+        128,
+        128
+      ],
+      "width": 128,
+      "height": 128,
+      "flat_color": [
+        255,
+        255,
+        255
+      ]
     }
   ],
   "composed_textures": [
@@ -558,5 +575,95 @@
         "soul_dim_02"
       ]
     }
-  ]
+  ],
+  "core_labels": {
+    "file": "natives/android/gamedesign/text/st01/st01_id.msg.22",
+    "name_entry": "st01_id_st01a_gn_",
+    "action_entry": "st01_id_st01a_acn_",
+    "font": "natives/android/gui/font/outlinefont/helveticaneueltw1g-bd.oft.1",
+    "pixels_per_em": 24,
+    "color": [
+      255,
+      255,
+      255
+    ],
+    "objects": {
+      "cicel": [
+        "00",
+        null
+      ],
+      "bed": [
+        "03",
+        "03"
+      ],
+      "kuneri": [
+        "04",
+        null
+      ],
+      "tire": [
+        "05",
+        "05"
+      ],
+      "mannequin": [
+        "06",
+        null
+      ],
+      "flag": [
+        "07",
+        null
+      ],
+      "freezer": [
+        "08",
+        null
+      ],
+      "mixer": [
+        "09",
+        "09"
+      ],
+      "airfan": [
+        "0a",
+        null
+      ],
+      "shadanki": [
+        "0c",
+        "0c"
+      ],
+      "guitar": [
+        "0d",
+        "0d"
+      ],
+      "bicycle": [
+        "0e",
+        "0e"
+      ],
+      "switchB": [
+        "10",
+        null
+      ],
+      "hasigo": [
+        "11",
+        "11"
+      ],
+      "light": [
+        "12",
+        null
+      ],
+      "ironball": [
+        "13",
+        null
+      ],
+      "hand": [
+        "14",
+        null
+      ],
+      "kasa": [
+        "17",
+        null
+      ],
+      "memo": [
+        "18",
+        null
+      ]
+    }
+  }
 }

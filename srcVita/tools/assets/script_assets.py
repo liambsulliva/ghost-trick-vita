@@ -33,6 +33,7 @@ AUDIO_FILE = SCRIPTS_FOLDER + "/audio_names.txt"
 TEXT_LINES_FILE = SCRIPTS_FOLDER + "/text_lines.txt"
 BALLOONS_FILE = SCRIPTS_FOLDER + "/balloons.txt"
 SOUL_FILE = SCRIPTS_FOLDER + "/soul.txt"
+CORE_LABELS_FILE = SCRIPTS_FOLDER + "/core_labels.txt"
 EFFECTS_FILE = SCRIPTS_FOLDER + "/effects.txt"
 CHAPTER_PRELOADED_MESSAGES = 6
 CHAPTER_PRELOADED_ROOMS = 2
@@ -313,6 +314,19 @@ def flipbooks_text(flipbooks):
     return "".join("flipbook %s %d %d %d %d %s %s %s\n" % (book["name"], book["ticks_per_frame"], book["frames"], book["columns"], book["rows"], asset_writers.format_number(book["cell_width"]), asset_writers.format_number(book["cell_height"]), " ".join(book["pages"])) for book in flipbooks)
 
 
+def core_labels_text(core_labels, texture_sizes):
+    lines = []
+    for object_name in core_labels["objects"]:
+        name_texture = "core_name_" + object_name
+        action_texture = "core_action_" + object_name
+        if name_texture not in texture_sizes:
+            continue
+        action = action_texture if action_texture in texture_sizes else NO_LABEL
+        action_size = texture_sizes.get(action_texture, (0, 0))
+        lines.append("label %s %s %s %s %s %s %s" % (object_name, name_texture, asset_writers.format_number(texture_sizes[name_texture][0]), asset_writers.format_number(texture_sizes[name_texture][1]), action, asset_writers.format_number(action_size[0]), asset_writers.format_number(action_size[1])))
+    return "\n".join(lines) + "\n"
+
+
 def effects_text(effects):
     return "".join("effect %d %s %s %d %s %s %s %d\n" % (row["id"], row["kind"], row["texture"], row["ticks"], asset_writers.format_number(row["end_zoom"]), asset_writers.format_number(row["width"]), asset_writers.format_number(row["height"]), row.get("only_in_soul_view", 0)) for row in effects)
 
@@ -425,6 +439,8 @@ def table_files(set_description, output_folder, motion_lines, narration_lines, t
     extra_textures = list(talk_textures) + set_description.get("talk", {}).get("window_textures", [])
     if "soul_view" in set_description:
         texts[SOUL_FILE] = soul_text(set_description["soul_view"])
+    if "core_labels" in set_description:
+        texts[CORE_LABELS_FILE] = core_labels_text(set_description["core_labels"], texture_sizes)
         extra_textures.append(set_description["soul_view"]["ring"])
     texts[EFFECTS_FILE] = flipbooks_text(set_description.get("flipbooks", [])) + effects_text(set_description.get("effects", []))
     if "chapter" in set_description:

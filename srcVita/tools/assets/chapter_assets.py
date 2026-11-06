@@ -412,6 +412,13 @@ def expand_set(set_description, packs, rom_path, text_key):
                 if label in entries and all(row["name"] != "bubble_" + label for row in bubble_rows):
                     bubble_rows.append(dict(balloon_style["text"], joins_lines=True, name="bubble_" + label, file=entries[label][0][0], entry=entries[label][0][1]))
                     balloon_rows.append({"label": label, "delay": balloon_style["delay"], "parts": [dict(balloon_style["art"], fits="bubble_" + label), dict(balloon_style["text_part"], texture="bubble_" + label)]})
+    core_labels = set_description.get("core_labels")
+    if core_labels is not None:
+        for object_name, (name_id, action_id) in core_labels["objects"].items():
+            style = {"font": core_labels["font"], "pixels_per_em": core_labels["pixels_per_em"], "color": core_labels["color"], "joins_lines": True, "file": core_labels["file"]}
+            bubble_rows.append(dict(style, name="core_name_" + object_name, entry=core_labels["name_entry"] + name_id))
+            if action_id is not None:
+                bubble_rows.append(dict(style, name="core_action_" + object_name, entry=core_labels["action_entry"] + action_id + "_0"))
     expanded["narration"] = narration_rows
     expanded["bubble_text"] = bubble_rows
     expanded["script_balloons"] = balloon_rows

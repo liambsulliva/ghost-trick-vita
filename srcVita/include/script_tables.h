@@ -12,6 +12,7 @@
 #define SCRIPT_TEXT_ROW_MAX 256
 #define SCRIPT_BALLOON_ROW_MAX 256
 #define SCRIPT_FLIPBOOK_MAX 8
+#define SCRIPT_CORE_LABEL_MAX 64
 #define SCRIPT_FLIPBOOK_PAGE_MAX 3
 #define SCRIPT_SOUL_STYLE_MAX 16
 #define SCRIPT_BALLOON_PART_MAX 4
@@ -62,6 +63,16 @@ struct script_soul_style {
     float blue;
     float alpha;
     int is_flat;
+};
+
+struct script_core_label {
+    char object_name[ASSET_NAME_MAX];
+    char name_texture[ASSET_NAME_MAX];
+    char action_texture[ASSET_NAME_MAX];
+    float name_width;
+    float name_height;
+    float action_width;
+    float action_height;
 };
 
 struct script_room_plate {
@@ -132,6 +143,8 @@ struct script_tables {
     int flipbook_count;
     struct script_soul_style soul_styles[SCRIPT_SOUL_STYLE_MAX];
     int soul_style_count;
+    struct script_core_label core_labels[SCRIPT_CORE_LABEL_MAX];
+    int core_label_count;
     struct script_audio_row music_rows[SCRIPT_AUDIO_ROW_MAX];
     int music_row_count;
     struct script_audio_row sound_rows[SCRIPT_AUDIO_ROW_MAX];
@@ -158,6 +171,8 @@ int script_tables_read_motions(struct script_tables *tables, const char *file_na
 const struct script_motion_row *script_tables_find_motion(const struct script_tables *tables, const char *file_name, unsigned int table_offset);
 const struct script_flipbook *script_tables_find_flipbook(const struct script_tables *tables, const char *name);
 int script_tables_read_soul(struct script_tables *tables, const char *text, unsigned int text_size);
+int script_tables_read_core_labels(struct script_tables *tables, const char *text, unsigned int text_size);
+const struct script_core_label *script_tables_find_core_label(const struct script_tables *tables, const char *object_name);
 const struct script_soul_style *script_tables_soul_style(const struct script_tables *tables, unsigned int class_id, int is_human, int has_core, int is_active);
 const struct script_effect_row *script_tables_find_effect(const struct script_tables *tables, int id);
 const char *script_tables_music_name(const struct script_tables *tables, int id);

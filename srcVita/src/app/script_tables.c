@@ -237,6 +237,39 @@ static int read_soul_line(struct script_tables *tables, const char *line)
     return 1;
 }
 
+static int read_core_label_line(struct script_tables *tables, const char *line)
+{
+    struct script_core_label *label;
+
+    if (tables->core_label_count >= SCRIPT_CORE_LABEL_MAX) {
+        return 1;
+    }
+    label = &tables->core_labels[tables->core_label_count];
+    memset(label, 0, sizeof(*label));
+    if (sscanf(line, "label " NAME_SCAN " " NAME_SCAN " %f %f " NAME_SCAN " %f %f", label->object_name, label->name_texture, &label->name_width, &label->name_height, label->action_texture, &label->action_width, &label->action_height) != 7) {
+        return 0;
+    }
+    tables->core_label_count = tables->core_label_count + 1;
+    return 1;
+}
+
+int script_tables_read_core_labels(struct script_tables *tables, const char *text, unsigned int text_size)
+{
+    return read_all_lines(tables, text, text_size, read_core_label_line);
+}
+
+const struct script_core_label *script_tables_find_core_label(const struct script_tables *tables, const char *object_name)
+{
+    int index;
+
+    for (index = 0; index < tables->core_label_count; index++) {
+        if (strcmp(tables->core_labels[index].object_name, object_name) == 0) {
+            return &tables->core_labels[index];
+        }
+    }
+    return NULL;
+}
+
 int script_tables_read_soul(struct script_tables *tables, const char *text, unsigned int text_size)
 {
     return read_all_lines(tables, text, text_size, read_soul_line);

@@ -76,6 +76,7 @@ struct script_outputs {
     void (*soul_vision_changed)(int is_on);
     void (*soul_cursor_moved)(int is_shown, float x, float y, float from_x, float from_y, int motion);
     void (*soul_core_marked)(int object_index, float x, float y);
+    void (*soul_tooltip_changed)(const char *object_name);
     void (*soul_object_styled)(const char *object_name, unsigned int class_id, int has_core, int is_active);
     void (*marked)(const char *what, const char *name);
     void (*talk_changed)(const struct script_talk_view *view);

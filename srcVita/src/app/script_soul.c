@@ -83,6 +83,7 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
     soul->active_object = object_index;
     soul->active_slot = slot;
     machine->active_core_name = machine->objects[object_index].name;
+    soul->tooltip_is_on = soul->is_on;
     if (machine->outputs->marked != NULL) {
         machine->outputs->marked("core", machine->objects[object_index].name);
     }
@@ -162,6 +163,9 @@ static void report_soul_view(struct script_machine *machine)
         } else {
             machine->outputs->soul_cursor_moved(0, 0.0f, 0.0f, 0.0f, 0.0f, SCRIPT_SOUL_RESTING);
         }
+    }
+    if (machine->outputs->soul_tooltip_changed != NULL) {
+        machine->outputs->soul_tooltip_changed(soul->is_on && soul->tooltip_is_on && soul->drag_ticks_left == 0 && soul->active_object != NO_CORE ? machine->objects[soul->active_object].name : NULL);
     }
     if (!soul->is_on || machine->outputs->soul_core_marked == NULL) {
         return;
@@ -416,6 +420,7 @@ static void set_soul_view(struct script_machine *machine, int is_on)
     soul->is_on = is_on;
     if (!is_on) {
         soul->player_opened_soul_view = 0;
+        soul->tooltip_is_on = 0;
     }
     machine->soul_state_keeps_pause = is_on;
     machine->pause_bit = is_on;

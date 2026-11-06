@@ -608,6 +608,7 @@ static const struct script_outputs bridge_outputs = {
     .soul_vision_changed = on_soul_vision_changed,
     .soul_cursor_moved = script_view_cursor_moved,
     .soul_core_marked = script_view_core_marked,
+    .soul_tooltip_changed = script_view_tooltip_changed,
     .soul_object_styled = on_soul_object_styled,
     .marked = on_marked,
     .talk_changed = on_talk_changed

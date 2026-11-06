@@ -59,6 +59,12 @@
 #define SOUL_WISP_RADIUS_SMALLEST 1.0f
 #define CORE_GLOW_SIZE 84.0f
 #define CORE_ORB_SIZE 40.0f
+#define TOOLTIP_RING_TEXTURE "soul_tooltip_ring"
+#define TOOLTIP_NO_ACTION "-"
+#define TOOLTIP_RING_SIZE 150.0f
+#define TOOLTIP_LINE_START 45.0f
+#define TOOLTIP_LINE_LENGTH 110.0f
+#define TOOLTIP_LINE_THICKNESS 2.0f
 #define SCANLINE_COUNT 135
 #define SCANLINE_SPACING 4.0f
 #define SCANLINE_HEIGHT 2.0f
@@ -100,6 +106,7 @@ static struct view_effect effects[VIEW_EFFECT_MAX];
 static unsigned int age_ticks;
 static int cursor_is_shown;
 static int cursor_motion;
+static const struct script_core_label *tooltip_label;
 static float cursor_x;
 static float cursor_y;
 static float cursor_from_x;
@@ -141,6 +148,11 @@ void script_view_cursor_moved(int is_shown, float x, float y, float from_x, floa
     cursor_from_x = from_x;
     cursor_from_y = from_y;
     cursor_motion = motion;
+}
+
+void script_view_tooltip_changed(const char *object_name)
+{
+    tooltip_label = object_name != NULL && tables != NULL ? script_tables_find_core_label(tables, object_name) : NULL;
 }
 
 void script_view_core_marked(int object_index, float x, float y)
@@ -521,6 +533,32 @@ static void draw_soul_motion(float screen_x, float screen_y)
     }
 }
 
+static void draw_label_text(const char *texture_name, float width, float height, float x, float y)
+{
+    draw_named_texture(texture_name, x, y, width * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL, height * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL, white);
+}
+
+static void draw_tooltip(float screen_x, float screen_y)
+{
+    struct renderer_rect line;
+    float text_x;
+
+    if (tooltip_label == NULL) {
+        return;
+    }
+    draw_centered(TOOLTIP_RING_TEXTURE, screen_x, screen_y, TOOLTIP_RING_SIZE, white);
+    text_x = screen_x + TOOLTIP_LINE_START;
+    line.x = text_x;
+    line.y = screen_y - TOOLTIP_LINE_THICKNESS / 2.0f;
+    line.width = TOOLTIP_LINE_LENGTH;
+    line.height = TOOLTIP_LINE_THICKNESS;
+    renderer_draw_filled_rect(line, white);
+    draw_label_text(tooltip_label->name_texture, tooltip_label->name_width, tooltip_label->name_height, text_x, screen_y - tooltip_label->name_height * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
+    if (strcmp(tooltip_label->action_texture, TOOLTIP_NO_ACTION) != 0) {
+        draw_label_text(tooltip_label->action_texture, tooltip_label->action_width, tooltip_label->action_height, text_x, screen_y);
+    }
+}
+
 static void draw_scanlines(void)
 {
     static const struct renderer_color line_color = { 0.0f, 0.0f, 0.0f, 0.16f };
@@ -554,6 +592,7 @@ static void draw_soul(void)
     draw_soul_motion(screen_x, screen_y);
     draw_soul_body(screen_x, screen_y);
     draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, SOUL_ORB_SIZE, orb);
+    draw_tooltip(screen_x, screen_y);
 }
 
 void script_view_draw(void)
