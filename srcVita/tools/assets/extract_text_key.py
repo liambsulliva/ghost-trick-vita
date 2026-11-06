@@ -22,6 +22,9 @@ LIBRARY_MAGIC = b"\x7fELF"
 CHECK_MESSAGE_PATH = "natives/android/gamedesign/text/st01/st01_0000.msg.22"
 MAY_BE_ANOTHER_BUILD = "this copy may be a different build of the game"
 EXIT_CODE_BASE_FOR_SIGNALS = 128
+STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+
+stop_signal_number = None
 
 
 class ExtractionError(Exception):
@@ -131,6 +134,17 @@ def find_keys(library, check_message):
     return [window for window in candidate_windows(library, known_key_bytes) if key_decodes_every_string(layout, window)]
 
 
+def delete_temporary_key(temporary_path):
+    try:
+        os.unlink(temporary_path)
+    except FileNotFoundError:
+        pass
+    except SystemExit:
+        if os.path.exists(temporary_path):
+            os.unlink(temporary_path)
+        raise
+
+
 def save_key(apk_folder, key):
     final_path = os.path.join(apk_folder, message_file.TEXT_KEY_FILE_NAME)
     descriptor, temporary_path = tempfile.mkstemp(dir=apk_folder, prefix="text_key_", suffix=".bin")
@@ -141,7 +155,7 @@ def save_key(apk_folder, key):
             os.fsync(output.fileno())
         os.replace(temporary_path, final_path)
     except BaseException:
-        os.unlink(temporary_path)
+        delete_temporary_key(temporary_path)
         raise
     return final_path
 
@@ -163,16 +177,14 @@ def extract_key(package_path, apk_folder):
 
 
 def exit_so_the_temporary_file_is_deleted(signal_number, _frame):
+    global stop_signal_number
+    for stop_signal in STOP_SIGNALS:
+        signal.signal(stop_signal, signal.SIG_IGN)
+    stop_signal_number = signal_number
     sys.exit(EXIT_CODE_BASE_FOR_SIGNALS + signal_number)
 
 
-def main():
-    signal.signal(signal.SIGTERM, exit_so_the_temporary_file_is_deleted)
-    signal.signal(signal.SIGHUP, exit_so_the_temporary_file_is_deleted)
-    parser = argparse.ArgumentParser(description="Finds the text key in your own copy of the Android package and saves it beside the packs.")
-    parser.add_argument("package", help="your copy of the Android package, or the library taken out of it")
-    parser.add_argument("--apk-folder", default=DEFAULT_APK_FOLDER, help="folder holding the remaster's pack files")
-    arguments = parser.parse_args()
+def extract_and_report(arguments):
     try:
         saved_path = extract_key(arguments.package, arguments.apk_folder)
     except ExtractionError as error:
@@ -183,6 +195,19 @@ def main():
         return 1
     print("saved the text key to " + saved_path)
     return 0
+
+
+def main():
+    for stop_signal in STOP_SIGNALS:
+        signal.signal(stop_signal, exit_so_the_temporary_file_is_deleted)
+    parser = argparse.ArgumentParser(description="Finds the text key in your own copy of the Android package and saves it beside the packs.")
+    parser.add_argument("package", help="your copy of the Android package, or the library taken out of it")
+    parser.add_argument("--apk-folder", default=DEFAULT_APK_FOLDER, help="folder holding the remaster's pack files")
+    arguments = parser.parse_args()
+    exit_code = extract_and_report(arguments)
+    if stop_signal_number is not None:
+        return EXIT_CODE_BASE_FOR_SIGNALS + stop_signal_number
+    return exit_code
 
 
 if __name__ == "__main__":

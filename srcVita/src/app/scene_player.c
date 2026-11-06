@@ -11,6 +11,7 @@
 #include "scene.h"
 #include "scene_player.h"
 #include "scene_stage.h"
+#include "scene_view.h"
 #include "sound_engine.h"
 #include "texture_cache.h"
 
@@ -18,6 +19,7 @@
 #define LONGEST_UPDATE_US 500000ULL
 #define LONGEST_AUDIO_PRELOAD_US 10000000ULL
 #define LOG_FOR_TOOLS_SCENE_READY "scene ready name=%s preload_us=%llu texture_bytes=%u missing=%u"
+#define LOG_FOR_TOOLS_SCENE_DISSOLVE "scene dissolve ticks=%d end_zoom=%.3f snapshot=%d snapshot_us=%llu"
 
 struct script_progress {
     int next_step;
@@ -69,6 +71,19 @@ static void begin_pan(float target_x, float target_y, int ticks)
     script.camera_target_y = target_y;
     script.is_panning = 1;
     begin_hold(ticks);
+}
+
+static void begin_dissolve(int ticks, float end_zoom)
+{
+    unsigned long long started_us;
+    int has_snapshot;
+
+    started_us = clock_now_us();
+    has_snapshot = scene_view_snapshot_stage(scene_stage_view());
+    if (has_snapshot) {
+        scene_effects_start_dissolve(scene_stage_effects(), end_zoom, ticks);
+    }
+    run_log_write(LOG_FOR_TOOLS_SCENE_DISSOLVE, ticks, end_zoom, has_snapshot, clock_now_us() - started_us);
 }
 
 static void run_step(const struct scene_step *step)
@@ -155,6 +170,9 @@ static void run_step(const struct scene_step *step)
     case SCENE_STEP_FLASH:
         scene_effects_flash(scene_stage_effects(), step->brightness, step->ticks);
         run_log_write("scene flash ticks=%d", step->ticks);
+        break;
+    case SCENE_STEP_DISSOLVE:
+        begin_dissolve(step->ticks, step->end_zoom);
         break;
     case SCENE_STEP_MUSIC:
         music_request_play(step->audio_name, step->is_looping);

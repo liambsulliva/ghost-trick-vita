@@ -63,6 +63,10 @@ MEASURED_TEXT_STEP_TICKS = [
 ]
 
 CARD_APPEARS_AT_CLIP_SECONDS = 8.267
+MEASURED_OPENING_TICKS = 5119
+MEASURED_DISSOLVE_START_TICK = 3030
+MEASURED_DISSOLVE_TICKS = 32
+MEASURED_DISSOLVE_END_ZOOM = 2
 ONE_FRAME_AND_A_BIT = 0.02
 LESS_THAN_A_FRAME = 0.01
 
@@ -82,7 +86,7 @@ class StepExpansionTests(unittest.TestCase):
         ])
 
     def test_effect_steps_pass_through_unchanged(self):
-        steps = [["mask_on"], ["beam_create", "b", -16, 64, 108, 542, 60], ["beam_animate", "b", 118, 367, 30, 60], ["beam_delete", "b"], ["iris", 144, 359, 384, 120], ["dim_to", 0.49, 10], ["flash", 0.5, 8], ["mask_off"]]
+        steps = [["mask_on"], ["beam_create", "b", -16, 64, 108, 542, 60], ["beam_animate", "b", 118, 367, 30, 60], ["beam_delete", "b"], ["iris", 144, 359, 384, 120], ["dim_to", 0.49, 10], ["flash", 0.5, 8], ["dissolve", 32, 2], ["mask_off"]]
         set_description = {"objects": {}, "object_groups": {}, "steps": steps}
         self.assertEqual(convert_assets.expand_steps(set_description, {}), steps)
         self.assertEqual(asset_writers.scene_text("s", steps), "\n".join([
@@ -94,6 +98,7 @@ class StepExpansionTests(unittest.TestCase):
             "iris 144 359 384 120",
             "dim_to 0.49 10",
             "flash 0.5 8",
+            "dissolve 32 2",
             "mask_off",
         ]) + "\n")
 
@@ -183,6 +188,24 @@ class RealSetDescriptionTests(unittest.TestCase):
         self.assertAlmostEqual(self.seconds_of_first(["flash", 1]), 81.483, delta=ONE_FRAME_AND_A_BIT)
         self.assertAlmostEqual(self.seconds_of_first(["flash", 0.5], skip=1), 86.4, delta=ONE_FRAME_AND_A_BIT)
         self.assertAlmostEqual(self.seconds_of_first(["flash", 1], skip=1), 86.55, delta=ONE_FRAME_AND_A_BIT)
+
+    def test_the_close_up_dissolves_in_from_its_measured_tick_and_zoom(self):
+        ticks = 0
+        ticks_of = {}
+        for step in self.opening_steps():
+            ticks_of.setdefault(tuple(step[:2]), ticks)
+            ticks = ticks + ticks_held_by(step)
+        self.assertEqual(ticks, MEASURED_OPENING_TICKS)
+        self.assertEqual(ticks_of[("dissolve", MEASURED_DISSOLVE_TICKS)], MEASURED_DISSOLVE_START_TICK)
+        for changed_with_the_cut in (("object", "cicel"), ("object", "cbag"), ("beam_delete", "spot_linne"), ("beam_delete", "spot_killer"), ("beam_create", "spot_linne2"), ("beam_create", "spot_killer2")):
+            self.assertEqual(ticks_of[changed_with_the_cut], MEASURED_DISSOLVE_START_TICK, changed_with_the_cut)
+        dissolve = [step for step in self.opening_steps() if step[0] == "dissolve"][0]
+        self.assertEqual(dissolve[2], MEASURED_DISSOLVE_END_ZOOM)
+
+    def test_the_cut_comes_right_after_the_dissolve_so_the_snapshot_holds_the_old_shot(self):
+        steps = self.opening_steps()
+        at = steps.index(["dissolve", MEASURED_DISSOLVE_TICKS, MEASURED_DISSOLVE_END_ZOOM])
+        self.assertEqual(steps[at + 1], ["camera", 0, 384])
 
     def test_every_dim_starts_at_its_measured_clip_time(self):
         moments, _ = clip_seconds_at_each_step(self.opening_steps())

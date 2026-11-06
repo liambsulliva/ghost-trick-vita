@@ -50,12 +50,40 @@ class PythonMutationOutcomeTests(unittest.TestCase):
         self.assertEqual(self.outcome_for_source("set.json", "{\"not\": \"python (\"}\n", False)[0], "caught")
 
     def test_audio_tools_run_only_the_audio_tests_and_the_others_run_them_all(self):
-        for file_name, command in (("audio_check.py", mutation_check.AUDIO_PYTHON_TEST_COMMAND), ("audio_file.py", mutation_check.AUDIO_PYTHON_TEST_COMMAND), ("narration.py", mutation_check.ALL_PYTHON_TEST_COMMAND), ("set.json", mutation_check.ALL_PYTHON_TEST_COMMAND)):
+        for file_name, command in (("audio_check.py", mutation_check.AUDIO_PYTHON_TEST_COMMAND), ("audio_file.py", mutation_check.AUDIO_PYTHON_TEST_COMMAND), ("narration.py", mutation_check.ALL_PYTHON_TEST_COMMAND + ["--first", "test_narration.py,test_convert_assets.py,test_end_to_end.py"]), ("set.json", mutation_check.ALL_PYTHON_TEST_COMMAND + ["--first", ""])):
             _, command_succeeds = self.outcome_for_source(file_name, "x = 1\n", True)
             command_succeeds.assert_called_once_with(mock.ANY, command, mutation_check.time_limit_for(command))
 
+    def test_a_mutation_run_stops_at_the_first_failure_and_a_normal_test_run_does_not(self):
+        self.assertIn("--failfast", mutation_check.ALL_PYTHON_TEST_COMMAND)
+        self.assertIn("--failfast", mutation_check.AUDIO_PYTHON_TEST_COMMAND)
+        self.assertIn("--failfast", mutation_check.LONGPLAY_TEST_COMMAND)
+        with open(os.path.join(mutation_check.SRC_VITA_FOLDER, "tools", "assets", "Makefile"), encoding="utf-8") as source:
+            self.assertNotIn("--failfast", source.read())
+
+    def test_running_the_likely_tests_first_only_changes_the_order_so_no_test_is_left_out(self):
+        command = mutation_check.python_test_command_for(os.path.join("tools", "assets", "narration.py"))
+        self.assertEqual(command[:len(mutation_check.ALL_PYTHON_TEST_COMMAND)], mutation_check.ALL_PYTHON_TEST_COMMAND)
+        self.assertEqual(len(command), len(mutation_check.ALL_PYTHON_TEST_COMMAND) + 2)
+        self.assertEqual(command[-2], "--first")
+
+    def test_every_test_file_named_to_run_first_exists_and_so_does_its_tool(self):
+        tests_folder = os.path.join(mutation_check.SRC_VITA_FOLDER, "tests", "tools")
+        mutated_files = set(os.path.basename(relative_path) for relative_path, _, _ in mutation_check.PYTHON_MUTATIONS)
+        for tool_name, test_files in mutation_check.TEST_FILES_MOST_LIKELY_TO_CATCH.items():
+            self.assertIn(tool_name, mutated_files)
+            for test_file in test_files:
+                self.assertTrue(os.path.exists(os.path.join(tests_folder, test_file)), test_file)
+
+    def test_a_tool_with_nothing_named_first_still_runs_every_test(self):
+        self.assertEqual(mutation_check.python_test_command_for(os.path.join("tools", "other.py")), mutation_check.ALL_PYTHON_TEST_COMMAND + ["--first", ""])
+
     def test_the_whole_tool_test_suite_gets_more_time_than_the_audio_tests(self):
         self.assertGreater(mutation_check.time_limit_for(mutation_check.ALL_PYTHON_TEST_COMMAND), mutation_check.time_limit_for(mutation_check.AUDIO_PYTHON_TEST_COMMAND))
+        self.assertEqual(mutation_check.time_limit_for(mutation_check.python_test_command_for("narration.py")), mutation_check.ALL_PYTHON_TEST_TIME_LIMIT_SECONDS)
+
+    def test_the_longplay_tests_keep_the_short_time_limit(self):
+        self.assertEqual(mutation_check.time_limit_for(mutation_check.python_test_command_for("/x/tools/longplay_check.py")), mutation_check.TEST_TIME_LIMIT_SECONDS)
 
 
 class EntryTests(unittest.TestCase):
@@ -65,9 +93,19 @@ class EntryTests(unittest.TestCase):
 
     def test_python_entries_are_routed_to_the_tool_tests_and_c_entries_are_not(self):
         for relative_path, _, _ in mutation_check.PYTHON_MUTATIONS:
-            self.assertTrue(relative_path.startswith("tools/"), relative_path)
+            self.assertTrue(relative_path.startswith(("tools/", "tests/tools/")), relative_path)
         for relative_path, _, _ in mutation_check.MUTATIONS:
             self.assertFalse(relative_path.startswith("tools/"), relative_path)
+
+    @unittest.skipUnless(os.path.isdir(os.path.join(os.path.dirname(mutation_check.SRC_VITA_FOLDER), "tools")), "a mutation run changes the text this reads")
+    def test_an_entry_for_this_tool_changes_its_code_and_not_the_entry_itself(self):
+        with open(os.path.join(mutation_check.SRC_VITA_FOLDER, "tools", "mutation_check.py"), encoding="utf-8") as source:
+            text = source.read()
+        entries_start = text.index("PYTHON_MUTATIONS += [")
+        entries = [entry for entry in mutation_check.PYTHON_MUTATIONS if entry[0] == "tools/mutation_check.py"]
+        self.assertGreater(len(entries), 0)
+        for _, old_text, _ in entries:
+            self.assertLess(text.index(old_text), entries_start, old_text)
 
     @unittest.skipUnless(os.path.isdir(os.path.join(os.path.dirname(mutation_check.SRC_VITA_FOLDER), "tools")), "a mutation run changes the text this reads")
     def test_every_entry_still_finds_its_text(self):
@@ -82,6 +120,21 @@ class PythonTestChoiceTests(unittest.TestCase):
 
     def test_an_audio_tool_runs_the_audio_tests(self):
         self.assertEqual(mutation_check.python_test_command_for("/x/tools/audio_check.py"), mutation_check.AUDIO_PYTHON_TEST_COMMAND)
+
+    def test_the_audio_and_longplay_routes_are_not_given_a_running_order(self):
+        for file_name in ("audio_check.py", "audio_file.py", "longplay_check.py"):
+            self.assertNotIn("--first", mutation_check.python_test_command_for(os.path.join("tools", file_name)))
+
+
+class ReverseOrderCommandTests(unittest.TestCase):
+    def test_it_names_every_test_file_backwards_and_nothing_else(self):
+        with tempfile.TemporaryDirectory() as folder:
+            tests_folder = os.path.join(folder, "tests", "tools")
+            os.makedirs(tests_folder)
+            for file_name in ("test_a.py", "test_b.py", "test_c.py", "run_tests.py"):
+                with open(os.path.join(tests_folder, file_name), "w", encoding="utf-8"):
+                    pass
+            self.assertEqual(mutation_check.python_tests_in_reverse_order_command(folder), mutation_check.ALL_PYTHON_TEST_COMMAND + ["--first", "test_c.py,test_b.py,test_a.py"])
 
 
 class PythonBaselineTests(unittest.TestCase):
@@ -98,6 +151,12 @@ class PythonBaselineTests(unittest.TestCase):
 
     def test_broken_tool_tests_stop_the_run_before_any_python_mutation(self):
         result, output, run_mutations = self.main_when_this_command_fails(mutation_check.ALL_PYTHON_TEST_COMMAND)
+        self.assertEqual(result, 1)
+        self.assertIn("baseline python tests fail", output)
+        self.assertEqual([call[0][1] for call in run_mutations.call_args_list], [mutation_check.MUTATIONS])
+
+    def test_tests_that_pass_in_only_one_order_stop_the_run_before_any_python_mutation(self):
+        result, output, run_mutations = self.main_when_this_command_fails(mutation_check.ALL_PYTHON_TEST_COMMAND + ["--first", ""])
         self.assertEqual(result, 1)
         self.assertIn("baseline python tests fail", output)
         self.assertEqual([call[0][1] for call in run_mutations.call_args_list], [mutation_check.MUTATIONS])

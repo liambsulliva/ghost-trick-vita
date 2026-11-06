@@ -67,6 +67,27 @@ static void test_scene_parse_reads_beam_and_mask_steps(void)
     CHECK_INT(scene.steps[4].kind, SCENE_STEP_MASK_OFF);
 }
 
+static void test_scene_parse_reads_a_dissolve_step(void)
+{
+    const char text[] = "scene s\ndissolve 32 2\n";
+    static struct scene scene;
+
+    CHECK_INT(scene_parse(text, sizeof(text) - 1, &scene), SCENE_OK);
+    CHECK_INT(scene.steps[0].kind, SCENE_STEP_DISSOLVE);
+    CHECK_INT(scene.steps[0].ticks, 32);
+    CHECK(scene.steps[0].end_zoom == 2.0f);
+}
+
+static void test_scene_parse_refuses_a_dissolve_that_cannot_run(void)
+{
+    CHECK_INT(parse_scene_text("scene s\ndissolve 32\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\ndissolve 0 2\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\ndissolve -1 2\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\ndissolve 32 0\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\ndissolve 32 -1\n"), SCENE_ERR_BAD_LINE);
+    CHECK_INT(parse_scene_text("scene s\ndissolve 32 0.5\n"), SCENE_OK);
+}
+
 static void test_scene_parse_reads_iris_dim_and_flash_steps(void)
 {
     const char text[] =
@@ -238,6 +259,8 @@ int main(void)
     test_scene_parse_reads_every_kind_of_step();
     test_scene_parse_reads_beam_and_mask_steps();
     test_scene_parse_reads_iris_dim_and_flash_steps();
+    test_scene_parse_reads_a_dissolve_step();
+    test_scene_parse_refuses_a_dissolve_that_cannot_run();
     test_scene_parse_lets_effects_change_at_once();
     test_scene_parse_rejects_bad_effect_values();
     test_scene_parse_reads_audio_steps();

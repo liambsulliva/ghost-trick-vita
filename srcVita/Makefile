@@ -93,6 +93,7 @@ build/test_objects/tests/%.o: tests/%.c $(TEST_HEADERS)
 
 build/test_objects/tests/integration/test_main_loop.o: src/main.c
 build/test_objects/tests/unit/test_vita_calls.o: src/vita/keep_awake.c src/vita/system_state.c
+build/test_objects/tests/unit/test_vita_renderer.o: src/vita/renderer.c
 
 build/tests/%: build/test_objects/tests/%.o $(APP_TEST_OBJECTS) $(FAKE_TEST_OBJECTS) $(STB_VORBIS_TEST_OBJECT)
 	@mkdir -p $(dir $@)

@@ -94,7 +94,7 @@ The converter crops each atlas page to the cells the set actually uses, so `u` a
 
 A scene is a list of steps that run in order. Most take effect immediately. `wait`, `fade_in`, `fade_out` and `camera_pan` hold the script for the number of ticks they name, at 60 ticks per second, while animations keep playing. The audio steps, text steps and overlay steps never hold the script. Text fades and overlay growth run on their own timers, so the scene places a `wait` between them. They stop when a pause stops the scene, and they finish after the script ends. The end prompt waits until no text is still fading out.
 
-`beam_animate`, `iris`, `dim_to` and `flash` do not hold the script. They run on their own timers while the script carries on with its next steps, and they stop when a pause stops the scene. Their ticks can be 0 to change at once. Positions are in DS pixels and pass through the same view as the art.
+`beam_animate`, `iris`, `dim_to`, `flash` and `dissolve` do not hold the script. They run on their own timers while the script carries on with its next steps, and they stop when a pause stops the scene. Except for `dissolve`, their ticks can be 0 to change at once. Positions are in DS pixels and pass through the same view as the art.
 
 | Step | Meaning |
 |---|---|
@@ -123,13 +123,18 @@ A scene is a list of steps that run in order. Most take effect immediately. `wai
 | `iris <center_x> <center_y> <radius> <ticks>` | Opens a soft-edged circle in place of the mask, starting from nothing, or from its current size if an iris is already open. Black starts at `radius`, the picture is clear inside half of it, and nothing is drawn once the clear part reaches every screen corner |
 | `dim_to <brightness> <ticks>` | Moves the picture's brightness, from 0 to 1, in a straight line. A full-screen black overlay does this |
 | `flash <brightness> <ticks>` | A full-screen white overlay starting at that brightness and falling to nothing |
+| `dissolve <ticks> <end_zoom>` | Takes a snapshot of the stage as drawn so far: plates, objects, black around the art, mask or iris, overlays and dim. The snapshot is drawn over the live stage for `ticks`, fading from opaque to nothing in a straight line while it grows in a straight line from its own size to `end_zoom` times it, about the bottom centre of the DS camera's window, (480, 542) on screen. The steps after it change the live stage underneath. `ticks` and `end_zoom` must be above 0 |
 | `music <track> <loop>` | Plays a track, fading out any other first. `loop` is 1 to loop, otherwise 0 |
 | `music_stop <ticks>` | Fades the music out over that many ticks. 0 stops it at once |
 | `sound <sound>` | Starts a sound effect. Up to 4 play at once, and a fifth is logged and dropped |
 
 A scene has at most 1024 steps and 4 beams at once.
 
-Rooms do not change the mask or the beams. What draws over what, from the bottom: plates and objects, black around the art, the mask or iris, overlays, the dim, text lines, the flash, the card, the fade. So a bubble dims with the room and overflows a beam's edge, and text stays at full brightness above the dim.
+Rooms do not change the mask or the beams. What draws over what, from the bottom: plates and objects, black around the art, the mask or iris, overlays, the dim, the dissolve's snapshot, text lines, the flash, the card, the fade. So a bubble dims with the room and overflows a beam's edge, and text stays at full brightness above the dim.
+
+A dissolve keeps running if a hold is skipped and after the script ends, and it stops with a pause. Replaying the scene, leaving it for browsing and quitting end it. A new dissolve replaces one still running, and its snapshot does not hold the old one. If the app has no snapshot target, the step logs `snapshot=0` and the change is a plain cut. The snapshot target is made once when the app starts: a 960 by 544 RGB565 texture and the depth buffer vitaGL adds to a framebuffer, 3,133,440 bytes of video memory in all. Its 5-6-5 color can differ from the stage by up to 4 levels in red and blue and 2 in green, only while the dissolve runs. The log gives what each snapshot cost on the main loop, as `scene dissolve ... snapshot_us=`, and what the target took, as `renderer snapshot_target ... video_bytes= main_bytes= render_target_bytes=`. The last is the driver's own block in main memory, outside vitaGL's heaps.
+
+The opening's `dissolve 32 2` comes from the reference video, where each frame of the change fits the old shot at zoom `1 + p` and alpha `1 - p` over the still new shot, with `p` rising by 1/32 per tick. The video skips one step at tick 3045 and the app does not copy that, so from there the app is one tick behind it.
 
 A DS spotlight's `radius` becomes `half_width` as radius x 0.75 / 32, so 0x500 is 30 and 0xA00 is 60. The DS iris's radius 0x4000 is 384 by the same rule.
 
@@ -265,7 +270,7 @@ The 16-byte key is not in this repository. `tools/assets/extract_text_key.py` fi
 2. A regular expression finds every 16-byte window of the library that has those bytes at those places.
 3. A window counts as the key only if it decodes the whole string area so that every entry name holds only letters, digits and `_`, every string is strict UTF-16 and every string ends before the next one starts.
 
-Exactly one distinct key must pass. No key, hash, position or expected byte is stored in the code. The converter reads `text_key.bin` only for a set with `narration` or `bubble_text`, and stops before any other work if the file is missing or the wrong size. The tool writes the key to a temporary `text_key_*.bin` file with owner-only permissions and renames it into place, so a stopped run leaves either the old file or a whole new one, and git ignores the temporary name as well.
+Exactly one distinct key must pass. No key, hash, position or expected byte is stored in the code. The converter reads `text_key.bin` only for a set with `narration` or `bubble_text`, and stops before any other work if the file is missing or the wrong size. The tool writes the key to a temporary `text_key_*.bin` file with owner-only permissions and renames it into place, so a stopped run leaves either the old file or a whole new one, and git ignores the temporary name as well. SIGINT, SIGTERM and SIGHUP delete the temporary file, even if a second one arrives while it is stopping. SIGKILL leaves it behind.
 
 `tools/rom_audit.py` refuses a file named `text_key.bin` and, by rule, any `.so` file or ELF library, because a library copied out of the package holds the key. When `extracted/remaster_apk/text_key.bin` exists, the audit also searches every tracked or unignored file for the key:
 

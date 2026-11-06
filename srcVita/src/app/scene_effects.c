@@ -79,6 +79,10 @@ void scene_effects_advance(struct scene_effects *effects, unsigned long long ela
     ramp_advance(&effects->iris_radius, elapsed_us);
     ramp_advance(&effects->brightness, elapsed_us);
     ramp_advance(&effects->flash_level, elapsed_us);
+    ramp_advance(&effects->dissolve_progress, elapsed_us);
+    if (effects->dissolve_progress.value >= 1.0f) {
+        effects->dissolve_is_on = 0;
+    }
 }
 
 void scene_effects_create_beam(struct scene_effects *effects, const char *name, float apex_x, float apex_y, float base_x, float base_y, float half_width)
@@ -152,4 +156,12 @@ void scene_effects_flash(struct scene_effects *effects, float brightness, int ti
 {
     ramp_set(&effects->flash_level, brightness);
     ramp_begin(&effects->flash_level, 0.0f, ticks);
+}
+
+void scene_effects_start_dissolve(struct scene_effects *effects, float end_zoom, int ticks)
+{
+    effects->dissolve_is_on = 1;
+    effects->dissolve_end_zoom = end_zoom;
+    ramp_set(&effects->dissolve_progress, 0.0f);
+    ramp_begin(&effects->dissolve_progress, 1.0f, ticks);
 }

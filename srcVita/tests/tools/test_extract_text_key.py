@@ -49,6 +49,32 @@ sys.argv = ["extract_text_key.py", package_path, "--apk-folder", apk_folder]
 sys.exit(extract_text_key.main())
 """
 
+STOP_TWICE_DURING_SAVE = """
+import os
+import sys
+
+tools_folder, signal_number, package_path, apk_folder = sys.argv[1:]
+sys.path.insert(0, tools_folder)
+import extract_text_key
+
+real_unlink = os.unlink
+
+
+def stop_here(_descriptor):
+    os.kill(os.getpid(), int(signal_number))
+
+
+def stop_again_then_unlink(path):
+    os.kill(os.getpid(), int(signal_number))
+    real_unlink(path)
+
+
+os.fsync = stop_here
+os.unlink = stop_again_then_unlink
+sys.argv = ["extract_text_key.py", package_path, "--apk-folder", apk_folder]
+sys.exit(extract_text_key.main())
+"""
+
 SMALL_ENTRIES = [("abcdefghij", ["klmn", "opqr"])]
 KEY_INDEX_WITH_ONLY_LETTERS = 2
 KEY_INDEX_WITH_A_TEXT_TERMINATOR = 14
@@ -464,15 +490,25 @@ class SavingTests(ToolTestCase):
         self.assertTrue(seen[0].startswith("text_key_"), seen[0])
         self.assertTrue(seen[0].endswith(".bin"), seen[0])
 
-    def stop_during_save(self, signal_number):
+    def stop_during_save(self, signal_number, script=STOP_DURING_SAVE):
         tools_folder = os.path.dirname(os.path.abspath(extract_text_key.__file__))
         package_path = self.write_library(library_with(KEY))
-        command = [sys.executable, "-I", "-c", STOP_DURING_SAVE, tools_folder, str(int(signal_number)), package_path, self.apk_folder]
+        command = [sys.executable, "-I", "-c", script, tools_folder, str(int(signal_number)), package_path, self.apk_folder]
         return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    def test_a_second_stop_during_the_cleanup_cannot_leave_the_temporary_file(self):
+        synthetic_files.write_text_key(self.apk_folder, bytes(16))
+        for signal_number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            with self.subTest(signal_number=signal_number):
+                result = self.stop_during_save(signal_number, STOP_TWICE_DURING_SAVE)
+                self.assertEqual(result.returncode, EXIT_CODE_BASE_FOR_SIGNALS + signal_number)
+                self.assert_nothing_leaked(result)
+                self.assertEqual(self.saved_key(), bytes(16))
+                self.assertEqual(self.temporary_files(), [])
 
     def test_a_terminated_tool_keeps_the_old_file_and_leaves_nothing_else(self):
         synthetic_files.write_text_key(self.apk_folder, bytes(16))
-        for signal_number in (signal.SIGTERM, signal.SIGHUP):
+        for signal_number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
             with self.subTest(signal_number=signal_number):
                 result = self.stop_during_save(signal_number)
                 self.assertEqual(result.returncode, EXIT_CODE_BASE_FOR_SIGNALS + signal_number)
@@ -488,6 +524,101 @@ class SavingTests(ToolTestCase):
         self.assertEqual(len(leftovers), 1)
         self.assertTrue(leftovers[0].endswith(".bin"), leftovers[0])
         self.assertEqual(stat.S_IMODE(os.stat(os.path.join(self.apk_folder, leftovers[0])).st_mode), PRIVATE_FILE_MODE)
+
+
+class StopSignalTests(unittest.TestCase):
+    def setUp(self):
+        for stop_signal in extract_text_key.STOP_SIGNALS:
+            self.addCleanup(signal.signal, stop_signal, signal.getsignal(stop_signal))
+        self.addCleanup(setattr, extract_text_key, "stop_signal_number", None)
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.temporary_path = os.path.join(temporary.name, "text_key_x.bin")
+        with open(self.temporary_path, "wb") as output:
+            output.write(b"x")
+
+    def test_the_first_stop_ignores_every_later_stop_and_exits_with_the_signal_code(self):
+        with self.assertRaises(SystemExit) as caught:
+            extract_text_key.exit_so_the_temporary_file_is_deleted(signal.SIGTERM, None)
+        self.assertEqual(caught.exception.code, EXIT_CODE_BASE_FOR_SIGNALS + signal.SIGTERM)
+        for stop_signal in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            self.assertEqual(signal.getsignal(stop_signal), signal.SIG_IGN)
+
+    def run_main_with_an_extraction_that(self, extraction):
+        with mock.patch.object(sys, "argv", ["extract_text_key.py", "package"]):
+            with mock.patch.object(extract_text_key, "extract_key", side_effect=extraction):
+                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    return extract_text_key.main()
+
+    def test_main_catches_all_three_stop_signals(self):
+        self.run_main_with_an_extraction_that(lambda *_arguments: "saved")
+        for stop_signal in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            self.assertEqual(signal.getsignal(stop_signal), extract_text_key.exit_so_the_temporary_file_is_deleted)
+
+    def test_a_stop_python_swallowed_still_sets_the_exit_code(self):
+        def stop_inside_a_destructor(*_arguments):
+            try:
+                extract_text_key.exit_so_the_temporary_file_is_deleted(signal.SIGTERM, None)
+            except SystemExit:
+                pass
+            return "saved"
+
+        self.assertEqual(self.run_main_with_an_extraction_that(stop_inside_a_destructor), EXIT_CODE_BASE_FOR_SIGNALS + signal.SIGTERM)
+
+    def test_a_swallowed_stop_also_wins_over_a_failed_extraction(self):
+        def stop_then_fail(*_arguments):
+            try:
+                extract_text_key.exit_so_the_temporary_file_is_deleted(signal.SIGHUP, None)
+            except SystemExit:
+                pass
+            raise extract_text_key.ExtractionError("no key found")
+
+        self.assertEqual(self.run_main_with_an_extraction_that(stop_then_fail), EXIT_CODE_BASE_FOR_SIGNALS + signal.SIGHUP)
+
+    def test_a_swallowed_stop_also_wins_over_an_unexpected_failure(self):
+        def stop_then_break(*_arguments):
+            try:
+                extract_text_key.exit_so_the_temporary_file_is_deleted(signal.SIGINT, None)
+            except SystemExit:
+                pass
+            raise ValueError("broken")
+
+        self.assertEqual(self.run_main_with_an_extraction_that(stop_then_break), EXIT_CODE_BASE_FOR_SIGNALS + signal.SIGINT)
+
+    def test_a_run_nothing_stopped_exits_with_zero(self):
+        self.assertEqual(self.run_main_with_an_extraction_that(lambda *_arguments: "saved"), 0)
+
+    def test_a_stop_that_lands_just_before_the_unlink_still_deletes_the_file(self):
+        real_unlink = os.unlink
+        calls = []
+
+        def stop_on_the_first_call(path):
+            calls.append(path)
+            if len(calls) == 1:
+                raise SystemExit(EXIT_CODE_BASE_FOR_SIGNALS + signal.SIGTERM)
+            real_unlink(path)
+
+        with mock.patch.object(extract_text_key.os, "unlink", side_effect=stop_on_the_first_call):
+            with self.assertRaises(SystemExit):
+                extract_text_key.delete_temporary_key(self.temporary_path)
+        self.assertEqual(len(calls), 2)
+        self.assertFalse(os.path.exists(self.temporary_path))
+
+    def test_a_stop_that_lands_just_after_the_unlink_does_not_fail_on_the_second_try(self):
+        real_unlink = os.unlink
+
+        def unlink_then_stop(path):
+            real_unlink(path)
+            raise SystemExit(EXIT_CODE_BASE_FOR_SIGNALS + signal.SIGTERM)
+
+        with mock.patch.object(extract_text_key.os, "unlink", side_effect=unlink_then_stop):
+            with self.assertRaises(SystemExit) as caught:
+                extract_text_key.delete_temporary_key(self.temporary_path)
+        self.assertEqual(caught.exception.code, EXIT_CODE_BASE_FOR_SIGNALS + signal.SIGTERM)
+
+    def test_a_file_already_gone_after_the_rename_is_not_an_error(self):
+        os.remove(self.temporary_path)
+        extract_text_key.delete_temporary_key(self.temporary_path)
 
 
 if __name__ == "__main__":

@@ -511,10 +511,9 @@ static void draw_text_lines(const struct scene_stage *stage)
     }
 }
 
-void scene_view_draw(const struct scene_stage *stage)
+static void draw_stage_layers(const struct scene_stage *stage)
 {
     struct screen_view view;
-    struct renderer_color fade_color;
 
     view = view_of_stage(stage);
     draw_plates(stage, &view);
@@ -523,6 +522,42 @@ void scene_view_draw(const struct scene_stage *stage)
     draw_mask_or_iris(&stage->effects, &view);
     draw_overlays(stage, &view);
     draw_dim(&stage->effects);
+}
+
+static void draw_dissolve(const struct scene_effects *effects)
+{
+    struct renderer_rect area;
+    float progress;
+    float zoom;
+
+    if (!effects->dissolve_is_on) {
+        return;
+    }
+    progress = effects->dissolve_progress.value;
+    zoom = 1.0f + (effects->dissolve_end_zoom - 1.0f) * progress;
+    area.x = SCENE_VIEW_DISSOLVE_ANCHOR_X * (1.0f - zoom);
+    area.y = SCENE_VIEW_DISSOLVE_ANCHOR_Y * (1.0f - zoom);
+    area.width = RENDERER_WIDTH * zoom;
+    area.height = RENDERER_HEIGHT * zoom;
+    renderer_draw_snapshot(area, 1.0f - progress);
+}
+
+int scene_view_snapshot_stage(const struct scene_stage *stage)
+{
+    if (!renderer_snapshot_begin()) {
+        return 0;
+    }
+    draw_stage_layers(stage);
+    renderer_snapshot_end();
+    return 1;
+}
+
+void scene_view_draw(const struct scene_stage *stage)
+{
+    struct renderer_color fade_color;
+
+    draw_stage_layers(stage);
+    draw_dissolve(&stage->effects);
     draw_text_lines(stage);
     draw_flash(&stage->effects);
     if (stage->card_texture[0] != '\0') {

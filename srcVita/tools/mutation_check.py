@@ -1,3 +1,4 @@
+import glob
 import os
 import shutil
 import signal
@@ -10,15 +11,29 @@ TEST_TIME_LIMIT_SECONDS = 60
 BUILD_ARGUMENTS = ["-j8", "test-binaries"]
 TEST_ARGUMENTS = ["-j8", "test-parallel"]
 PYTHON_TOOL_BUILD_ARGUMENTS = ["-C", "tools/assets", "-j8", "../../build/tools/texture_tool", "../../build/tools/texture_tool_checked", "../../build/tools/music_reference", "../../build/tools/music_log_writer"]
-AUDIO_PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "test_audio_*.py"]
-ALL_PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py"]
+AUDIO_PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "--failfast", "test_audio_*.py"]
+ALL_PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "--failfast"]
 ALL_PYTHON_TEST_TIME_LIMIT_SECONDS = 600
 AUDIO_TOOL_FILES = ("audio_check.py", "audio_file.py")
-LONGPLAY_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "test_longplay_check.py"]
+LONGPLAY_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "--failfast", "test_longplay_check.py"]
 TESTS_THAT_INCLUDE_THE_SOURCE = {
     "src/main.c": ["integration/test_main_loop"],
     "src/vita/keep_awake.c": ["unit/test_vita_calls"],
     "src/vita/system_state.c": ["unit/test_vita_calls"],
+    "src/vita/renderer.c": ["unit/test_vita_renderer"],
+}
+TEST_FILES_MOST_LIKELY_TO_CATCH = {
+    "bake_record.py": ("test_bake_record.py", "test_narration.py"),
+    "bubble_art.py": ("test_bubble_art.py", "test_end_to_end.py"),
+    "chapter1_opening.json": ("test_convert_assets.py",),
+    "convert_assets.py": ("test_convert_assets.py", "test_end_to_end.py"),
+    "extract_text_key.py": ("test_extract_text_key.py",),
+    "line_renderer.py": ("test_line_renderer.py", "test_narration.py"),
+    "message_file.py": ("test_message_file.py", "test_extract_text_key.py"),
+    "mutation_check.py": ("test_mutation_check.py",),
+    "narration.py": ("test_narration.py", "test_convert_assets.py", "test_end_to_end.py"),
+    "run_tests.py": ("test_run_tests.py",),
+    "vita_loop.py": ("test_vita_loop.py",),
 }
 
 MUTATIONS = [
@@ -153,6 +168,69 @@ MUTATIONS = [
     ("src/app/scene_effects.c", "if (!effects->iris_is_on) {\n        ramp_set(&effects->iris_radius, 0.0f);\n    }", ""),
     ("src/app/scene_effects.c", "ramp_set(&effects->flash_level, brightness);", ""),
     ("src/app/scene_effects.c", "ramp_begin(&effects->flash_level, 0.0f, ticks);", ""),
+    ("src/app/scene.c", "step->ticks > 0 && step->end_zoom > 0.0f", "step->end_zoom > 0.0f"),
+    ("src/app/scene.c", "step->ticks > 0 && step->end_zoom > 0.0f", "step->ticks > 0"),
+    ("src/app/scene_effects.c", "ramp_advance(&effects->dissolve_progress, elapsed_us);", ""),
+    ("src/app/scene_effects.c", "effects->dissolve_is_on = 0;", ""),
+    ("src/app/scene_effects.c", "effects->dissolve_progress.value >= 1.0f", "effects->dissolve_progress.value >= 0.5f"),
+    ("src/app/scene_effects.c", "effects->dissolve_is_on = 1;", ""),
+    ("src/app/scene_effects.c", "effects->dissolve_end_zoom = end_zoom;", ""),
+    ("src/app/scene_effects.c", "ramp_set(&effects->dissolve_progress, 0.0f);", ""),
+    ("src/app/scene_effects.c", "ramp_begin(&effects->dissolve_progress, 1.0f, ticks);", ""),
+    ("src/app/scene_view.c", "    draw_dissolve(&stage->effects);\n", ""),
+    ("src/app/scene_view.c", "draw_dissolve(&stage->effects);\n    draw_text_lines(stage);", "draw_text_lines(stage);\n    draw_dissolve(&stage->effects);"),
+    ("src/app/scene_view.c", "draw_stage_layers(stage);\n    draw_dissolve(&stage->effects);", "draw_dissolve(&stage->effects);\n    draw_stage_layers(stage);"),
+    ("src/app/scene_view.c", "zoom = 1.0f + (effects->dissolve_end_zoom - 1.0f) * progress;", "zoom = 1.0f;"),
+    ("src/app/scene_view.c", "zoom = 1.0f + (effects->dissolve_end_zoom - 1.0f) * progress;", "zoom = 2.0f;"),
+    ("src/app/scene_view.c", "zoom = 1.0f + (effects->dissolve_end_zoom - 1.0f) * progress;", "zoom = 1.0f + progress;"),
+    ("src/app/scene_view.c", "area.x = SCENE_VIEW_DISSOLVE_ANCHOR_X * (1.0f - zoom);", "area.x = 0.0f;"),
+    ("src/app/scene_view.c", "area.y = SCENE_VIEW_DISSOLVE_ANCHOR_Y * (1.0f - zoom);", "area.y = 0.0f;"),
+    ("src/app/scene_view.c", "area.width = RENDERER_WIDTH * zoom;", "area.width = RENDERER_WIDTH;"),
+    ("src/app/scene_view.c", "area.height = RENDERER_HEIGHT * zoom;", "area.height = RENDERER_HEIGHT;"),
+    ("src/app/scene_view.c", "renderer_draw_snapshot(area, 1.0f - progress);", "renderer_draw_snapshot(area, 1.0f);"),
+    ("src/app/scene_view.c", "renderer_draw_snapshot(area, 1.0f - progress);", "renderer_draw_snapshot(area, progress);"),
+    ("src/app/scene_view.c", "if (!effects->dissolve_is_on) {", "if (0) {"),
+    ("src/app/scene_view.c", "if (!renderer_snapshot_begin()) {\n        return 0;\n    }\n", "renderer_snapshot_begin();\n"),
+    ("src/app/scene_view.c", "    draw_stage_layers(stage);\n    renderer_snapshot_end();", "    renderer_snapshot_end();"),
+    ("src/app/scene_view.c", "    renderer_snapshot_end();\n", ""),
+    ("src/app/scene_view.c", "    draw_overlays(stage, &view);\n    draw_dim(&stage->effects);\n}\n\nstatic void draw_dissolve", "    draw_overlays(stage, &view);\n    draw_dim(&stage->effects);\n    draw_text_lines(stage);\n}\n\nstatic void draw_dissolve"),
+    ("src/app/scene_view.c", "    draw_overlays(stage, &view);\n    draw_dim(&stage->effects);\n}\n\nstatic void draw_dissolve", "    draw_overlays(stage, &view);\n    draw_dim(&stage->effects);\n    draw_flash(&stage->effects);\n}\n\nstatic void draw_dissolve"),
+    ("include/scene_view.h", "((float)RENDERER_WIDTH / 2.0f)", "((float)RENDERER_WIDTH / 3.0f)"),
+    ("include/scene_view.h", "((float)RENDERER_HEIGHT + SCENE_VIEW_DS_SCREEN_HEIGHT * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL) / 2.0f)", "((float)RENDERER_HEIGHT) / 2.0f)"),
+    ("src/vita/renderer.c", "    create_snapshot_target();\n", ""),
+    ("src/vita/renderer.c", "GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);", "GL_RGB, GL_UNSIGNED_BYTE, NULL);"),
+    ("src/vita/renderer.c", "GL_RGB, RENDERER_WIDTH, RENDERER_HEIGHT, 0,", "GL_RGB, RENDERER_WIDTH / 2, RENDERER_HEIGHT, 0,"),
+    ("src/vita/renderer.c", "GL_RGB, RENDERER_WIDTH, RENDERER_HEIGHT, 0,", "GL_RGB, RENDERER_WIDTH, RENDERER_HEIGHT / 2, 0,"),
+    ("src/vita/renderer.c", "if (snapshot_texture != RENDERER_NO_TEXTURE) {", "if (1) {"),
+    ("src/vita/renderer.c", "glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, snapshot_texture, 0);", ""),
+    ("src/vita/renderer.c", "        clear_bound_target_to_black();\n        glBindFramebuffer(GL_FRAMEBUFFER, 0);\n", "        glBindFramebuffer(GL_FRAMEBUFFER, 0);\n"),
+    ("src/vita/renderer.c", "        clear_bound_target_to_black();\n        glBindFramebuffer(GL_FRAMEBUFFER, 0);\n", "        clear_bound_target_to_black();\n"),
+    ("src/vita/renderer.c", "glClearColor(0.0f, 0.0f, 0.0f, 1.0f);", "glClearColor(1.0f, 0.0f, 0.0f, 1.0f);"),
+    ("src/vita/renderer.c", "glClearColor(0.0f, 0.0f, 0.0f, 1.0f);", ""),
+    ("src/vita/renderer.c", "before.video_memory_free - after.video_memory_free", "before.main_memory_free - after.main_memory_free"),
+    ("src/vita/renderer.c", "(int)(before.main_memory_free - after.main_memory_free)", "(int)(before.video_memory_free - after.video_memory_free)"),
+    ("src/vita/renderer.c", "params.width = RENDERER_WIDTH;", "params.width = RENDERER_HEIGHT;"),
+    ("src/vita/renderer.c", "params.height = RENDERER_HEIGHT;", "params.height = RENDERER_WIDTH;"),
+    ("src/vita/renderer.c", "params.scenesPerFrame = 1;", "params.scenesPerFrame = 2;"),
+    ("src/vita/renderer.c", "params.driverMemBlock = -1;", "params.driverMemBlock = 0;"),
+    ("src/vita/renderer.c", "if (snapshot_framebuffer != 0) {", "if (1) {"),
+    ("src/vita/renderer.c", "        glDeleteFramebuffers(1, &snapshot_framebuffer);\n", ""),
+    ("src/vita/renderer.c", "        renderer_texture_destroy(snapshot_texture);\n", ""),
+    ("src/vita/renderer.c", "    if (snapshot_framebuffer == 0) {\n        return 0;\n    }\n", ""),
+    ("src/vita/renderer.c", "    flush_batch();\n    glBindFramebuffer(GL_FRAMEBUFFER, snapshot_framebuffer);", "    glBindFramebuffer(GL_FRAMEBUFFER, snapshot_framebuffer);"),
+    ("src/vita/renderer.c", "glBindFramebuffer(GL_FRAMEBUFFER, snapshot_framebuffer);\n    clear_bound_target_to_black();\n", "glBindFramebuffer(GL_FRAMEBUFFER, snapshot_framebuffer);\n"),
+    ("src/vita/renderer.c", "    flush_batch();\n    glBindFramebuffer(GL_FRAMEBUFFER, 0);\n}", "    glBindFramebuffer(GL_FRAMEBUFFER, 0);\n}"),
+    ("src/vita/renderer.c", "    flush_batch();\n    glBindFramebuffer(GL_FRAMEBUFFER, 0);\n}", "    flush_batch();\n}"),
+    ("src/vita/renderer.c", "texture_stored_bottom_row_first.y = 1.0f;", "texture_stored_bottom_row_first.y = 0.0f;"),
+    ("src/vita/renderer.c", "texture_stored_bottom_row_first.height = -1.0f;", "texture_stored_bottom_row_first.height = 1.0f;"),
+    ("src/vita/renderer.c", "tint.alpha = alpha;", "tint.alpha = 1.0f;"),
+    ("src/vita/renderer.c", "renderer_draw_sprite(snapshot_texture, screen_area,", "renderer_draw_sprite(white_texture, screen_area,"),
+    ("src/app/scene_player.c", "begin_dissolve(step->ticks, step->end_zoom);", ""),
+    ("src/app/scene_player.c", "if (has_snapshot) {\n        scene_effects_start_dissolve(scene_stage_effects(), end_zoom, ticks);\n    }", "scene_effects_start_dissolve(scene_stage_effects(), end_zoom, ticks);"),
+    ("src/app/scene_player.c", "has_snapshot = scene_view_snapshot_stage(scene_stage_view());", "has_snapshot = 1;"),
+    ("src/app/scene_player.c", "run_log_write(LOG_FOR_TOOLS_SCENE_DISSOLVE, ticks, end_zoom, has_snapshot, clock_now_us() - started_us);", ""),
+    ("src/app/scene_player.c", "scene_effects_start_dissolve(scene_stage_effects(), end_zoom, ticks);", "scene_effects_start_dissolve(scene_stage_effects(), end_zoom, ticks * 2);"),
+    ("src/app/scene_player.c", "scene_effects_start_dissolve(scene_stage_effects(), end_zoom, ticks);", "scene_effects_start_dissolve(scene_stage_effects(), 2.0f, ticks);"),
     ("src/app/scene_player.c", "scene_effects_advance(scene_stage_effects(), script.hold_remaining_us);", ""),
     ("src/app/scene_player.c", "script.hold_remaining_us = script.hold_remaining_us - elapsed_us;\n    scene_effects_advance(scene_stage_effects(), elapsed_us);", "script.hold_remaining_us = script.hold_remaining_us - elapsed_us;"),
     ("src/app/scene_player.c", "status = SCENE_PLAYER_FINISHED;\n            scene_effects_advance(scene_stage_effects(), elapsed_us);", "status = SCENE_PLAYER_FINISHED;"),
@@ -177,7 +255,7 @@ MUTATIONS = [
     ("src/app/scene_view.c", "draw_dim(&stage->effects);", ""),
     ("src/app/scene_view.c", "draw_flash(&stage->effects);", ""),
     ("src/app/scene_view.c", "draw_black_around_art(&view);\n    draw_mask_or_iris(&stage->effects, &view);", "draw_mask_or_iris(&stage->effects, &view);\n    draw_black_around_art(&view);"),
-    ("src/app/scene_view.c", "draw_dim(&stage->effects);\n    draw_text_lines(stage);\n    draw_flash(&stage->effects);", "draw_flash(&stage->effects);\n    draw_text_lines(stage);\n    draw_dim(&stage->effects);"),
+    ("src/app/scene_view.c", "draw_stage_layers(stage);\n    draw_dissolve(&stage->effects);\n    draw_text_lines(stage);\n    draw_flash(&stage->effects);", "draw_flash(&stage->effects);\n    draw_text_lines(stage);\n    draw_stage_layers(stage);\n    draw_dissolve(&stage->effects);"),
     ("src/app/scene_view.c", "draw_flash(&stage->effects);\n    if (stage->card_texture[0] != '\\0') {\n        draw_card(stage->card_texture);\n    }", "if (stage->card_texture[0] != '\\0') {\n        draw_card(stage->card_texture);\n    }\n    draw_flash(&stage->effects);"),
     ("src/app/scene_view.c", "return (x - view->left) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;", "return x * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;"),
     ("src/app/scene_view.c", "return (y - view->top) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;", "return y * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;"),
@@ -403,7 +481,7 @@ MUTATIONS = [
     ("src/app/scene_view.c", "draw_text_lines(stage);\n", ""),
     ("src/app/scene_view.c", "draw_mask_or_iris(&stage->effects, &view);\n    draw_overlays(stage, &view);", "draw_overlays(stage, &view);\n    draw_mask_or_iris(&stage->effects, &view);"),
     ("src/app/scene_view.c", "draw_overlays(stage, &view);\n    draw_dim(&stage->effects);", "draw_dim(&stage->effects);\n    draw_overlays(stage, &view);"),
-    ("src/app/scene_view.c", "draw_dim(&stage->effects);\n    draw_text_lines(stage);", "draw_text_lines(stage);\n    draw_dim(&stage->effects);"),
+    ("src/app/scene_view.c", "draw_stage_layers(stage);\n    draw_dissolve(&stage->effects);\n    draw_text_lines(stage);", "draw_text_lines(stage);\n    draw_stage_layers(stage);\n    draw_dissolve(&stage->effects);"),
     ("src/app/scene_view.c", "draw_text_lines(stage);\n    draw_flash(&stage->effects);", "draw_flash(&stage->effects);\n    draw_text_lines(stage);"),
     ("src/app/scene_view.c", "renderer_draw_filled_rect(area, missing_texture_color);", ""),
     ("src/app/scene_layers.c", "overlay->grow_elapsed_us = 0;", ""),
@@ -459,6 +537,30 @@ PYTHON_MUTATIONS = [
     ("tools/assets/line_renderer.py", "SUPERSAMPLE = 4", "SUPERSAMPLE = 2"),
     ("tools/assets/line_renderer.py", "LINE_BOX_ASCENT_EM = 1.0", "LINE_BOX_ASCENT_EM = 1.2"),
     ("tools/assets/line_renderer.py", "LINE_BOX_DESCENT_EM = 0.3", "LINE_BOX_DESCENT_EM = 0.4"),
+    ("tools/assets/chapter1_opening.json", '["dissolve", 32, 2]', '["dissolve", 31, 2]'),
+    ("tools/assets/chapter1_opening.json", '["dissolve", 32, 2]', '["dissolve", 32, 1]'),
+    ("tools/assets/chapter1_opening.json", '["wait", 7],\n    ["dissolve", 32, 2]', '["wait", 8],\n    ["dissolve", 32, 2]'),
+    ("tools/assets/chapter1_opening.json", '["wait", 109]', '["wait", 105]'),
+    ("tools/assets/chapter1_opening.json", '["dissolve", 32, 2],\n    ["camera", 0, 384],', '["camera", 0, 384],\n    ["dissolve", 32, 2],'),
+    ("tools/assets/extract_text_key.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGTERM, signal.SIGHUP)"),
+    ("tools/assets/extract_text_key.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGINT, signal.SIGHUP)"),
+    ("tools/assets/extract_text_key.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM)"),
+    ("tools/assets/extract_text_key.py", "    for stop_signal in STOP_SIGNALS:\n        signal.signal(stop_signal, exit_so_the_temporary_file_is_deleted)\n", ""),
+    ("tools/assets/extract_text_key.py", "    for stop_signal in STOP_SIGNALS:\n        signal.signal(stop_signal, signal.SIG_IGN)\n", ""),
+    ("tools/assets/extract_text_key.py", "    stop_signal_number = signal_number\n", ""),
+    ("tools/assets/extract_text_key.py", "if stop_signal_number is not None:", "if False:"),
+    ("tools/assets/extract_text_key.py", "return EXIT_CODE_BASE_FOR_SIGNALS + stop_signal_number", "return exit_code"),
+    ("tools/assets/extract_text_key.py", "    except SystemExit:\n        if os.path.exists(temporary_path):\n            os.unlink(temporary_path)\n        raise\n", ""),
+    ("tools/assets/extract_text_key.py", "if os.path.exists(temporary_path):\n            os.unlink(temporary_path)", "os.unlink(temporary_path)"),
+    ("tools/assets/extract_text_key.py", "    except FileNotFoundError:\n        pass\n    except SystemExit:", "    except SystemExit:"),
+    ("tests/tools/run_tests.py", "failfast=failfast", "failfast=False"),
+    ("tests/tools/run_tests.py", "arguments.pattern, arguments.failfast, ", "arguments.pattern, False, "),
+    ("tests/tools/run_tests.py", 'parser.add_argument("--failfast", action="store_true", help="stop at the first failure")', 'parser.add_argument("--failfast", action="store_false", help="stop at the first failure")'),
+    ("tests/tools/run_tests.py", "first + [name for name in matching if name not in first]", "first + matching"),
+    ("tests/tools/run_tests.py", "first + [name for name in matching if name not in first]", "first"),
+    ("tests/tools/run_tests.py", "first = [name for name in files_to_run_first if name in matching]", "first = list(files_to_run_first)"),
+    ("tests/tools/run_tests.py", "first = [name for name in files_to_run_first if name in matching]", "first = []"),
+    ("tests/tools/run_tests.py", " and result.testsRun > 0", ""),
     ("tools/assets/convert_assets.py", "tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)", "tempfile.mkdtemp(dir=output_folder, prefix=WORK_FOLDER_PREFIX)"),
     ("tools/assets/convert_assets.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGTERM, signal.SIGHUP)"),
     ("tools/assets/convert_assets.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGINT, signal.SIGHUP)"),
@@ -574,8 +676,6 @@ PYTHON_MUTATIONS = [
     ("tools/assets/extract_text_key.py", "return error.strerror or type(error).__name__", "return error.strerror"),
     ("tools/assets/extract_text_key.py", 'raise ExtractionError("could not read " + package_path + ": " + failure_reason(error)) from None', "raise"),
     ("tools/assets/extract_text_key.py", 'raise ExtractionError("could not save the key in " + apk_folder + ": " + failure_reason(error)) from None', "raise"),
-    ("tools/assets/extract_text_key.py", "signal.signal(signal.SIGTERM, exit_so_the_temporary_file_is_deleted)\n", "\n"),
-    ("tools/assets/extract_text_key.py", "signal.signal(signal.SIGHUP, exit_so_the_temporary_file_is_deleted)\n", "\n"),
     ("tools/assets/extract_text_key.py", "sys.exit(EXIT_CODE_BASE_FOR_SIGNALS + signal_number)", "sys.exit(1)"),
     ("tools/assets/narration.py", "    return key\n", "    print(key.hex())\n    return key\n"),
     ("tools/assets/narration.py", 'except OSError as error:\n        raise NarrationError("could not read', 'except KeyError as error:\n        raise NarrationError("could not read'),
@@ -741,14 +841,16 @@ def mutation_outcome(folder):
 
 
 def python_test_command_for(path):
-    name = os.path.basename(path)
-    if name == "longplay_check.py":
+    file_name = os.path.basename(path)
+    if file_name == "longplay_check.py":
         return LONGPLAY_TEST_COMMAND
-    return AUDIO_PYTHON_TEST_COMMAND if name in AUDIO_TOOL_FILES else ALL_PYTHON_TEST_COMMAND
+    if file_name in AUDIO_TOOL_FILES:
+        return AUDIO_PYTHON_TEST_COMMAND
+    return ALL_PYTHON_TEST_COMMAND + ["--first", ",".join(TEST_FILES_MOST_LIKELY_TO_CATCH.get(file_name, ()))]
 
 
 def time_limit_for(command):
-    return ALL_PYTHON_TEST_TIME_LIMIT_SECONDS if command is ALL_PYTHON_TEST_COMMAND else TEST_TIME_LIMIT_SECONDS
+    return TEST_TIME_LIMIT_SECONDS if command in (AUDIO_PYTHON_TEST_COMMAND, LONGPLAY_TEST_COMMAND) else ALL_PYTHON_TEST_TIME_LIMIT_SECONDS
 
 
 def python_mutation_outcome(folder, path):
@@ -764,8 +866,15 @@ def python_mutation_outcome(folder, path):
     return "caught"
 
 
+def python_tests_in_reverse_order_command(folder):
+    test_files = sorted(os.path.basename(path) for path in glob.glob(os.path.join(folder, "tests", "tools", "test_*.py")))
+    return ALL_PYTHON_TEST_COMMAND + ["--first", ",".join(reversed(test_files))]
+
+
 def python_baseline_passes(folder):
-    return make_succeeds(folder, PYTHON_TOOL_BUILD_ARGUMENTS) and command_succeeds(folder, ALL_PYTHON_TEST_COMMAND, ALL_PYTHON_TEST_TIME_LIMIT_SECONDS)
+    if not make_succeeds(folder, PYTHON_TOOL_BUILD_ARGUMENTS):
+        return False
+    return all(command_succeeds(folder, command, ALL_PYTHON_TEST_TIME_LIMIT_SECONDS) for command in (ALL_PYTHON_TEST_COMMAND, python_tests_in_reverse_order_command(folder)))
 
 
 def forget_test_object_of(folder, relative_path):
@@ -806,6 +915,21 @@ def use_private_temp_folder(temporary_root):
     folder = os.path.join(temporary_root, "test_temp")
     os.makedirs(folder)
     os.environ["TMPDIR"] = folder
+
+
+PYTHON_MUTATIONS += [
+    ("tools/mutation_check.py", '"tests/tools/run_tests.py", "--failfast"]', '"tests/tools/run_tests.py"]'),
+    ("tools/mutation_check.py", '"--failfast", "test_audio_*.py"]', '"test_audio_*.py"]'),
+    ("tools/mutation_check.py", '"--failfast", "test_longplay_check.py"]', '"test_longplay_check.py"]'),
+    ("tools/mutation_check.py", '"bubble_art.py": ("test_bubble_art.py", "test_end_to_end.py"),', '"bubble_art.py": ("test_bubble_art_that_is_gone.py", "test_end_to_end.py"),'),
+    ("tools/mutation_check.py", "return TEST_TIME_LIMIT_SECONDS if command in (AUDIO_PYTHON_TEST_COMMAND, LONGPLAY_TEST_COMMAND) else ALL_PYTHON_TEST_TIME_LIMIT_SECONDS", "return ALL_PYTHON_TEST_TIME_LIMIT_SECONDS if command is ALL_PYTHON_TEST_COMMAND else TEST_TIME_LIMIT_SECONDS"),
+    ("tools/mutation_check.py", "command in (AUDIO_PYTHON_TEST_COMMAND, LONGPLAY_TEST_COMMAND) else", "command in (AUDIO_PYTHON_TEST_COMMAND,) else"),
+    ("tools/mutation_check.py", 'ALL_PYTHON_TEST_COMMAND + ["--first", ",".join(TEST_FILES_MOST_LIKELY_TO_CATCH.get(file_name, ()))]', "ALL_PYTHON_TEST_COMMAND"),
+    ("tools/mutation_check.py", 'if file_name == "longplay_check.py":', "if False:"),
+    ("tools/mutation_check.py", "if file_name in AUDIO_TOOL_FILES:", "if False:"),
+    ("tools/mutation_check.py", '",".join(reversed(test_files))', '",".join(test_files)'),
+    ("tools/mutation_check.py", "for command in (ALL_PYTHON_TEST_COMMAND, python_tests_in_reverse_order_command(folder)))", "for command in (ALL_PYTHON_TEST_COMMAND,))"),
+]
 
 
 def main():

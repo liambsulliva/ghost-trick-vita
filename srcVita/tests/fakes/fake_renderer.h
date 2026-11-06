@@ -15,6 +15,7 @@ struct fake_draw {
     struct renderer_rect screen_area;
     struct renderer_rect texture_area;
     struct renderer_color color;
+    int is_snapshot;
 };
 
 void fake_renderer_reset(void);
@@ -26,5 +27,10 @@ int fake_renderer_textures_alive(void);
 int fake_renderer_textures_created(void);
 int fake_renderer_texture_width(renderer_texture texture);
 void fake_renderer_fail_uploads(int should_fail);
+void fake_renderer_fail_snapshots(int should_fail);
+int fake_renderer_snapshots_taken(void);
+int fake_renderer_snapshot_is_open(void);
+int fake_renderer_snapshot_draw_count(void);
+const struct fake_draw *fake_renderer_snapshot_draw(int index);
 
 #endif

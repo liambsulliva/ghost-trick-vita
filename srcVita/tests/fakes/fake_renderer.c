@@ -5,6 +5,11 @@
 
 static struct fake_draw draws[FAKE_DRAW_MAX];
 static int draw_count;
+static struct fake_draw snapshot_draws[FAKE_DRAW_MAX];
+static int snapshot_draw_count;
+static int snapshot_is_open;
+static int snapshots_taken;
+static int snapshots_should_fail;
 static struct renderer_rect batched_rects[FAKE_BATCHED_RECT_MAX];
 static int batched_rect_count;
 static int texture_widths[FAKE_TEXTURE_MAX];
@@ -20,6 +25,10 @@ void fake_renderer_reset(void)
     draw_count = 0;
     batched_rect_count = 0;
     uploads_should_fail = 0;
+    snapshot_draw_count = 0;
+    snapshot_is_open = 0;
+    snapshots_taken = 0;
+    snapshots_should_fail = 0;
 }
 
 void fake_renderer_clear_draws(void)
@@ -72,6 +81,31 @@ void fake_renderer_fail_uploads(int should_fail)
     uploads_should_fail = should_fail;
 }
 
+void fake_renderer_fail_snapshots(int should_fail)
+{
+    snapshots_should_fail = should_fail;
+}
+
+int fake_renderer_snapshots_taken(void)
+{
+    return snapshots_taken;
+}
+
+int fake_renderer_snapshot_is_open(void)
+{
+    return snapshot_is_open;
+}
+
+int fake_renderer_snapshot_draw_count(void)
+{
+    return snapshot_draw_count;
+}
+
+const struct fake_draw *fake_renderer_snapshot_draw(int index)
+{
+    return &snapshot_draws[index];
+}
+
 int renderer_init(void)
 {
     return 1;
@@ -117,20 +151,40 @@ void renderer_texture_destroy(renderer_texture texture)
     texture_is_alive[texture] = 0;
 }
 
-static void record_draw(renderer_texture texture, int is_filled_rect, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color)
+static struct fake_draw *next_free_draw(void)
 {
-    if (draw_count >= FAKE_DRAW_MAX) {
-        return;
+    if (snapshot_is_open) {
+        if (snapshot_draw_count >= FAKE_DRAW_MAX) {
+            return NULL;
+        }
+        snapshot_draw_count = snapshot_draw_count + 1;
+        return &snapshot_draws[snapshot_draw_count - 1];
     }
-    draws[draw_count].texture = texture;
-    draws[draw_count].is_filled_rect = is_filled_rect;
-    draws[draw_count].is_rect_batch = 0;
-    draws[draw_count].batched_rect_count = 0;
-    draws[draw_count].first_batched_rect = 0;
-    draws[draw_count].screen_area = screen_area;
-    draws[draw_count].texture_area = texture_area;
-    draws[draw_count].color = color;
+    if (draw_count >= FAKE_DRAW_MAX) {
+        return NULL;
+    }
     draw_count = draw_count + 1;
+    return &draws[draw_count - 1];
+}
+
+static struct fake_draw *record_draw(renderer_texture texture, int is_filled_rect, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color)
+{
+    struct fake_draw *draw;
+
+    draw = next_free_draw();
+    if (draw == NULL) {
+        return NULL;
+    }
+    draw->texture = texture;
+    draw->is_filled_rect = is_filled_rect;
+    draw->is_rect_batch = 0;
+    draw->batched_rect_count = 0;
+    draw->first_batched_rect = 0;
+    draw->screen_area = screen_area;
+    draw->texture_area = texture_area;
+    draw->color = color;
+    draw->is_snapshot = 0;
+    return draw;
 }
 
 void renderer_draw_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color tint)
@@ -148,19 +202,53 @@ void renderer_draw_filled_rect(struct renderer_rect screen_area, struct renderer
 
 void renderer_draw_filled_rects(const struct renderer_rect *screen_areas, int count, struct renderer_color color)
 {
+    struct fake_draw *draw;
     struct renderer_rect no_area;
     int index;
 
     memset(&no_area, 0, sizeof(no_area));
-    record_draw(RENDERER_NO_TEXTURE, 0, no_area, no_area, color);
-    if (batched_rect_count + count > FAKE_BATCHED_RECT_MAX) {
+    draw = record_draw(RENDERER_NO_TEXTURE, 0, no_area, no_area, color);
+    if (draw == NULL || batched_rect_count + count > FAKE_BATCHED_RECT_MAX) {
         return;
     }
-    draws[draw_count - 1].is_rect_batch = 1;
-    draws[draw_count - 1].batched_rect_count = count;
-    draws[draw_count - 1].first_batched_rect = batched_rect_count;
+    draw->is_rect_batch = 1;
+    draw->batched_rect_count = count;
+    draw->first_batched_rect = batched_rect_count;
     for (index = 0; index < count; index++) {
         batched_rects[batched_rect_count] = screen_areas[index];
         batched_rect_count = batched_rect_count + 1;
+    }
+}
+
+int renderer_snapshot_begin(void)
+{
+    if (snapshots_should_fail) {
+        return 0;
+    }
+    snapshots_taken = snapshots_taken + 1;
+    snapshot_is_open = 1;
+    snapshot_draw_count = 0;
+    return 1;
+}
+
+void renderer_snapshot_end(void)
+{
+    snapshot_is_open = 0;
+}
+
+void renderer_draw_snapshot(struct renderer_rect screen_area, float alpha)
+{
+    struct fake_draw *draw;
+    struct renderer_rect no_area;
+    struct renderer_color tint;
+
+    memset(&no_area, 0, sizeof(no_area));
+    tint.red = 1.0f;
+    tint.green = 1.0f;
+    tint.blue = 1.0f;
+    tint.alpha = alpha;
+    draw = record_draw(RENDERER_NO_TEXTURE, 0, screen_area, no_area, tint);
+    if (draw != NULL) {
+        draw->is_snapshot = 1;
     }
 }

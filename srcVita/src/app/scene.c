@@ -44,6 +44,10 @@ static int read_effect_step(const char *line, struct scene_step *step)
         step->kind = SCENE_STEP_FLASH;
         return sscanf(line, "flash %f %d", &step->brightness, &step->ticks) == 2 && brightness_is_valid(step->brightness) && step->ticks >= 0;
     }
+    if (text_line_starts_with(line, "dissolve ")) {
+        step->kind = SCENE_STEP_DISSOLVE;
+        return sscanf(line, "dissolve %d %f", &step->ticks, &step->end_zoom) == 2 && step->ticks > 0 && step->end_zoom > 0.0f;
+    }
     return 0;
 }
 

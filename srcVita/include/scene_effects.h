@@ -33,6 +33,9 @@ struct scene_effects {
     struct scene_ramp iris_radius;
     struct scene_ramp brightness;
     struct scene_ramp flash_level;
+    struct scene_ramp dissolve_progress;
+    float dissolve_end_zoom;
+    int dissolve_is_on;
 };
 
 void scene_effects_reset(struct scene_effects *effects);
@@ -44,5 +47,6 @@ void scene_effects_set_mask(struct scene_effects *effects, int should_be_on);
 void scene_effects_start_iris(struct scene_effects *effects, float x, float y, float radius, int ticks);
 void scene_effects_dim_to(struct scene_effects *effects, float brightness, int ticks);
 void scene_effects_flash(struct scene_effects *effects, float brightness, int ticks);
+void scene_effects_start_dissolve(struct scene_effects *effects, float end_zoom, int ticks);
 
 #endif

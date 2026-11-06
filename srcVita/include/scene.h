@@ -36,6 +36,7 @@ enum scene_step_kind {
     SCENE_STEP_IRIS,
     SCENE_STEP_DIM_TO,
     SCENE_STEP_FLASH,
+    SCENE_STEP_DISSOLVE,
     SCENE_STEP_MUSIC,
     SCENE_STEP_MUSIC_STOP,
     SCENE_STEP_SOUND
@@ -57,6 +58,7 @@ struct scene_step {
     float half_width;
     float radius;
     float brightness;
+    float end_zoom;
     int layer_item_id;
     int room_id;
     int layer;

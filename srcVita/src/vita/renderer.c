@@ -1,10 +1,15 @@
+#include <string.h>
+#include <psp2/gxm.h>
 #include <vitaGL.h>
+#include "device_stats.h"
 #include "renderer.h"
+#include "run_log.h"
 
 #define RENDERER_POOL_SIZE 0x800000
 #define RENDERER_MAIN_MEMORY_LEFT_FOR_APP 0x1000000
 #define BATCH_QUAD_MAX 1024
 #define VERTICES_PER_QUAD 6
+#define LOG_FOR_TOOLS_SNAPSHOT_TARGET "renderer snapshot_target ok=%d video_bytes=%d main_bytes=%d render_target_bytes=%u"
 
 struct batch_vertex {
     float x;
@@ -21,6 +26,8 @@ static struct batch_vertex batch_vertices[BATCH_QUAD_MAX * VERTICES_PER_QUAD];
 static int batch_quad_count;
 static renderer_texture batch_texture;
 static renderer_texture white_texture;
+static renderer_texture snapshot_texture;
+static GLuint snapshot_framebuffer;
 
 static void flush_batch(void)
 {
@@ -65,36 +72,6 @@ static void set_up_screen_space_drawing(void)
     glEnableClientState(GL_COLOR_ARRAY);
 }
 
-int renderer_init(void)
-{
-    static const unsigned char white_pixel[4] = { 255, 255, 255, 255 };
-    GLboolean resolution_fell_back;
-
-    resolution_fell_back = vglInitExtended(RENDERER_POOL_SIZE, RENDERER_WIDTH, RENDERER_HEIGHT, RENDERER_MAIN_MEMORY_LEFT_FOR_APP, SCE_GXM_MULTISAMPLE_NONE);
-    set_up_screen_space_drawing();
-    white_texture = renderer_texture_create(white_pixel, 1, 1);
-    return !resolution_fell_back;
-}
-
-void renderer_shutdown(void)
-{
-    renderer_texture_destroy(white_texture);
-}
-
-void renderer_begin_frame(struct renderer_color clear_color)
-{
-    glClearColor(clear_color.red, clear_color.green, clear_color.blue, clear_color.alpha);
-    glClear(GL_COLOR_BUFFER_BIT);
-    batch_quad_count = 0;
-    batch_texture = RENDERER_NO_TEXTURE;
-}
-
-void renderer_end_frame(void)
-{
-    flush_batch();
-    vglSwapBuffers(GL_FALSE);
-}
-
 static GLuint start_new_texture(void)
 {
     GLuint texture;
@@ -116,6 +93,84 @@ static renderer_texture finish_new_texture(GLuint texture)
         return RENDERER_NO_TEXTURE;
     }
     return texture;
+}
+
+static void clear_bound_target_to_black(void)
+{
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+}
+
+static unsigned int snapshot_render_target_bytes(void)
+{
+    SceGxmRenderTargetParams params;
+    unsigned int bytes;
+
+    memset(&params, 0, sizeof(params));
+    params.width = RENDERER_WIDTH;
+    params.height = RENDERER_HEIGHT;
+    params.scenesPerFrame = 1;
+    params.multisampleMode = SCE_GXM_MULTISAMPLE_NONE;
+    params.driverMemBlock = -1;
+    bytes = 0;
+    sceGxmGetRenderTargetMemSize(&params, &bytes);
+    return bytes;
+}
+
+static void create_snapshot_target(void)
+{
+    struct device_stats before;
+    struct device_stats after;
+    GLuint texture;
+
+    device_stats_read(&before);
+    texture = start_new_texture();
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, RENDERER_WIDTH, RENDERER_HEIGHT, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
+    snapshot_texture = finish_new_texture(texture);
+    if (snapshot_texture != RENDERER_NO_TEXTURE) {
+        glGenFramebuffers(1, &snapshot_framebuffer);
+        glBindFramebuffer(GL_FRAMEBUFFER, snapshot_framebuffer);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, snapshot_texture, 0);
+        clear_bound_target_to_black();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+    device_stats_read(&after);
+    run_log_write(LOG_FOR_TOOLS_SNAPSHOT_TARGET, snapshot_texture != RENDERER_NO_TEXTURE, (int)(before.video_memory_free - after.video_memory_free), (int)(before.main_memory_free - after.main_memory_free), snapshot_render_target_bytes());
+}
+
+int renderer_init(void)
+{
+    static const unsigned char white_pixel[4] = { 255, 255, 255, 255 };
+    GLboolean resolution_fell_back;
+
+    resolution_fell_back = vglInitExtended(RENDERER_POOL_SIZE, RENDERER_WIDTH, RENDERER_HEIGHT, RENDERER_MAIN_MEMORY_LEFT_FOR_APP, SCE_GXM_MULTISAMPLE_NONE);
+    set_up_screen_space_drawing();
+    white_texture = renderer_texture_create(white_pixel, 1, 1);
+    create_snapshot_target();
+    return !resolution_fell_back;
+}
+
+void renderer_shutdown(void)
+{
+    if (snapshot_framebuffer != 0) {
+        glDeleteFramebuffers(1, &snapshot_framebuffer);
+        renderer_texture_destroy(snapshot_texture);
+    }
+    renderer_texture_destroy(white_texture);
+}
+
+void renderer_begin_frame(struct renderer_color clear_color)
+{
+    glClearColor(clear_color.red, clear_color.green, clear_color.blue, clear_color.alpha);
+    glClear(GL_COLOR_BUFFER_BIT);
+    batch_quad_count = 0;
+    batch_texture = RENDERER_NO_TEXTURE;
+}
+
+void renderer_end_frame(void)
+{
+    flush_batch();
+    vglSwapBuffers(GL_FALSE);
 }
 
 renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int width, int height)
@@ -203,4 +258,37 @@ void renderer_draw_filled_rects(const struct renderer_rect *screen_areas, int co
     for (index = 0; index < count; index++) {
         renderer_draw_filled_rect(screen_areas[index], color);
     }
+}
+
+int renderer_snapshot_begin(void)
+{
+    if (snapshot_framebuffer == 0) {
+        return 0;
+    }
+    flush_batch();
+    glBindFramebuffer(GL_FRAMEBUFFER, snapshot_framebuffer);
+    clear_bound_target_to_black();
+    return 1;
+}
+
+void renderer_snapshot_end(void)
+{
+    flush_batch();
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void renderer_draw_snapshot(struct renderer_rect screen_area, float alpha)
+{
+    struct renderer_rect texture_stored_bottom_row_first;
+    struct renderer_color tint;
+
+    texture_stored_bottom_row_first.x = 0.0f;
+    texture_stored_bottom_row_first.y = 1.0f;
+    texture_stored_bottom_row_first.width = 1.0f;
+    texture_stored_bottom_row_first.height = -1.0f;
+    tint.red = 1.0f;
+    tint.green = 1.0f;
+    tint.blue = 1.0f;
+    tint.alpha = alpha;
+    renderer_draw_sprite(snapshot_texture, screen_area, texture_stored_bottom_row_first, tint);
 }

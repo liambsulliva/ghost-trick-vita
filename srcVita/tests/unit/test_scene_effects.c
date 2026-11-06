@@ -241,6 +241,47 @@ static void test_the_iris_opens_from_nothing(void)
     CHECK(effects.iris_radius.value == 0.0f);
 }
 
+static void test_a_dissolve_runs_from_nothing_to_all_and_then_turns_itself_off(void)
+{
+    set_up();
+    CHECK(!effects.dissolve_is_on);
+    scene_effects_start_dissolve(&effects, 2.0f, 32);
+    CHECK(effects.dissolve_is_on);
+    CHECK(effects.dissolve_end_zoom == 2.0f);
+    CHECK(effects.dissolve_progress.value == 0.0f);
+    advance_ticks(16);
+    CHECK(effects.dissolve_is_on);
+    CHECK(nearly(effects.dissolve_progress.value, 0.5f));
+    advance_ticks(15);
+    CHECK(effects.dissolve_is_on);
+    advance_ticks(1);
+    CHECK(!effects.dissolve_is_on);
+    advance_ticks(100);
+    CHECK(!effects.dissolve_is_on);
+}
+
+static void test_a_new_dissolve_starts_over_from_nothing(void)
+{
+    set_up();
+    scene_effects_start_dissolve(&effects, 2.0f, 32);
+    advance_ticks(16);
+    scene_effects_start_dissolve(&effects, 3.0f, 8);
+    CHECK(effects.dissolve_progress.value == 0.0f);
+    CHECK(effects.dissolve_end_zoom == 3.0f);
+    advance_ticks(4);
+    CHECK(nearly(effects.dissolve_progress.value, 0.5f));
+}
+
+static void test_resetting_the_effects_ends_a_dissolve(void)
+{
+    set_up();
+    scene_effects_start_dissolve(&effects, 2.0f, 32);
+    advance_ticks(8);
+    scene_effects_reset(&effects);
+    CHECK(!effects.dissolve_is_on);
+    CHECK(effects.dissolve_progress.value == 0.0f);
+}
+
 static void test_turning_the_mask_on_or_off_ends_the_iris(void)
 {
     set_up();
@@ -288,6 +329,9 @@ int main(void)
     test_a_flash_starts_at_its_brightness_and_falls_to_nothing();
     test_the_iris_opens_from_nothing();
     test_turning_the_mask_on_or_off_ends_the_iris();
+    test_a_dissolve_runs_from_nothing_to_all_and_then_turns_itself_off();
+    test_a_new_dissolve_starts_over_from_nothing();
+    test_resetting_the_effects_ends_a_dissolve();
     test_effects_run_side_by_side();
     fake_files_reset();
     return test_finish("unit/scene_effects");
