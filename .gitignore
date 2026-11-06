@@ -2,6 +2,7 @@
 *.apk
 *.pak
 *.bin
+*.so
 extracted/
 toolchain/
 *.gpr

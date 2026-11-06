@@ -28,3 +28,19 @@ ext .mp4
 ext .webm
 ext .mkv
 ext .part
+ext .otf
+ext .oft
+ext .msg
+ext .gtex
+ext .ogg
+ext .dds
+ext .rgba
+magic 0 4f54544f OpenType font
+magic 0 4642464f encoded remaster font
+magic 4 474d5347 remaster message file
+magic 0 47544558 converted Vita texture
+magic 0 4f676753 Ogg audio
+magic 0 44445320 DDS texture
+name text_key.bin
+ext .so
+magic 0 7f454c46 ELF library
