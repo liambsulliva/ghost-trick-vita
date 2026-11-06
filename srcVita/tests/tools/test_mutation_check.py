@@ -1,3 +1,5 @@
+import contextlib
+import io
 import os
 import tempfile
 import unittest
@@ -58,7 +60,8 @@ class SingleFileRebuildTests(unittest.TestCase):
             output.write("stale")
 
     def run_one_mutation(self, outcome_of):
-        mutation_check.run_mutations(self.folder, [("src/app/thing.c", "a = 1", "a = 2")], outcome_of, [], [], lambda relative_path: mutation_check.forget_test_object_of(self.folder, relative_path))
+        with contextlib.redirect_stdout(io.StringIO()):
+            mutation_check.run_mutations(self.folder, [("src/app/thing.c", "a = 1", "a = 2")], outcome_of, [], [], lambda relative_path: mutation_check.forget_test_object_of(self.folder, relative_path))
 
     def test_the_object_is_gone_before_the_mutated_source_is_built(self):
         seen = []

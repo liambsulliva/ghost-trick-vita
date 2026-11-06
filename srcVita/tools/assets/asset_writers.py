@@ -55,6 +55,13 @@ def gtex_bytes(width, height, texture_format, pixel_data):
     return header + bytes(pixel_data)
 
 
+def read_gtex_header(data):
+    if data[:4] != b"GTEX":
+        raise ValueError("not a GTEX file")
+    width, height, texture_format = struct.unpack_from("<III", data, 4)
+    return width, height, texture_format
+
+
 def blank_frame(ticks):
     return {"texture": BLANK_TEXTURE, "ticks": ticks, "x": 0, "y": 0, "width": 0, "height": 0, "u": 0, "v": 0, "u_size": 0, "v_size": 0}
 

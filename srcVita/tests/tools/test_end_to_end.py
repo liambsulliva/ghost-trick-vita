@@ -5,10 +5,13 @@ import shutil
 import struct
 import tempfile
 import unittest
+from unittest import mock
 
+import bake_record
 import convert_assets
 import synthetic_files
 import test_audio_file
+import texture_encoder
 
 TESTS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(TESTS_FOLDER))
@@ -233,8 +236,117 @@ class EndToEndTests(unittest.TestCase):
     def test_a_missing_pack_entry_is_reported(self):
         set_description = tiny_set_description()
         set_description["plates"] = [{"name": "plate", "source": "natives/android/not/there.tex.691230823"}]
-        with self.assertRaises(KeyError):
+        with self.assertRaisesRegex(convert_assets.ConversionFailed, "plate"):
             self.convert(set_description)
+
+    def output_tree(self):
+        tree = {}
+        for folder, _, names in os.walk(self.output_folder):
+            for name in names:
+                if name != bake_record.RECORD_FILE_NAME:
+                    path = os.path.join(folder, name)
+                    with open(path, "rb") as source:
+                        tree[os.path.relpath(path, self.output_folder)] = source.read()
+        return tree
+
+    def textures_baked_by(self, set_description):
+        with mock.patch.object(texture_encoder, "convert_tex_to_gtex", wraps=texture_encoder.convert_tex_to_gtex) as convert:
+            self.convert(set_description)
+        return sorted(call.args[2] for call in convert.call_args_list)
+
+    def test_a_second_run_bakes_nothing_and_leaves_every_file_untouched(self):
+        self.convert(tiny_set_description())
+        before = {}
+        for relative_path in self.output_tree():
+            path = os.path.join(self.output_folder, relative_path)
+            os.utime(path, (1000, 1000))
+            before[relative_path] = 1000
+        self.assertEqual(self.textures_baked_by(tiny_set_description()), [])
+        for relative_path, moment in before.items():
+            self.assertEqual(os.path.getmtime(os.path.join(self.output_folder, relative_path)), moment, relative_path)
+
+    def test_a_changed_source_bakes_only_the_textures_made_from_it(self):
+        self.convert(tiny_set_description())
+        files = game_files()
+        files[1] = (PAGE_0_PATH, transparent_astc_tex(64, 64) + b"\0", True)
+        synthetic_files.write_apk_folder(self.apk_folder, files)
+        self.assertEqual(self.textures_baked_by(tiny_set_description()), ["st01_a_000_00"])
+
+    def test_changed_settings_bake_only_that_texture(self):
+        self.convert(tiny_set_description())
+        set_description = tiny_set_description()
+        set_description["screen_textures"][0]["width"] = 32
+        self.assertEqual(self.textures_baked_by(set_description), ["card"])
+        self.assertEqual(self.read_gtex_header("card")[0][0], 32)
+
+    def test_changed_encoder_code_bakes_everything_again(self):
+        self.convert(tiny_set_description())
+        with mock.patch.object(convert_assets, "texture_code_fingerprint", return_value="other code"):
+            self.assertEqual(len(self.textures_baked_by(tiny_set_description())), 5)
+
+    def test_a_deleted_or_edited_output_is_baked_again(self):
+        self.convert(tiny_set_description())
+        os.remove(os.path.join(self.output_folder, "textures", "plate.gtex"))
+        with open(os.path.join(self.output_folder, "textures", "card.gtex"), "wb") as output:
+            output.write(b"edited")
+        self.assertEqual(self.textures_baked_by(tiny_set_description()), ["card", "plate"])
+
+    def test_building_over_an_old_set_gives_the_same_files_as_a_clean_build(self):
+        old_set = tiny_set_description()
+        old_set["screen_textures"][0]["width"] = 32
+        old_set["animations"] = old_set["animations"][:1]
+        old_set["steps"] = [step for step in old_set["steps"] if step[0] != "object"]
+        self.convert(old_set)
+        self.convert(tiny_set_description())
+        incremental = self.output_tree()
+        shutil.rmtree(self.output_folder)
+        self.convert(tiny_set_description())
+        self.assertEqual(incremental, self.output_tree())
+
+    def test_a_texture_no_longer_in_the_set_is_removed_and_forgotten(self):
+        self.convert(tiny_set_description())
+        smaller = tiny_set_description()
+        del smaller["screen_textures"][1]
+        self.convert(smaller)
+        self.assertFalse(os.path.exists(os.path.join(self.output_folder, "textures", "card_corner.gtex")))
+        self.assertEqual(self.textures_baked_by(tiny_set_description()), ["card_corner"])
+
+    def test_one_bad_texture_does_not_lose_the_others(self):
+        set_description = tiny_set_description()
+        set_description["screen_textures"].append({"name": "bad", "source": PLATE_PATH, "width": 8, "height": 8, "crop": [0, 0, 9999, 8]})
+        with self.assertRaisesRegex(convert_assets.ConversionFailed, "bad"):
+            self.convert(set_description)
+        self.assertEqual(self.textures_baked_by(tiny_set_description()), [])
+
+    def test_a_failed_run_leaves_the_last_good_manifest_and_files(self):
+        self.convert(tiny_set_description())
+        before = self.output_tree()
+        set_description = tiny_set_description()
+        set_description["screen_textures"].append({"name": "bad", "source": PLATE_PATH, "width": 8, "height": 8, "crop": [0, 0, 9999, 8]})
+        with self.assertRaises(convert_assets.ConversionFailed):
+            self.convert(set_description)
+        self.assertEqual(self.output_tree(), before)
+
+    def test_too_many_frames_are_refused_before_any_texture_is_baked(self):
+        set_description = tiny_set_description()
+        set_description["animations"].append({"name": "long", "timeline": TIMELINE_PATH, "ds_frames": [0] * 1025})
+        with mock.patch.object(texture_encoder, "convert_tex_to_gtex") as convert:
+            with self.assertRaises(ValueError):
+                self.convert(set_description)
+        convert.assert_not_called()
+
+    def test_a_set_with_no_scene_lists_only_its_art(self):
+        self.convert(tiny_set_description())
+        set_description = {"animations": [{"name": "st01_a_000", "timeline": TIMELINE_PATH}], "plates": [{"name": "plate", "source": PLATE_PATH}]}
+        self.convert(set_description)
+        self.assertEqual(self.read_text("manifest.txt"), "background plate\nanimation st01_a_000\n")
+        self.assertEqual(os.listdir(os.path.join(self.output_folder, "scenes")), [])
+
+    def test_a_set_description_can_be_named_by_its_path(self):
+        path = os.path.join(self.folder, "my_set.json")
+        with open(path, "w", encoding="ascii") as output:
+            output.write('{"scene_name": "x"}')
+        self.assertEqual(convert_assets.load_set_description(path), {"scene_name": "x"})
 
     def test_a_scene_naming_an_unknown_animation_is_refused(self):
         set_description = tiny_set_description()
