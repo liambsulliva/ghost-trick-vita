@@ -96,4 +96,7 @@ def render_line(work_folder, name, font_path, text, pixels_per_em, max_ink_width
         "natural_width": natural_width,
         "drawn_ink_width": drawn_ink_width,
         "baseline_row": baseline_row,
+        "source_left": source_left,
+        "source_width": source_width,
+        "origin_on_canvas": canvas_width // 4,
     }

@@ -175,4 +175,5 @@ def main():
     print("wrote " + str(len(manifest)) + " entries to " + out_dir)
 
 
-main()
+if __name__ == "__main__":
+    main()

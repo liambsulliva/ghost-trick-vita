@@ -32,6 +32,11 @@ ROOMS_FILE = SCRIPTS_FOLDER + "/rooms.txt"
 AUDIO_FILE = SCRIPTS_FOLDER + "/audio_names.txt"
 TEXT_LINES_FILE = SCRIPTS_FOLDER + "/text_lines.txt"
 BALLOONS_FILE = SCRIPTS_FOLDER + "/balloons.txt"
+SOUL_FILE = SCRIPTS_FOLDER + "/soul.txt"
+EFFECTS_FILE = SCRIPTS_FOLDER + "/effects.txt"
+CHAPTER_PRELOADED_TABLES = 32
+CHAPTER_PRELOADED_MESSAGES = 6
+CHAPTER_PRELOADED_ROOMS = 2
 NARRATION_OP = 0x5d
 MOTION_LABEL_SUFFIX = ".mtbl.xml"
 FLAGS_SCRIPT = "flags.xml"
@@ -88,7 +93,7 @@ def language_path_of(path, language):
 
 
 def narration_labels(path, plain):
-    strings, operations = decoded_script(path, plain)
+    strings, operations, _ = decoded_script_with_errors(path, plain)
     labels = []
     for _, _, op, operands in operations:
         if op == NARRATION_OP and strings.get(operands[0]) not in labels:
@@ -108,8 +113,10 @@ def bake_one_cue_file(rom, record, code, section, path, plain):
         language_plain = lz.try_decompress(packed)
         if language_plain is None:
             raise ScriptBakeError(language_path + " in the DS ROM could not be decompressed")
+        known_labels = lmg_decode.read_labels(language_plain, lmg_decode.read_header(language_plain))
+        known_names = set(name for names in known_labels.values() for name in names)
         try:
-            text = message_cues.cue_text(language_plain, lmg_decode.read_labels(language_plain, lmg_decode.read_header(language_plain)), labels)
+            text = message_cues.cue_text(language_plain, known_labels, [label for label in labels if label in known_names])
         except (ValueError, message_cues.CueError) as error:
             raise ScriptBakeError(language_path + ": " + str(error)) from None
         record.store(relative_path, key, text.encode("ascii"))
@@ -125,14 +132,19 @@ def bake_cue_files(rom, record, code, section, scripts):
     return relative_paths
 
 
-def decoded_script(path, plain):
+def decoded_script_with_errors(path, plain):
     try:
         _, strings, _, items, errors = lmg_decode.decode(plain)
     except ValueError as error:
         raise ScriptBakeError(path + ": " + str(error)) from None
+    return strings, [item for item in items if item[1] == "op"], errors
+
+
+def decoded_script(path, plain):
+    strings, operations, errors = decoded_script_with_errors(path, plain)
     if errors:
         raise ScriptBakeError(path + ": " + errors[0])
-    return strings, [item for item in items if item[1] == "op"]
+    return strings, operations
 
 
 def act_span(strings, operations, act_name):
@@ -179,7 +191,8 @@ def bake_or_keep_scripts(set_description, rom_path, output_folder, record):
     code = bake_record.code_fingerprint(SCRIPT_CODE_FILES)
     with ds_rom.DsRom(rom_path) as rom:
         scripts = {path: read_one_script(rom, record, code, path) for path in section["files"]}
-        check_script_changes(section, {path: plain for path, (plain, _) in scripts.items()})
+        if "chapter" not in set_description:
+            check_script_changes(section, {path: plain for path, (plain, _) in scripts.items()})
         store_new_scripts(record, scripts)
         cue_paths = bake_cue_files(rom, record, code, section, scripts)
     return [baked_path(path) for path in section["files"]] + cue_paths
@@ -249,6 +262,10 @@ def table_animations(set_description, output_folder, timelines, crops):
                 continue
             timeline = timeline_of_hand_animation(set_description, timelines, animation_name)
             ds_frames = walk_table_frames(plain, offsets[table_name])
+            if not ds_frames:
+                continue
+            frame_count = len(timeline["records"]) // timeline["records_per_ds_frame"]
+            ds_frames = [min(frame, frame_count - 1) for frame in ds_frames]
             frames, records_per_frame = frame_layout.frames_for_table(timeline, ds_frames, crops)
             name = table_animation_name(table_name)
             animation_texts[name] = asset_writers.anim_text(name, 0, frames)
@@ -259,19 +276,58 @@ def table_animations(set_description, output_folder, timelines, crops):
 
 
 def chain_text(section):
-    lines = ["stop " + section["stop_at_act"], "timing " + section["timing"]]
+    lines = ["timing " + section["timing"]]
+    if "stop_at_act" in section:
+        lines.insert(0, "stop " + section["stop_at_act"])
     if "card_texture" in section:
         lines.append("card " + section["card_texture"])
     lines.extend("file " + script_name(path) for path in section["files"] if path != FLAGS_SCRIPT)
     return "\n".join(lines) + "\n"
 
 
-def rooms_text(section, plate_sizes):
-    lines = []
+def soul_plate_names(set_description):
+    return {plate["name"]: plate["soul_plate"] for plate in set_description.get("plates", []) if "soul_plate" in plate}
+
+
+def rooms_text(section, plate_sizes, soul_plates):
+    lines = ["room %s %d %d" % (room, size[0], size[1]) for room, size in section.get("room_sizes", {}).items()]
     for room, plates in section.get("room_plates", {}).items():
         for name, x, y in plates:
             width, height = plate_sizes[name]
-            lines.append("plate %s %s %s %s %s %s" % (room, name, asset_writers.format_number(x), asset_writers.format_number(y), asset_writers.format_number(width), asset_writers.format_number(height)))
+            lines.append("plate %s %s %s %s %s %s %s" % (room, name, asset_writers.format_number(x), asset_writers.format_number(y), asset_writers.format_number(width), asset_writers.format_number(height), soul_plates.get(name, NO_LABEL)))
+    return "\n".join(lines) + "\n"
+
+
+def soul_text(soul_view):
+    lines = ["owner " + soul_view["owner"], "ring " + soul_view["ring"]]
+    lines.extend("core " + name for name in soul_view.get("cores", []))
+    for class_id, style in soul_view.get("classes", {}).items():
+        lines.append("class %s %s" % (class_id, " ".join(asset_writers.format_number(value) for value in style)))
+    for object_name, style in soul_view.get("objects", {}).items():
+        lines.append("object %s %s" % (object_name, " ".join(asset_writers.format_number(value) for value in style)))
+    return "\n".join(lines) + "\n"
+
+
+def effects_text(effects):
+    return "".join("effect %d %s %s %d %s %s %s\n" % (row["id"], row["kind"], row["texture"], row["ticks"], asset_writers.format_number(row["end_zoom"]), asset_writers.format_number(row["width"]), asset_writers.format_number(row["height"])) for row in effects)
+
+
+def chapter_preload_text(set_description, section, balloons, narration_lines, soul_plates, extra_textures):
+    tables = []
+    for names in set_description.get("script_table_names", {}).values():
+        if names:
+            tables = list(dict.fromkeys(name for name in names if name in section["motion_tables"]))[:CHAPTER_PRELOADED_TABLES]
+            break
+    lines = ["animation " + table_animation_name(name) for name in tables]
+    textures = list(extra_textures)
+    textures.append(section["card_texture"])
+    for label in list(narration_lines)[:CHAPTER_PRELOADED_MESSAGES]:
+        for paragraph in narration_lines[label]["paragraphs"]:
+            textures.extend(line["texture"] for line in paragraph)
+    for room_plates in list(section.get("room_plates", {}).values())[:CHAPTER_PRELOADED_ROOMS]:
+        textures.extend(plate[0] for plate in room_plates)
+    lines.extend("texture " + name for name in dict.fromkeys(textures))
+    lines.extend("sound " + name for name in dict.fromkeys(section.get("sound_kinds", {}).values()))
     return "\n".join(lines) + "\n"
 
 
@@ -310,16 +366,20 @@ def balloons_text(balloons, texture_sizes):
     for balloon in balloons:
         lines.append("balloon %d %s %d" % (balloon.get("kind", NO_KIND), balloon.get("label", NO_LABEL), balloon["delay"]))
         for part in balloon["parts"]:
+            if part["texture"] not in texture_sizes:
+                continue
             width, height = texture_sizes[part["texture"]]
             lines.append("part %s %s %s %s %s %d %d" % (part["texture"], asset_writers.format_number(part["dx"]), asset_writers.format_number(part["dy"]), asset_writers.format_number(width / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), asset_writers.format_number(height / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), part["after"], part["grow"]))
     return "\n".join(lines) + "\n"
 
 
-def preload_text(section, balloons, narration_lines, animation_names):
+def preload_text(section, balloons, narration_lines, animation_names, soul_plates, extra_textures):
     lines = ["animation " + name for name in animation_names]
     textures = []
     for plates in section.get("room_plates", {}).values():
         textures.extend(plate[0] for plate in plates)
+        textures.extend(soul_plates[plate[0]] for plate in plates if plate[0] in soul_plates)
+    textures.extend(extra_textures)
     if "card_texture" in section:
         textures.append(section["card_texture"])
     for message in narration_lines.values():
@@ -342,20 +402,30 @@ def read_baked_text(output_folder, relative_path):
         return source.read()
 
 
-def table_files(set_description, output_folder, motion_lines, narration_lines, texture_sizes, plate_sizes, animation_names):
+def table_files(set_description, output_folder, motion_lines, narration_lines, texture_sizes, plate_sizes, animation_names, talk_textures=()):
     section = set_description.get("scripts")
     if section is None or "motion_tables" not in section or not motion_lines:
         return {}
     balloons = set_description.get("script_balloons", [])
-    for path in section["files"]:
-        cues_text = read_baked_text(output_folder, SCRIPTS_FOLDER + "/" + script_name(path) + CUES_EXTENSION)
-        if cues_text is not None:
-            check_group_counts(cues_text, narration_lines)
+    if "chapter" not in set_description:
+        for path in section["files"]:
+            cues_text = read_baked_text(output_folder, SCRIPTS_FOLDER + "/" + script_name(path) + CUES_EXTENSION)
+            if cues_text is not None:
+                check_group_counts(cues_text, narration_lines)
     texts = dict(motion_lines)
     texts[CHAIN_FILE] = chain_text(section)
-    texts[ROOMS_FILE] = rooms_text(section, plate_sizes)
+    soul_plates = soul_plate_names(set_description)
+    texts[ROOMS_FILE] = rooms_text(section, plate_sizes, soul_plates)
     texts[AUDIO_FILE] = audio_text(section)
     texts[TEXT_LINES_FILE] = text_lines_text(narration_lines)
     texts[BALLOONS_FILE] = balloons_text(balloons, texture_sizes)
-    texts[PRELOAD_FILE] = preload_text(section, balloons, narration_lines, animation_names)
+    extra_textures = list(talk_textures) + set_description.get("talk", {}).get("window_textures", [])
+    if "soul_view" in set_description:
+        texts[SOUL_FILE] = soul_text(set_description["soul_view"])
+        extra_textures.append(set_description["soul_view"]["ring"])
+    texts[EFFECTS_FILE] = effects_text(set_description.get("effects", []))
+    if "chapter" in set_description:
+        texts[PRELOAD_FILE] = chapter_preload_text(set_description, section, balloons, narration_lines, soul_plates, extra_textures)
+    else:
+        texts[PRELOAD_FILE] = preload_text(section, balloons, narration_lines, animation_names, soul_plates, extra_textures)
     return {relative_path: text.encode("ascii") for relative_path, text in texts.items()}

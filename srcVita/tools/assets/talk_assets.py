@@ -1,0 +1,312 @@
+import os
+import re
+import subprocess
+
+import asset_writers
+import bake_record
+import chapter_assets
+import line_renderer
+import message_cues
+import message_file
+import narration
+import texture_encoder
+
+TALK_FILE = "scripts/talk.txt"
+FONT_TEXTURE = "talk_font"
+PIXELS_PER_EM = 30
+LINE_PITCH = 36
+BOTTOM_BOX_TOP = 412
+BOTTOM_BOX_HEIGHT = 132
+BOTTOM_TEXT_LEFT = 40
+TOP_BOX_TOP = 6
+TOP_BOX_HEIGHT = 132
+TOP_TEXT_LEFT = 212
+FLIPPED_FACE_TEXT_LEFT = 340
+ATLAS_WIDTH = 1024
+ATLAS_CELL_GAP = 4
+COLOR_BLACK = 0
+COLOR_OF_TAG = {"c1": 1, "c2": 2}
+COLOR_SHIFT = 14
+IGNORED_VERBS = ("s0", "mes_se_play", "mesflash", "mesquake")
+NEW_PAGE_CODE = 0x02
+FACE_CODE = 0x08
+ENDING_PRESS = 0
+ENDING_PAUSE_THEN_NEXT = 1
+ENDING_PAUSE_THEN_CLOSE = 2
+TAG_PATTERN = re.compile(r"<\s*(\w+)\s+(\w+)((?:\s+\w+=\"[^\"]*\")*)\s*/?\s*>")
+ANY_TAG_PATTERN = re.compile(r"<[^>]*>")
+ORIGIN_PATTERN = re.compile(r"origin: (-?[0-9.]+),")
+NO_FACE = "-"
+SUPERSAMPLE = line_renderer.SUPERSAMPLE
+
+
+def new_section():
+    return {"reveal_is_fade": 0, "ending": ENDING_PRESS, "characters": []}
+
+
+def add_plain_text(section, text, color):
+    for character in text.replace("\r", ""):
+        section["characters"].append((character, color))
+
+
+def apply_verb(sections, verb, color):
+    section = sections[-1]
+    if verb in COLOR_OF_TAG:
+        return COLOR_OF_TAG[verb]
+    if verb == "mes_white_in":
+        section["reveal_is_fade"] = 1
+    elif verb == "mes_pause":
+        section["ending"] = ENDING_PAUSE_THEN_NEXT
+    elif verb == "auto_pf":
+        sections.append(new_section())
+    elif verb == "auto_end":
+        section["ending"] = ENDING_PAUSE_THEN_CLOSE
+    return color
+
+
+def parse_page(raw_text):
+    sections = [new_section()]
+    color = COLOR_BLACK
+    position = 0
+    for match in ANY_TAG_PATTERN.finditer(raw_text):
+        add_plain_text(sections[-1], raw_text[position:match.start()], color)
+        position = match.end()
+        parts = TAG_PATTERN.fullmatch(match.group(0))
+        if parts is None:
+            continue
+        if parts.group(1) == "TRCKEND":
+            color = COLOR_BLACK
+        else:
+            color = apply_verb(sections, parts.group(2), color)
+    add_plain_text(sections[-1], raw_text[position:], color)
+    return [section_lines(section) for section in sections]
+
+
+def section_lines(section):
+    lines = []
+    current = []
+    for character, color in section["characters"]:
+        if character == "\n":
+            lines.append(current)
+            current = []
+        else:
+            current.append((character, color))
+    lines.append(current)
+    section["lines"] = [line for line in lines if "".join(character for character, _ in line).strip()]
+    del section["characters"]
+    return section
+
+
+def measure_advance(font_path, work_folder, character):
+    path = os.path.join(work_folder, "advance.txt")
+    with open(path, "w", encoding="utf-8") as output:
+        output.write(character)
+    result = subprocess.run(["magick", "-size", "16x16", "xc:none", "-font", font_path, "-pointsize", "%g" % (PIXELS_PER_EM * SUPERSAMPLE), "-debug", "annotate", "-annotate", "+0+0", "@" + path, "null:"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    os.remove(path)
+    origins = [float(value) for value in ORIGIN_PATTERN.findall(result.stderr.decode("utf-8", "replace"))]
+    if result.returncode != 0 or not origins:
+        raise line_renderer.LineRenderError("magick did not measure a glyph")
+    return origins[-1] / SUPERSAMPLE
+
+
+def render_glyph(font_path, work_folder, character):
+    baseline_row, line_height = line_renderer.line_box(PIXELS_PER_EM)
+    canvas_width = PIXELS_PER_EM * 4 * SUPERSAMPLE
+    canvas_height = line_height * 2 * SUPERSAMPLE
+    origin_x = PIXELS_PER_EM * SUPERSAMPLE
+    path = os.path.join(work_folder, "glyph.txt")
+    rgba_path = os.path.join(work_folder, "glyph.rgba")
+    with open(path, "w", encoding="utf-8") as output:
+        output.write(character)
+    arguments = ["magick", "-size", "%dx%d" % (canvas_width, canvas_height), "xc:none", "-font", font_path, "-pointsize", "%g" % (PIXELS_PER_EM * SUPERSAMPLE), "-fill", "white", "-annotate", "+%d+%d" % (origin_x, baseline_row * SUPERSAMPLE), "@" + path]
+    advance = measure_advance(font_path, work_folder, character)
+    glyph = {"advance": int(round(advance)), "width": 0, "height": 0, "left": 0, "top": 0, "pixels": b""}
+    if character.strip():
+        left, top, width, height = line_renderer.read_ink_box(arguments)
+        if width > 0 and height > 0:
+            cell_left = left // SUPERSAMPLE
+            cell_top = top // SUPERSAMPLE
+            cell_width = (left + width + SUPERSAMPLE - 1) // SUPERSAMPLE - cell_left
+            cell_height = (top + height + SUPERSAMPLE - 1) // SUPERSAMPLE - cell_top
+            line_renderer.run_magick(arguments + ["-crop", "%dx%d+%d+%d" % (cell_width * SUPERSAMPLE, cell_height * SUPERSAMPLE, cell_left * SUPERSAMPLE, cell_top * SUPERSAMPLE), "+repage", "-filter", "Box", "-resize", "%dx%d!" % (cell_width, cell_height), "-depth", "8", "rgba:" + rgba_path])
+            with open(rgba_path, "rb") as source:
+                pixels = bytearray(source.read())
+            os.remove(rgba_path)
+            line_renderer.set_every_color(pixels, (255, 255, 255))
+            glyph.update({"width": cell_width, "height": cell_height, "left": cell_left - origin_x // SUPERSAMPLE, "top": cell_top, "pixels": bytes(pixels)})
+    os.remove(path)
+    return glyph
+
+
+def build_atlas(glyphs):
+    x = ATLAS_CELL_GAP
+    y = ATLAS_CELL_GAP
+    row_height = 0
+    placed = []
+    for glyph in glyphs:
+        if x + glyph["width"] + ATLAS_CELL_GAP > ATLAS_WIDTH:
+            x = ATLAS_CELL_GAP
+            y = y + row_height + ATLAS_CELL_GAP
+            row_height = 0
+        placed.append((x, y))
+        x = x + ((glyph["width"] + 3) // 4 * 4) + ATLAS_CELL_GAP
+        row_height = max(row_height, (glyph["height"] + 3) // 4 * 4)
+    height = 4
+    while height < y + row_height + ATLAS_CELL_GAP:
+        height = height * 2
+    pixels = bytearray(b"\xff\xff\xff\x00" * (ATLAS_WIDTH * height))
+    for glyph, (cell_x, cell_y) in zip(glyphs, placed):
+        for row in range(glyph["height"]):
+            start = (cell_y + row) * ATLAS_WIDTH * 4 + cell_x * 4
+            pixels[start:start + glyph["width"] * 4] = glyph["pixels"][row * glyph["width"] * 4:(row + 1) * glyph["width"] * 4]
+    return bytes(pixels), height, placed
+
+
+def bake_font_atlas(fonts, work_folder, record, code, font_path, characters):
+    settings = {"font": bake_record.sha256_of_bytes(fonts.pack_bytes(font_path)), "pixels_per_em": PIXELS_PER_EM}
+    relative_path = "textures/" + FONT_TEXTURE + ".gtex"
+    key = record.key_for(code, settings, "".join(characters).encode("utf-8"))
+    details = record.details_of(relative_path)
+    current = record.read_if_current(relative_path, key) if "glyph_rows" in details else None
+    if current is not None:
+        return bake_record.result_of_own_size(FONT_TEXTURE, current), details["glyph_rows"]
+    decoded_font = fonts.decoded_path(font_path)
+    glyphs = [render_glyph(decoded_font, work_folder, character) for character in characters]
+    pixels, height, placed = build_atlas(glyphs)
+    blocks = texture_encoder.encode_rgba(work_folder, FONT_TEXTURE, ATLAS_WIDTH, height, pixels, "dxt5")
+    gtex_bytes = asset_writers.gtex_bytes(ATLAS_WIDTH, height, asset_writers.FORMAT_DXT5, blocks)
+    rows = [[cell_x, cell_y, glyph["width"], glyph["height"], glyph["left"], glyph["top"], glyph["advance"]] for glyph, (cell_x, cell_y) in zip(glyphs, placed)]
+    record.store(relative_path, key, gtex_bytes, {"glyph_rows": rows})
+    return bake_record.result_of_own_size(FONT_TEXTURE, gtex_bytes), rows
+
+
+def faces_by_ds_page(language_plain, offset):
+    faces = [None]
+    for code, parameters in message_cues.control_codes(language_plain, offset):
+        if code == FACE_CODE:
+            faces[-1] = parameters[0]
+        elif code == NEW_PAGE_CODE:
+            faces.append(None)
+    return faces
+
+
+def read_ds_faces(section):
+    import lmg_decode
+
+    targets_by_plain = {}
+    faces = {}
+    for label, plain in section["language_files"].items():
+        if plain is None:
+            continue
+        identity = id(plain)
+        if identity not in targets_by_plain:
+            targets_by_plain[identity] = message_cues.label_targets(lmg_decode.read_labels(plain, lmg_decode.read_header(plain)))
+        if label in targets_by_plain[identity]:
+            try:
+                faces[label] = faces_by_ds_page(plain, targets_by_plain[identity][label])
+            except message_cues.CueError:
+                pass
+    return faces
+
+
+def face_of_page(section, faces, label, page_index):
+    ids = faces.get(label, [])
+    face_id = ids[page_index] if page_index < len(ids) else None
+    if face_id is None and page_index > 0 and ids:
+        face_id = next((value for value in reversed(ids[:page_index]) if value is not None), None)
+    if face_id is None or face_id not in section["face_rows"]:
+        return None, 0
+    resource, flip = section["face_rows"][face_id]
+    return chapter_assets.face_texture_of(section["face_paths"], resource), flip
+
+
+def line_tops(line_count, box_top, box_height):
+    baseline_row, _ = line_renderer.line_box(PIXELS_PER_EM)
+    block_height = (line_count - 1) * LINE_PITCH + PIXELS_PER_EM
+    first_ink_top = box_top + (box_height - block_height) / 2
+    first_top = first_ink_top - (baseline_row - PIXELS_PER_EM * narration.TALLEST_INK_ABOVE_BASELINE_EM)
+    return [int(round(first_top + index * LINE_PITCH)) for index in range(line_count)]
+
+
+def read_all_pages(packs, section, text_key):
+    entries = section["entries"]
+    by_file = {}
+    for label, pages in entries.items():
+        for path, name in pages:
+            by_file.setdefault(path, []).append(name)
+    texts = {}
+    for path, names in by_file.items():
+        texts[path] = message_file.read_english_entries(packs.read(path), names, text_key)
+    return {label: [texts[path][name] for path, name in pages] for label, pages in entries.items()}
+
+
+def faces_the_set_will_use(packs, set_description, text_key):
+    section = set_description.get("talk")
+    if section is None or "entries" not in section:
+        return []
+    return parse_all_pages(packs, section, text_key)[2]
+
+
+def parse_all_pages(packs, section, text_key):
+    raw_pages = read_all_pages(packs, section, text_key)
+    faces = read_ds_faces(section)
+    parsed = {}
+    characters = set()
+    used_faces = []
+    skipped = 0
+    for label, pages in raw_pages.items():
+        parsed[label] = []
+        for page_index, raw_text in enumerate(pages):
+            try:
+                sections = parse_page(raw_text)
+            except message_file.MessageFileError:
+                skipped = skipped + 1
+                continue
+            face, flip = face_of_page(section, faces, label, page_index)
+            if face is not None and face not in used_faces:
+                used_faces.append(face)
+            parsed[label].append((sections, face, flip))
+            for one_section in sections:
+                for line in one_section["lines"]:
+                    characters.update(character for character, _ in line)
+    if skipped:
+        print("talk pages skipped: %d" % skipped)
+    return parsed, characters, used_faces
+
+
+def bake_talk(packs, set_description, text_key, work_folder, record, code):
+    section = set_description.get("talk")
+    if section is None or "entries" not in section:
+        return {}, [], [], []
+    parsed, characters, used_faces = parse_all_pages(packs, section, text_key)
+    ordered_characters = sorted(characters)
+    fonts = narration.TextFonts(packs, work_folder)
+    result, glyph_rows = bake_font_atlas(fonts, work_folder, record, code, section["font"], ordered_characters)
+    glyph_of = {character: index for index, character in enumerate(ordered_characters)}
+    rows = ["font " + FONT_TEXTURE]
+    rows.extend("glyph " + " ".join(str(value) for value in row) for row in glyph_rows)
+    for label, pages in parsed.items():
+        rows.append("talk " + label)
+        for sections, face, flip in pages:
+            face_name = chapter_assets.face_texture_name(face) if face is not None else NO_FACE
+            for one_section in sections:
+                is_top_box = 1 if face is None else 0
+                box_top = TOP_BOX_TOP if is_top_box else BOTTOM_BOX_TOP
+                box_height = TOP_BOX_HEIGHT if is_top_box else BOTTOM_BOX_HEIGHT
+                text_left = TOP_TEXT_LEFT if is_top_box else (FLIPPED_FACE_TEXT_LEFT if flip else BOTTOM_TEXT_LEFT)
+                rows.append("page %s %d %d %d %d %d" % (face_name, flip, is_top_box, one_section["reveal_is_fade"], one_section["ending"], len(one_section["lines"])))
+                tops = line_tops(len(one_section["lines"]), box_top, box_height)
+                for line, top in zip(one_section["lines"], tops):
+                    codes = " ".join(str(glyph_of[character] | (color << COLOR_SHIFT)) for character, color in line)
+                    rows.append("line %d %d %d %s" % (text_left, top, len(line), codes))
+    return {TALK_FILE: ("\n".join(rows) + "\n").encode("ascii")}, [result], [], used_faces
+
+
+def talk_texture_names(talk_files):
+    return [FONT_TEXTURE] if talk_files else []
+
+
+def print_talk_summary(talk_files):
+    for text in talk_files.values():
+        rows = text.decode("ascii").split("\n")
+        print("talk: %d glyphs, %d messages, %d pages, %d lines" % (sum(row.startswith("glyph ") for row in rows), sum(row.startswith("talk ") for row in rows), sum(row.startswith("page ") for row in rows), sum(row.startswith("line ") for row in rows)))

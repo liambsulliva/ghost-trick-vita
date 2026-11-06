@@ -62,13 +62,21 @@ def encode_rgba(work_folder, name, width, height, rgba_pixels, compression):
     return block_data_from_dds(dds_bytes, width, height, compression)
 
 
-def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, crop=None):
+def apply_soul_ramp(rgba_path, width, height, ramp):
+    ramped_path = rgba_path + ".ramped"
+    subprocess.run(["magick", "-size", "%dx%d" % (width, height), "-depth", "8", "rgba:" + rgba_path, "-alpha", "off", "-colorspace", "gray", "-level", "0%%,%d%%" % ramp["white_percent"], "+level-colors", ramp["dark"] + "," + ramp["bright"], "-alpha", "opaque", "-depth", "8", "rgba:" + ramped_path], check=True)
+    os.replace(ramped_path, rgba_path)
+
+
+def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, crop=None, soul_ramp=None):
     tex_path = os.path.join(work_folder, name + ".tex")
     rgba_path = os.path.join(work_folder, name + ".rgba")
     dds_path = os.path.join(work_folder, name + ".dds")
     with open(tex_path, "wb") as output:
         output.write(tex_bytes)
     is_opaque = run_texture_tool(tool_path, tex_path, rgba_path, width, height, crop)
+    if soul_ramp is not None:
+        apply_soul_ramp(rgba_path, width, height, soul_ramp)
     with open(rgba_path, "rb") as source:
         rgba_pixels = source.read()
     if is_opaque:

@@ -31,7 +31,7 @@ class NarrationError(ValueError):
 
 
 def set_uses_text(set_description):
-    return bool(set_description.get("narration") or set_description.get("bubble_text"))
+    return bool(set_description.get("chapter") or set_description.get("narration") or set_description.get("bubble_text"))
 
 
 def load_text_key(set_description, apk_folder):
@@ -152,15 +152,31 @@ def read_narration_message(request, raw_text):
 
 def read_bubble_message(request, raw_text):
     message = parse_requested_message(request, raw_text)
+    if request.get("joins_lines"):
+        message["paragraphs"] = [[" ".join(text.strip() for paragraph in message["paragraphs"] for text in paragraph if text.strip())]]
     if len(message["paragraphs"]) != 1 or len(message["paragraphs"][0]) != 1:
         raise NarrationError("bubble text is not one line: " + request["name"])
     return message
+
+
+def can_be_read(reader, request, texts):
+    try:
+        reader(request, texts[request["file"]][request["entry"]])
+    except NarrationError as error:
+        print("text skipped: %s" % str(error).split(":")[0])
+        return False
+    return True
 
 
 def read_text_messages(packs, set_description, text_key):
     narration_requests = set_description.get("narration", [])
     bubble_requests = set_description.get("bubble_text", [])
     texts = read_requested_texts(packs, narration_requests + bubble_requests, text_key)
+    if set_description.get("chapter"):
+        set_description["narration"] = [request for request in narration_requests if can_be_read(read_narration_message, request, texts)]
+        set_description["bubble_text"] = [request for request in bubble_requests if can_be_read(read_bubble_message, request, texts)]
+        narration_requests = set_description["narration"]
+        bubble_requests = set_description["bubble_text"]
     return {
         "narration": [read_narration_message(request, texts[request["file"]][request["entry"]]) for request in narration_requests],
         "bubble_text": [read_bubble_message(request, texts[request["file"]][request["entry"]]) for request in bubble_requests],

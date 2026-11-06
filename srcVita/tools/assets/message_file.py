@@ -117,6 +117,12 @@ def read_english_entries(data, wanted_names, key):
     return found
 
 
+def read_entry_names(data, key):
+    entry_count, _, string_area_start = read_header(data)
+    string_area = decode_string_area(data[string_area_start:], key)
+    return [read_entry_and_name(data, string_area, string_area_start, index)[1] for index in range(entry_count)]
+
+
 def read_tag(tag_text):
     match = TRCK_TAG_PATTERN.match(tag_text)
     if match is None:

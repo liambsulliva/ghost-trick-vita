@@ -20,6 +20,8 @@ import frame_layout
 import narration
 import pack_files
 import script_assets
+import chapter_assets
+import talk_assets
 import texture_encoder
 import timeline_file
 
@@ -33,7 +35,7 @@ FORMAT_NAMES = {asset_writers.FORMAT_RGBA8888: "RGBA8888", asset_writers.FORMAT_
 OUTPUT_FOLDER_NAMES = ("textures", "animations", "scenes", "music", "sounds", "scripts")
 TEXTURE_CODE_FILES = ["asset_writers.py", "astc_decode.c", "astc_decode.h", "etc_decode.c", "etc_decode.h", "texture_encoder.py", "texture_tool.c"]
 COMPOSED_CODE_FILES = TEXTURE_CODE_FILES + ["bubble_art.py"]
-TEXT_CODE_FILES = ["asset_writers.py", "font_file.py", "line_renderer.py", "message_file.py", "narration.py", "texture_encoder.py"]
+TEXT_CODE_FILES = ["asset_writers.py", "chapter_assets.py", "font_file.py", "line_renderer.py", "message_cues.py", "message_file.py", "narration.py", "talk_assets.py", "texture_encoder.py"]
 WORK_FOLDER_PREFIX = "ghost_trick_convert_"
 OLD_WORK_FOLDER_SECONDS = 3600
 EXIT_CODE_BASE_FOR_SIGNALS = 128
@@ -79,9 +81,11 @@ def add_atlas_page_jobs(jobs, animations, timelines):
     return crops
 
 
-def add_plate_jobs(jobs, plates):
+def add_plate_jobs(jobs, plates, soul_ramp):
     for plate in plates:
         jobs[plate["name"]] = {"name": plate["name"], "source": plate["source"]}
+        if "soul_plate" in plate:
+            jobs[plate["soul_plate"]] = {"name": plate["soul_plate"], "source": plate["source"], "soul_ramp": soul_ramp}
 
 
 def add_screen_texture_jobs(jobs, screen_textures):
@@ -119,10 +123,13 @@ def convert_one_texture(packs, work_folder, job, record, code):
     source_size = texture_encoder.read_tex_size(tex_bytes)
     width, height = size_for_job(job, source_size)
     relative_path = "textures/" + job["name"] + ".gtex"
-    key = record.key_for(code, {"width": width, "height": height, "crop": job.get("crop")}, tex_bytes)
+    settings = {"width": width, "height": height, "crop": job.get("crop")}
+    if "soul_ramp" in job:
+        settings["soul_ramp"] = job["soul_ramp"]
+    key = record.key_for(code, settings, tex_bytes)
     gtex_bytes = record.read_if_current(relative_path, key)
     if gtex_bytes is None:
-        gtex_bytes, _ = texture_encoder.convert_tex_to_gtex(TEXTURE_TOOL_PATH, work_folder, job["name"], tex_bytes, width, height, job.get("crop"))
+        gtex_bytes, _ = texture_encoder.convert_tex_to_gtex(TEXTURE_TOOL_PATH, work_folder, job["name"], tex_bytes, width, height, job.get("crop"), job.get("soul_ramp"))
         record.store(relative_path, key, gtex_bytes)
     return bake_record.texture_result(job["name"], source_size, gtex_bytes)
 
@@ -304,6 +311,8 @@ def print_summary(record, texture_results, animation_texts, steps, music_results
 def animation_texts_for(set_description, timelines, crops):
     texts = {}
     for animation in set_description.get("animations", []):
+        if animation.get("table_only"):
+            continue
         timeline = timelines[animation["timeline"]]
         frames = frame_layout.frames_for_animation(timeline, animation.get("ds_frames"), crops)
         texts[animation["name"]] = asset_writers.anim_text(animation["name"], animation.get("loops", 0), frames)
@@ -337,13 +346,16 @@ def delete_work_folder(work_folder):
 def convert_set_description(set_description, output_folder, apk_folder, text_key, ds_rom_path=DEFAULT_DS_ROM_PATH):
     remove_old_work_folders()
     packs = pack_files.PackSet(apk_folder)
+    set_description = chapter_assets.expand_set(set_description, packs, ds_rom_path, text_key)
     animations = set_description.get("animations", [])
     plates = set_description.get("plates", [])
     timelines = load_timelines(packs, animations)
     jobs = {}
     crops = add_atlas_page_jobs(jobs, animations, timelines)
     atlas_page_names = list(jobs)
-    add_plate_jobs(jobs, plates)
+    add_plate_jobs(jobs, plates, set_description.get("soul_view", {}).get("ramp"))
+    used_faces = talk_assets.faces_the_set_will_use(packs, set_description, text_key)
+    chapter_assets.add_face_textures(set_description, used_faces) if used_faces else None
     add_screen_texture_jobs(jobs, set_description.get("screen_textures", []))
     animation_texts = animation_texts_for(set_description, timelines, crops)
     music_results = read_audio_streams(packs, set_description.get("music", []))
@@ -359,12 +371,13 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
             texture_results, failures = convert_all_textures(packs, jobs, work_folder, record)
             narration_lines, text_results, text_failures = convert_text_textures(packs, set_description, messages, work_folder, record)
             composed_results, composed_failures = convert_composed_textures(packs, set_description.get("composed_textures", []), work_folder, record)
+            talk_files, talk_results, talk_failures, _ = talk_assets.bake_talk(packs, set_description, text_key, work_folder, record, text_code_fingerprint())
         finally:
             delete_work_folder(work_folder)
-        failures = failures + text_failures + composed_failures
+        failures = failures + text_failures + composed_failures + talk_failures
         if failures:
             raise ConversionFailed(failures)
-        texture_results = sorted(texture_results + text_results + composed_results, key=lambda result: result["name"])
+        texture_results = sorted(texture_results + text_results + composed_results + talk_results, key=lambda result: result["name"])
         steps = expand_steps(set_description, plate_size_lookup(texture_results, plates))
         steps = narration.expand_text_steps(steps, narration_lines, {result["name"]: (result["width"], result["height"]) for result in texture_results})
         check_steps_refer_to_known_assets(steps, set(result["name"] for result in texture_results), set(animation_texts.keys()), set(result["name"] for result in music_results), set(result["name"] for result in sound_results))
@@ -373,12 +386,14 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         table_texts, motion_lines = script_assets.table_animations(set_description, output_folder, timelines, crops)
         files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in table_texts.items()})
         texture_sizes = {result["name"]: (result["width"], result["height"]) for result in texture_results}
-        files.update(script_assets.table_files(set_description, output_folder, motion_lines, narration_lines, texture_sizes, plate_size_lookup(texture_results, plates), list(table_texts)))
+        files.update(talk_files)
+        files.update(script_assets.table_files(set_description, output_folder, motion_lines, narration_lines, texture_sizes, plate_size_lookup(texture_results, plates), list(table_texts), talk_assets.talk_texture_names(talk_files)))
         write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts), script_paths)
     finally:
         record.save()
     print_summary(record, texture_results, animation_texts, steps, music_results, sound_results)
     narration.print_narration_summary(narration_lines)
+    talk_assets.print_talk_summary(talk_files)
 
 
 def exit_so_the_work_folder_is_deleted(signal_number, _frame):

@@ -39,11 +39,20 @@ def pack_path_for(logical_path):
     return "natives/android/" + logical_path.lower() + TEX_VERSION_SUFFIX
 
 
+class WholeFrames(list):
+    pass
+
+
 def select_records(timeline, ds_frames):
     if ds_frames is None:
         return list(timeline["records"])
     step = timeline["records_per_ds_frame"]
     selected = []
+    if isinstance(ds_frames, WholeFrames):
+        for ds_frame in ds_frames:
+            if ds_frame * step < len(timeline["records"]):
+                selected.extend(timeline["records"][ds_frame * step:(ds_frame + 1) * step])
+        return selected
     for ds_frame in ds_frames:
         selected.append(timeline["records"][ds_frame * step])
     return selected

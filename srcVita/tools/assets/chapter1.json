@@ -1,0 +1,502 @@
+{
+  "chapter": "st01",
+  "scripts": {
+    "entry": "route.xml",
+    "language": "en",
+    "timing": "remaster",
+    "card_texture": "chapter_card"
+  },
+  "narration_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
+  "talk": {
+    "font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
+    "window_textures": [
+      "talk_box_bottom",
+      "talk_box_top",
+      "talk_cursor"
+    ]
+  },
+  "effects": [
+    {
+      "id": 66,
+      "kind": "card",
+      "texture": "chapter_card",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": 85,
+      "kind": "dissolve",
+      "texture": "-",
+      "ticks": 32,
+      "end_zoom": 2,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": 4,
+      "kind": "ring",
+      "texture": "soul_ring",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 180,
+      "height": 180
+    },
+    {
+      "id": 7,
+      "kind": "ring",
+      "texture": "soul_ring",
+      "ticks": 70,
+      "end_zoom": 1,
+      "width": 120,
+      "height": 120
+    },
+    {
+      "id": 11,
+      "kind": "ring",
+      "texture": "soul_ring",
+      "ticks": 100,
+      "end_zoom": 1,
+      "width": 120,
+      "height": 120
+    },
+    {
+      "id": 12,
+      "kind": "ring",
+      "texture": "soul_ring",
+      "ticks": 100,
+      "end_zoom": 1,
+      "width": 120,
+      "height": 120
+    },
+    {
+      "id": 13,
+      "kind": "ring",
+      "texture": "soul_ring",
+      "ticks": 70,
+      "end_zoom": 1,
+      "width": 120,
+      "height": 120
+    }
+  ],
+  "screen_textures": [
+    {
+      "name": "soul_ring",
+      "source": "natives/android/charfiles/3d/05_effect/cmn_shig_00/23_cmn_shig_00_01_iml4.tex.691230823",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "name": "chapter_card",
+      "source": "natives/android/charfiles/3d/06_id/12_chapter/cmn_ch_00_00_iml3.tex.691230823.en",
+      "width": 720,
+      "height": 540,
+      "list_as_background": true
+    },
+    {
+      "name": "alert_burst",
+      "source": "natives/android/gui/ui010200/tex/ig_010208_iml4.tex.691230823",
+      "crop": [
+        410,
+        1,
+        474,
+        470
+      ],
+      "width": 80,
+      "height": 80
+    },
+    {
+      "name": "alert_mark",
+      "source": "natives/android/gui/ui010200/tex/ig_010208_iml4.tex.691230823",
+      "crop": [
+        886,
+        1,
+        136,
+        270
+      ],
+      "width": 24,
+      "height": 52
+    }
+  ],
+  "composed_textures": [
+    {
+      "name": "talk_box_bottom",
+      "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
+      "width": 960,
+      "height": 132,
+      "parts": [
+        {
+          "crop": [
+            40,
+            40,
+            8,
+            8
+          ],
+          "x": 20,
+          "y": 0,
+          "width": 920,
+          "height": 20
+        },
+        {
+          "crop": [
+            40,
+            40,
+            8,
+            8
+          ],
+          "x": 0,
+          "y": 20,
+          "width": 960,
+          "height": 112
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 20,
+          "height": 20
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 940,
+          "y": 0,
+          "width": 20,
+          "height": 20,
+          "flip_x": true
+        }
+      ]
+    },
+    {
+      "name": "talk_box_top",
+      "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
+      "width": 600,
+      "height": 132,
+      "parts": [
+        {
+          "crop": [
+            40,
+            40,
+            8,
+            8
+          ],
+          "x": 20,
+          "y": 0,
+          "width": 560,
+          "height": 132
+        },
+        {
+          "crop": [
+            40,
+            40,
+            8,
+            8
+          ],
+          "x": 0,
+          "y": 20,
+          "width": 20,
+          "height": 92
+        },
+        {
+          "crop": [
+            40,
+            40,
+            8,
+            8
+          ],
+          "x": 580,
+          "y": 20,
+          "width": 20,
+          "height": 92
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 20,
+          "height": 20
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 580,
+          "y": 0,
+          "width": 20,
+          "height": 20,
+          "flip_x": true
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 0,
+          "y": 112,
+          "width": 20,
+          "height": 20,
+          "flip_y": true
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 580,
+          "y": 112,
+          "width": 20,
+          "height": 20,
+          "flip_x": true,
+          "flip_y": true
+        }
+      ]
+    },
+    {
+      "name": "talk_cursor",
+      "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
+      "width": 16,
+      "height": 24,
+      "parts": [
+        {
+          "crop": [
+            112,
+            2,
+            24,
+            44
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 16,
+          "height": 24
+        }
+      ]
+    },
+    {
+      "name": "oval_bubble",
+      "source": "natives/android/charfiles/3d/06_id/cmn_balln00_iml4.tex.691230823",
+      "width": 332,
+      "height": 108,
+      "parts": [
+        {
+          "crop": [
+            4,
+            364,
+            96,
+            96
+          ],
+          "x": 287,
+          "y": 0,
+          "width": 45,
+          "height": 45
+        },
+        {
+          "crop": [
+            4,
+            364,
+            96,
+            96
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 45,
+          "height": 45,
+          "flip_x": true
+        },
+        {
+          "crop": [
+            4,
+            364,
+            96,
+            96
+          ],
+          "x": 287,
+          "y": 45,
+          "width": 45,
+          "height": 45,
+          "flip_y": true
+        },
+        {
+          "crop": [
+            4,
+            364,
+            96,
+            96
+          ],
+          "x": 0,
+          "y": 45,
+          "width": 45,
+          "height": 45,
+          "flip_x": true,
+          "flip_y": true
+        },
+        {
+          "crop": [
+            8,
+            440,
+            16,
+            16
+          ],
+          "x": 45,
+          "y": 0,
+          "width": 242,
+          "height": 90
+        },
+        {
+          "crop": [
+            4,
+            466,
+            138,
+            44
+          ],
+          "x": 154,
+          "y": 89,
+          "width": 57,
+          "height": 19
+        }
+      ]
+    }
+  ],
+  "soul_view": {
+    "owner": "cicel",
+    "ring": "soul_ring",
+    "cores": [
+      "shadanki"
+    ],
+    "ramp": {
+      "white_percent": 66,
+      "dark": "#0a0000",
+      "bright": "#d81c0c"
+    },
+    "classes": {
+      "5a390072": [
+        0.8,
+        0.53,
+        0.16,
+        0.86,
+        1
+      ],
+      "4080f0cd": [
+        0.16,
+        0.38,
+        0.68,
+        0.92,
+        1
+      ],
+      "4d5b0354": [
+        0.95,
+        0.3,
+        0.22,
+        1,
+        0
+      ],
+      "789c5740": [
+        0.85,
+        0.12,
+        0.07,
+        1,
+        0
+      ],
+      "45427fc2": [
+        0.85,
+        0.12,
+        0.07,
+        1,
+        0
+      ],
+      "6309aa5a": [
+        0.85,
+        0.12,
+        0.07,
+        1,
+        0
+      ]
+    },
+    "objects": {
+      "cicel": [
+        0.68,
+        0.71,
+        0.95,
+        1,
+        1
+      ],
+      "cbag": [
+        0.68,
+        0.71,
+        0.95,
+        1,
+        1
+      ]
+    }
+  },
+  "balloon_kinds": {
+    "no_label": [
+      {
+        "kind": 5,
+        "delay": 11,
+        "parts": [
+          {
+            "texture": "alert_burst",
+            "dx": 0.8222,
+            "dy": 0.3556,
+            "after": 0,
+            "grow": 3
+          },
+          {
+            "texture": "alert_mark",
+            "dx": 0.4667,
+            "dy": -2.4889,
+            "after": 4,
+            "grow": 3
+          }
+        ]
+      }
+    ],
+    "with_label": {
+      "delay": 0,
+      "art": {
+        "texture": "oval_bubble",
+        "dx": -0.1334,
+        "dy": 0.0444,
+        "after": 0,
+        "grow": 6
+      },
+      "text_part": {
+        "dx": -0.1333,
+        "dy": -2.4444,
+        "after": 6,
+        "grow": 0
+      },
+      "text": {
+        "font": "natives/android/gui/font/outlinefont/helveticaneueltw1g-bd.oft.1",
+        "pixels_per_em": 34,
+        "color": [
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  }
+}

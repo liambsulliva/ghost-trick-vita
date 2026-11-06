@@ -4,7 +4,6 @@
     "entry": "route.xml",
     "files": ["flags.xml", "route.xml", "st01/st01_root.xml", "st01/st01_game000_Expand.xml"],
     "language": "en",
-    "stop_at_act": "gameAct020",
     "never_taken": ["st01/tgs_root.xml", "test/stage_select.xml", "st01/st01_game001_Expand.xml", "st01/st01_game010_Expand.xml", "st01/st01_game011_Expand.xml", "st01/st01_game012_Expand.xml", "st01/st01_game013_Expand.xml", "st01/st01_game014_Expand.xml", "st01/st01_game015_Expand.xml", "st01/st01_game016_Expand.xml", "st01/st01_game020_Expand.xml", "st01/st01_game021_Expand.xml", "st01/st01_game022_Expand.xml"],
     "timing": "remaster",
     "card_texture": "chapter_card",
@@ -42,8 +41,8 @@
       "11": [["st01-00", 0, 0], ["st01-00-00", 0, 384]],
       "7": [["st01-00", 0, 0], ["st01-01", 0, 384]]
     },
-    "music_ids": {"30": "bgm30_new"},
-    "sound_kinds": {"79": "gim_046", "75": "gim_042", "21": "sys_021", "22": "sys_022", "27": "sys_027"}
+    "music_ids": {"30": "bgm30_new", "37": "bgm37_new"},
+    "sound_kinds": {"79": "gim_046", "75": "gim_042", "21": "sys_021", "22": "sys_022", "27": "sys_027", "5": "sys_005", "6": "sys_006", "14": "sys_014"}
   },
   "script_balloons": [
     {
@@ -64,6 +63,10 @@
     }
   ],
   "screen_textures": [
+    {"name": "face_cicel_plain", "source": "natives/android/charfiles/3d/08_face/cmn_cu_00_01_iml4.tex.691230823", "width": 360, "height": 540},
+    {"name": "face_cicel_thinking", "source": "natives/android/charfiles/3d/08_face/cmn_cu_00_02_iml4.tex.691230823", "width": 360, "height": 540},
+    {"name": "face_cicel_alarmed", "source": "natives/android/charfiles/3d/08_face/cmn_cu_00_03_iml4.tex.691230823", "width": 360, "height": 540},
+    {"name": "soul_ring", "source": "natives/android/charfiles/3d/05_effect/cmn_shig_00/23_cmn_shig_00_01_iml4.tex.691230823", "width": 512, "height": 512},
     {
       "name": "chapter_card",
       "source": "natives/android/charfiles/3d/06_id/12_chapter/cmn_ch_00_00_iml3.tex.691230823.en",
@@ -88,6 +91,42 @@
   ],
   "composed_textures": [
     {
+      "name": "talk_box_bottom",
+      "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
+      "width": 960,
+      "height": 132,
+      "parts": [
+        {"crop": [40, 40, 8, 8], "x": 20, "y": 0, "width": 920, "height": 20},
+        {"crop": [40, 40, 8, 8], "x": 0, "y": 20, "width": 960, "height": 112},
+        {"crop": [2, 2, 94, 94], "x": 0, "y": 0, "width": 20, "height": 20},
+        {"crop": [2, 2, 94, 94], "x": 940, "y": 0, "width": 20, "height": 20, "flip_x": true}
+      ]
+    },
+    {
+      "name": "talk_box_top",
+      "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
+      "width": 600,
+      "height": 132,
+      "parts": [
+        {"crop": [40, 40, 8, 8], "x": 20, "y": 0, "width": 560, "height": 132},
+        {"crop": [40, 40, 8, 8], "x": 0, "y": 20, "width": 20, "height": 92},
+        {"crop": [40, 40, 8, 8], "x": 580, "y": 20, "width": 20, "height": 92},
+        {"crop": [2, 2, 94, 94], "x": 0, "y": 0, "width": 20, "height": 20},
+        {"crop": [2, 2, 94, 94], "x": 580, "y": 0, "width": 20, "height": 20, "flip_x": true},
+        {"crop": [2, 2, 94, 94], "x": 0, "y": 112, "width": 20, "height": 20, "flip_y": true},
+        {"crop": [2, 2, 94, 94], "x": 580, "y": 112, "width": 20, "height": 20, "flip_x": true, "flip_y": true}
+      ]
+    },
+    {
+      "name": "talk_cursor",
+      "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
+      "width": 16,
+      "height": 24,
+      "parts": [
+        {"crop": [112, 2, 24, 44], "x": 0, "y": 0, "width": 16, "height": 24}
+      ]
+    },
+    {
       "name": "oval_bubble",
       "source": "natives/android/charfiles/3d/06_id/cmn_balln00_iml4.tex.691230823",
       "width": 332,
@@ -102,6 +141,34 @@
       ]
     }
   ],
+  "talk": {
+    "script": "st01/st01_game000_Expand.xml",
+    "language": "en",
+    "text_file": "natives/android/gamedesign/text/st01/st01_0000.msg.22",
+    "entry_prefix": "st01_0000_",
+    "font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
+    "labels": ["m01_0090", "m01_0099", "m01_0100", "m01_0110", "m01_0130"],
+    "face_textures": {"41": "face_cicel_plain", "43": "face_cicel_thinking", "45": "face_cicel_alarmed"},
+    "window_textures": ["talk_box_bottom", "talk_box_top", "talk_cursor"]
+  },
+  "soul_view": {
+    "owner": "cicel",
+    "ring": "soul_ring",
+    "cores": ["shadanki"],
+    "ramp": {"white_percent": 66, "dark": "#0a0000", "bright": "#d81c0c"},
+    "classes": {
+      "5a390072": [0.80, 0.53, 0.16, 0.86, 1],
+      "4080f0cd": [0.16, 0.38, 0.68, 0.92, 1],
+      "4d5b0354": [0.95, 0.30, 0.22, 1, 0],
+      "789c5740": [0.85, 0.12, 0.07, 1, 0],
+      "45427fc2": [0.85, 0.12, 0.07, 1, 0],
+      "6309aa5a": [0.85, 0.12, 0.07, 1, 0]
+    },
+    "objects": {
+      "cicel": [0.68, 0.71, 0.95, 1, 1],
+      "cbag": [0.68, 0.71, 0.95, 1, 1]
+    }
+  },
   "narration_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
   "narration": [
     {"name": "m01_0000", "file": "natives/android/gamedesign/text/st01/st01_0000.msg.22", "entry": "st01_0000_m01_0000"},
@@ -125,9 +192,9 @@
     }
   ],
   "plates": [
-    {"name": "st01-00", "source": "natives/android/charfiles/2d/02_bg/st01/st01-00_iml4.tex.691230823"},
-    {"name": "st01-00-00", "source": "natives/android/charfiles/2d/02_bg/st01/st01-00-00_iml4.tex.691230823"},
-    {"name": "st01-01", "source": "natives/android/charfiles/2d/02_bg/st01/st01-01_iml4.tex.691230823"}
+    {"name": "st01-00", "soul_plate": "st01-00-soul", "source": "natives/android/charfiles/2d/02_bg/st01/st01-00_iml4.tex.691230823"},
+    {"name": "st01-00-00", "soul_plate": "st01-00-00-soul", "source": "natives/android/charfiles/2d/02_bg/st01/st01-00-00_iml4.tex.691230823"},
+    {"name": "st01-01", "soul_plate": "st01-01-soul", "source": "natives/android/charfiles/2d/02_bg/st01/st01-01_iml4.tex.691230823"}
   ],
   "animations": [
     {"name": "st01_gomi_004", "timeline": "natives/android/charfiles/2d/06_scrobj/st01/gomi/st01_gomi_004/st01_gomi_004.user.2", "ds_frames": [0]},
@@ -224,14 +291,18 @@
     ]
   },
   "music": [
-    {"name": "bgm30_new", "source": "natives/android/streaming/sound/bgm_new/bgm30_new.asrc.31"}
+    {"name": "bgm30_new", "source": "natives/android/streaming/sound/bgm_new/bgm30_new.asrc.31"},
+    {"name": "bgm37_new", "source": "natives/android/streaming/sound/bgm_new/bgm37_new.asrc.31"}
   ],
   "sounds": [
     {"name": "gim_046", "source": "natives/android/streaming/sound/se_resource/gim/gim_046.asrc.31"},
     {"name": "gim_042", "source": "natives/android/streaming/sound/se_resource/gim/gim_042.asrc.31"},
     {"name": "sys_021", "source": "natives/android/streaming/sound/se_resource/sys/sys_021.asrc.31"},
     {"name": "sys_022", "source": "natives/android/streaming/sound/se_resource/sys/sys_022.asrc.31"},
-    {"name": "sys_027", "source": "natives/android/streaming/sound/se_resource/sys/sys_027.asrc.31"}
+    {"name": "sys_027", "source": "natives/android/streaming/sound/se_resource/sys/sys_027.asrc.31"},
+    {"name": "sys_005", "source": "natives/android/streaming/sound/se_resource/sys/sys_005.asrc.31"},
+    {"name": "sys_006", "source": "natives/android/streaming/sound/se_resource/sys/sys_006.asrc.31"},
+    {"name": "sys_014", "source": "natives/android/streaming/sound/se_resource/sys/sys_014.asrc.31"}
   ],
   "steps": [
     ["fade_out", 1],
