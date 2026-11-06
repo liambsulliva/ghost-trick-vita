@@ -60,6 +60,8 @@ frame - 2 0 0 0 0 0 0 0 0
 
 An animation has at most 512 frames.
 
+The converter crops each atlas page to the cells the set actually uses, so `u` and `v` are measured against the cropped texture rather than the original page. A pose held alone on a page comes out as `0 0 1 1`.
+
 ## Scenes: `.scene`
 
 A scene is a list of steps that run in order. Most take effect immediately. `wait`, `fade_in`, `fade_out` and `camera_pan` hold the script for the number of ticks they name, at 60 ticks per second, while animations keep playing.
