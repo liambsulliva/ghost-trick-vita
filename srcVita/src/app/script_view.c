@@ -86,6 +86,7 @@
 #define FILM_TILE_SIZE 60.0f
 #define FILM_TILE_TOP -13.0f
 #define MOVIE_FRAMES_LOADED_AHEAD 4
+#define MOVIE_NAME_EXTRA 16
 #define SWIRL_TEXTURE "swirl_back"
 #define SWIRL_PARTICLE_TEXTURE "swirl_particle"
 #define SWIRL_SIZE 1200.0f
@@ -867,7 +868,7 @@ static void draw_film_frame(void)
 
 static int movie_frame_is_ready(int frame, const struct cached_texture **texture)
 {
-    char name[ASSET_NAME_MAX];
+    char name[ASSET_NAME_MAX + MOVIE_NAME_EXTRA];
 
     snprintf(name, sizeof(name), "movie_%s_%03d", playing_movie->name, frame);
     *texture = texture_cache_use_or_start_loading(name);
