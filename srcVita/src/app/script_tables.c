@@ -4,6 +4,7 @@
 
 #define SOUL_CORE_CLASS_ID 0x4080f0cdu
 #define SOUL_ACTIVE_STYLE_NAME "active"
+#define SOUL_DEAD_STYLE_NAME "dead"
 #include "text_lines.h"
 
 #define TABLE_LINE_MAX 320
@@ -275,7 +276,7 @@ int script_tables_read_soul(struct script_tables *tables, const char *text, unsi
     return read_all_lines(tables, text, text_size, read_soul_line);
 }
 
-const struct script_soul_style *script_tables_soul_style(const struct script_tables *tables, unsigned int class_id, int is_human, int has_core, int is_active)
+const struct script_soul_style *script_tables_soul_style(const struct script_tables *tables, unsigned int class_id, int is_human, int has_core, int is_active, int is_dead)
 {
     unsigned int wanted_class;
     int index;
@@ -288,7 +289,10 @@ const struct script_soul_style *script_tables_soul_style(const struct script_tab
         if (is_active && strcmp(style->object_name, SOUL_ACTIVE_STYLE_NAME) == 0) {
             return style;
         }
-        if (!is_active && style->object_name[0] == '\0' && style->class_id == wanted_class) {
+        if (!is_active && is_dead && strcmp(style->object_name, SOUL_DEAD_STYLE_NAME) == 0) {
+            return style;
+        }
+        if (!is_active && !is_dead && style->object_name[0] == '\0' && style->class_id == wanted_class) {
             return style;
         }
     }

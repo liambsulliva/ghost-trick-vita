@@ -324,6 +324,8 @@ def core_labels_text(core_labels, texture_sizes):
         action = action_texture if action_texture in texture_sizes else NO_LABEL
         action_size = texture_sizes.get(action_texture, (0, 0))
         lines.append("label %s %s %s %s %s %s %s" % (object_name, name_texture, asset_writers.format_number(texture_sizes[name_texture][0]), asset_writers.format_number(texture_sizes[name_texture][1]), action, asset_writers.format_number(action_size[0]), asset_writers.format_number(action_size[1])))
+    if "core_unknown" in texture_sizes:
+        lines.append("label ? core_unknown %s %s %s 0 0" % (asset_writers.format_number(texture_sizes["core_unknown"][0]), asset_writers.format_number(texture_sizes["core_unknown"][1]), NO_LABEL))
     return "\n".join(lines) + "\n"
 
 

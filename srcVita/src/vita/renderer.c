@@ -1,3 +1,4 @@
+#include <math.h>
 #include <string.h>
 #include <psp2/gxm.h>
 #include <vitaGL.h>
@@ -267,6 +268,34 @@ void renderer_draw_sprite(renderer_texture texture, struct renderer_rect screen_
 {
     set_flat_drawing(0);
     queue_sprite(texture, screen_area, texture_area, tint);
+}
+
+void renderer_draw_beam(renderer_texture texture, float from_x, float from_y, float to_x, float to_y, float half_width, struct renderer_color tint)
+{
+    struct batch_vertex *quad;
+    float length;
+    float side_x;
+    float side_y;
+
+    length = sqrtf((to_x - from_x) * (to_x - from_x) + (to_y - from_y) * (to_y - from_y));
+    if (length < 1.0f) {
+        return;
+    }
+    set_flat_drawing(0);
+    if (texture != batch_texture || batch_quad_count == BATCH_QUAD_MAX) {
+        flush_batch();
+        batch_texture = texture;
+    }
+    side_x = -(to_y - from_y) / length * half_width;
+    side_y = (to_x - from_x) / length * half_width;
+    quad = &batch_vertices[batch_quad_count * VERTICES_PER_QUAD];
+    set_vertex(&quad[0], from_x - side_x, from_y - side_y, 0.0f, 0.0f, tint);
+    set_vertex(&quad[1], to_x - side_x, to_y - side_y, 1.0f, 0.0f, tint);
+    set_vertex(&quad[2], from_x + side_x, from_y + side_y, 0.0f, 1.0f, tint);
+    set_vertex(&quad[3], to_x - side_x, to_y - side_y, 1.0f, 0.0f, tint);
+    set_vertex(&quad[4], to_x + side_x, to_y + side_y, 1.0f, 1.0f, tint);
+    set_vertex(&quad[5], from_x + side_x, from_y + side_y, 0.0f, 1.0f, tint);
+    batch_quad_count = batch_quad_count + 1;
 }
 
 void renderer_draw_flat_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color)

@@ -173,10 +173,10 @@
       "name": "soul_tooltip_ring",
       "source": "natives/android/charfiles/3d/05_effect/cmn_tell_coreeff01/23_cmn_tell_coreeff01_00_iml4.tex.691230823",
       "crop": [
-        384,
-        384,
-        128,
-        128
+        360,
+        360,
+        96,
+        96
       ],
       "width": 128,
       "height": 128,
@@ -185,6 +185,30 @@
         255,
         255
       ]
+    },
+    {
+      "name": "soul_sparks_00",
+      "source": "natives/android/charfiles/3d/05_effect/deadtricklight/23_deadtricklight_00_iml4.tex.691230823",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "name": "soul_sparks_01",
+      "source": "natives/android/charfiles/3d/05_effect/deadtricklight/23_deadtricklight_01_iml4.tex.691230823",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "name": "soul_sparks_02",
+      "source": "natives/android/charfiles/3d/05_effect/deadtricklight/23_deadtricklight_02_iml4.tex.691230823",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "name": "soul_beam",
+      "source": "natives/android/charfiles/3d/04_item/soultentacle_iml4.tex.691230823",
+      "width": 256,
+      "height": 64
     }
   ],
   "composed_textures": [
@@ -508,6 +532,13 @@
         0.95,
         1,
         1
+      ],
+      "dead": [
+        0.35,
+        0.24,
+        0.88,
+        1,
+        1
       ]
     }
   },
@@ -573,6 +604,20 @@
         "soul_dim_00",
         "soul_dim_01",
         "soul_dim_02"
+      ]
+    },
+    {
+      "name": "soul_sparks",
+      "ticks_per_frame": 2,
+      "frames": 74,
+      "columns": 5,
+      "rows": 5,
+      "cell_width": 0.1758,
+      "cell_height": 0.1758,
+      "pages": [
+        "soul_sparks_00",
+        "soul_sparks_01",
+        "soul_sparks_02"
       ]
     }
   ],
@@ -664,6 +709,7 @@
         "18",
         null
       ]
-    }
+    },
+    "unknown_text": "???"
   }
 }

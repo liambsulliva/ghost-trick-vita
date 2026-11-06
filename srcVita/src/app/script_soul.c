@@ -12,6 +12,10 @@
 #define PACED_TICKS_TO_READ_A_PAGE 120u
 #define NO_CORE (-1)
 #define SOUL_BEAM_TICKS 6
+#define SOUL_LIGHTNING_TICKS 72
+#define SOUL_POSSESSION_FLASH_TICKS 18
+#define SOUL_POSSESSION_SPARK_TICKS 148
+#define SOUL_TOOLTIP_FADE_TICKS 24
 #define SOUL_STREAM_DS_PIXELS_PER_TICK 6
 #define SOUL_STREAM_TICKS_LEAST 8
 #define SOUL_STREAM_TICKS_MOST 20
@@ -127,7 +131,7 @@ static void drag_soul_to(struct script_machine *machine, int object_index, int s
     core_position(machine, object_index, &target_x, &target_y);
     soul->drag_object = object_index;
     soul->drag_slot = slot;
-    soul->drag_stream_ticks = stream_ticks_for_distance(sqrtf((target_x - soul->drag_from_x) * (target_x - soul->drag_from_x) + (target_y - soul->drag_from_y) * (target_y - soul->drag_from_y)));
+    soul->drag_stream_ticks = machine->objects[object_index].is_dead ? SOUL_LIGHTNING_TICKS : stream_ticks_for_distance(sqrtf((target_x - soul->drag_from_x) * (target_x - soul->drag_from_x) + (target_y - soul->drag_from_y) * (target_y - soul->drag_from_y)));
     soul->drag_ticks_left = SOUL_BEAM_TICKS + soul->drag_stream_ticks;
     if (soul->player_opened_soul_view && !soul->camera_follow_is_off && !point_is_in_camera_view(machine, target_x, target_y)) {
         script_machine_pan_camera_to(machine, (int)target_x, (int)target_y);
@@ -148,6 +152,8 @@ static void report_soul_view(struct script_machine *machine)
             core_position(machine, soul->drag_object, &target_x, &target_y);
             if (soul->drag_ticks_left > soul->drag_stream_ticks) {
                 machine->outputs->soul_cursor_moved(1, soul->drag_from_x, soul->drag_from_y, target_x, target_y, SCRIPT_SOUL_BEAM);
+            } else if (machine->objects[soul->drag_object].is_dead) {
+                machine->outputs->soul_cursor_moved(1, soul->drag_from_x, soul->drag_from_y, target_x, target_y, SCRIPT_SOUL_LIGHTNING);
             } else {
                 float along;
 
@@ -165,21 +171,30 @@ static void report_soul_view(struct script_machine *machine)
         }
     }
     if (machine->outputs->soul_tooltip_changed != NULL) {
-        machine->outputs->soul_tooltip_changed(soul->is_on && soul->tooltip_is_on && soul->drag_ticks_left == 0 && soul->active_object != NO_CORE ? machine->objects[soul->active_object].name : NULL);
+        float alpha;
+
+        alpha = 1.0f;
+        if (soul->drag_ticks_left > 0) {
+            int elapsed;
+
+            elapsed = SOUL_BEAM_TICKS + soul->drag_stream_ticks - soul->drag_ticks_left;
+            alpha = machine->objects[soul->drag_object].is_dead && elapsed < SOUL_TOOLTIP_FADE_TICKS ? 1.0f - (float)elapsed / (float)SOUL_TOOLTIP_FADE_TICKS : 0.0f;
+        }
+        machine->outputs->soul_tooltip_changed(soul->is_on && soul->tooltip_is_on && alpha > 0.0f && soul->active_object != NO_CORE ? machine->objects[soul->active_object].name : NULL, alpha);
     }
     if (!soul->is_on || machine->outputs->soul_core_marked == NULL) {
         return;
     }
     for (index = 0; index < machine->object_count; index++) {
         if (machine->outputs->soul_object_styled != NULL && machine->objects[index].actor.exists) {
-            machine->outputs->soul_object_styled(machine->objects[index].name, machine->objects[index].actor.class_id, machine->objects[index].actor.has_core, index == soul->active_object);
+            machine->outputs->soul_object_styled(machine->objects[index].name, machine->objects[index].actor.class_id, machine->objects[index].actor.has_core, index == soul->active_object, machine->objects[index].is_dead);
         }
         if (index != soul->active_object && object_can_be_a_core(&machine->objects[index], 0)) {
             float x;
             float y;
 
             core_position(machine, index, &x, &y);
-            machine->outputs->soul_core_marked(index, x, y);
+            machine->outputs->soul_core_marked(index, x, y, machine->objects[index].is_dead);
         }
     }
 }
@@ -194,7 +209,34 @@ static void finish_drag_when_due(struct script_machine *machine)
     }
     soul->drag_ticks_left = soul->drag_ticks_left - 1;
     if (soul->drag_ticks_left == 0) {
+        if (machine->objects[soul->drag_object].is_dead) {
+            soul->flash_ticks_left = SOUL_POSSESSION_FLASH_TICKS;
+            soul->sparks_elapsed_ticks = 1;
+        }
         arrive_at_core(machine, soul->drag_object, soul->drag_slot);
+    }
+}
+
+static void report_possession_effects(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (machine->outputs->soul_flash_changed != NULL) {
+        machine->outputs->soul_flash_changed((float)soul->flash_ticks_left / (float)SOUL_POSSESSION_FLASH_TICKS);
+    }
+    if (machine->outputs->soul_sparks_changed != NULL && soul->active_object != NO_CORE) {
+        float x;
+        float y;
+
+        core_position(machine, soul->active_object, &x, &y);
+        machine->outputs->soul_sparks_changed(soul->sparks_elapsed_ticks, x, y);
+    }
+    if (soul->flash_ticks_left > 0) {
+        soul->flash_ticks_left = soul->flash_ticks_left - 1;
+    }
+    if (soul->sparks_elapsed_ticks > 0) {
+        soul->sparks_elapsed_ticks = soul->sparks_elapsed_ticks >= SOUL_POSSESSION_SPARK_TICKS ? 0 : soul->sparks_elapsed_ticks + 1;
     }
 }
 
@@ -752,6 +794,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     move_free_camera(machine);
     finish_drag_when_due(machine);
     report_soul_view(machine);
+    report_possession_effects(machine);
     send_trick_action_when_due(machine);
     run_countdown(machine);
     send_timed_native_event(machine, &soul->phone_event);

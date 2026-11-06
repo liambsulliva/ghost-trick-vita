@@ -39,7 +39,8 @@ struct script_actor_view {
 enum script_soul_motion {
     SCRIPT_SOUL_RESTING,
     SCRIPT_SOUL_BEAM,
-    SCRIPT_SOUL_STREAM
+    SCRIPT_SOUL_STREAM,
+    SCRIPT_SOUL_LIGHTNING
 };
 
 struct script_outputs {
@@ -75,9 +76,11 @@ struct script_outputs {
     void (*music_volume_changed)(int volume, int ticks);
     void (*soul_vision_changed)(int is_on);
     void (*soul_cursor_moved)(int is_shown, float x, float y, float from_x, float from_y, int motion);
-    void (*soul_core_marked)(int object_index, float x, float y);
-    void (*soul_tooltip_changed)(const char *object_name);
-    void (*soul_object_styled)(const char *object_name, unsigned int class_id, int has_core, int is_active);
+    void (*soul_core_marked)(int object_index, float x, float y, int is_dead);
+    void (*soul_tooltip_changed)(const char *object_name, float alpha);
+    void (*soul_object_styled)(const char *object_name, unsigned int class_id, int has_core, int is_active, int is_dead);
+    void (*soul_flash_changed)(float alpha);
+    void (*soul_sparks_changed)(int elapsed_ticks, float x, float y);
     void (*marked)(const char *what, const char *name);
     void (*talk_changed)(const struct script_talk_view *view);
     void (*effect_deleted)(const char *name);

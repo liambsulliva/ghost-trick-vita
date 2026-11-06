@@ -187,6 +187,22 @@ static struct fake_draw *record_draw(renderer_texture texture, int is_filled_rec
     return draw;
 }
 
+void renderer_draw_beam(renderer_texture texture, float from_x, float from_y, float to_x, float to_y, float half_width, struct renderer_color tint)
+{
+    struct renderer_rect screen_area;
+    struct renderer_rect texture_area;
+
+    screen_area.x = from_x;
+    screen_area.y = from_y - half_width;
+    screen_area.width = to_x - from_x;
+    screen_area.height = (to_y - from_y) + 2.0f * half_width;
+    texture_area.x = 0.0f;
+    texture_area.y = 0.0f;
+    texture_area.width = 1.0f;
+    texture_area.height = 1.0f;
+    renderer_draw_sprite(texture, screen_area, texture_area, tint);
+}
+
 void renderer_draw_flat_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color)
 {
     renderer_draw_sprite(texture, screen_area, texture_area, color);

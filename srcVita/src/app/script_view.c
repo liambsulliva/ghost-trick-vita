@@ -62,14 +62,32 @@
 #define TOOLTIP_RING_TEXTURE "soul_tooltip_ring"
 #define TOOLTIP_NO_ACTION "-"
 #define TOOLTIP_RING_SIZE 150.0f
-#define TOOLTIP_LINE_START 45.0f
+#define TOOLTIP_UNKNOWN_OBJECT "?"
+#define TOOLTIP_RING_RADIUS 50.0f
 #define TOOLTIP_LINE_LENGTH 110.0f
+#define TOOLTIP_BEND_RISE 26.0f
+#define TOOLTIP_BEND_LENGTH 120.0f
+#define LIGHTNING_POINT_COUNT 36
+#define LIGHTNING_WAVES 14.0f
+#define LIGHTNING_WAVE_STEP 1.1f
+#define LIGHTNING_HALF_TURN 3.14159265f
+#define LIGHTNING_BEND 9.0f
+#define LIGHTNING_EDGE_RADIUS 7.5f
+#define LIGHTNING_MIDDLE_RADIUS 4.0f
+#define LIGHTNING_LUMP_COUNT 16u
+#define LIGHTNING_LUMP_LIFE_STEPS 12u
+#define LIGHTNING_LUMP_SPREAD 34.0f
+#define LIGHTNING_LUMP_RADIUS_LEAST 8.0f
+#define LIGHTNING_LUMP_RADIUS_SPREAD 16.0f
 #define TOOLTIP_LINE_THICKNESS 2.0f
 #define SCANLINE_COUNT 135
 #define SCANLINE_SPACING 4.0f
 #define SCANLINE_HEIGHT 2.0f
 #define SOUL_MOTION_DOT_COUNT 14
-#define SOUL_BEAM_RADIUS 5.0f
+#define SOUL_BEAM_TEXTURE "soul_beam"
+#define SOUL_BEAM_HALF_WIDTH 16.0f
+#define SOUL_SPARKS_FLIPBOOK "soul_sparks"
+#define SOUL_SPARKS_SIZE 340.0f
 #define SOUL_STREAM_LENGTH 0.7f
 #define SOUL_STREAM_RADIUS 18.0f
 #define SOUL_STREAM_RADIUS_LEAST 3.0f
@@ -88,6 +106,7 @@ struct view_core_mark {
     float y;
     unsigned int marked_at_tick;
     int is_set;
+    int is_dead;
 };
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -107,6 +126,11 @@ static unsigned int age_ticks;
 static int cursor_is_shown;
 static int cursor_motion;
 static const struct script_core_label *tooltip_label;
+static float tooltip_alpha;
+static float flash_alpha;
+static int sparks_elapsed_ticks;
+static float sparks_x;
+static float sparks_y;
 static float cursor_x;
 static float cursor_y;
 static float cursor_from_x;
@@ -150,14 +174,34 @@ void script_view_cursor_moved(int is_shown, float x, float y, float from_x, floa
     cursor_motion = motion;
 }
 
-void script_view_tooltip_changed(const char *object_name)
+void script_view_tooltip_changed(const char *object_name, float alpha)
 {
-    tooltip_label = object_name != NULL && tables != NULL ? script_tables_find_core_label(tables, object_name) : NULL;
+    tooltip_alpha = alpha;
+    tooltip_label = NULL;
+    if (object_name != NULL && tables != NULL) {
+        tooltip_label = script_tables_find_core_label(tables, object_name);
+        if (tooltip_label == NULL) {
+            tooltip_label = script_tables_find_core_label(tables, TOOLTIP_UNKNOWN_OBJECT);
+        }
+    }
 }
 
-void script_view_core_marked(int object_index, float x, float y)
+void script_view_soul_flash_changed(float alpha)
+{
+    flash_alpha = alpha;
+}
+
+void script_view_soul_sparks_changed(int elapsed_ticks, float x, float y)
+{
+    sparks_elapsed_ticks = elapsed_ticks;
+    sparks_x = x;
+    sparks_y = y;
+}
+
+void script_view_core_marked(int object_index, float x, float y, int is_dead)
 {
     if (object_index >= 0 && object_index < VIEW_CORE_MARK_MAX) {
+        core_marks[object_index].is_dead = is_dead;
         core_marks[object_index].x = x;
         core_marks[object_index].y = y;
         core_marks[object_index].marked_at_tick = age_ticks;
@@ -427,6 +471,8 @@ static void draw_centered(const char *texture_name, float center_x, float center
 
 static void draw_core_marks(void)
 {
+    static const struct renderer_color dead_glow = { 1.0f, 0.72f, 0.25f, 0.85f };
+    static const struct renderer_color dead_orb = { 1.0f, 1.0f, 0.86f, 1.0f };
     static const struct renderer_color glow = { 0.13f, 0.39f, 0.75f, 0.9f };
     static const struct renderer_color orb = { 0.73f, 0.74f, 0.94f, 1.0f };
     int index;
@@ -439,8 +485,8 @@ static void draw_core_marks(void)
             continue;
         }
         scene_view_world_to_screen(scene_stage_view(), core_marks[index].x, core_marks[index].y, &screen_x, &screen_y);
-        draw_centered(SOUL_GLOW_TEXTURE, screen_x, screen_y, CORE_GLOW_SIZE, glow);
-        draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, CORE_ORB_SIZE, orb);
+        draw_centered(SOUL_GLOW_TEXTURE, screen_x, screen_y, CORE_GLOW_SIZE, core_marks[index].is_dead ? dead_glow : glow);
+        draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, CORE_ORB_SIZE, core_marks[index].is_dead ? dead_orb : orb);
     }
 }
 
@@ -511,6 +557,10 @@ static void draw_soul_body(float x, float y)
     draw_soul_base(x, y, step);
 }
 
+static void draw_lightning(float from_x, float from_y, float to_x, float to_y);
+static void draw_lightning_stream(float from_x, float from_y, float to_x, float to_y);
+static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y);
+
 static void draw_soul_motion(float screen_x, float screen_y)
 {
     float other_x;
@@ -521,41 +571,153 @@ static void draw_soul_motion(float screen_x, float screen_y)
         return;
     }
     scene_view_world_to_screen(scene_stage_view(), cursor_from_x, cursor_from_y, &other_x, &other_y);
+    if (cursor_motion == SCRIPT_SOUL_LIGHTNING) {
+        draw_lightning_stream(screen_x, screen_y, other_x, other_y);
+        draw_lightning(screen_x, screen_y, other_x, other_y);
+        return;
+    }
+    if (cursor_motion == SCRIPT_SOUL_BEAM) {
+        draw_soul_beam(screen_x, screen_y, other_x, other_y);
+        return;
+    }
     for (index = 1; index <= SOUL_MOTION_DOT_COUNT; index++) {
         float along;
 
         along = (float)index / (float)SOUL_MOTION_DOT_COUNT;
-        if (cursor_motion == SCRIPT_SOUL_BEAM) {
-            draw_blob(screen_x + (other_x - screen_x) * along, screen_y + (other_y - screen_y) * along, SOUL_BEAM_RADIUS);
-        } else {
-            draw_blob(screen_x + (other_x - screen_x) * along * SOUL_STREAM_LENGTH, screen_y + (other_y - screen_y) * along * SOUL_STREAM_LENGTH, SOUL_STREAM_RADIUS * (1.0f - along) + SOUL_STREAM_RADIUS_LEAST);
-        }
+        draw_blob(screen_x + (other_x - screen_x) * along * SOUL_STREAM_LENGTH, screen_y + (other_y - screen_y) * along * SOUL_STREAM_LENGTH, SOUL_STREAM_RADIUS * (1.0f - along) + SOUL_STREAM_RADIUS_LEAST);
     }
 }
 
-static void draw_label_text(const char *texture_name, float width, float height, float x, float y)
+static void draw_label_text(const char *texture_name, float width, float height, float x, float y, struct renderer_color tint)
 {
-    draw_named_texture(texture_name, x, y, width * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL, height * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL, white);
+    draw_named_texture(texture_name, x, y, width * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL, height * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL, tint);
+}
+
+static void draw_tooltip_line(float x, float y, float width, float height, struct renderer_color tint)
+{
+    struct renderer_rect line;
+
+    line.x = x;
+    line.y = y;
+    line.width = width;
+    line.height = height;
+    renderer_draw_filled_rect(line, tint);
 }
 
 static void draw_tooltip(float screen_x, float screen_y)
 {
-    struct renderer_rect line;
-    float text_x;
+    struct renderer_color tint;
+    float name_height;
 
     if (tooltip_label == NULL) {
         return;
     }
-    draw_centered(TOOLTIP_RING_TEXTURE, screen_x, screen_y, TOOLTIP_RING_SIZE, white);
-    text_x = screen_x + TOOLTIP_LINE_START;
-    line.x = text_x;
-    line.y = screen_y - TOOLTIP_LINE_THICKNESS / 2.0f;
-    line.width = TOOLTIP_LINE_LENGTH;
-    line.height = TOOLTIP_LINE_THICKNESS;
-    renderer_draw_filled_rect(line, white);
-    draw_label_text(tooltip_label->name_texture, tooltip_label->name_width, tooltip_label->name_height, text_x, screen_y - tooltip_label->name_height * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
-    if (strcmp(tooltip_label->action_texture, TOOLTIP_NO_ACTION) != 0) {
-        draw_label_text(tooltip_label->action_texture, tooltip_label->action_width, tooltip_label->action_height, text_x, screen_y);
+    tint = white;
+    tint.alpha = tooltip_alpha;
+    draw_centered(TOOLTIP_RING_TEXTURE, screen_x, screen_y, TOOLTIP_RING_SIZE, tint);
+    name_height = tooltip_label->name_height * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    if (strcmp(tooltip_label->action_texture, TOOLTIP_NO_ACTION) == 0) {
+        float corner_y;
+
+        corner_y = screen_y - TOOLTIP_RING_RADIUS - TOOLTIP_BEND_RISE;
+        draw_tooltip_line(screen_x, corner_y, TOOLTIP_LINE_THICKNESS, TOOLTIP_BEND_RISE, tint);
+        draw_tooltip_line(screen_x - TOOLTIP_BEND_LENGTH, corner_y, TOOLTIP_BEND_LENGTH + TOOLTIP_LINE_THICKNESS, TOOLTIP_LINE_THICKNESS, tint);
+        draw_label_text(tooltip_label->name_texture, tooltip_label->name_width, tooltip_label->name_height, screen_x - TOOLTIP_BEND_LENGTH, corner_y - name_height, tint);
+        return;
+    }
+    draw_tooltip_line(screen_x + TOOLTIP_RING_RADIUS, screen_y - TOOLTIP_LINE_THICKNESS / 2.0f, TOOLTIP_LINE_LENGTH, TOOLTIP_LINE_THICKNESS, tint);
+    draw_label_text(tooltip_label->name_texture, tooltip_label->name_width, tooltip_label->name_height, screen_x + TOOLTIP_RING_RADIUS, screen_y - name_height, tint);
+    draw_label_text(tooltip_label->action_texture, tooltip_label->action_width, tooltip_label->action_height, screen_x + TOOLTIP_RING_RADIUS, screen_y, tint);
+}
+
+static void draw_flat_dot(float center_x, float center_y, float radius, struct renderer_color color)
+{
+    const struct cached_texture *texture;
+    struct renderer_rect area;
+    float size;
+
+    texture = texture_cache_use_or_start_loading(SOUL_BLOB_TEXTURE);
+    if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
+        return;
+    }
+    size = 2.0f * radius / SOUL_BLOB_DISC_FRACTION;
+    area.x = center_x - size / 2.0f;
+    area.y = center_y - size / 2.0f;
+    area.width = size;
+    area.height = size;
+    renderer_draw_flat_sprite(texture->texture, area, whole_texture(), color);
+}
+
+static void draw_lightning(float from_x, float from_y, float to_x, float to_y)
+{
+    static const struct renderer_color edge = { 0.05f, 0.62f, 0.12f, 1.0f };
+    static const struct renderer_color middle = { 0.93f, 0.95f, 0.08f, 1.0f };
+    unsigned int step;
+    float length;
+    float side_x;
+    float side_y;
+    int pass;
+
+    step = age_ticks / SOUL_ANIMATION_TICKS_PER_STEP;
+    length = sqrtf((to_x - from_x) * (to_x - from_x) + (to_y - from_y) * (to_y - from_y));
+    if (length < 1.0f) {
+        return;
+    }
+    side_x = -(to_y - from_y) / length;
+    side_y = (to_x - from_x) / length;
+    for (pass = 0; pass < 2; pass++) {
+        int index;
+
+        for (index = 0; index <= LIGHTNING_POINT_COUNT; index++) {
+            float along;
+            float bend;
+
+            along = (float)index / (float)LIGHTNING_POINT_COUNT;
+            bend = sinf(along * LIGHTNING_WAVES + (float)step * LIGHTNING_WAVE_STEP) * sinf(along * LIGHTNING_HALF_TURN) * LIGHTNING_BEND;
+            draw_flat_dot(from_x + (to_x - from_x) * along + side_x * bend, from_y + (to_y - from_y) * along + side_y * bend, pass == 0 ? LIGHTNING_EDGE_RADIUS : LIGHTNING_MIDDLE_RADIUS, pass == 0 ? edge : middle);
+        }
+    }
+}
+
+static void draw_lightning_stream(float from_x, float from_y, float to_x, float to_y)
+{
+    unsigned int step;
+    unsigned int index;
+
+    step = age_ticks / SOUL_ANIMATION_TICKS_PER_STEP;
+    for (index = 0; index < LIGHTNING_LUMP_COUNT; index++) {
+        unsigned int age;
+        unsigned int seed;
+        float along;
+
+        age = step + index * LIGHTNING_LUMP_LIFE_STEPS / LIGHTNING_LUMP_COUNT;
+        seed = index * 53u + (age / LIGHTNING_LUMP_LIFE_STEPS) * 11u;
+        along = (float)(age % LIGHTNING_LUMP_LIFE_STEPS) / (float)LIGHTNING_LUMP_LIFE_STEPS;
+        draw_blob(from_x + (to_x - from_x) * along + (seeded_fraction(seed, 4u) - 0.5f) * LIGHTNING_LUMP_SPREAD, from_y + (to_y - from_y) * along + (seeded_fraction(seed, 5u) - 0.5f) * LIGHTNING_LUMP_SPREAD, LIGHTNING_LUMP_RADIUS_LEAST + seeded_fraction(seed, 6u) * LIGHTNING_LUMP_RADIUS_SPREAD);
+    }
+}
+
+static void draw_possession_sparks(void)
+{
+    const struct script_flipbook *sparks;
+    float screen_x;
+    float screen_y;
+
+    sparks = script_tables_find_flipbook(tables, SOUL_SPARKS_FLIPBOOK);
+    if (sparks_elapsed_ticks <= 0 || sparks == NULL) {
+        return;
+    }
+    scene_view_world_to_screen(scene_stage_view(), sparks_x, sparks_y, &screen_x, &screen_y);
+    draw_flipbook(sparks, (unsigned int)sparks_elapsed_ticks, screen_x, screen_y, SOUL_SPARKS_SIZE, SOUL_SPARKS_SIZE, white);
+}
+
+static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y)
+{
+    const struct cached_texture *texture;
+
+    texture = texture_cache_use_or_start_loading(SOUL_BEAM_TEXTURE);
+    if (texture != NULL && texture->state == CACHED_TEXTURE_READY) {
+        renderer_draw_beam(texture->texture, from_x, from_y, to_x, to_y, SOUL_BEAM_HALF_WIDTH, white);
     }
 }
 
@@ -593,6 +755,19 @@ static void draw_soul(void)
     draw_soul_body(screen_x, screen_y);
     draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, SOUL_ORB_SIZE, orb);
     draw_tooltip(screen_x, screen_y);
+    draw_possession_sparks();
+    if (flash_alpha > 0.0f) {
+        struct renderer_rect whole_screen;
+        struct renderer_color flash;
+
+        whole_screen.x = 0.0f;
+        whole_screen.y = 0.0f;
+        whole_screen.width = (float)RENDERER_WIDTH;
+        whole_screen.height = (float)RENDERER_HEIGHT;
+        flash = white;
+        flash.alpha = flash_alpha;
+        renderer_draw_filled_rect(whole_screen, flash);
+    }
 }
 
 void script_view_draw(void)

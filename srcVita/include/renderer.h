@@ -34,6 +34,7 @@ renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int w
 renderer_texture renderer_texture_create_compressed(const unsigned char *blocks, unsigned int block_bytes, int width, int height, enum renderer_compressed_format format);
 void renderer_texture_destroy(renderer_texture texture);
 void renderer_draw_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color tint);
+void renderer_draw_beam(renderer_texture texture, float from_x, float from_y, float to_x, float to_y, float half_width, struct renderer_color tint);
 void renderer_draw_flat_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color);
 void renderer_draw_filled_rect(struct renderer_rect screen_area, struct renderer_color color);
 void renderer_draw_filled_rects(const struct renderer_rect *screen_areas, int count, struct renderer_color color);

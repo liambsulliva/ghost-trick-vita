@@ -199,18 +199,22 @@ def can_be_read(reader, request, texts):
     return True
 
 
+def literal_message(request):
+    return {"paragraphs": [[request["literal"]]], "lines": [request["literal"]], "pos_y": None, "auto_pf": None, "mono_type": None, "waits": []}
+
+
 def read_text_messages(packs, set_description, text_key):
     narration_requests = set_description.get("narration", [])
     bubble_requests = set_description.get("bubble_text", [])
-    texts = read_requested_texts(packs, narration_requests + bubble_requests, text_key)
+    texts = read_requested_texts(packs, narration_requests + [request for request in bubble_requests if "literal" not in request], text_key)
     if set_description.get("chapter"):
         set_description["narration"] = [request for request in narration_requests if can_be_read(read_narration_message, request, texts)]
-        set_description["bubble_text"] = [request for request in bubble_requests if can_be_read(read_bubble_message, request, texts)]
+        set_description["bubble_text"] = [request for request in bubble_requests if "literal" in request or can_be_read(read_bubble_message, request, texts)]
         narration_requests = set_description["narration"]
         bubble_requests = set_description["bubble_text"]
     return {
         "narration": [read_narration_message(request, texts[request["file"]][request["entry"]]) for request in narration_requests],
-        "bubble_text": [read_bubble_message(request, texts[request["file"]][request["entry"]]) for request in bubble_requests],
+        "bubble_text": [literal_message(request) if "literal" in request else read_bubble_message(request, texts[request["file"]][request["entry"]]) for request in bubble_requests],
     }
 
 

@@ -419,6 +419,8 @@ def expand_set(set_description, packs, rom_path, text_key):
             bubble_rows.append(dict(style, name="core_name_" + object_name, entry=core_labels["name_entry"] + name_id))
             if action_id is not None:
                 bubble_rows.append(dict(style, name="core_action_" + object_name, entry=core_labels["action_entry"] + action_id + "_0"))
+    if core_labels is not None and "unknown_text" in core_labels:
+        bubble_rows.append({"name": "core_unknown", "literal": core_labels["unknown_text"], "font": core_labels["font"], "pixels_per_em": core_labels["pixels_per_em"], "color": core_labels["color"]})
     expanded["narration"] = narration_rows
     expanded["bubble_text"] = bubble_rows
     expanded["script_balloons"] = balloon_rows

@@ -173,7 +173,7 @@ const struct script_flipbook *script_tables_find_flipbook(const struct script_ta
 int script_tables_read_soul(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_core_labels(struct script_tables *tables, const char *text, unsigned int text_size);
 const struct script_core_label *script_tables_find_core_label(const struct script_tables *tables, const char *object_name);
-const struct script_soul_style *script_tables_soul_style(const struct script_tables *tables, unsigned int class_id, int is_human, int has_core, int is_active);
+const struct script_soul_style *script_tables_soul_style(const struct script_tables *tables, unsigned int class_id, int is_human, int has_core, int is_active, int is_dead);
 const struct script_effect_row *script_tables_find_effect(const struct script_tables *tables, int id);
 const char *script_tables_music_name(const struct script_tables *tables, int id);
 const char *script_tables_sound_name(const struct script_tables *tables, int kind);
