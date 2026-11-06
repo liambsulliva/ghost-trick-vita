@@ -14,6 +14,7 @@ void viewer_app_set_hud_visible(int is_visible);
 int viewer_app_show_background(const char *name);
 int viewer_app_show_animation(const char *name);
 int viewer_app_play_scene(const char *name);
+int viewer_app_play_script(const char *name);
 int viewer_app_has_assets(void);
 
 #endif

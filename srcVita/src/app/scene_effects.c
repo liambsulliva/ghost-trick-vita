@@ -136,6 +136,33 @@ void scene_effects_set_mask(struct scene_effects *effects, int should_be_on)
     effects->iris_is_on = 0;
 }
 
+void scene_effects_set_mask_wanted(struct scene_effects *effects, int should_be_on)
+{
+    effects->mask_is_on = should_be_on;
+}
+
+void scene_effects_stop_iris(struct scene_effects *effects)
+{
+    effects->iris_is_on = 0;
+}
+
+void scene_effects_set_flash(struct scene_effects *effects, float level)
+{
+    ramp_set(&effects->flash_level, level);
+}
+
+const struct scene_beam *scene_effects_find_beam(const struct scene_effects *effects, const char *name)
+{
+    int index;
+
+    for (index = 0; index < SCENE_BEAM_MAX; index++) {
+        if (effects->beams[index].in_use && strcmp(effects->beams[index].name, name) == 0) {
+            return &effects->beams[index];
+        }
+    }
+    return NULL;
+}
+
 void scene_effects_start_iris(struct scene_effects *effects, float x, float y, float radius, int ticks)
 {
     if (!effects->iris_is_on) {

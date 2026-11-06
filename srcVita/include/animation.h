@@ -52,6 +52,7 @@ void animation_free_frames(struct animation *animation);
 int animation_frame_is_blank(const struct animation_frame *frame);
 void animation_player_start(struct animation_player *player, const struct animation *animation);
 void animation_player_advance(struct animation_player *player, unsigned long long elapsed_us, animation_frame_ready_check frame_is_ready);
+void animation_player_show_frame(struct animation_player *player, unsigned int frame_index);
 unsigned int animation_player_count_shown_frames(const struct animation_player *player);
 const struct animation_frame *animation_player_current_frame(const struct animation_player *player);
 

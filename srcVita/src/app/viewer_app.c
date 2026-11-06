@@ -14,6 +14,7 @@
 #include "scene_player.h"
 #include "scene_stage.h"
 #include "scene_view.h"
+#include "script_player.h"
 #include "sound_engine.h"
 #include "texture_cache.h"
 #include "ui_list.h"
@@ -45,6 +46,12 @@
 #define SCENE_END_FIRST_LINE_Y 240.0f
 #define SCENE_END_SECOND_LINE_Y 280.0f
 #define SCENE_END_TEXT_SCALE 3.0f
+#define SCRIPT_ENTRY_NAME "route"
+#define HALT_BAR_Y 500.0f
+#define HALT_BAR_HEIGHT 28.0f
+#define HALT_TEXT_X 8.0f
+#define HALT_TEXT_Y 506.0f
+#define HALT_TEXT_SCALE 1.5f
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color highlight = { 0.25f, 0.86f, 0.75f, 1.0f };
@@ -68,8 +75,28 @@ static void asset_subfolder_path(char *path, const char *subfolder)
     file_path_join(path, assets_folder, subfolder, "");
 }
 
+static enum scene_playback_state playback_status(void)
+{
+    return script_player_is_active() ? script_player_status() : scene_player_status();
+}
+
+static int playback_is_paused(void)
+{
+    return script_player_is_active() ? script_player_is_paused() : scene_player_is_paused();
+}
+
+static void set_playback_paused(int should_pause)
+{
+    if (script_player_is_active()) {
+        script_player_set_paused(should_pause);
+    } else {
+        scene_player_set_paused(should_pause);
+    }
+}
+
 static void leave_scene_for_browsing(void)
 {
+    script_player_stop();
     scene_player_stop();
 }
 
@@ -179,7 +206,16 @@ int viewer_app_show_background(const char *name)
 int viewer_app_play_scene(const char *name)
 {
     pending_background_index = NO_PENDING_BACKGROUND;
+    script_player_stop();
     return scene_player_play(name);
+}
+
+int viewer_app_play_script(const char *name)
+{
+    pending_background_index = NO_PENDING_BACKGROUND;
+    scene_player_stop();
+    script_player_play(name);
+    return 1;
 }
 
 static void load_manifest(void)
@@ -239,6 +275,15 @@ static void start_browsing_first_assets(void)
     }
 }
 
+static void play_opening(void)
+{
+    if (script_player_is_available()) {
+        viewer_app_play_script(SCRIPT_ENTRY_NAME);
+    } else {
+        viewer_app_play_scene(manifest->scene_names[0]);
+    }
+}
+
 void viewer_app_start(const char *folder)
 {
     char texture_folder[FILE_PATH_MAX];
@@ -246,6 +291,7 @@ void viewer_app_start(const char *folder)
     char scene_folder[FILE_PATH_MAX];
     char music_folder[FILE_PATH_MAX];
     char sound_folder[FILE_PATH_MAX];
+    char script_folder[FILE_PATH_MAX];
 
     snprintf(assets_folder, sizeof(assets_folder), "%s", folder);
     asset_subfolder_path(texture_folder, "textures");
@@ -253,6 +299,7 @@ void viewer_app_start(const char *folder)
     asset_subfolder_path(scene_folder, "scenes");
     asset_subfolder_path(music_folder, "music");
     asset_subfolder_path(sound_folder, "sounds");
+    asset_subfolder_path(script_folder, "scripts");
     manifest = NULL;
     current_background_index = 0;
     pending_background_index = NO_PENDING_BACKGROUND;
@@ -265,6 +312,7 @@ void viewer_app_start(const char *folder)
     texture_cache_init(texture_folder, TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
     animation_library_init(animation_folder);
     scene_player_init(scene_folder);
+    script_player_init(script_folder);
     music_engine_init(music_folder);
     sound_engine_init(sound_folder);
     if (!debug_font_init()) {
@@ -278,10 +326,10 @@ void viewer_app_start(const char *folder)
         return;
     }
     ui_list_init(&animation_list, manifest->animation_count, LIST_VISIBLE_ROWS);
-    if (manifest->scene_count > 0) {
+    if (script_player_is_available() || manifest->scene_count > 0) {
         hud_is_visible = 0;
         debug_controls_are_on = 0;
-        scene_player_play(manifest->scene_names[0]);
+        play_opening();
         return;
     }
     start_browsing_first_assets();
@@ -357,9 +405,9 @@ static void update_list(const struct input_state *input)
     }
 }
 
-static int manifest_has_a_scene(void)
+static int opening_can_play(void)
 {
-    return manifest != NULL && manifest->scene_count > 0;
+    return manifest != NULL && (manifest->scene_count > 0 || script_player_is_available());
 }
 
 static void set_debug_controls(int should_be_on)
@@ -371,8 +419,17 @@ static void set_debug_controls(int should_be_on)
     if (should_be_on) {
         return;
     }
-    scene_player_set_paused(0);
-    if (scene_player_status() == SCENE_PLAYER_IDLE && manifest_has_a_scene()) {
+    set_playback_paused(0);
+    if (playback_status() == SCENE_PLAYER_IDLE && opening_can_play()) {
+        play_opening();
+    }
+}
+
+static void replay_what_finished(void)
+{
+    if (script_player_is_active()) {
+        viewer_app_play_script(SCRIPT_ENTRY_NAME);
+    } else {
         viewer_app_play_scene(manifest->scene_names[0]);
     }
 }
@@ -382,8 +439,8 @@ static void update_player_controls(const struct input_state *input)
     if (!(input->pressed & INPUT_CROSS)) {
         return;
     }
-    if (scene_player_status() == SCENE_PLAYER_FINISHED && manifest_has_a_scene()) {
-        viewer_app_play_scene(manifest->scene_names[0]);
+    if (playback_status() == SCENE_PLAYER_FINISHED && opening_can_play()) {
+        replay_what_finished();
         return;
     }
     scene_player_skip_hold();
@@ -408,7 +465,7 @@ static void update_browse_controls(const struct input_state *input)
 static void update_general_controls(const struct input_state *input)
 {
     if (input->pressed & INPUT_CROSS) {
-        scene_player_set_paused(!scene_player_is_paused());
+        set_playback_paused(!playback_is_paused());
     }
     if (input->pressed & INPUT_TRIANGLE) {
         hud_is_visible = !hud_is_visible;
@@ -416,8 +473,8 @@ static void update_general_controls(const struct input_state *input)
     if ((input->pressed & INPUT_R) && manifest != NULL && manifest->animation_count > 0) {
         list_is_open = 1;
     }
-    if ((input->pressed & INPUT_L) && manifest_has_a_scene()) {
-        viewer_app_play_scene(manifest->scene_names[0]);
+    if ((input->pressed & INPUT_L) && opening_can_play()) {
+        play_opening();
     }
 }
 
@@ -440,7 +497,11 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
         update_player_controls(input);
     }
     switch_to_pending_background_when_ready();
-    scene_player_update(elapsed_us);
+    if (script_player_is_active()) {
+        script_player_update(elapsed_us);
+    } else {
+        scene_player_update(elapsed_us);
+    }
 }
 
 void viewer_app_set_status_text(const char *text)
@@ -479,7 +540,7 @@ static void write_first_object_line(char *line, unsigned int line_size)
     for (index = 0; index < SCENE_OBJECT_MAX; index++) {
         player = &stage->objects[index].player;
         if (stage->objects[index].in_use && player->animation != NULL) {
-            snprintf(line, line_size, "%s %u/%u%s", player->animation->name, player->frame_index + 1, player->animation->frame_count, scene_player_is_paused() ? " paused" : "");
+            snprintf(line, line_size, "%s %u/%u%s", player->animation->name, player->frame_index + 1, player->animation->frame_count, playback_is_paused() ? " paused" : "");
             return;
         }
     }
@@ -492,11 +553,15 @@ static void write_second_hud_line(char *line, unsigned int line_size)
         snprintf(line, line_size, "no assets in %s", assets_folder);
         return;
     }
-    if (scene_player_status() == SCENE_PLAYER_PRELOADING) {
+    if (playback_status() == SCENE_PLAYER_PRELOADING) {
         snprintf(line, line_size, "loading %d textures", texture_cache_loading_count());
         return;
     }
-    if (scene_player_status() == SCENE_PLAYER_RUNNING) {
+    if (script_player_is_active() && playback_status() == SCENE_PLAYER_RUNNING) {
+        snprintf(line, line_size, "script tick %u%s", script_player_tick(), playback_is_paused() ? " paused" : "");
+        return;
+    }
+    if (playback_status() == SCENE_PLAYER_RUNNING) {
         snprintf(line, line_size, "scene step %d%s", scene_player_next_step(), scene_player_is_paused() ? " paused" : "");
         return;
     }
@@ -545,20 +610,38 @@ static void draw_centred_scene_end_line(float y, const char *text)
     debug_font_draw_text(((float)RENDERER_WIDTH - width) / 2.0f, y, SCENE_END_TEXT_SCALE, white, text);
 }
 
+static void draw_script_halt_line(void)
+{
+    struct renderer_rect bar;
+    const char *line;
+
+    line = script_player_halt_line();
+    if (line == NULL) {
+        return;
+    }
+    bar.x = 0.0f;
+    bar.y = HALT_BAR_Y;
+    bar.width = RENDERER_WIDTH;
+    bar.height = HALT_BAR_HEIGHT;
+    renderer_draw_filled_rect(bar, panel);
+    debug_font_draw_text(HALT_TEXT_X, HALT_TEXT_Y, HALT_TEXT_SCALE, white, line);
+}
+
 void viewer_app_draw(void)
 {
     if (manifest == NULL) {
         draw_no_assets_screen();
-    } else if (scene_player_status() != SCENE_PLAYER_PRELOADING) {
+    } else if (playback_status() != SCENE_PLAYER_PRELOADING) {
         scene_view_draw(scene_stage_view());
     }
-    if (scene_player_status() == SCENE_PLAYER_FINISHED && !debug_controls_are_on && !scene_layers_text_is_fading_out(scene_stage_layers())) {
+    if (playback_status() == SCENE_PLAYER_FINISHED && !debug_controls_are_on && !scene_layers_text_is_fading_out(scene_stage_layers())) {
         draw_centred_scene_end_line(SCENE_END_FIRST_LINE_Y, SCENE_END_FIRST_LINE);
         draw_centred_scene_end_line(SCENE_END_SECOND_LINE_Y, SCENE_END_SECOND_LINE);
     }
-    if (hud_is_visible || scene_player_status() == SCENE_PLAYER_PRELOADING) {
+    if (hud_is_visible || playback_status() == SCENE_PLAYER_PRELOADING) {
         draw_hud();
     }
+    draw_script_halt_line();
     if (list_is_open) {
         draw_list();
     }
@@ -566,6 +649,7 @@ void viewer_app_draw(void)
 
 void viewer_app_stop(void)
 {
+    script_player_shutdown();
     scene_player_shutdown();
     music_shutdown();
     sound_shutdown();

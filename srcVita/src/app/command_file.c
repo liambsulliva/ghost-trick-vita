@@ -97,6 +97,9 @@ unsigned int command_parse_next_line(const char *text, unsigned int text_size, u
     if (read_named_command(line, "play_scene ", COMMAND_PLAY_SCENE, command)) {
         return offset;
     }
+    if (read_named_command(line, "play_script ", COMMAND_PLAY_SCRIPT, command)) {
+        return offset;
+    }
     if (read_named_command(line, "capture ", COMMAND_CAPTURE, command)) {
         return offset;
     }

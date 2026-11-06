@@ -190,6 +190,18 @@ void animation_player_advance(struct animation_player *player, unsigned long lon
     }
 }
 
+void animation_player_show_frame(struct animation_player *player, unsigned int frame_index)
+{
+    if (player->animation == NULL) {
+        return;
+    }
+    if (frame_index >= player->animation->frame_count) {
+        frame_index = player->animation->frame_count - 1;
+    }
+    player->frame_index = frame_index;
+    player->frame_was_shown[frame_index] = 1;
+}
+
 unsigned int animation_player_count_shown_frames(const struct animation_player *player)
 {
     unsigned int count;

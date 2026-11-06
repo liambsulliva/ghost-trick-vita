@@ -93,7 +93,7 @@ python3 -I srcVita/tools/assets/convert_assets.py --set chapter1_opening --outpu
 
 The first run takes a few seconds and writes about 17.5 MB to `extracted/vita_assets/chapter1_opening/`. A later run bakes only what changed, so it takes under a second if nothing did. Everything under `extracted/` is ignored by git. Keep it there, because it is game data and this repository is public.
 
-**Optional: scripts from your own DS cartridge.** The app does not read these yet. If you have a dump of your own USA cartridge of the DS game (game code `BGTE`), the converter also bakes its scene scripts into `scripts/`. Put the file at `extracted/ds_rom/game.nds`, or name it with `--ds-rom`. Without one, the converter prints one warning and everything else still converts. A cartridge from another region is refused, because no other region's scripts have been checked yet. The converter then stops without converting anything, art included, so remove that file or name another one with `--ds-rom`.
+**Optional: scripts from your own DS cartridge.** With these, the app plays the opening from the DS game's own scripts instead of the hand-written scene. If you have a dump of your own USA cartridge of the DS game (game code `BGTE`), the converter also bakes its scene scripts into `scripts/`. Put the file at `extracted/ds_rom/game.nds`, or name it with `--ds-rom`. Without one, the converter prints one warning and everything else still converts. A cartridge from another region is refused, because no other region's scripts have been checked yet. The converter then stops without converting anything, art included, so remove that file or name another one with `--ds-rom`.
 
 If the converter stops with `FileNotFoundError`, `BadZipFile` or `KeyError`, one of the three files is missing or came from a different build of the game. Go back to step 1 and check the names and sizes. If it stops with `no text key`, or says the saved text key did not decode a file, go back to step 2. If it prints `failed:` lines, each names a file it could not make. The rest still bake, and the last good scene and manifest stay.
 
@@ -113,7 +113,7 @@ Then copy these across:
 | `extracted/vita_assets/chapter1_opening/music/` | `ux0:data/ghosttrick/assets/music/` |
 | `extracted/vita_assets/chapter1_opening/sounds/` | `ux0:data/ghosttrick/assets/sounds/` |
 
-The art goes in the Vita's data folder, not inside the VPK or the app's folder. Copy what is inside `chapter1_opening`, not the folder itself. A path like `ux0:data/ghosttrick/assets/chapter1_opening/manifest.txt` will not be found. Leave `.bake_record.json` behind. Only the converter uses it. The app does not read `scripts/` yet, so that can stay behind too.
+The art goes in the Vita's data folder, not inside the VPK or the app's folder. Copy what is inside `chapter1_opening`, not the folder itself. A path like `ux0:data/ghosttrick/assets/chapter1_opening/manifest.txt` will not be found. Leave `.bake_record.json` behind. Only the converter uses it.
 
 You can copy by hand or with a script:
 

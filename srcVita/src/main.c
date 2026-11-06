@@ -77,6 +77,9 @@ static int run_one_command(const struct command *command)
     } else if (command->kind == COMMAND_PLAY_SCENE) {
         succeeded = viewer_app_play_scene(command->name);
         run_log_write("command play_scene name=%s ok=%d", command->name, succeeded);
+    } else if (command->kind == COMMAND_PLAY_SCRIPT) {
+        succeeded = viewer_app_play_script(command->name);
+        run_log_write("command play_script name=%s ok=%d", command->name, succeeded);
     } else if (command->kind == COMMAND_HUD_ON) {
         viewer_app_set_hud_visible(1);
     } else if (command->kind == COMMAND_HUD_OFF) {

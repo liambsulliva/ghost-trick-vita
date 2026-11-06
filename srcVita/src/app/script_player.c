@@ -1,0 +1,530 @@
+#include <stdio.h>
+#include <string.h>
+#include "animation.h"
+#include "animation_library.h"
+#include "background_reader.h"
+#include "clock.h"
+#include "file.h"
+#include "file_path.h"
+#include "memory.h"
+#include "music_engine.h"
+#include "run_log.h"
+#include "scene_stage.h"
+#include "script_bridge.h"
+#include "script_machine.h"
+#include "script_player.h"
+#include "script_tables.h"
+#include "sound_engine.h"
+#include "texture_cache.h"
+
+#define MICROSECONDS_PER_VM_TICK 16666ULL
+#define LONGEST_UPDATE_US 500000ULL
+#define LONGEST_AUDIO_PRELOAD_US 10000000ULL
+#define PRELOAD_PASS_MAX (TEXTURE_CACHE_ENTRY_MAX / BACKGROUND_READER_QUEUE_MAX)
+#define CHAIN_FILE_NAME "chain"
+#define FIXED_TABLE_COUNT 6
+#define FILES_PER_SCRIPT 3
+#define LOG_FOR_TOOLS_SCRIPT_READY "script ready name=%s preload_us=%llu texture_bytes=%u missing=%u"
+
+enum script_player_phase {
+    PHASE_IDLE,
+    PHASE_READING,
+    PHASE_LOADING_ANIMATIONS,
+    PHASE_PRELOADING,
+    PHASE_RUNNING,
+    PHASE_FINISHED
+};
+
+struct script_data {
+    struct script_machine machine;
+    struct script_tables tables;
+    struct script_cue_list cues[SCRIPT_CHAIN_FILE_MAX];
+    int cue_list_count;
+    const struct script_cue_list *cues_of_next_file;
+    unsigned char *file_bytes[SCRIPT_CHAIN_FILE_MAX];
+    int file_bytes_count;
+};
+
+static char folder[FILE_PATH_MAX];
+static char entry[ASSET_NAME_MAX];
+static struct script_data *data;
+static enum script_player_phase phase;
+static int is_available;
+static int is_active;
+static int is_paused;
+static int read_step;
+static int preload_row;
+static int preload_passes;
+static const char *preload_music_name;
+static unsigned long long preload_started_us;
+static unsigned long long time_owed_us;
+static unsigned long long longest_tick_us;
+static char halt_line[SCRIPT_PLAYER_LINE_MAX];
+
+static void show_failure(const char *reason, const char *name)
+{
+    snprintf(halt_line, sizeof(halt_line), "script halted: %s %s", reason, name);
+    run_log_write("script halted reason=%s name=%s", reason, name);
+    phase = PHASE_RUNNING;
+}
+
+static int read_named_file(const char *name, const char *extension, unsigned char **bytes, unsigned int *size)
+{
+    char path[FILE_PATH_MAX];
+    unsigned long long started_us;
+    int result;
+
+    if (!file_path_join(path, folder, name, extension)) {
+        return FILE_ERR_OPEN;
+    }
+    started_us = clock_now_us();
+    result = file_read_whole(path, bytes, size);
+    if (result == FILE_OK) {
+        run_log_write("script read name=%s%s bytes=%u us=%llu", name, extension, *size, clock_now_us() - started_us);
+    }
+    return result;
+}
+
+typedef int (*text_table_reader)(struct script_tables *tables, const char *text, unsigned int text_size);
+
+static void read_text_table(const char *name, const char *extension, text_table_reader reader, int is_required)
+{
+    unsigned char *bytes;
+    unsigned int size;
+
+    if (read_named_file(name, extension, &bytes, &size) != FILE_OK) {
+        if (is_required) {
+            show_failure("script_missing", name);
+        }
+        return;
+    }
+    if (!reader(&data->tables, (const char *)bytes, size)) {
+        show_failure("script_table_invalid", name);
+    }
+    mem_free(bytes);
+}
+
+static void read_script_bytes(const char *name)
+{
+    unsigned char *bytes;
+    unsigned int size;
+
+    if (read_named_file(name, ".lmg", &bytes, &size) != FILE_OK) {
+        show_failure("script_missing", name);
+        return;
+    }
+    data->file_bytes[data->file_bytes_count] = bytes;
+    data->file_bytes_count = data->file_bytes_count + 1;
+    if (!script_machine_add_source(&data->machine, name, bytes, size, data->cues_of_next_file)) {
+        show_failure("script_invalid", name);
+    }
+}
+
+static void read_script_cues(const char *name)
+{
+    unsigned char *bytes;
+    unsigned int size;
+
+    data->cues_of_next_file = NULL;
+    if (read_named_file(name, ".cues", &bytes, &size) != FILE_OK) {
+        return;
+    }
+    if (!script_cues_parse((const char *)bytes, size, &data->cues[data->cue_list_count])) {
+        show_failure("cues_invalid", name);
+    }
+    mem_free(bytes);
+    data->cues_of_next_file = &data->cues[data->cue_list_count];
+    data->cue_list_count = data->cue_list_count + 1;
+}
+
+static void read_script_motions(const char *name)
+{
+    unsigned char *bytes;
+    unsigned int size;
+
+    if (read_named_file(name, ".motions", &bytes, &size) != FILE_OK) {
+        return;
+    }
+    if (!script_tables_read_motions(&data->tables, name, (const char *)bytes, size)) {
+        show_failure("motions_invalid", name);
+    }
+    mem_free(bytes);
+}
+
+static void begin_loading_animations(void);
+
+static void read_next_file(void)
+{
+    int script_index;
+
+    switch (read_step) {
+    case 0:
+        read_text_table(CHAIN_FILE_NAME, ".txt", script_tables_read_chain, 1);
+        break;
+    case 1:
+        read_text_table("rooms", ".txt", script_tables_read_rooms, 0);
+        break;
+    case 2:
+        read_text_table("audio_names", ".txt", script_tables_read_audio, 0);
+        break;
+    case 3:
+        read_text_table("text_lines", ".txt", script_tables_read_text_lines, 0);
+        break;
+    case 4:
+        read_text_table("balloons", ".txt", script_tables_read_balloons, 0);
+        break;
+    case 5:
+        read_text_table(CHAIN_FILE_NAME, ".preload", script_tables_read_preload, 0);
+        break;
+    default:
+        script_index = (read_step - FIXED_TABLE_COUNT) / FILES_PER_SCRIPT;
+        if (script_index >= data->tables.file_count) {
+            run_log_write("script chain stop=%s timing=%s", data->tables.stop_act, data->tables.timing == SCRIPT_TIMING_DS ? "ds" : "remaster");
+            begin_loading_animations();
+            return;
+        }
+        switch ((read_step - FIXED_TABLE_COUNT) % FILES_PER_SCRIPT) {
+        case 0:
+            read_script_cues(data->tables.file_names[script_index]);
+            break;
+        case 1:
+            read_script_bytes(data->tables.file_names[script_index]);
+            break;
+        default:
+            read_script_motions(data->tables.file_names[script_index]);
+            break;
+        }
+        break;
+    }
+    read_step = read_step + 1;
+}
+
+static void request_audio(void)
+{
+    int index;
+
+    preload_music_name = NULL;
+    for (index = 0; index < data->tables.preload_row_count; index++) {
+        const struct script_preload_row *row;
+
+        row = &data->tables.preload_rows[index];
+        if (row->kind == SCRIPT_PRELOAD_MUSIC && preload_music_name == NULL) {
+            preload_music_name = row->name;
+            music_request_prepare(row->name);
+        }
+        if (row->kind == SCRIPT_PRELOAD_SOUND) {
+            sound_request_prepare(row->name);
+        }
+    }
+}
+
+static void begin_loading_animations(void)
+{
+    script_bridge_start(&data->tables);
+    data->machine.timing = data->tables.timing;
+    data->machine.stop_act = data->tables.stop_act[0] != '\0' ? data->tables.stop_act : NULL;
+    request_audio();
+    preload_row = 0;
+    preload_passes = 0;
+    phase = PHASE_LOADING_ANIMATIONS;
+}
+
+static void load_next_animation(void)
+{
+    while (preload_row < data->tables.preload_row_count) {
+        const struct script_preload_row *row;
+
+        row = &data->tables.preload_rows[preload_row];
+        preload_row = preload_row + 1;
+        if (row->kind == SCRIPT_PRELOAD_ANIMATION) {
+            if (animation_library_load(row->name) == NULL) {
+                show_failure("animation_missing", row->name);
+            }
+            return;
+        }
+    }
+    phase = PHASE_PRELOADING;
+}
+
+static void request_textures(void)
+{
+    int index;
+
+    for (index = 0; index < data->tables.preload_row_count; index++) {
+        const struct script_preload_row *row;
+        const struct animation *animation;
+
+        row = &data->tables.preload_rows[index];
+        if (row->kind == SCRIPT_PRELOAD_TEXTURE) {
+            texture_cache_use_or_start_loading(row->name);
+        } else if (row->kind == SCRIPT_PRELOAD_ANIMATION) {
+            animation = animation_library_load(row->name);
+            if (animation != NULL) {
+                scene_stage_request_animation_textures(animation);
+            }
+        }
+    }
+}
+
+static int audio_is_ready(void)
+{
+    int is_ready;
+
+    is_ready = sound_prepare_is_done() && (preload_music_name == NULL || music_prepare_is_done(preload_music_name));
+    if (!is_ready && clock_now_us() - preload_started_us > LONGEST_AUDIO_PRELOAD_US) {
+        run_log_write("script audio_wait_gave_up name=%s", entry);
+        return 1;
+    }
+    return is_ready;
+}
+
+static void start_running(void)
+{
+    struct texture_cache_totals totals;
+
+    texture_cache_read_totals(&totals);
+    run_log_write(LOG_FOR_TOOLS_SCRIPT_READY, entry, clock_now_us() - preload_started_us, totals.bytes_in_use, totals.missing);
+    if (!script_machine_start(&data->machine, entry)) {
+        show_failure("script_entry_missing", entry);
+        return;
+    }
+    time_owed_us = 0;
+    longest_tick_us = 0;
+    phase = PHASE_RUNNING;
+}
+
+static void finish_preloading_when_ready(void)
+{
+    if (texture_cache_loading_count() > 0) {
+        return;
+    }
+    if (!audio_is_ready()) {
+        return;
+    }
+    if (preload_passes < PRELOAD_PASS_MAX) {
+        preload_passes = preload_passes + 1;
+        request_textures();
+        if (texture_cache_loading_count() > 0) {
+            return;
+        }
+    } else {
+        run_log_write("script does_not_fit_in_cache name=%s", entry);
+    }
+    start_running();
+}
+
+static void write_halt_line(const struct script_halt *halt)
+{
+    int index;
+
+    snprintf(halt_line, sizeof(halt_line), "script halted: %s %s op=0x%x offset=0x%x tick=%u %s %s", halt->reason, halt->detail, halt->op, halt->offset, halt->tick, halt->file_name, halt->object_name);
+    run_log_write("script halted reason=%s detail=%s op=0x%x offset=0x%x tick=%u file=%s object=%s", halt->reason, halt->detail, halt->op, halt->offset, halt->tick, halt->file_name, halt->object_name);
+    for (index = 0; index < SCRIPT_RECENT_FETCH_MAX; index++) {
+        const struct script_recent_fetch *recent;
+
+        recent = &data->machine.recent_fetches[(data->machine.fetch_total + (unsigned int)index) % SCRIPT_RECENT_FETCH_MAX];
+        if (recent->object_name != NULL) {
+            run_log_write("script recent tick=%u op=0x%x offset=0x%x object=%s", recent->tick, recent->op, recent->offset, recent->object_name);
+        }
+    }
+}
+
+static void finish_run(void)
+{
+    phase = PHASE_FINISHED;
+    music_request_stop(MUSIC_QUICK_FADE_TICKS);
+    run_log_write("script finished name=%s tick=%u", entry, data->machine.tick);
+    run_log_write("script tick_us_max=%llu", longest_tick_us);
+}
+
+static void run_ticks(unsigned long long elapsed_us)
+{
+    unsigned long long started_us;
+    unsigned long long tick_us;
+
+    time_owed_us = time_owed_us + elapsed_us;
+    while (time_owed_us >= MICROSECONDS_PER_VM_TICK) {
+        time_owed_us = time_owed_us - MICROSECONDS_PER_VM_TICK;
+        started_us = clock_now_us();
+        script_machine_tick(&data->machine);
+        tick_us = clock_now_us() - started_us;
+        if (tick_us > longest_tick_us) {
+            longest_tick_us = tick_us;
+        }
+        if (data->machine.halt.is_halted) {
+            write_halt_line(&data->machine.halt);
+            return;
+        }
+        script_bridge_finish_tick();
+        if (data->machine.is_finished) {
+            finish_run();
+            return;
+        }
+    }
+}
+
+static void free_data(void)
+{
+    int index;
+
+    if (data == NULL) {
+        return;
+    }
+    for (index = 0; index < data->file_bytes_count; index++) {
+        mem_free(data->file_bytes[index]);
+    }
+    mem_free(data);
+    data = NULL;
+}
+
+void script_player_init(const char *scripts_folder)
+{
+    char path[FILE_PATH_MAX];
+    unsigned char *bytes;
+    unsigned int size;
+
+    snprintf(folder, sizeof(folder), "%s", scripts_folder);
+    phase = PHASE_IDLE;
+    is_active = 0;
+    is_paused = 0;
+    halt_line[0] = '\0';
+    data = NULL;
+    is_available = 0;
+    if (file_path_join(path, folder, CHAIN_FILE_NAME, ".txt") && file_read_whole(path, &bytes, &size) == FILE_OK) {
+        mem_free(bytes);
+        is_available = 1;
+    }
+}
+
+int script_player_is_available(void)
+{
+    return is_available;
+}
+
+void script_player_play(const char *entry_name)
+{
+    snprintf(entry, sizeof(entry), "%s", entry_name);
+    free_data();
+    scene_stage_clear_room();
+    scene_layers_clear(scene_stage_layers());
+    animation_library_clear();
+    scene_stage_hide_card();
+    scene_stage_set_fade(0.0f);
+    scene_effects_reset(scene_stage_effects());
+    music_request_stop(MUSIC_QUICK_FADE_TICKS);
+    sound_request_stop();
+    halt_line[0] = '\0';
+    is_active = 1;
+    is_paused = 0;
+    read_step = 0;
+    preload_started_us = clock_now_us();
+    run_log_write("script started name=%s", entry);
+    data = mem_alloc(sizeof(struct script_data));
+    if (data == NULL) {
+        show_failure("script_out_of_memory", entry);
+        return;
+    }
+    memset(data, 0, sizeof(*data));
+    script_tables_clear(&data->tables);
+    script_machine_init(&data->machine, script_bridge_outputs(), SCRIPT_TIMING_DS, NULL);
+    phase = PHASE_READING;
+}
+
+void script_player_update(unsigned long long elapsed_us)
+{
+    if (phase == PHASE_READING) {
+        read_next_file();
+        return;
+    }
+    if (phase == PHASE_LOADING_ANIMATIONS) {
+        load_next_animation();
+        return;
+    }
+    if (phase == PHASE_PRELOADING) {
+        finish_preloading_when_ready();
+        return;
+    }
+    if (is_paused || phase == PHASE_IDLE) {
+        return;
+    }
+    if (elapsed_us > LONGEST_UPDATE_US) {
+        run_log_write("script time_dropped us=%llu", elapsed_us - LONGEST_UPDATE_US);
+        elapsed_us = LONGEST_UPDATE_US;
+    }
+    if (phase == PHASE_RUNNING && halt_line[0] == '\0') {
+        run_ticks(elapsed_us);
+        return;
+    }
+    scene_effects_advance(scene_stage_effects(), elapsed_us);
+    scene_layers_advance(scene_stage_layers(), elapsed_us);
+}
+
+void script_player_stop(void)
+{
+    if (!is_active) {
+        return;
+    }
+    music_request_stop(MUSIC_QUICK_FADE_TICKS);
+    sound_request_stop();
+    scene_stage_set_fade(0.0f);
+    scene_stage_hide_card();
+    scene_effects_reset(scene_stage_effects());
+    scene_layers_clear(scene_stage_layers());
+    free_data();
+    halt_line[0] = '\0';
+    phase = PHASE_IDLE;
+    is_active = 0;
+    is_paused = 0;
+}
+
+void script_player_set_paused(int should_pause)
+{
+    if (should_pause != is_paused) {
+        run_log_write("script %s", should_pause ? "paused" : "resumed");
+    }
+    is_paused = should_pause;
+}
+
+int script_player_is_paused(void)
+{
+    return is_paused;
+}
+
+int script_player_is_active(void)
+{
+    return is_active;
+}
+
+enum scene_playback_state script_player_status(void)
+{
+    switch (phase) {
+    case PHASE_IDLE:
+        return SCENE_PLAYER_IDLE;
+    case PHASE_READING:
+    case PHASE_LOADING_ANIMATIONS:
+    case PHASE_PRELOADING:
+        return SCENE_PLAYER_PRELOADING;
+    case PHASE_RUNNING:
+        return SCENE_PLAYER_RUNNING;
+    default:
+        return SCENE_PLAYER_FINISHED;
+    }
+}
+
+const char *script_player_halt_line(void)
+{
+    return halt_line[0] != '\0' ? halt_line : NULL;
+}
+
+unsigned int script_player_tick(void)
+{
+    return data != NULL ? data->machine.tick : 0;
+}
+
+void script_player_shutdown(void)
+{
+    free_data();
+    phase = PHASE_IDLE;
+    is_active = 0;
+    halt_line[0] = '\0';
+}

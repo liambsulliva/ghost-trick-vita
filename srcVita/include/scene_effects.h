@@ -44,6 +44,10 @@ void scene_effects_create_beam(struct scene_effects *effects, const char *name, 
 void scene_effects_animate_beam(struct scene_effects *effects, const char *name, float base_x, float base_y, float half_width, int ticks);
 void scene_effects_delete_beam(struct scene_effects *effects, const char *name);
 void scene_effects_set_mask(struct scene_effects *effects, int should_be_on);
+void scene_effects_set_mask_wanted(struct scene_effects *effects, int should_be_on);
+void scene_effects_stop_iris(struct scene_effects *effects);
+void scene_effects_set_flash(struct scene_effects *effects, float level);
+const struct scene_beam *scene_effects_find_beam(const struct scene_effects *effects, const char *name);
 void scene_effects_start_iris(struct scene_effects *effects, float x, float y, float radius, int ticks);
 void scene_effects_dim_to(struct scene_effects *effects, float brightness, int ticks);
 void scene_effects_flash(struct scene_effects *effects, float brightness, int ticks);

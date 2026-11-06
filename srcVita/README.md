@@ -77,7 +77,7 @@ Narration and bubble text are rendered by the converter, not the app. `convert_a
 
 Music and sounds are the remaster's own Ogg Vorbis files, unchanged apart from losing their wrappers.
 
-The DS scene scripts are baked from your own USA DS ROM, if you have one, into `scripts/`. Nothing in the app reads them yet. [The top-level README](../README.md#3-convert-the-art-sound-and-text) has the optional step, and `docs/asset_format.md` the format.
+The DS scene scripts are baked from your own USA DS ROM, if you have one, into `scripts/`, with the tables the app needs to run them. If `scripts/chain.txt` is there, the app plays the opening from those scripts. Otherwise it plays the hand-written scene. [The top-level README](../README.md#3-convert-the-art-sound-and-text) has the optional step, and `docs/asset_format.md` the format.
 
 The converter bakes only what changed. `.bake_record.json` in the output folder holds hashes for each texture and script, so one is baked again only when its source bytes, its settings or the code that bakes it changes, or when its output file is missing or edited. Music, sounds, animations, the scene and the manifest are rewritten only when their bytes differ. On this Mac a clean conversion took about 4 seconds and a repeat with nothing changed about 0.2 seconds, and a repeat and a clean run gave the same files byte for byte. If a texture fails, it is named on stderr with `failed:`, the rest still bake, and the last good scene and manifest stay.
 
@@ -165,6 +165,16 @@ SELECT turns the debug controls on and shows the HUD. While they are on, LEFT, R
 
 They stay off during normal play, so that no button can stall the scene. The log records every button press, pause and skipped hold, as `input pressed buttons=...`, `scene paused` and `scene hold_skipped`.
 
+## The script VM
+
+`script_machine.c` and the `script_*` files beside it run the DS's own script bytes, one tick per 16,666 microseconds. The core has no SDK calls and no clock, and everything it tells the rest of the app goes through the `void` functions in `script_outputs.h`. On the Vita those are `script_bridge.c`, which drives the same stage, effects, text, overlays and audio the hand-written scene uses. In `tests/golden/script_replay.c` they print. `script_player.c` reads the files before tick zero, one per frame, and owns the clock.
+
+An op, table word, effect id or GameApp pair the VM does not know halts the whole machine by name. The last picture stays, a line at the bottom of the screen names the reason, the op, its offset, the tick, the file and the object, and the last 64 fetches go to the log. The loop keeps turning and the buttons still work.
+
+From the Vita's commands file, `play_script route` plays the VM and `play_scene opening` plays the hand-written scene. X replays whichever one just finished, and it has no skip in script mode.
+
+`make -C srcVita golden` compares the VM's fetches with the saved DS trace, on a machine that has one in `extracted/trace/vm_golden/`. It exits 2 with a message otherwise.
+
 ## Measured on the Vita
 
 | What | Result |
@@ -181,10 +191,10 @@ vitaGL rounds compressed textures up to power-of-two sizes, so a texture can tak
 
 ## What is missing
 
-- **Game logic.** The scene is a fixed script. Running the DS scene scripts needs a VM. The saved trace runs 61 distinct opcodes from boot to the end of the opening and 63 in all, and Chapter 1's scripts hold 152, of which 89 no trace has run. The DS logic still has to be brought up behind these Vita layers.
+- **Game logic past the opening.** The VM runs the opening's 61 distinct opcodes and stops at the act after it. The saved trace holds 63 in all, and Chapter 1's scripts hold 152, of which 89 no trace has run. The first op it would halt on is `0x37`, the first dialogue.
 - **Talk text boxes, most effects and the HUD.** None are drawn yet. The opening's narration and its balloons are.
 - **Player input.** There is nothing to play yet. CROSS skips to the next step of the script, or replays the scene once it has ended. SQUARE saves a capture and START quits.
 
-The scene's timing is hand-tuned against the reference video rather than taken from the game.
+The hand-written scene's timing is hand-tuned against the reference video rather than taken from the game. The VM's comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.
 
 The converter was built and checked with the Android files only. The Steam copy has not been compared.

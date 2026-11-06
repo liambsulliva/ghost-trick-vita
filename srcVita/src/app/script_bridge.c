@@ -1,0 +1,576 @@
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
+#include "animation.h"
+#include "clock.h"
+#include "music_engine.h"
+#include "run_log.h"
+#include "scene_stage.h"
+#include "scene_view.h"
+#include "script_bridge.h"
+#include "sound_engine.h"
+
+#define BRIGHTNESS_SCALE 16.0f
+#define DIM_LEVEL_WHEN_FULL (1.0f - (float)SCRIPT_NARRATION_DIM_TOP_LEVEL / (float)SCRIPT_NARRATION_DIM_SCALE)
+#define CARD_EFFECT_ID 66
+#define ZOOM_EFFECT_ID 85
+#define CARD_FADE_IN_STARTS 22
+#define CARD_FADE_IN_ENDS 31
+#define CARD_FADE_OUT_STARTS 242
+#define CARD_FADE_OUT_ENDS 273
+#define CLOSE_UP_DISSOLVE_TICKS 32
+#define CLOSE_UP_END_ZOOM 2.0f
+#define PENDING_OVERLAY_MAX 16
+#define OVERLAYS_PER_BALLOON 4
+#define LAYER_PER_LEVEL 256
+#define LEVEL_COUNT 15
+#define CREATION_INDEX_TOP 255
+#define DS_TICKS_PER_FRAME 4
+#define LOGGED_ONCE_MAX 32
+#define LOG_FOR_TOOLS_DISSOLVE "scene dissolve ticks=%d end_zoom=%.3f snapshot=%d snapshot_us=%llu"
+
+struct pending_overlay {
+    int in_use;
+    unsigned int due_tick;
+    int is_hide;
+    int overlay_id;
+    const struct script_balloon_part *part;
+    float center_x;
+    float center_y;
+};
+
+static const struct script_tables *tables;
+static unsigned int tick;
+static int card_is_showing;
+static unsigned int card_started_tick;
+static int black_level;
+static int white_level;
+static int mask_fade_is_alive;
+static int zoom_ticks_left;
+static int soul_vision_is_on;
+static int mask_is_on;
+static const struct script_balloon_row *open_balloon_rows[SCRIPT_BALLOON_MAX];
+static struct pending_overlay pending_overlays[PENDING_OVERLAY_MAX];
+static char logged_once[LOGGED_ONCE_MAX][ASSET_NAME_MAX];
+static int logged_once_count;
+
+static void write_cue(const char *kind, const char *name)
+{
+    run_log_write("cue tick=%u kind=%s name=%s", tick, kind, name);
+}
+
+static void log_once(const char *what, const char *name)
+{
+    char key[ASSET_NAME_MAX];
+    int index;
+
+    snprintf(key, sizeof(key), "%s %s", what, name);
+    for (index = 0; index < logged_once_count; index++) {
+        if (strcmp(logged_once[index], key) == 0) {
+            return;
+        }
+    }
+    if (logged_once_count < LOGGED_ONCE_MAX) {
+        snprintf(logged_once[logged_once_count], sizeof(logged_once[logged_once_count]), "%s", key);
+        logged_once_count = logged_once_count + 1;
+    }
+    run_log_write("script %s name=%s", what, name);
+}
+
+static void on_stage_cleared(void)
+{
+    scene_stage_clear_room();
+}
+
+static void on_room_loaded(int room, int camera_x, int camera_y)
+{
+    char name[16];
+    int found;
+    int index;
+
+    snprintf(name, sizeof(name), "%d", room);
+    write_cue("room", name);
+    scene_stage_clear_plates();
+    found = 0;
+    for (index = 0; index < tables->room_plate_count; index++) {
+        const struct script_room_plate *plate;
+
+        plate = &tables->room_plates[index];
+        if (plate->room == room) {
+            scene_stage_add_plate(plate->texture_name, plate->x, plate->y, plate->width, plate->height);
+            found = 1;
+        }
+    }
+    if (!found) {
+        log_once("no_room_row", name);
+    }
+    scene_stage_set_camera((float)camera_x, (float)camera_y);
+}
+
+static void on_camera_cut(int x, int y)
+{
+    write_cue("camera", "cut");
+    scene_stage_set_camera((float)x, (float)y);
+}
+
+static int record_of(const struct script_actor_view *actor, int records_per_frame)
+{
+    if (actor->frame_word_index < 0) {
+        return 0;
+    }
+    return actor->frame_word_index * records_per_frame + (actor->ticks_into_frame * records_per_frame) / DS_TICKS_PER_FRAME;
+}
+
+static void on_actor_changed(const struct script_actor_view *actor)
+{
+    const struct script_motion_row *row;
+
+    if (!actor->is_visible) {
+        scene_stage_remove_object(actor->name);
+        return;
+    }
+    row = script_tables_find_motion(tables, actor->file_name, actor->table_offset);
+    if (row == NULL) {
+        log_once("no_motion_row", actor->name);
+        return;
+    }
+    scene_stage_place_object(actor->name, row->animation_name, (float)actor->x, (float)actor->y, (LEVEL_COUNT - actor->level) * LAYER_PER_LEVEL + (CREATION_INDEX_TOP - actor->creation_index), record_of(actor, row->records_per_frame));
+}
+
+static void on_brightness_changed(int signed_level)
+{
+    black_level = signed_level < 0 ? -signed_level : 0;
+    white_level = signed_level > 0 ? signed_level : 0;
+    scene_effects_set_flash(scene_stage_effects(), (float)white_level / BRIGHTNESS_SCALE);
+}
+
+static void on_mask_fade_changed(int is_alive, int alpha)
+{
+    (void)alpha;
+    mask_fade_is_alive = is_alive;
+    if (!is_alive && card_is_showing) {
+        card_is_showing = 0;
+        scene_stage_hide_card();
+        write_cue("card", "hide");
+    }
+}
+
+static void on_beam_created(const char *name, float apex_x, float apex_y, float base_x, float base_y, float half_width)
+{
+    write_cue("beam", name);
+    scene_effects_create_beam(scene_stage_effects(), name, apex_x, apex_y, base_x, base_y, half_width);
+}
+
+static void on_beam_width_ramped(const char *name, float half_width, int ticks)
+{
+    const struct scene_beam *beam;
+
+    write_cue("beam", name);
+    beam = scene_effects_find_beam(scene_stage_effects(), name);
+    if (beam != NULL) {
+        scene_effects_animate_beam(scene_stage_effects(), name, beam->base_x.value, beam->base_y.value, half_width, ticks);
+    }
+}
+
+static void on_beam_base_ramped(const char *name, float base_x, float base_y, int ticks)
+{
+    const struct scene_beam *beam;
+
+    write_cue("beam", name);
+    beam = scene_effects_find_beam(scene_stage_effects(), name);
+    if (beam != NULL) {
+        scene_effects_animate_beam(scene_stage_effects(), name, base_x, base_y, beam->half_width.value, ticks);
+    }
+}
+
+static void on_beam_deleted(const char *name)
+{
+    write_cue("beam", name);
+    scene_effects_delete_beam(scene_stage_effects(), name);
+}
+
+static void on_iris_created(const char *name, float x, float y, float radius)
+{
+    write_cue("iris_create", name);
+    scene_effects_start_iris(scene_stage_effects(), x, y, radius, 0);
+}
+
+static void on_iris_radius_ramped(const char *name, float radius, int ticks)
+{
+    struct scene_effects *effects;
+
+    write_cue("iris", name);
+    effects = scene_stage_effects();
+    scene_effects_start_iris(effects, effects->iris_x, effects->iris_y, radius, ticks);
+}
+
+static void on_iris_deleted(const char *name)
+{
+    write_cue("iris_delete", name);
+    scene_effects_stop_iris(scene_stage_effects());
+}
+
+static void start_close_up_dissolve(void)
+{
+    unsigned long long started_us;
+    int has_snapshot;
+
+    started_us = clock_now_us();
+    has_snapshot = scene_view_snapshot_stage(scene_stage_view());
+    if (has_snapshot) {
+        scene_effects_start_dissolve(scene_stage_effects(), CLOSE_UP_END_ZOOM, CLOSE_UP_DISSOLVE_TICKS);
+    }
+    zoom_ticks_left = CLOSE_UP_DISSOLVE_TICKS;
+    run_log_write(LOG_FOR_TOOLS_DISSOLVE, CLOSE_UP_DISSOLVE_TICKS, CLOSE_UP_END_ZOOM, has_snapshot, clock_now_us() - started_us);
+}
+
+static void on_effect_spawned(int id, const char *name)
+{
+    if (id == CARD_EFFECT_ID) {
+        write_cue("card", name);
+        scene_stage_show_card(tables->card_texture);
+        card_is_showing = 1;
+        card_started_tick = tick;
+    } else if (id == ZOOM_EFFECT_ID) {
+        write_cue("dissolve", name);
+        start_close_up_dissolve();
+    }
+}
+
+static void show_group(const char *label, int group)
+{
+    int shown;
+    int index;
+
+    shown = 0;
+    for (index = 0; index < tables->text_row_count; index++) {
+        const struct script_text_row *row;
+
+        row = &tables->text_rows[index];
+        if (row->group == group && strcmp(row->label, label) == 0) {
+            scene_layers_show_text(scene_stage_layers(), row->id, row->texture_name, row->center_x, row->top_y, SCRIPT_NARRATION_GROUP_IN_TICKS);
+            write_cue("text_show", row->texture_name);
+            shown = 1;
+        }
+    }
+    if (!shown) {
+        log_once("no_text_lines", label);
+    }
+}
+
+static void fade_out_message(const char *label)
+{
+    int index;
+
+    for (index = 0; index < tables->text_row_count; index++) {
+        const struct script_text_row *row;
+
+        row = &tables->text_rows[index];
+        if (strcmp(row->label, label) == 0) {
+            scene_layers_hide_text(scene_stage_layers(), row->id, SCRIPT_NARRATION_TEXT_OUT_TICKS);
+            write_cue("text_hide", row->texture_name);
+        }
+    }
+}
+
+static void on_narration_changed(const char *label, enum script_narration_event event, int group)
+{
+    switch (event) {
+    case SCRIPT_NARRATION_DIM_IN:
+        write_cue("dim", label);
+        scene_effects_dim_to(scene_stage_effects(), DIM_LEVEL_WHEN_FULL, SCRIPT_NARRATION_DIM_TICKS);
+        break;
+    case SCRIPT_NARRATION_DIM_FULL:
+        write_cue("dim", label);
+        scene_effects_dim_to(scene_stage_effects(), DIM_LEVEL_WHEN_FULL, 0);
+        break;
+    case SCRIPT_NARRATION_GROUP_IN:
+        show_group(label, group);
+        break;
+    case SCRIPT_NARRATION_TEXT_OUT:
+        fade_out_message(label);
+        break;
+    case SCRIPT_NARRATION_CUT:
+        write_cue("text_hide_all", label);
+        write_cue("dim", label);
+        scene_layers_hide_all_text(scene_stage_layers());
+        scene_effects_dim_to(scene_stage_effects(), 1.0f, 0);
+        break;
+    default:
+        write_cue("dim", label);
+        scene_effects_dim_to(scene_stage_effects(), 1.0f, SCRIPT_NARRATION_DIM_TICKS);
+        break;
+    }
+}
+
+static void schedule_overlay(unsigned int due_tick, int is_hide, int overlay_id, const struct script_balloon_part *part, float center_x, float center_y)
+{
+    int index;
+
+    for (index = 0; index < PENDING_OVERLAY_MAX; index++) {
+        if (!pending_overlays[index].in_use) {
+            pending_overlays[index].in_use = 1;
+            pending_overlays[index].due_tick = due_tick;
+            pending_overlays[index].is_hide = is_hide;
+            pending_overlays[index].overlay_id = overlay_id;
+            pending_overlays[index].part = part;
+            pending_overlays[index].center_x = center_x;
+            pending_overlays[index].center_y = center_y;
+            return;
+        }
+    }
+    run_log_write("script too_many_pending_overlays");
+}
+
+static void on_balloon_opened(int slot, const char *label, int kind, float anchor_x, float anchor_y)
+{
+    const struct script_balloon_row *row;
+    char name[SCRIPT_CUE_LABEL_MAX];
+    int index;
+
+    row = script_tables_find_balloon(tables, label, kind);
+    open_balloon_rows[slot] = row;
+    if (row == NULL) {
+        snprintf(name, sizeof(name), "%s", label != NULL ? label : "kind");
+        log_once("no_balloon_row", name);
+        return;
+    }
+    for (index = 0; index < row->part_count; index++) {
+        const struct script_balloon_part *part;
+
+        part = &row->parts[index];
+        schedule_overlay(tick + (unsigned int)row->delay_ticks + (unsigned int)part->after_ticks, 0, slot * OVERLAYS_PER_BALLOON + index + 1, part, anchor_x + part->dx, anchor_y + part->dy);
+    }
+}
+
+static void on_balloon_closed(int slot)
+{
+    const struct script_balloon_row *row;
+    int index;
+
+    row = open_balloon_rows[slot];
+    if (row == NULL) {
+        return;
+    }
+    for (index = 0; index < row->part_count; index++) {
+        schedule_overlay(tick + (unsigned int)row->delay_ticks, 1, slot * OVERLAYS_PER_BALLOON + index + 1, &row->parts[index], 0.0f, 0.0f);
+    }
+    open_balloon_rows[slot] = NULL;
+}
+
+static void run_due_overlays(void)
+{
+    int index;
+
+    for (index = 0; index < PENDING_OVERLAY_MAX; index++) {
+        struct pending_overlay *pending;
+
+        pending = &pending_overlays[index];
+        if (!pending->in_use || pending->due_tick > tick) {
+            continue;
+        }
+        pending->in_use = 0;
+        if (pending->is_hide) {
+            write_cue("overlay_hide", pending->part->texture_name);
+            scene_layers_hide_overlay(scene_stage_layers(), pending->overlay_id);
+        } else {
+            write_cue("overlay", pending->part->texture_name);
+            scene_layers_show_overlay(scene_stage_layers(), pending->overlay_id, pending->part->texture_name, pending->center_x - pending->part->width / 2.0f, pending->center_y - pending->part->height / 2.0f, pending->part->width, pending->part->height, pending->part->grow_ticks);
+        }
+    }
+}
+
+static void on_music_prepared(int id)
+{
+    const char *name;
+    char number[16];
+
+    name = script_tables_music_name(tables, id);
+    if (name == NULL) {
+        snprintf(number, sizeof(number), "%d", id);
+        log_once("no_music_row", number);
+        return;
+    }
+    music_request_prepare(name);
+}
+
+static void on_music_started(int id)
+{
+    const char *name;
+    char number[16];
+
+    name = script_tables_music_name(tables, id);
+    if (name == NULL) {
+        snprintf(number, sizeof(number), "%d", id);
+        log_once("no_music_row", number);
+        return;
+    }
+    write_cue("music", name);
+    music_request_play(name, 1);
+}
+
+static void on_music_stopped(int fade_ticks)
+{
+    write_cue("music_stop", "-");
+    music_request_stop(fade_ticks);
+}
+
+static void on_sound_played(int kind)
+{
+    const char *name;
+    char number[16];
+
+    name = script_tables_sound_name(tables, kind);
+    if (name == NULL) {
+        snprintf(number, sizeof(number), "%d", kind);
+        log_once("no_sound_row", number);
+        return;
+    }
+    write_cue("sound", name);
+    sound_request_play(name);
+}
+
+static void on_soul_vision_changed(int is_on)
+{
+    soul_vision_is_on = is_on;
+}
+
+static void on_marked(const char *what, const char *name)
+{
+    if (strcmp(what, "demo_end") == 0) {
+        write_cue("demo_end", name);
+        return;
+    }
+    run_log_write("script %s name=%s", what, name);
+}
+
+static const struct script_outputs bridge_outputs = {
+    NULL,
+    on_stage_cleared,
+    on_room_loaded,
+    on_camera_cut,
+    on_actor_changed,
+    on_brightness_changed,
+    on_mask_fade_changed,
+    on_beam_created,
+    on_beam_width_ramped,
+    on_beam_base_ramped,
+    on_beam_deleted,
+    on_iris_created,
+    on_iris_radius_ramped,
+    on_iris_deleted,
+    on_effect_spawned,
+    on_narration_changed,
+    on_balloon_opened,
+    on_balloon_closed,
+    on_music_prepared,
+    on_music_started,
+    on_music_stopped,
+    on_sound_played,
+    on_soul_vision_changed,
+    on_marked
+};
+
+const struct script_outputs *script_bridge_outputs(void)
+{
+    return &bridge_outputs;
+}
+
+void script_bridge_start(const struct script_tables *new_tables)
+{
+    tables = new_tables;
+    tick = 0;
+    card_is_showing = 0;
+    card_started_tick = 0;
+    black_level = 0;
+    white_level = 0;
+    mask_fade_is_alive = 0;
+    zoom_ticks_left = 0;
+    soul_vision_is_on = 0;
+    mask_is_on = 0;
+    logged_once_count = 0;
+    memset(open_balloon_rows, 0, sizeof(open_balloon_rows));
+    memset(pending_overlays, 0, sizeof(pending_overlays));
+    scene_stage_clear_room();
+    scene_layers_clear(scene_stage_layers());
+    scene_stage_hide_card();
+    scene_stage_set_fade(0.0f);
+    scene_effects_reset(scene_stage_effects());
+}
+
+static float card_fade_amount(void)
+{
+    int age;
+
+    if (!card_is_showing) {
+        return 0.0f;
+    }
+    age = (int)(tick - card_started_tick);
+    if (age < CARD_FADE_IN_STARTS) {
+        return 1.0f;
+    }
+    if (age < CARD_FADE_IN_ENDS) {
+        return 1.0f - (float)(age - CARD_FADE_IN_STARTS) / (float)(CARD_FADE_IN_ENDS - CARD_FADE_IN_STARTS);
+    }
+    if (age < CARD_FADE_OUT_STARTS) {
+        return 0.0f;
+    }
+    if (age < CARD_FADE_OUT_ENDS) {
+        return (float)(age - CARD_FADE_OUT_STARTS) / (float)(CARD_FADE_OUT_ENDS - CARD_FADE_OUT_STARTS);
+    }
+    return 1.0f;
+}
+
+static void apply_fade(void)
+{
+    float brightness_fade;
+    float card_fade;
+
+    brightness_fade = (float)black_level / BRIGHTNESS_SCALE;
+    card_fade = card_fade_amount();
+    scene_stage_set_fade(brightness_fade > card_fade ? brightness_fade : card_fade);
+}
+
+static int any_beam_exists(const struct scene_effects *effects)
+{
+    int index;
+
+    for (index = 0; index < SCENE_BEAM_MAX; index++) {
+        if (effects->beams[index].in_use) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void apply_mask_rule(void)
+{
+    struct scene_effects *effects;
+    int should_be_on;
+
+    effects = scene_stage_effects();
+    should_be_on = any_beam_exists(effects) || effects->iris_is_on || mask_fade_is_alive || zoom_ticks_left > 0 || soul_vision_is_on;
+    if (should_be_on != mask_is_on) {
+        mask_is_on = should_be_on;
+        write_cue("mask", should_be_on ? "on" : "off");
+        scene_effects_set_mask_wanted(effects, should_be_on);
+    }
+}
+
+void script_bridge_finish_tick(void)
+{
+    run_due_overlays();
+    apply_fade();
+    apply_mask_rule();
+    if (zoom_ticks_left > 0) {
+        zoom_ticks_left = zoom_ticks_left - 1;
+    }
+    scene_effects_advance(scene_stage_effects(), MICROSECONDS_PER_TICK);
+    scene_layers_advance(scene_stage_layers(), MICROSECONDS_PER_TICK);
+    tick = tick + 1;
+}
+
+unsigned int script_bridge_tick(void)
+{
+    return tick;
+}
