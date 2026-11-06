@@ -29,11 +29,11 @@ Verified functions are recorded in [config/decomp_progress.json](config/decomp_p
 
 ## Run it on a Vita
 
-The VPK holds only the app. It has no game data in it, so it also needs art converted from your own copy of the remaster's Android release. For now, the app plays the opening of Chapter 1 as a script. There is no sound or text yet, and X skips ahead.
+The VPK holds only the app. It has no game data in it, so it also needs art, sound and text converted from your own copy of the remaster's Android release. For now, the app plays the opening of Chapter 1 as a script. There is no sound or text yet, and X skips ahead.
 
 You need:
 
-- Python 3, `make`, `clang`, `unzip` and ImageMagick 7 (the `magick` command).
+- Python 3, `make`, `clang`, `unzip` and ImageMagick 7 (the `magick` command). The converter draws the game's text with `magick`, which needs FreeType support: `magick -list format | grep OTF` should print a line.
 - About 3.1 GB of free disk space for the game files.
 - VitaSDK, to build the VPK. [The app's README](srcVita/README.md#build-and-test) lists its libraries.
 - A Vita that can install homebrew with VitaShell.
@@ -67,7 +67,21 @@ Leave `data01` and `data02` as they are. They are zip files too, and the convert
 
 These steps need one APK with all three files in its `assets/` folder. They were only tested with Android v1.0.0 packaged that way. A copy installed on a phone may keep its packs separately, and the converter cannot read that layout yet, so those copies will not work. The Steam copy has not been tried.
 
-### 2. Convert the art
+### 2. Find the text key
+
+The narration and speech bubbles are stored encrypted in the packs. Their 16-byte key is not in this repository, so you get it from your own copy of the package. The converter needs this key and stops without it, so do this step before converting. Replace the path with your own copy:
+
+```bash
+python3 -I srcVita/tools/assets/extract_text_key.py "path/to/your-copy.apk"
+```
+
+This takes a few seconds, saves the key as `extracted/remaster_apk/text_key.bin` and never prints it.
+
+Everything under `extracted/` is ignored by git. `tools/rom_audit.py` refuses a file named `text_key.bin` and, when your key file is in place, any file git would track that holds the key as raw bytes, hex or decimal text. It cannot spot every encoding or a piece shorter than 8 bytes, and it reads working and staged copies but not commit history, so never paste the key or part of it anywhere.
+
+If the tool says the package has no library, found no key, or found several, your copy may be a different build of the game.
+
+### 3. Convert the art, sound and text
 
 ```bash
 make -C srcVita/tools/assets
@@ -77,11 +91,11 @@ make -C srcVita/tools/assets
 python3 -I srcVita/tools/assets/convert_assets.py --set chapter1_opening --output extracted/vita_assets/chapter1_opening
 ```
 
-This takes a few seconds and writes about 8.6 MB to `extracted/vita_assets/chapter1_opening/`. Everything under `extracted/` is ignored by git. Keep it there, because it is game data and this repository is public.
+The first run takes a few seconds and writes about 17.5 MB to `extracted/vita_assets/chapter1_opening/`. A later run bakes only what changed, so it takes under a second if nothing did. Everything under `extracted/` is ignored by git. Keep it there, because it is game data and this repository is public.
 
-If the converter stops with `FileNotFoundError`, `BadZipFile` or `KeyError`, one of the three files is missing or came from a different build of the game. Go back to step 1 and check the names and sizes.
+If the converter stops with `FileNotFoundError`, `BadZipFile` or `KeyError`, one of the three files is missing or came from a different build of the game. Go back to step 1 and check the names and sizes. If it stops with `no text key`, or says the saved text key did not decode a file, go back to step 2. If it prints `failed:` lines, each names a file it could not make. The rest still bake, and the last good scene and manifest stay.
 
-### 3. Put everything on the Vita
+### 4. Put everything on the Vita
 
 Build the VPK with [the commands in the app's README](srcVita/README.md#build-and-test). This writes `srcVita/build/ghosttrick.vpk`.
 
@@ -94,13 +108,15 @@ Then copy these across:
 | `extracted/vita_assets/chapter1_opening/textures/` | `ux0:data/ghosttrick/assets/textures/` |
 | `extracted/vita_assets/chapter1_opening/animations/` | `ux0:data/ghosttrick/assets/animations/` |
 | `extracted/vita_assets/chapter1_opening/scenes/` | `ux0:data/ghosttrick/assets/scenes/` |
+| `extracted/vita_assets/chapter1_opening/music/` | `ux0:data/ghosttrick/assets/music/` |
+| `extracted/vita_assets/chapter1_opening/sounds/` | `ux0:data/ghosttrick/assets/sounds/` |
 
-The art goes in the Vita's data folder, not inside the VPK or the app's folder. Copy what is inside `chapter1_opening`, not the folder itself. A path like `ux0:data/ghosttrick/assets/chapter1_opening/manifest.txt` will not be found.
+The art goes in the Vita's data folder, not inside the VPK or the app's folder. Copy what is inside `chapter1_opening`, not the folder itself. A path like `ux0:data/ghosttrick/assets/chapter1_opening/manifest.txt` will not be found. Leave `.bake_record.json` behind. Only the converter uses it.
 
 You can copy by hand or with a script:
 
-- **By hand:** put the Vita and this computer on the same Wi-Fi network. In VitaShell, press SELECT to start its FTP server. If SELECT starts USB instead, press START and set **SELECT button** to **FTP**. Connect an FTP client to the address and port the Vita shows, and keep VitaShell open until the copy finishes. In the client, open `ux0:` and then `data`, create a folder `ghosttrick`, and inside it a folder `assets`. Copy the four items into `assets`, and the VPK into `ux0:`. Then select the VPK in VitaShell, press X and confirm. A **Ghost Trick Vita** bubble appears on the home screen.
-- **With a script:** with Vita Companion running on the Vita, this uploads the art and checks each uploaded file by hash. Replace the address with your Vita's. It does not install the VPK.
+- **By hand:** put the Vita and this computer on the same Wi-Fi network. In VitaShell, press SELECT to start its FTP server. If SELECT starts USB instead, press START and set **SELECT button** to **FTP**. Connect an FTP client to the address and port the Vita shows, and keep VitaShell open until the copy finishes. In the client, open `ux0:` and then `data`, create a folder `ghosttrick`, and inside it a folder `assets`. Copy the six items into `assets`, and the VPK into `ux0:`. Then select the VPK in VitaShell, press X and confirm. A **Ghost Trick Vita** bubble appears on the home screen.
+- **With a script:** with Vita Companion running on the Vita, this uploads the converted files and checks each uploaded file by hash. Replace the address with your Vita's. It does not install the VPK.
 
 ```bash
 VITA_HOST=192.168.1.50 python3 -I srcVita/tools/vita_loop.py upload-assets extracted/vita_assets/chapter1_opening
@@ -122,7 +138,7 @@ If you see something else:
 
 The log is `ux0:data/ghosttrick/run.log`. It keeps earlier launches, so read below the last `--- launch` line.
 
-After updating this repository, repeat steps 2 and 3. The file formats can change, and older files do not always produce an error: some just play wrongly.
+After updating this repository, repeat steps 3 and 4. The file formats can change, and older files do not always produce an error: some just play wrongly. Step 2 does not need repeating unless your copy of the game changes.
 
 ## Working on the port
 

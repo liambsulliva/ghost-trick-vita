@@ -23,6 +23,7 @@ SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD_FOLDER = os.path.join(SRC_VITA_FOLDER, "build")
 ASSETS_FOLDER = DATA_FOLDER + "/assets"
 UPLOAD_RECORD_PATH = os.path.join(BUILD_FOLDER, "uploaded_assets.json")
+PARTIAL_FILE_SUFFIX = ".new"
 SECONDS_FOR_APP_TEARDOWN = 3
 SECONDS_FOR_DEVICE_REPLY = 3
 SECONDS_FOR_PROMOTE_REPLY = 60
@@ -107,7 +108,7 @@ def download_or_none(path):
 def upload_verified(connection, local_path, remote_path):
     with open(local_path, "rb") as source:
         data = source.read()
-    temporary_path = remote_path + ".new"
+    temporary_path = remote_path + PARTIAL_FILE_SUFFIX
     connection.storbinary("STOR " + temporary_path, io.BytesIO(data))
     read_back = download_bytes(connection, temporary_path)
     if sha256_of_bytes(read_back) != sha256_of_bytes(data):
@@ -207,9 +208,19 @@ def list_local_files(folder):
         if not os.path.isdir(os.path.join(folder, folder_name)):
             continue
         for name in sorted(os.listdir(os.path.join(folder, folder_name))):
-            if not name.startswith("."):
+            if not name.startswith(".") and not name.endswith(PARTIAL_FILE_SUFFIX):
                 files.append((os.path.join(folder, folder_name, name), folder_name + "/" + name))
     return files
+
+
+def loop_files_the_set_no_longer_has(relative_paths):
+    stale = []
+    for relative_path in relative_paths:
+        if relative_path.startswith("music/") and relative_path.endswith(".ogg"):
+            loop_path = relative_path[:-len(".ogg")] + ".loop"
+            if loop_path not in relative_paths:
+                stale.append(loop_path)
+    return stale
 
 
 def upload_assets(folder):
@@ -224,7 +235,8 @@ def upload_assets(folder):
     connection = open_ftp()
     try:
         made_folders = set()
-        for local_path, relative_path in list_local_files(folder):
+        local_files = list_local_files(folder)
+        for local_path, relative_path in local_files:
             digest = sha256_of_file(local_path)
             remote_path = ASSETS_FOLDER + "/" + relative_path
             if record.get(relative_path) == digest and remote_size_or_none(connection, remote_path) == os.path.getsize(local_path):
@@ -241,6 +253,10 @@ def upload_assets(folder):
             save_upload_record(record)
             uploaded = uploaded + 1
             uploaded_bytes = uploaded_bytes + os.path.getsize(local_path)
+        for loop_path in loop_files_the_set_no_longer_has([relative_path for _, relative_path in local_files]):
+            delete_if_present(connection, ASSETS_FOLDER + "/" + loop_path)
+            if record.pop(loop_path, None) is not None:
+                save_upload_record(record)
     finally:
         connection.close()
     print("assets uploaded", uploaded, "skipped", skipped, "bytes", uploaded_bytes, "seconds", int(time.time() - started))

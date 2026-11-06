@@ -10,6 +10,8 @@
 #define LOWER_THAN_ANY_LAYER INT_MIN
 #define IRIS_TEXTURE_SIZE 256
 #define MASK_RECT_COUNT_WORTH_LOGGING 600
+#define MISSING_TEXT_MARKER_WIDTH 400.0f
+#define MISSING_TEXT_MARKER_HEIGHT 52.0f
 
 struct world_rect {
     float left;
@@ -453,6 +455,62 @@ void scene_view_stop(void)
     iris_texture = RENDERER_NO_TEXTURE;
 }
 
+static void draw_overlays(const struct scene_stage *stage, const struct screen_view *view)
+{
+    const struct scene_overlay *overlay;
+    float width;
+    float height;
+    int index;
+
+    for (index = 0; index < SCENE_OVERLAY_MAX; index++) {
+        overlay = &stage->layers.overlays[index];
+        if (!overlay->in_use) {
+            continue;
+        }
+        width = overlay->width * overlay->size_fraction;
+        height = overlay->height * overlay->size_fraction;
+        draw_texture_or_placeholder(overlay->texture_name, world_area_to_screen(view, overlay->x + (overlay->width - width) / 2.0f, overlay->y + (overlay->height - height) / 2.0f, width, height), whole_texture_area());
+    }
+}
+
+static void draw_text_line(const struct scene_text_line *line)
+{
+    const struct cached_texture *texture;
+    struct renderer_rect area;
+    struct renderer_color tint;
+
+    texture = texture_cache_use_or_start_loading(line->texture_name);
+    if (texture == NULL || texture->state == CACHED_TEXTURE_MISSING) {
+        area.x = line->center_x - MISSING_TEXT_MARKER_WIDTH / 2.0f;
+        area.y = line->top_y;
+        area.width = MISSING_TEXT_MARKER_WIDTH;
+        area.height = MISSING_TEXT_MARKER_HEIGHT;
+        renderer_draw_filled_rect(area, missing_texture_color);
+        return;
+    }
+    if (texture->state != CACHED_TEXTURE_READY) {
+        return;
+    }
+    area.x = line->center_x - (float)texture->width / 2.0f;
+    area.y = line->top_y;
+    area.width = (float)texture->width;
+    area.height = (float)texture->height;
+    tint = white;
+    tint.alpha = line->alpha;
+    renderer_draw_sprite(texture->texture, area, whole_texture_area(), tint);
+}
+
+static void draw_text_lines(const struct scene_stage *stage)
+{
+    int index;
+
+    for (index = 0; index < SCENE_TEXT_LINE_MAX; index++) {
+        if (stage->layers.text_lines[index].in_use && stage->layers.text_lines[index].alpha > 0.0f) {
+            draw_text_line(&stage->layers.text_lines[index]);
+        }
+    }
+}
+
 void scene_view_draw(const struct scene_stage *stage)
 {
     struct screen_view view;
@@ -463,7 +521,9 @@ void scene_view_draw(const struct scene_stage *stage)
     draw_objects_in_layer_order(stage, &view);
     draw_black_around_art(&view);
     draw_mask_or_iris(&stage->effects, &view);
+    draw_overlays(stage, &view);
     draw_dim(&stage->effects);
+    draw_text_lines(stage);
     draw_flash(&stage->effects);
     if (stage->card_texture[0] != '\0') {
         draw_card(stage->card_texture);

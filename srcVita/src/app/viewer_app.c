@@ -552,7 +552,7 @@ void viewer_app_draw(void)
     } else if (scene_player_status() != SCENE_PLAYER_PRELOADING) {
         scene_view_draw(scene_stage_view());
     }
-    if (scene_player_status() == SCENE_PLAYER_FINISHED && !debug_controls_are_on) {
+    if (scene_player_status() == SCENE_PLAYER_FINISHED && !debug_controls_are_on && !scene_layers_text_is_fading_out(scene_stage_layers())) {
         draw_centred_scene_end_line(SCENE_END_FIRST_LINE_Y, SCENE_END_FIRST_LINE);
         draw_centred_scene_end_line(SCENE_END_SECOND_LINE_Y, SCENE_END_SECOND_LINE);
     }

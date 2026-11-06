@@ -169,6 +169,37 @@ class UploadAssetsTests(DeviceFreeTestCase):
         relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
         self.assertEqual(relative_paths, ["manifest.txt", "textures/a.gtex", "animations/a.anim", "scenes/s.scene", "music/song.loop", "music/song.ogg", "sounds/ping.ogg"])
 
+    def test_a_file_left_half_written_by_the_converter_is_not_listed(self):
+        self.write_file("music/song.ogg.new", b"half")
+        self.write_file("scenes/s.scene.new", b"half")
+        relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
+        self.assertEqual(relative_paths, ["manifest.txt", "textures/a.gtex", "animations/a.anim", "scenes/s.scene", "music/song.loop", "music/song.ogg", "sounds/ping.ogg"])
+
+    def test_loop_points_a_track_lost_are_removed_when_the_track_changes(self):
+        self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
+        os.remove(os.path.join(self.set_folder, "music", "song.loop"))
+        self.write_file("music/song.ogg", b"new song")
+        self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
+        self.assertEqual(self.ftp.files[vita_loop.ASSETS_FOLDER + "/music/song.ogg"], b"new song")
+        self.assertNotIn(vita_loop.ASSETS_FOLDER + "/music/song.loop", self.ftp.files)
+        self.assertNotIn("music/song.loop", vita_loop.load_upload_record())
+
+    def test_loop_points_a_track_lost_are_removed_even_when_the_track_is_unchanged(self):
+        self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
+        os.remove(os.path.join(self.set_folder, "music", "song.loop"))
+        self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
+        self.assertNotIn(vita_loop.ASSETS_FOLDER + "/music/song.loop", self.ftp.files)
+        self.assertNotIn("music/song.loop", vita_loop.load_upload_record())
+
+    def test_loop_points_the_set_still_has_stay_on_the_device(self):
+        self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
+        self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
+        self.assertEqual(self.ftp.files[vita_loop.ASSETS_FOLDER + "/music/song.loop"], b"1 2")
+        self.assertIn("music/song.loop", vita_loop.load_upload_record())
+
+    def test_a_sound_is_never_given_a_loop_file_to_remove(self):
+        self.assertEqual(vita_loop.loop_files_the_set_no_longer_has(["sounds/ping.ogg", "music/a.ogg", "music/a.loop", "music/b.ogg"]), ["music/b.loop"])
+
     def test_a_set_without_audio_folders_can_still_be_listed(self):
         shutil.rmtree(os.path.join(self.set_folder, "music"))
         shutil.rmtree(os.path.join(self.set_folder, "sounds"))

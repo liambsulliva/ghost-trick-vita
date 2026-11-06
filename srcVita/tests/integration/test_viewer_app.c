@@ -30,6 +30,10 @@
 #define HALF_BUDGET_TEXTURE_WIDTH 4096
 #define IRIS_TEXTURE_WIDTH 256
 #define AUDIO_SCENE "scene opening\nroom 1\nplate room_a 0 0 1024 384\nwait 6\nmusic song 1\nsound ping\nwait 6\nsound ping\nwait 6000\n"
+#define TEXT_LINE_WIDTH 200
+#define TEXT_LINE_HEIGHT 52
+#define OTHER_TEXT_LINE_WIDTH 240
+#define OVERLAY_ART_WIDTH 84
 
 static void add_texture(const char *name, unsigned int width, unsigned int height)
 {
@@ -1442,6 +1446,474 @@ static void update_with_elapsed_time(unsigned long long elapsed_us)
     viewer_app_update(&no_input, elapsed_us);
 }
 
+static void set_up_text_scene(const char *scene_text)
+{
+    set_up_platform();
+    set_up_scene_assets(scene_text);
+    add_texture("line_a", TEXT_LINE_WIDTH, TEXT_LINE_HEIGHT);
+    add_texture("line_b", OTHER_TEXT_LINE_WIDTH, TEXT_LINE_HEIGHT);
+    add_texture("art", OVERLAY_ART_WIDTH, 60);
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    run_frames(1);
+}
+
+static void test_text_is_drawn_centred_at_its_top_with_its_fade_as_alpha(void)
+{
+    const struct fake_draw *line;
+
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 60\nwait 6000\n");
+    run_frames(29);
+    draw_frame();
+    line = find_draw_with_texture_width(TEXT_LINE_WIDTH);
+    CHECK(line != NULL);
+    CHECK(nearly_equal(line->screen_area.x, 480.0f - TEXT_LINE_WIDTH / 2.0f));
+    CHECK(nearly_equal(line->screen_area.y, 72.0f));
+    CHECK(nearly_equal(line->screen_area.width, TEXT_LINE_WIDTH));
+    CHECK(nearly_equal(line->screen_area.height, TEXT_LINE_HEIGHT));
+    CHECK(line->texture_area.x == 0.0f);
+    CHECK(line->texture_area.width == 1.0f);
+    CHECK(line->texture_area.height == 1.0f);
+    CHECK(line->color.red == 1.0f);
+    CHECK(line->color.alpha > 0.45f && line->color.alpha < 0.55f);
+    run_frames(40);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH)->color.alpha == 1.0f);
+    viewer_app_stop();
+}
+
+static void test_text_does_not_hold_the_script(void)
+{
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 600\ntext_hide 1 600\noverlay 1 art 10 20 30 40 600\noverlay_hide 1\ntext_hide_all\nwait 6000\n");
+    CHECK_INT(scene_player_next_step(), 6);
+    viewer_app_stop();
+}
+
+static void test_a_line_starts_invisible_and_is_not_drawn_until_it_has_alpha(void)
+{
+    set_up_platform();
+    set_up_scene_assets("scene opening\ntext_show 1 line_a 480 72 60\nwait 6000\n");
+    add_texture("line_a", TEXT_LINE_WIDTH, TEXT_LINE_HEIGHT);
+    viewer_app_start("assets");
+    run_frames_until_scene_is_no_longer_preloading();
+    update_with_elapsed_time(0);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) == NULL);
+    viewer_app_stop();
+}
+
+static void test_a_hidden_line_fades_and_is_then_gone(void)
+{
+    const struct fake_draw *line;
+
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\nwait 6\ntext_hide 1 60\nwait 6000\n");
+    run_frames(4);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH)->color.alpha == 1.0f);
+    run_frames(32);
+    draw_frame();
+    line = find_draw_with_texture_width(TEXT_LINE_WIDTH);
+    CHECK(line != NULL);
+    CHECK(line->color.alpha > 0.4f && line->color.alpha < 0.6f);
+    run_frames(32);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) == NULL);
+    viewer_app_stop();
+}
+
+static void test_hiding_all_text_cuts_every_line_in_one_frame(void)
+{
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\ntext_show 2 line_b 480 122 0\nwait 6\ntext_hide_all\nwait 6000\n");
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) != NULL);
+    CHECK(find_draw_with_texture_width(OTHER_TEXT_LINE_WIDTH) != NULL);
+    run_frames(7);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) == NULL);
+    CHECK(find_draw_with_texture_width(OTHER_TEXT_LINE_WIDTH) == NULL);
+    viewer_app_stop();
+}
+
+static void test_replaying_a_scene_clears_its_text_and_overlays(void)
+{
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\noverlay 1 art 0 0 30 20 0\nwait 6000\n");
+    press(INPUT_SELECT);
+    press(INPUT_L);
+    CHECK_INT(scene_player_next_step(), 0);
+    CHECK(!scene_stage_view()->layers.text_lines[0].in_use);
+    CHECK(!scene_stage_view()->layers.overlays[0].in_use);
+    viewer_app_stop();
+}
+
+static void test_leaving_a_scene_for_browsing_clears_its_text_and_overlays(void)
+{
+    set_up_text_scene("scene opening\nroom 1\nplate room_a 0 0 1024 384\ntext_show 1 line_a 480 72 0\noverlay 1 art 0 0 30 20 0\nwait 6000\n");
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) != NULL);
+    CHECK(find_draw_with_texture_width(OVERLAY_ART_WIDTH) != NULL);
+    CHECK(viewer_app_show_animation("walk"));
+    run_frames(2);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) == NULL);
+    CHECK(find_draw_with_texture_width(OVERLAY_ART_WIDTH) == NULL);
+    viewer_app_stop();
+}
+
+static void test_skipping_a_hold_with_cross_strands_no_text(void)
+{
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 60\nwait 6000\ntext_hide 1 60\nwait 6000\n");
+    run_frames(10);
+    press(INPUT_CROSS);
+    run_frames(1);
+    CHECK_INT(scene_player_next_step(), 4);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) != NULL);
+    run_frames(62);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) == NULL);
+    viewer_app_stop();
+}
+
+static void test_skipping_to_the_end_of_a_scene_still_finishes_the_last_fade(void)
+{
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\nwait 6000\ntext_hide 1 60\n");
+    press(INPUT_CROSS);
+    run_frames(1);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
+    run_frames(62);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) == NULL);
+    viewer_app_stop();
+}
+
+static void test_pausing_stops_text_fades(void)
+{
+    float alpha_when_paused;
+
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 60\nwait 6000\n");
+    run_frames(20);
+    press(INPUT_SELECT);
+    press(INPUT_CROSS);
+    viewer_app_set_hud_visible(0);
+    draw_frame();
+    alpha_when_paused = find_draw_with_texture_width(TEXT_LINE_WIDTH)->color.alpha;
+    run_frames(20);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH)->color.alpha == alpha_when_paused);
+    viewer_app_stop();
+}
+
+static void test_text_textures_are_loaded_before_the_scene_starts(void)
+{
+    set_up_text_scene("scene opening\nwait 6000\ntext_show 1 line_a 480 72 60\noverlay 1 art 0 0 30 20 6\n");
+    CHECK_INT(scene_player_next_step(), 1);
+    CHECK_HAS_TEXT(log_text(), "texture loaded name=line_a");
+    CHECK_HAS_TEXT(log_text(), "texture loaded name=art");
+    viewer_app_stop();
+}
+
+static void test_a_missing_text_texture_is_marked_visibly(void)
+{
+    const struct fake_draw *draw;
+
+    set_up_text_scene("scene opening\ntext_show 1 not_converted 480 72 0\nwait 6000\n");
+    run_frames(1);
+    CHECK_HAS_TEXT(log_text(), "texture missing name=not_converted");
+    draw_frame();
+    draw = fake_renderer_draw(fake_renderer_draw_count() - 1);
+    CHECK(draw->is_filled_rect);
+    CHECK(draw->color.red == 1.0f && draw->color.green == 0.0f && draw->color.blue == 1.0f);
+    CHECK(nearly_equal(draw->screen_area.y, 72.0f));
+    CHECK(nearly_equal(draw->screen_area.x + draw->screen_area.width / 2.0f, 480.0f));
+    viewer_app_stop();
+}
+
+static int count_sprite_draws(void)
+{
+    int count;
+    int index;
+
+    count = 0;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        if (!fake_renderer_draw(index)->is_filled_rect) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+static void test_a_line_hidden_with_no_fade_is_gone_from_that_frame(void)
+{
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\nwait 6\ntext_hide 1 0\nwait 6000\n");
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) != NULL);
+    run_frames(7);
+    draw_frame();
+    CHECK_INT(count_sprite_draws(), 0);
+    viewer_app_stop();
+}
+
+static void test_a_text_texture_still_loading_at_draw_time_draws_nothing_until_it_arrives(void)
+{
+    const struct fake_draw *line;
+
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\nwait 6000\n");
+    texture_cache_clear();
+    fake_reader_hold_reads(1);
+    draw_frame();
+    CHECK_INT(count_sprite_draws(), 0);
+    CHECK_INT(fake_reader_pending_count(), 1);
+    fake_reader_release_reads(1);
+    run_frames(1);
+    draw_frame();
+    line = find_draw_with_texture_width(TEXT_LINE_WIDTH);
+    CHECK(line != NULL);
+    CHECK(line->color.alpha == 1.0f);
+    viewer_app_stop();
+}
+
+static void test_a_text_texture_the_read_queue_refuses_at_draw_time_is_marked_visibly(void)
+{
+    const struct fake_draw *draw;
+
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\nwait 6000\n");
+    texture_cache_clear();
+    fake_reader_refuse_submits(1);
+    draw_frame();
+    CHECK_HAS_TEXT(log_text(), "texture missing name=line_a reason=read_refused");
+    draw = fake_renderer_draw(fake_renderer_draw_count() - 1);
+    CHECK(draw->is_filled_rect);
+    CHECK(draw->color.red == 1.0f && draw->color.green == 0.0f && draw->color.blue == 1.0f);
+    CHECK(nearly_equal(draw->screen_area.y, 72.0f));
+    CHECK(nearly_equal(draw->screen_area.x + draw->screen_area.width / 2.0f, 480.0f));
+    fake_reader_refuse_submits(0);
+    viewer_app_stop();
+}
+
+static void test_a_text_texture_the_full_cache_cannot_hold_is_marked_visibly(void)
+{
+    const struct fake_draw *draw;
+    char name[ASSET_NAME_MAX];
+    int index;
+
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\nwait 6000\n");
+    texture_cache_clear();
+    fake_reader_hold_reads(1);
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
+        snprintf(name, sizeof(name), "filler_%d", index);
+        texture_cache_use_or_start_loading(name);
+    }
+    draw_frame();
+    CHECK_HAS_TEXT(log_text(), "texture_cache full name=line_a");
+    draw = fake_renderer_draw(fake_renderer_draw_count() - 1);
+    CHECK(draw->is_filled_rect);
+    CHECK(draw->color.red == 1.0f && draw->color.green == 0.0f && draw->color.blue == 1.0f);
+    CHECK(nearly_equal(draw->screen_area.y, 72.0f));
+    fake_reader_hold_reads(0);
+    fake_reader_release_reads(fake_reader_pending_count());
+    viewer_app_stop();
+}
+
+static void test_the_opening_bubble_and_its_text_land_on_whole_screen_pixels(void)
+{
+    const struct fake_draw *bubble;
+    const struct fake_draw *text;
+
+    set_up_text_scene("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 0 192\noverlay 3 art 98.8444 242.8444 30 20 0\noverlay 4 line_a 113.7778 251.0222 71.1111 18.4889 0\nwait 6000\n");
+    run_frames(1);
+    draw_frame();
+    bubble = find_draw_with_texture_width(OVERLAY_ART_WIDTH);
+    text = find_draw_with_texture_width(TEXT_LINE_WIDTH);
+    CHECK(nearly_equal(bubble->screen_area.x, 278.0f));
+    CHECK(nearly_equal(bubble->screen_area.y, 147.0f));
+    CHECK(nearly_equal(text->screen_area.x, 320.0f));
+    CHECK(nearly_equal(text->screen_area.y, 170.0f));
+    CHECK(nearly_equal(text->screen_area.width, TEXT_LINE_WIDTH));
+    viewer_app_stop();
+}
+
+static void test_an_overlay_goes_through_the_view_and_grows_about_its_centre(void)
+{
+    const struct fake_draw *overlay;
+    float center_x;
+    float center_y;
+    float full_width;
+    float full_height;
+
+    set_up_text_scene("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 0 192\noverlay 1 art 100 240 40 20 60\nwait 6000\n");
+    full_width = 40.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    full_height = 20.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    center_x = 120.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    center_y = RENDERER_HEIGHT - (384.0f - 250.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    run_frames(29);
+    draw_frame();
+    overlay = find_draw_with_texture_width(OVERLAY_ART_WIDTH);
+    CHECK(overlay != NULL);
+    CHECK(overlay->screen_area.width > full_width * 0.45f && overlay->screen_area.width < full_width * 0.55f);
+    CHECK(overlay->screen_area.height > full_height * 0.45f && overlay->screen_area.height < full_height * 0.55f);
+    CHECK(nearly_equal(overlay->screen_area.x + overlay->screen_area.width / 2.0f, center_x));
+    CHECK(nearly_equal(overlay->screen_area.y + overlay->screen_area.height / 2.0f, center_y));
+    run_frames(40);
+    draw_frame();
+    overlay = find_draw_with_texture_width(OVERLAY_ART_WIDTH);
+    CHECK(nearly_equal(overlay->screen_area.x, 100.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL));
+    CHECK(nearly_equal(overlay->screen_area.width, full_width));
+    CHECK(nearly_equal(overlay->screen_area.height, full_height));
+    CHECK(overlay->color.alpha == 1.0f);
+    viewer_app_stop();
+}
+
+static void test_a_new_room_removes_overlays_but_keeps_text(void)
+{
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\noverlay 1 art 0 0 30 20 0\nwait 6\nroom 2\nwait 6000\n");
+    draw_frame();
+    CHECK(find_draw_with_texture_width(OVERLAY_ART_WIDTH) != NULL);
+    run_frames(7);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(OVERLAY_ART_WIDTH) == NULL);
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) != NULL);
+    viewer_app_stop();
+}
+
+static void test_hiding_an_overlay_step_removes_it_at_once(void)
+{
+    set_up_text_scene("scene opening\noverlay 1 art 0 0 30 20 0\nwait 6\noverlay_hide 1\nwait 6000\n");
+    draw_frame();
+    CHECK(find_draw_with_texture_width(OVERLAY_ART_WIDTH) != NULL);
+    run_frames(7);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(OVERLAY_ART_WIDTH) == NULL);
+    viewer_app_stop();
+}
+
+static void test_the_room_draws_first_then_bubbles_then_text_then_the_fade(void)
+{
+    const struct fake_draw *last;
+
+    set_up_text_scene("scene opening\nroom 1\nplate room_a 0 0 1024 384\noverlay 1 art 0 0 30 20 0\ntext_show 1 line_a 480 72 0\nfade_out 6\nwait 6000\n");
+    run_frames(8);
+    draw_frame();
+    CHECK(index_of_draw_with_texture_width(ROOM_A_WIDTH) < index_of_draw_with_texture_width(OVERLAY_ART_WIDTH));
+    CHECK(index_of_draw_with_texture_width(OVERLAY_ART_WIDTH) < index_of_draw_with_texture_width(TEXT_LINE_WIDTH));
+    CHECK_INT(index_of_draw_with_texture_width(TEXT_LINE_WIDTH), fake_renderer_draw_count() - 2);
+    last = fake_renderer_draw(fake_renderer_draw_count() - 1);
+    CHECK(last->is_filled_rect);
+    CHECK(last->color.alpha == 1.0f);
+    viewer_app_stop();
+}
+
+static void test_bubbles_sit_under_the_dim_and_text_over_it_and_under_the_flash(void)
+{
+    const struct fake_draw *dim;
+    const struct fake_draw *flash;
+    int mask_index;
+    int overlay_index;
+    int text_index;
+    int card_index;
+
+    play_scene_and_draw_after("scene opening\nroom 1\nplate room_a 0 0 1024 384\nmask_on\noverlay 1 room_b 0 0 30 20 0\ntext_show 1 walk_page 480 72 0\ndim_to 0.25 0\nflash 0.5 6000\ncard card\nfade_out 6\nwait 6000\n", 20);
+    mask_index = index_of_mask_draw();
+    overlay_index = index_of_draw_with_texture_width(ROOM_B_WIDTH);
+    text_index = index_of_draw_with_texture_width(CHARACTER_WIDTH);
+    card_index = index_of_draw_with_texture_width(CARD_WIDTH);
+    CHECK(mask_index >= 0);
+    CHECK_INT(overlay_index, mask_index + 1);
+    dim = fake_renderer_draw(overlay_index + 1);
+    CHECK(dim->is_filled_rect);
+    CHECK(nearly_equal(dim->color.alpha, 0.75f));
+    CHECK_INT(text_index, overlay_index + 2);
+    flash = fake_renderer_draw(text_index + 1);
+    CHECK(flash->is_filled_rect);
+    CHECK(flash->color.red == 1.0f);
+    CHECK(card_index > text_index + 1);
+    CHECK(fake_renderer_draw(fake_renderer_draw_count() - 1)->color.alpha == 1.0f);
+    viewer_app_stop();
+}
+
+static void test_a_burst_under_the_mask_keeps_its_place_on_the_beam_view(void)
+{
+    const struct fake_draw *overlay;
+
+    set_up_text_scene("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 0 192\nmask_on\noverlay 1 art 41.6 226.14 28.4444 28.4444 0\nwait 6000\n");
+    run_frames(1);
+    draw_frame();
+    overlay = find_draw_with_texture_width(OVERLAY_ART_WIDTH);
+    CHECK(overlay != NULL);
+    CHECK(nearly_equal(overlay->screen_area.x, screen_x_when_camera_is_centred(41.6f, 0.0f)));
+    CHECK(nearly_equal(overlay->screen_area.y, screen_y_when_camera_is_centred(226.14f, 192.0f)));
+    viewer_app_stop();
+}
+
+static void test_a_scene_that_ends_leaves_its_last_text_fading_and_clears_on_replay(void)
+{
+    set_up_text_scene("scene opening\nmask_on\noverlay 1 art 0 0 30 20 0\ntext_show 1 line_a 480 72 0\ndim_to 0.5 0\nwait 6\ntext_hide 1 60\n");
+    run_frames(8);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) != NULL);
+    CHECK(find_draw_with_texture_width(OVERLAY_ART_WIDTH) != NULL);
+    CHECK(scene_stage_view()->effects.mask_is_on);
+    run_frames(62);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) == NULL);
+    press(INPUT_CROSS);
+    CHECK_INT(scene_player_next_step(), 0);
+    CHECK(!scene_stage_view()->layers.overlays[0].in_use);
+    CHECK(!scene_stage_view()->layers.text_lines[0].in_use);
+    CHECK(!scene_stage_view()->effects.mask_is_on);
+    CHECK(scene_stage_view()->effects.brightness.value == 1.0f);
+    viewer_app_stop();
+}
+
+static void test_the_end_prompt_waits_for_text_that_is_still_fading_out(void)
+{
+    int draws_during_the_fade;
+    int draws_after_the_fade;
+
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\nwait 6\ntext_hide 1 60\n");
+    run_frames(8);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
+    draw_frame();
+    draws_during_the_fade = fake_renderer_draw_count();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) != NULL);
+    run_frames(62);
+    draw_frame();
+    draws_after_the_fade = fake_renderer_draw_count();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) == NULL);
+    CHECK_INT(draws_after_the_fade, draws_during_the_fade - 1 + SCENE_END_PROMPT_VISIBLE_CHARACTERS);
+    viewer_app_stop();
+}
+
+static void test_the_end_prompt_is_not_held_back_by_text_left_on_screen(void)
+{
+    int draws_while_running;
+
+    set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\nwait 6\n");
+    draw_frame();
+    draws_while_running = fake_renderer_draw_count();
+    run_frames(8);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) != NULL);
+    CHECK_INT(fake_renderer_draw_count(), draws_while_running + SCENE_END_PROMPT_VISIBLE_CHARACTERS);
+    viewer_app_stop();
+}
+
+static void test_stopping_a_scene_clears_text_overlays_mask_dim_and_flash_together(void)
+{
+    set_up_text_scene("scene opening\nmask_on\noverlay 1 art 0 0 30 20 0\ntext_show 1 line_a 480 72 0\ndim_to 0.5 0\nflash 1 6000\nwait 6000\n");
+    run_frames(1);
+    draw_frame();
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) != NULL);
+    scene_player_stop();
+    CHECK(!scene_stage_view()->layers.overlays[0].in_use);
+    CHECK(!scene_stage_view()->layers.text_lines[0].in_use);
+    CHECK(!scene_stage_view()->effects.mask_is_on);
+    CHECK(scene_stage_view()->effects.brightness.value == 1.0f);
+    CHECK(scene_stage_view()->effects.flash_level.value == 0.0f);
+    viewer_app_stop();
+}
+
 static void write_card_scene(char *text, unsigned int text_size, int texture_count)
 {
     unsigned int used;
@@ -2007,6 +2479,33 @@ int main(void)
     test_making_the_iris_pattern_keeps_no_memory_once_it_is_a_texture();
     test_a_failed_iris_pattern_is_logged_and_the_iris_stays_black_around_its_circle();
     test_an_app_that_never_played_a_scene_draws_at_full_brightness();
+    test_text_is_drawn_centred_at_its_top_with_its_fade_as_alpha();
+    test_text_does_not_hold_the_script();
+    test_a_line_starts_invisible_and_is_not_drawn_until_it_has_alpha();
+    test_a_hidden_line_fades_and_is_then_gone();
+    test_hiding_all_text_cuts_every_line_in_one_frame();
+    test_replaying_a_scene_clears_its_text_and_overlays();
+    test_leaving_a_scene_for_browsing_clears_its_text_and_overlays();
+    test_skipping_a_hold_with_cross_strands_no_text();
+    test_skipping_to_the_end_of_a_scene_still_finishes_the_last_fade();
+    test_pausing_stops_text_fades();
+    test_text_textures_are_loaded_before_the_scene_starts();
+    test_a_missing_text_texture_is_marked_visibly();
+    test_a_line_hidden_with_no_fade_is_gone_from_that_frame();
+    test_a_text_texture_still_loading_at_draw_time_draws_nothing_until_it_arrives();
+    test_a_text_texture_the_read_queue_refuses_at_draw_time_is_marked_visibly();
+    test_a_text_texture_the_full_cache_cannot_hold_is_marked_visibly();
+    test_the_opening_bubble_and_its_text_land_on_whole_screen_pixels();
+    test_an_overlay_goes_through_the_view_and_grows_about_its_centre();
+    test_a_new_room_removes_overlays_but_keeps_text();
+    test_hiding_an_overlay_step_removes_it_at_once();
+    test_the_room_draws_first_then_bubbles_then_text_then_the_fade();
+    test_bubbles_sit_under_the_dim_and_text_over_it_and_under_the_flash();
+    test_a_burst_under_the_mask_keeps_its_place_on_the_beam_view();
+    test_a_scene_that_ends_leaves_its_last_text_fading_and_clears_on_replay();
+    test_the_end_prompt_waits_for_text_that_is_still_fading_out();
+    test_the_end_prompt_is_not_held_back_by_text_left_on_screen();
+    test_stopping_a_scene_clears_text_overlays_mask_dim_and_flash_together();
     test_scene_runs_steps_in_order_and_finishes();
     test_scene_fades_and_pans_over_time();
     test_scene_survives_bad_files_and_missing_assets();

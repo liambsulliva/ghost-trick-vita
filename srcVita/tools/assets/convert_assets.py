@@ -2,16 +2,21 @@ import argparse
 import concurrent.futures
 import json
 import os
+import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import asset_writers
 import audio_file
 import bake_record
+import bubble_art
 import frame_layout
+import narration
 import pack_files
 import texture_encoder
 import timeline_file
@@ -24,6 +29,14 @@ TEXTURE_TOOL_PATH = os.path.join(SRC_VITA_FOLDER, "build", "tools", "texture_too
 FORMAT_NAMES = {asset_writers.FORMAT_RGBA8888: "RGBA8888", asset_writers.FORMAT_DXT5: "DXT5", asset_writers.FORMAT_DXT1: "DXT1"}
 OUTPUT_FOLDER_NAMES = ("textures", "animations", "scenes", "music", "sounds")
 TEXTURE_CODE_FILES = ["asset_writers.py", "astc_decode.c", "astc_decode.h", "etc_decode.c", "etc_decode.h", "texture_encoder.py", "texture_tool.c"]
+COMPOSED_CODE_FILES = TEXTURE_CODE_FILES + ["bubble_art.py"]
+TEXT_CODE_FILES = ["asset_writers.py", "font_file.py", "line_renderer.py", "message_file.py", "narration.py", "texture_encoder.py"]
+WORK_FOLDER_PREFIX = "ghost_trick_convert_"
+OLD_WORK_FOLDER_SECONDS = 3600
+EXIT_CODE_BASE_FOR_SIGNALS = 128
+STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+
+stop_signal_number = None
 
 
 class ConversionFailed(ValueError):
@@ -73,9 +86,21 @@ def add_screen_texture_jobs(jobs, screen_textures):
         jobs[texture["name"]] = dict(texture)
 
 
-def texture_code_fingerprint():
+def code_fingerprint_with_magick(file_names):
     magick_version = subprocess.run(["magick", "-version"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout
-    return bake_record.code_fingerprint(TEXTURE_CODE_FILES, magick_version.decode("utf-8", "replace"))
+    return bake_record.code_fingerprint(file_names, magick_version.decode("utf-8", "replace"))
+
+
+def texture_code_fingerprint():
+    return code_fingerprint_with_magick(TEXTURE_CODE_FILES)
+
+
+def composed_code_fingerprint():
+    return code_fingerprint_with_magick(COMPOSED_CODE_FILES)
+
+
+def text_code_fingerprint():
+    return code_fingerprint_with_magick(TEXT_CODE_FILES)
 
 
 def size_for_job(job, source_size):
@@ -84,18 +109,6 @@ def size_for_job(job, source_size):
     if "crop" in job:
         return frame_layout.target_size(job["crop"][2], job["crop"][3])
     return frame_layout.target_size(source_size[0], source_size[1])
-
-
-def texture_result(name, source_size, gtex_bytes):
-    width, height, texture_format = asset_writers.read_gtex_header(gtex_bytes)
-    return {
-        "name": name,
-        "source_size": source_size,
-        "width": width,
-        "height": height,
-        "format": texture_format,
-        "byte_count": len(gtex_bytes),
-    }
 
 
 def convert_one_texture(packs, work_folder, job, record, code):
@@ -108,7 +121,7 @@ def convert_one_texture(packs, work_folder, job, record, code):
     if gtex_bytes is None:
         gtex_bytes, _ = texture_encoder.convert_tex_to_gtex(TEXTURE_TOOL_PATH, work_folder, job["name"], tex_bytes, width, height, job.get("crop"))
         record.store(relative_path, key, gtex_bytes)
-    return texture_result(job["name"], source_size, gtex_bytes)
+    return bake_record.texture_result(job["name"], source_size, gtex_bytes)
 
 
 def convert_all_textures(packs, jobs, work_folder, record):
@@ -117,15 +130,34 @@ def convert_all_textures(packs, jobs, work_folder, record):
     failures = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as pool:
         futures = {job["name"]: pool.submit(convert_one_texture, packs, work_folder, job, record, code) for job in jobs.values()}
-        for name, future in futures.items():
-            try:
-                results.append(future.result())
-            except Exception as error:
-                failures.append((name, str(error)))
-    if failures:
-        raise ConversionFailed(failures)
-    results.sort(key=lambda result: result["name"])
-    return results
+        try:
+            for name, future in futures.items():
+                try:
+                    results.append(future.result())
+                except Exception as error:
+                    failures.append((name, str(error)))
+        except BaseException:
+            for future in futures.values():
+                future.cancel()
+            raise
+    return results, failures
+
+
+def convert_composed_textures(packs, descriptions, work_folder, record):
+    code = composed_code_fingerprint() if descriptions else None
+    results = []
+    failures = []
+    for description in descriptions:
+        try:
+            results.append(bubble_art.bake_composed_texture(packs, TEXTURE_TOOL_PATH, work_folder, description, record, code))
+        except Exception as error:
+            failures.append((description["name"], str(error)))
+    return results, failures
+
+
+def convert_text_textures(packs, set_description, messages, work_folder, record):
+    code = text_code_fingerprint() if narration.set_uses_text(set_description) else None
+    return narration.bake_text_textures(packs, set_description, messages, work_folder, record, code)
 
 
 def plate_size_lookup(texture_results, plates):
@@ -172,6 +204,19 @@ def check_steps_refer_to_known_assets(steps, texture_names, animation_names, mus
             raise ValueError("music step names an unknown track: " + step[1])
         if kind == "sound" and step[1] not in sound_names:
             raise ValueError("sound step names an unknown sound: " + step[1])
+        if kind in ("text_show", "overlay") and step[2] not in texture_names:
+            raise ValueError(kind + " names an unknown texture: " + step[2])
+
+
+def check_texture_names_differ(names):
+    seen = set()
+    repeated = []
+    for name in names:
+        if name.lower() in seen:
+            repeated.append((name, "another texture has this name"))
+        seen.add(name.lower())
+    if repeated:
+        raise ConversionFailed(repeated)
 
 
 def read_audio_streams(packs, entries):
@@ -225,6 +270,7 @@ def write_outputs(output_folder, record, texture_results, files, manifest):
     bake_record.remove_files_not_listed(output_folder, OUTPUT_FOLDER_NAMES, wanted_paths)
     record.forget_all_except(wanted_paths)
     bake_record.write_if_different(os.path.join(output_folder, "manifest.txt"), manifest)
+    bake_record.remove_leftover_temporary_file(os.path.join(output_folder, "manifest.txt"))
 
 
 def print_summary(record, texture_results, animation_texts, steps, music_results, sound_results):
@@ -259,47 +305,108 @@ def animation_texts_for(set_description, timelines, crops):
     return texts
 
 
-def convert_set_description(set_description, output_folder, apk_folder):
+def work_folder_is_old(path, oldest_kept_time):
+    try:
+        return os.path.getmtime(path) < oldest_kept_time
+    except OSError:
+        return False
+
+
+def remove_old_work_folders():
+    temp_folder = tempfile.gettempdir()
+    oldest_kept_time = time.time() - OLD_WORK_FOLDER_SECONDS
+    for name in os.listdir(temp_folder):
+        path = os.path.join(temp_folder, name)
+        if name.startswith(WORK_FOLDER_PREFIX) and work_folder_is_old(path, oldest_kept_time):
+            shutil.rmtree(path, ignore_errors=True)
+
+
+def delete_work_folder(work_folder):
+    try:
+        shutil.rmtree(work_folder, ignore_errors=True)
+    except SystemExit:
+        shutil.rmtree(work_folder, ignore_errors=True)
+        raise
+
+
+def convert_set_description(set_description, output_folder, apk_folder, text_key):
+    remove_old_work_folders()
     packs = pack_files.PackSet(apk_folder)
     animations = set_description.get("animations", [])
     plates = set_description.get("plates", [])
     timelines = load_timelines(packs, animations)
     jobs = {}
     crops = add_atlas_page_jobs(jobs, animations, timelines)
+    atlas_page_names = list(jobs)
     add_plate_jobs(jobs, plates)
     add_screen_texture_jobs(jobs, set_description.get("screen_textures", []))
     animation_texts = animation_texts_for(set_description, timelines, crops)
     music_results = read_audio_streams(packs, set_description.get("music", []))
     sound_results = read_audio_streams(packs, set_description.get("sounds", []))
+    messages = narration.read_text_messages(packs, set_description, text_key)
+    check_texture_names_differ(atlas_page_names + [entry["name"] for entry in plates + set_description.get("screen_textures", []) + set_description.get("composed_textures", [])] + narration.text_texture_names(set_description, messages))
     make_output_folders(output_folder)
     record = bake_record.BakeRecord(output_folder)
     try:
-        with tempfile.TemporaryDirectory(dir=output_folder, prefix="work_") as work_folder:
-            texture_results = convert_all_textures(packs, jobs, work_folder, record)
+        work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
+        try:
+            texture_results, failures = convert_all_textures(packs, jobs, work_folder, record)
+            narration_lines, text_results, text_failures = convert_text_textures(packs, set_description, messages, work_folder, record)
+            composed_results, composed_failures = convert_composed_textures(packs, set_description.get("composed_textures", []), work_folder, record)
+        finally:
+            delete_work_folder(work_folder)
+        failures = failures + text_failures + composed_failures
+        if failures:
+            raise ConversionFailed(failures)
+        texture_results = sorted(texture_results + text_results + composed_results, key=lambda result: result["name"])
         steps = expand_steps(set_description, plate_size_lookup(texture_results, plates))
-        check_steps_refer_to_known_assets(steps, set(jobs.keys()), set(animation_texts.keys()), set(result["name"] for result in music_results), set(result["name"] for result in sound_results))
+        steps = narration.expand_text_steps(steps, narration_lines, {result["name"]: (result["width"], result["height"]) for result in texture_results})
+        check_steps_refer_to_known_assets(steps, set(result["name"] for result in texture_results), set(animation_texts.keys()), set(result["name"] for result in music_results), set(result["name"] for result in sound_results))
         files = audio_output_files(music_results, sound_results)
         files.update(text_output_files(set_description, animation_texts, steps))
         write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts))
     finally:
         record.save()
     print_summary(record, texture_results, animation_texts, steps, music_results, sound_results)
+    narration.print_narration_summary(narration_lines)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Converts the remaster's files named by a set description into Vita assets.")
-    parser.add_argument("--set", required=True, help="a set description: its name in tools/assets without .json, or a path to a JSON file")
-    parser.add_argument("--output", required=True, help="folder to write manifest.txt, textures, animations, scenes, music and sounds into")
-    parser.add_argument("--apk-folder", default=DEFAULT_APK_FOLDER, help="folder holding the remaster's pack files")
-    arguments = parser.parse_args()
-    subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)
+def exit_so_the_work_folder_is_deleted(signal_number, _frame):
+    global stop_signal_number
+    for stop_signal in STOP_SIGNALS:
+        signal.signal(stop_signal, signal.SIG_IGN)
+    stop_signal_number = signal_number
+    sys.exit(EXIT_CODE_BASE_FOR_SIGNALS + signal_number)
+
+
+def convert_and_report(set_description, arguments):
     try:
-        convert_set_description(load_set_description(arguments.set), arguments.output, arguments.apk_folder)
+        text_key = narration.load_text_key(set_description, arguments.apk_folder)
+        subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)
+        convert_set_description(set_description, arguments.output, arguments.apk_folder, text_key)
+    except narration.NarrationError as error:
+        print("error: " + str(error), file=sys.stderr)
+        return 1
     except ConversionFailed as failed:
         for name, reason in failed.failures:
             print("failed: " + name + ": " + reason, file=sys.stderr)
         return 1
     return 0
+
+
+def main():
+    for stop_signal in STOP_SIGNALS:
+        signal.signal(stop_signal, exit_so_the_work_folder_is_deleted)
+    parser = argparse.ArgumentParser(description="Converts the remaster's files named by a set description into Vita assets.")
+    parser.add_argument("--set", required=True, help="a set description: its name in tools/assets without .json, or a path to a JSON file")
+    parser.add_argument("--output", required=True, help="folder to write manifest.txt, textures, animations, scenes, music and sounds into")
+    parser.add_argument("--apk-folder", default=DEFAULT_APK_FOLDER, help="folder holding the remaster's pack files")
+    arguments = parser.parse_args()
+    set_description = load_set_description(arguments.set)
+    exit_code = convert_and_report(set_description, arguments)
+    if stop_signal_number is not None:
+        return EXIT_CODE_BASE_FOR_SIGNALS + stop_signal_number
+    return exit_code
 
 
 if __name__ == "__main__":

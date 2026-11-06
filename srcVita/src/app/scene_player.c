@@ -101,6 +101,21 @@ static void run_step(const struct scene_step *step)
     case SCENE_STEP_HIDE_CARD:
         scene_stage_hide_card();
         break;
+    case SCENE_STEP_TEXT_SHOW:
+        scene_layers_show_text(scene_stage_layers(), step->layer_item_id, step->texture_name, step->x, step->y, step->ticks);
+        break;
+    case SCENE_STEP_TEXT_HIDE:
+        scene_layers_hide_text(scene_stage_layers(), step->layer_item_id, step->ticks);
+        break;
+    case SCENE_STEP_TEXT_HIDE_ALL:
+        scene_layers_hide_all_text(scene_stage_layers());
+        break;
+    case SCENE_STEP_OVERLAY:
+        scene_layers_show_overlay(scene_stage_layers(), step->layer_item_id, step->texture_name, step->x, step->y, step->width, step->height, step->ticks);
+        break;
+    case SCENE_STEP_OVERLAY_HIDE:
+        scene_layers_hide_overlay(scene_stage_layers(), step->layer_item_id);
+        break;
     case SCENE_STEP_FADE_OUT:
         begin_fade(1.0f, step->ticks);
         break;
@@ -207,6 +222,8 @@ static void preload_step_assets(const struct scene_step *step)
     switch (step->kind) {
     case SCENE_STEP_PLATE:
     case SCENE_STEP_CARD:
+    case SCENE_STEP_TEXT_SHOW:
+    case SCENE_STEP_OVERLAY:
         texture_cache_use_or_start_loading(step->texture_name);
         break;
     case SCENE_STEP_OBJECT:
@@ -341,6 +358,7 @@ int scene_player_play(const char *scene_name)
         return 0;
     }
     scene_stage_clear_room();
+    scene_layers_clear(scene_stage_layers());
     animation_library_clear();
     mem_free(current_scene);
     current_scene = scene;
@@ -372,6 +390,7 @@ void scene_player_update(unsigned long long elapsed_us)
         elapsed_us = LONGEST_UPDATE_US;
     }
     scene_stage_advance_objects(elapsed_us);
+    scene_layers_advance(scene_stage_layers(), elapsed_us);
     if (status == SCENE_PLAYER_RUNNING) {
         run_script(elapsed_us);
     } else {
@@ -386,6 +405,7 @@ void scene_player_stop(void)
     scene_stage_set_fade(0.0f);
     scene_stage_hide_card();
     scene_effects_reset(scene_stage_effects());
+    scene_layers_clear(scene_stage_layers());
     reset_script_progress();
 }
 

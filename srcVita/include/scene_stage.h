@@ -4,6 +4,7 @@
 #include "animation.h"
 #include "asset_name.h"
 #include "scene_effects.h"
+#include "scene_layers.h"
 
 #define SCENE_PLATE_MAX 16
 #define SCENE_OBJECT_MAX 64
@@ -35,11 +36,13 @@ struct scene_stage {
     float fade_amount;
     char card_texture[ASSET_NAME_MAX];
     struct scene_effects effects;
+    struct scene_layers layers;
 };
 
 void scene_stage_reset(void);
 const struct scene_stage *scene_stage_view(void);
 struct scene_effects *scene_stage_effects(void);
+struct scene_layers *scene_stage_layers(void);
 void scene_stage_clear_room(void);
 void scene_stage_add_plate(const char *texture_name, float x, float y, float width, float height);
 int scene_stage_set_object(const char *object_name, const char *animation_name, float x, float y, int layer, int is_flipped);

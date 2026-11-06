@@ -71,6 +71,11 @@ struct scene_effects *scene_stage_effects(void)
     return &stage.effects;
 }
 
+struct scene_layers *scene_stage_layers(void)
+{
+    return &stage.layers;
+}
+
 void scene_stage_request_animation_textures(const struct animation *animation)
 {
     unsigned int frame;
@@ -128,6 +133,7 @@ void scene_stage_clear_room(void)
     int index;
 
     stage.plate_count = 0;
+    scene_layers_clear_overlays(&stage.layers);
     for (index = 0; index < SCENE_OBJECT_MAX; index++) {
         if (stage.objects[index].in_use) {
             log_object_coverage(&stage.objects[index]);

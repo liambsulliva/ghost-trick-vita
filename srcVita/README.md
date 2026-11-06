@@ -4,7 +4,7 @@ The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real
 
 The opening is a script for now, not the game running. The DS game logic, text boxes, audio and player input are not connected yet. See [What is missing](#what-is-missing).
 
-No game data lives in this folder. Converted assets, captures and reference video stay in the ignored `extracted/` and `build/` folders.
+No game data lives in this folder. Converted assets, captures, reference video and the text key stay in the ignored `extracted/` and `build/` folders.
 
 ## Where things are
 
@@ -18,8 +18,10 @@ No game data lives in this folder. Converted assets, captures and reference vide
 | `tests/fakes/` | Stand-ins for `src/vita` that the C tests link against |
 | `tests/tools/` | Tests for the asset converter |
 | `tools/assets/` | The asset converter |
+| `tools/assets/extract_text_key.py` | Finds the text key in your own copy of the Android package |
 | `tools/vita_loop.py` | Installs, launches and reads back from the Vita |
 | `tools/longplay_check.py` | Compares the Vita's screen against the reference video |
+| `tools/audio_check.py` | Judges a run log's audio with no listener |
 | `tools/mutation_check.py` | Breaks the code on purpose to prove the tests notice |
 | `docs/asset_format.md` | The file formats shared by the converter and the app |
 
@@ -55,13 +57,29 @@ make -C srcVita test-all
 python3 -I srcVita/tools/mutation_check.py
 ```
 
-Every mutation should be caught. A survivor means the tests have a gap.
+Every mutation should be caught. A survivor means the tests have a gap. The run works on a copy of this folder, so it leaves your files alone. It breaks one thing at a time, in the C code and the Python tools, including the text key tool. A C mutation rebuilds only the file it changed. A Python mutation reruns all the Python tests, except that `audio_check.py` and `audio_file.py` run only the audio tests. The last full run had 558 mutations and took about 75 minutes on a busy Mac, about an hour of it in the Python ones. It does not cover `tools/rom_audit.py`, because it copies only this folder.
+
+Before pushing, run the audit from the top of the repository with your key file in place. If it prints `key search skipped`, the key was not searched for.
+
+```bash
+python3 -I tools/rom_audit.py
+```
 
 ## Make the assets
 
 [The top-level README](../README.md#run-it-on-a-vita) explains how to copy the game files out of your Android package, convert them and put them on the Vita. The app loads them from `ux0:data/ghosttrick/assets/`.
 
 `tools/assets/chapter1_opening.json` lists what goes into the set and scripts the scene.
+
+Converting needs the text key, which step 2 of the top-level README finds in your own copy of the package.
+
+Narration and bubble text are rendered by the converter, not the app. `convert_assets.py` reads the English text from the remaster's `.msg` files, decodes its `.oft` fonts into its temporary work folder, and draws each line with `magick` into its own DXT5 texture. The app draws these like any other texture, so it has no fonts. `magick` needs FreeType support, which `magick -list format | grep OTF` shows. Decoded fonts are deleted when the converter finishes, fails or is stopped with SIGINT, SIGTERM or SIGHUP, even twice. A SIGKILL can leave them in the system's temporary folder, and the next conversion removes any such folder older than an hour. The output folder holds each line only as a picture, and no story text or font reaches the output folder or git. The file formats and scene steps are in `docs/asset_format.md`.
+
+Music and sounds are the remaster's own Ogg Vorbis files, unchanged apart from losing their wrappers.
+
+The converter bakes only what changed. `.bake_record.json` in the output folder holds hashes for each texture, so one is baked again only when its source bytes, its settings or the code that bakes it changes, or when its output file is missing or edited. Music, sounds, animations, the scene and the manifest are rewritten only when their bytes differ. On this Mac a clean conversion took about 4 seconds and a repeat with nothing changed about 0.2 seconds, and a repeat and a clean run gave the same files byte for byte. If a texture fails, it is named on stderr with `failed:`, the rest still bake, and the last good scene and manifest stay.
+
+An animation can have up to 1024 frames, and the app allocates each animation's frame list to the size its own file needs.
 
 ## Run on the Vita
 
@@ -104,6 +122,19 @@ python3 -I srcVita/tools/longplay_check.py
 ```
 
 It first checks that the Vita has the same `eboot.bin` and manifest as this machine. Then it uploads temporary scenes that hold one exact pose, captures each on the Vita, deletes them, and compares each capture with the matching video frame. Each measured sprite is also captured alone, so only its own pixels are scored. Only the DS camera's 720 by 540 window is compared, because the video shows no more than that. The check fails if a sprite sits more than 0.4 DS pixels from the video, if a sprite or the picture differs too much, if motion frames match the video out of order, or if the screen's left and right edges are wrong: wide rooms must have art there, and the close-up and chapter card must have black. Side-by-side images land in `build/longplay_check/`. Use `--score-only` to re-score saved captures without the device.
+
+## How the music thread takes requests
+
+The main thread never touches the decoder. It posts a request to the mailbox and the music worker acts on it.
+
+- Each request replaces the last. post_wish overwrites the one struct music_wish in the mailbox and adds 1 to mailbox.generation, so the worker only ever sees the newest request.
+- The worker keeps two counters. handled_generation is the last request it acted on while idle. fade_generation is the last request it has reacted to while playing. start_playing sets fade_generation = handled_generation, so the request that started the music does not fade it straight back out.
+- While playing, a generation different from fade_generation starts a fade from the current gain, over that request's fade_ticks. A newer request during a fade replaces it, again from the current gain.
+- While idle, a generation different from handled_generation is acted on: load the track if it changed, publish prepared_name, and start it if asked to play.
+- A stop goes in this order: the fade reaches zero, one zero grain is sent, the last window is logged, the port drains and closes, and music stopped is logged. Only then does the worker look at the newest request.
+- The worker owns the decoder, the track memory, the grain buffer and the port. The main thread touches only the mailbox and prepared_name, and only while holding audio_mailbox_lock.
+- Nothing logs while holding the lock, so a slow log write cannot hold up the other threads.
+- music_starve is the one exception: it does not change the generation, and the worker clears it when it reads it.
 
 ## Debug controls
 

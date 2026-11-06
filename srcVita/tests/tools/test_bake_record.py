@@ -1,7 +1,9 @@
+import json
 import os
 import tempfile
 import unittest
 
+import asset_writers
 import bake_record
 
 CODE = "code"
@@ -35,6 +37,19 @@ class BakeRecordTests(unittest.TestCase):
         self.assertNotEqual(self.record.key_for(CODE, {"width": 8, "crop": [0, 0, 8, 8]}, SOURCE), self.key)
         self.assertNotEqual(self.record.key_for(CODE, SETTINGS, b"other source"), self.key)
 
+    def test_a_result_reads_its_size_and_format_from_the_file_and_counts_its_bytes(self):
+        gtex_bytes = asset_writers.gtex_bytes(8, 4, asset_writers.FORMAT_DXT5, bytes(32))
+        self.assertEqual(bake_record.texture_result("a", (16, 8), gtex_bytes), {"name": "a", "source_size": (16, 8), "width": 8, "height": 4, "format": asset_writers.FORMAT_DXT5, "byte_count": len(gtex_bytes)})
+        self.assertEqual(bake_record.result_of_own_size("a", gtex_bytes)["source_size"], (8, 4))
+
+    def test_details_stored_with_a_file_come_back_after_reopening(self):
+        self.record.store(OUTPUT_PATH, self.key, b"baked", {"natural_width": 12.5})
+        self.record.save()
+        self.assertEqual(self.reopened().details_of(OUTPUT_PATH), {"natural_width": 12.5})
+
+    def test_a_file_stored_without_details_has_none_in_its_entry(self):
+        self.assertNotIn("details", self.record.entries[OUTPUT_PATH])
+
     def test_settings_order_does_not_change_the_key(self):
         self.assertEqual(self.record.key_for(CODE, {"crop": [0, 0, 8, 8], "width": 4}, SOURCE), self.key)
 
@@ -57,6 +72,29 @@ class BakeRecordTests(unittest.TestCase):
         with open(os.path.join(self.folder, bake_record.RECORD_FILE_NAME), "w", encoding="ascii") as output:
             output.write("not json")
         self.assertIsNone(self.reopened().read_if_current(OUTPUT_PATH, self.key))
+
+    def write_record_text(self, text):
+        with open(os.path.join(self.folder, bake_record.RECORD_FILE_NAME), "w", encoding="ascii") as output:
+            output.write(text)
+
+    def test_a_record_of_the_wrong_shape_starts_empty(self):
+        for text in ("[]", "null", "3", '"text"'):
+            self.write_record_text(text)
+            self.assertEqual(self.reopened().entries, {}, text)
+
+    def test_an_unusable_entry_is_dropped_and_the_good_ones_stay(self):
+        good = {"key": self.key, "output": bake_record.sha256_of_bytes(b"baked")}
+        unusable = [{}, "text", None, 3, [], {"key": self.key}, {"output": "o"}, {"key": 1, "output": "o"}, {"key": "k", "output": 1}, {"key": "k", "output": "o", "details": "text"}]
+        entries = {"textures/bad_%d.gtex" % index: entry for index, entry in enumerate(unusable)}
+        entries[OUTPUT_PATH] = good
+        self.write_record_text(json.dumps(entries))
+        record = self.reopened()
+        self.assertEqual(list(record.entries), [OUTPUT_PATH])
+        self.assertEqual(record.read_if_current(OUTPUT_PATH, self.key), b"baked")
+
+    def test_details_of_a_file_that_has_none_are_empty(self):
+        self.assertEqual(self.reopened().details_of(OUTPUT_PATH), {})
+        self.assertEqual(self.reopened().details_of("textures/absent.gtex"), {})
 
     def test_forgetting_keeps_only_the_named_files(self):
         self.record.store("textures/b.gtex", "b key", b"b")
@@ -96,6 +134,13 @@ class FileHelperTests(unittest.TestCase):
         self.assertTrue(bake_record.write_if_different(self.path, b"two"))
         with open(self.path, "rb") as source:
             self.assertEqual(source.read(), b"two")
+
+    def test_a_leftover_temporary_file_is_removed_and_its_absence_is_fine(self):
+        with open(self.path + bake_record.TEMPORARY_SUFFIX, "wb") as output:
+            output.write(b"part")
+        bake_record.remove_leftover_temporary_file(self.path)
+        self.assertFalse(os.path.exists(self.path + bake_record.TEMPORARY_SUFFIX))
+        bake_record.remove_leftover_temporary_file(self.path)
 
     def test_only_listed_files_stay(self):
         os.makedirs(os.path.join(self.folder, "textures"))

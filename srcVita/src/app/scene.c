@@ -81,6 +81,26 @@ static int read_step(const char *line, struct scene_step *step)
         step->kind = SCENE_STEP_HIDE_CARD;
         return 1;
     }
+    if (text_line_starts_with(line, "text_show ")) {
+        step->kind = SCENE_STEP_TEXT_SHOW;
+        return sscanf(line, "text_show %d " ASSET_NAME_SCAN " %f %f %d", &step->layer_item_id, step->texture_name, &step->x, &step->y, &step->ticks) == 5 && step->ticks >= 0;
+    }
+    if (text_line_starts_with(line, "text_hide ")) {
+        step->kind = SCENE_STEP_TEXT_HIDE;
+        return sscanf(line, "text_hide %d %d", &step->layer_item_id, &step->ticks) == 2 && step->ticks >= 0;
+    }
+    if (strcmp(line, "text_hide_all") == 0) {
+        step->kind = SCENE_STEP_TEXT_HIDE_ALL;
+        return 1;
+    }
+    if (text_line_starts_with(line, "overlay ")) {
+        step->kind = SCENE_STEP_OVERLAY;
+        return sscanf(line, "overlay %d " ASSET_NAME_SCAN " %f %f %f %f %d", &step->layer_item_id, step->texture_name, &step->x, &step->y, &step->width, &step->height, &step->ticks) == 7 && step->ticks >= 0;
+    }
+    if (text_line_starts_with(line, "overlay_hide ")) {
+        step->kind = SCENE_STEP_OVERLAY_HIDE;
+        return sscanf(line, "overlay_hide %d", &step->layer_item_id) == 1;
+    }
     if (text_line_starts_with(line, "fade_out ")) {
         step->kind = SCENE_STEP_FADE_OUT;
         return sscanf(line, "fade_out %d", &step->ticks) == 1 && step->ticks > 0;

@@ -15,6 +15,15 @@ MIP_RECORD_SIZE = 16
 TYPE_SHEET = 147581786
 TYPE_RECORD = 4048237731
 TYPE_ROOT_ANIMATION = 240123514
+GMSG_MAGIC = b"GMSG"
+GMSG_VERSION = 22
+GMSG_ENTRY_COUNT_OFFSET = 16
+GMSG_LANGUAGE_COUNT_OFFSET = 24
+GMSG_STRING_AREA_POINTER_OFFSET = 32
+GMSG_ENTRY_POINTERS_OFFSET = 72
+GMSG_ENTRY_NAME_POINTER_OFFSET = 24
+GMSG_ENTRY_TEXT_POINTERS_OFFSET = 40
+FAKE_TEXT_KEY = bytes(range(16))
 
 
 def tex_file(width, height, format_code, payload, row_pitch):
@@ -202,3 +211,141 @@ def write_apk_folder(folder, files):
     for file_name, member_name in pack_files.PACK_SOURCES[1:]:
         with zipfile.ZipFile(os.path.join(folder, file_name), "w", zipfile.ZIP_STORED) as archive:
             archive.writestr(member_name, pack_bytes([]))
+
+
+def key_text_forms(key):
+    pairs = ["%02x" % value for value in key]
+    decimals = [str(value) for value in key]
+    texts = [
+        "".join(pairs),
+        "".join(pairs).upper(),
+        " ".join(pairs),
+        " ".join(pairs).upper(),
+        ":".join(pairs),
+        ", ".join("0x" + pair for pair in pairs),
+        "".join("\\x" + pair for pair in pairs),
+        ", ".join(decimals),
+        " ".join(decimals),
+        ",".join(decimals),
+        repr(key),
+    ]
+    return [key, key[:8], key[8:], key.hex()[:16].encode("ascii")] + [text.encode("ascii") for text in texts]
+
+
+def write_text_key(folder, key=FAKE_TEXT_KEY):
+    with open(os.path.join(folder, "text_key.bin"), "wb") as output:
+        output.write(key)
+
+
+def gmsg_entry_size(language_count):
+    return GMSG_ENTRY_TEXT_POINTERS_OFFSET + 8 * language_count
+
+
+def gmsg_entry_start(entry_count):
+    return GMSG_ENTRY_POINTERS_OFFSET + 8 * entry_count
+
+
+def message_file_bytes(entries, language_count=2, version=GMSG_VERSION, key=FAKE_TEXT_KEY):
+    entry_size = gmsg_entry_size(language_count)
+    entry_start = gmsg_entry_start(len(entries))
+    string_area_start = entry_start + entry_size * len(entries)
+    plain_strings = bytearray()
+
+    def add_string(text):
+        pointer = string_area_start + len(plain_strings)
+        plain_strings.extend(text.encode("utf-16-le") + b"\0\0")
+        return pointer
+
+    header = bytearray(GMSG_ENTRY_POINTERS_OFFSET)
+    struct.pack_into("<I4s", header, 0, version, GMSG_MAGIC)
+    struct.pack_into("<I", header, GMSG_ENTRY_COUNT_OFFSET, len(entries))
+    struct.pack_into("<I", header, GMSG_LANGUAGE_COUNT_OFFSET, language_count)
+    struct.pack_into("<Q", header, GMSG_STRING_AREA_POINTER_OFFSET, string_area_start)
+    pointers = bytearray()
+    entry_area = bytearray()
+    for index, (name, texts) in enumerate(entries):
+        pointers.extend(struct.pack("<Q", entry_start + entry_size * index))
+        entry = bytearray(entry_size)
+        struct.pack_into("<Q", entry, GMSG_ENTRY_NAME_POINTER_OFFSET, add_string(name))
+        for language, text in enumerate(texts):
+            struct.pack_into("<Q", entry, GMSG_ENTRY_TEXT_POINTERS_OFFSET + 8 * language, add_string(text))
+        entry_area.extend(entry)
+    encoded = bytearray(len(plain_strings))
+    previous = 0
+    for index, value in enumerate(plain_strings):
+        encoded[index] = value ^ previous ^ key[index & 15]
+        previous = encoded[index]
+    return bytes(header) + bytes(pointers) + bytes(entry_area) + bytes(encoded)
+
+
+GLYPH_ADVANCE_EM = 0.6
+GLYPH_INK_LEFT_EM = 0.05
+GLYPH_INK_RIGHT_EM = 0.55
+GLYPH_INK_TOP_EM = 0.7
+TALL_GLYPH_INK_TOP_EM = 2.0
+TALL_CHARACTER = "|"
+FONT_UNITS_PER_EM = 1000
+FIRST_CHARACTER_IN_FONT = 32
+CHARACTER_COUNT_IN_FONT = 95
+
+
+def glyph_box(top_em):
+    left = int(GLYPH_INK_LEFT_EM * FONT_UNITS_PER_EM)
+    right = int(GLYPH_INK_RIGHT_EM * FONT_UNITS_PER_EM)
+    top = int(top_em * FONT_UNITS_PER_EM)
+    outline = struct.pack(">hhhhh", 1, left, 0, right, top)
+    outline = outline + struct.pack(">HH", 3, 0) + bytes([0x01, 0x01, 0x01, 0x01])
+    outline = outline + struct.pack(">hhhh", left, 0, right - left, 0)
+    outline = outline + struct.pack(">hhhh", 0, top, 0, -top)
+    return outline + bytes((4 - len(outline) % 4) % 4)
+
+
+def sfnt_bytes(tables, magic):
+    table_count = len(tables)
+    entry_selector = 0
+    while (2 << entry_selector) <= table_count:
+        entry_selector = entry_selector + 1
+    search_range = 16 << entry_selector
+    header = magic + struct.pack(">HHHH", table_count, search_range, entry_selector, table_count * 16 - search_range)
+    offset = len(header) + 16 * table_count
+    directory = bytearray()
+    body = bytearray()
+    for tag in sorted(tables):
+        data = tables[tag]
+        directory.extend(tag + struct.pack(">III", 0, offset + len(body), len(data)))
+        body.extend(data + bytes((4 - len(data) % 4) % 4))
+    return header + bytes(directory) + bytes(body)
+
+
+def box_font_bytes():
+    glyphs = [b"", glyph_box(GLYPH_INK_TOP_EM), glyph_box(TALL_GLYPH_INK_TOP_EM)]
+    glyph_ids = [1] * CHARACTER_COUNT_IN_FONT
+    glyph_ids[0] = 0
+    glyph_ids[ord(TALL_CHARACTER) - FIRST_CHARACTER_IN_FONT] = 2
+    advance = int(GLYPH_ADVANCE_EM * FONT_UNITS_PER_EM)
+    locations = [0]
+    for glyph in glyphs:
+        locations.append(locations[-1] + len(glyph))
+    head = struct.pack(">IIIIHHQQhhhhHHhhh", 0x00010000, 0x00010000, 0, 0x5F0F3CF5, 0, FONT_UNITS_PER_EM, 0, 0, 0, 0, advance, 2000, 0, 8, 2, 1, 0)
+    hhea = struct.pack(">IhhhHhhhhhhhhhhhH", 0x00010000, 800, -200, 0, advance, 0, 0, advance, 1, 0, 0, 0, 0, 0, 0, 0, len(glyphs))
+    maxp = struct.pack(">IHHHHHHHHHHHHHH", 0x00010000, len(glyphs), 4, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0)
+    hmtx = b"".join(struct.pack(">Hh", advance, 0) for _ in glyphs)
+    character_map = struct.pack(">HHHHH", 6, 10 + 2 * CHARACTER_COUNT_IN_FONT, 0, FIRST_CHARACTER_IN_FONT, CHARACTER_COUNT_IN_FONT)
+    character_map = character_map + b"".join(struct.pack(">H", glyph_id) for glyph_id in glyph_ids)
+    cmap = struct.pack(">HHHHI", 0, 1, 3, 1, 12) + character_map
+    tables = {
+        b"head": head,
+        b"hhea": hhea,
+        b"maxp": maxp,
+        b"hmtx": hmtx,
+        b"cmap": cmap,
+        b"loca": b"".join(struct.pack(">I", location) for location in locations),
+        b"glyf": b"".join(glyphs),
+    }
+    return sfnt_bytes(tables, b"\x00\x01\x00\x00")
+
+
+def fbfo_font_file(font_bytes, key):
+    repeat_count = len(font_bytes) // len(key) + 1
+    encoded = bytes(a ^ b for a, b in zip(font_bytes, key * repeat_count))
+    return b"FBFO" + encoded

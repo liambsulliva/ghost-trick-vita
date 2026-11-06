@@ -20,6 +20,11 @@ enum scene_step_kind {
     SCENE_STEP_CAMERA_PAN,
     SCENE_STEP_CARD,
     SCENE_STEP_HIDE_CARD,
+    SCENE_STEP_TEXT_SHOW,
+    SCENE_STEP_TEXT_HIDE,
+    SCENE_STEP_TEXT_HIDE_ALL,
+    SCENE_STEP_OVERLAY,
+    SCENE_STEP_OVERLAY_HIDE,
     SCENE_STEP_FADE_OUT,
     SCENE_STEP_FADE_IN,
     SCENE_STEP_WAIT,
@@ -52,6 +57,7 @@ struct scene_step {
     float half_width;
     float radius;
     float brightness;
+    int layer_item_id;
     int room_id;
     int layer;
     int ticks;

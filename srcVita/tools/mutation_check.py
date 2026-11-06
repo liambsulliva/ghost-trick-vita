@@ -9,8 +9,11 @@ SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEST_TIME_LIMIT_SECONDS = 60
 BUILD_ARGUMENTS = ["-j8", "test-binaries"]
 TEST_ARGUMENTS = ["-j8", "test-parallel"]
-PYTHON_TOOL_BUILD_ARGUMENTS = ["-C", "tools/assets", "-j8", "../../build/tools/music_reference", "../../build/tools/music_log_writer"]
-PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "test_audio_*.py"]
+PYTHON_TOOL_BUILD_ARGUMENTS = ["-C", "tools/assets", "-j8", "../../build/tools/texture_tool", "../../build/tools/texture_tool_checked", "../../build/tools/music_reference", "../../build/tools/music_log_writer"]
+AUDIO_PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "test_audio_*.py"]
+ALL_PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py"]
+ALL_PYTHON_TEST_TIME_LIMIT_SECONDS = 600
+AUDIO_TOOL_FILES = ("audio_check.py", "audio_file.py")
 
 MUTATIONS = [
     ("src/app/animation.c", "frame_index + 1 < animation->frame_count", "frame_index < animation->frame_count"),
@@ -168,7 +171,7 @@ MUTATIONS = [
     ("src/app/scene_view.c", "draw_dim(&stage->effects);", ""),
     ("src/app/scene_view.c", "draw_flash(&stage->effects);", ""),
     ("src/app/scene_view.c", "draw_black_around_art(&view);\n    draw_mask_or_iris(&stage->effects, &view);", "draw_mask_or_iris(&stage->effects, &view);\n    draw_black_around_art(&view);"),
-    ("src/app/scene_view.c", "draw_dim(&stage->effects);\n    draw_flash(&stage->effects);", "draw_flash(&stage->effects);\n    draw_dim(&stage->effects);"),
+    ("src/app/scene_view.c", "draw_dim(&stage->effects);\n    draw_text_lines(stage);\n    draw_flash(&stage->effects);", "draw_flash(&stage->effects);\n    draw_text_lines(stage);\n    draw_dim(&stage->effects);"),
     ("src/app/scene_view.c", "draw_flash(&stage->effects);\n    if (stage->card_texture[0] != '\\0') {\n        draw_card(stage->card_texture);\n    }", "if (stage->card_texture[0] != '\\0') {\n        draw_card(stage->card_texture);\n    }\n    draw_flash(&stage->effects);"),
     ("src/app/scene_view.c", "return (x - view->left) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;", "return x * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;"),
     ("src/app/scene_view.c", "return (y - view->top) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;", "return y * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;"),
@@ -315,9 +318,239 @@ MUTATIONS = [
     ("src/app/viewer_app.c", "asset_subfolder_path(sound_folder, \"sounds\");", "asset_subfolder_path(sound_folder, \"music\");"),
     ("src/app/command_file.c", "command->number <= 0 || command->number > MUSIC_STARVE_MS_MAX", "0"),
     ("src/app/command_file.c", "\"music_starve %d%c\", &command->number, &extra", "\"music_starve %d\", &command->number"),
+    ("src/app/scene_layers.c", "line->alpha = fade_ticks > 0 ? 0.0f : 1.0f;", "line->alpha = 1.0f;"),
+    ("src/app/scene_layers.c", "start_fade(line, 1.0f, fade_ticks);", "start_fade(line, 1.0f, 0);"),
+    ("src/app/scene_layers.c", "line->fade_start_alpha = line->alpha;", "line->fade_start_alpha = 1.0f;"),
+    ("src/app/scene_layers.c", "line->in_use = line->fade_target_alpha > 0.0f;", ""),
+    ("src/app/scene_layers.c", "if (fade_ticks <= 0) {\n        line->in_use = 0;\n        return;\n    }\n", ""),
+    ("src/app/scene_layers.c", "memset(layers->text_lines, 0, sizeof(layers->text_lines));", ""),
+    ("src/app/scene_layers.c", "memset(layers->overlays, 0, sizeof(layers->overlays));", ""),
+    ("src/app/scene_layers.c", "memset(layers, 0, sizeof(*layers));", ""),
+    ("src/app/scene_layers.c", "overlay->size_fraction = grow_ticks > 0 ? 0.0f : 1.0f;", "overlay->size_fraction = 1.0f;"),
+    ("src/app/scene_layers.c", "overlay->size_fraction = (float)overlay->grow_elapsed_us / (float)overlay->grow_total_us;", "overlay->size_fraction = 1.0f;"),
+    ("src/app/scene_layers.c", "overlay->in_use = 0;", ""),
+    ("src/app/scene_layers.c", "line = find_text_line(layers, id);\n    if (line == NULL) {\n        line = find_free_text_line(layers);\n    }", "line = find_free_text_line(layers);"),
+    ("src/app/scene_layers.c", "overlay = find_overlay(layers, id);\n    if (overlay == NULL) {\n        overlay = find_free_overlay(layers);\n    }", "overlay = find_free_overlay(layers);"),
+    ("src/app/scene_layers.c", "line->fade_elapsed_us = line->fade_elapsed_us + elapsed_us;", "line->fade_elapsed_us = elapsed_us;"),
+    ("src/app/scene_layers.c", "overlay->grow_elapsed_us = overlay->grow_elapsed_us + elapsed_us;", "overlay->grow_elapsed_us = elapsed_us;"),
+    ("src/app/scene_layers.c", "progress = (float)line->fade_elapsed_us / (float)line->fade_total_us;", "progress = 1.0f;"),
+    ("src/app/scene_layers.c", "(line->fade_target_alpha - line->fade_start_alpha) * progress", "line->fade_target_alpha * progress"),
+    ("src/app/scene_layers.c", "line->id = id;", ""),
+    ("src/app/scene_layers.c", "overlay->id = id;", ""),
+    ("src/app/scene.c", "&step->ticks) == 5 && step->ticks >= 0;", "&step->ticks) == 5;"),
+    ("src/app/scene.c", "&step->layer_item_id, &step->ticks) == 2 && step->ticks >= 0;", "&step->layer_item_id, &step->ticks) == 2;"),
+    ("src/app/scene.c", "&step->ticks) == 7 && step->ticks >= 0;", "&step->ticks) == 7;"),
+    ("src/app/scene.c", "step->kind = SCENE_STEP_TEXT_HIDE_ALL;\n        return 1;", "step->kind = SCENE_STEP_TEXT_HIDE;\n        return 1;"),
+    ("src/app/scene_player.c", "case SCENE_STEP_CARD:\n    case SCENE_STEP_TEXT_SHOW:\n", "case SCENE_STEP_CARD:\n"),
+    ("src/app/scene_player.c", "case SCENE_STEP_TEXT_SHOW:\n    case SCENE_STEP_OVERLAY:\n", "case SCENE_STEP_TEXT_SHOW:\n"),
+    ("src/app/scene_player.c", "scene_layers_clear(scene_stage_layers());\n    animation_library_clear();", "animation_library_clear();"),
+    ("src/app/scene_player.c", "scene_layers_clear(scene_stage_layers());\n    reset_script_progress();", "reset_script_progress();"),
+    ("src/app/scene_player.c", "scene_layers_advance(scene_stage_layers(), elapsed_us);\n", ""),
+    ("src/app/scene_player.c", "scene_layers_advance(scene_stage_layers(), elapsed_us);\n    if (status == SCENE_PLAYER_RUNNING) {", "if (status == SCENE_PLAYER_RUNNING) {\n        scene_layers_advance(scene_stage_layers(), elapsed_us);"),
+    ("src/app/scene_player.c", "scene_layers_hide_text(scene_stage_layers(), step->layer_item_id, step->ticks);", "scene_layers_hide_text(scene_stage_layers(), step->layer_item_id, 0);"),
+    ("src/app/scene_player.c", "scene_layers_hide_all_text(scene_stage_layers());", ""),
+    ("src/app/scene_player.c", "scene_layers_hide_overlay(scene_stage_layers(), step->layer_item_id);", ""),
+    ("src/app/scene_stage.c", "scene_layers_clear_overlays(&stage.layers);", ""),
+    ("src/app/scene_view.c", "area.x = line->center_x - (float)texture->width / 2.0f;", "area.x = line->center_x;"),
+    ("src/app/scene_view.c", "tint.alpha = line->alpha;", ""),
+    ("src/app/scene_view.c", "stage->layers.text_lines[index].alpha > 0.0f", "1"),
+    ("src/app/scene_view.c", "overlay->x + (overlay->width - width) / 2.0f", "overlay->x"),
+    ("src/app/scene_view.c", "overlay->y + (overlay->height - height) / 2.0f", "overlay->y"),
+    ("src/app/scene_view.c", "width = overlay->width * overlay->size_fraction;", "width = overlay->width;"),
+    ("src/app/scene_view.c", "height = overlay->height * overlay->size_fraction;", "height = overlay->height;"),
+    ("src/app/scene_view.c", "draw_overlays(stage, &view);\n", ""),
+    ("src/app/scene_view.c", "draw_text_lines(stage);\n", ""),
+    ("src/app/scene_view.c", "draw_mask_or_iris(&stage->effects, &view);\n    draw_overlays(stage, &view);", "draw_overlays(stage, &view);\n    draw_mask_or_iris(&stage->effects, &view);"),
+    ("src/app/scene_view.c", "draw_overlays(stage, &view);\n    draw_dim(&stage->effects);", "draw_dim(&stage->effects);\n    draw_overlays(stage, &view);"),
+    ("src/app/scene_view.c", "draw_dim(&stage->effects);\n    draw_text_lines(stage);", "draw_text_lines(stage);\n    draw_dim(&stage->effects);"),
+    ("src/app/scene_view.c", "draw_text_lines(stage);\n    draw_flash(&stage->effects);", "draw_flash(&stage->effects);\n    draw_text_lines(stage);"),
+    ("src/app/scene_view.c", "renderer_draw_filled_rect(area, missing_texture_color);", ""),
+    ("src/app/scene_layers.c", "overlay->grow_elapsed_us = 0;", ""),
+    ("src/app/scene_view.c", "if (texture == NULL || texture->state == CACHED_TEXTURE_MISSING) {\n        area.x", "if (texture->state == CACHED_TEXTURE_MISSING) {\n        area.x"),
+    ("src/app/scene_view.c", "if (texture->state != CACHED_TEXTURE_READY) {\n        return;\n    }\n", ""),
+    ("src/app/scene_view.c", "stage->layers.text_lines[index].in_use && ", ""),
+    ("src/app/viewer_app.c", " && !scene_layers_text_is_fading_out(scene_stage_layers())", ""),
+    ("src/app/scene_layers.c", "layers->text_lines[index].in_use && layers->text_lines[index].fade_target_alpha <= 0.0f", "layers->text_lines[index].in_use"),
+    ("src/app/scene_layers.c", "layers->text_lines[index].in_use && layers->text_lines[index].fade_target_alpha <= 0.0f", "layers->text_lines[index].fade_target_alpha <= 0.0f"),
 ]
 
 PYTHON_MUTATIONS = [
+    ("tools/assets/message_file.py", "ENTRY_COUNT_OFFSET = 16", "ENTRY_COUNT_OFFSET = 20"),
+    ("tools/assets/message_file.py", "LANGUAGE_COUNT_OFFSET = 24", "LANGUAGE_COUNT_OFFSET = 28"),
+    ("tools/assets/message_file.py", "STRING_AREA_OFFSET = 32", "STRING_AREA_OFFSET = 40"),
+    ("tools/assets/message_file.py", "ENTRY_POINTERS_OFFSET = 72", "ENTRY_POINTERS_OFFSET = 64"),
+    ("tools/assets/message_file.py", "ENTRY_NAME_POINTER_OFFSET = 24", "ENTRY_NAME_POINTER_OFFSET = 16"),
+    ("tools/assets/message_file.py", "ENTRY_TEXT_POINTERS_OFFSET = 40", "ENTRY_TEXT_POINTERS_OFFSET = 48"),
+    ("tools/assets/message_file.py", 'PARAGRAPH_MARK = "\\u2029"', 'PARAGRAPH_MARK = " "'),
+    ("tools/assets/message_file.py", "if offset + struct.calcsize(number_format) > len(data):", "if False:"),
+    ("tools/assets/message_file.py", 'raise MessageFileError("string has no terminator")', "break"),
+    ("tools/assets/message_file.py", 'raise MessageFileError("entry number %d: %s" % (index, error)) from None', "raise"),
+    ("tools/assets/message_file.py", 'raise MessageFileError("entry %s: %s" % (name, error)) from None', "raise"),
+    ("tools/assets/message_file.py", "if not value.startswith(prefix):\n            raise ValueError\n", "pass\n"),
+    ("tools/assets/message_file.py", "except ValueError:\n        raise MessageFileError(\"%s has no number", "except KeyError:\n        raise MessageFileError(\"%s has no number"),
+    ("tools/assets/narration.py", "NARRATION_PIXELS_PER_EM = 38.5", "NARRATION_PIXELS_PER_EM = 30"),
+    ("tools/assets/narration.py", "NARRATION_COLOR = (255, 255, 255)", "NARRATION_COLOR = (0, 0, 0)"),
+    ("tools/assets/narration.py", 'tuple(request["color"])', "NARRATION_COLOR"),
+    ("tools/assets/narration.py", "NARRATION_MAX_INK_WIDTH, NARRATION_COLOR)", "SCREEN_WIDTH, NARRATION_COLOR)"),
+    ("tools/assets/narration.py", 'raise NarrationError(request["name"] + ": " + str(error)) from None', "raise"),
+    ("tools/assets/line_renderer.py", "SUPERSAMPLE = 4", "SUPERSAMPLE = 2"),
+    ("tools/assets/line_renderer.py", "LINE_BOX_ASCENT_EM = 1.0", "LINE_BOX_ASCENT_EM = 1.2"),
+    ("tools/assets/line_renderer.py", "LINE_BOX_DESCENT_EM = 0.3", "LINE_BOX_DESCENT_EM = 0.4"),
+    ("tools/assets/convert_assets.py", "tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)", "tempfile.mkdtemp(dir=output_folder, prefix=WORK_FOLDER_PREFIX)"),
+    ("tools/assets/convert_assets.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGTERM, signal.SIGHUP)"),
+    ("tools/assets/convert_assets.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGINT, signal.SIGHUP)"),
+    ("tools/assets/convert_assets.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM)"),
+    ("tools/assets/convert_assets.py", "        signal.signal(stop_signal, signal.SIG_IGN)\n", "        pass\n"),
+    ("tools/assets/convert_assets.py", "    stop_signal_number = signal_number\n", "    pass\n"),
+    ("tools/assets/convert_assets.py", "    if stop_signal_number is not None:\n        return EXIT_CODE_BASE_FOR_SIGNALS + stop_signal_number\n", ""),
+    ("tools/assets/convert_assets.py", "    except SystemExit:\n        shutil.rmtree(work_folder, ignore_errors=True)\n        raise\n", "    except SystemExit:\n        raise\n"),
+    ("tools/assets/convert_assets.py", "    except SystemExit:\n        shutil.rmtree(work_folder, ignore_errors=True)\n        raise\n", "    except SystemExit:\n        shutil.rmtree(work_folder, ignore_errors=True)\n"),
+    ("tools/assets/convert_assets.py", "            delete_work_folder(work_folder)\n", "            pass\n"),
+    ("tools/assets/convert_assets.py", "    remove_old_work_folders()\n", ""),
+    ("tools/assets/convert_assets.py", "os.path.getmtime(path) < oldest_kept_time", "True"),
+    ("tools/assets/convert_assets.py", "name.startswith(WORK_FOLDER_PREFIX) and ", ""),
+    ("tools/assets/convert_assets.py", "OLD_WORK_FOLDER_SECONDS = 3600", "OLD_WORK_FOLDER_SECONDS = 7200"),
+    ("tools/assets/convert_assets.py", "except OSError:\n        return False", "except KeyError:\n        return False"),
+    ("tools/assets/convert_assets.py", 'check_texture_names_differ(atlas_page_names + ', 'str(atlas_page_names + '),
+    ("tools/assets/convert_assets.py", 'check_texture_names_differ(atlas_page_names + ', 'check_texture_names_differ('),
+    ("tools/assets/convert_assets.py", 'for entry in plates + set_description.get("screen_textures", [])', 'for entry in set_description.get("screen_textures", [])'),
+    ("tools/assets/convert_assets.py", 'plates + set_description.get("screen_textures", []) + ', "plates + "),
+    ("tools/assets/convert_assets.py", ' + set_description.get("composed_textures", [])] + ', "] + "),
+    ("tools/assets/convert_assets.py", '] + narration.text_texture_names(set_description, messages))', "])"),
+    ("tools/assets/convert_assets.py", "if name.lower() in seen:", "if name in seen:"),
+    ("tools/assets/convert_assets.py", "seen.add(name.lower())", "seen.add(name)"),
+    ("tools/assets/convert_assets.py", '    bake_record.remove_leftover_temporary_file(os.path.join(output_folder, "manifest.txt"))\n', ""),
+    ("tools/assets/bake_record.py", "        if not isinstance(loaded, dict):\n            return {}\n", ""),
+    ("tools/assets/bake_record.py", " if entry_is_usable(entry)}", "}"),
+    ("tools/assets/bake_record.py", "if not isinstance(entry, dict):\n        return False\n", ""),
+    ("tools/assets/bake_record.py", 'isinstance(entry.get("key"), str) and ', ""),
+    ("tools/assets/bake_record.py", 'isinstance(entry.get("output"), str) and ', ""),
+    ("tools/assets/bake_record.py", ' and isinstance(entry.get("details", {}), dict)', ""),
+    ("tools/assets/bake_record.py", 'self.entries.get(relative_path, {}).get("details", {})', 'self.entries[relative_path]["details"]'),
+    ("tools/assets/bake_record.py", "    except FileNotFoundError:\n        pass\n", "    except KeyError:\n        pass\n"),
+    ("tools/assets/bake_record.py", "os.remove(path + TEMPORARY_SUFFIX)", "pass"),
+    ("tools/assets/narration.py", 'except message_file.MissingEntryError as error:\n            raise NarrationError("%s: %s" % (file_path, error)) from None\n        except', "except"),
+    ("tools/assets/narration.py", "gtex_bytes = None if natural_width is None else record.read_if_current(relative_path, key)", "gtex_bytes = record.read_if_current(relative_path, key)"),
+    ("tools/assets/narration.py", "FIRST_LINE_TOP_BASE_IN_CLIP = 8.0", "FIRST_LINE_TOP_BASE_IN_CLIP = 6.25"),
+    ("tools/assets/narration.py", "FIRST_LINE_TOP_PER_POS_Y_IN_CLIP = 3.77", "FIRST_LINE_TOP_PER_POS_Y_IN_CLIP = 3.85"),
+    ("tools/assets/narration.py", "for text in paragraph if text.strip())", "for text in paragraph)"),
+    ("tools/assets/narration.py", 'names = [request["name"] for request in set_description.get("bubble_text", [])]', "names = []"),
+    ("tools/assets/message_file.py", 'raise MissingEntryError("no such entry: " + name)', 'raise MessageFileError("no such entry: " + name)'),
+    ("tools/assets/message_file.py", 'if not every_name_is_plain:\n                raise MessageFileError("entry names are not plain text")\n', ""),
+    ("tools/assets/message_file.py", "every_name_is_plain = every_name_is_plain and ", "every_name_is_plain = "),
+    ("tools/assets/message_file.py", "ENTRY_NAME_PATTERN.fullmatch(name) is not None", "ENTRY_NAME_PATTERN.match(name) is not None"),
+    ("tools/vita_loop.py", " and not name.endswith(PARTIAL_FILE_SUFFIX)", ""),
+    ("tools/vita_loop.py", 'if relative_path.startswith("music/") and relative_path.endswith(".ogg"):', 'if relative_path.endswith(".ogg"):'),
+    ("tools/vita_loop.py", 'if relative_path.startswith("music/") and relative_path.endswith(".ogg"):', 'if relative_path.startswith("music/"):'),
+    ("tools/vita_loop.py", "if loop_path not in relative_paths:", "if True:"),
+    ("tools/vita_loop.py", 'delete_if_present(connection, ASSETS_FOLDER + "/" + loop_path)\n', "pass\n"),
+    ("tools/vita_loop.py", "if record.pop(loop_path, None) is not None:\n                save_upload_record(record)\n", "pass\n"),
+    ("tools/assets/chapter1_opening.json", '"alert_burst", 41.6, 226.1333', '"alert_burst", 41.6, 226.14'),
+    ("tools/assets/chapter1_opening.json", '"alert_mark", 51.2, 228.2667', '"alert_mark", 51.07, 228.2667'),
+    ("tools/assets/chapter1_opening.json", '"alert_mark", 51.2, 228.2667', '"alert_mark", 51.2, 228.36'),
+    ("tools/assets/convert_assets.py", "sys.exit(EXIT_CODE_BASE_FOR_SIGNALS + signal_number)", "sys.exit(1)"),
+    ("tools/assets/convert_assets.py", "future.cancel()", "pass"),
+    ("tools/assets/chapter1_opening.json", '"oval_bubble", 98.8444, 242.8444', '"oval_bubble", 98.93, 242.67'),
+    ("tools/assets/chapter1_opening.json", '"oval_bubble_text", 113.7778, 251.0222', '"oval_bubble_text", 113.64, 250.93'),
+    ("tools/assets/message_file.py", "value ^ previous ^ key[index & 15]", "value ^ previous ^ key[index & 7]"),
+    ("tools/assets/message_file.py", "previous = value", "previous = decoded[index]"),
+    ("tools/assets/message_file.py", 'TEXT_KEY_FILE_NAME = "text_key.bin"', 'TEXT_KEY_FILE_NAME = "other_name.bin"'),
+    ("tools/assets/message_file.py", "TEXT_KEY_SIZE = 16", "TEXT_KEY_SIZE = 32"),
+    ("tools/assets/narration.py", 'RUN_THE_KEY_TOOL = "run python3 -I srcVita/tools/assets/extract_text_key.py with your own copy of the Android package"', 'RUN_THE_KEY_TOOL = "fix it"'),
+    ("tools/assets/narration.py", 'return bool(set_description.get("narration") or set_description.get("bubble_text"))', 'return bool(set_description.get("narration"))'),
+    ("tools/assets/narration.py", "if not set_uses_text(set_description):\n        return None\n", "pass\n"),
+    ("tools/assets/narration.py", "source.read(message_file.TEXT_KEY_SIZE + 1)", "source.read(message_file.TEXT_KEY_SIZE)"),
+    ("tools/assets/narration.py", "if len(key) != message_file.TEXT_KEY_SIZE:", "if False:"),
+    ("tools/assets/narration.py", 'except FileNotFoundError:\n        raise NarrationError("no text key at', 'except KeyError:\n        raise NarrationError("no text key at'),
+    ("tools/assets/narration.py", 'except message_file.MessageFileError:\n            raise NarrationError("the saved text key', 'except KeyError:\n            raise NarrationError("the saved text key'),
+    ("tools/assets/narration.py", "entry_names, text_key)", "entry_names, bytes(16))"),
+    ("tools/assets/convert_assets.py", 'text_key = narration.load_text_key(set_description, arguments.apk_folder)\n        subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)\n', 'subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)\n        text_key = narration.load_text_key(set_description, arguments.apk_folder)\n'),
+    ("tools/assets/convert_assets.py", "except narration.NarrationError as error:", "except KeyError as error:"),
+    ("tools/assets/convert_assets.py", 'print("error: " + str(error), file=sys.stderr)\n        return 1', 'print("error: " + str(error), file=sys.stderr)\n        return 0'),
+    ("tools/assets/convert_assets.py", "narration.read_text_messages(packs, set_description, text_key)", "narration.read_text_messages(packs, set_description, None)"),
+    ("tools/assets/convert_assets.py", "arguments.output, arguments.apk_folder, text_key)", "arguments.output, arguments.apk_folder, None)"),
+    ("tools/assets/extract_text_key.py", "os.path.dirname(os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER)))", "os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))"),
+    ("tools/assets/extract_text_key.py", 'LIBRARY_MEMBER = "lib/arm64-v8a/libruntime.so"', 'LIBRARY_MEMBER = "lib/armeabi-v7a/libruntime.so"'),
+    ("tools/assets/extract_text_key.py", "if first_bytes == LIBRARY_MAGIC:", "if False:"),
+    ("tools/assets/extract_text_key.py", "if not os.path.isfile(package_path):", "if False:"),
+    ("tools/assets/extract_text_key.py", 'if not zipfile.is_zipfile(package_path):\n        raise ExtractionError("not a package or a library: " + package_path)\n', "pass\n"),
+    ("tools/assets/extract_text_key.py", "return package.read(LIBRARY_MEMBER)", "if package.testzip() is not None:\n                raise zipfile.BadZipFile\n            return package.read(LIBRARY_MEMBER)"),
+    ("tools/assets/extract_text_key.py", 'except KeyError:\n        raise ExtractionError("the package has no "', 'except ValueError:\n        raise ExtractionError("the package has no "'),
+    ("tools/assets/extract_text_key.py", "except (zipfile.BadZipFile, zlib.error, EOFError, NotImplementedError, RuntimeError):", "except (zlib.error, EOFError, NotImplementedError, RuntimeError):"),
+    ("tools/assets/extract_text_key.py", "NotImplementedError, RuntimeError):", "NotImplementedError):"),
+    ("tools/assets/extract_text_key.py", "except (OSError, ValueError, KeyError, IndexError, struct.error, zipfile.BadZipFile):", "except (ValueError, KeyError, IndexError, struct.error):"),
+    ("tools/assets/extract_text_key.py", "KeyError, IndexError, struct.error, zipfile.BadZipFile):", "KeyError, struct.error, zipfile.BadZipFile):"),
+    ("tools/assets/extract_text_key.py", "IndexError, struct.error, zipfile.BadZipFile):", "IndexError, zipfile.BadZipFile):"),
+    ("tools/assets/extract_text_key.py", "except (OSError, ValueError, KeyError, zlib.error):", "except (OSError, ValueError, zlib.error):"),
+    ("tools/assets/extract_text_key.py", "in_order and (in_order[0] < area_start or in_order[-1] >= len(data))", "False"),
+    ("tools/assets/extract_text_key.py", "in_order[1:] + [len(data)]", "in_order[1:] + [0]"),
+    ("tools/assets/extract_text_key.py", "votes[position & 15]", "votes[position & 7]"),
+    ("tools/assets/extract_text_key.py", "stored_area[position] ^ stored_area[position - 1]", "stored_area[position]"),
+    ("tools/assets/extract_text_key.py", "range(pointer - area_start + 1,", "range(pointer - area_start,"),
+    ("tools/assets/extract_text_key.py", "vote.most_common(1)[0][0] if vote else None", "vote.most_common(1)[0][0] if vote else 0"),
+    ("tools/assets/extract_text_key.py", "re.escape(bytes([value]))", "bytes([value])"),
+    ("tools/assets/extract_text_key.py", 'b"(?=(" + b"".join(parts) + b"))"', 'b"(" + b"".join(parts) + b")"'),
+    ("tools/assets/extract_text_key.py", ", re.DOTALL)", ")"),
+    ("tools/assets/extract_text_key.py", "return set(match.group(1) for match in pattern.finditer(library))", "return list(match.group(1) for match in pattern.finditer(library))"),
+    ("tools/assets/extract_text_key.py", 'if pointer + len(text.encode("utf-16-le")) + 2 > next_pointer:', "if False:"),
+    ("tools/assets/message_file.py", 'r"[A-Za-z0-9_]+"', 'r"[a-z]+"'),
+    ("tools/assets/extract_text_key.py", "if not message_file.ENTRY_NAME_PATTERN.fullmatch(", "if not message_file.ENTRY_NAME_PATTERN.match("),
+    ("tools/assets/extract_text_key.py", "if not message_file.ENTRY_NAME_PATTERN.fullmatch(message_file.read_string(decoded_area, area_start, pointer)):", "if False:"),
+    ("tools/assets/extract_text_key.py", "except message_file.MessageFileError:\n        return False", "except KeyError:\n        return False"),
+    ("tools/assets/extract_text_key.py", 'except message_file.MessageFileError:\n        raise ExtractionError("could not read the layout', 'except KeyError:\n        raise ExtractionError("could not read the layout'),
+    ("tools/assets/extract_text_key.py", "if all(value is None for value in known_key_bytes):\n        return []\n", "pass\n"),
+    ("tools/assets/extract_text_key.py", "if key_decodes_every_string(layout, window)]", "]"),
+    ("tools/assets/extract_text_key.py", 'dir=apk_folder, prefix="text_key_"', 'prefix="text_key_"'),
+    ("tools/assets/extract_text_key.py", "output.write(key)", "output.write(key[:8])"),
+    ("tools/assets/extract_text_key.py", "os.unlink(temporary_path)", "pass"),
+    ("tools/assets/extract_text_key.py", "if not keys:", "if False:"),
+    ("tools/assets/extract_text_key.py", "if len(keys) > 1:", "if False:"),
+    ("tools/assets/extract_text_key.py", "return save_key(apk_folder, keys[0])", "print(keys[0].hex())\n        return save_key(apk_folder, keys[0])"),
+    ("tools/assets/extract_text_key.py", 'prefix="text_key_", suffix=".bin"', 'prefix="text_key_"'),
+    ("tools/assets/extract_text_key.py", "os.replace(temporary_path, final_path)", "os.chmod(temporary_path, 0o644)\n        os.replace(temporary_path, final_path)"),
+    ("tools/assets/extract_text_key.py", "return error.strerror or type(error).__name__", "return error.strerror"),
+    ("tools/assets/extract_text_key.py", 'raise ExtractionError("could not read " + package_path + ": " + failure_reason(error)) from None', "raise"),
+    ("tools/assets/extract_text_key.py", 'raise ExtractionError("could not save the key in " + apk_folder + ": " + failure_reason(error)) from None', "raise"),
+    ("tools/assets/extract_text_key.py", "signal.signal(signal.SIGTERM, exit_so_the_temporary_file_is_deleted)\n", "\n"),
+    ("tools/assets/extract_text_key.py", "signal.signal(signal.SIGHUP, exit_so_the_temporary_file_is_deleted)\n", "\n"),
+    ("tools/assets/extract_text_key.py", "sys.exit(EXIT_CODE_BASE_FOR_SIGNALS + signal_number)", "sys.exit(1)"),
+    ("tools/assets/narration.py", "    return key\n", "    print(key.hex())\n    return key\n"),
+    ("tools/assets/narration.py", 'except OSError as error:\n        raise NarrationError("could not read', 'except KeyError as error:\n        raise NarrationError("could not read'),
+    ("tools/assets/narration.py", "% (path, error.strerror, RUN_THE_KEY_TOOL)", '% (path, "failed", RUN_THE_KEY_TOOL)'),
+    ("tools/assets/convert_assets.py", "    narration.print_narration_summary(narration_lines)\n", "    narration.print_narration_summary(narration_lines)\n    print(repr(text_key))\n"),
+    ("tools/assets/extract_text_key.py", 'print("error: stopped by " + type(error).__name__, file=sys.stderr)', 'print("error: " + str(error), file=sys.stderr)'),
+    ("tools/assets/narration.py", '"font": bake_record.sha256_of_bytes(fonts.pack_bytes(font_path)), ', ""),
+    ("tools/assets/narration.py", '"pixels_per_em": pixels_per_em, ', ""),
+    ("tools/assets/narration.py", '"color": list(color)', '"color": []'),
+    ("tools/assets/narration.py", 'text.encode("utf-8"))\n    natural_width', 'b"")\n    natural_width'),
+    ("tools/assets/narration.py", "return bake_record.result_of_own_size(name, gtex_bytes), natural_width", "pass"),
+    ("tools/assets/narration.py", 'record.details_of(relative_path).get("natural_width")', "0.0"),
+    ("tools/assets/narration.py", 'natural_width = record.details_of(relative_path).get("natural_width")\n', 'fonts.decoded_path(font_path)\n    natural_width = record.details_of(relative_path).get("natural_width")\n'),
+    ("tools/assets/narration.py", "failures.append((name, str(error)))\n                continue", "raise"),
+    ("tools/assets/narration.py", 'failures.append((request["name"], str(error)))', "raise"),
+    ("tools/assets/narration.py", "if font_path not in self.decoded_paths:", "if True:"),
+    ("tools/assets/narration.py", "if font_path not in self.pack_bytes_by_path:", "if True:"),
+    ("tools/assets/narration.py", 'record.store(relative_path, key, gtex_bytes, {"natural_width": line["natural_width"]})', "record.store(relative_path, key, gtex_bytes)"),
+    ("tools/assets/bubble_art.py", "key = record.key_for(code, description, tex_bytes)", "key = record.key_for(code, {}, tex_bytes)"),
+    ("tools/assets/bubble_art.py", "key = record.key_for(code, description, tex_bytes)", 'key = record.key_for(code, description, b"")'),
+    ("tools/assets/bubble_art.py", "if gtex_bytes is None:", "if True:"),
+    ("tools/assets/bake_record.py", 'entry["details"] = details', "pass"),
+    ("tools/assets/convert_assets.py", "    messages = narration.read_text_messages(packs, set_description, text_key)\n", "    make_output_folders(output_folder)\n    messages = narration.read_text_messages(packs, set_description, text_key)\n"),
+    ("tools/assets/convert_assets.py", "failures = failures + text_failures + composed_failures", "failures = failures + composed_failures"),
+    ("tools/assets/convert_assets.py", "failures = failures + text_failures + composed_failures", "failures = failures + text_failures"),
+    ("tools/assets/convert_assets.py", "sorted(texture_results + text_results + composed_results,", "sorted(texture_results + composed_results,"),
+    ("tools/assets/convert_assets.py", "sorted(texture_results + text_results + composed_results,", "sorted(texture_results + text_results,"),
+    ("tools/assets/convert_assets.py", "code = text_code_fingerprint() if narration.set_uses_text(set_description) else None", "code = None"),
+    ("tools/assets/convert_assets.py", "code = composed_code_fingerprint() if descriptions else None", "code = None"),
+    ("tools/assets/convert_assets.py", 'failures.append((description["name"], str(error)))', "raise"),
+    ("tools/assets/convert_assets.py", 'COMPOSED_CODE_FILES = TEXTURE_CODE_FILES + ["bubble_art.py"]', "COMPOSED_CODE_FILES = TEXTURE_CODE_FILES"),
+    ("tools/assets/convert_assets.py", '"line_renderer.py", ', ""),
+    ("tools/assets/convert_assets.py", '"font_file.py", ', ""),
+    ("tools/assets/convert_assets.py", 'print("failed: " + name + ": " + reason, file=sys.stderr)', "pass"),
+    ("tools/assets/chapter1_opening.json", '["overlay_hide", 3],\n    ["overlay_hide", 4],\n    ["mask_on"]', '["mask_on"],\n    ["wait", 1],\n    ["overlay_hide", 3],\n    ["overlay_hide", 4]'),
+    ("tools/assets/chapter1_opening.json", '["dim_to", 1, 0],\n    ["wait", 4]', '["dim_to", 0, 0],\n    ["wait", 4]'),
+    ("tools/assets/chapter1_opening.json", '"alert_burst", 41.6, 226.1333', '"alert_burst", 0.93, 226.1333'),
+    ("tools/assets/chapter1_opening.json", '["narration_show", "m01_0040", 0, 60]', '["wait", 1],\n    ["narration_show", "m01_0040", 0, 60]'),
     ("tools/audio_check.py", "allowed_rises = 1\n    for playback in playbacks:\n        previous_trouble = 0\n", "for playback in playbacks:\n        allowed_rises = 1\n        previous_trouble = 0\n"),
     ("tools/audio_check.py", "window_before and window_after and not stopped_before", "window_after and not stopped_before"),
     ("tools/audio_check.py", "window_before and window_after and not stopped_before", "window_before and not stopped_before"),
@@ -347,10 +580,10 @@ PYTHON_MUTATIONS = [
 ]
 
 
-def command_succeeds(folder, command):
+def command_succeeds(folder, command, time_limit_seconds=TEST_TIME_LIMIT_SECONDS):
     process = subprocess.Popen(command, cwd=folder, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     try:
-        return process.wait(timeout=TEST_TIME_LIMIT_SECONDS) == 0
+        return process.wait(timeout=time_limit_seconds) == 0
     except subprocess.TimeoutExpired:
         os.killpg(process.pid, signal.SIGKILL)
         process.wait()
@@ -377,13 +610,23 @@ def mutation_outcome(folder):
     return "caught"
 
 
+def python_test_command_for(path):
+    return AUDIO_PYTHON_TEST_COMMAND if os.path.basename(path) in AUDIO_TOOL_FILES else ALL_PYTHON_TEST_COMMAND
+
+
+def time_limit_for(command):
+    return ALL_PYTHON_TEST_TIME_LIMIT_SECONDS if command is ALL_PYTHON_TEST_COMMAND else TEST_TIME_LIMIT_SECONDS
+
+
 def python_mutation_outcome(folder, path):
-    with open(path, encoding="utf-8") as source:
-        try:
-            compile(source.read(), path, "exec")
-        except SyntaxError:
-            return "invalid"
-    if command_succeeds(folder, PYTHON_TEST_COMMAND):
+    if path.endswith(".py"):
+        with open(path, encoding="utf-8") as source:
+            try:
+                compile(source.read(), path, "exec")
+            except SyntaxError:
+                return "invalid"
+    command = python_test_command_for(path)
+    if command_succeeds(folder, command, time_limit_for(command)):
         return "survived"
     return "caught"
 
@@ -393,6 +636,7 @@ def forget_test_object_of(folder, relative_path):
     object_path = os.path.join(folder, "build", "test_objects", "app", object_name)
     if os.path.exists(object_path):
         os.remove(object_path)
+    shutil.rmtree(os.path.join(folder, "build", "tests"), ignore_errors=True)
 
 
 def run_mutations(folder, mutations, outcome_of, survivors, invalid, source_changed=lambda relative_path: None):
@@ -417,10 +661,17 @@ def run_mutations(folder, mutations, outcome_of, survivors, invalid, source_chan
         source_changed(relative_path)
 
 
+def use_private_temp_folder(temporary_root):
+    folder = os.path.join(temporary_root, "test_temp")
+    os.makedirs(folder)
+    os.environ["TMPDIR"] = folder
+
+
 def main():
     survivors = []
     invalid = []
     with tempfile.TemporaryDirectory() as temporary_root:
+        use_private_temp_folder(temporary_root)
         folder = os.path.join(temporary_root, "srcVita")
         shutil.copytree(SRC_VITA_FOLDER, folder, ignore=shutil.ignore_patterns("build", "__pycache__"))
         remove_werror_from_makefile(folder)
@@ -428,7 +679,7 @@ def main():
             print("baseline tests fail; stopping")
             return 1
         run_mutations(folder, MUTATIONS, lambda path: mutation_outcome(folder), survivors, invalid, lambda relative_path: forget_test_object_of(folder, relative_path))
-        if not make_succeeds(folder, PYTHON_TOOL_BUILD_ARGUMENTS) or not command_succeeds(folder, PYTHON_TEST_COMMAND):
+        if not make_succeeds(folder, PYTHON_TOOL_BUILD_ARGUMENTS) or not command_succeeds(folder, ALL_PYTHON_TEST_COMMAND, ALL_PYTHON_TEST_TIME_LIMIT_SECONDS):
             print("baseline python tests fail; stopping")
             return 1
         run_mutations(folder, PYTHON_MUTATIONS, lambda path: python_mutation_outcome(folder, path), survivors, invalid)

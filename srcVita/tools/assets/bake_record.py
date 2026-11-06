@@ -3,8 +3,28 @@ import json
 import os
 import threading
 
+import asset_writers
+
 RECORD_FILE_NAME = ".bake_record.json"
+TEMPORARY_SUFFIX = ".new"
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
+
+
+def texture_result(name, source_size, gtex_bytes):
+    width, height, texture_format = asset_writers.read_gtex_header(gtex_bytes)
+    return {
+        "name": name,
+        "source_size": source_size,
+        "width": width,
+        "height": height,
+        "format": texture_format,
+        "byte_count": len(gtex_bytes),
+    }
+
+
+def result_of_own_size(name, gtex_bytes):
+    width, height, _ = asset_writers.read_gtex_header(gtex_bytes)
+    return texture_result(name, (width, height), gtex_bytes)
 
 
 def sha256_of_bytes(data):
@@ -21,7 +41,7 @@ def code_fingerprint(file_names, extra_text=""):
 
 
 def write_file_atomically(path, data):
-    temporary_path = path + ".new"
+    temporary_path = path + TEMPORARY_SUFFIX
     with open(temporary_path, "wb") as output:
         output.write(data)
     os.replace(temporary_path, path)
@@ -36,6 +56,13 @@ def write_if_different(path, data):
     return True
 
 
+def remove_leftover_temporary_file(path):
+    try:
+        os.remove(path + TEMPORARY_SUFFIX)
+    except FileNotFoundError:
+        pass
+
+
 def remove_files_not_listed(output_folder, folder_names, relative_paths_to_keep):
     removed = []
     for folder_name in folder_names:
@@ -46,6 +73,12 @@ def remove_files_not_listed(output_folder, folder_names, relative_paths_to_keep)
                 os.remove(os.path.join(folder, file_name))
                 removed.append(relative_path)
     return removed
+
+
+def entry_is_usable(entry):
+    if not isinstance(entry, dict):
+        return False
+    return isinstance(entry.get("key"), str) and isinstance(entry.get("output"), str) and isinstance(entry.get("details", {}), dict)
 
 
 class BakeRecord:
@@ -60,9 +93,12 @@ class BakeRecord:
     def load_entries(self):
         try:
             with open(self.path, "r", encoding="ascii") as source:
-                return json.load(source)
+                loaded = json.load(source)
         except (OSError, ValueError):
             return {}
+        if not isinstance(loaded, dict):
+            return {}
+        return {path: entry for path, entry in loaded.items() if entry_is_usable(entry)}
 
     def key_for(self, code, settings, source_bytes):
         settings_text = json.dumps(settings, sort_keys=True)
@@ -83,10 +119,16 @@ class BakeRecord:
             self.reused_count = self.reused_count + 1
         return data
 
-    def store(self, relative_path, key, data):
+    def details_of(self, relative_path):
+        return self.entries.get(relative_path, {}).get("details", {})
+
+    def store(self, relative_path, key, data, details=None):
         write_file_atomically(os.path.join(self.output_folder, relative_path), data)
+        entry = {"key": key, "output": sha256_of_bytes(data)}
+        if details is not None:
+            entry["details"] = details
         with self.lock:
-            self.entries[relative_path] = {"key": key, "output": sha256_of_bytes(data)}
+            self.entries[relative_path] = entry
             self.baked_count = self.baked_count + 1
 
     def forget_all_except(self, relative_paths):
