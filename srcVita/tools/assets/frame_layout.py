@@ -133,6 +133,27 @@ def frame_for_record(timeline, record, ticks, crops):
     }
 
 
+def frames_step_down(ds_frames):
+    return len(ds_frames) > 1 and all(later < earlier for earlier, later in zip(ds_frames, ds_frames[1:]))
+
+
+def records_for_table(timeline, ds_frames):
+    step = timeline["records_per_ds_frame"]
+    if len(ds_frames) == 1:
+        return [timeline["records"][ds_frames[0] * step]], 1
+    selected = []
+    for ds_frame in ds_frames:
+        records = timeline["records"][ds_frame * step:(ds_frame + 1) * step]
+        selected.extend(reversed(records) if frames_step_down(ds_frames) else records)
+    return selected, step
+
+
+def frames_for_table(timeline, ds_frames, crops):
+    records, records_per_frame = records_for_table(timeline, ds_frames)
+    ticks = ticks_per_record(records_per_frame)
+    return [frame_for_record(timeline, record, ticks, crops) for record in records], records_per_frame
+
+
 def frames_for_animation(timeline, ds_frames, crops):
     if ds_frames is None:
         ticks = ticks_per_record(timeline["records_per_ds_frame"])

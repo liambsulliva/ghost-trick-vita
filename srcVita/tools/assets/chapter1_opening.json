@@ -6,8 +6,63 @@
     "language": "en",
     "stop_at_act": "gameAct020",
     "never_taken": ["st01/tgs_root.xml", "test/stage_select.xml", "st01/st01_game001_Expand.xml", "st01/st01_game010_Expand.xml", "st01/st01_game011_Expand.xml", "st01/st01_game012_Expand.xml", "st01/st01_game013_Expand.xml", "st01/st01_game014_Expand.xml", "st01/st01_game015_Expand.xml", "st01/st01_game016_Expand.xml", "st01/st01_game020_Expand.xml", "st01/st01_game021_Expand.xml", "st01/st01_game022_Expand.xml"],
-    "timing": "ds"
+    "timing": "remaster",
+    "card_texture": "chapter_card",
+    "motion_tables": {
+      "st01_gomi_004": "st01_gomi_004",
+      "hand_wait": "st01_hand_000_f00",
+      "topA_wait": "st01_topa_000_f00",
+      "votomA_wait": "st01_votoma_000_f00",
+      "ironball_wait": "st01_ironball_000_f00",
+      "switchA_wait": "st01_switcha_000_f00",
+      "switchB_wait": "st01_switchb_000_f00",
+      "st01_container_000_00a": "st01_container_000_f00",
+      "st01_hook_000_00a": "st01_hook_000_f00",
+      "topB_wait": "st01_topb_000_f00",
+      "kasa_wait": "st01_kasa_000_f00",
+      "bicycle_wait": "st01_bicycle_000_f00",
+      "guitar_wait": "st01_guitar_000",
+      "hasigo_wait": "st01_hasigo_000_f00",
+      "shadanki_wait": "st01_shadanki_000_f00",
+      "st01_cbag_000": "st01_cbag_000",
+      "Light_wait": "st01_light_000",
+      "rope_wait": "st01_rope_000_f00",
+      "freezer_wait": "st01_freezer_000_f00",
+      "st01_cicel_000_00a": "st01_cicel_000",
+      "st01_linne_004": "st01_linne_004",
+      "st01_killerA_010_00a": "st01_killera_010_f17",
+      "st01_ltel_000": "st01_ltel_000",
+      "telephone_wait": "st01_telephone_000",
+      "st01_killerA_011": "st01_killera_011",
+      "st01_linne_005": "st01_linne_005",
+      "st01_cicel_999": "st01_cicel_999",
+      "st01_cbag_999": "st01_cbag_999"
+    },
+    "room_plates": {
+      "11": [["st01-00", 0, 0], ["st01-00-00", 0, 384]],
+      "7": [["st01-00", 0, 0], ["st01-01", 0, 384]]
+    },
+    "music_ids": {"30": "bgm30_new"},
+    "sound_kinds": {"79": "gim_046", "75": "gim_042", "21": "sys_021", "22": "sys_022", "27": "sys_027"}
   },
+  "script_balloons": [
+    {
+      "kind": 5,
+      "delay": 11,
+      "parts": [
+        {"texture": "alert_burst", "dx": 0.8222, "dy": 0.3556, "after": 0, "grow": 3},
+        {"texture": "alert_mark", "dx": 0.4667, "dy": -2.4889, "after": 4, "grow": 3}
+      ]
+    },
+    {
+      "label": "m01_0050",
+      "delay": 0,
+      "parts": [
+        {"texture": "oval_bubble", "dx": -0.1334, "dy": 0.0444, "after": 0, "grow": 6},
+        {"texture": "oval_bubble_text", "dx": -0.1333, "dy": -2.4444, "after": 6, "grow": 0}
+      ]
+    }
+  ],
   "screen_textures": [
     {
       "name": "chapter_card",

@@ -4,6 +4,7 @@ import sys
 import asset_writers
 import bake_record
 import ds_rom
+import frame_layout
 
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
@@ -11,6 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(SRC_VITA_FOLDER), "tools"))
 
 import lmg_decode
 import lz
+import message_cues
 
 SCRIPTS_FOLDER = "scripts"
 SCRIPT_EXTENSION = ".lmg"
@@ -21,7 +23,24 @@ ACT_OP = 0x19
 ACT_END_LOW_OPERAND = 1
 ACT_END_HIGH_OPERAND = 2
 ACT_NAME_OPERAND = 3
-SCRIPT_CODE_FILES = ["ds_rom.py", "script_assets.py", "../../../tools/lz.py"]
+SCRIPT_CODE_FILES = ["ds_rom.py", "message_cues.py", "script_assets.py", "../../../tools/lz.py"]
+CUES_EXTENSION = ".cues"
+MOTIONS_EXTENSION = ".motions"
+CHAIN_FILE = SCRIPTS_FOLDER + "/chain.txt"
+PRELOAD_FILE = SCRIPTS_FOLDER + "/chain.preload"
+ROOMS_FILE = SCRIPTS_FOLDER + "/rooms.txt"
+AUDIO_FILE = SCRIPTS_FOLDER + "/audio_names.txt"
+TEXT_LINES_FILE = SCRIPTS_FOLDER + "/text_lines.txt"
+BALLOONS_FILE = SCRIPTS_FOLDER + "/balloons.txt"
+NARRATION_OP = 0x5d
+MOTION_LABEL_SUFFIX = ".mtbl.xml"
+FLAGS_SCRIPT = "flags.xml"
+LANGUAGE_SUFFIX_FORMAT = ".%s.xml.lz"
+SCREEN_CENTER_X = 480
+NO_LABEL = "-"
+NO_KIND = -1
+WORD_FRAME_LIMIT = 0xfff0
+TABLE_ANIMATION_PREFIX = "t_"
 
 
 class ScriptBakeError(ValueError):
@@ -61,6 +80,49 @@ def store_new_scripts(record, scripts):
     for path, (plain, key) in scripts.items():
         if key is not None:
             record.store(baked_path(path), key, plain)
+
+
+def language_path_of(path, language):
+    stem = path[:-len(XML_SUFFIX)] if path.endswith(XML_SUFFIX) else path
+    return stem + LANGUAGE_SUFFIX_FORMAT % language
+
+
+def narration_labels(path, plain):
+    strings, operations = decoded_script(path, plain)
+    labels = []
+    for _, _, op, operands in operations:
+        if op == NARRATION_OP and strings.get(operands[0]) not in labels:
+            labels.append(strings.get(operands[0]))
+    return labels
+
+
+def bake_one_cue_file(rom, record, code, section, path, plain):
+    labels = narration_labels(path, plain)
+    language_path = language_path_of(path, section.get("language", "en"))
+    if not labels or rom.file_id_of(language_path) is None:
+        return None
+    relative_path = SCRIPTS_FOLDER + "/" + script_name(path) + CUES_EXTENSION
+    packed = rom.read_file(language_path)
+    key = record.key_for(code, {"path": language_path, "labels": labels}, packed)
+    if record.read_if_current(relative_path, key) is None:
+        language_plain = lz.try_decompress(packed)
+        if language_plain is None:
+            raise ScriptBakeError(language_path + " in the DS ROM could not be decompressed")
+        try:
+            text = message_cues.cue_text(language_plain, lmg_decode.read_labels(language_plain, lmg_decode.read_header(language_plain)), labels)
+        except (ValueError, message_cues.CueError) as error:
+            raise ScriptBakeError(language_path + ": " + str(error)) from None
+        record.store(relative_path, key, text.encode("ascii"))
+    return relative_path
+
+
+def bake_cue_files(rom, record, code, section, scripts):
+    relative_paths = []
+    for path, (plain, _) in scripts.items():
+        relative_path = bake_one_cue_file(rom, record, code, section, path, plain)
+        if relative_path is not None:
+            relative_paths.append(relative_path)
+    return relative_paths
 
 
 def decoded_script(path, plain):
@@ -117,6 +179,183 @@ def bake_or_keep_scripts(set_description, rom_path, output_folder, record):
     code = bake_record.code_fingerprint(SCRIPT_CODE_FILES)
     with ds_rom.DsRom(rom_path) as rom:
         scripts = {path: read_one_script(rom, record, code, path) for path in section["files"]}
-    check_script_changes(section, {path: plain for path, (plain, _) in scripts.items()})
-    store_new_scripts(record, scripts)
-    return [baked_path(path) for path in section["files"]]
+        check_script_changes(section, {path: plain for path, (plain, _) in scripts.items()})
+        store_new_scripts(record, scripts)
+        cue_paths = bake_cue_files(rom, record, code, section, scripts)
+    return [baked_path(path) for path in section["files"]] + cue_paths
+
+
+def read_baked_script(output_folder, path):
+    baked = os.path.join(output_folder, baked_path(path))
+    if not os.path.isfile(baked):
+        return None
+    with open(baked, "rb") as source:
+        return source.read()
+
+
+def walk_table_frames(data, offset):
+    frames = []
+    position = offset
+    while True:
+        word = lmg_decode.read_u16(data, position)
+        if word < WORD_FRAME_LIMIT:
+            if word >> 10:
+                frames.append(word & 0x3ff)
+            position = position + 2
+            continue
+        tag = word - 0x10000
+        if tag == -2 or tag == -1:
+            return frames
+        if tag not in lmg_decode.MOTION_LENGTHS:
+            raise ScriptBakeError("a motion table holds the unknown word " + hex(word))
+        position = position + 2 * lmg_decode.MOTION_LENGTHS[tag]
+
+
+def table_animation_name(table_name):
+    return TABLE_ANIMATION_PREFIX + table_name.lower()
+
+
+def table_offsets_of(data):
+    labels = lmg_decode.read_labels(data, lmg_decode.read_header(data))
+    offsets = {}
+    for target, names in labels.items():
+        for name in names:
+            if name.endswith(MOTION_LABEL_SUFFIX):
+                offsets[name[:-len(MOTION_LABEL_SUFFIX)]] = target
+    return offsets
+
+
+def timeline_of_hand_animation(set_description, timelines, animation_name):
+    for animation in set_description.get("animations", []):
+        if animation["name"] == animation_name:
+            return timelines[animation["timeline"]]
+    raise ScriptBakeError("a motion table names an unknown animation: " + animation_name)
+
+
+def table_animations(set_description, output_folder, timelines, crops):
+    section = set_description.get("scripts")
+    if section is None or "motion_tables" not in section:
+        return {}, {}
+    animation_texts = {}
+    motion_lines = {}
+    for path in section["files"]:
+        plain = read_baked_script(output_folder, path)
+        if plain is None:
+            continue
+        offsets = table_offsets_of(plain)
+        lines = []
+        for table_name, animation_name in section["motion_tables"].items():
+            if table_name not in offsets:
+                continue
+            timeline = timeline_of_hand_animation(set_description, timelines, animation_name)
+            ds_frames = walk_table_frames(plain, offsets[table_name])
+            frames, records_per_frame = frame_layout.frames_for_table(timeline, ds_frames, crops)
+            name = table_animation_name(table_name)
+            animation_texts[name] = asset_writers.anim_text(name, 0, frames)
+            lines.append("motion %x %s %d" % (offsets[table_name], name, records_per_frame))
+        if lines:
+            motion_lines[SCRIPTS_FOLDER + "/" + script_name(path) + MOTIONS_EXTENSION] = "\n".join(lines) + "\n"
+    return animation_texts, motion_lines
+
+
+def chain_text(section):
+    lines = ["stop " + section["stop_at_act"], "timing " + section["timing"]]
+    if "card_texture" in section:
+        lines.append("card " + section["card_texture"])
+    lines.extend("file " + script_name(path) for path in section["files"] if path != FLAGS_SCRIPT)
+    return "\n".join(lines) + "\n"
+
+
+def rooms_text(section, plate_sizes):
+    lines = []
+    for room, plates in section.get("room_plates", {}).items():
+        for name, x, y in plates:
+            width, height = plate_sizes[name]
+            lines.append("plate %s %s %s %s %s %s" % (room, name, asset_writers.format_number(x), asset_writers.format_number(y), asset_writers.format_number(width), asset_writers.format_number(height)))
+    return "\n".join(lines) + "\n"
+
+
+def audio_text(section):
+    lines = ["music %s %s" % (id_text, name) for id_text, name in section.get("music_ids", {}).items()]
+    lines.extend("sound %s %s" % (kind_text, name) for kind_text, name in section.get("sound_kinds", {}).items())
+    return "\n".join(lines) + "\n"
+
+
+def check_group_counts(cues_text, narration_lines):
+    groups_by_label = {}
+    label = None
+    for line in cues_text.split("\n"):
+        fields = line.split()
+        if fields and fields[0] == "message":
+            label = fields[1]
+            groups_by_label[label] = 0
+        elif fields and fields[0] == "page":
+            groups_by_label[label] = groups_by_label[label] + int(fields[3])
+    for label, groups in groups_by_label.items():
+        if label in narration_lines and len(narration_lines[label]["paragraphs"]) != groups:
+            raise ScriptBakeError("%s has %d groups in the script's language file and %d paragraphs in the narration" % (label, groups, len(narration_lines[label]["paragraphs"])))
+
+
+def text_lines_text(narration_lines):
+    lines = []
+    for label, message in narration_lines.items():
+        for group, paragraph in enumerate(message["paragraphs"]):
+            for line in paragraph:
+                lines.append("line %s %d %d %s %d %s" % (label, group, line["id"], line["texture"], SCREEN_CENTER_X, asset_writers.format_number(line["top_y"])))
+    return "\n".join(lines) + "\n"
+
+
+def balloons_text(balloons, texture_sizes):
+    lines = []
+    for balloon in balloons:
+        lines.append("balloon %d %s %d" % (balloon.get("kind", NO_KIND), balloon.get("label", NO_LABEL), balloon["delay"]))
+        for part in balloon["parts"]:
+            width, height = texture_sizes[part["texture"]]
+            lines.append("part %s %s %s %s %s %d %d" % (part["texture"], asset_writers.format_number(part["dx"]), asset_writers.format_number(part["dy"]), asset_writers.format_number(width / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), asset_writers.format_number(height / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), part["after"], part["grow"]))
+    return "\n".join(lines) + "\n"
+
+
+def preload_text(section, balloons, narration_lines, animation_names):
+    lines = ["animation " + name for name in animation_names]
+    textures = []
+    for plates in section.get("room_plates", {}).values():
+        textures.extend(plate[0] for plate in plates)
+    if "card_texture" in section:
+        textures.append(section["card_texture"])
+    for message in narration_lines.values():
+        for paragraph in message["paragraphs"]:
+            textures.extend(line["texture"] for line in paragraph)
+    for balloon in balloons:
+        textures.extend(part["texture"] for part in balloon["parts"])
+    lines.extend("texture " + name for name in dict.fromkeys(textures))
+    music_names = list(dict.fromkeys(section.get("music_ids", {}).values()))
+    lines.extend("music " + name for name in music_names[:1])
+    lines.extend("sound " + name for name in dict.fromkeys(section.get("sound_kinds", {}).values()))
+    return "\n".join(lines) + "\n"
+
+
+def read_baked_text(output_folder, relative_path):
+    path = os.path.join(output_folder, relative_path)
+    if not os.path.isfile(path):
+        return None
+    with open(path, "r", encoding="ascii") as source:
+        return source.read()
+
+
+def table_files(set_description, output_folder, motion_lines, narration_lines, texture_sizes, plate_sizes, animation_names):
+    section = set_description.get("scripts")
+    if section is None or "motion_tables" not in section or not motion_lines:
+        return {}
+    balloons = set_description.get("script_balloons", [])
+    for path in section["files"]:
+        cues_text = read_baked_text(output_folder, SCRIPTS_FOLDER + "/" + script_name(path) + CUES_EXTENSION)
+        if cues_text is not None:
+            check_group_counts(cues_text, narration_lines)
+    texts = dict(motion_lines)
+    texts[CHAIN_FILE] = chain_text(section)
+    texts[ROOMS_FILE] = rooms_text(section, plate_sizes)
+    texts[AUDIO_FILE] = audio_text(section)
+    texts[TEXT_LINES_FILE] = text_lines_text(narration_lines)
+    texts[BALLOONS_FILE] = balloons_text(balloons, texture_sizes)
+    texts[PRELOAD_FILE] = preload_text(section, balloons, narration_lines, animation_names)
+    return {relative_path: text.encode("ascii") for relative_path, text in texts.items()}

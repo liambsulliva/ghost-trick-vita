@@ -370,6 +370,10 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         check_steps_refer_to_known_assets(steps, set(result["name"] for result in texture_results), set(animation_texts.keys()), set(result["name"] for result in music_results), set(result["name"] for result in sound_results))
         files = audio_output_files(music_results, sound_results)
         files.update(text_output_files(set_description, animation_texts, steps))
+        table_texts, motion_lines = script_assets.table_animations(set_description, output_folder, timelines, crops)
+        files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in table_texts.items()})
+        texture_sizes = {result["name"]: (result["width"], result["height"]) for result in texture_results}
+        files.update(script_assets.table_files(set_description, output_folder, motion_lines, narration_lines, texture_sizes, plate_size_lookup(texture_results, plates), list(table_texts)))
         write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts), script_paths)
     finally:
         record.save()

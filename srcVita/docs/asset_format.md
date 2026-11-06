@@ -11,6 +11,15 @@ music/<track_name>.ogg
 music/<track_name>.loop
 sounds/<sound_name>.ogg
 scripts/<script_name>.lmg
+scripts/<script_name>.cues
+scripts/<script_name>.motions
+scripts/chain.txt
+scripts/chain.preload
+scripts/rooms.txt
+scripts/audio_names.txt
+scripts/text_lines.txt
+scripts/balloons.txt
+animations/t_<table_name>.anim
 ```
 
 Names use only letters, digits, `_` and `-`, and are at most 95 characters. All text files use one command per line, with fields separated by a single space.
@@ -195,7 +204,7 @@ A `music` step with `loop` 1 seeks to the first number after playing the frame n
 
 ## Scripts: `.lmg`
 
-`scripts/<script_name>.lmg` is a DS scene script, byte for byte the decompressed file from your own USA DS ROM, in the format `docs/lmg_format.md` describes. Nothing in the app reads these yet. `scripts/` stays flat: a script's path becomes its name by turning `/` into `-` and dropping a final `.xml`, so `area9/area9_start.xml` becomes `area9-area9_start`. The result follows the name rule above, and the converter refuses a path whose name would not. `tests/fixtures/script_name_pairs.h` holds invented examples of the rule.
+`scripts/<script_name>.lmg` is a DS scene script, byte for byte the decompressed file from your own USA DS ROM, in the format `docs/lmg_format.md` describes. `script_player.c` reads them before a run starts, one file per frame, and never during a tick. `scripts/` stays flat: a script's path becomes its name by turning `/` into `-` and dropping a final `.xml`, so `area9/area9_start.xml` becomes `area9-area9_start`. The result follows the name rule above, and the converter refuses a path whose name would not. `tests/fixtures/script_name_pairs.h` holds invented examples of the rule.
 
 A set lists its scripts in a `scripts` section. A set with no such section needs no ROM.
 
@@ -206,11 +215,37 @@ A set lists its scripts in a `scripts` section. A set with no such section needs
 | `language` | The language of the message data |
 | `stop_at_act` | The act that ends a run |
 | `never_taken` | Script changes the opening's scripts hold but never make |
-| `timing` | The timing profile: `ds` or `remaster` |
+| `timing` | The timing profile: `ds` or `remaster`. The device runs what this says |
+| `card_texture` | The texture effect 66 shows |
+| `motion_tables` | DS motion table name to the set animation that holds its timeline |
+| `room_plates` | Room id to its plates, each a texture name and an x and y in DS pixels |
+| `music_ids` | BGM id to music name. An id with no row is not requested |
+| `sound_kinds` | Sound kind to sound name. A kind with no row is logged once and not played |
 
 Every script change in a baked file has to name a file in `files` or `never_taken`, or sit inside the `stop_at_act` act. Otherwise the bake stops and names the change.
 
 The converter reads the ROM named by `--ds-rom`, by default `extracted/ds_rom/game.nds`. A missing ROM gives one warning, keeps any scripts already baked, and everything else still converts. A ROM with any game code but `BGTE` is refused, because no other region's scripts have been compared with the trace. The conversion then stops before it converts anything, and existing output stays as it was. A script that fails its checks stops the bake the same way: no script from that run is stored, and the last good ones stay.
+
+## Script tables
+
+These hold no script bytes and no text, only names, numbers and places. They are rewritten only when their bytes differ, and they stay under `scripts/`, except the per-table animations.
+
+`chain.txt` names the run: `stop <act>`, `timing <ds|remaster>`, `card <texture>`, then one `file <script_name>` line per script, in any order. A script change to a name it does not list ends the run cleanly.
+
+`<script_name>.cues` holds the control codes narration timing needs, for every label a `0x5d` in that script names. It never holds a glyph. A script with no language file or no `0x5d` has none.
+
+```
+message <label>
+page <limit> <options> <group_count> <hold of each group>
+```
+
+`<script_name>.motions` maps a motion table to its animation: `motion <table file offset in hex> <animation_name> <records_per_frame>`. `animations/t_<table_name>.anim` is that table's own animation, its name lower case, with records in the table's frame order. A one-frame table takes the first record of its frame, at 1 record per DS frame. A longer table takes all records of each frame, and in a table whose frames step down, each frame's records run in reverse. The VM picks a record as `word_index * records_per_frame + ticks_into_frame * records_per_frame / 4`. These animations are not listed in the manifest.
+
+`rooms.txt` has `plate <room> <texture_name> <x> <y> <width> <height>`. `audio_names.txt` has `music <id> <name>` and `sound <kind> <name>`. `text_lines.txt` has `line <label> <group> <id> <texture_name> <center_x> <top_y>`, in screen pixels, from the narration bake. `balloons.txt` has a `balloon <kind or -1> <label or -> <delay>` line for each row, then one `part <texture_name> <dx> <dy> <width> <height> <after> <grow>` line per part, with `dx` and `dy` in DS pixels from the anchor to the part's centre, and `after` and `grow` in ticks. A balloon with no row draws nothing and logs its name once.
+
+`chain.preload` lists what a run loads before its first tick, one `animation`, `texture`, `music` or `sound` line per name.
+
+A missing ROM keeps what is already in `scripts/`, and the tables that need only baked scripts still come out.
 
 ## Source files
 
