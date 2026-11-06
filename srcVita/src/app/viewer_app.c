@@ -35,8 +35,8 @@
 #define UPLOADS_PER_FRAME 1
 #define NO_PENDING_BACKGROUND -1
 #define BROWSE_OBJECT_NAME "browse"
-#define BROWSE_OBJECT_X 128.0f
-#define BROWSE_OBJECT_Y 176.0f
+#define BROWSE_CENTRE_ACROSS_CAMERA 128.0f
+#define BROWSE_CENTRE_DOWN_CAMERA 96.0f
 #define BROWSE_OBJECT_LAYER 0
 #define SCENE_END_FIRST_LINE "End of the opening"
 #define SCENE_END_SECOND_LINE "Press X to watch it again"
@@ -85,10 +85,42 @@ static void replace_room_with_background(const char *name)
     scene_stage_set_camera(0.0f, 0.0f);
 }
 
+static const struct animation_frame *first_drawn_frame(const struct animation *animation)
+{
+    unsigned int index;
+
+    for (index = 0; index < animation->frame_count; index++) {
+        if (!animation_frame_is_blank(&animation->frames[index])) {
+            return &animation->frames[index];
+        }
+    }
+    return NULL;
+}
+
+static int show_browse_object(const char *name)
+{
+    const struct animation *animation;
+    const struct animation_frame *frame;
+    float x;
+    float y;
+
+    x = scene_stage_view()->camera_x + BROWSE_CENTRE_ACROSS_CAMERA;
+    y = scene_stage_view()->camera_y + BROWSE_CENTRE_DOWN_CAMERA;
+    animation = animation_library_load(name);
+    if (animation != NULL) {
+        frame = first_drawn_frame(animation);
+        if (frame != NULL) {
+            x = x - (frame->x + frame->width / 2.0f);
+            y = y - (frame->y + frame->height / 2.0f);
+        }
+    }
+    return scene_stage_set_object(BROWSE_OBJECT_NAME, name, x, y, BROWSE_OBJECT_LAYER, 0);
+}
+
 static void restore_browse_object(void)
 {
     if (manifest->animation_count > 0) {
-        scene_stage_set_object(BROWSE_OBJECT_NAME, manifest->animation_names[current_animation_index], BROWSE_OBJECT_X, BROWSE_OBJECT_Y, BROWSE_OBJECT_LAYER, 0);
+        show_browse_object(manifest->animation_names[current_animation_index]);
     }
 }
 
@@ -112,7 +144,7 @@ int viewer_app_show_animation(const char *name)
             replace_room_with_background(manifest->background_names[current_background_index]);
         }
     }
-    if (!scene_stage_set_object(BROWSE_OBJECT_NAME, name, BROWSE_OBJECT_X, BROWSE_OBJECT_Y, BROWSE_OBJECT_LAYER, 0)) {
+    if (!show_browse_object(name)) {
         return 0;
     }
     current_animation_index = index;

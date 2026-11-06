@@ -205,8 +205,8 @@ static void test_browsing_draws_a_small_background_centred_with_the_character_ov
     CHECK(nearly_equal(background->screen_area.x, left));
     CHECK(nearly_equal(background->screen_area.y, top));
     CHECK(nearly_equal(background->screen_area.width, ROOM_A_WIDTH));
-    CHECK(nearly_equal(character->screen_area.x, left + (128.0f - 10.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL));
-    CHECK(nearly_equal(character->screen_area.y, top + (176.0f - 20.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL));
+    CHECK(nearly_equal(character->screen_area.x + character->screen_area.width / 2.0f, left + 128.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL));
+    CHECK(nearly_equal(character->screen_area.y + character->screen_area.height / 2.0f, top + 96.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL));
     CHECK(character->screen_area.width == 30.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
     CHECK(character->screen_area.height == 40.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
     CHECK(character->texture_area.width == 0.5f);
@@ -694,6 +694,26 @@ static void test_browsing_stops_a_running_scene(void)
     viewer_app_stop();
 }
 
+static void test_browsing_centres_an_animation_on_its_first_drawn_frame_wherever_the_camera_is(void)
+{
+    const struct fake_draw *character;
+
+    set_up_platform();
+    set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 200 100\nwait 6000\n");
+    add_text_file("assets/animations/offset.anim", "animation offset\nloops 0\nframe - 6 0 0 0 0 0 0 0 0\nframe walk_page 6 -300 -400 30 40 0 0 1 1\n");
+    add_text_file("assets/manifest.txt", "scene opening\nanimation offset\n");
+    viewer_app_start("assets");
+    run_frames(4);
+    CHECK(viewer_app_show_animation("offset"));
+    run_frames(8);
+    draw_frame();
+    character = find_draw_with_texture_width(CHARACTER_WIDTH);
+    CHECK(character != NULL);
+    CHECK(nearly_equal(character->screen_area.x + character->screen_area.width / 2.0f, screen_x_when_camera_is_centred(328.0f, 200.0f)));
+    CHECK(nearly_equal(character->screen_area.y + character->screen_area.height / 2.0f, screen_y_when_camera_is_centred(196.0f, 100.0f)));
+    viewer_app_stop();
+}
+
 static void test_cross_skips_the_current_hold_instead_of_pausing(void)
 {
     set_up_platform();
@@ -1177,6 +1197,7 @@ int main(void)
     test_scene_fades_and_pans_over_time();
     test_scene_survives_bad_files_and_missing_assets();
     test_browsing_stops_a_running_scene();
+    test_browsing_centres_an_animation_on_its_first_drawn_frame_wherever_the_camera_is();
     test_cross_skips_the_current_hold_instead_of_pausing();
     test_skipping_a_fade_or_pan_finishes_it_at_once();
     test_buttons_a_player_might_press_never_stall_the_scene();
