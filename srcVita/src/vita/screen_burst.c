@@ -5,34 +5,34 @@
 #include <psp2/kernel/threadmgr.h>
 #include "clock.h"
 #include "file.h"
-#include "file_path.h"
 #include "memory.h"
 #include "run_log.h"
 #include "screen_burst.h"
-#include "screen_capture.h"
 
 #define BURST_FOLDER_NAME FILE_DATA_FOLDER "/captures/burst"
+#define BURST_WINDOW_FILE BURST_FOLDER_NAME "/window.bin"
 #define BURST_MAGIC "GTB1"
 #define BURST_HEADER_SIZE 20u
-#define BURST_LARGEST_WIDTH 240u
-#define BURST_LARGEST_HEIGHT 136u
+#define BURST_LARGEST_WIDTH 480u
+#define BURST_LARGEST_HEIGHT 272u
 #define BURST_BYTES_PER_PIXEL 2u
-#define BURST_LARGEST_FILE (BURST_HEADER_SIZE + BURST_LARGEST_WIDTH * BURST_LARGEST_HEIGHT * BURST_BYTES_PER_PIXEL)
+#define BURST_LARGEST_PICTURE (BURST_HEADER_SIZE + BURST_LARGEST_WIDTH * BURST_LARGEST_HEIGHT * BURST_BYTES_PER_PIXEL)
 #define BURST_US_BETWEEN_FRAMES 200000ull
 #define BURST_QUEUE_LENGTH 4u
-#define BURST_SLOTS 1000u
 #define BURST_WRITER_PRIORITY 0x10000100
 #define BURST_WRITER_STACK 0x4000
 #define BURST_SOURCE_BYTES_PER_PIXEL 4u
-#define BURST_SOURCE_PIXELS_PER_PICTURE_PIXEL 4u
+#define BURST_SOURCE_PIXELS_PER_PICTURE_PIXEL 2u
+#define BURST_FILE_MODE 0777
 #define US_PER_SECOND 1000000ull
-#define BURST_US_BETWEEN_FULL_SIZE (6ull * US_PER_SECOND)
 
 static unsigned char *pictures[BURST_QUEUE_LENGTH];
 static unsigned int picture_sizes[BURST_QUEUE_LENGTH];
 static SceUID pictures_waiting;
+static SceUID window_file;
 static volatile unsigned int pictures_copied;
 static volatile unsigned int pictures_written;
+static volatile int window_should_close;
 static int is_ready;
 static int is_on;
 static unsigned int session;
@@ -40,8 +40,6 @@ static unsigned int dropped;
 static unsigned long long started_us;
 static unsigned long long stops_at_us;
 static unsigned long long last_copy_us;
-static unsigned long long last_full_size_us;
-static unsigned int full_size_count;
 static unsigned long long longest_copy_us;
 
 static void write_u32(unsigned char *bytes, unsigned int value)
@@ -52,29 +50,23 @@ static void write_u32(unsigned char *bytes, unsigned int value)
     bytes[3] = (unsigned char)(value >> 24);
 }
 
-static unsigned int read_sequence(const unsigned char *picture)
-{
-    return (unsigned int)picture[8] | ((unsigned int)picture[9] << 8) | ((unsigned int)picture[10] << 16) | ((unsigned int)picture[11] << 24);
-}
-
 static int write_waiting_pictures(SceSize argument_size, void *arguments)
 {
-    char path[FILE_PATH_MAX];
-    char unfinished_path[FILE_PATH_MAX];
     unsigned int queue_index;
 
     (void)argument_size;
     (void)arguments;
     for (;;) {
         sceKernelWaitSema(pictures_waiting, 1, NULL);
-        queue_index = pictures_written % BURST_QUEUE_LENGTH;
-        snprintf(path, sizeof(path), BURST_FOLDER_NAME "/f%03u.rgb", read_sequence(pictures[queue_index]) % BURST_SLOTS);
-        snprintf(unfinished_path, sizeof(unfinished_path), BURST_FOLDER_NAME "/unfinished.tmp");
-        if (file_write_whole(unfinished_path, pictures[queue_index], picture_sizes[queue_index]) == FILE_OK) {
-            sceIoRemove(path);
-            sceIoRename(unfinished_path, path);
+        if (pictures_written != pictures_copied) {
+            queue_index = pictures_written % BURST_QUEUE_LENGTH;
+            sceIoWrite(window_file, pictures[queue_index], picture_sizes[queue_index]);
+            pictures_written = pictures_written + 1;
+        } else if (window_should_close) {
+            sceIoClose(window_file);
+            window_file = -1;
+            window_should_close = 0;
         }
-        pictures_written = pictures_written + 1;
     }
     return 0;
 }
@@ -89,12 +81,12 @@ static int get_ready(void)
     }
     file_make_folder(BURST_FOLDER_NAME);
     for (index = 0; index < BURST_QUEUE_LENGTH; index++) {
-        pictures[index] = mem_alloc(BURST_LARGEST_FILE);
+        pictures[index] = mem_alloc(BURST_LARGEST_PICTURE);
         if (pictures[index] == NULL) {
             return 0;
         }
     }
-    pictures_waiting = sceKernelCreateSema("burst_waiting", 0, 0, BURST_QUEUE_LENGTH, NULL);
+    pictures_waiting = sceKernelCreateSema("burst_waiting", 0, 0, BURST_QUEUE_LENGTH + 1, NULL);
     writer = sceKernelCreateThread("burst_writer", write_waiting_pictures, BURST_WRITER_PRIORITY, BURST_WRITER_STACK, 0, SCE_KERNEL_CPU_MASK_USER_1, NULL);
     if (pictures_waiting < 0 || writer < 0 || sceKernelStartThread(writer, 0, NULL) < 0) {
         return 0;
@@ -107,6 +99,8 @@ static void stop_burst(void)
 {
     if (is_on) {
         run_log_write("burst off pictures=%u dropped=%u longest_copy_us=%llu", pictures_copied, dropped, longest_copy_us);
+        window_should_close = 1;
+        sceKernelSignalSema(pictures_waiting, 1);
     }
     is_on = 0;
 }
@@ -125,8 +119,13 @@ void screen_burst_run_for_seconds(int seconds)
         run_log_write("burst refused");
         return;
     }
-    while (pictures_written != pictures_copied) {
+    while (window_should_close || pictures_written != pictures_copied) {
         sceKernelDelayThread(1000);
+    }
+    window_file = sceIoOpen(BURST_WINDOW_FILE, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, BURST_FILE_MODE);
+    if (window_file < 0) {
+        run_log_write("burst refused open=%d", window_file);
+        return;
     }
     pictures_copied = 0;
     pictures_written = 0;
@@ -135,8 +134,6 @@ void screen_burst_run_for_seconds(int seconds)
     started_us = clock_now_us();
     stops_at_us = started_us + (unsigned long long)seconds * US_PER_SECOND;
     last_copy_us = 0;
-    last_full_size_us = started_us;
-    full_size_count = 0;
     session = (unsigned int)started_us;
     is_on = 1;
     run_log_write("burst on session=%u", session);
@@ -163,19 +160,6 @@ static void copy_half_size(unsigned char *destination, const unsigned char *sour
     }
 }
 
-static void save_full_size_when_due(unsigned long long now_us)
-{
-    char path[FILE_PATH_MAX];
-
-    if (now_us - last_full_size_us < BURST_US_BETWEEN_FULL_SIZE) {
-        return;
-    }
-    last_full_size_us = now_us;
-    snprintf(path, sizeof(path), BURST_FOLDER_NAME "/full%03u.bmp", full_size_count % BURST_SLOTS);
-    screen_capture_save_bmp(path);
-    full_size_count = full_size_count + 1;
-}
-
 int screen_burst_note_frame_and_say_if_it_ended(void)
 {
     SceDisplayFrameBuf frame_buffer;
@@ -194,7 +178,6 @@ int screen_burst_note_frame_and_say_if_it_ended(void)
         stop_burst();
         return 1;
     }
-    save_full_size_when_due(now_us);
     if (last_copy_us != 0 && now_us - last_copy_us < BURST_US_BETWEEN_FRAMES) {
         return 0;
     }

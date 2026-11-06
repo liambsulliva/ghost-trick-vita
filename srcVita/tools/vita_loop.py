@@ -5,7 +5,6 @@ import hashlib
 import io
 import json
 import os
-import re
 import socket
 import struct
 import subprocess
@@ -23,18 +22,14 @@ LOG_PATH = DATA_FOLDER + "/run.log"
 PREVIOUS_LOG_PATH = DATA_FOLDER + "/run_previous.log"
 COMMANDS_PATH = DATA_FOLDER + "/commands.txt"
 CAPTURE_FOLDER = DATA_FOLDER + "/captures"
-BURST_FOLDER = CAPTURE_FOLDER + "/burst"
+BURST_WINDOW_PATH = CAPTURE_FOLDER + "/burst/window.bin"
 BURST_SLOTS = 1000
 BURST_MAGIC = b"GTB1"
 BURST_HEADER_SIZE = 20
 BURST_BYTES_PER_PIXEL = 2
 SECONDS_FOR_BURST_TO_FINISH_WRITING = 3
 JPEG_QUALITY = "70"
-FULL_CAPTURE_NAME = "full%03d"
 BURST_PICTURE_NAME = "f%03d"
-BURST_PICTURE_FILE = re.compile(r"f\d{3}\.rgb")
-BURST_FULL_FILE = re.compile(r"full\d{3}\.bmp")
-BURST_FILE = re.compile(r"f\d{3}\.rgb|full\d{3}\.bmp|unfinished\.tmp")
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD_FOLDER = os.path.join(SRC_VITA_FOLDER, "build")
 ASSETS_FOLDER = DATA_FOLDER + "/assets"
@@ -437,33 +432,19 @@ def every_565_color_as_rgb():
     return table
 
 
-def burst_file_names(connection):
-    try:
-        names = connection.nlst(BURST_FOLDER)
-    except ftplib.error_perm:
-        return []
-    return [name.rsplit("/", 1)[-1] for name in names]
-
-
-def clear_old_burst_files():
-    connection = open_ftp()
-    try:
-        for name in burst_file_names(connection):
-            if BURST_FILE.fullmatch(name):
-                connection.delete(BURST_FOLDER + "/" + name)
-    finally:
-        connection.close()
-
-
-def burst_picture_from(data):
-    if len(data) < BURST_HEADER_SIZE or data[:len(BURST_MAGIC)] != BURST_MAGIC:
-        return None
-    _, sequence, elapsed_ms, size = struct.unpack_from("<IIII", data, len(BURST_MAGIC))
-    width = size & 0xffff
-    height = size >> 16
-    if len(data) != BURST_HEADER_SIZE + width * height * BURST_BYTES_PER_PIXEL:
-        return None
-    return {"sequence": sequence, "elapsed_ms": elapsed_ms, "width": width, "height": height, "pixels": data[BURST_HEADER_SIZE:]}
+def split_burst_window(data):
+    pictures = []
+    offset = 0
+    while offset + BURST_HEADER_SIZE <= len(data) and data[offset:offset + len(BURST_MAGIC)] == BURST_MAGIC:
+        _, sequence, elapsed_ms, size = struct.unpack_from("<IIII", data, offset + len(BURST_MAGIC))
+        width = size & 0xffff
+        height = size >> 16
+        pixel_bytes = width * height * BURST_BYTES_PER_PIXEL
+        if offset + BURST_HEADER_SIZE + pixel_bytes > len(data):
+            break
+        pictures.append({"sequence": sequence, "elapsed_ms": elapsed_ms, "width": width, "height": height, "pixels": data[offset + BURST_HEADER_SIZE:offset + BURST_HEADER_SIZE + pixel_bytes]})
+        offset = offset + BURST_HEADER_SIZE + pixel_bytes
+    return pictures
 
 
 def save_burst_picture(picture, path, rgb_of_color):
@@ -478,46 +459,31 @@ def note_picture_time(output_folder, text):
         times.write(time.strftime("%H:%M:%S") + " " + text + "\n")
 
 
-def pull_one_burst_round(round_number, next_slot, next_full_slot, output_folder, rgb_of_color):
+def pull_burst_window():
     connection = open_ftp()
     try:
-        names = burst_file_names(connection)
-        for name in sorted(name for name in names if BURST_PICTURE_FILE.fullmatch(name)):
-            picture = burst_picture_from(download_bytes(connection, BURST_FOLDER + "/" + name))
-            if picture is not None:
-                slot_name = BURST_PICTURE_NAME % (next_slot % BURST_SLOTS)
-                save_burst_picture(picture, os.path.join(output_folder, slot_name + ".jpg"), rgb_of_color)
-                note_picture_time(output_folder, "%s round=%d sequence=%d device_ms=%d" % (slot_name, round_number, picture["sequence"], picture["elapsed_ms"]))
-                next_slot = next_slot + 1
-            connection.delete(BURST_FOLDER + "/" + name)
-        for name in sorted(name for name in names if BURST_FULL_FILE.fullmatch(name)):
-            slot_name = FULL_CAPTURE_NAME % (next_full_slot % BURST_SLOTS)
-            bmp_path = os.path.join(output_folder, slot_name + ".bmp")
-            with open(bmp_path, "wb") as output:
-                output.write(download_bytes(connection, BURST_FOLDER + "/" + name))
-            subprocess.run(["magick", bmp_path, "-resize", "50%", "-quality", JPEG_QUALITY, os.path.join(output_folder, slot_name + ".jpg")], check=True)
-            os.remove(bmp_path)
-            note_picture_time(output_folder, "%s round=%d" % (slot_name, round_number))
-            next_full_slot = next_full_slot + 1
-            connection.delete(BURST_FOLDER + "/" + name)
+        return download_bytes(connection, BURST_WINDOW_PATH)
     finally:
         connection.close()
-    return next_slot, next_full_slot
 
 
 def request_burst(seconds, rounds, output_folder):
     os.makedirs(output_folder, exist_ok=True)
-    clear_old_burst_files()
     rgb_of_color = every_565_color_as_rgb()
     next_slot = 0
-    next_full_slot = 0
     for round_number in range(1, rounds + 1):
         write_app_commands("burst %d\nresume\n" % seconds)
         time.sleep(seconds + SECONDS_FOR_BURST_TO_FINISH_WRITING)
-        pulled_from = next_slot
         started = time.time()
-        next_slot, next_full_slot = pull_one_burst_round(round_number, next_slot, next_full_slot, output_folder, rgb_of_color)
-        print("burst round", round_number, "pictures", next_slot - pulled_from, "pulled in", int(time.time() - started), "seconds", flush=True)
+        data = pull_burst_window()
+        pulled_seconds = time.time() - started
+        pictures = split_burst_window(data)
+        for picture in pictures:
+            slot_name = BURST_PICTURE_NAME % (next_slot % BURST_SLOTS)
+            save_burst_picture(picture, os.path.join(output_folder, slot_name + ".jpg"), rgb_of_color)
+            note_picture_time(output_folder, "%s round=%d sequence=%d device_ms=%d" % (slot_name, round_number, picture["sequence"], picture["elapsed_ms"]))
+            next_slot = next_slot + 1
+        print("burst round", round_number, "pictures", len(pictures), "bytes", len(data), "pulled in %.1f s," % pulled_seconds, "saved by %.1f s" % (time.time() - started), flush=True)
     write_app_commands("resume\n")
     return 0
 
@@ -536,7 +502,7 @@ def build_parser():
     capture_action.add_argument("name", help="name of the capture, without .bmp")
     capture_action.add_argument("--seconds", type=int, default=15, help="how long to wait for the app to save it")
     capture_action.add_argument("--output", default=captures_folder, help="local folder for the BMP")
-    burst_action = actions.add_parser("burst", help="save quarter-size pictures five times a second, plus a full-size capture every few seconds")
+    burst_action = actions.add_parser("burst", help="record half-size pictures five times a second on the Vita, then pause the game while they are pulled")
     burst_action.add_argument("--seconds", type=int, default=60, help="seconds in each recording window; the game pauses after each one while the pictures are pulled")
     burst_action.add_argument("--rounds", type=int, default=1, help="how many recording windows")
     burst_action.add_argument("--output", required=True, help="local folder for the pictures; a scratch folder, because it fills with up to 1000 of each kind")
