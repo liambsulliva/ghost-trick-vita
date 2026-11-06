@@ -326,12 +326,18 @@ static void switch_to_pending_background_when_ready(void)
 static void step_animation(int direction)
 {
     int next;
+    int tries;
 
     if (manifest == NULL || manifest->animation_count == 0) {
         return;
     }
-    next = (current_animation_index + direction + manifest->animation_count) % manifest->animation_count;
-    viewer_app_show_animation(manifest->animation_names[next]);
+    next = current_animation_index;
+    for (tries = 0; tries < manifest->animation_count; tries++) {
+        next = (next + direction + manifest->animation_count) % manifest->animation_count;
+        if (viewer_app_show_animation(manifest->animation_names[next])) {
+            return;
+        }
+    }
 }
 
 static void update_list(const struct input_state *input)

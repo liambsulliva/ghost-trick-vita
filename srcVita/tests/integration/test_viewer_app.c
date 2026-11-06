@@ -86,6 +86,19 @@ static const char *log_text(void)
     return (const char *)fake_files_contents("run.log", &size);
 }
 
+static int count_of_text(const char *text, const char *wanted)
+{
+    int count;
+
+    count = 0;
+    text = strstr(text, wanted);
+    while (text != NULL) {
+        count = count + 1;
+        text = strstr(text + 1, wanted);
+    }
+    return count;
+}
+
 static void run_frames(int frame_count)
 {
     struct input_state no_input;
@@ -341,6 +354,21 @@ static void test_buttons_switch_background_and_animation(void)
     draw_frame();
     CHECK(find_draw_with_texture_width(ROOM_B_WIDTH) != NULL);
     CHECK(find_draw_with_texture_width(CHARACTER_WIDTH) != NULL);
+    viewer_app_stop();
+}
+
+static void test_stepping_walks_past_an_animation_that_will_not_load(void)
+{
+    set_up_platform();
+    set_up_textures_and_animations();
+    add_text_file("assets/manifest.txt", "background room_a\nanimation walk\nanimation broken\nanimation idle\n");
+    add_text_file("assets/animations/broken.anim", "not an animation\n");
+    viewer_app_start("assets");
+    press(INPUT_DOWN);
+    CHECK_HAS_TEXT(log_text(), "animation invalid name=broken");
+    CHECK_HAS_TEXT(log_text(), "animation selected name=idle");
+    press(INPUT_UP);
+    CHECK_INT(count_of_text(log_text(), "animation selected name=walk"), 2);
     viewer_app_stop();
 }
 
@@ -1938,6 +1966,7 @@ int main(void)
     test_app_survives_missing_and_invalid_animation_files();
     test_app_rejects_invalid_manifest();
     test_buttons_switch_background_and_animation();
+    test_stepping_walks_past_an_animation_that_will_not_load();
     test_cross_pauses_and_triangle_hides_hud();
     test_list_widget_opens_selects_and_closes();
     test_list_widget_closes_after_a_selection();

@@ -105,6 +105,7 @@ MUTATIONS = [
     ("src/app/texture_cache.c", "&& !entries[index].read_is_started) {", ") {"),
     ("src/app/texture_cache.c", "texture_cache_drop_waiting_reads();\n    while (reads_in_flight > 0)", "while (reads_in_flight > 0)"),
     ("src/app/viewer_app.c", "texture_cache_drop_waiting_reads();", ""),
+    ("src/app/viewer_app.c", "if (viewer_app_show_animation(manifest->animation_names[next])) {\n            return;\n        }", "viewer_app_show_animation(manifest->animation_names[next]);\n        return;"),
     ("src/app/scene_stage.c", "return texture != NULL && texture->state != CACHED_TEXTURE_LOADING;", "return texture == NULL || texture->state != CACHED_TEXTURE_LOADING;"),
     ("src/app/texture_cache.c", "entry->memory_bytes = memory_bytes;", "entry->memory_bytes = header.pixel_data_size;"),
     ("src/app/spotlight_mask.c", "return (int)(x + 0.5f);", "return (int)x;"),
