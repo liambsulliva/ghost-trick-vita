@@ -121,6 +121,8 @@ def record_shorts(first, anchor, point):
     values[timeline_format.SHORT_BLANK_MARKER] = first
     values[timeline_format.SHORT_ANCHOR_X] = anchor[0]
     values[timeline_format.SHORT_ANCHOR_Y] = anchor[1]
+    values[timeline_format.SHORT_ORIGIN_X] = 1024
+    values[timeline_format.SHORT_ORIGIN_Y] = 512
     values[timeline_format.SHORT_POINT_X] = point[0]
     values[timeline_format.SHORT_POINT_Y] = point[1]
     return values

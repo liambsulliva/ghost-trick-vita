@@ -4,11 +4,10 @@ DS_TICKS_PER_FRAME = 4
 ART_PER_DS_PIXEL = 4
 SCREEN_PIXELS_PER_DS_PIXEL = 720 / 256
 TARGET_SCALE = SCREEN_PIXELS_PER_DS_PIXEL / ART_PER_DS_PIXEL
-OBJECT_ORIGIN_X_IN_TIMELINE = 256
-OBJECT_ORIGIN_Y_IN_TIMELINE = 128
 ANCHOR_UNITS_PER_DS_PIXEL = 2
 ANCHOR_NOISE_UNITS = 1
 TEX_VERSION_SUFFIX = ".691230823"
+PLACEHOLDER_PAGE_NAME = "nullwhite"
 
 
 def round_to_multiple_of_four(value):
@@ -59,9 +58,10 @@ def anchor_offset(anchor_value, point_value):
 
 def placement_in_ds_pixels(position, origin, anchor, point, shift):
     position_ds = position / ART_PER_DS_PIXEL
+    origin_ds = origin / ART_PER_DS_PIXEL
     offset_ds = anchor_offset(anchor, point)
     shift_ds = shift / ART_PER_DS_PIXEL
-    return position_ds - origin - offset_ds + shift_ds
+    return position_ds - origin_ds - offset_ds + shift_ds
 
 
 def cell_rectangle(timeline, record):
@@ -83,9 +83,13 @@ def record_texture_name(timeline, record):
     return texture_name_for(timeline["pages"][record["page"]])
 
 
+def record_draws_art(timeline, record):
+    return not record["is_blank"] and record_texture_name(timeline, record) != PLACEHOLDER_PAGE_NAME
+
+
 def add_used_cells_to_crops(crops, timeline, ds_frames):
     for record in select_records(timeline, ds_frames):
-        if record["is_blank"]:
+        if not record_draws_art(timeline, record):
             continue
         name = record_texture_name(timeline, record)
         rectangle = cell_rectangle(timeline, record)
@@ -94,26 +98,38 @@ def add_used_cells_to_crops(crops, timeline, ds_frames):
         crops[name] = rectangle
 
 
+def inset_away_from_neighbours(cell_start, cell_length, crop_start, crop_length, baked_length):
+    half_baked_texel = 0.5 * crop_length / baked_length
+    before = half_baked_texel if cell_start > crop_start else 0
+    after = half_baked_texel if cell_start + cell_length < crop_start + crop_length else 0
+    return before, after
+
+
 def frame_for_record(timeline, record, ticks, crops):
-    if record["is_blank"]:
+    if not record_draws_art(timeline, record):
         return asset_writers.blank_frame(ticks)
     name = record_texture_name(timeline, record)
     cell_x, cell_y, cell_width, cell_height = cell_rectangle(timeline, record)
     crop_x, crop_y, crop_width, crop_height = crops[name]
     shift_x, shift_y = timeline["placement_shift"]
-    left = placement_in_ds_pixels(record["position"][0], OBJECT_ORIGIN_X_IN_TIMELINE, record["anchor"][0], record["point"][0], shift_x)
-    top = placement_in_ds_pixels(record["position"][1], OBJECT_ORIGIN_Y_IN_TIMELINE, record["anchor"][1], record["point"][1], shift_y)
+    left = placement_in_ds_pixels(record["position"][0], record["origin"][0], record["anchor"][0], record["point"][0], shift_x)
+    top = placement_in_ds_pixels(record["position"][1], record["origin"][1], record["anchor"][1], record["point"][1], shift_y)
+    baked_width, baked_height = target_size(crop_width, crop_height)
+    inset_left, inset_right = inset_away_from_neighbours(cell_x, cell_width, crop_x, crop_width, baked_width)
+    inset_top, inset_bottom = inset_away_from_neighbours(cell_y, cell_height, crop_y, crop_height, baked_height)
+    drawn_width = cell_width - inset_left - inset_right
+    drawn_height = cell_height - inset_top - inset_bottom
     return {
         "texture": name,
         "ticks": ticks,
-        "x": left,
-        "y": top,
-        "width": cell_width / ART_PER_DS_PIXEL,
-        "height": cell_height / ART_PER_DS_PIXEL,
-        "u": (cell_x - crop_x) / crop_width,
-        "v": (cell_y - crop_y) / crop_height,
-        "u_size": cell_width / crop_width,
-        "v_size": cell_height / crop_height,
+        "x": left + inset_left / ART_PER_DS_PIXEL,
+        "y": top + inset_top / ART_PER_DS_PIXEL,
+        "width": drawn_width / ART_PER_DS_PIXEL,
+        "height": drawn_height / ART_PER_DS_PIXEL,
+        "u": (cell_x + inset_left - crop_x) / crop_width,
+        "v": (cell_y + inset_top - crop_y) / crop_height,
+        "u_size": drawn_width / crop_width,
+        "v_size": drawn_height / crop_height,
     }
 
 

@@ -6,8 +6,8 @@ import frame_layout
 
 WHOLE_PAGE_CROP = {"st01_x_000_00": (0, 0, 512, 256)}
 PAGE_PATH = "charfiles/2D/01_Human/st01/x/st01_x_000/st01_x_000_00_IML4.tex"
-PLACED_RECORD = {"page": 0, "cell_in_page": 0, "position": (100.0, 40.0), "anchor": (0, 0), "point": (0, 0), "is_blank": False}
-BLANK_RECORD = {"page": None, "cell_in_page": None, "position": (0.0, 0.0), "anchor": (0, 0), "point": (0, 0), "is_blank": True}
+PLACED_RECORD = {"page": 0, "cell_in_page": 0, "position": (100.0, 40.0), "anchor": (0, 0), "origin": (1024, 512), "point": (0, 0), "is_blank": False}
+BLANK_RECORD = {"page": None, "cell_in_page": None, "position": (0.0, 0.0), "anchor": (0, 0), "origin": (0, 0), "point": (0, 0), "is_blank": True}
 
 
 class GtexWriterTests(unittest.TestCase):
@@ -52,7 +52,7 @@ class AnimWriterTests(unittest.TestCase):
         lines = text.splitlines()
         self.assertEqual(lines[0], "animation st01_x_000")
         self.assertEqual(lines[1], "loops 1")
-        self.assertEqual(lines[2], "frame st01_x_000_00 2 -231 -118 25 12.5 0 0 0.195312 0.195312")
+        self.assertEqual(lines[2], "frame st01_x_000_00 2 -231 -118 24.822222 12.322222 0 0 0.193924 0.192535")
         self.assertEqual(lines[3], "frame - 2 0 0 0 0 0 0 0 0")
 
     def test_too_many_frames_are_refused(self):

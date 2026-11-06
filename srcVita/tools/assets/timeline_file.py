@@ -11,6 +11,8 @@ RECORD_SHORT_COUNT = 20
 SHORT_BLANK_MARKER = 0
 SHORT_ANCHOR_X = 1
 SHORT_ANCHOR_Y = 2
+SHORT_ORIGIN_X = 3
+SHORT_ORIGIN_Y = 4
 SHORT_POINT_X = 6
 SHORT_POINT_Y = 7
 UNUSED_RECORD_TAIL_VALUES = 3
@@ -170,6 +172,7 @@ def build_timeline(objects):
             "cell_in_page": cell_in_page,
             "position": source["position"],
             "anchor": (shorts[SHORT_ANCHOR_X], shorts[SHORT_ANCHOR_Y]),
+            "origin": (shorts[SHORT_ORIGIN_X], shorts[SHORT_ORIGIN_Y]),
             "point": (shorts[SHORT_POINT_X], shorts[SHORT_POINT_Y]),
             "is_blank": is_blank,
         })

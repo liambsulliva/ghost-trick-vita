@@ -133,8 +133,8 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(self.read_text("animations", "st01_a_000.anim"), "\n".join([
             "animation st01_a_000",
             "loops 0",
-            "frame st01_a_000_00 2 -247 -124 8 8 0 0 0.5 1",
-            "frame st01_a_000_00 2 -247 -124 8 8 0.5 0 0.5 1",
+            "frame st01_a_000_00 2 -247 -124 7.818182 8 0 0 0.488636 1",
+            "frame st01_a_000_00 2 -246.818182 -124 7.818182 8 0.511364 0 0.488636 1",
             "frame - 2 0 0 0 0 0 0 0 0",
             "frame st01_a_000_01 2 -253 -128 8 8 0 0 1 1",
         ]) + "\n")

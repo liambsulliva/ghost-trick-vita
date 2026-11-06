@@ -45,7 +45,7 @@ def add_atlas_page_jobs(jobs, animations, timelines):
         ds_frames = animation.get("ds_frames")
         frame_layout.add_used_cells_to_crops(crops, timeline, ds_frames)
         for record in frame_layout.select_records(timeline, ds_frames):
-            if not record["is_blank"]:
+            if frame_layout.record_draws_art(timeline, record):
                 logical_path = timeline["pages"][record["page"]]
                 name = frame_layout.texture_name_for(logical_path)
                 jobs[name] = {"name": name, "source": frame_layout.pack_path_for(logical_path)}
