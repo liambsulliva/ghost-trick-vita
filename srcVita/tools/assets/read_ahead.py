@@ -10,6 +10,7 @@ AHEAD_EXTENSION = ".ahead"
 BUNDLE_EXTENSION = ".anims"
 MOTIONS_EXTENSION = ".motions"
 ANCHOR_ACT_PREFIX = "game"
+OPENING_TICKS = 600
 
 
 def read_lines(path):
@@ -44,6 +45,8 @@ def movie_effects(effects_path):
     movies = {}
     pages = {}
     current = None
+    if not os.path.exists(effects_path):
+        return {}
     for line in read_lines(effects_path):
         fields = line.split()
         if len(fields) > 3 and fields[0] == "effect" and fields[2] == "movie":
@@ -76,7 +79,9 @@ def schedules_from_cues(cues_path, scripts_folder, animation_folder):
     script_name = None
     anchor = None
     anchor_tick = 0
+    script_tick = 0
     seen = set()
+    previous = None
     for line in read_lines(cues_path):
         tick_text, _, text = line.partition("\t")
         fields = text.split()
@@ -84,8 +89,11 @@ def schedules_from_cues(cues_path, scripts_folder, animation_folder):
             continue
         tick = int(tick_text)
         if fields[0] == "mark" and len(fields) > 2 and fields[1] == "script_begun" and fields[2] != "route" and "_root" not in fields[2]:
+            if script_name is not None and anchor is not None:
+                previous = (script_name, anchor, anchor_tick, set(texture for _, _, texture in schedules[script_name]))
             script_name = fields[2]
             anchor, anchor_tick = "*", tick
+            script_tick = tick
             seen = set()
             schedules.setdefault(script_name, [])
             continue
@@ -106,6 +114,9 @@ def schedules_from_cues(cues_path, scripts_folder, animation_folder):
                 if texture not in seen:
                     seen.add(texture)
                     schedules[script_name].append((anchor, tick - anchor_tick, texture))
+                    if previous is not None and tick - script_tick < OPENING_TICKS and texture not in previous[3]:
+                        previous[3].add(texture)
+                        schedules[previous[0]].append((previous[1], tick - previous[2], texture))
     return schedules
 
 
