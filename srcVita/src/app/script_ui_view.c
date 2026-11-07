@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "renderer.h"
+#include "scene_stage.h"
+#include "scene_view.h"
 #include "script_ui_view.h"
 #include "texture_cache.h"
 
@@ -61,6 +63,39 @@
 #define REWIND_LABEL_SHEET_Y 112.0f
 #define REWIND_LABEL_SHEET_WIDTH 420.0f
 #define REWIND_LABEL_SHEET_HEIGHT 72.0f
+#define TAP_BALLOON_MAX 8
+#define TAP_BALLOON_KEY_COUNT 5
+#define TAP_BALLOON_CLOSE_TICKS 12
+#define TAP_BALLOON_CLOSE_WIDEN 0.2f
+#define TAP_ART_TEXTURE "ui_tap_balloon"
+#define TAP_ART_WIDTH 512.0f
+#define TAP_ART_HEIGHT 256.0f
+#define TAP_OVAL_CELL_X 2.0f
+#define TAP_OVAL_CELL_Y 2.0f
+#define TAP_OVAL_CELL_WIDTH 225.0f
+#define TAP_OVAL_CELL_HEIGHT 156.0f
+#define TAP_OVAL_WITH_TAIL_CELL_HEIGHT 216.0f
+#define TAP_OVAL_WIDTH 139.0f
+#define TAP_OVAL_HEIGHT 74.0f
+#define TAP_OVAL_WITH_TAIL_HEIGHT 124.0f
+#define TAP_MARK_CELL_X 230.0f
+#define TAP_MARK_CELL_Y 113.0f
+#define TAP_MARK_CELL_SIZE 46.0f
+#define TAP_MARK_SIZE 25.0f
+#define TAP_MARK_SPACING 36.0f
+#define TAP_MARKS_X 480.0f
+#define TAP_MARKS_Y 52.5f
+#define TAP_DOT_SIZE 12.0f
+#define TAP_DOT_SPACING 28.0f
+#define TAP_DOTS_ABOVE_MIDDLE 25.0f
+#define TAP_DOTS_ABOVE_ANCHOR -66.0f
+#define TAP_CONTENT_SHOWS_AT 10
+#define TAP_GLYPH_RIGHT_OF_MIDDLE 34.0f
+#define TAP_MARKS_GLYPH_BELOW_MIDDLE 20.0f
+#define TAP_DOTS_GLYPH_BELOW_MIDDLE -8.0f
+#define TAP_SQUARE_GLYPH_X 80.0f
+#define TAP_TRIANGLE_GLYPH_X 120.0f
+#define TAP_GLYPH_CELL 40.0f
 #define NARRATION_ARROW_TEXTURE "narration_arrow"
 #define NARRATION_ARROW_X 459.0f
 #define NARRATION_ARROW_Y 504.0f
@@ -104,6 +139,15 @@
 #define PILL_GLYPH_NUDGE_Y -2.0f
 #define PILL_BOTTOM_Y 494.0f
 #define PILL_TOP_Y 12.5f
+
+struct tap_balloon {
+    int is_open;
+    int kind;
+    int age_ticks;
+    int closing_ticks;
+    float anchor_x;
+    float anchor_y;
+};
 
 struct pill_sheet_cell {
     float x;
@@ -167,6 +211,10 @@ struct playing_clip {
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static int arrow_age_ticks;
+static struct tap_balloon tap_balloons[TAP_BALLOON_MAX];
+static const float tap_balloon_key_frames[TAP_BALLOON_KEY_COUNT] = { 0.0f, 5.0f, 10.0f, 15.0f, 19.0f };
+static const float tap_balloon_widths[TAP_BALLOON_KEY_COUNT] = { 1.24f, 0.66f, 1.24f, 0.77f, 1.0f };
+static const float tap_balloon_heights[TAP_BALLOON_KEY_COUNT] = { 0.0f, 1.42f, 0.64f, 1.21f, 1.0f };
 
 static const struct hourglass_cell glass_cells[] = {
     { 258.0f, 3.0f, 210.0f, 32.0f, 210.0f, 32.0f, 467.0f, 0.5f, 1 },
@@ -198,9 +246,12 @@ static struct playing_clip playing[PLAYING_CLIP_MAX];
 static struct script_hud_view hud;
 static float stream_phase;
 
+static void advance_tap_balloons(void);
+
 void script_ui_view_clear(void)
 {
     memset(playing, 0, sizeof(playing));
+    memset(tap_balloons, 0, sizeof(tap_balloons));
     memset(&hud, 0, sizeof(hud));
     stream_phase = 0.0f;
 }
@@ -241,6 +292,7 @@ void script_ui_view_advance(void)
     int index;
 
     arrow_age_ticks = arrow_age_ticks + 1;
+    advance_tap_balloons();
     (void)texture_cache_use_or_start_loading(PILL_ART_TEXTURE);
     (void)texture_cache_use_or_start_loading(PILL_SHEET_TEXTURE);
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
@@ -696,6 +748,148 @@ static void draw_rewind_select(void)
     }
 }
 
+static float keyed_value(const float *values, float frame)
+{
+    int index;
+
+    for (index = 0; index < TAP_BALLOON_KEY_COUNT - 1; index++) {
+        if (frame <= tap_balloon_key_frames[index + 1]) {
+            float share;
+
+            share = (frame - tap_balloon_key_frames[index]) / (tap_balloon_key_frames[index + 1] - tap_balloon_key_frames[index]);
+            return values[index] + (values[index + 1] - values[index]) * share;
+        }
+    }
+    return values[TAP_BALLOON_KEY_COUNT - 1];
+}
+
+static void draw_tap_balloon_art(const struct cached_texture *art, float x, float y, float width, float height, float cell_x, float cell_y, float cell_width, float cell_height, struct renderer_color tint)
+{
+    draw_slice(art, x - width / 2.0f, y - height / 2.0f, width, height, cell_x / TAP_ART_WIDTH, cell_y / TAP_ART_HEIGHT, cell_width / TAP_ART_WIDTH, cell_height / TAP_ART_HEIGHT, tint);
+}
+
+static void draw_tap_balloon(const struct tap_balloon *balloon)
+{
+    const struct cached_texture *art;
+    const struct cached_texture *sheet;
+    struct renderer_color black;
+    struct renderer_rect glyph;
+    struct renderer_rect part;
+    float frame;
+    float width_scale;
+    float height_scale;
+    float x;
+    float y;
+    float full_height;
+    int is_marks;
+    int index;
+
+    art = ready_texture(TAP_ART_TEXTURE);
+    sheet = ready_texture(PILL_SHEET_TEXTURE);
+    if (art == NULL || sheet == NULL) {
+        return;
+    }
+    is_marks = balloon->kind == SCRIPT_BALLOON_KIND_TAP_MARKS;
+    frame = (float)balloon->age_ticks;
+    width_scale = keyed_value(tap_balloon_widths, frame);
+    height_scale = keyed_value(tap_balloon_heights, frame);
+    if (balloon->closing_ticks > 0) {
+        float closed;
+
+        closed = (float)balloon->closing_ticks / (float)TAP_BALLOON_CLOSE_TICKS;
+        width_scale = 1.0f + closed * TAP_BALLOON_CLOSE_WIDEN;
+        height_scale = 1.0f - closed;
+    }
+    if (is_marks) {
+        x = TAP_MARKS_X;
+        y = TAP_MARKS_Y;
+    } else {
+        scene_view_world_to_screen(scene_stage_view(), balloon->anchor_x, balloon->anchor_y, &x, &y);
+        y = y + TAP_DOTS_ABOVE_ANCHOR;
+    }
+    full_height = is_marks ? TAP_OVAL_HEIGHT : TAP_OVAL_WITH_TAIL_HEIGHT;
+    draw_tap_balloon_art(art, x, y, TAP_OVAL_WIDTH * width_scale, full_height * height_scale, TAP_OVAL_CELL_X, TAP_OVAL_CELL_Y, TAP_OVAL_CELL_WIDTH, is_marks ? TAP_OVAL_CELL_HEIGHT : TAP_OVAL_WITH_TAIL_CELL_HEIGHT, white);
+    if (balloon->age_ticks < TAP_CONTENT_SHOWS_AT || balloon->closing_ticks > 0) {
+        return;
+    }
+    black.red = 0.0f;
+    black.green = 0.0f;
+    black.blue = 0.0f;
+    black.alpha = 1.0f;
+    for (index = -1; index <= 1; index++) {
+        if (is_marks) {
+            draw_tap_balloon_art(art, x + (float)index * TAP_MARK_SPACING, y, TAP_MARK_SIZE, TAP_MARK_SIZE, TAP_MARK_CELL_X, TAP_MARK_CELL_Y, TAP_MARK_CELL_SIZE, TAP_MARK_CELL_SIZE, white);
+        } else {
+            draw_tap_balloon_art(art, x + (float)index * TAP_DOT_SPACING, y - TAP_DOTS_ABOVE_MIDDLE, TAP_DOT_SIZE, TAP_DOT_SIZE, TAP_OVAL_CELL_X, TAP_OVAL_CELL_Y, TAP_OVAL_CELL_WIDTH, TAP_OVAL_CELL_HEIGHT, black);
+        }
+    }
+    glyph.x = x + TAP_GLYPH_RIGHT_OF_MIDDLE;
+    glyph.y = y + (is_marks ? TAP_MARKS_GLYPH_BELOW_MIDDLE : TAP_DOTS_GLYPH_BELOW_MIDDLE);
+    glyph.width = PILL_GLYPH_SIZE;
+    glyph.height = PILL_GLYPH_SIZE;
+    part.x = (is_marks ? TAP_SQUARE_GLYPH_X : TAP_TRIANGLE_GLYPH_X) / PILL_SHEET_WIDTH;
+    part.y = 0.0f;
+    part.width = TAP_GLYPH_CELL / PILL_SHEET_WIDTH;
+    part.height = TAP_GLYPH_CELL / PILL_SHEET_HEIGHT;
+    renderer_draw_sprite(sheet->texture, glyph, part, white);
+}
+
+static void draw_tap_balloons(void)
+{
+    int index;
+
+    if (hud.soul_view_is_on) {
+        return;
+    }
+    for (index = 0; index < TAP_BALLOON_MAX; index++) {
+        if (tap_balloons[index].is_open) {
+            draw_tap_balloon(&tap_balloons[index]);
+        }
+    }
+}
+
+void script_ui_view_tap_balloon_opened(int slot, int kind, float anchor_x, float anchor_y)
+{
+    if (slot < 0 || slot >= TAP_BALLOON_MAX) {
+        return;
+    }
+    tap_balloons[slot].is_open = 1;
+    tap_balloons[slot].kind = kind;
+    tap_balloons[slot].age_ticks = 0;
+    tap_balloons[slot].closing_ticks = 0;
+    tap_balloons[slot].anchor_x = anchor_x;
+    tap_balloons[slot].anchor_y = anchor_y;
+}
+
+void script_ui_view_tap_balloon_closed(int slot)
+{
+    if (slot >= 0 && slot < TAP_BALLOON_MAX && tap_balloons[slot].is_open && tap_balloons[slot].closing_ticks == 0) {
+        tap_balloons[slot].closing_ticks = 1;
+    }
+}
+
+static void advance_tap_balloons(void)
+{
+    int index;
+
+    (void)texture_cache_use_or_start_loading(TAP_ART_TEXTURE);
+    for (index = 0; index < TAP_BALLOON_MAX; index++) {
+        struct tap_balloon *balloon;
+
+        balloon = &tap_balloons[index];
+        if (!balloon->is_open) {
+            continue;
+        }
+        balloon->age_ticks = balloon->age_ticks + 1;
+        if (balloon->closing_ticks > 0) {
+            balloon->closing_ticks = balloon->closing_ticks + 1;
+            if (balloon->closing_ticks > TAP_BALLOON_CLOSE_TICKS) {
+                balloon->is_open = 0;
+            }
+        }
+    }
+}
+
 static void draw_narration_arrow(void)
 {
     const struct cached_texture *arrow;
@@ -839,6 +1033,7 @@ void script_ui_view_draw(void)
     }
     if (!hud.is_hidden_for_movie) {
         draw_side_hud();
+        draw_tap_balloons();
         draw_rewind_select();
         draw_pills();
         draw_narration_arrow();

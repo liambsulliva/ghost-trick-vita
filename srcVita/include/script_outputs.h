@@ -43,6 +43,9 @@ enum script_soul_motion {
     SCRIPT_SOUL_LIGHTNING
 };
 
+#define SCRIPT_BALLOON_KIND_TAP_MARKS 100
+#define SCRIPT_BALLOON_KIND_TAP_DOTS 101
+
 enum script_pill_id {
     SCRIPT_PILL_GHOST,
     SCRIPT_PILL_HOURGLASS,
@@ -64,6 +67,7 @@ struct script_hud_view {
     int world_is_running;
     int is_hidden_for_movie;
     int narration_arrow_is_on;
+    int soul_view_is_on;
     int rewind_select_ticks;
     int rewind_press_ticks;
     int pulse_ticks;

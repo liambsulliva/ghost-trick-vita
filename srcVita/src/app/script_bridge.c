@@ -484,6 +484,11 @@ static void on_balloon_opened(int slot, const char *label, int kind, float ancho
     char name[SCRIPT_CUE_LABEL_MAX];
     int index;
 
+    if (kind == SCRIPT_BALLOON_KIND_TAP_MARKS || kind == SCRIPT_BALLOON_KIND_TAP_DOTS) {
+        script_ui_view_tap_balloon_opened(slot, kind, anchor_x, anchor_y);
+        open_balloon_rows[slot] = NULL;
+        return;
+    }
     row = script_tables_find_balloon(tables, label, kind);
     open_balloon_rows[slot] = row;
     if (row == NULL) {
@@ -504,6 +509,7 @@ static void on_balloon_closed(int slot)
     const struct script_balloon_row *row;
     int index;
 
+    script_ui_view_tap_balloon_closed(slot);
     row = open_balloon_rows[slot];
     if (row == NULL) {
         return;

@@ -466,10 +466,10 @@ static void update_player_controls(const struct input_state *input)
             script_player_back_button();
         }
         if (input->pressed & INPUT_SQUARE) {
-            script_player_tap_balloon(0);
+            script_player_tap_balloon(1);
         }
         if (input->pressed & INPUT_TRIANGLE) {
-            script_player_tap_balloon(1);
+            script_player_tap_balloon(0);
         }
         if (input->pressed & INPUT_R) {
             script_player_hourglass_button();

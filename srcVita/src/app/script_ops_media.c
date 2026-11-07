@@ -92,7 +92,7 @@ static void open_tap_balloon_that_sends(struct script_machine *machine, struct s
 {
     struct script_balloon *balloon;
 
-    balloon = open_balloon(machine, vm, NULL, TAP_BALLOON_ICON_KIND, (int)script_machine_u32(words, 0));
+    balloon = open_balloon(machine, vm, NULL, tap_group == SCRIPT_TAP_GROUP_LEFT ? SCRIPT_BALLOON_KIND_TAP_DOTS : SCRIPT_BALLOON_KIND_TAP_MARKS, (int)script_machine_u32(words, 0));
     if (balloon == NULL) {
         return;
     }

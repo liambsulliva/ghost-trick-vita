@@ -586,6 +586,7 @@ static void report_hud(struct script_machine *machine)
     view.world_is_running = !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && machine->eyecatch_ticks_left == 0;
     view.is_hidden_for_movie = machine->movie_ticks_left > 0;
     view.narration_arrow_is_on = script_narration_wants_a_press(&machine->narration);
+    view.soul_view_is_on = machine->soul.is_on;
     view.rewind_select_ticks = machine->soul.rewind_select_ticks;
     view.rewind_press_ticks = machine->soul.rewind_press_ticks;
     script_pills_fill_view(machine, &view);

@@ -155,6 +155,12 @@
       "height": 1536
     },
     {
+      "name": "ui_tap_balloon",
+      "source": "natives/android/charfiles/3d/06_id/cmn_balloon_animation_iml4.tex.691230823",
+      "width": 512,
+      "height": 256
+    },
+    {
       "name": "soul_spokes",
       "source": "natives/android/charfiles/3d/04_item/circlesubtex03_iml4.tex.691230823",
       "width": 64,
