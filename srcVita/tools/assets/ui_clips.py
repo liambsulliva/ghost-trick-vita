@@ -102,6 +102,9 @@ def all_clips():
     clips.append(digit_clip("DEATH_COUNT_1", "digit_1", [149.125, 447.25, 149.125, 178.875, 149.125], [578, 1734, 578.1, 693.6, 578]))
     clips.append(digit_clip("DEATH_COUNT_0", "digit_0", [277, 692.5, 277, 332.25, 277], [590.4, 1475, 590, 708, 590]))
     clips.append(card_clip())
+    clips.append({"name": "WHITE_FILTER", "frames": 177, "elements": [
+        element("rect", "-", WHITE, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=constant(VITA_WIDTH), h=constant(544.0), alpha=[(0, 0.0), (12, 1.0), (84, 1.0), (177, 0.0)]),
+    ]})
     return clips
 
 

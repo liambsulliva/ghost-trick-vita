@@ -39,7 +39,7 @@ SOUND_GROUP_NAMES = {0: "sys", 1: "gim"}
 SOUND_SOURCE = "natives/android/streaming/sound/se_resource/%s/%s.asrc.31"
 MUSIC_SOURCE = "natives/android/streaming/sound/bgm_new/bgm%02d_new.asrc.31"
 MUSIC_NAME = "bgm%02d_new"
-NATIVE_SOUND_KINDS = (5, 6, 11, 12, 13, 14, 15, 18, 82)
+NATIVE_SOUND_KINDS = (5, 6, 11, 12, 13, 14, 15, 18, 19, 82)
 NATIVE_MUSIC_IDS = (9,)
 FACE_TABLE_ADDRESS = 0x02085724
 FACE_ROW_SIZE = 14
@@ -439,7 +439,7 @@ def expand_set(set_description, packs, rom_path, text_key):
     for path, script in scripts.items():
         for label in script.strings_of_ops((NARRATION_OP,)):
             if label in entries:
-                narration_rows.append({"name": label, "file": entries[label][0][0], "entry": entries[label][0][1]})
+                narration_rows.append({"name": label, "file": entries[label][0][0], "entry": entries[label][0][1], "later_entries": [entry for _, entry in entries[label][1:]]})
         for label in script.strings_of_ops(TALK_OPS):
             if label in entries:
                 talk_labels[label] = path

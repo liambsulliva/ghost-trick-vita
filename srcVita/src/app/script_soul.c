@@ -73,6 +73,9 @@ enum tutorial_mode {
 #define NORMAL_FOLLOW_STOPS_BELOW 0.25f
 #define DS_SCREEN_WIDTH 256
 #define DS_SCREEN_HEIGHT 192
+#define LEAP_SPOKES_AFTER_TICKS 87
+#define LEAP_SWIRL_AFTER_TICKS 102
+#define LEAP_MESSAGE_AFTER_TICKS 282
 #define REWIND_SLIDE_TICKS 20
 #define REWIND_PRESS_TO_MOVIE_TICKS 63
 #define MARK_IS_OFF -1
@@ -240,10 +243,35 @@ static void report_soul_view(struct script_machine *machine)
 
 static void start_time_leap(struct script_machine *machine)
 {
-    if (machine->outputs->swirl_changed != NULL) {
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (machine->auto_press == SCRIPT_AUTO_FAST) {
+        if (machine->outputs->swirl_changed != NULL) {
+            machine->outputs->swirl_changed(1);
+        }
+        script_machine_send(machine, "*", "timeleap", "start");
+        return;
+    }
+    soul->leap_spokes_at = (long long)machine->tick + LEAP_SPOKES_AFTER_TICKS;
+    soul->leap_swirl_at = (long long)machine->tick + LEAP_SWIRL_AFTER_TICKS;
+    soul->leap_message_at = (long long)machine->tick + LEAP_MESSAGE_AFTER_TICKS;
+}
+
+static void step_the_time_leap(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->leap_spokes_at == (long long)machine->tick && machine->outputs->soul_vision_changed != NULL) {
+        machine->outputs->soul_vision_changed(1, 1);
+    }
+    if (soul->leap_swirl_at == (long long)machine->tick && machine->outputs->swirl_changed != NULL) {
         machine->outputs->swirl_changed(1);
     }
-    script_machine_send(machine, "*", "timeleap", "start");
+    if (soul->leap_message_at == (long long)machine->tick) {
+        script_machine_send(machine, "*", "timeleap", "start");
+    }
 }
 
 static void finish_drag_when_due(struct script_machine *machine)
@@ -881,6 +909,7 @@ static void run_custom_soul_command(struct script_machine *machine, const char *
     } else if (strcmp(arg, "NoEffectFinish") == 0) {
         machine->soul.next_leaving_is_quiet = 1;
     } else if (strcmp(arg, "ReturnDemo") == 0 && machine->soul.is_on) {
+        machine->mode_byte = DEMO_MODE;
         set_soul_view_with_effect(machine, 0, !leaving_skips_the_effect(machine));
     }
 }
@@ -1652,6 +1681,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     follow_core_with_camera(machine);
     age_the_player_mark(machine);
     step_the_rewind_select(machine);
+    step_the_time_leap(machine);
     finish_drag_when_due(machine);
     report_soul_view(machine);
     report_possession_effects(machine);
@@ -1723,6 +1753,9 @@ void script_soul_reset(struct script_machine *machine)
     machine->soul.active_object = NO_CORE;
     machine->soul.start_message_at = -1;
     machine->soul.final_message_at = -1;
+    machine->soul.leap_spokes_at = -1;
+    machine->soul.leap_swirl_at = -1;
+    machine->soul.leap_message_at = -1;
     machine->soul.mark_age_ticks = MARK_IS_OFF;
     machine->soul.trick_is_on = 1;
     machine->countdown_interval = COUNTDOWN_DEFAULT_INTERVAL;

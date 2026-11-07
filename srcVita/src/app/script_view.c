@@ -118,6 +118,8 @@
 #define FILM_FIRST_TILE_X -31.5f
 #define FILM_TILE_ABOVE_SCREEN 5.8f
 #define FILM_SCROLL_PER_TICK 0.703125f
+#define FX_DEGREES_TO_RADIANS 0.017453293f
+#define FX_VITA_PIXELS_PER_DS_PIXEL 2.8125f
 #define FILM_CORNER_WIDTH 45.0f
 #define FILM_CORNER_WHOLE_HEIGHT 56.25f
 #define FILM_CORNER_FIRST_V 0.1625f
@@ -144,6 +146,7 @@
 #define SOUL_STREAM_RADIUS_LEAST 3.0f
 
 struct view_effect {
+    float aim_degrees;
     int in_use;
     char name[VIEW_EFFECT_NAME_MAX];
     const struct script_effect_row *row;
@@ -341,6 +344,24 @@ void script_view_effect_spawned(const struct script_effect_row *row, const char 
     effect->age_ticks = 0;
 }
 
+static void fx_page_name(const struct script_fx_movie *movie, int page, char *name)
+{
+    snprintf(name, ASSET_NAME_MAX, "fx_%s_%02d", movie->name, page);
+}
+
+void script_view_effect_moved(const char *name, float x, float y, float aim_degrees)
+{
+    int index;
+
+    for (index = 0; index < VIEW_EFFECT_MAX; index++) {
+        if (effects[index].in_use && strcmp(effects[index].name, name) == 0) {
+            effects[index].x = x;
+            effects[index].y = y;
+            effects[index].aim_degrees = aim_degrees;
+        }
+    }
+}
+
 void script_view_effect_deleted(const char *name)
 {
     int index;
@@ -434,6 +455,74 @@ static void draw_flipbook(const struct script_flipbook *book, unsigned int age, 
     renderer_draw_sprite(texture->texture, area, uv, tint);
 }
 
+static void draw_fx_frame(const struct script_fx_movie *movie, const struct script_fx_frame *frame, const struct view_effect *effect)
+{
+    char name[ASSET_NAME_MAX];
+    const struct cached_texture *texture;
+    struct renderer_vertex corners[6];
+    float screen_x;
+    float screen_y;
+    float sine;
+    float cosine;
+    int index;
+
+    fx_page_name(movie, frame->page, name);
+    texture = texture_cache_use_or_start_loading(name);
+    if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
+        return;
+    }
+    scene_view_world_to_screen(scene_stage_view(), effect->x, effect->y, &screen_x, &screen_y);
+    sine = sinf(effect->aim_degrees * FX_DEGREES_TO_RADIANS);
+    cosine = cosf(effect->aim_degrees * FX_DEGREES_TO_RADIANS);
+    for (index = 0; index < 4; index++) {
+        float x;
+        float y;
+
+        x = frame->corners[index * 2];
+        y = frame->corners[index * 2 + 1];
+        corners[index].x = screen_x + (x * cosine - y * sine) * FX_VITA_PIXELS_PER_DS_PIXEL;
+        corners[index].y = screen_y + (x * sine + y * cosine) * FX_VITA_PIXELS_PER_DS_PIXEL;
+    }
+    corners[0].u = frame->u0;
+    corners[0].v = frame->v0;
+    corners[1].u = frame->u1;
+    corners[1].v = frame->v0;
+    corners[2].u = frame->u1;
+    corners[2].v = frame->v1;
+    corners[3].u = frame->u0;
+    corners[3].v = frame->v1;
+    corners[4] = corners[0];
+    corners[5] = corners[3];
+    corners[3] = corners[2];
+    renderer_draw_triangles(texture->texture, corners, 2, white);
+}
+
+static void draw_fx_movie(struct view_effect *effect)
+{
+    const struct script_fx_movie *movie;
+    int frame;
+
+    movie = script_tables_find_fx_movie(tables, effect->row->texture_name);
+    if (movie == NULL || movie->frame_count == 0 || movie->ticks_per_frame <= 0.0f) {
+        return;
+    }
+    frame = (int)((float)effect->age_ticks / movie->ticks_per_frame);
+    if (frame >= movie->frame_count) {
+        if (movie->after_last == SCRIPT_FX_AFTER_END) {
+            effect->in_use = 0;
+            return;
+        }
+        if (movie->after_last == SCRIPT_FX_AFTER_HOLD) {
+            frame = movie->frame_count - 1;
+        } else {
+            frame = movie->loop_start + (frame - movie->loop_start) % (movie->frame_count - movie->loop_start);
+        }
+    }
+    if (tables->fx_frames[movie->first_frame + frame].page >= 0) {
+        draw_fx_frame(movie, &tables->fx_frames[movie->first_frame + frame], effect);
+    }
+}
+
 static void draw_effect(const struct view_effect *effect)
 {
     const struct script_flipbook *book;
@@ -458,6 +547,9 @@ static void draw_effects(void)
     int index;
 
     for (index = 0; index < VIEW_EFFECT_MAX; index++) {
+        if (effects[index].in_use && effects[index].row->kind == SCRIPT_EFFECT_MOVIE && !soul_is_on) {
+            draw_fx_movie(&effects[index]);
+        }
         if (effects[index].in_use && effects[index].row->kind == SCRIPT_EFFECT_RING && (soul_is_on || !effects[index].row->only_in_soul_view)) {
             draw_effect(&effects[index]);
         }

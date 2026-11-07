@@ -32,7 +32,34 @@ enum script_effect_kind {
     SCRIPT_EFFECT_CARD,
     SCRIPT_EFFECT_UI_CLIP,
     SCRIPT_EFFECT_DISSOLVE,
-    SCRIPT_EFFECT_RING
+    SCRIPT_EFFECT_RING,
+    SCRIPT_EFFECT_MOVIE
+};
+
+#define SCRIPT_FX_MOVIE_MAX 16
+#define SCRIPT_FX_FRAME_MAX 2400
+#define SCRIPT_FX_AFTER_END 0
+#define SCRIPT_FX_AFTER_LOOP 1
+#define SCRIPT_FX_AFTER_HOLD 2
+
+struct script_fx_frame {
+    int page;
+    float u0;
+    float v0;
+    float u1;
+    float v1;
+    float corners[8];
+};
+
+struct script_fx_movie {
+    char name[ASSET_NAME_MAX];
+    float ticks_per_frame;
+    int after_last;
+    int loop_start;
+    int sound_kind;
+    int page_count;
+    int first_frame;
+    int frame_count;
 };
 
 struct script_effect_row {
@@ -153,6 +180,10 @@ struct script_tables {
     int effect_row_count;
     struct script_flipbook flipbooks[SCRIPT_FLIPBOOK_MAX];
     int flipbook_count;
+    struct script_fx_movie fx_movies[SCRIPT_FX_MOVIE_MAX];
+    int fx_movie_count;
+    struct script_fx_frame fx_frames[SCRIPT_FX_FRAME_MAX];
+    int fx_frame_count;
     struct script_movie movies[SCRIPT_MOVIE_MAX];
     int movie_count;
     struct script_soul_style soul_styles[SCRIPT_SOUL_STYLE_MAX];
@@ -183,6 +214,7 @@ int script_tables_read_balloons(struct script_tables *tables, const char *text, 
 int script_tables_read_preload(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_motions(struct script_tables *tables, const char *file_name, const char *text, unsigned int text_size);
 const struct script_motion_row *script_tables_find_motion(const struct script_tables *tables, const char *file_name, unsigned int table_offset);
+const struct script_fx_movie *script_tables_find_fx_movie(const struct script_tables *tables, const char *name);
 const struct script_movie *script_tables_find_movie_of_class(const struct script_tables *tables, unsigned int class_id);
 const struct script_movie *script_tables_find_movie(const struct script_tables *tables, const char *name);
 const struct script_flipbook *script_tables_find_flipbook(const struct script_tables *tables, const char *name);

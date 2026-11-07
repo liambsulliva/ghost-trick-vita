@@ -21,7 +21,28 @@
       "talk_cursor"
     ]
   },
+  "effect_movies": [
+    {"id": 90, "effect": "st01_streetlight"},
+    {"id": 91, "effect": "ef01_light_001"},
+    {"id": 86, "effect": "st01_onpu"},
+    {"id": 88, "effect": "st01_bicyclebell"},
+    {"id": 39, "effect": "telephone001", "sound": 19},
+    {"id": 84, "effect": "ef01_light_000"},
+    {"id": 97, "effect": "st01_mazl01"},
+    {"id": 93, "effect": "st01_dosun_00"},
+    {"id": 94, "effect": "st01_bed_00"},
+    {"id": 95, "effect": "st01_guiter_00"}
+  ],
   "effects": [
+    {
+      "id": 14,
+      "kind": "ui_clip",
+      "texture": "WHITE_FILTER",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 0,
+      "height": 0
+    },
     {
       "id": 51,
       "kind": "ui_clip",
@@ -917,17 +938,14 @@
     "objects": {
       "cardoor": ["b:0e", null],
       "hyousiki": ["02", null],
-      "kuneri2": ["04", null],
+      "kuneri2": ["?", "?"],
       "lkasa": ["17", null],
       "cicel": ["?", "?"],
       "bed": [
         "03",
         "03"
       ],
-      "kuneri": [
-        "04",
-        null
-      ],
+      "kuneri": ["?", "?"],
       "tire": [
         "05",
         "05"

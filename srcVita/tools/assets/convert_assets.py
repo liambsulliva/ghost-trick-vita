@@ -16,6 +16,7 @@ import audio_file
 import bake_record
 import bubble_art
 import ds_rom
+import effect_movies
 import frame_layout
 import hud_art
 import narration
@@ -391,6 +392,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
     remove_old_work_folders()
     packs = pack_files.PackSet(apk_folder)
     set_description = chapter_assets.expand_set(set_description, packs, ds_rom_path, text_key)
+    set_description = effect_movies.add_to_set(set_description, packs)
     animations = set_description.get("animations", [])
     plates = set_description.get("plates", [])
     timelines = load_timelines(packs, animations)

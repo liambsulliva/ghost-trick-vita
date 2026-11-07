@@ -201,6 +201,11 @@ static void step_pill(struct script_pill *pill, int is_wanted, int may_slide_in)
     }
 }
 
+static int pill_press_changes_the_view(const struct script_pill *pill)
+{
+    return pill->state == PILL_PRESSED;
+}
+
 void script_pills_step(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -208,10 +213,12 @@ void script_pills_step(struct script_machine *machine)
     int is_leaving;
     int index;
     int some_slid_in;
+    int view_press_holds_the_others;
 
     soul = &machine->soul;
     group = current_group(machine);
     is_leaving = some_pill_is_leaving(soul);
+    view_press_holds_the_others = pill_press_changes_the_view(&soul->pills[SCRIPT_PILL_GHOST]) || pill_press_changes_the_view(&soul->pills[SCRIPT_PILL_BACK]);
     if (is_leaving) {
         soul->pill_slide_in_wait = PILL_WAIT_BEFORE_SLIDE_IN;
     } else if (soul->pill_slide_in_wait > 0) {
@@ -224,7 +231,7 @@ void script_pills_step(struct script_machine *machine)
 
         pill = &soul->pills[index];
         was_hidden = pill->state == PILL_HIDDEN;
-        step_pill(pill, pill_is_wanted(machine, (enum script_pill_id)index, group), !is_leaving && soul->pill_slide_in_wait == 0);
+        step_pill(pill, pill_is_wanted(machine, (enum script_pill_id)index, group) || (view_press_holds_the_others && pill->state == PILL_SHOWN), !is_leaving && soul->pill_slide_in_wait == 0);
         if (was_hidden && pill->state == PILL_SLIDING_IN) {
             some_slid_in = 1;
         }

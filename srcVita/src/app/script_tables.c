@@ -195,6 +195,44 @@ static int read_movie_line(struct script_tables *tables, const char *line)
     return 1;
 }
 
+static int read_fx_movie_line(struct script_tables *tables, const char *line)
+{
+    struct script_fx_movie *movie;
+
+    if (tables->fx_movie_count >= SCRIPT_FX_MOVIE_MAX) {
+        return 1;
+    }
+    movie = &tables->fx_movies[tables->fx_movie_count];
+    if (sscanf(line, "fxmovie " NAME_SCAN " %f %d %d %d %d", movie->name, &movie->ticks_per_frame, &movie->after_last, &movie->loop_start, &movie->sound_kind, &movie->page_count) != 6) {
+        return 0;
+    }
+    movie->first_frame = tables->fx_frame_count;
+    movie->frame_count = 0;
+    tables->fx_movie_count = tables->fx_movie_count + 1;
+    return 1;
+}
+
+static int read_fx_frame_line(struct script_tables *tables, const char *line)
+{
+    struct script_fx_frame *frame;
+    float *c;
+
+    if (tables->fx_movie_count == 0) {
+        return 0;
+    }
+    if (tables->fx_frame_count >= SCRIPT_FX_FRAME_MAX) {
+        return 1;
+    }
+    frame = &tables->fx_frames[tables->fx_frame_count];
+    c = frame->corners;
+    if (sscanf(line, "fxframe %d %f %f %f %f %f %f %f %f %f %f %f %f", &frame->page, &frame->u0, &frame->v0, &frame->u1, &frame->v1, &c[0], &c[1], &c[2], &c[3], &c[4], &c[5], &c[6], &c[7]) != 13) {
+        return 0;
+    }
+    tables->fx_frame_count = tables->fx_frame_count + 1;
+    tables->fx_movies[tables->fx_movie_count - 1].frame_count = tables->fx_movies[tables->fx_movie_count - 1].frame_count + 1;
+    return 1;
+}
+
 static int read_flipbook_line(struct script_tables *tables, const char *line)
 {
     struct script_flipbook *book;
@@ -225,6 +263,12 @@ static int read_effect_line(struct script_tables *tables, const char *line)
     if (text_line_starts_with(line, "movie ")) {
         return read_movie_line(tables, line);
     }
+    if (text_line_starts_with(line, "fxmovie ")) {
+        return read_fx_movie_line(tables, line);
+    }
+    if (text_line_starts_with(line, "fxframe ")) {
+        return read_fx_frame_line(tables, line);
+    }
 
     if (tables->effect_row_count >= SCRIPT_EFFECT_ROW_MAX) {
         return 1;
@@ -240,6 +284,8 @@ static int read_effect_line(struct script_tables *tables, const char *line)
         row->kind = SCRIPT_EFFECT_UI_CLIP;
     } else if (strcmp(kind, "dissolve") == 0) {
         row->kind = SCRIPT_EFFECT_DISSOLVE;
+    } else if (strcmp(kind, "movie") == 0) {
+        row->kind = SCRIPT_EFFECT_MOVIE;
     } else if (strcmp(kind, "ring") == 0) {
         row->kind = SCRIPT_EFFECT_RING;
     } else {
@@ -252,6 +298,18 @@ static int read_effect_line(struct script_tables *tables, const char *line)
 int script_tables_read_effects(struct script_tables *tables, const char *text, unsigned int text_size)
 {
     return read_all_lines(tables, text, text_size, read_effect_line);
+}
+
+const struct script_fx_movie *script_tables_find_fx_movie(const struct script_tables *tables, const char *name)
+{
+    int index;
+
+    for (index = 0; index < tables->fx_movie_count; index++) {
+        if (strcmp(tables->fx_movies[index].name, name) == 0) {
+            return &tables->fx_movies[index];
+        }
+    }
+    return NULL;
 }
 
 const struct script_movie *script_tables_find_movie_of_class(const struct script_tables *tables, unsigned int class_id)

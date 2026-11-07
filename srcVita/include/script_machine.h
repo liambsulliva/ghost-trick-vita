@@ -202,6 +202,17 @@ struct script_timed_event {
     long long at;
 };
 
+#define SCRIPT_ANCHORED_EFFECT_MAX 12
+
+struct script_anchored_effect {
+    const char *name;
+    int object_index;
+    int node;
+    int aim_node;
+    float offset_x;
+    float offset_y;
+};
+
 struct script_pill {
     int state;
     int step;
@@ -250,6 +261,9 @@ struct script_soul {
     int held_y;
     long long start_message_at;
     long long final_message_at;
+    long long leap_spokes_at;
+    long long leap_swirl_at;
+    long long leap_message_at;
     int view_change_ticks_left;
     int is_leaving_view;
     int next_leaving_is_quiet;
@@ -369,6 +383,7 @@ struct script_machine {
     int time_jump_movie_ticks;
     int movie_ticks_left;
     int phone_view_is_on;
+    struct script_anchored_effect anchored_effects[SCRIPT_ANCHORED_EFFECT_MAX];
     unsigned char noted_ops[SCRIPT_NOTED_OP_BYTES];
     unsigned char noted_effects[SCRIPT_NOTED_EFFECT_BYTES];
     unsigned char noted_problems[SCRIPT_NOTED_PROBLEM_BYTES];
@@ -395,6 +410,9 @@ void script_machine_tick(struct script_machine *machine);
 void script_machine_name_of_path(const char *path, char *name, unsigned int name_size);
 
 void script_machine_pan_camera_back_to(struct script_machine *machine, int x, int y);
+void script_machine_node_position(const struct script_object *object, int node, float *x, float *y);
+void script_machine_move_anchored_effects(struct script_machine *machine);
+void script_machine_spawn_table_effect(struct script_machine *machine, struct script_object *object, int effect_id, float offset_x, float offset_y, const char *name);
 int script_machine_camera_top_for(const struct script_machine *machine, int object_y);
 int script_machine_camera_band_snap(const struct script_machine *machine, int object_y);
 void script_machine_note(struct script_machine *machine, const struct script_vm *vm, const char *reason, const char *detail);

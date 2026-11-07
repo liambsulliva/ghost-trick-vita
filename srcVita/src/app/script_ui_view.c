@@ -97,6 +97,7 @@
 #define TAP_SQUARE_GLYPH_X 80.0f
 #define TAP_TRIANGLE_GLYPH_X 120.0f
 #define TAP_GLYPH_CELL 40.0f
+#define TAP_GLYPH_SIZE 28.0f
 #define NARRATION_ARROW_TEXTURE "narration_arrow"
 #define NARRATION_ARROW_X 459.0f
 #define NARRATION_ARROW_Y 504.0f
@@ -831,8 +832,8 @@ static void draw_tap_balloon(const struct tap_balloon *balloon)
     }
     glyph.x = x + TAP_GLYPH_RIGHT_OF_MIDDLE;
     glyph.y = y + (is_marks ? TAP_MARKS_GLYPH_BELOW_MIDDLE : TAP_DOTS_GLYPH_BELOW_MIDDLE);
-    glyph.width = PILL_GLYPH_SIZE;
-    glyph.height = PILL_GLYPH_SIZE;
+    glyph.width = TAP_GLYPH_SIZE;
+    glyph.height = TAP_GLYPH_SIZE;
     part.x = (is_marks ? TAP_SQUARE_GLYPH_X : TAP_TRIANGLE_GLYPH_X) / PILL_SHEET_WIDTH;
     part.y = 0.0f;
     part.width = TAP_GLYPH_CELL / PILL_SHEET_WIDTH;

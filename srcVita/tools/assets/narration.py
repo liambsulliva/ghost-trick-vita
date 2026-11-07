@@ -83,6 +83,7 @@ def read_requested_texts(packs, requests, text_key):
     entry_names_by_file = {}
     for request in requests:
         entry_names_by_file.setdefault(request["file"], []).append(request["entry"])
+        entry_names_by_file[request["file"]].extend(request.get("later_entries", []))
     texts = {}
     for file_path, entry_names in entry_names_by_file.items():
         try:
@@ -152,6 +153,16 @@ def read_narration_message(request, raw_text):
     return message
 
 
+def read_narration_with_later_parts(request, texts):
+    message = read_narration_message(request, texts[request["file"]][request["entry"]])
+    message["later_parts"] = [read_narration_message(request, texts[request["file"]][entry]) for entry in request.get("later_entries", [])]
+    return message
+
+
+def parts_of_message(message):
+    return [message] + message.get("later_parts", [])
+
+
 def wrapped_bubble_lines(lines):
     wrapped = []
     for line in lines:
@@ -215,7 +226,7 @@ def read_text_messages(packs, set_description, text_key):
         narration_requests = set_description["narration"]
         bubble_requests = set_description["bubble_text"]
     return {
-        "narration": [read_narration_message(request, texts[request["file"]][request["entry"]]) for request in narration_requests],
+        "narration": [read_narration_with_later_parts(request, texts) for request in narration_requests],
         "bubble_text": [literal_message(request) if "literal" in request else read_bubble_message(request, texts[request["file"]][request["entry"]]) for request in bubble_requests],
     }
 
@@ -223,7 +234,7 @@ def read_text_messages(packs, set_description, text_key):
 def text_texture_names(set_description, messages):
     names = [request["name"] for request in set_description.get("bubble_text", [])]
     for request, message in zip(set_description.get("narration", []), messages["narration"]):
-        line_count = sum(1 for paragraph in message["paragraphs"] for text in paragraph if text.strip())
+        line_count = sum(1 for part in parts_of_message(message) for paragraph in part["paragraphs"] for text in paragraph if text.strip())
         names.extend(line_texture_name(request["name"], line_index) for line_index in range(line_count))
     return names
 
@@ -233,7 +244,8 @@ def bake_narration_message(fonts, work_folder, record, code, font_path, request,
     results = []
     failures = []
     line_index = 0
-    for paragraph, ink_tops in zip(message["paragraphs"], ink_tops_by_paragraph(message["paragraphs"], message["pos_y"])):
+    laid_out = [pair for part in parts_of_message(message) for pair in zip(part["paragraphs"], ink_tops_by_paragraph(part["paragraphs"], part["pos_y"]))]
+    for paragraph, ink_tops in laid_out:
         lines = []
         for text, ink_top in zip(paragraph, ink_tops):
             if not text.strip():

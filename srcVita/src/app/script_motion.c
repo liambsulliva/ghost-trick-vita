@@ -16,6 +16,8 @@
 #define WORD_CORE_PLACE 0xfff0u
 #define WORD_CORE_VALUE 0xfff6u
 #define WORD_SOUND 0xfff7u
+#define WORD_EFFECT 0xfff8u
+#define FIXED_UNITS_PER_PIXEL 4096.0f
 #define WORD_LOOP 0xffffu
 #define WORD_FRAME_WITH_TICKS 0xfffbu
 #define LOOP_BACK_WORDS 3
@@ -139,6 +141,24 @@ static void run_core_word(struct script_machine *machine, struct script_object *
     }
 }
 
+static void run_effect_word(struct script_machine *machine, struct script_object *object)
+{
+    struct script_actor *actor;
+    int effect_id;
+    int x_low;
+    int x_high;
+    int y_low;
+    int y_high;
+    int name_word;
+
+    actor = &object->actor;
+    if (!read_signed_word(actor->table_source, actor->table_word + 1, &effect_id) || !read_signed_word(actor->table_source, actor->table_word + 2, &x_low) || !read_signed_word(actor->table_source, actor->table_word + 3, &x_high) || !read_signed_word(actor->table_source, actor->table_word + 4, &y_low) || !read_signed_word(actor->table_source, actor->table_word + 5, &y_high) || !read_signed_word(actor->table_source, actor->table_word + 6, &name_word)) {
+        stop_table_for(machine, object, "motion_word_past_code");
+        return;
+    }
+    script_machine_spawn_table_effect(machine, object, effect_id, (float)(int)(((unsigned int)x_low & 0xffffu) | ((unsigned int)x_high << 16)) / FIXED_UNITS_PER_PIXEL, (float)(int)(((unsigned int)y_low & 0xffffu) | ((unsigned int)y_high << 16)) / FIXED_UNITS_PER_PIXEL, script_file_string(&actor->table_source->file, (unsigned int)name_word & 0xffffu));
+}
+
 static void run_sound_word(struct script_machine *machine, struct script_object *object)
 {
     struct script_actor *actor;
@@ -228,6 +248,10 @@ static void run_table(struct script_machine *machine, struct script_object *obje
         case WORD_SOUND:
             run_sound_word(machine, object);
             actor->table_word = actor->table_word + 3;
+            break;
+        case WORD_EFFECT:
+            run_effect_word(machine, object);
+            actor->table_word = actor->table_word + table_word_length(word);
             break;
         default:
             if (table_word_length(word) == 0) {

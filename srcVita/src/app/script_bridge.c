@@ -362,9 +362,12 @@ static void start_card(const char *name)
     card_started_tick = tick;
 }
 
+static void on_sound_played(int kind);
+
 static void on_effect_spawned(int id, const char *name, float x, float y)
 {
     const struct script_effect_row *row;
+    const struct script_fx_movie *fx_movie;
     char text[64];
 
     row = script_tables_find_effect(tables, id);
@@ -382,6 +385,13 @@ static void on_effect_spawned(int id, const char *name, float x, float y)
         break;
     case SCRIPT_EFFECT_DISSOLVE:
         start_dissolve(row, name);
+        break;
+    case SCRIPT_EFFECT_MOVIE:
+        fx_movie = script_tables_find_fx_movie(tables, row->texture_name);
+        if (fx_movie != NULL && fx_movie->sound_kind >= 0) {
+            on_sound_played(fx_movie->sound_kind);
+        }
+        script_view_effect_spawned(row, name, x, y);
         break;
     default:
         script_view_effect_spawned(row, name, x, y);
@@ -702,6 +712,7 @@ static const struct script_outputs bridge_outputs = {
     .iris_deleted = on_iris_deleted,
     .effect_spawned = on_effect_spawned,
     .effect_deleted = on_effect_deleted,
+    .effect_moved = script_view_effect_moved,
     .narration_changed = on_narration_changed,
     .balloon_opened = on_balloon_opened,
     .balloon_closed = on_balloon_closed,

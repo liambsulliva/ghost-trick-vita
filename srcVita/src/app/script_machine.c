@@ -1189,6 +1189,7 @@ static void update_object(struct script_machine *machine, struct script_object *
 static void tear_down_script(struct script_machine *machine)
 {
     machine->phone_view_is_on = 0;
+    memset(machine->anchored_effects, 0, sizeof(machine->anchored_effects));
     machine->has_runner = 0;
     machine->object_count = 0;
     machine->actor_count = 0;
@@ -1595,6 +1596,7 @@ void script_machine_tick(struct script_machine *machine)
     }
     script_motion_update_all(machine);
     script_fades_update(machine);
+    script_machine_move_anchored_effects(machine);
     script_machine_update_camera(machine);
     step_narration(machine);
     script_talk_step(machine);

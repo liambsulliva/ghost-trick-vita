@@ -1,3 +1,5 @@
+#include <math.h>
+#include <string.h>
 #include <stddef.h>
 #include "script_machine.h"
 
@@ -18,6 +20,8 @@
 #define CAMERA_CUT_SPEED 0x3e8000
 #define DS_VIEW_WIDTH 256
 #define DS_VIEW_HEIGHT 192
+#define FIRST_CORE_NODE 10
+#define RADIANS_TO_DEGREES 57.29578f
 #define CAMERA_BAND_UNUSED 0xffff
 #define CAMERA_BAND_SNAP_MARGIN 16
 #define CAMERA_BAND_SNAP_MOST 4
@@ -38,12 +42,96 @@ static float radius_to_pixels(unsigned int value)
     return (float)value * RADIUS_UNITS_TO_PIXELS;
 }
 
+void script_machine_node_position(const struct script_object *object, int node, float *x, float *y)
+{
+    float node_x;
+    float node_y;
+
+    node_x = 0.0f;
+    node_y = 0.0f;
+    if (node >= FIRST_CORE_NODE) {
+        node_x = (float)(node == FIRST_CORE_NODE + 1 && object->actor.has_second_core ? object->actor.second_core_x : object->actor.core_x);
+        node_y = (float)(node == FIRST_CORE_NODE + 1 && object->actor.has_second_core ? object->actor.second_core_y : object->actor.core_y);
+    } else if (node >= 0 && node < SCRIPT_ACTOR_POINT_MAX) {
+        node_x = (float)object->actor.points[node][0];
+        node_y = (float)object->actor.points[node][1];
+    }
+    *x = (float)object->actor.x + node_x;
+    *y = (float)object->actor.y + node_y;
+}
+
+static void anchor_effect(struct script_machine *machine, const struct script_object *object, const char *name, int node, int aim_node, float offset_x, float offset_y)
+{
+    int index;
+
+    for (index = 0; index < SCRIPT_ANCHORED_EFFECT_MAX; index++) {
+        struct script_anchored_effect *anchored;
+
+        anchored = &machine->anchored_effects[index];
+        if (anchored->name == NULL) {
+            anchored->name = name;
+            anchored->object_index = (int)(object - machine->objects);
+            anchored->node = node;
+            anchored->aim_node = aim_node;
+            anchored->offset_x = offset_x;
+            anchored->offset_y = offset_y;
+            return;
+        }
+    }
+}
+
+void script_machine_move_anchored_effects(struct script_machine *machine)
+{
+    int index;
+
+    if (machine->outputs->effect_moved == NULL) {
+        return;
+    }
+    for (index = 0; index < SCRIPT_ANCHORED_EFFECT_MAX; index++) {
+        const struct script_anchored_effect *anchored;
+        const struct script_object *object;
+        float x;
+        float y;
+        float aim_degrees;
+
+        anchored = &machine->anchored_effects[index];
+        if (anchored->name == NULL) {
+            continue;
+        }
+        object = &machine->objects[anchored->object_index];
+        script_machine_node_position(object, anchored->node, &x, &y);
+        aim_degrees = 0.0f;
+        if (anchored->aim_node >= 0) {
+            float aim_x;
+            float aim_y;
+
+            script_machine_node_position(object, anchored->aim_node, &aim_x, &aim_y);
+            aim_degrees = atan2f(aim_y - y, aim_x - x) * RADIANS_TO_DEGREES;
+        }
+        machine->outputs->effect_moved(anchored->name, x + anchored->offset_x, y + anchored->offset_y, aim_degrees);
+    }
+}
+
+void script_machine_spawn_table_effect(struct script_machine *machine, struct script_object *object, int effect_id, float offset_x, float offset_y, const char *name)
+{
+    float x;
+    float y;
+
+    if (machine->outputs->effect_spawned == NULL || name == NULL) {
+        return;
+    }
+    script_machine_node_position(object, 0, &x, &y);
+    machine->outputs->effect_spawned(effect_id, name, x + offset_x, y + offset_y);
+}
+
 static void spawn_effect(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
     const struct script_object *object;
     const char *name;
     float x;
     float y;
+    float offset_x;
+    float offset_y;
 
     name = script_machine_string(machine, vm, words[9]);
     if (name == NULL) {
@@ -53,14 +141,20 @@ static void spawn_effect(struct script_machine *machine, struct script_vm *vm, c
     if (machine->outputs->effect_spawned == NULL) {
         return;
     }
-    x = fixed_to_float(script_machine_u32(words, 1));
-    y = fixed_to_float(script_machine_u32(words, 3));
+    offset_x = fixed_to_float(script_machine_u32(words, 1));
+    offset_y = fixed_to_float(script_machine_u32(words, 3));
+    x = offset_x;
+    y = offset_y;
     object = script_machine_current_object(machine, vm);
     if (object != NULL && object->actor.exists && signed_word(words[10]) >= 0) {
-        x = x + (float)(object->actor.x + object->actor.core_x);
-        y = y + (float)(object->actor.y + object->actor.core_y);
+        script_machine_node_position(object, signed_word(words[10]), &x, &y);
+        x = x + offset_x;
+        y = y + offset_y;
     }
     machine->outputs->effect_spawned((int)words[0], name, x, y);
+    if (object != NULL && object->actor.exists && signed_word(words[10]) >= 0 && words[15] == 0) {
+        anchor_effect(machine, object, name, signed_word(words[10]), signed_word(words[11]), offset_x, offset_y);
+    }
 }
 
 static void delete_effect(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
@@ -69,7 +163,14 @@ static void delete_effect(struct script_machine *machine, struct script_vm *vm, 
 
     name = script_machine_string(machine, vm, words[0]);
     if (name != NULL) {
+        int index;
+
         script_pills_effect_deleted(machine, name);
+        for (index = 0; index < SCRIPT_ANCHORED_EFFECT_MAX; index++) {
+            if (machine->anchored_effects[index].name != NULL && (strcmp(name, "*") == 0 || strcmp(machine->anchored_effects[index].name, name) == 0)) {
+                machine->anchored_effects[index].name = NULL;
+            }
+        }
     }
     if (name != NULL && machine->outputs->effect_deleted != NULL) {
         machine->outputs->effect_deleted(name);
@@ -363,7 +464,8 @@ static void pan_to_object(struct script_machine *machine, struct script_vm *vm, 
 {
     const char *name;
     const struct script_object *object;
-    int point;
+    float node_x;
+    float node_y;
     int target_x;
     int target_y;
 
@@ -376,12 +478,13 @@ static void pan_to_object(struct script_machine *machine, struct script_vm *vm, 
         script_machine_send(machine, "*", "SYSTEM", "hosei end");
         return;
     }
-    point = signed_word(words[1]);
-    if (point < 0 || point >= SCRIPT_ACTOR_POINT_MAX) {
-        point = 0;
+    if (signed_word(words[1]) < 0 && machine->soul.active_object >= 0) {
+        script_machine_node_position(&machine->objects[machine->soul.active_object], FIRST_CORE_NODE + machine->soul.active_slot, &node_x, &node_y);
+    } else {
+        script_machine_node_position(object, signed_word(words[1]), &node_x, &node_y);
     }
-    target_x = signed_word(words[2]) < 0 ? machine->camera_x : machine->world_origin_x + object->actor.x + object->actor.points[point][0] - signed_word(words[2]);
-    target_y = signed_word(words[3]) < 0 ? machine->camera_y : machine->world_origin_y + object->actor.y + object->actor.points[point][1] - signed_word(words[3]);
+    target_x = signed_word(words[2]) < 0 ? machine->camera_x : machine->world_origin_x + (int)node_x - signed_word(words[2]);
+    target_y = signed_word(words[3]) < 0 ? machine->camera_y : machine->world_origin_y + (int)node_y - signed_word(words[3]);
     begin_pan(machine, target_x, target_y, (int)script_machine_u32(words, 4), 1);
 }
 
