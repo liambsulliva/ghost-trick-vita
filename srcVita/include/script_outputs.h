@@ -114,7 +114,7 @@ struct script_outputs {
     void (*phone_view_ended)(void);
     void (*soul_chain_moved)(const float *x, const float *y, int is_out);
     void (*soul_cursor_moved)(int is_shown, float x, float y, float from_x, float from_y, int motion);
-    void (*soul_core_marked)(int object_index, float x, float y, int is_dead);
+    void (*soul_core_marked)(int object_index, int slot, float x, float y, int is_dead);
     void (*soul_mark_changed)(const char *object_name, int age_ticks, float x, float y);
     void (*soul_object_styled)(const char *object_name, unsigned int class_id, int has_core, int is_active, int is_dead, int is_phone_view);
     void (*soul_flash_changed)(float alpha);

@@ -45,7 +45,8 @@
 #define CURSOR_SWAY_PIXELS 5.0f
 #define RING_PULSE_TICKS 60u
 #define RING_SMALLEST_SIZE 0.75f
-#define VIEW_CORE_MARK_MAX 64
+#define VIEW_CORE_SLOTS_PER_OBJECT 2
+#define VIEW_CORE_MARK_MAX 128
 #define SOUL_BLOB_TEXTURE "soul_blob"
 #define SOUL_GLOW_TEXTURE "soul_glow"
 #define SOUL_ORB_TEXTURE "soul_orb"
@@ -350,14 +351,17 @@ void script_view_soul_sparks_changed(int elapsed_ticks, float x, float y)
     sparks_y = y;
 }
 
-void script_view_core_marked(int object_index, float x, float y, int is_dead)
+void script_view_core_marked(int object_index, int slot, float x, float y, int is_dead)
 {
-    if (object_index >= 0 && object_index < VIEW_CORE_MARK_MAX) {
-        core_marks[object_index].is_dead = is_dead;
-        core_marks[object_index].x = x;
-        core_marks[object_index].y = y;
-        core_marks[object_index].marked_at_tick = age_ticks;
-        core_marks[object_index].is_set = 1;
+    int mark;
+
+    mark = object_index * VIEW_CORE_SLOTS_PER_OBJECT + slot;
+    if (object_index >= 0 && slot >= 0 && slot < VIEW_CORE_SLOTS_PER_OBJECT && mark < VIEW_CORE_MARK_MAX) {
+        core_marks[mark].is_dead = is_dead;
+        core_marks[mark].x = x;
+        core_marks[mark].y = y;
+        core_marks[mark].marked_at_tick = age_ticks;
+        core_marks[mark].is_set = 1;
     }
 }
 

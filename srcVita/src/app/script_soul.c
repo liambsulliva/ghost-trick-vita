@@ -218,6 +218,7 @@ static void report_soul_view(struct script_machine *machine)
 {
     struct script_soul *soul;
     int index;
+    int slot;
 
     soul = &machine->soul;
     if (machine->outputs->soul_cursor_moved != NULL) {
@@ -279,12 +280,15 @@ static void report_soul_view(struct script_machine *machine)
         if (machine->outputs->soul_object_styled != NULL && machine->objects[index].actor.exists) {
             machine->outputs->soul_object_styled(machine->objects[index].name, machine->objects[index].actor.class_id, machine->objects[index].actor.has_core, index == soul->active_object, machine->objects[index].is_dead, machine->phone_view_is_on);
         }
-        if (index != soul->active_object && object_can_be_a_core(&machine->objects[index], 0)) {
+        for (slot = 0; slot < SCRIPT_CORE_SLOT_COUNT; slot++) {
             float x;
             float y;
 
-            core_position(machine, index, 0, &x, &y);
-            machine->outputs->soul_core_marked(index, x, y, machine->objects[index].is_dead);
+            if ((index == soul->active_object && slot == soul->active_slot) || !object_can_be_a_core(&machine->objects[index], slot)) {
+                continue;
+            }
+            core_position(machine, index, slot, &x, &y);
+            machine->outputs->soul_core_marked(index, slot, x, y, machine->objects[index].is_dead);
         }
     }
 }
