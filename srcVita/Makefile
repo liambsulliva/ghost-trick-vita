@@ -44,7 +44,7 @@ APP_TEST_OBJECTS := $(patsubst src/app/%.c,build/test_objects/app/%.o,$(APP_SRCS
 FAKE_TEST_OBJECTS := $(patsubst tests/fakes/%.c,build/test_objects/fakes/%.o,$(FAKE_SRCS))
 TEST_RUNS := $(addprefix run-,$(TEST_BINS))
 
-.PHONY: all clean check-sdk test test-binaries test-parallel test-all golden always-rebuild $(TEST_RUNS)
+.PHONY: all clean check-sdk test test-binaries test-parallel test-all golden coverage always-rebuild $(TEST_RUNS)
 
 all: check-sdk build/$(TARGET).vpk
 
@@ -129,6 +129,9 @@ golden: build/tests/golden/script_replay
 	@test -f ../extracted/trace/vm_golden/golden_trace.tsv || { echo "no golden trace in extracted/trace/vm_golden"; exit 2; }
 	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1/scripts --timing ds --rows build/golden/rows_ds.tsv --cues build/golden/cues_ds.tsv --stop-tick 6056 --close-talk-at 5643 --close-talk-at 5823 --close-talk-at 6002
 	python3 -I tools/script_golden_check.py build/golden/rows_ds.tsv --stop-tick 7095
+
+coverage: route-check
+	python3 -I tools/coverage_report.py build/golden/route_marks.txt
 
 route-check: build/tests/golden/script_replay
 	@mkdir -p build/golden
