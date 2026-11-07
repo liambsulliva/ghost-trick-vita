@@ -71,7 +71,7 @@ python3 -I tools/rom_audit.py
 
 The package's LiveArea icon, background and startup image are built while the package is built. With your extracted game files in place they come from the game's title logo; without them they are a plain monogram. To bundle the logo into your own package:
 
-1. Extract the remaster's files into `extracted/remaster_apk`, as step 2 of [the top-level README](../README.md#run-it-on-a-vita) explains.
+1. Run the setup script in [the top-level README](../README.md#set-everything-up-with-one-command), which puts the remaster's files in `extracted/remaster_apk`.
 2. Build the converter's texture tool, which the logo needs to decode the game's texture:
 
    ```bash
@@ -90,11 +90,11 @@ A package with the logo contains game art, so keep it for your own Vita. The pac
 
 ## Make the assets
 
-[The top-level README](../README.md#run-it-on-a-vita) explains how to copy the game files out of your Android package, convert them and put them on the Vita. The app loads them from `ux0:data/ghosttrick/assets/`.
+[The top-level README](../README.md#set-everything-up-with-one-command) has one script, `tools/set_up_game.py`, that copies the game files out of your Android package, finds the text key, converts everything, plans the loading and puts it on the Vita. The app loads them from `ux0:data/ghosttrick/assets/`.
 
 `tools/assets/chapter1.json` lists what goes into the chapter's set.
 
-Converting needs the text key, which step 2 of the top-level README finds in your own copy of the package.
+Converting needs the text key, which the setup script finds in your own copy of the package.
 
 Narration and bubble text are rendered by the converter, not the app. `convert_assets.py` reads the English text from the remaster's `.msg` files, decodes its `.oft` fonts into its temporary work folder, and draws each line with `magick` into its own DXT5 texture. The app draws these like any other texture, so it has no fonts. `magick` needs FreeType support, which `magick -list format | grep OTF` shows. Decoded fonts are deleted when the converter finishes, fails or is stopped with SIGINT, SIGTERM or SIGHUP, even twice. A SIGKILL can leave them in the system's temporary folder, and the next conversion removes any such folder older than an hour. The output folder holds each line only as a picture, and no story text or font reaches the output folder or git. The file formats and scene steps are in `docs/asset_format.md`.
 
@@ -113,7 +113,7 @@ Upload the assets after this step, so the Vita gets both files.
 
 Music and sounds are the remaster's own Ogg Vorbis files, unchanged apart from losing their wrappers.
 
-The DS scene scripts are baked from your own USA DS ROM, if you have one, into `scripts/`, with the tables the app needs to run them. The app always plays the opening from those scripts, so the ROM step is required. Without `scripts/chain.txt` it logs `opening needs_scripts` and opens the asset browser instead. [The top-level README](../README.md#3-convert-the-art-sound-and-text) has the optional step, and `docs/asset_format.md` the format.
+The DS scene scripts are baked from your own USA DS ROM into `scripts/`, with the tables the app needs to run them. The app always plays the opening from those scripts, so the ROM is required. Without `scripts/chain.txt` it logs `opening needs_scripts` and opens the asset browser instead. [The top-level README](../README.md#set-everything-up-with-one-command) passes the ROM to the converter, and `docs/asset_format.md` has the format.
 
 The converter bakes only what changed. `.bake_record.json` in the output folder holds hashes for each texture and script, so one is baked again only when its source bytes, its settings or the code that bakes it changes, or when its output file is missing or edited. Music, sounds, animations, the scene and the manifest are rewritten only when their bytes differ. On this Mac a clean conversion took about 4 seconds and a repeat with nothing changed about 0.2 seconds, and a repeat and a clean run gave the same files byte for byte. If a texture fails, it is named on stderr with `failed:`, the rest still bake, and the last good scene and manifest stay.
 
