@@ -23,6 +23,7 @@ enum command_kind {
     COMMAND_BURST,
     COMMAND_TOUCH,
     COMMAND_DRAG,
+    COMMAND_DRAG_SOUL,
     COMMAND_UNKNOWN
 };
 

@@ -267,6 +267,15 @@ void script_view_soul_changed(int is_on, int with_effect)
     }
 }
 
+int script_view_soul_screen_position(float *x, float *y)
+{
+    if (!soul_is_on || !cursor_is_shown) {
+        return 0;
+    }
+    scene_view_world_to_screen(scene_stage_view(), cursor_x, cursor_y, x, y);
+    return 1;
+}
+
 void script_view_chain_moved(const float *x, const float *y, int is_out)
 {
     int index;

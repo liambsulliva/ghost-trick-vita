@@ -20,6 +20,7 @@
 #include "screen_capture.h"
 #include "screen_watch.h"
 #include "script_player.h"
+#include "script_view.h"
 #include "system_watch.h"
 #include "texture_cache.h"
 #include "timing.h"
@@ -133,6 +134,21 @@ static int run_one_command(const struct command *command)
         injected_touch_frames = command->number;
         injected_touch_x = (float)command->touch_x;
         injected_touch_y = (float)command->touch_y;
+    } else if (command->kind == COMMAND_DRAG_SOUL) {
+        float soul_x;
+        float soul_y;
+
+        injected_drag = *command;
+        injected_drag_frame = 0;
+        if (script_view_soul_screen_position(&soul_x, &soul_y)) {
+            injected_drag.touch_x = (int)soul_x;
+            injected_drag.touch_y = (int)soul_y;
+            injected_drag.touch_end_x = injected_drag.touch_x + command->touch_end_x;
+            injected_drag.touch_end_y = injected_drag.touch_y + command->touch_end_y;
+        } else {
+            injected_drag.number = 0;
+        }
+        run_log_write("command drag_soul from=%d,%d by=%d,%d frames=%d", injected_drag.touch_x, injected_drag.touch_y, command->touch_end_x, command->touch_end_y, injected_drag.number);
     } else if (command->kind == COMMAND_DRAG) {
         injected_drag = *command;
         injected_drag_frame = 0;

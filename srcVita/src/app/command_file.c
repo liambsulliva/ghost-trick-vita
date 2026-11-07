@@ -101,6 +101,10 @@ static int read_fast_forward_command(const char *line, struct command *command)
         command->kind = COMMAND_BURST;
         return 1;
     }
+    if (sscanf(line, "drag_soul %d %d %d %d", &command->touch_end_x, &command->touch_end_y, &command->number, &command->delay_frames) == 4) {
+        command->kind = COMMAND_DRAG_SOUL;
+        return 1;
+    }
     if (sscanf(line, "drag %d %d %d %d %d %d", &command->touch_x, &command->touch_y, &command->touch_end_x, &command->touch_end_y, &command->number, &command->delay_frames) == 6) {
         command->kind = COMMAND_DRAG;
         return 1;

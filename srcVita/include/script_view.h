@@ -23,6 +23,7 @@ void script_view_effect_moved(const char *name, float x, float y, float aim_degr
 void script_view_phone_split_spawned(const struct script_effect_row *row, const char *name, float slide_px);
 void script_view_effect_signalled(const char *name);
 void script_view_chain_moved(const float *x, const float *y, int is_out);
+int script_view_soul_screen_position(float *x, float *y);
 void script_view_advance(void);
 void script_view_draw_on_world(void);
 void script_view_draw_on_covers(void);
