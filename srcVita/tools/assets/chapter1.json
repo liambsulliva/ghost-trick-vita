@@ -92,6 +92,12 @@
   ],
   "screen_textures": [
     {
+      "name": "soul_spokes",
+      "source": "natives/android/charfiles/3d/04_item/circlesubtex03_iml4.tex.691230823",
+      "width": 64,
+      "height": 256
+    },
+    {
       "name": "soul_ring",
       "source": "natives/android/charfiles/3d/05_effect/cmn_shig_00/23_cmn_shig_00_01_iml4.tex.691230823",
       "width": 512,

@@ -51,7 +51,7 @@ static void on_music_prepared(int id) { CUE("music_prepare %d", id); }
 static void on_music_started(int id) { CUE("music_start %d", id); }
 static void on_music_stopped(int fade) { CUE("music_stop %d", fade); }
 static void on_sound(int kind) { CUE("sound %d", kind); }
-static void on_soul_vision(int is_on) { CUE("soul_vision %d", is_on); }
+static void on_soul_vision(int is_on, int with_effect) { (void)with_effect; CUE("soul_vision %d", is_on); }
 static void on_marked(const char *what, const char *name) { CUE("mark %s %s", what, name); if (marks_to_stdout) { printf("mark %s %s\n", what, name); } }
 static void on_talk(const struct script_talk_view *view) { CUE("talk slide=%.2f alpha=%.2f glyphs=%d cursor=%d open=%d", view->slide, view->text_alpha, view->glyphs_shown, view->cursor_is_on, view->page != NULL); }
 static void on_effect_deleted(const char *name) { CUE("effect_deleted %s", name); }

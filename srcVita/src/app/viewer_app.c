@@ -647,19 +647,31 @@ static void draw_centred_scene_end_line(float y, const char *text)
     debug_font_draw_text(((float)RENDERER_WIDTH - width) / 2.0f, y, SCENE_END_TEXT_SCALE, white, text);
 }
 
+static void draw_game_picture(void)
+{
+    scene_view_draw_world(scene_stage_view());
+    if (script_player_is_active()) {
+        script_view_draw_on_world();
+    }
+    scene_view_draw_covers(scene_stage_view());
+    if (script_player_is_active()) {
+        script_view_draw_on_covers();
+    }
+}
+
 void viewer_app_draw(void)
 {
     if (manifest == NULL) {
         draw_no_assets_screen();
     } else if (playback_status() != SCENE_PLAYER_PRELOADING) {
-        scene_view_draw_world(scene_stage_view());
-        if (script_player_is_active()) {
-            script_view_draw_on_world();
+        if (script_player_is_active() && script_view_wants_snapshot()) {
+            if (renderer_snapshot_begin()) {
+                draw_game_picture();
+                renderer_snapshot_end();
+            }
+            script_view_snapshot_taken();
         }
-        scene_view_draw_covers(scene_stage_view());
-        if (script_player_is_active()) {
-            script_view_draw_on_covers();
-        }
+        draw_game_picture();
     }
     if (playback_status() == SCENE_PLAYER_FINISHED && !debug_controls_are_on && !scene_layers_text_is_fading_out(scene_stage_layers())) {
         draw_centred_scene_end_line(SCENE_END_FIRST_LINE_Y, SCENE_END_FIRST_LINE);

@@ -10,6 +10,7 @@
 #define RENDERER_MAIN_MEMORY_LEFT_FOR_APP 0x1000000
 #define BATCH_QUAD_MAX 1024
 #define VERTICES_PER_QUAD 6
+#define DEGREES_TO_RADIANS 0.017453293f
 #define LOG_FOR_TOOLS_SNAPSHOT_TARGET "renderer snapshot_target ok=%d video_bytes=%d main_bytes=%d render_target_bytes=%u"
 
 struct batch_vertex {
@@ -298,6 +299,32 @@ void renderer_draw_beam(renderer_texture texture, float from_x, float from_y, fl
     batch_quad_count = batch_quad_count + 1;
 }
 
+void renderer_draw_triangles(renderer_texture texture, const struct renderer_vertex *corners, int triangle_count, struct renderer_color tint)
+{
+    int index;
+
+    set_flat_drawing(0);
+    for (index = 0; index < triangle_count; index++) {
+        const struct renderer_vertex *triangle;
+        struct batch_vertex *quad;
+        int corner;
+
+        if (texture != batch_texture || batch_quad_count == BATCH_QUAD_MAX) {
+            flush_batch();
+            batch_texture = texture;
+        }
+        triangle = &corners[index * 3];
+        quad = &batch_vertices[batch_quad_count * VERTICES_PER_QUAD];
+        for (corner = 0; corner < VERTICES_PER_QUAD; corner++) {
+            const struct renderer_vertex *source;
+
+            source = &triangle[corner < 3 ? corner : 2];
+            set_vertex(&quad[corner], source->x, source->y, source->u, source->v, tint);
+        }
+        batch_quad_count = batch_quad_count + 1;
+    }
+}
+
 void renderer_draw_flat_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color)
 {
     set_flat_drawing(1);
@@ -339,6 +366,40 @@ void renderer_snapshot_end(void)
 {
     flush_batch();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void renderer_draw_turned_snapshot(float center_x, float center_y, float half_width, float half_height, float degrees, float alpha)
+{
+    struct batch_vertex *quad;
+    struct renderer_color tint;
+    float radians;
+    float across_x;
+    float across_y;
+    float down_x;
+    float down_y;
+
+    set_flat_drawing(0);
+    if (snapshot_texture != batch_texture || batch_quad_count == BATCH_QUAD_MAX) {
+        flush_batch();
+        batch_texture = snapshot_texture;
+    }
+    tint.red = 1.0f;
+    tint.green = 1.0f;
+    tint.blue = 1.0f;
+    tint.alpha = alpha;
+    radians = degrees * DEGREES_TO_RADIANS;
+    across_x = cosf(radians) * half_width;
+    across_y = sinf(radians) * half_width;
+    down_x = -sinf(radians) * half_height;
+    down_y = cosf(radians) * half_height;
+    quad = &batch_vertices[batch_quad_count * VERTICES_PER_QUAD];
+    set_vertex(&quad[0], center_x - across_x - down_x, center_y - across_y - down_y, 0.0f, 1.0f, tint);
+    set_vertex(&quad[1], center_x + across_x - down_x, center_y + across_y - down_y, 1.0f, 1.0f, tint);
+    set_vertex(&quad[2], center_x - across_x + down_x, center_y - across_y + down_y, 0.0f, 0.0f, tint);
+    set_vertex(&quad[3], center_x + across_x - down_x, center_y + across_y - down_y, 1.0f, 1.0f, tint);
+    set_vertex(&quad[4], center_x + across_x + down_x, center_y + across_y + down_y, 1.0f, 0.0f, tint);
+    set_vertex(&quad[5], center_x - across_x + down_x, center_y - across_y + down_y, 0.0f, 0.0f, tint);
+    batch_quad_count = batch_quad_count + 1;
 }
 
 void renderer_draw_snapshot(struct renderer_rect screen_area, float alpha)

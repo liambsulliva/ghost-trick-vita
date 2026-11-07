@@ -13,6 +13,8 @@
 #define renderer_snapshot_begin real_renderer_snapshot_begin
 #define renderer_snapshot_end real_renderer_snapshot_end
 #define renderer_draw_snapshot real_renderer_draw_snapshot
+#define renderer_draw_turned_snapshot real_renderer_draw_turned_snapshot
+#define renderer_draw_triangles real_renderer_draw_triangles
 #include "../../src/vita/renderer.c"
 #include "fakes/fake_platform.h"
 #include "test_support.h"

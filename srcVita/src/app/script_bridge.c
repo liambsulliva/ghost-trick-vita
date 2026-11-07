@@ -591,10 +591,10 @@ static void on_sound_played(int kind)
     }
 }
 
-static void on_soul_vision_changed(int is_on)
+static void on_soul_vision_changed(int is_on, int with_effect)
 {
     soul_vision_is_on = is_on;
-    script_view_soul_changed(is_on);
+    script_view_soul_changed(is_on, with_effect);
     run_log_write("script soul_vision on=%d tick=%u", is_on, tick);
 }
 

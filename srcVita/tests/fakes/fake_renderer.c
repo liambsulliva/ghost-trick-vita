@@ -257,6 +257,28 @@ void renderer_snapshot_end(void)
     snapshot_is_open = 0;
 }
 
+void renderer_draw_turned_snapshot(float center_x, float center_y, float half_width, float half_height, float degrees, float alpha)
+{
+    struct renderer_rect area;
+
+    (void)degrees;
+    area.x = center_x - half_width;
+    area.y = center_y - half_height;
+    area.width = half_width * 2.0f;
+    area.height = half_height * 2.0f;
+    renderer_draw_snapshot(area, alpha);
+}
+
+void renderer_draw_triangles(renderer_texture texture, const struct renderer_vertex *corners, int triangle_count, struct renderer_color tint)
+{
+    struct renderer_rect no_area;
+
+    (void)corners;
+    (void)triangle_count;
+    memset(&no_area, 0, sizeof(no_area));
+    (void)record_draw(texture, 0, no_area, no_area, tint);
+}
+
 void renderer_draw_snapshot(struct renderer_rect screen_area, float alpha)
 {
     struct fake_draw *draw;

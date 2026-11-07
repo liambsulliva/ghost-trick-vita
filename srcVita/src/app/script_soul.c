@@ -58,6 +58,11 @@ enum tutorial_mode {
     TUTORIAL_MOVE
 };
 
+#define SOUL_VIEW_ENTER_TICKS 33
+#define SOUL_VIEW_LEAVE_TICKS 13
+#define SOUL_LEAVE_SOUND_KIND 15
+#define QUIET_LEAVING_FLAG 0x1003
+
 static const char *const core_verbs[SCRIPT_CORE_SLOT_COUNT] = { "core", "core1" };
 static const char *const fate_wipe_clips[] = { "TIME_1", "TIME_2", "TIME_3" };
 static const char *const countdown_clips[] = { "DEATH_COUNT_3", "DEATH_COUNT_2", "DEATH_COUNT_1", "DEATH_COUNT_0" };
@@ -640,30 +645,72 @@ void script_soul_effect_signalled(struct script_machine *machine, const char *na
     schedule_native_event(machine, &machine->soul.phone_event, name, "end", PHONE_EFFECT_EVENT_AFTER_TICKS);
 }
 
+static void set_soul_view_with_effect(struct script_machine *machine, int is_on, int with_effect)
+{
+    struct script_soul *soul;
+    int holds_the_world;
+
+    soul = &machine->soul;
+    soul->is_on = is_on;
+    holds_the_world = with_effect && machine->auto_press != SCRIPT_AUTO_FAST;
+    soul->is_leaving_view = 0;
+    if (!is_on) {
+        soul->player_opened_soul_view = 0;
+        soul->tooltip_is_on = 0;
+        soul->is_leaving_view = holds_the_world;
+    }
+    soul->view_change_ticks_left = holds_the_world ? (is_on ? SOUL_VIEW_ENTER_TICKS : SOUL_VIEW_LEAVE_TICKS) : 0;
+    machine->soul_state_keeps_pause = is_on;
+    machine->pause_bit = is_on || soul->is_leaving_view;
+    if (machine->outputs->soul_vision_changed != NULL) {
+        machine->outputs->soul_vision_changed(is_on, with_effect);
+    }
+    if (is_on) {
+        soul->start_message_at = (long long)machine->tick + 1;
+        if (with_effect) {
+            machine->soul_sound_at = (long long)machine->tick + 1;
+        }
+    } else {
+        soul->final_message_at = (long long)machine->tick + 1;
+        if (with_effect && machine->outputs->sound_played != NULL) {
+            machine->outputs->sound_played(SOUL_LEAVE_SOUND_KIND);
+        }
+    }
+}
+
 static void set_soul_view(struct script_machine *machine, int is_on)
+{
+    set_soul_view_with_effect(machine, is_on, 1);
+}
+
+static int leaving_skips_the_effect(struct script_machine *machine)
+{
+    int is_quiet;
+
+    is_quiet = machine->soul.next_leaving_is_quiet || script_flags_read(&machine->flags, QUIET_LEAVING_FLAG);
+    machine->soul.next_leaving_is_quiet = 0;
+    return is_quiet;
+}
+
+static void finish_leaving_view_when_due(struct script_machine *machine)
 {
     struct script_soul *soul;
 
     soul = &machine->soul;
-    soul->is_on = is_on;
-    if (!is_on) {
-        soul->player_opened_soul_view = 0;
-        soul->tooltip_is_on = 0;
+    if (soul->view_change_ticks_left <= 0) {
+        return;
     }
-    machine->soul_state_keeps_pause = is_on;
-    machine->pause_bit = is_on;
-    if (machine->outputs->soul_vision_changed != NULL) {
-        machine->outputs->soul_vision_changed(is_on);
-    }
-    if (is_on) {
-        soul->start_message_at = (long long)machine->tick + 1;
-        machine->soul_sound_at = (long long)machine->tick + 1;
+    soul->view_change_ticks_left = soul->view_change_ticks_left - 1;
+    if (soul->view_change_ticks_left == 0 && soul->is_leaving_view) {
+        soul->is_leaving_view = 0;
+        machine->pause_bit = 0;
+        script_machine_send(machine, "*", "SYSTEM", "SV_END");
     }
 }
 
-static void enter_scripted_soul_view(struct script_machine *machine)
+static void enter_scripted_soul_view(struct script_machine *machine, const char *arg)
 {
-    set_soul_view(machine, 1);
+    set_soul_view_with_effect(machine, 1, strcmp(arg, "NoEffectStart") != 0);
     machine->soul_vision_message_at = (long long)machine->tick + SOUL_VISION_MESSAGE_AFTER_TICKS;
 }
 
@@ -671,7 +718,7 @@ static void leave_soul_view(struct script_machine *machine)
 {
     machine->soul.tutorial_mode = TUTORIAL_NONE;
     machine->mode_byte = DEMO_MODE;
-    set_soul_view(machine, 0);
+    set_soul_view_with_effect(machine, 0, !leaving_skips_the_effect(machine));
 }
 
 static void run_tutorial_command(struct script_machine *machine, const char *arg)
@@ -727,19 +774,21 @@ static void run_exception_command(struct script_machine *machine, const char *ar
 
 static void run_custom_soul_command(struct script_machine *machine, const char *arg)
 {
-    if (strcmp(arg, "Start") == 0 || strcmp(arg, "NoEffectStart") == 0) {
+    if (strcmp(arg, "Start") == 0) {
         set_soul_view(machine, 1);
-    } else if (strcmp(arg, "NoEffectFinish") == 0 || strcmp(arg, "ReturnDemo") == 0) {
-        if (machine->soul.is_on) {
-            set_soul_view(machine, 0);
-        }
+    } else if (strcmp(arg, "NoEffectStart") == 0) {
+        set_soul_view_with_effect(machine, 1, 0);
+    } else if (strcmp(arg, "NoEffectFinish") == 0) {
+        machine->soul.next_leaving_is_quiet = 1;
+    } else if (strcmp(arg, "ReturnDemo") == 0 && machine->soul.is_on) {
+        set_soul_view_with_effect(machine, 0, !leaving_skips_the_effect(machine));
     }
 }
 
 void script_soul_run_command(struct script_machine *machine, const char *verb, const char *arg)
 {
     if (strcmp(verb, "SoulVision") == 0) {
-        enter_scripted_soul_view(machine);
+        enter_scripted_soul_view(machine, arg);
     } else if (strcmp(verb, "Message") == 0) {
         script_talk_note_forward(machine);
     } else if (strcmp(verb, "SVTUTO") == 0) {
@@ -807,11 +856,7 @@ static void take_press(struct script_machine *machine)
         }
         return;
     }
-    if (soul->is_on && soul->player_opened_soul_view) {
-        set_soul_view(machine, 0);
-        if (soul->trick_is_on) {
-            fire_trick(machine);
-        }
+    if (soul->is_on) {
         return;
     }
     if (script_soul_world_is_playable(machine) && soul->trick_is_on) {
@@ -839,6 +884,9 @@ static void take_ghost_button(struct script_machine *machine)
     struct script_soul *soul;
 
     soul = &machine->soul;
+    if (soul->view_change_ticks_left > 0) {
+        return;
+    }
     if (soul->is_on && soul->player_opened_soul_view) {
         set_soul_view(machine, 0);
         return;
@@ -1179,7 +1227,7 @@ static void run_route(struct script_machine *machine)
 
     soul = &machine->soul;
     step = current_route_step(machine);
-    if (step == NULL) {
+    if (step == NULL || soul->view_change_ticks_left > 0) {
         return;
     }
     if (!soul->route_action_has_begun) {
@@ -1293,6 +1341,14 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         soul->start_message_at = -1;
         script_machine_send(machine, "*", "SYSTEM", "SV_START");
     }
+    if (soul->final_message_at == (long long)machine->tick) {
+        soul->final_message_at = -1;
+        script_machine_send(machine, "*", "SYSTEM", "SV_FINAL");
+        if (!soul->is_leaving_view) {
+            script_machine_send(machine, "*", "SYSTEM", "SV_END");
+        }
+    }
+    finish_leaving_view_when_due(machine);
     if (machine->auto_press != SCRIPT_AUTO_OFF) {
         play_automatically(machine);
     }
@@ -1352,12 +1408,13 @@ void script_soul_set_held(struct script_machine *machine, int held_x, int held_y
 void script_soul_reset(struct script_machine *machine)
 {
     if (machine->soul.is_on && machine->outputs != NULL && machine->outputs->soul_vision_changed != NULL) {
-        machine->outputs->soul_vision_changed(0);
+        machine->outputs->soul_vision_changed(0, 0);
     }
     memset(&machine->soul, 0, sizeof(machine->soul));
     machine->soul.route_step = -1;
     machine->soul.active_object = NO_CORE;
     machine->soul.start_message_at = -1;
+    machine->soul.final_message_at = -1;
     machine->soul.trick_is_on = 1;
     machine->countdown_interval = COUNTDOWN_DEFAULT_INTERVAL;
     machine->active_core_name = NULL;

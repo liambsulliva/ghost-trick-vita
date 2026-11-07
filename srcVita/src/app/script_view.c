@@ -8,6 +8,7 @@
 #include "script_outputs.h"
 #include "script_ui_view.h"
 #include "script_view.h"
+#include "soul_transition.h"
 #include "texture_cache.h"
 
 #define VIEW_EFFECT_MAX 16
@@ -103,9 +104,6 @@
 #define SWIRL_PARTICLE_REACH 560.0f
 #define SWIRL_PARTICLE_SIZE_LEAST 10.0f
 #define SWIRL_PARTICLE_SIZE_SPREAD 16.0f
-#define SCANLINE_COUNT 135
-#define SCANLINE_SPACING 4.0f
-#define SCANLINE_HEIGHT 2.0f
 #define SOUL_MOTION_DOT_COUNT 14
 #define SOUL_BEAM_TEXTURE "soul_beam"
 #define SOUL_BEAM_HALF_WIDTH 16.0f
@@ -187,10 +185,18 @@ void script_view_talk_changed(const struct script_talk_view *view)
     talk_is_showing = 1;
 }
 
-void script_view_soul_changed(int is_on)
+void script_view_soul_changed(int is_on, int with_effect)
 {
     soul_is_on = is_on;
     scene_stage_set_soul_mode(is_on);
+    if (!with_effect) {
+        soul_transition_stop();
+        soul_transition_restart_sweep();
+    } else if (is_on) {
+        soul_transition_begin_entering();
+    } else {
+        soul_transition_begin_leaving();
+    }
 }
 
 void script_view_cursor_moved(int is_shown, float x, float y, float from_x, float from_y, int motion)
@@ -296,6 +302,7 @@ void script_view_effect_deleted(const char *name)
 
 void script_view_advance(void)
 {
+    soul_transition_advance();
     int index;
 
     script_ui_view_advance();
@@ -768,21 +775,6 @@ static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y)
     }
 }
 
-static void draw_scanlines(void)
-{
-    static const struct renderer_color line_color = { 0.0f, 0.0f, 0.0f, 0.16f };
-    struct renderer_rect lines[SCANLINE_COUNT];
-    int index;
-
-    for (index = 0; index < SCANLINE_COUNT; index++) {
-        lines[index].x = 0.0f;
-        lines[index].y = (float)index * SCANLINE_SPACING;
-        lines[index].width = (float)RENDERER_WIDTH;
-        lines[index].height = SCANLINE_HEIGHT;
-    }
-    renderer_draw_filled_rects(lines, SCANLINE_COUNT, line_color);
-}
-
 static void draw_soul(void)
 {
     static const struct renderer_color orb = { 0.73f, 0.74f, 0.94f, 1.0f };
@@ -792,7 +784,7 @@ static void draw_soul(void)
     if (!soul_is_on || tables == NULL) {
         return;
     }
-    draw_scanlines();
+    soul_transition_draw_ghost_lines();
     draw_core_marks();
     if (!cursor_is_shown) {
         return;
@@ -945,8 +937,19 @@ void script_view_draw_on_world(void)
     draw_soul();
 }
 
+int script_view_wants_snapshot(void)
+{
+    return soul_transition_wants_snapshot();
+}
+
+void script_view_snapshot_taken(void)
+{
+    soul_transition_snapshot_taken();
+}
+
 void script_view_draw_on_covers(void)
 {
+    soul_transition_draw();
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {
         draw_talk();
     }

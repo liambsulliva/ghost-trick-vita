@@ -215,6 +215,10 @@ struct script_soul {
     int held_x;
     int held_y;
     long long start_message_at;
+    long long final_message_at;
+    int view_change_ticks_left;
+    int is_leaving_view;
+    int next_leaving_is_quiet;
     unsigned int auto_reading_ticks;
     int tip_is_out;
     float tip_x;

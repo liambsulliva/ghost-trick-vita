@@ -36,10 +36,19 @@ void renderer_texture_destroy(renderer_texture texture);
 void renderer_draw_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color tint);
 void renderer_draw_beam(renderer_texture texture, float from_x, float from_y, float to_x, float to_y, float half_width, struct renderer_color tint);
 void renderer_draw_flat_sprite(renderer_texture texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color);
+struct renderer_vertex {
+    float x;
+    float y;
+    float u;
+    float v;
+};
+
+void renderer_draw_triangles(renderer_texture texture, const struct renderer_vertex *corners, int triangle_count, struct renderer_color tint);
 void renderer_draw_filled_rect(struct renderer_rect screen_area, struct renderer_color color);
 void renderer_draw_filled_rects(const struct renderer_rect *screen_areas, int count, struct renderer_color color);
 int renderer_snapshot_begin(void);
 void renderer_snapshot_end(void);
 void renderer_draw_snapshot(struct renderer_rect screen_area, float alpha);
+void renderer_draw_turned_snapshot(float center_x, float center_y, float half_width, float half_height, float degrees, float alpha);
 
 #endif

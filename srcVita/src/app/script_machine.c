@@ -819,7 +819,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         set_pause_class(vm, PAUSE_CLASS_TALK);
         machine->demo_soul_is_on = 1;
         if (machine->outputs->soul_vision_changed != NULL) {
-            machine->outputs->soul_vision_changed(1);
+            machine->outputs->soul_vision_changed(1, 1);
         }
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0xe3:
@@ -828,7 +828,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         set_pause_class(vm, PAUSE_CLASS_NORMAL);
         machine->demo_soul_is_on = 0;
         if (machine->outputs->soul_vision_changed != NULL) {
-            machine->outputs->soul_vision_changed(0);
+            machine->outputs->soul_vision_changed(0, 1);
         }
         return SCRIPT_STEP_NEXT;
     case 0xec:
