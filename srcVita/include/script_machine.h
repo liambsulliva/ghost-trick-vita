@@ -358,6 +358,7 @@ struct script_machine {
     int shake_ticks_left;
     int chapter_mark;
     int time_jump_movie_ticks;
+    int movie_ticks_left;
     unsigned char noted_ops[SCRIPT_NOTED_OP_BYTES];
     unsigned char noted_effects[SCRIPT_NOTED_EFFECT_BYTES];
     unsigned char noted_problems[SCRIPT_NOTED_PROBLEM_BYTES];

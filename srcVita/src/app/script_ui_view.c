@@ -38,6 +38,13 @@
 #define SIDE_LABEL_THICKNESS 39.5f
 #define SIDE_LABEL_ROTATION -90.0f
 
+#define NARRATION_ARROW_TEXTURE "narration_arrow"
+#define NARRATION_ARROW_X 459.0f
+#define NARRATION_ARROW_Y 504.0f
+#define NARRATION_ARROW_WIDTH 41.0f
+#define NARRATION_ARROW_HEIGHT 19.5f
+#define NARRATION_ARROW_BOB_TICKS 50
+#define NARRATION_ARROW_BOB_PIXELS 5.0f
 #define PILL_ART_TEXTURE "hud_button_art"
 #define PILL_SHEET_TEXTURE "hud_sheet"
 #define PILL_ART_SIZE 512.0f
@@ -136,6 +143,7 @@ struct playing_clip {
 };
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
+static int arrow_age_ticks;
 
 static const struct hourglass_cell glass_cells[] = {
     { 258.0f, 3.0f, 210.0f, 32.0f, 210.0f, 32.0f, 467.0f, 0.5f, 1 },
@@ -209,6 +217,7 @@ void script_ui_view_advance(void)
 {
     int index;
 
+    arrow_age_ticks = arrow_age_ticks + 1;
     (void)texture_cache_use_or_start_loading(PILL_ART_TEXTURE);
     (void)texture_cache_use_or_start_loading(PILL_SHEET_TEXTURE);
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
@@ -544,6 +553,31 @@ static void draw_side_hud(void)
     }
 }
 
+static void draw_narration_arrow(void)
+{
+    const struct cached_texture *arrow;
+    struct renderer_rect area;
+    int phase;
+
+    if (!hud.narration_arrow_is_on) {
+        arrow_age_ticks = 0;
+        return;
+    }
+    arrow = ready_texture(NARRATION_ARROW_TEXTURE);
+    if (arrow == NULL) {
+        return;
+    }
+    phase = arrow_age_ticks % NARRATION_ARROW_BOB_TICKS;
+    if (phase > NARRATION_ARROW_BOB_TICKS / 2) {
+        phase = NARRATION_ARROW_BOB_TICKS - phase;
+    }
+    area.x = NARRATION_ARROW_X;
+    area.y = NARRATION_ARROW_Y + (float)phase / (float)(NARRATION_ARROW_BOB_TICKS / 2) * NARRATION_ARROW_BOB_PIXELS;
+    area.width = NARRATION_ARROW_WIDTH;
+    area.height = NARRATION_ARROW_HEIGHT;
+    renderer_draw_sprite(arrow->texture, area, whole_texture(), white);
+}
+
 static float pill_pulse_brightness(void)
 {
     int phase;
@@ -663,6 +697,7 @@ void script_ui_view_draw(void)
     if (!hud.is_hidden_for_movie) {
         draw_side_hud();
         draw_pills();
+        draw_narration_arrow();
     }
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
         if (playing[index].clip != NULL) {

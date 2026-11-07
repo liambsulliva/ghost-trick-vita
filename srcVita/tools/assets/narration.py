@@ -20,6 +20,7 @@ NARRATION_SCALE_FROM_CLIP_SIZE = NARRATION_PIXELS_PER_EM / CLIP_SIZED_PIXELS_PER
 NARRATION_MAX_INK_WIDTH = SCREEN_WIDTH * 2 / 3
 NARRATION_COLOR = (255, 255, 255)
 LINE_PITCH_IN_CLIP = 67
+DEFAULT_POS_Y = 16
 PARAGRAPH_LINE_HEIGHT_IN_CLIP = 79
 FIRST_LINE_TOP_BASE_IN_CLIP = 8.0
 FIRST_LINE_TOP_PER_POS_Y_IN_CLIP = 3.77
@@ -147,7 +148,7 @@ def parse_requested_message(request, raw_text, ignores_other_tags=False):
 def read_narration_message(request, raw_text):
     message = parse_requested_message(request, raw_text)
     if message["pos_y"] is None:
-        raise NarrationError("narration has no posY: " + request["name"])
+        message["pos_y"] = DEFAULT_POS_Y
     return message
 
 

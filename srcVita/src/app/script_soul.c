@@ -582,7 +582,8 @@ static void report_hud(struct script_machine *machine)
     view.side_is_on = script_flags_read(&machine->flags, FATE_SECTION_FLAG);
     view.fate_level = machine->fate_level;
     view.world_is_running = !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && machine->eyecatch_ticks_left == 0;
-    view.is_hidden_for_movie = 0;
+    view.is_hidden_for_movie = machine->movie_ticks_left > 0;
+    view.narration_arrow_is_on = script_narration_wants_a_press(&machine->narration);
     script_pills_fill_view(machine, &view);
     machine->outputs->hud_changed(&view);
 }
@@ -883,6 +884,7 @@ void script_soul_run_command(struct script_machine *machine, const char *verb, c
         }
     } else if (strcmp(verb, "Timeleap") == 0 && strcmp(arg, "SELECT") == 0) {
         if (machine->outputs->movie_started != NULL && machine->time_jump_movie_ticks > 0) {
+            machine->movie_ticks_left = machine->auto_press == SCRIPT_AUTO_FAST ? 0 : machine->time_jump_movie_ticks;
             machine->outputs->movie_started(TIME_JUMP_MOVIE);
         }
         schedule_native_event(machine, &machine->soul.time_jump_event, "timeleap", "jump", machine->time_jump_movie_ticks > 0 ? machine->time_jump_movie_ticks : TIME_JUMP_AFTER_TICKS);

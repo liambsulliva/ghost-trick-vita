@@ -591,6 +591,21 @@ static void on_sound_played(int kind)
     }
 }
 
+static int on_movie_of_class_started(unsigned int class_id)
+{
+    const struct script_movie *movie;
+    char text[32];
+
+    movie = script_tables_find_movie_of_class(tables, class_id);
+    if (movie == NULL) {
+        snprintf(text, sizeof(text), "%08x", class_id);
+        log_once("movie_of_class_not_baked", text);
+        return 0;
+    }
+    script_view_movie_started(movie->name);
+    return movie->frame_count * movie->ticks_per_frame;
+}
+
 static void on_soul_vision_changed(int is_on, int with_effect)
 {
     soul_vision_is_on = is_on;
@@ -651,6 +666,7 @@ static const struct script_outputs bridge_outputs = {
     .film_frame_changed = script_view_film_frame_changed,
     .swirl_changed = script_view_swirl_changed,
     .movie_started = script_view_movie_started,
+    .movie_of_class_started = on_movie_of_class_started,
     .soul_sparks_changed = script_view_soul_sparks_changed,
     .soul_object_styled = on_soul_object_styled,
     .marked = on_marked,

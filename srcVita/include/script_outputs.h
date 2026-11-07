@@ -63,6 +63,7 @@ struct script_hud_view {
     int fate_level;
     int world_is_running;
     int is_hidden_for_movie;
+    int narration_arrow_is_on;
     int pulse_ticks;
     struct script_pill_view pills[SCRIPT_PILL_COUNT];
 };
@@ -111,6 +112,7 @@ struct script_outputs {
     void (*film_frame_changed)(int is_on);
     void (*swirl_changed)(int is_on);
     void (*movie_started)(const char *name);
+    int (*movie_of_class_started)(unsigned int class_id);
     void (*soul_sparks_changed)(int elapsed_ticks, float x, float y);
     void (*marked)(const char *what, const char *name);
     void (*talk_changed)(const struct script_talk_view *view);

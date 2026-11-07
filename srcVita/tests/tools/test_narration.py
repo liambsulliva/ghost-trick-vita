@@ -164,9 +164,9 @@ class ConversionTests(unittest.TestCase):
         first, second = lines["m"]["paragraphs"][0]
         self.assertAlmostEqual(second["top_y"] - first["top_y"], 2 * 50.25 * narration.NARRATION_SCALE_FROM_CLIP_SIZE, delta=1)
 
-    def test_narration_without_a_position_is_refused(self):
-        with self.assertRaises(narration.NarrationError):
-            self.convert(self.packs_with([("entry", "one")]), [{"name": "m", "file": FILE_PATH, "entry": "entry"}])
+    def test_narration_without_a_position_uses_the_default(self):
+        message = narration.read_narration_message({"name": "m"}, "one")
+        self.assertEqual(message["pos_y"], narration.DEFAULT_POS_Y)
 
     def test_a_font_is_decoded_once_for_many_messages(self):
         entries = [("a", '<TRCK mono_pos_set posY="25"/>one'), ("b", '<TRCK mono_pos_set posY="25"/>two')]

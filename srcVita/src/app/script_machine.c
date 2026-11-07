@@ -10,6 +10,7 @@
 #define LOAD_AFTER_TEARDOWN_TICKS 4
 #define SOUL_SOUND_KIND 14
 #define NARRATION_OVERHEAD_TICKS 3
+#define MOVIE_SOUND_KIND 82
 #define NEVER -1
 #define PAUSE_CLASS_NORMAL 0
 #define PAUSE_CLASS_ONE 1
@@ -857,6 +858,18 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         }
         return SCRIPT_STEP_NEXT;
     case 0xec:
+        if (machine->auto_press != SCRIPT_AUTO_FAST && machine->outputs->movie_of_class_started != NULL) {
+            machine->movie_ticks_left = machine->outputs->movie_of_class_started(script_machine_u32(words, 0));
+            if (machine->movie_ticks_left > 0 && machine->outputs->sound_played != NULL) {
+                machine->outputs->sound_played(MOVIE_SOUND_KIND);
+            }
+        }
+        return SCRIPT_STEP_NEXT_THEN_YIELD;
+    case 0xed:
+        if (machine->movie_ticks_left > 0) {
+            return SCRIPT_STEP_MOVED_THEN_YIELD;
+        }
+        return SCRIPT_STEP_NEXT;
     case 0xef:
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x129:
@@ -1215,6 +1228,9 @@ static void run_native_steps_before_tasks(struct script_machine *machine)
         if (machine->outputs->sound_played != NULL) {
             machine->outputs->sound_played(SOUL_SOUND_KIND);
         }
+    }
+    if (machine->movie_ticks_left > 0) {
+        machine->movie_ticks_left = machine->movie_ticks_left - 1;
     }
     script_talk_close_when_due(machine);
     script_soul_step_before_tasks(machine);

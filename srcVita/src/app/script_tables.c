@@ -188,7 +188,7 @@ static int read_movie_line(struct script_tables *tables, const char *line)
         return 1;
     }
     movie = &tables->movies[tables->movie_count];
-    if (sscanf(line, "movie " NAME_SCAN " %d %d", movie->name, &movie->frame_count, &movie->ticks_per_frame) != 3) {
+    if (sscanf(line, "movie " NAME_SCAN " %d %d %x", movie->name, &movie->frame_count, &movie->ticks_per_frame, &movie->class_id) != 4) {
         return 0;
     }
     tables->movie_count = tables->movie_count + 1;
@@ -250,6 +250,18 @@ static int read_effect_line(struct script_tables *tables, const char *line)
 int script_tables_read_effects(struct script_tables *tables, const char *text, unsigned int text_size)
 {
     return read_all_lines(tables, text, text_size, read_effect_line);
+}
+
+const struct script_movie *script_tables_find_movie_of_class(const struct script_tables *tables, unsigned int class_id)
+{
+    int index;
+
+    for (index = 0; index < tables->movie_count; index++) {
+        if (tables->movies[index].class_id == class_id) {
+            return &tables->movies[index];
+        }
+    }
+    return NULL;
 }
 
 const struct script_movie *script_tables_find_movie(const struct script_tables *tables, const char *name)

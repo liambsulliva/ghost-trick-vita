@@ -317,7 +317,7 @@ def soul_text(soul_view):
 
 
 def movies_text(movies):
-    return "".join("movie %s %d %d\n" % (movie["name"], movie.get("frames", 0), TICKS_PER_SECOND // movie["fps"]) for movie in movies)
+    return "".join("movie %s %d %d %s\n" % (movie["name"], movie.get("frames", 0), TICKS_PER_SECOND // movie["fps"], movie.get("class_id", "0")) for movie in movies)
 
 
 def route_steps_text(route):

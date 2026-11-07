@@ -114,6 +114,13 @@
       "height": 256
     },
     {
+      "name": "narration_arrow",
+      "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
+      "crop": [196, 0, 84, 40],
+      "width": 84,
+      "height": 40
+    },
+    {
       "name": "soul_spokes",
       "source": "natives/android/charfiles/3d/04_item/circlesubtex03_iml4.tex.691230823",
       "width": 64,
@@ -946,16 +953,10 @@
     "unknown_text": "???"
   },
   "movies": [
-    {
-      "name": "time_jump",
-      "pack_key": [
-        395138614,
-        3624828312
-      ],
-      "fps": 20,
-      "width": 640,
-      "height": 360
-    }
+    {"name": "time_jump", "pack_key": [1055199497, 206956949], "fps": 20, "width": 640, "height": 360},
+    {"name": "short_jump", "pack_key": [395138614, 3624828312], "fps": 20, "width": 640, "height": 360, "class_id": "034157e8"},
+    {"name": "time_jump_b", "pack_key": [861545708, 2080337922], "fps": 20, "width": 640, "height": 360, "class_id": "7b0ddf0f"},
+    {"name": "tell_move", "pack_key": [3908734962, 697356822], "fps": 20, "width": 640, "height": 360, "class_id": "41ee4e1e"}
   ],
   "route": {
     "dwell_ticks": {
