@@ -707,7 +707,9 @@ static void draw_layers_over_the_world(const struct scene_stage *stage)
     view = view_of_stage(stage);
     view = view_for_objects(stage, &view);
     draw_mask_or_iris(&stage->effects, &view);
-    draw_overlays(stage, &view);
+    if (!stage->soul_mode_is_on) {
+        draw_overlays(stage, &view);
+    }
     draw_dim(&stage->effects);
 }
 

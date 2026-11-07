@@ -106,7 +106,7 @@ static enum pill_group current_group(const struct script_machine *machine)
         return GROUP_NONE;
     }
     if (soul->is_on) {
-        return GROUP_GHOST;
+        return machine->demo_soul_is_on ? GROUP_DEMO : GROUP_GHOST;
     }
     if (!machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE) {
         return GROUP_NORMAL;
