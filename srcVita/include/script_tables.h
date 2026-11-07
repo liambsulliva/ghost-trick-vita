@@ -176,6 +176,8 @@ struct script_tables {
     char card_texture[ASSET_NAME_MAX];
     char next_chapter_card_texture[ASSET_NAME_MAX];
     enum script_timing timing;
+    char entry_name[SCRIPT_SOURCE_NAME_MAX];
+    int chapter_mark;
     char file_names[SCRIPT_CHAIN_FILE_MAX][SCRIPT_SOURCE_NAME_MAX];
     int file_count;
     struct script_room_plate room_plates[SCRIPT_ROOM_PLATE_MAX];

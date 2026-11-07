@@ -1,0 +1,2036 @@
+{
+  "chapter": "st14",
+  "stages": [
+    "st14",
+    "st06"
+  ],
+  "scripts": {
+    "entry": "chapter.xml",
+    "chapter_mark": 1,
+    "follow": [
+      "phone.xml",
+      "st06/st06_root.xml"
+    ],
+    "stop_before": [
+      "st06/st06_game004_Expand.xml"
+    ],
+    "language": "en",
+    "timing": "remaster",
+    "card_texture": "chapter_card",
+    "next_chapter_card_texture": "next_chapter_card"
+  },
+  "narration_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
+  "talk": {
+    "system_lines": {
+      "sys_add_data": {
+        "file": "system/system_0000.en.msg.xml.lz",
+        "words_on_first_row": 3,
+        "center_x": 464.6
+      }
+    },
+    "font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
+    "head_faces": {
+      "1": "CharFiles/3D/08_Face/cmn_do_10_01.user",
+      "3": "CharFiles/3D/08_Face/cmn_do_10_03.user",
+      "4": "CharFiles/3D/08_Face/cmn_do_10_06.user",
+      "5": "CharFiles/3D/08_Face/cmn_do_10_06.user"
+    },
+    "window_textures": [
+      "talk_box_bottom",
+      "talk_box_top",
+      "talk_cursor"
+    ],
+    "message_files": {
+      "st14": "natives/android/gamedesign/text/st14/st14_%04d.msg.22",
+      "st06": "natives/android/gamedesign/text/st06/{script}.msg.22"
+    }
+  },
+  "ds_music": {
+    "archive": "sound_data.sdat",
+    "sequences": {
+      "bgm01_new": "SEQ_GHOST_BGM001",
+      "bgm02_new": "SEQ_GHOST_BGM011",
+      "bgm03_new": "SEQ_GHOST_BGM015",
+      "bgm04_new": "SEQ_GHOST_BGM018",
+      "bgm06_new": "SEQ_GHOST_BGM017",
+      "bgm09_new": "SEQ_GHOST_BGM022",
+      "bgm10_new": "SEQ_GHOST_BGM027",
+      "bgm37_new": "SEQ_GHOST_BGM054_B"
+    }
+  },
+  "effect_movies": [
+    {
+      "id": 39,
+      "effect": "telephone001",
+      "sound": 19
+    },
+    {
+      "id": 197,
+      "effect": "xmastreemusic001"
+    }
+  ],
+  "effects": [
+    {
+      "id": 49,
+      "kind": "phone_split",
+      "texture": "-",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": 53,
+      "kind": "grey_world",
+      "texture": "-",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": 14,
+      "kind": "ui_clip",
+      "texture": "WHITE_FILTER",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": 85,
+      "kind": "dissolve",
+      "texture": "-",
+      "ticks": 32,
+      "end_zoom": 2,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": 4,
+      "kind": "ring",
+      "texture": "soul_glow",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 110,
+      "height": 110
+    },
+    {
+      "id": 7,
+      "kind": "ring",
+      "texture": "soul_glow",
+      "ticks": 70,
+      "end_zoom": 1,
+      "width": 110,
+      "height": 110
+    },
+    {
+      "id": 48,
+      "kind": "phone_split",
+      "texture": "-",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": 52,
+      "kind": "ui_clip",
+      "texture": "CARD_BEFORE_DEATH",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": 67,
+      "kind": "card",
+      "texture": "chapter_card",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 0,
+      "height": 0
+    }
+  ],
+  "hud": {
+    "label_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
+    "key_font": "natives/android/gui/font/outlinefont/helveticaneueltw1g-bd.oft.1"
+  },
+  "screen_textures": [
+    {
+      "name": "hud_button_art",
+      "source": "natives/android/charfiles/3d/06_id/04_button/cmn_button_02_iml4.tex.691230823",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "name": "ui_mark",
+      "source": "natives/android/gui/ui010200/tex/ig_010207_00_iml4.tex.691230823",
+      "width": 512,
+      "height": 256
+    },
+    {
+      "name": "narration_arrow",
+      "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
+      "crop": [
+        196,
+        0,
+        84,
+        40
+      ],
+      "width": 84,
+      "height": 40
+    },
+    {
+      "name": "ui_select_button",
+      "source": "natives/android/charfiles/3d/06_id/10_select/cmn_button_01_iml4.tex.691230823",
+      "crop": [
+        116,
+        0,
+        118,
+        118
+      ],
+      "width": 116,
+      "height": 116
+    },
+    {
+      "name": "rewind_rocks_far",
+      "source": "natives/android/charfiles/3d/06_id/07_rollback/cmn_ba_99_01_iml4.tex.691230823",
+      "width": 256,
+      "height": 1536
+    },
+    {
+      "name": "rewind_rocks_near",
+      "source": "natives/android/charfiles/3d/06_id/07_rollback/cmn_ba_99_02_iml4.tex.691230823",
+      "width": 256,
+      "height": 1536
+    },
+    {
+      "name": "rewind_rocks_mid",
+      "source": "natives/android/charfiles/3d/06_id/07_rollback/cmn_ba_99_03_iml4.tex.691230823",
+      "width": 256,
+      "height": 1536
+    },
+    {
+      "name": "ui_tap_balloon",
+      "source": "natives/android/charfiles/3d/06_id/cmn_balloon_animation_iml4.tex.691230823",
+      "width": 512,
+      "height": 256
+    },
+    {
+      "name": "soul_spokes",
+      "source": "natives/android/charfiles/3d/04_item/circlesubtex03_iml4.tex.691230823",
+      "width": 64,
+      "height": 256
+    },
+    {
+      "name": "soul_ring",
+      "source": "natives/android/charfiles/3d/05_effect/cmn_shig_00/23_cmn_shig_00_01_iml4.tex.691230823",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "name": "chapter_card",
+      "source": "natives/android/charfiles/3d/06_id/12_chapter/cmn_ch_00_01_iml3.tex.691230823.en",
+      "width": 720,
+      "height": 540,
+      "list_as_background": true
+    },
+    {
+      "name": "phone_cap",
+      "source": "natives/android/charfiles/3d/04_item/demotell01_iml4.tex.691230823",
+      "width": 128,
+      "height": 140
+    },
+    {
+      "name": "phone_strip",
+      "source": "natives/android/charfiles/3d/04_item/demotell02_iml4.tex.691230823",
+      "width": 64,
+      "height": 64
+    },
+    {
+      "name": "next_chapter_card",
+      "source": "natives/android/charfiles/3d/06_id/12_chapter/cmn_ch_00_02_iml3.tex.691230823.en",
+      "width": 720,
+      "height": 540,
+      "list_as_background": true
+    },
+    {
+      "name": "alert_burst",
+      "source": "natives/android/gui/ui010200/tex/ig_010208_iml4.tex.691230823",
+      "crop": [
+        410,
+        1,
+        474,
+        470
+      ],
+      "width": 80,
+      "height": 80
+    },
+    {
+      "name": "alert_mark",
+      "source": "natives/android/gui/ui010200/tex/ig_010208_iml4.tex.691230823",
+      "crop": [
+        886,
+        1,
+        136,
+        270
+      ],
+      "width": 24,
+      "height": 52
+    },
+    {
+      "name": "soul_dim_00",
+      "source": "natives/android/charfiles/3d/05_effect/cmn_shig_01/23_cmn_shig_01_00_iml4.tex.691230823",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "name": "soul_dim_01",
+      "source": "natives/android/charfiles/3d/05_effect/cmn_shig_01/23_cmn_shig_01_01_iml4.tex.691230823",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "name": "soul_dim_02",
+      "source": "natives/android/charfiles/3d/05_effect/cmn_shig_01/23_cmn_shig_01_02_iml4.tex.691230823",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "name": "soul_glow",
+      "source": "natives/android/charfiles/3d/04_item/coretest03_00_iml4.tex.691230823",
+      "width": 128,
+      "height": 128
+    },
+    {
+      "name": "soul_orb",
+      "source": "natives/android/charfiles/3d/04_item/coretest03_01_iml4.tex.691230823",
+      "width": 64,
+      "height": 64
+    },
+    {
+      "name": "soul_blob",
+      "source": "natives/android/charfiles/3d/04_item/coretest03_01_iml4.tex.691230823",
+      "width": 64,
+      "height": 64,
+      "flat_color": [
+        0,
+        173,
+        244
+      ]
+    },
+    {
+      "name": "soul_sparks_00",
+      "source": "natives/android/charfiles/3d/05_effect/deadtricklight/23_deadtricklight_00_iml4.tex.691230823",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "name": "soul_sparks_01",
+      "source": "natives/android/charfiles/3d/05_effect/deadtricklight/23_deadtricklight_01_iml4.tex.691230823",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "name": "soul_sparks_02",
+      "source": "natives/android/charfiles/3d/05_effect/deadtricklight/23_deadtricklight_02_iml4.tex.691230823",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "name": "soul_beam",
+      "source": "natives/android/charfiles/3d/04_item/soultentacle_iml4.tex.691230823",
+      "width": 256,
+      "height": 64
+    },
+    {
+      "name": "film_strip",
+      "source": "natives/android/charfiles/3d/04_item/demofilmtexture2_iml4.tex.691230823",
+      "width": 64,
+      "height": 64
+    },
+    {
+      "name": "film_corner",
+      "source": "natives/android/charfiles/3d/04_item/demofilmpoint_iml4.tex.691230823",
+      "width": 64,
+      "height": 80
+    },
+    {
+      "name": "swirl_back",
+      "source": "natives/android/charfiles/3d/06_id/07_rollback/death-back-eff_iml3.tex.691230823",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "name": "swirl_particle",
+      "source": "natives/android/charfiles/3d/06_id/07_rollback/deadkaiwaryu_iml4.tex.691230823",
+      "width": 128,
+      "height": 128
+    },
+    {
+      "name": "banner_star",
+      "source": "natives/android/gui/ui010200/tex/ig_010205_00_iml4.tex.691230823",
+      "crop": [
+        2,
+        3746,
+        348,
+        348
+      ]
+    },
+    {
+      "name": "banner_trick",
+      "source": "natives/android/gui/ui010200/tex/ig_010205_00_iml4.tex.691230823",
+      "crop": [
+        1384,
+        0,
+        1384,
+        304
+      ]
+    },
+    {
+      "name": "banner_trace",
+      "source": "natives/android/gui/ui010200/tex/ig_010205_00_iml4.tex.691230823",
+      "crop": [
+        1388,
+        912,
+        1388,
+        316
+      ]
+    },
+    {
+      "name": "banner_averted",
+      "source": "natives/android/gui/ui010200/tex/ig_010205_00_iml4.tex.691230823",
+      "crop": [
+        1428,
+        1860,
+        1428,
+        308
+      ]
+    },
+    {
+      "name": "banner_changed",
+      "source": "natives/android/gui/ui010200/tex/ig_010205_00_iml4.tex.691230823",
+      "crop": [
+        1416,
+        2784,
+        1416,
+        308
+      ]
+    },
+    {
+      "name": "ui_hourglass",
+      "source": "natives/android/gui/ui010200/tex/ig_010200_00_iml4.tex.691230823",
+      "crop": [
+        0,
+        0,
+        480,
+        1024
+      ]
+    },
+    {
+      "name": "ui_wave_quadrant",
+      "source": "natives/android/gui/ui010200/tex/ig_010200_00_iml4.tex.691230823",
+      "crop": [
+        3,
+        623,
+        400,
+        400
+      ]
+    },
+    {
+      "name": "wipe_time_passing",
+      "source": "natives/android/gui/ui010200/tex/ig_010206_00_iml4.tex.691230823",
+      "crop": [
+        0,
+        312,
+        1384,
+        312
+      ]
+    },
+    {
+      "name": "digit_label",
+      "source": "natives/android/gui/ui010200/tex/ig_010202_00_iml4.tex.691230823",
+      "crop": [
+        768,
+        0,
+        768,
+        384
+      ]
+    },
+    {
+      "name": "digit_3",
+      "source": "natives/android/gui/ui010200/tex/ig_010202_00_iml4.tex.691230823",
+      "crop": [
+        1695,
+        1281,
+        350,
+        765
+      ]
+    },
+    {
+      "name": "digit_2",
+      "source": "natives/android/gui/ui010200/tex/ig_010202_00_iml4.tex.691230823",
+      "crop": [
+        1306,
+        1342,
+        383,
+        704
+      ]
+    },
+    {
+      "name": "digit_1",
+      "source": "natives/android/gui/ui010200/tex/ig_010202_00_iml4.tex.691230823",
+      "crop": [
+        1120,
+        1341,
+        182,
+        705
+      ]
+    },
+    {
+      "name": "digit_0",
+      "source": "natives/android/gui/ui010200/tex/ig_010202_00_iml4.tex.691230823",
+      "crop": [
+        781,
+        1325,
+        338,
+        720
+      ]
+    },
+    {
+      "name": "card_hand_hour",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [
+        1683,
+        3,
+        148,
+        406
+      ]
+    },
+    {
+      "name": "card_hand_seconds",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [
+        1834,
+        3,
+        104,
+        422
+      ]
+    },
+    {
+      "name": "card_hand_minute",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [
+        1940,
+        2,
+        106,
+        504
+      ]
+    },
+    {
+      "name": "card_wave",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [
+        1182,
+        938,
+        864,
+        768
+      ]
+    },
+    {
+      "name": "card_top_text",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [
+        548,
+        1,
+        546,
+        162
+      ]
+    },
+    {
+      "name": "card_bottom_text",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [
+        716,
+        329,
+        712,
+        158
+      ]
+    },
+    {
+      "name": "side_label",
+      "source": "natives/android/charfiles/2d/05_status/00_maininfo/cmn/cmn_upp_05_iml4.tex.691230823.en"
+    }
+  ],
+  "composed_textures": [
+    {
+      "name": "thorn_bubble_s",
+      "source": "natives/android/charfiles/3d/06_id/cmn_balln00_iml4.tex.691230823",
+      "width": 224,
+      "height": 144,
+      "parts": [
+        {
+          "crop": [
+            701,
+            3,
+            286,
+            442
+          ],
+          "x": 1,
+          "y": 0,
+          "width": 221,
+          "height": 143,
+          "rotate_left": true
+        }
+      ]
+    },
+    {
+      "name": "thorn_bubble_m",
+      "source": "natives/android/charfiles/3d/06_id/cmn_balln00_iml4.tex.691230823",
+      "width": 324,
+      "height": 176,
+      "parts": [
+        {
+          "crop": [
+            372,
+            3,
+            324,
+            346
+          ],
+          "x": 0,
+          "y": 1,
+          "width": 162,
+          "height": 173
+        },
+        {
+          "crop": [
+            372,
+            3,
+            324,
+            346
+          ],
+          "x": 162,
+          "y": 1,
+          "width": 162,
+          "height": 173,
+          "flip_x": true
+        }
+      ]
+    },
+    {
+      "name": "thorn_bubble_l",
+      "source": "natives/android/charfiles/3d/06_id/cmn_balln00_iml4.tex.691230823",
+      "width": 364,
+      "height": 180,
+      "parts": [
+        {
+          "crop": [
+            5,
+            3,
+            361,
+            353
+          ],
+          "x": 1,
+          "y": 1,
+          "width": 181,
+          "height": 177
+        },
+        {
+          "crop": [
+            5,
+            3,
+            361,
+            353
+          ],
+          "x": 182,
+          "y": 1,
+          "width": 181,
+          "height": 177,
+          "flip_x": true
+        }
+      ]
+    },
+    {
+      "name": "card_clock",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "width": 512,
+      "height": 512,
+      "parts": [
+        {
+          "crop": [
+            1433,
+            429,
+            500,
+            500
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 256,
+          "height": 256
+        },
+        {
+          "crop": [
+            1433,
+            429,
+            500,
+            500
+          ],
+          "x": 256,
+          "y": 0,
+          "width": 256,
+          "height": 256,
+          "flip_x": true
+        },
+        {
+          "crop": [
+            1433,
+            429,
+            500,
+            500
+          ],
+          "x": 0,
+          "y": 256,
+          "width": 256,
+          "height": 256,
+          "flip_y": true
+        },
+        {
+          "crop": [
+            1433,
+            429,
+            500,
+            500
+          ],
+          "x": 256,
+          "y": 256,
+          "width": 256,
+          "height": 256,
+          "flip_x": true,
+          "flip_y": true
+        }
+      ]
+    },
+    {
+      "name": "talk_box_bottom",
+      "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
+      "width": 960,
+      "height": 132,
+      "parts": [
+        {
+          "crop": [
+            40,
+            40,
+            8,
+            8
+          ],
+          "x": 20,
+          "y": 0,
+          "width": 920,
+          "height": 20
+        },
+        {
+          "crop": [
+            40,
+            40,
+            8,
+            8
+          ],
+          "x": 0,
+          "y": 20,
+          "width": 960,
+          "height": 112
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 20,
+          "height": 20
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 940,
+          "y": 0,
+          "width": 20,
+          "height": 20,
+          "flip_x": true
+        }
+      ]
+    },
+    {
+      "name": "talk_box_top",
+      "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
+      "width": 584,
+      "height": 144,
+      "parts": [
+        {
+          "crop": [
+            40,
+            40,
+            8,
+            8
+          ],
+          "x": 20,
+          "y": 0,
+          "width": 544,
+          "height": 144
+        },
+        {
+          "crop": [
+            40,
+            40,
+            8,
+            8
+          ],
+          "x": 0,
+          "y": 20,
+          "width": 20,
+          "height": 104
+        },
+        {
+          "crop": [
+            40,
+            40,
+            8,
+            8
+          ],
+          "x": 564,
+          "y": 20,
+          "width": 20,
+          "height": 104
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 20,
+          "height": 20
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 564,
+          "y": 0,
+          "width": 20,
+          "height": 20,
+          "flip_x": true
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 0,
+          "y": 124,
+          "width": 20,
+          "height": 20,
+          "flip_y": true
+        },
+        {
+          "crop": [
+            2,
+            2,
+            94,
+            94
+          ],
+          "x": 564,
+          "y": 124,
+          "width": 20,
+          "height": 20,
+          "flip_x": true,
+          "flip_y": true
+        }
+      ]
+    },
+    {
+      "name": "talk_cursor",
+      "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
+      "width": 16,
+      "height": 24,
+      "parts": [
+        {
+          "crop": [
+            112,
+            2,
+            24,
+            44
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 16,
+          "height": 24
+        }
+      ]
+    },
+    {
+      "name": "oval_bubble",
+      "source": "natives/android/charfiles/3d/06_id/cmn_balln00_iml4.tex.691230823",
+      "width": 332,
+      "height": 108,
+      "parts": [
+        {
+          "crop": [
+            4,
+            364,
+            96,
+            96
+          ],
+          "x": 287,
+          "y": 0,
+          "width": 45,
+          "height": 45
+        },
+        {
+          "crop": [
+            4,
+            364,
+            96,
+            96
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 45,
+          "height": 45,
+          "flip_x": true
+        },
+        {
+          "crop": [
+            4,
+            364,
+            96,
+            96
+          ],
+          "x": 287,
+          "y": 45,
+          "width": 45,
+          "height": 45,
+          "flip_y": true
+        },
+        {
+          "crop": [
+            4,
+            364,
+            96,
+            96
+          ],
+          "x": 0,
+          "y": 45,
+          "width": 45,
+          "height": 45,
+          "flip_x": true,
+          "flip_y": true
+        },
+        {
+          "crop": [
+            8,
+            440,
+            16,
+            16
+          ],
+          "x": 45,
+          "y": 0,
+          "width": 242,
+          "height": 90
+        },
+        {
+          "crop": [
+            4,
+            466,
+            138,
+            44
+          ],
+          "x": 154,
+          "y": 89,
+          "width": 57,
+          "height": 19
+        }
+      ]
+    }
+  ],
+  "soul_view": {
+    "owner": "cicel",
+    "ring": "soul_ring",
+    "cores": [],
+    "ramp": {
+      "white_percent": 66,
+      "dark": "#0a0000",
+      "bright": "#9b0e01"
+    },
+    "classes": {
+      "5a390072": [
+        0.7,
+        0.38,
+        0.03,
+        1,
+        1
+      ],
+      "4080f0cd": [
+        0.17,
+        0.41,
+        0.66,
+        1,
+        1
+      ],
+      "4d5b0354": [
+        0.95,
+        0.3,
+        0.22,
+        1,
+        0
+      ],
+      "789c5740": [
+        0.85,
+        0.12,
+        0.07,
+        1,
+        0
+      ],
+      "45427fc2": [
+        0.85,
+        0.12,
+        0.07,
+        1,
+        0
+      ],
+      "6309aa5a": [
+        0.85,
+        0.12,
+        0.07,
+        1,
+        0
+      ]
+    },
+    "objects": {
+      "active": [
+        0.66,
+        0.72,
+        0.95,
+        1,
+        1
+      ],
+      "dead": [
+        0.35,
+        0.24,
+        0.88,
+        1,
+        1
+      ]
+    }
+  },
+  "balloon_kinds": {
+    "no_label": [
+      {
+        "kind": 5,
+        "delay": 11,
+        "parts": [
+          {
+            "texture": "alert_burst",
+            "dx": 0.8222,
+            "dy": 0.3556,
+            "after": 0,
+            "grow": 3
+          },
+          {
+            "texture": "alert_mark",
+            "dx": 0.4667,
+            "dy": -2.4889,
+            "after": 4,
+            "grow": 3
+          }
+        ]
+      }
+    ],
+    "with_label": {
+      "delay": 0,
+      "art": {
+        "texture": "oval_bubble",
+        "dx": -0.1334,
+        "dy": 0.0444,
+        "after": 0,
+        "grow": 6
+      },
+      "text_part": {
+        "dx": -0.1333,
+        "dy": -2.4444,
+        "after": 6,
+        "grow": 0
+      },
+      "thorn_sizes": [
+        {
+          "texture": "thorn_bubble_s",
+          "widest_text": 170
+        },
+        {
+          "texture": "thorn_bubble_m",
+          "widest_text": 238
+        },
+        {
+          "texture": "thorn_bubble_l",
+          "widest_text": 100000
+        }
+      ],
+      "text": {
+        "font": "natives/android/gui/font/outlinefont/helveticaneueltw1g-bd.oft.1",
+        "pixels_per_em": 34,
+        "color": [
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  },
+  "flipbooks": [
+    {
+      "name": "soul_dim",
+      "ticks_per_frame": 16,
+      "frames": 10,
+      "columns": 2,
+      "rows": 2,
+      "cell_width": 0.3906,
+      "cell_height": 0.3906,
+      "pages": [
+        "soul_dim_00",
+        "soul_dim_01",
+        "soul_dim_02"
+      ]
+    },
+    {
+      "name": "soul_sparks",
+      "ticks_per_frame": 2,
+      "frames": 74,
+      "columns": 5,
+      "rows": 5,
+      "cell_width": 0.1758,
+      "cell_height": 0.1758,
+      "pages": [
+        "soul_sparks_00",
+        "soul_sparks_01",
+        "soul_sparks_02"
+      ]
+    }
+  ],
+  "core_labels": {
+    "file": "natives/android/gamedesign/text/st06/st06_id.msg.22",
+    "name_entry": "st06_id_st06_gn_",
+    "unknown_text": "???",
+    "action_entry": "st06_id_st06_acn_",
+    "font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
+    "pixels_per_em": 20,
+    "color": [
+      255,
+      255,
+      255
+    ],
+    "objects": {
+      "caster": [
+        "00",
+        "00"
+      ],
+      "santa": [
+        "01",
+        "01"
+      ],
+      "kasa": [
+        "02",
+        "02"
+      ],
+      "stand": [
+        "03",
+        null
+      ],
+      "tree": [
+        "04",
+        "04"
+      ],
+      "tel": [
+        "05",
+        "05"
+      ],
+      "tv": [
+        "05",
+        "05"
+      ],
+      "gaku": [
+        "0a",
+        "0e"
+      ],
+      "tendoor": [
+        "0b",
+        "0b"
+      ],
+      "phone": [
+        "0c",
+        "0c"
+      ],
+      "okashi": [
+        "0e",
+        "0e"
+      ],
+      "carcass": [
+        "?",
+        "?"
+      ],
+      "dog": [
+        "?",
+        "?"
+      ]
+    },
+    "stage_files": {
+      "st14": {
+        "file": "natives/android/gamedesign/text/st14/st14_id.msg.22",
+        "name_entry": "st14_id_st14a_gn_",
+        "objects": {
+          "file": [
+            "01",
+            null
+          ],
+          "telephone": [
+            "03",
+            null
+          ],
+          "console": [
+            "06",
+            null
+          ],
+          "fruit": [
+            "08",
+            null
+          ],
+          "unit": [
+            "09",
+            null
+          ],
+          "obj": [
+            "0b",
+            null
+          ],
+          "screen": [
+            "?",
+            null
+          ]
+        }
+      }
+    }
+  },
+  "movies": [
+    {
+      "name": "time_jump",
+      "pack_key": [
+        1055199497,
+        206956949
+      ],
+      "fps": 20,
+      "width": 640,
+      "height": 360
+    },
+    {
+      "name": "short_jump",
+      "pack_key": [
+        395138614,
+        3624828312
+      ],
+      "fps": 20,
+      "width": 640,
+      "height": 360,
+      "class_id": "034157e8"
+    },
+    {
+      "name": "time_jump_b",
+      "pack_key": [
+        861545708,
+        2080337922
+      ],
+      "fps": 20,
+      "width": 640,
+      "height": 360,
+      "class_id": "7b0ddf0f"
+    },
+    {
+      "name": "tell_move",
+      "pack_key": [
+        3908734962,
+        697356822
+      ],
+      "fps": 20,
+      "width": 640,
+      "height": 360,
+      "class_id": "41ee4e1e"
+    }
+  ],
+  "route": {
+    "dwell_ticks": {
+      "normal": 90,
+      "quick": 45,
+      "instant": 0
+    },
+    "steps": [
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_on",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 2198.75,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "move",
+        "object": "file",
+        "pace": "normal",
+        "footage_s": 2200.0,
+        "wait": "view & usable:file"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_off",
+        "object": "file",
+        "pace": "quick",
+        "footage_s": 2201.5,
+        "wait": "core:file"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "trick",
+        "object": "file",
+        "pace": "quick",
+        "footage_s": 2204.25,
+        "wait": "act:file:file_act010 & playable & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_on",
+        "object": "file",
+        "pace": "normal",
+        "footage_s": 2277.75,
+        "wait": "act:file:file_act020 & act:susi:susi_act030 & free & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "move",
+        "object": "obj",
+        "pace": "quick",
+        "footage_s": 2280.3,
+        "wait": "view & usable:obj"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "move",
+        "object": "unit",
+        "pace": "normal",
+        "footage_s": 2281.3,
+        "wait": "view & usable:unit"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_off",
+        "object": "unit",
+        "pace": "quick",
+        "footage_s": 2282.5,
+        "wait": "core:unit"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "trick",
+        "object": "unit",
+        "pace": "quick",
+        "footage_s": 2283.75,
+        "wait": "act:unit:unit_act000 & playable & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_on",
+        "object": "unit",
+        "pace": "normal",
+        "footage_s": 2409.25,
+        "wait": "act:unit:unit_act000 & flag:4 & free & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_off",
+        "object": "unit",
+        "pace": "normal",
+        "footage_s": 2413.25,
+        "wait": "core:unit"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "trick",
+        "object": "unit",
+        "pace": "quick",
+        "footage_s": 2414.0,
+        "wait": "act:unit:unit_act000 & playable & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_on",
+        "object": "unit",
+        "pace": "normal",
+        "footage_s": 2414.5,
+        "wait": "flag:5 & free & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "move",
+        "object": "screen",
+        "pace": "normal",
+        "footage_s": 2416.2,
+        "wait": "view & usable:screen"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_off",
+        "object": "screen",
+        "pace": "quick",
+        "footage_s": 2417.0,
+        "wait": "core:screen"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_on",
+        "object": "screen",
+        "pace": "normal",
+        "footage_s": 2449.0,
+        "wait": "act:console:console_act030 & free & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "move",
+        "object": "console",
+        "pace": "normal",
+        "footage_s": 2452.5,
+        "wait": "view & usable:console"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_off",
+        "object": "console",
+        "pace": "quick",
+        "footage_s": 2454.25,
+        "wait": "core:console"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "trick",
+        "object": "console",
+        "pace": "quick",
+        "footage_s": 2455.75,
+        "wait": "act:console:console_act030 & playable & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_on",
+        "object": "console",
+        "pace": "normal",
+        "footage_s": 2509.0,
+        "wait": "act:telephone:telephone_act010 & free & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "move",
+        "object": "screen",
+        "pace": "quick",
+        "footage_s": 2510.0,
+        "wait": "view & usable:screen"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "move",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 2510.75,
+        "wait": "view & usable:telephone"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_on",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 2592.75,
+        "wait": "act:telephone:telephone_act020 & flag:11e4 & free & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "move",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 2593.0,
+        "wait": "view & usable:telephone"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "ghost_off",
+        "object": "telephone",
+        "pace": "quick",
+        "footage_s": 2593.75,
+        "wait": "core:telephone"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "trick",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 2594.75,
+        "wait": "act:telephone:telephone_act020 & playable & no_talk"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
+        "action": "phone_call",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 2597.0,
+        "wait": "act:telephone:telephone_act020",
+        "place": 15
+      },
+      {
+        "script": "st06-st06_game000_Expand",
+        "action": "ghost_on",
+        "object": "phone",
+        "pace": "normal",
+        "footage_s": 2665.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game000_Expand",
+        "action": "move",
+        "object": "tel",
+        "pace": "quick",
+        "footage_s": 2668.5,
+        "wait": "view & usable:tel"
+      },
+      {
+        "script": "st06-st06_game000_Expand",
+        "action": "move",
+        "object": "dog",
+        "pace": "normal",
+        "footage_s": 2670.75,
+        "wait": "view & usable:dog"
+      },
+      {
+        "script": "st06-st06_game000_Expand",
+        "action": "touch",
+        "pace": "normal",
+        "footage_s": 2769.0,
+        "wait": "timeleap_armed"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_on",
+        "object": "carcass",
+        "pace": "normal",
+        "footage_s": 3051.75,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "tel",
+        "pace": "quick",
+        "footage_s": 3053.5,
+        "wait": "view & usable:tel"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "phone",
+        "pace": "quick",
+        "footage_s": 3054.5,
+        "wait": "view & usable:phone"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "kasa",
+        "pace": "quick",
+        "footage_s": 3055.5,
+        "wait": "view & usable:kasa"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_off",
+        "object": "kasa",
+        "pace": "quick",
+        "footage_s": 3055.75,
+        "wait": "core:kasa"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "trick",
+        "object": "kasa",
+        "pace": "quick",
+        "footage_s": 3113.0,
+        "wait": "act:kasa:kasa_act01 & flag:1d & playable"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_on",
+        "object": "kasa",
+        "pace": "normal",
+        "footage_s": 3179.0,
+        "wait": "act:kasa:kasa_act02 & free & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "caster",
+        "pace": "normal",
+        "footage_s": 3183.6,
+        "wait": "view & usable:caster"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_off",
+        "object": "caster",
+        "pace": "quick",
+        "footage_s": 3184.0,
+        "wait": "core:caster"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "trick",
+        "object": "caster",
+        "pace": "quick",
+        "footage_s": 3185.0,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_on",
+        "object": "caster",
+        "pace": "normal",
+        "footage_s": 3198.25,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "tree",
+        "pace": "normal",
+        "footage_s": 3202.0,
+        "wait": "view & usable:tree"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "santa",
+        "pace": "normal",
+        "footage_s": 3205.2,
+        "wait": "view & usable:santa"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_off",
+        "object": "santa",
+        "pace": "quick",
+        "footage_s": 3205.5,
+        "wait": "core:santa"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "trick",
+        "object": "santa",
+        "pace": "quick",
+        "footage_s": 3206.5,
+        "wait": "act:santa:santa_act00 & playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_on",
+        "object": "santa",
+        "pace": "normal",
+        "footage_s": 3214.75,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "tendoor",
+        "pace": "normal",
+        "footage_s": 3219.2,
+        "wait": "view & usable:tendoor"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_off",
+        "object": "tendoor",
+        "pace": "quick",
+        "footage_s": 3219.25,
+        "wait": "core:tendoor"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "trick",
+        "object": "tendoor",
+        "pace": "quick",
+        "footage_s": 3220.5,
+        "wait": "act:tendoor:tendoor_act00 & playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_on",
+        "object": "tendoor",
+        "pace": "normal",
+        "footage_s": 3230.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "santa",
+        "pace": "normal",
+        "footage_s": 3233.7,
+        "wait": "view & usable:santa"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_off",
+        "object": "santa",
+        "pace": "quick",
+        "footage_s": 3233.75,
+        "wait": "core:santa"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "trick",
+        "object": "santa",
+        "pace": "quick",
+        "footage_s": 3235.5,
+        "wait": "act:santa:santa_act02 & playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_on",
+        "object": "santa",
+        "pace": "normal",
+        "footage_s": 3240.25,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "tree",
+        "pace": "normal",
+        "footage_s": 3244.7,
+        "wait": "view & usable:tree"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_off",
+        "object": "tree",
+        "pace": "quick",
+        "footage_s": 3245.0,
+        "wait": "core:tree"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "trick",
+        "object": "tree",
+        "pace": "quick",
+        "footage_s": 3246.5,
+        "wait": "act:tree:tree_act00 & playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_on",
+        "object": "tree",
+        "pace": "normal",
+        "footage_s": 3257.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "okashi",
+        "pace": "normal",
+        "footage_s": 3260.0,
+        "wait": "view & usable:okashi"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_off",
+        "object": "okashi",
+        "pace": "quick",
+        "footage_s": 3266.75,
+        "wait": "core:okashi"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "trick",
+        "object": "okashi",
+        "pace": "quick",
+        "footage_s": 3268.25,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_on",
+        "object": "okashi",
+        "pace": "normal",
+        "footage_s": 3275.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "tree",
+        "pace": "quick",
+        "footage_s": 3277.0,
+        "wait": "view & usable:tree"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "santa",
+        "pace": "normal",
+        "footage_s": 3279.5,
+        "wait": "view & usable:santa"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_off",
+        "object": "santa",
+        "pace": "quick",
+        "footage_s": 3282.25,
+        "wait": "core:santa"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_on",
+        "object": "santa",
+        "pace": "normal",
+        "footage_s": 3283.75,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "gaku",
+        "pace": "normal",
+        "footage_s": 3286.0,
+        "wait": "view & usable:gaku"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "stand",
+        "pace": "quick",
+        "footage_s": 3288.0,
+        "wait": "view & usable:stand"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "move",
+        "object": "tv",
+        "pace": "quick",
+        "footage_s": 3289.7,
+        "wait": "view & usable:tv"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "ghost_off",
+        "object": "tv",
+        "pace": "quick",
+        "footage_s": 3290.0,
+        "wait": "core:tv"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
+        "action": "trick",
+        "object": "tv",
+        "pace": "quick",
+        "footage_s": 3291.0,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "ghost_on",
+        "object": "tv",
+        "pace": "normal",
+        "footage_s": 3564.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "move",
+        "object": "stand",
+        "pace": "quick",
+        "footage_s": 3567.5,
+        "wait": "view & usable:stand"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "move",
+        "object": "santa",
+        "pace": "normal",
+        "footage_s": 3569.5,
+        "wait": "view & usable:santa"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "move",
+        "object": "okashi",
+        "pace": "normal",
+        "footage_s": 3574.5,
+        "wait": "view & usable:okashi"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "move",
+        "object": "caster",
+        "pace": "normal",
+        "footage_s": 3575.3,
+        "wait": "view & usable:caster"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "touch",
+        "pace": "normal",
+        "footage_s": 3604.5,
+        "wait": "tutorial:touch"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "move",
+        "object": "dog",
+        "pace": "normal",
+        "footage_s": 3605.5,
+        "wait": "tutorial:touched"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "move",
+        "object": "phone",
+        "pace": "normal",
+        "footage_s": 3611.5,
+        "wait": "view & usable:phone"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "ghost_on",
+        "object": "caster",
+        "pace": "normal",
+        "footage_s": 3653.75,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "move",
+        "object": "caster",
+        "pace": "normal",
+        "footage_s": 3654.2,
+        "wait": "view & usable:caster"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "ghost_off",
+        "object": "caster",
+        "pace": "quick",
+        "footage_s": 3655.5,
+        "wait": "core:caster"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "trick",
+        "object": "caster",
+        "pace": "quick",
+        "footage_s": 3657.25,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game003_Expand",
+        "action": "ghost_on",
+        "object": "phone",
+        "pace": "normal",
+        "footage_s": 3772.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game003_Expand",
+        "action": "move",
+        "object": "caster",
+        "pace": "normal",
+        "footage_s": 3775.0,
+        "wait": "view & usable:caster"
+      },
+      {
+        "script": "st06-st06_game003_Expand",
+        "action": "ghost_off",
+        "object": "caster",
+        "pace": "quick",
+        "footage_s": 3775.25,
+        "wait": "core:caster"
+      },
+      {
+        "script": "st06-st06_game003_Expand",
+        "action": "trick",
+        "object": "caster",
+        "pace": "quick",
+        "footage_s": 3776.75,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game003_Expand",
+        "action": "ghost_on",
+        "object": "caster",
+        "pace": "normal",
+        "footage_s": 3781.25,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game003_Expand",
+        "action": "move",
+        "object": "okashi",
+        "pace": "quick",
+        "footage_s": 3783.2,
+        "wait": "view & usable:okashi"
+      },
+      {
+        "script": "st06-st06_game003_Expand",
+        "action": "move",
+        "object": "tree",
+        "pace": "normal",
+        "footage_s": 3784.4,
+        "wait": "view & usable:tree"
+      },
+      {
+        "script": "st06-st06_game003_Expand",
+        "action": "ghost_off",
+        "object": "tree",
+        "pace": "quick",
+        "footage_s": 3784.5,
+        "wait": "core:tree"
+      },
+      {
+        "script": "st06-st06_game003_Expand",
+        "action": "trick",
+        "object": "tree",
+        "pace": "quick",
+        "footage_s": 3785.5,
+        "wait": "playable & no_talk"
+      }
+    ]
+  },
+  "ui_clips": true
+}

@@ -43,6 +43,12 @@ static int read_chain_line(struct script_tables *tables, const char *line)
     if (sscanf(line, "next_chapter_card " NAME_SCAN, tables->next_chapter_card_texture) == 1) {
         return 1;
     }
+    if (sscanf(line, "entry " NAME_SCAN, tables->entry_name) == 1) {
+        return 1;
+    }
+    if (sscanf(line, "chapter_mark %d", &tables->chapter_mark) == 1) {
+        return tables->chapter_mark >= 0;
+    }
     if (sscanf(line, "timing " NAME_SCAN, word) == 1) {
         if (strcmp(word, "ds") == 0) {
             tables->timing = SCRIPT_TIMING_DS;

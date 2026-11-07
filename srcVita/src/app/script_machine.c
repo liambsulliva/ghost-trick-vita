@@ -650,6 +650,8 @@ static int read_register(const struct script_machine *machine, const struct scri
         return machine->camera_y * 4096;
     case 0x19:
         return machine->chapter_mark;
+    case 0x1a:
+        return machine->phone_book_place;
     case 0x1b:
         return machine->mode_byte;
     case 0x1c:

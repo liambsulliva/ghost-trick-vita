@@ -1639,6 +1639,7 @@ static int run_route_action(struct script_machine *machine, const struct script_
         soul->route_camera_is_scrolling = 1;
         return 1;
     case SCRIPT_ROUTE_PHONE_CALL:
+        machine->phone_book_place = step->slot;
         script_machine_send(machine, "*", "phone", "movie");
         return 1;
     default:

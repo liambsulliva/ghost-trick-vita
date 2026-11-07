@@ -400,6 +400,7 @@ struct script_machine {
     int time_jump_movie_ticks;
     int movie_ticks_left;
     int phone_view_is_on;
+    int phone_book_place;
     struct script_anchored_effect anchored_effects[SCRIPT_ANCHORED_EFFECT_MAX];
     unsigned char noted_ops[SCRIPT_NOTED_OP_BYTES];
     unsigned char noted_effects[SCRIPT_NOTED_EFFECT_BYTES];

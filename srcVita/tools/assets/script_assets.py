@@ -282,7 +282,9 @@ def table_animations(set_description, output_folder, timelines, crops):
 
 
 def chain_text(section):
-    lines = ["timing " + section["timing"]]
+    lines = ["timing " + section["timing"], "entry " + script_name(section["entry"])]
+    if "chapter_mark" in section:
+        lines.append("chapter_mark %d" % section["chapter_mark"])
     if "stop_at_act" in section:
         lines.insert(0, "stop " + section["stop_at_act"])
     if "card_texture" in section:
@@ -325,7 +327,7 @@ def movies_text(movies):
 def route_steps_text(route):
     lines = []
     for step in route["steps"]:
-        lines.append("step %s %s %s %d %d %s\n" % (step["script"], step["action"], step.get("object", "-"), step.get("slot", 0), route["dwell_ticks"][step.get("pace", "normal")], step.get("wait", "-").replace(" & ", "&")))
+        lines.append("step %s %s %s %d %d %s\n" % (step["script"], step["action"], step.get("object", "-"), step.get("place", step.get("slot", 0)), route["dwell_ticks"][step.get("pace", "normal")], step.get("wait", "-").replace(" & ", "&")))
     return "".join(lines)
 
 

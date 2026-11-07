@@ -118,19 +118,23 @@ def read_script(rom, path):
     return Script(path, plain)
 
 
-def discover_chain(rom, entry, chapter):
-    prefix = chapter + "/"
+def discover_chain(rom, entry, stages, follow=(), stop_before=()):
+    prefixes = tuple(stage + "/" for stage in stages)
     scripts = collections.OrderedDict()
     waiting = collections.deque([entry])
     while waiting:
         path = waiting.popleft()
-        if path in scripts or rom.file_id_of(path + ROM_SUFFIX) is None:
+        if path in scripts or path in stop_before or rom.file_id_of(path + ROM_SUFFIX) is None:
             continue
         scripts[path] = read_script(rom, path)
         for target in scripts[path].strings_of_ops((SCRIPT_CHANGE_OP,)):
-            if target.startswith(prefix):
+            if target.startswith(prefixes) or target in follow:
                 waiting.append(target)
     return scripts
+
+
+def stages_of(set_description):
+    return set_description.get("stages", [set_description["chapter"]])
 
 
 def read_arm9(rom):
@@ -420,7 +424,7 @@ def expand_set(set_description, packs, rom_path, text_key):
     chapter = set_description["chapter"]
     soul_ramp = set_description.get("soul_view", {}).get("ramp")
     with ds_rom.DsRom(rom_path) as rom:
-        scripts = discover_chain(rom, section["entry"], chapter)
+        scripts = discover_chain(rom, section["entry"], stages_of(set_description), section.get("follow", ()), section.get("stop_before", ()))
         arm9 = read_arm9(rom)
         languages = {}
         for path in scripts:

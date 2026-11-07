@@ -136,12 +136,15 @@ static void add_script(const char *folder, const char *name)
     }
 }
 
+static char chain_entry[SCRIPT_SOURCE_NAME_MAX] = "route";
+
 static void add_every_script_of_the_chain(const char *folder)
 {
     char path[FILE_NAME_MAX];
     char name[SCRIPT_SOURCE_NAME_MAX];
     char line[FILE_NAME_MAX];
     FILE *source;
+    int chapter_mark;
 
     snprintf(path, sizeof(path), "%s/chain.txt", folder);
     source = fopen(path, "r");
@@ -152,6 +155,10 @@ static void add_every_script_of_the_chain(const char *folder)
     while (fgets(line, sizeof(line), source) != NULL) {
         if (sscanf(line, "file %95s", name) == 1) {
             add_script(folder, name);
+        } else if (sscanf(line, "entry %95s", name) == 1) {
+            snprintf(chain_entry, sizeof(chain_entry), "%s", name);
+        } else if (sscanf(line, "chapter_mark %d", &chapter_mark) == 1) {
+            machine.chapter_mark = chapter_mark;
         }
     }
     fclose(source);
@@ -377,8 +384,8 @@ int main(int argument_count, char **arguments)
     if (auto_press != SCRIPT_AUTO_OFF) {
         read_route(folder);
     }
-    if (!script_machine_start(&machine, "route")) {
-        printf("cannot start route\n");
+    if (!script_machine_start(&machine, chain_entry)) {
+        printf("cannot start %s\n", chain_entry);
         return 1;
     }
     while (machine.tick <= stop_tick && !machine.is_finished) {

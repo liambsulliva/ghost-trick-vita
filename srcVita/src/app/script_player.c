@@ -291,6 +291,10 @@ static void begin_loading_animations(void)
 
     script_bridge_start(&data->tables);
     data->machine.timing = data->tables.timing;
+    data->machine.chapter_mark = data->tables.chapter_mark;
+    if (data->tables.entry_name[0] != '\0') {
+        snprintf(entry, sizeof(entry), "%s", data->tables.entry_name);
+    }
     data->machine.auto_press = wanted_auto_play();
     data->machine.route = data->tables.route.step_count > 0 ? &data->tables.route : NULL;
     memcpy(data->machine.room_bounds, data->tables.room_bounds, sizeof(data->machine.room_bounds));
