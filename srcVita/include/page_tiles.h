@@ -5,7 +5,7 @@
 #include "texture_cache.h"
 
 #define PAGE_TILE_MOST 4
-#define PAGE_TILE_SET_MOST 512
+#define PAGE_TILE_SET_MOST 1536
 
 struct page_tile {
     char name[ASSET_NAME_MAX];
@@ -37,6 +37,7 @@ struct page_tile_part {
 void page_tiles_clear(void);
 int page_tiles_read_text(const char *text, unsigned int text_size);
 struct page_tile_set *page_tiles_find(const char *page_name);
+int page_tiles_dropped_count(void);
 int page_tiles_cut(const struct page_tile_set *set, struct renderer_rect screen_area, struct renderer_rect texture_area, struct page_tile_part *parts);
 
 #endif

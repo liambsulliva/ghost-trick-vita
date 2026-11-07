@@ -8,11 +8,18 @@
 
 static struct page_tile_set sets[PAGE_TILE_SET_MOST];
 static int set_count;
+static int dropped_count;
 
 void page_tiles_clear(void)
 {
     memset(sets, 0, sizeof(sets));
     set_count = 0;
+    dropped_count = 0;
+}
+
+int page_tiles_dropped_count(void)
+{
+    return dropped_count;
 }
 
 struct page_tile_set *page_tiles_find(const char *page_name)
@@ -58,6 +65,7 @@ static int add_tile(const char *page_name, float page_width, float page_height, 
 
     set = set_for_page(page_name, page_width, page_height);
     if (set == NULL || set->tile_count >= PAGE_TILE_MOST) {
+        dropped_count = dropped_count + 1;
         return 0;
     }
     set->tiles[set->tile_count] = *tile;

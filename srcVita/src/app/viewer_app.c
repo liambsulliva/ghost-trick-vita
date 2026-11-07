@@ -300,7 +300,7 @@ static void read_page_tiles(const char *script_folder)
     if (!file_path_join(path, script_folder, PAGE_TILES_FILE_NAME, ".txt") || file_read_whole(path, &bytes, &size) != FILE_OK) {
         return;
     }
-    run_log_write("page tiles read count=%d", page_tiles_read_text((const char *)bytes, size));
+    run_log_write("page tiles read count=%d dropped=%d", page_tiles_read_text((const char *)bytes, size), page_tiles_dropped_count());
     mem_free(bytes);
 }
 
