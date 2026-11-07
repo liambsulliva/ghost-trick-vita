@@ -7,6 +7,7 @@
 struct fake_read {
     unsigned int request_id;
     char path[FILE_PATH_MAX];
+    int wants_grayscale;
 };
 
 static struct fake_read pending[BACKGROUND_READER_QUEUE_MAX];
@@ -67,13 +68,14 @@ int background_reader_start(void)
     return !start_should_fail;
 }
 
-int background_reader_submit(unsigned int request_id, const char *path)
+int background_reader_submit(unsigned int request_id, const char *path, int wants_grayscale)
 {
     if (submits_are_refused || pending_count >= BACKGROUND_READER_QUEUE_MAX) {
         return 0;
     }
     pending[pending_count].request_id = request_id;
     snprintf(pending[pending_count].path, FILE_PATH_MAX, "%s", path);
+    pending[pending_count].wants_grayscale = wants_grayscale;
     pending_count = pending_count + 1;
     return 1;
 }
@@ -93,6 +95,9 @@ static void complete_first_pending(struct finished_read *finished)
         finished->result = FILE_ERR_MEMORY;
     } else {
         finished->result = file_read_whole(pending[0].path, &finished->data, &finished->size);
+        if (finished->result == FILE_OK && pending[0].wants_grayscale) {
+            background_reader_make_grayscale(finished);
+        }
     }
     for (index = 1; index < pending_count; index++) {
         pending[index - 1] = pending[index];

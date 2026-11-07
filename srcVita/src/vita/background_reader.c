@@ -12,6 +12,7 @@
 struct read_request {
     unsigned int request_id;
     char path[FILE_PATH_MAX];
+    int wants_grayscale;
 };
 
 static struct read_request requests[BACKGROUND_READER_QUEUE_MAX];
@@ -79,6 +80,11 @@ static int reader_thread(SceSize argument_size, void *arguments)
             finished.result = unpack_texture(&finished);
             finished.unpack_us = clock_now_us() - started_us;
         }
+        if (finished.result == FILE_OK && request.wants_grayscale) {
+            started_us = clock_now_us();
+            background_reader_make_grayscale(&finished);
+            finished.unpack_us = finished.unpack_us + clock_now_us() - started_us;
+        }
 
         sceKernelLockMutex(queue_lock, 1, NULL);
         finished_reads[next_finished_to_add] = finished;
@@ -111,7 +117,7 @@ int background_reader_start(void)
     return 1;
 }
 
-int background_reader_submit(unsigned int request_id, const char *path)
+int background_reader_submit(unsigned int request_id, const char *path, int wants_grayscale)
 {
     if (!reader_started || reads_in_flight >= BACKGROUND_READER_QUEUE_MAX || strlen(path) >= FILE_PATH_MAX) {
         return 0;
@@ -121,6 +127,7 @@ int background_reader_submit(unsigned int request_id, const char *path)
     sceKernelLockMutex(queue_lock, 1, NULL);
     requests[next_request_to_add].request_id = request_id;
     strcpy(requests[next_request_to_add].path, path);
+    requests[next_request_to_add].wants_grayscale = wants_grayscale;
     next_request_to_add = (next_request_to_add + 1) % BACKGROUND_READER_QUEUE_MAX;
     sceKernelUnlockMutex(queue_lock, 1);
 

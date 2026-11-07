@@ -205,7 +205,7 @@ static void start_read(struct cached_texture *entry)
         mark_missing(entry, "path_too_long", 0);
         return;
     }
-    if (!background_reader_submit(entry->request_id, path)) {
+    if (!background_reader_submit(entry->request_id, path, name_asks_for_grayscale(entry->name))) {
         mark_missing(entry, "read_refused", 0);
         return;
     }
@@ -267,9 +267,6 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     memory_bytes = texture_file_memory_bytes(&header);
     upload_started_us = clock_now_us();
     make_room_for(memory_bytes);
-    if (name_asks_for_grayscale(entry->name)) {
-        texture_file_make_grayscale(&header, &finished->data[TEXTURE_FILE_HEADER_SIZE]);
-    }
     entry->texture = create_texture_from_file(&header, &finished->data[TEXTURE_FILE_HEADER_SIZE]);
     if (entry->texture == RENDERER_NO_TEXTURE) {
         mark_missing(entry, "upload", 0);
