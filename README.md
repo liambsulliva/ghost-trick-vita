@@ -72,15 +72,15 @@ It prints each stage as it starts, with a progress bar while it copies the game 
 5. **Convert the art, sound, text and DS scripts** into `extracted/vita_assets/chapter1/` (about 500 MB). The app plays the opening from the DS game's own scripts, so the cartridge dump is required. A cartridge from another region is refused, because no other region's scripts have been checked.
 6. **Plan the loading.** It replays the chapter on this computer and writes, for each scene, the list of textures to read ahead and one bundle of its animations.
 7. **Build the package**, if VitaSDK is installed. [The app's README](srcVita/README.md#build-and-test) lists its libraries.
-8. **Put everything on the Vita**, with `--vita-host` and your Vita's address when Vita Companion runs on it. Without it, the script tells you what to copy.
+8. **Copy everything to the Vita.** The script tells you what to install and copy, which the next section explains.
 
 Running it again skips what is already done and converts only what changed, so it is also how you update after pulling this repository. Stages 2 and 3 are skipped once their files are in place, so `--apk` is only needed the first time. If a stage fails, the script stops and shows the last lines that stage printed.
 
 Everything under `extracted/` is ignored by git. `tools/rom_audit.py` refuses a file named `text_key.bin` and, when your key file is in place, any file git would track that holds the key as raw bytes, hex or decimal text.
 
-### Put everything on the Vita by hand
+### Copy everything to the Vita
 
-Without `--vita-host`, install `srcVita/build/ghosttrick.vpk` with VitaShell from anywhere under `ux0:`, then copy what is inside `extracted/vita_assets/chapter1/` to `ux0:data/ghosttrick/assets/`. Copy the folder's contents, not the folder itself: a path like `ux0:data/ghosttrick/assets/chapter1/manifest.txt` will not be found.
+Install `srcVita/build/ghosttrick.vpk` with VitaShell from anywhere under `ux0:`, then copy what is inside `extracted/vita_assets/chapter1/` to `ux0:data/ghosttrick/assets/`. Copy the folder's contents, not the folder itself: a path like `ux0:data/ghosttrick/assets/chapter1/manifest.txt` will not be found.
 
 To copy by hand, put the Vita and this computer on the same Wi-Fi network. In VitaShell, press SELECT to start its FTP server. If SELECT starts USB instead, press START and set **SELECT button** to **FTP**. Then connect an FTP client to the address VitaShell shows.
 

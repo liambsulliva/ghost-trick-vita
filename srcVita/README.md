@@ -90,7 +90,7 @@ A package with the logo contains game art, so keep it for your own Vita. The pac
 
 ## Make the assets
 
-[The top-level README](../README.md#set-everything-up-with-one-command) has one script, `tools/set_up_game.py`, that copies the game files out of your Android package, finds the text key, converts everything, plans the loading and puts it on the Vita. The app loads them from `ux0:data/ghosttrick/assets/`.
+[The top-level README](../README.md#set-everything-up-with-one-command) has one script, `tools/set_up_game.py`, that copies the game files out of your Android package, finds the text key, converts everything, plans the loading and builds the package. The app loads them from `ux0:data/ghosttrick/assets/`.
 
 `tools/assets/chapter1.json` lists what goes into the chapter's set.
 

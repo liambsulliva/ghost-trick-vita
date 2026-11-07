@@ -30,7 +30,7 @@ STAGES = (
     "Convert the art, sound, text and DS scripts",
     "Plan the loading",
     "Build the package",
-    "Put everything on the Vita",
+    "Copy everything to the Vita",
 )
 
 
@@ -184,14 +184,6 @@ def build_package(folder):
     show("  package: srcVita/build/ghosttrick.vpk")
 
 
-def upload(vita_host):
-    environment = dict(os.environ)
-    environment["VITA_HOST"] = vita_host
-    lines = run_with_progress([sys.executable, "-I", os.path.join(TOOLS_FOLDER, "vita_loop.py"), "upload-assets", OUTPUT_FOLDER], "uploading to " + vita_host, environment)
-    for line in lines[-2:]:
-        show("    " + line)
-
-
 def run_stages(arguments):
     stage_header(1)
     check_tools()
@@ -230,21 +222,15 @@ def run_stages(arguments):
         stage_header(7)
         build_package(folder)
 
-    if arguments.vita_host is None:
-        stage_header(8, "no --vita-host, so copy by hand")
-        show("  install srcVita/build/ghosttrick.vpk with VitaShell")
-        show("  copy what is inside extracted/vita_assets/chapter1 to ux0:data/ghosttrick/assets/")
-    else:
-        stage_header(8)
-        upload(arguments.vita_host)
-        show("  install srcVita/build/ghosttrick.vpk with VitaShell if it is not installed yet")
+    stage_header(8)
+    show("  install srcVita/build/ghosttrick.vpk with VitaShell")
+    show("  copy what is inside extracted/vita_assets/chapter1 to ux0:data/ghosttrick/assets/")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Prepares everything the Vita app needs from your own copies of the game, in one go.")
     parser.add_argument("--apk", help="your copy of the remaster's Android package; not needed once its files are copied and the key is found")
     parser.add_argument("--ds-rom", default=DEFAULT_DS_ROM, help="your own dump of the USA DS cartridge (game code BGTE)")
-    parser.add_argument("--vita-host", help="your Vita's address, to upload the converted files with Vita Companion")
     arguments = parser.parse_args()
     started = time.time()
     try:
