@@ -25,6 +25,7 @@
 #include "timing.h"
 #include "viewer_app.h"
 
+#define BURST_PAUSE_MOST_US 120000000ULL
 #define ART_HOLD_SLEEP_US 4000
 
 #ifdef FAST_FORWARD_BUILD
@@ -81,6 +82,7 @@ static void save_capture(const char *name)
 
 #ifdef FAST_FORWARD_BUILD
 static unsigned int injected_buttons;
+static unsigned long long burst_pause_began_us;
 static int injected_touch_frames;
 static float injected_touch_x;
 static float injected_touch_y;
@@ -119,6 +121,7 @@ static int run_one_command(const struct command *command)
     } else if (command->kind == COMMAND_FAST_FORWARD_UNTIL) {
         script_player_run_until(command->detail, command->name);
     } else if (command->kind == COMMAND_RESUME) {
+        burst_pause_began_us = 0;
         script_player_set_paused(0);
     } else if (command->kind == COMMAND_SKIP_AHEAD) {
         script_player_skip_ahead();
@@ -253,7 +256,13 @@ static void run_main_loop(void)
         last_frame_us = frame_timer_tick(&frame_timer);
         screen_watch_note_frame();
 #ifdef FAST_FORWARD_BUILD
+        if (burst_pause_began_us != 0 && clock_now_us() - burst_pause_began_us > BURST_PAUSE_MOST_US) {
+            burst_pause_began_us = 0;
+            script_player_set_paused(0);
+            run_log_write("burst pause_timed_out");
+        }
         if (screen_burst_note_frame_and_say_if_it_ended()) {
+            burst_pause_began_us = clock_now_us();
             script_player_set_paused(1);
         }
 #endif
