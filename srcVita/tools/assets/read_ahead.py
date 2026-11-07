@@ -10,6 +10,10 @@ AHEAD_EXTENSION = ".ahead"
 BUNDLE_EXTENSION = ".anims"
 MOTIONS_EXTENSION = ".motions"
 ANCHOR_ACT_PREFIX = "game"
+SCREEN_FILTER_GRAYSCALE = 1
+GRAYSCALE_SUFFIX = "-mono"
+GREY_WORLD_KIND = "grey_world"
+ALL_EFFECTS_NAME = "*"
 OPENING_TICKS = 600
 
 
@@ -57,6 +61,12 @@ def movie_effects(effects_path):
     return {effect: ["fx_%s_%02d" % (movie, page) for page in range(pages.get(movie, 0))] for effect, movie in movies.items()}
 
 
+def grey_world_effect_ids(effects_path):
+    if not os.path.exists(effects_path):
+        return set()
+    return set(fields[1] for fields in (line.split() for line in read_lines(effects_path)) if len(fields) > 2 and fields[0] == "effect" and fields[2] == GREY_WORLD_KIND)
+
+
 def motion_animations(scripts_folder, script_name, cache):
     if script_name not in cache:
         animations = {}
@@ -73,6 +83,8 @@ def motion_animations(scripts_folder, script_name, cache):
 def schedules_from_cues(cues_path, scripts_folder, animation_folder):
     tiles = tiles_of_pages(os.path.join(scripts_folder, "tiles.txt"))
     movies = movie_effects(os.path.join(scripts_folder, "effects.txt"))
+    grey_world_ids = grey_world_effect_ids(os.path.join(scripts_folder, "effects.txt"))
+    grey_world_name = None
     motion_cache = {}
     page_cache = {}
     schedules = {}
@@ -82,6 +94,20 @@ def schedules_from_cues(cues_path, scripts_folder, animation_folder):
     script_tick = 0
     seen = set()
     previous = None
+    filter_is_grayscale = False
+    soul_view_is_on = False
+    current_pages = {}
+
+    def schedule(pages, tick, suffix):
+        for page in pages:
+            for texture in [name + suffix for name in tiles.get(page, [page])]:
+                if texture not in seen:
+                    seen.add(texture)
+                    schedules[script_name].append((anchor, tick - anchor_tick, texture))
+                    if previous is not None and tick - script_tick < OPENING_TICKS and texture not in previous[3]:
+                        previous[3].add(texture)
+                        schedules[previous[0]].append((previous[1], tick - previous[2], texture))
+
     for line in read_lines(cues_path):
         tick_text, _, text = line.partition("\t")
         fields = text.split()
@@ -95,9 +121,30 @@ def schedules_from_cues(cues_path, scripts_folder, animation_folder):
             anchor, anchor_tick = "*", tick
             script_tick = tick
             seen = set()
+            current_pages = {}
             schedules.setdefault(script_name, [])
             continue
+        was_grayscale = filter_is_grayscale and not soul_view_is_on
+        if fields[0] == "screen_filter" and len(fields) > 1:
+            filter_is_grayscale = int(fields[1]) == SCREEN_FILTER_GRAYSCALE
+        elif fields[0] == "effect" and len(fields) > 2 and fields[1] in grey_world_ids:
+            grey_world_name = fields[2]
+            filter_is_grayscale = True
+        elif fields[0] == "effect_deleted" and len(fields) > 1 and grey_world_name is not None and fields[1] in (grey_world_name, ALL_EFFECTS_NAME):
+            grey_world_name = None
+            filter_is_grayscale = False
+        elif fields[0] == "stage_cleared":
+            grey_world_name = None
+            filter_is_grayscale = False
+            current_pages = {}
+        elif fields[0] == "soul_vision" and len(fields) > 1:
+            soul_view_is_on = fields[1] == "1"
+        is_grayscale = filter_is_grayscale and not soul_view_is_on
+        suffix = GRAYSCALE_SUFFIX if is_grayscale else ""
         if script_name is None:
+            continue
+        if is_grayscale != was_grayscale:
+            schedule([page for pages in current_pages.values() for page in pages], tick, suffix)
             continue
         if fields[0] == "mark" and len(fields) > 2 and fields[1] == "act_begun" and fields[2].startswith(ANCHOR_ACT_PREFIX):
             anchor, anchor_tick = fields[2], tick
@@ -107,16 +154,10 @@ def schedules_from_cues(cues_path, scripts_folder, animation_folder):
             animation = motion_animations(scripts_folder, script_name, motion_cache).get(fields[2][len("table="):])
             if animation is not None:
                 wanted = animation_pages(animation_folder, animation, page_cache)
+                current_pages[fields[1]] = wanted
         elif fields[0] == "effect" and len(fields) > 1:
             wanted = movies.get(fields[1], [])
-        for page in wanted:
-            for texture in tiles.get(page, [page]):
-                if texture not in seen:
-                    seen.add(texture)
-                    schedules[script_name].append((anchor, tick - anchor_tick, texture))
-                    if previous is not None and tick - script_tick < OPENING_TICKS and texture not in previous[3]:
-                        previous[3].add(texture)
-                        schedules[previous[0]].append((previous[1], tick - previous[2], texture))
+        schedule(wanted, tick, suffix)
     return schedules
 
 

@@ -57,6 +57,7 @@ static void on_soul_vision(int is_on, int with_effect) { (void)with_effect; CUE(
 static void on_marked(const char *what, const char *name) { CUE("mark %s %s", what, name); if (marks_to_stdout) { printf("mark %s %s\n", what, name); } }
 static void on_talk(const struct script_talk_view *view) { CUE("talk slide=%.2f alpha=%.2f glyphs=%d cursor=%d open=%d", view->slide, view->text_alpha, view->glyphs_shown, view->cursor_is_on, view->page != NULL); }
 static void on_effect_deleted(const char *name) { CUE("effect_deleted %s", name); }
+static void on_screen_filter(int mode) { CUE("screen_filter %d", mode); }
 
 static const struct script_outputs recording_outputs = {
     .fetched = print_fetch,
@@ -84,6 +85,7 @@ static const struct script_outputs recording_outputs = {
     .music_stopped = on_music_stopped,
     .sound_played = on_sound,
     .soul_vision_changed = on_soul_vision,
+    .screen_filter_changed = on_screen_filter,
     .marked = on_marked,
     .talk_changed = on_talk
 };
