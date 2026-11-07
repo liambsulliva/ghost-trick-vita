@@ -1,3 +1,5 @@
+import math
+
 VITA_CENTER_X = 480.0
 VITA_CENTER_Y = 272.0
 VITA_WIDTH = 960.0
@@ -79,13 +81,63 @@ def digit_clip(name, digit_texture, widths, heights):
     ]}
 
 
+CARD_RED = (0.72, 0.01, 0.02)
+CARD_OUTER_RED = (0.62, 0.0, 0.01)
+CARD_BLACK = (0.0, 0.0, 0.0)
+CARD_CLOCK_SIZE = 500.0
+CARD_HAND_LAST_TURN_FRAME = 50
+CARD_HANDS = (
+    ("card_hand_hour", 74.0, 203.0, 84.0, -180.0, -478.0),
+    ("card_hand_minute", 53.0, 252.0, 108.0, 0.0, -1080.0),
+    ("card_hand_seconds", 52.0, 211.0, 80.0, -90.0, -2610.0),
+)
+
+
+def value_at(keys, frame):
+    for (first_frame, first_value), (last_frame, last_value) in zip(keys, keys[1:]):
+        if frame <= last_frame:
+            return first_value + (last_value - first_value) * (frame - first_frame) / (last_frame - first_frame)
+    return keys[-1][1]
+
+
+def card_hand(texture, width, height, reach, first_turn, last_turn, clock_scale, clock_alpha):
+    frames = list(range(0, CARD_HAND_LAST_TURN_FRAME + 1))
+    turns = [first_turn + (last_turn - first_turn) * frame / CARD_HAND_LAST_TURN_FRAME for frame in frames]
+    scales = [value_at(clock_scale, frame) for frame in frames]
+    return element(
+        "sprite", texture, WHITE,
+        x=[(frame, VITA_CENTER_X + reach * scale * math.sin(math.radians(turn))) for frame, scale, turn in zip(frames, scales, turns)],
+        y=[(frame, VITA_CENTER_Y - reach * scale * math.cos(math.radians(turn))) for frame, scale, turn in zip(frames, scales, turns)],
+        w=[(frame, width * scale) for frame, scale in zip(frames, scales)],
+        h=[(frame, height * scale) for frame, scale in zip(frames, scales)],
+        rot=list(zip(frames, turns)),
+        alpha=clock_alpha,
+    )
+
+
+def card_wave(first_turn, last_turn):
+    return element(
+        "sprite", "card_wave", WHITE, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y),
+        w=[(0, 432.0), (30, 518.0), (45, 864.0)], h=[(0, 384.0), (30, 460.8), (45, 768.0)],
+        rot=[(0, first_turn), (30, first_turn), (45, last_turn)], alpha=[(0, 0.0), (29, 0.0), (30, 1.0), (45, 0.0)],
+    )
+
+
 def card_clip():
     text_scale = [(0, 3.0), (32, 3.0), (60, 1.0)]
     text_alpha = [(0, 0.0), (31, 0.0), (60, 1.0), (183, 1.0), (193, 0.0)]
+    clock_alpha = [(0, 0.0), (30, 1.0), (183, 1.0), (193, 0.0)]
     clock_scale = [(0, 3.5), (31, 0.6), (32, 0.72), (33, 0.615), (68, 0.615)]
     return {"name": "CARD_BEFORE_DEATH", "frames": 193, "elements": [
-        element("sprite", "card_clock", WHITE, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=scaled(clock_scale, 500.0), h=scaled(clock_scale, 500.0), alpha=[(0, 0.0), (30, 1.0), (183, 1.0), (193, 0.0)]),
-        element("rect", "-", (0.0, 0.0, 0.0), x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=constant(VITA_WIDTH), h=scaled(text_scale, 89.0), alpha=text_alpha),
+        element("sprite", "hud_disc", CARD_OUTER_RED, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=constant(329.0), h=constant(329.0), alpha=text_alpha),
+        element("sprite", "hud_disc", CARD_BLACK, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=constant(313.0), h=constant(313.0), alpha=text_alpha),
+        element("sprite", "card_clock", WHITE, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=scaled(clock_scale, CARD_CLOCK_SIZE), h=scaled(clock_scale, CARD_CLOCK_SIZE), alpha=clock_alpha),
+        card_wave(0.0, 10.0),
+        card_wave(180.0, 170.0),
+    ] + [card_hand(texture, width, height, reach, first_turn, last_turn, clock_scale, clock_alpha) for texture, width, height, reach, first_turn, last_turn in CARD_HANDS] + [
+        element("rect", "-", CARD_OUTER_RED, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=constant(VITA_WIDTH), h=scaled(text_scale, 147.0), alpha=text_alpha),
+        element("rect", "-", CARD_BLACK, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=constant(VITA_WIDTH), h=scaled(text_scale, 132.0), alpha=text_alpha),
+        element("rect", "-", CARD_RED, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=constant(VITA_WIDTH), h=scaled(text_scale, 87.0), alpha=text_alpha),
         element("sprite", "card_top_text", WHITE, x=constant(VITA_CENTER_X + 1.0), y=[(frame, VITA_CENTER_Y - 86.0 * value) for frame, value in text_scale], w=scaled(text_scale, 273.0), h=scaled(text_scale, 81.0), alpha=text_alpha),
         element("sprite", "card_bottom_text", WHITE, x=constant(VITA_CENTER_X + 0.5), y=[(frame, VITA_CENTER_Y + 92.5 * value) for frame, value in text_scale], w=scaled(text_scale, 356.0), h=scaled(text_scale, 79.0), alpha=text_alpha),
         element("rect", "-", WHITE, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=constant(VITA_WIDTH), h=constant(544.0), alpha=[(60, 0.0), (62, 1.0), (68, 0.0)]),

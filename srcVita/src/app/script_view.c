@@ -125,7 +125,7 @@
 #define FILM_CORNER_FIRST_V 0.1625f
 #define FILM_CORNER_TOP 31.5f
 #define FILM_CORNER_BEYOND_SCREEN 19.7f
-#define MOVIE_FRAMES_LOADED_AHEAD 4
+#define MOVIE_FRAMES_LOADED_AHEAD 16
 #define MOVIE_NAME_EXTRA 20
 #define SWIRL_TEXTURE "swirl_back"
 #define SWIRL_PARTICLE_TEXTURE "swirl_particle"
@@ -1224,6 +1224,11 @@ void script_view_draw_on_world(void)
     draw_film_frame();
     draw_soul();
     draw_mark();
+}
+
+int script_view_movie_covers_the_screen(void)
+{
+    return playing_movie != NULL;
 }
 
 int script_view_wants_snapshot(void)

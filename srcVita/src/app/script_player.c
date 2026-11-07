@@ -531,7 +531,7 @@ void script_player_play(const char *entry_name)
 static int art_gate_holds(unsigned long long elapsed_us)
 {
     is_holding_for_art = 0;
-    if (ticks_per_frame_when_fast > 0 || !scene_view_visible_art_is_loading(scene_stage_view())) {
+    if (ticks_per_frame_when_fast > 0 || data->machine.movie_ticks_left > 0 || !scene_view_visible_art_is_loading(scene_stage_view())) {
         art_wait_us = 0;
         return 0;
     }
@@ -572,7 +572,7 @@ void script_player_update(unsigned long long elapsed_us)
     if (phase == PHASE_RUNNING) {
         if (!art_gate_holds(elapsed_us)) {
             run_ticks(elapsed_us);
-            if (phase == PHASE_RUNNING && ticks_per_frame_when_fast == 0 && art_wait_us < ART_WAIT_MOST_US && scene_view_visible_art_is_loading(scene_stage_view())) {
+            if (phase == PHASE_RUNNING && ticks_per_frame_when_fast == 0 && data->machine.movie_ticks_left == 0 && art_wait_us < ART_WAIT_MOST_US && scene_view_visible_art_is_loading(scene_stage_view())) {
                 is_holding_for_art = 1;
             }
         }

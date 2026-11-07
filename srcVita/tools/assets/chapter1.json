@@ -444,14 +444,24 @@
       ]
     },
     {
-      "name": "card_clock",
+      "name": "card_hand_hour",
       "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
-      "crop": [
-        1433,
-        429,
-        500,
-        500
-      ]
+      "crop": [1683, 3, 148, 406]
+    },
+    {
+      "name": "card_hand_seconds",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [1834, 3, 104, 422]
+    },
+    {
+      "name": "card_hand_minute",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [1940, 2, 106, 504]
+    },
+    {
+      "name": "card_wave",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [1182, 938, 864, 768]
     },
     {
       "name": "card_top_text",
@@ -506,6 +516,18 @@
       "parts": [
         {"crop": [5, 3, 361, 353], "x": 1, "y": 1, "width": 181, "height": 177},
         {"crop": [5, 3, 361, 353], "x": 182, "y": 1, "width": 181, "height": 177, "flip_x": true}
+      ]
+    },
+    {
+      "name": "card_clock",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "width": 512,
+      "height": 512,
+      "parts": [
+        {"crop": [1433, 429, 500, 500], "x": 0, "y": 0, "width": 256, "height": 256},
+        {"crop": [1433, 429, 500, 500], "x": 256, "y": 0, "width": 256, "height": 256, "flip_x": true},
+        {"crop": [1433, 429, 500, 500], "x": 0, "y": 256, "width": 256, "height": 256, "flip_y": true},
+        {"crop": [1433, 429, 500, 500], "x": 256, "y": 256, "width": 256, "height": 256, "flip_x": true, "flip_y": true}
       ]
     },
     {

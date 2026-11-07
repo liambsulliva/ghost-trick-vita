@@ -207,7 +207,8 @@ def convert_hud_sheet(packs, set_description, work_folder, record):
     if hud is None:
         return []
     fonts = narration.TextFonts(packs, work_folder)
-    return [hud_art.bake_hud_sheet(fonts, work_folder, record, code_fingerprint_with_magick(TEXT_CODE_FILES + ["hud_art.py"]), hud["label_font"], hud["key_font"])]
+    code = code_fingerprint_with_magick(TEXT_CODE_FILES + ["hud_art.py"])
+    return [hud_art.bake_hud_sheet(fonts, work_folder, record, code, hud["label_font"], hud["key_font"]), hud_art.bake_hud_disc(work_folder, record, code)]
 
 
 def convert_text_textures(packs, set_description, messages, work_folder, record):

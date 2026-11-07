@@ -5,6 +5,8 @@ import asset_writers
 import bake_record
 
 SHEET_NAME = "hud_sheet"
+DISC_NAME = "hud_disc"
+DISC_SIZE = 128
 SHEET_WIDTH = 512
 SHEET_HEIGHT = 192
 SUPERSAMPLE = 4
@@ -92,6 +94,22 @@ def sheet_arguments(label_font_path, key_font_path, output_path):
     arguments += wide_label_arguments(label_font_path)
     arguments += ["-filter", "Box", "-resize", "%dx%d!" % (SHEET_WIDTH, SHEET_HEIGHT), "-depth", "8", "rgba:" + output_path]
     return arguments
+
+
+def bake_hud_disc(work_folder, record, code):
+    relative_path = "textures/" + DISC_NAME + ".gtex"
+    key = record.key_for(code, {"size": DISC_SIZE}, b"")
+    gtex_bytes = record.read_if_current(relative_path, key)
+    if gtex_bytes is None:
+        rgba_path = os.path.join(work_folder, DISC_NAME + ".rgba")
+        middle = scaled(DISC_SIZE) // 2
+        subprocess.run(["magick", "-size", "%dx%d" % (scaled(DISC_SIZE), scaled(DISC_SIZE)), "xc:none", "-fill", WHITE, "-draw", "circle %d,%d %d,%d" % (middle, middle, middle, scaled(DISC_SIZE) - 1), "-filter", "Box", "-resize", "%dx%d!" % (DISC_SIZE, DISC_SIZE), "-depth", "8", "rgba:" + rgba_path], check=True, capture_output=True)
+        with open(rgba_path, "rb") as source:
+            pixels = source.read()
+        os.remove(rgba_path)
+        gtex_bytes = asset_writers.gtex_bytes(DISC_SIZE, DISC_SIZE, asset_writers.FORMAT_RGBA8888, pixels)
+        record.store(relative_path, key, gtex_bytes)
+    return bake_record.result_of_own_size(DISC_NAME, gtex_bytes)
 
 
 def bake_hud_sheet(fonts, work_folder, record, code, label_font, key_font):
