@@ -1083,6 +1083,14 @@ static void draw_pills(void)
     }
 }
 
+void script_ui_view_draw_under_talk(void)
+{
+    if (tables == NULL || hud.is_hidden_for_movie) {
+        return;
+    }
+    draw_side_hud();
+}
+
 void script_ui_view_draw(void)
 {
     int index;
@@ -1091,7 +1099,6 @@ void script_ui_view_draw(void)
         return;
     }
     if (!hud.is_hidden_for_movie) {
-        draw_side_hud();
         draw_tap_balloons();
         draw_rewind_select();
         draw_pills();

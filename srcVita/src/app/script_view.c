@@ -458,6 +458,22 @@ static void fx_page_name(const struct script_fx_movie *movie, int page, char *na
     snprintf(name, ASSET_NAME_MAX, "fx_%s_%02d", movie->name, page);
 }
 
+static void keep_movie_pages_loaded(const char *movie_name)
+{
+    const struct script_fx_movie *movie;
+    char name[ASSET_NAME_MAX];
+    int page;
+
+    movie = script_tables_find_fx_movie(tables, movie_name);
+    if (movie == NULL) {
+        return;
+    }
+    for (page = 0; page < movie->page_count; page++) {
+        fx_page_name(movie, page, name);
+        texture_cache_keep_or_start_reading_ahead(name);
+    }
+}
+
 void script_view_effect_moved(const char *name, float x, float y, float aim_degrees)
 {
     int index;
@@ -866,6 +882,9 @@ static void draw_core_marks(void)
         scene_view_world_to_screen(scene_stage_view(), core_marks[index].x, core_marks[index].y, &screen_x, &screen_y);
         draw_centered(SOUL_GLOW_TEXTURE, screen_x, screen_y, CORE_GLOW_SIZE, core_marks[index].is_dead ? dead_glow : glow);
         draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, CORE_ORB_SIZE, core_marks[index].is_dead ? dead_orb : orb);
+        if (core_marks[index].is_dead) {
+            keep_movie_pages_loaded(SOUL_SPARKS_MOVIE);
+        }
     }
 }
 
@@ -1568,6 +1587,7 @@ void script_view_draw_on_covers(void)
         draw_film_belts();
     }
     soul_transition_draw();
+    script_ui_view_draw_under_talk();
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {
         draw_talk();
     }

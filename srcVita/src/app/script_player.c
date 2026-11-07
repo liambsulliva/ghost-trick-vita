@@ -437,6 +437,7 @@ static int reached_the_run_until_point(void)
 static void stop_at_the_run_until_point(void)
 {
     run_log_write("script reached tick=%u point=%s", data->machine.tick, run_until_name);
+    texture_cache_drop_waiting_reads();
     run_until_kind[0] = '\0';
     ticks_per_frame_when_fast = 0;
     data->machine.auto_press = wanted_auto_play();

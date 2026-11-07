@@ -14,6 +14,7 @@ int script_ui_view_pill_at(float x, float y);
 int script_ui_view_tap_balloon_kind_at(float x, float y);
 int script_ui_view_rewind_button_is_at(float x, float y);
 void script_ui_view_advance(void);
+void script_ui_view_draw_under_talk(void);
 void script_ui_view_draw(void);
 
 #endif
