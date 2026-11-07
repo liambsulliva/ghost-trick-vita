@@ -24,7 +24,7 @@ void script_player_hourglass_button(void);
 void script_player_notebook_button(void);
 void script_player_tap_balloon(int is_right);
 void script_player_direction(int direction_x, int direction_y);
-void script_player_held_direction(int held_x, int held_y);
+void script_player_held_direction(float held_x, float held_y);
 void script_player_set_auto_play(int is_on);
 void script_player_set_fast_forward(int ticks_per_frame);
 void script_player_run_until(const char *kind, const char *name);

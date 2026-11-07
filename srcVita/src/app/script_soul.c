@@ -510,8 +510,8 @@ static int aim_the_chain_from_input(struct script_machine *machine)
         soul_chain_aim(chain, chain->x[SOUL_CHAIN_TIP] + soul->tip_aim_x * SOUL_TIP_DS_PIXELS_PER_TICK, chain->y[SOUL_CHAIN_TIP] + soul->tip_aim_y * SOUL_TIP_DS_PIXELS_PER_TICK, SOUL_REACH_DS_PIXELS);
         return 1;
     }
-    if (soul->held_x != 0 || soul->held_y != 0) {
-        soul_chain_aim(chain, chain->x[SOUL_CHAIN_TIP] + (float)soul->held_x * SOUL_TIP_DS_PIXELS_PER_TICK, chain->y[SOUL_CHAIN_TIP] + (float)soul->held_y * SOUL_TIP_DS_PIXELS_PER_TICK, SOUL_REACH_DS_PIXELS);
+    if (soul->held_x != 0.0f || soul->held_y != 0.0f) {
+        soul_chain_aim(chain, chain->x[SOUL_CHAIN_TIP] + soul->held_x * SOUL_TIP_DS_PIXELS_PER_TICK, chain->y[SOUL_CHAIN_TIP] + soul->held_y * SOUL_TIP_DS_PIXELS_PER_TICK, SOUL_REACH_DS_PIXELS);
         return 1;
     }
     return 0;
@@ -1218,13 +1218,13 @@ static void move_free_camera(struct script_machine *machine)
     const struct script_soul *soul;
 
     soul = &machine->soul;
-    if (soul->held_x == 0 && soul->held_y == 0) {
+    if (soul->held_x == 0.0f && soul->held_y == 0.0f) {
         return;
     }
     if (!free_camera_is_allowed(machine)) {
         return;
     }
-    script_machine_scroll_camera(machine, soul->held_x * CAMERA_FREE_SPEED_PIXELS, soul->held_y * CAMERA_FREE_SPEED_PIXELS);
+    script_machine_scroll_camera(machine, (int)lroundf(soul->held_x * CAMERA_FREE_SPEED_PIXELS), (int)lroundf(soul->held_y * CAMERA_FREE_SPEED_PIXELS));
 }
 
 static void follow_point_in_ghost_view(struct script_machine *machine, float point_x, float point_y, int left, int right, int top, int bottom)
@@ -1714,8 +1714,8 @@ static void play_automatically(struct script_machine *machine)
     struct script_soul *soul;
 
     soul = &machine->soul;
-    soul->held_x = 0;
-    soul->held_y = 0;
+    soul->held_x = 0.0f;
+    soul->held_y = 0.0f;
     soul->tip_is_aimed = 0;
     if ((machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine)) || script_narration_wants_a_press(&machine->narration)) {
         press_when_the_page_has_been_read(machine);
@@ -1831,7 +1831,7 @@ void script_soul_note_direction(struct script_machine *machine, int direction_x,
     machine->soul.direction_y = direction_y;
 }
 
-void script_soul_set_held(struct script_machine *machine, int held_x, int held_y)
+void script_soul_set_held(struct script_machine *machine, float held_x, float held_y)
 {
     machine->soul.held_x = held_x;
     machine->soul.held_y = held_y;

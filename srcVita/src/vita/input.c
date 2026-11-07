@@ -1,11 +1,13 @@
 #include <psp2/ctrl.h>
 #include <psp2/touch.h>
 #include "input.h"
+#include "stick_aim.h"
 
 #define TOUCH_PANEL_UNITS_PER_SCREEN_PIXEL 2.0f
 
 static unsigned int previous_buttons;
 static int touch_is_sampling;
+static int stick_is_sampling;
 
 static unsigned int add_button_if_held(unsigned int vita_buttons, unsigned int vita_button, unsigned int app_button)
 {
@@ -59,7 +61,12 @@ void input_poll(struct input_state *state)
     unsigned int buttons;
 
     read_front_touch(state);
+    if (!stick_is_sampling) {
+        sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG);
+        stick_is_sampling = 1;
+    }
     sceCtrlPeekBufferPositive(0, &pad, 1);
+    stick_aim_from_raw(pad.lx, pad.ly, &state->stick_x, &state->stick_y);
     buttons = read_app_buttons(pad.buttons);
     state->pressed = buttons & ~previous_buttons;
     state->held = buttons;

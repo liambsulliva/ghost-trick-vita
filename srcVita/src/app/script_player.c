@@ -804,7 +804,7 @@ void script_player_direction(int direction_x, int direction_y)
     }
 }
 
-void script_player_held_direction(int held_x, int held_y)
+void script_player_held_direction(float held_x, float held_y)
 {
     if (phase == PHASE_RUNNING && data != NULL) {
         script_soul_set_held(&data->machine, held_x, held_y);

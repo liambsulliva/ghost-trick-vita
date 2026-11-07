@@ -20,6 +20,8 @@ struct input_state {
     int touch_is_down;
     float touch_x;
     float touch_y;
+    float stick_x;
+    float stick_y;
 };
 
 void input_poll(struct input_state *state);

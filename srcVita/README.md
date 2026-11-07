@@ -207,15 +207,20 @@ Its `mark` lines say which scripts and acts began, which tricks fired and when t
 
 ## Controls
 
-| Button | What it does |
+Touch is the main way to play, as the in-game tutorials teach. Every touch action also has a button.
+
+| Input | What it does in a chapter |
 |---|---|
+| Touch | Drag the soul from its flame to aim it at a core, and tap pills and balloons |
+| Left stick | Aim the soul in the soul view, more slowly with a smaller push. Pushing it in the living world opens the soul view |
+| D-pad | The same as the left stick, at full speed |
 | CROSS | Advance dialogue, or do the trick of the core you are in |
-| TRIANGLE or CIRCLE | Open or close the soul view |
-| D-pad | Pick a core in that direction. In the living world it opens the soul view first |
-| L or R | Tap the left or right balloon, when a script opens one that can be tapped |
+| L | Open the soul view, or go back from one you opened |
+| CIRCLE | Go back from the soul view |
+| TRIANGLE or SQUARE | Tap the left or right balloon, when a script opens one that can be tapped |
+| R | The hourglass pill |
+| START | The notebook pill |
 | L and R together | Skip ahead |
-| SQUARE | Save a capture |
-| START | Quit |
 
 ## Debug controls
 

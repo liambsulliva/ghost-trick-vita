@@ -17,6 +17,7 @@
 #include "script_player.h"
 #include "script_view.h"
 #include "sound_engine.h"
+#include "stick_aim.h"
 #include "texture_cache.h"
 #include "ui_list.h"
 #include "viewer_app.h"
@@ -67,6 +68,7 @@ static struct ui_list animation_list;
 static renderer_texture placeholder_texture;
 static char status_text[VIEWER_STATUS_TEXT_MAX];
 static int current_background_index;
+static int stick_was_out;
 static int pending_background_index;
 static unsigned long long pending_background_started_us;
 static int current_animation_index;
@@ -451,13 +453,27 @@ static void send_script_directions(const struct input_state *input)
 {
     int pressed_x;
     int pressed_y;
+    int held_x;
+    int held_y;
+    int stick_is_out;
 
     pressed_x = axis_of(input->pressed, INPUT_LEFT, INPUT_RIGHT);
     pressed_y = axis_of(input->pressed, INPUT_UP, INPUT_DOWN);
+    stick_is_out = input->stick_x != 0.0f || input->stick_y != 0.0f;
+    if (pressed_x == 0 && pressed_y == 0 && stick_is_out && !stick_was_out) {
+        stick_aim_first_push(input->stick_x, input->stick_y, &pressed_x, &pressed_y);
+    }
+    stick_was_out = stick_is_out;
     if (pressed_x != 0 || pressed_y != 0) {
         script_player_direction(pressed_x, pressed_y);
     }
-    script_player_held_direction(axis_of(input->held, INPUT_LEFT, INPUT_RIGHT), axis_of(input->held, INPUT_UP, INPUT_DOWN));
+    held_x = axis_of(input->held, INPUT_LEFT, INPUT_RIGHT);
+    held_y = axis_of(input->held, INPUT_UP, INPUT_DOWN);
+    if (held_x != 0 || held_y != 0) {
+        script_player_held_direction((float)held_x, (float)held_y);
+        return;
+    }
+    script_player_held_direction(stick_aim_axis_speed(input->stick_x), stick_aim_axis_speed(input->stick_y));
 }
 
 static void update_player_controls(const struct input_state *input)
