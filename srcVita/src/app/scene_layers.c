@@ -116,6 +116,17 @@ void scene_layers_hide_all_text(struct scene_layers *layers)
     memset(layers->text_lines, 0, sizeof(layers->text_lines));
 }
 
+void scene_layers_shake_overlay(struct scene_layers *layers, int id, float x, float y)
+{
+    struct scene_overlay *overlay;
+
+    overlay = find_overlay(layers, id);
+    if (overlay != NULL) {
+        overlay->shake_x = x;
+        overlay->shake_y = y;
+    }
+}
+
 void scene_layers_show_overlay(struct scene_layers *layers, int id, const char *texture_name, float x, float y, float width, float height, int grow_ticks)
 {
     struct scene_overlay *overlay;
@@ -138,6 +149,8 @@ void scene_layers_show_overlay(struct scene_layers *layers, int id, const char *
     overlay->grow_total_us = ticks_to_us(grow_ticks);
     overlay->grow_elapsed_us = 0;
     overlay->size_fraction = grow_ticks > 0 ? 0.0f : 1.0f;
+    overlay->shake_x = 0.0f;
+    overlay->shake_y = 0.0f;
 }
 
 void scene_layers_hide_overlay(struct scene_layers *layers, int id)

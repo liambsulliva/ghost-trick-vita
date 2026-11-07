@@ -101,6 +101,7 @@ struct script_outputs {
     void (*narration_changed)(const char *label, enum script_narration_event event, int group);
     void (*balloon_opened)(int slot, const char *label, int kind, float anchor_x, float anchor_y);
     void (*balloon_closed)(int slot);
+    void (*balloon_shaken)(int slot, int strength, int ticks);
     void (*music_prepared)(int id);
     void (*music_started)(int id);
     void (*music_stopped)(int fade_ticks);

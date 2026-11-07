@@ -26,6 +26,8 @@ struct scene_overlay {
     float width;
     float height;
     float size_fraction;
+    float shake_x;
+    float shake_y;
     unsigned long long grow_total_us;
     unsigned long long grow_elapsed_us;
     int id;
@@ -44,6 +46,7 @@ void scene_layers_hide_text(struct scene_layers *layers, int id, int fade_ticks)
 void scene_layers_hide_all_text(struct scene_layers *layers);
 void scene_layers_show_overlay(struct scene_layers *layers, int id, const char *texture_name, float x, float y, float width, float height, int grow_ticks);
 void scene_layers_hide_overlay(struct scene_layers *layers, int id);
+void scene_layers_shake_overlay(struct scene_layers *layers, int id, float x, float y);
 void scene_layers_advance(struct scene_layers *layers, unsigned long long elapsed_us);
 int scene_layers_text_is_fading_out(const struct scene_layers *layers);
 

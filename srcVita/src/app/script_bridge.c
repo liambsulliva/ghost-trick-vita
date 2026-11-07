@@ -26,6 +26,7 @@
 #define CARD_FADE_OUT_ENDS 273
 #define PENDING_OVERLAY_MAX 16
 #define OVERLAYS_PER_BALLOON 4
+#define BALLOON_SHAKE_DS_PIXELS_PER_STRENGTH 2.0f
 #define LAYER_PER_LEVEL 256
 #define LEVEL_COUNT 15
 #define CREATION_INDEX_TOP 255
@@ -520,6 +521,13 @@ static void on_balloon_closed(int slot)
     open_balloon_rows[slot] = NULL;
 }
 
+struct balloon_shake {
+    int strength;
+    int ticks_left;
+};
+
+static struct balloon_shake balloon_shakes[SCRIPT_BALLOON_MAX];
+
 static void run_due_overlays(void)
 {
     int index;
@@ -538,6 +546,44 @@ static void run_due_overlays(void)
         } else {
             write_cue("overlay", pending->part->texture_name);
             scene_layers_show_overlay(scene_stage_layers(), pending->overlay_id, pending->part->texture_name, pending->center_x - pending->part->width / 2.0f, pending->center_y - pending->part->height / 2.0f, pending->part->width, pending->part->height, pending->part->grow_ticks);
+        }
+    }
+}
+
+static void on_balloon_shaken(int slot, int strength, int ticks)
+{
+    balloon_shakes[slot].strength = strength;
+    balloon_shakes[slot].ticks_left = ticks;
+}
+
+static void set_balloon_shake(int slot, float x, float y)
+{
+    int part;
+
+    for (part = 1; part <= OVERLAYS_PER_BALLOON; part++) {
+        scene_layers_shake_overlay(scene_stage_layers(), slot * OVERLAYS_PER_BALLOON + part, x, y);
+    }
+}
+
+static void shake_balloons(void)
+{
+    int slot;
+
+    for (slot = 0; slot < SCRIPT_BALLOON_MAX; slot++) {
+        struct balloon_shake *shake;
+
+        shake = &balloon_shakes[slot];
+        if (shake->ticks_left <= 0) {
+            continue;
+        }
+        shake->ticks_left = shake->ticks_left - 1;
+        if (shake->ticks_left == 0) {
+            set_balloon_shake(slot, 0.0f, 0.0f);
+        } else {
+            float reach;
+
+            reach = (float)shake->strength * BALLOON_SHAKE_DS_PIXELS_PER_STRENGTH;
+            set_balloon_shake(slot, (tick & 1u) != 0u ? reach : -reach, ((tick >> 1) & 1u) != 0u ? reach : -reach);
         }
     }
 }
@@ -659,6 +705,7 @@ static const struct script_outputs bridge_outputs = {
     .narration_changed = on_narration_changed,
     .balloon_opened = on_balloon_opened,
     .balloon_closed = on_balloon_closed,
+    .balloon_shaken = on_balloon_shaken,
     .music_prepared = on_music_prepared,
     .music_started = on_music_started,
     .music_stopped = on_music_stopped,
@@ -791,6 +838,7 @@ static void apply_mask_rule(void)
 void script_bridge_finish_tick(void)
 {
     run_due_overlays();
+    shake_balloons();
     apply_fade();
     apply_mask_rule();
     if (zoom_ticks_left > 0) {

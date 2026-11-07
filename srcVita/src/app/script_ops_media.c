@@ -210,6 +210,23 @@ static void close_all_balloons(struct script_machine *machine)
     }
 }
 
+static void shake_the_actors_balloon(struct script_machine *machine, const struct script_vm *vm, int strength, int ticks)
+{
+    const struct script_object *object;
+    int index;
+
+    object = script_machine_current_object(machine, vm);
+    if (object == NULL || machine->outputs->balloon_shaken == NULL) {
+        return;
+    }
+    for (index = 0; index < SCRIPT_BALLOON_MAX; index++) {
+        if (machine->balloons[index].in_use && machine->balloons[index].owner_object == (int)(object - machine->objects)) {
+            machine->outputs->balloon_shaken(index, strength, ticks);
+            return;
+        }
+    }
+}
+
 static int actor_has_a_balloon(struct script_machine *machine, const struct script_vm *vm)
 {
     const struct script_object *object;
@@ -337,6 +354,9 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         if (machine->talk_is_open) {
             return SCRIPT_STEP_MOVED_THEN_YIELD;
         }
+        break;
+    case 0x56:
+        shake_the_actors_balloon(machine, vm, (int)words[0], (int)words[1]);
         break;
     case 0x51:
         label = script_machine_string(machine, vm, words[0]);

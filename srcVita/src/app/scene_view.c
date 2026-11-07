@@ -645,7 +645,7 @@ static void draw_overlays(const struct scene_stage *stage, const struct screen_v
         }
         width = overlay->width * overlay->size_fraction;
         height = overlay->height * overlay->size_fraction;
-        draw_texture_or_placeholder(overlay->texture_name, world_area_to_screen(view, overlay->x + (overlay->width - width) / 2.0f, overlay->y + (overlay->height - height) / 2.0f, width, height), whole_texture_area());
+        draw_texture_or_placeholder(overlay->texture_name, world_area_to_screen(view, overlay->shake_x + overlay->x + (overlay->width - width) / 2.0f, overlay->shake_y + overlay->y + (overlay->height - height) / 2.0f, width, height), whole_texture_area());
     }
 }
 
