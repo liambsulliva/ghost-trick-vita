@@ -57,6 +57,8 @@ MESSAGE_FILE_NUMBER_LIMIT = 10000
 ENTRY_PAGE_PATTERN = re.compile(r"^(.*)_(\d\d)$")
 TABLE_VARIANT_PATTERN = re.compile(r"^(st\d\d_.+_\d{3})_(\d{2,3}[a-z]?)$")
 NARRATION_OP = 0x5d
+WORDED_BALLOON_OP = 0x51
+THORN_BALLOON_KIND = 2
 TALK_OPS = (0x37, 0x5c, 0xdb)
 BALLOON_LABEL_OPS = (0x51, 0x45, 0x46, 0x4c, 0x4e)
 ROOM_OP = 0xc1
@@ -96,6 +98,9 @@ class Script:
             if op in ops and operands and self.text_of(operands[0]) is not None:
                 found.append(self.text_of(operands[0]))
         return list(dict.fromkeys(found))
+
+    def thorn_balloon_labels(self):
+        return set(self.text_of(operands[0]) for _, _, op, operands in self.operations if op == WORDED_BALLOON_OP and len(operands) > 2 and operands[2] == THORN_BALLOON_KIND)
 
     def table_name_at(self, offset):
         for name in self.labels.get(offset, []):
@@ -434,7 +439,10 @@ def expand_set(set_description, packs, rom_path, text_key):
             for label in script.strings_of_ops(BALLOON_LABEL_OPS):
                 if label in entries and all(row["name"] != "bubble_" + label for row in bubble_rows):
                     bubble_rows.append(dict(balloon_style["text"], joins_lines=True, name="bubble_" + label, file=entries[label][0][0], entry=entries[label][0][1]))
-                    balloon_rows.append({"label": label, "delay": balloon_style["delay"], "parts": [dict(balloon_style["art"], fits="bubble_" + label), dict(balloon_style["text_part"], texture="bubble_" + label)]})
+                    art = dict(balloon_style["art"], fits="bubble_" + label)
+                    if label in script.thorn_balloon_labels() and "thorn_sizes" in balloon_style:
+                        art = dict(art, thorn_sizes=balloon_style["thorn_sizes"], texture=balloon_style["thorn_sizes"][0]["texture"])
+                    balloon_rows.append({"label": label, "delay": balloon_style["delay"], "parts": [art, dict(balloon_style["text_part"], texture="bubble_" + label)]})
     core_labels = set_description.get("core_labels")
     if core_labels is not None:
         for object_name, (name_id, action_id) in core_labels["objects"].items():

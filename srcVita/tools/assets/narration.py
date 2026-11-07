@@ -137,9 +137,9 @@ def line_texture_name(message_name, line_index):
     return "text_%s_%d" % (message_name, line_index)
 
 
-def parse_requested_message(request, raw_text):
+def parse_requested_message(request, raw_text, ignores_other_tags=False):
     try:
-        return message_file.parse_message(raw_text)
+        return message_file.parse_message(raw_text, ignores_other_tags)
     except message_file.MessageFileError as error:
         raise NarrationError(request["name"] + ": " + str(error)) from None
 
@@ -181,7 +181,7 @@ def stacked_lines(rendered):
 
 
 def read_bubble_message(request, raw_text):
-    message = parse_requested_message(request, raw_text)
+    message = parse_requested_message(request, raw_text, ignores_other_tags=True)
     all_lines = [text.strip() for paragraph in message["paragraphs"] for text in paragraph if text.strip()]
     message["lines"] = [" ".join(all_lines)] if request.get("single_line") else wrapped_bubble_lines(all_lines)
     if request.get("joins_lines"):

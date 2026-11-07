@@ -158,18 +158,22 @@ def split_paragraphs(text_without_tags):
     return [paragraph.split("\n") for paragraph in paragraphs]
 
 
-def parse_message(raw_text):
+def parse_message(raw_text, ignores_other_tags=False):
     message = {"pos_y": None, "auto_pf": None, "mono_type": None, "waits": []}
     plain_parts = []
     position = 0
     for match in TAG_PATTERN.finditer(raw_text):
         plain_parts.append(raw_text[position:match.start()])
         position = match.end()
-        verb, attributes = read_tag(match.group(0))
-        if verb == "paragraph_end":
-            plain_parts.append(PARAGRAPH_MARK)
-        else:
-            apply_tag(message, verb, attributes)
+        try:
+            verb, attributes = read_tag(match.group(0))
+            if verb == "paragraph_end":
+                plain_parts.append(PARAGRAPH_MARK)
+            else:
+                apply_tag(message, verb, attributes)
+        except MessageFileError:
+            if not ignores_other_tags:
+                raise
     plain_parts.append(raw_text[position:])
     message["paragraphs"] = split_paragraphs("".join(plain_parts))
     return message

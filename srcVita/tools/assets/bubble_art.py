@@ -10,7 +10,9 @@ TRANSPARENT_WHITE = bytes([255, 255, 255, 0])
 
 def read_part_pixels(tool_path, work_folder, tex_path, name, part):
     rgba_path = os.path.join(work_folder, name + "_part.rgba")
-    texture_encoder.run_texture_tool(tool_path, tex_path, rgba_path, part["width"], part["height"], part["crop"])
+    read_width = part["height"] if part.get("rotate_left") else part["width"]
+    read_height = part["width"] if part.get("rotate_left") else part["height"]
+    texture_encoder.run_texture_tool(tool_path, tex_path, rgba_path, read_width, read_height, part["crop"])
     with open(rgba_path, "rb") as source:
         pixels = source.read()
     os.remove(rgba_path)
@@ -18,6 +20,8 @@ def read_part_pixels(tool_path, work_folder, tex_path, name, part):
 
 
 def part_pixel_offset(part, x, y):
+    if part.get("rotate_left"):
+        return (x * part["height"] + part["height"] - 1 - y) * RGBA_BYTES
     source_x = part["width"] - 1 - x if part.get("flip_x") else x
     source_y = part["height"] - 1 - y if part.get("flip_y") else y
     return (source_y * part["width"] + source_x) * RGBA_BYTES

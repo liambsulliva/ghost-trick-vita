@@ -202,9 +202,10 @@ class ConversionTests(unittest.TestCase):
         with self.assertRaisesRegex(narration.NarrationError, "^m: mes_wait_set") as caught:
             self.convert(packs, [{"name": "m", "file": FILE_PATH, "entry": "entry"}])
         self.assertNotIn("private", str(caught.exception))
-        request = {"name": "bubble", "file": FILE_PATH, "entry": "entry", "font": FONT_PACK_PATH, "pixels_per_em": 20, "color": [0, 0, 0]}
-        with self.assertRaisesRegex(narration.NarrationError, "^bubble: mes_wait_set"):
-            self.convert_set(packs, {"bubble_text": [request]})
+
+    def test_bubble_words_keep_their_text_past_tags_the_reader_does_not_need(self):
+        message = narration.read_bubble_message({"name": "bubble"}, 'words<TRCK mesquake />')
+        self.assertEqual(message["lines"], ["words"])
 
     def test_a_tag_this_reader_does_not_know_is_reported_by_the_message_name(self):
         packs = self.packs_with([("entry", 'private words<TRCK made_up_verb />')])

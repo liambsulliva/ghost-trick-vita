@@ -423,6 +423,35 @@
   ],
   "composed_textures": [
     {
+      "name": "thorn_bubble_s",
+      "source": "natives/android/charfiles/3d/06_id/cmn_balln00_iml4.tex.691230823",
+      "width": 224,
+      "height": 144,
+      "parts": [
+        {"crop": [701, 3, 286, 442], "x": 1, "y": 0, "width": 221, "height": 143, "rotate_left": true}
+      ]
+    },
+    {
+      "name": "thorn_bubble_m",
+      "source": "natives/android/charfiles/3d/06_id/cmn_balln00_iml4.tex.691230823",
+      "width": 324,
+      "height": 176,
+      "parts": [
+        {"crop": [372, 3, 324, 346], "x": 0, "y": 1, "width": 162, "height": 173},
+        {"crop": [372, 3, 324, 346], "x": 162, "y": 1, "width": 162, "height": 173, "flip_x": true}
+      ]
+    },
+    {
+      "name": "thorn_bubble_l",
+      "source": "natives/android/charfiles/3d/06_id/cmn_balln00_iml4.tex.691230823",
+      "width": 364,
+      "height": 180,
+      "parts": [
+        {"crop": [5, 3, 361, 353], "x": 1, "y": 1, "width": 181, "height": 177},
+        {"crop": [5, 3, 361, 353], "x": 182, "y": 1, "width": 181, "height": 177, "flip_x": true}
+      ]
+    },
+    {
       "name": "talk_box_bottom",
       "source": "natives/android/charfiles/3d/06_id/cmn_messagewindow00_iml4.tex.691230823",
       "width": 960,
@@ -790,6 +819,11 @@
         "after": 6,
         "grow": 0
       },
+      "thorn_sizes": [
+        {"texture": "thorn_bubble_s", "widest_text": 170},
+        {"texture": "thorn_bubble_m", "widest_text": 238},
+        {"texture": "thorn_bubble_l", "widest_text": 100000}
+      ],
       "text": {
         "font": "natives/android/gui/font/outlinefont/helveticaneueltw1g-bd.oft.1",
         "pixels_per_em": 34,

@@ -393,15 +393,24 @@ def text_lines_text(narration_lines):
     return "\n".join(lines) + "\n"
 
 
+def with_thorn_chosen_by_text(part, texture_sizes):
+    if "thorn_sizes" not in part or part.get("fits") not in texture_sizes:
+        return part
+    text_width = texture_sizes[part["fits"]][0]
+    chosen = next(size["texture"] for size in part["thorn_sizes"] if text_width <= size["widest_text"])
+    return dict(part, texture=chosen)
+
+
 def balloons_text(balloons, texture_sizes):
     lines = []
     for balloon in balloons:
         lines.append("balloon %d %s %d" % (balloon.get("kind", NO_KIND), balloon.get("label", NO_LABEL), balloon["delay"]))
         for part in balloon["parts"]:
+            part = with_thorn_chosen_by_text(part, texture_sizes)
             if part["texture"] not in texture_sizes:
                 continue
             width, height = texture_sizes[part["texture"]]
-            if part.get("fits") in texture_sizes:
+            if part.get("fits") in texture_sizes and "thorn_sizes" not in part:
                 text_width, text_height = texture_sizes[part["fits"]]
                 width = max(width, text_width + BUBBLE_MARGIN_WIDTH)
                 height = max(height, text_height + BUBBLE_MARGIN_HEIGHT)
@@ -423,6 +432,7 @@ def preload_text(section, balloons, narration_lines, animation_names, soul_plate
             textures.extend(line["texture"] for line in paragraph)
     for balloon in balloons:
         textures.extend(part["texture"] for part in balloon["parts"])
+        textures.extend(size["texture"] for part in balloon["parts"] for size in part.get("thorn_sizes", []))
     lines.extend("texture " + name for name in dict.fromkeys(textures))
     music_names = list(dict.fromkeys(section.get("music_ids", {}).values()))
     lines.extend("music " + name for name in music_names[:1])
