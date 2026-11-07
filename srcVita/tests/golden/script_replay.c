@@ -1,3 +1,4 @@
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -179,6 +180,8 @@ static void read_route(const char *folder)
     machine.route = &replay_route;
 }
 
+#define MOTIONS_SUFFIX ".motions"
+
 static struct script_tables tables_for_the_size_check;
 
 static void read_table_for_the_size_check(const char *folder, const char *file_name, int (*reader)(struct script_tables *, const char *, unsigned int))
@@ -205,6 +208,44 @@ static void read_table_for_the_size_check(const char *folder, const char *file_n
     fclose(source);
 }
 
+static void read_motions_for_the_size_check(const char *folder)
+{
+    char path[FILE_NAME_MAX];
+    DIR *listing;
+    struct dirent *entry;
+
+    listing = opendir(folder);
+    if (listing == NULL) {
+        return;
+    }
+    while ((entry = readdir(listing)) != NULL) {
+        size_t length;
+        FILE *source;
+        char *text;
+        long size;
+
+        length = strlen(entry->d_name);
+        if (length <= strlen(MOTIONS_SUFFIX) || strcmp(&entry->d_name[length - strlen(MOTIONS_SUFFIX)], MOTIONS_SUFFIX) != 0) {
+            continue;
+        }
+        snprintf(path, sizeof(path), "%s/%s", folder, entry->d_name);
+        source = fopen(path, "rb");
+        if (source == NULL) {
+            continue;
+        }
+        fseek(source, 0, SEEK_END);
+        size = ftell(source);
+        fseek(source, 0, SEEK_SET);
+        text = malloc((size_t)size + 1u);
+        if (text != NULL && fread(text, 1, (size_t)size, source) == (size_t)size) {
+            script_tables_read_motions(&tables_for_the_size_check, entry->d_name, text, (unsigned int)size);
+        }
+        free(text);
+        fclose(source);
+    }
+    closedir(listing);
+}
+
 static int every_table_row_fits(const char *folder)
 {
     read_table_for_the_size_check(folder, "chain.txt", script_tables_read_chain);
@@ -214,6 +255,10 @@ static int every_table_row_fits(const char *folder)
     read_table_for_the_size_check(folder, "balloons.txt", script_tables_read_balloons);
     read_table_for_the_size_check(folder, "chain.preload", script_tables_read_preload);
     read_table_for_the_size_check(folder, "effects.txt", script_tables_read_effects);
+    read_table_for_the_size_check(folder, "soul.txt", script_tables_read_soul);
+    read_table_for_the_size_check(folder, "core_labels.txt", script_tables_read_core_labels);
+    read_table_for_the_size_check(folder, "ui_clips.txt", script_tables_read_ui_clips);
+    read_motions_for_the_size_check(folder);
     if (tables_for_the_size_check.rows_dropped > 0) {
         printf("table rows dropped %d\n", tables_for_the_size_check.rows_dropped);
         return 0;
