@@ -141,17 +141,22 @@ def icon_shape_arguments(character, font_path, size):
     return ["-fill", "white", "-stroke", "none", "-draw", "roundrectangle 0,%d %d,%d %d,%d" % (size // 10, wide - 1, size - size // 10, size // 5, size // 5), "-font", font_path, "-pointsize", str(size * 45 // 100 if character == ICON_START else size * 7 // 10), "-gravity", "center", "-fill", "black", "-annotate", "+0+0", word]
 
 
+def white_pixels_with_alpha(alpha_values):
+    pixels = bytearray(b"\xff\xff\xff\xff" * len(alpha_values))
+    pixels[3::4] = alpha_values
+    return pixels
+
+
 def render_icon_glyph(font_path, work_folder, character):
     baseline_row, _ = line_renderer.line_box(PIXELS_PER_EM)
     width = ICON_WIDE_SIZE if character == ICON_START else ICON_SIZE
-    rgba_path = os.path.join(work_folder, "icon.rgba")
+    gray_path = os.path.join(work_folder, "icon.gray")
     size = ICON_SIZE * SUPERSAMPLE
-    arguments = ["magick", "-size", "%dx%d" % (width * SUPERSAMPLE, size), "xc:black"] + icon_shape_arguments(character, font_path, size) + ["-colorspace", "gray", "-alpha", "copy", "-filter", "Box", "-resize", "%dx%d!" % (width, ICON_SIZE), "-depth", "8", "rgba:" + rgba_path]
+    arguments = ["magick", "-size", "%dx%d" % (width * SUPERSAMPLE, size), "xc:black"] + icon_shape_arguments(character, font_path, size) + ["-colorspace", "gray", "-filter", "Box", "-resize", "%dx%d!" % (width, ICON_SIZE), "-depth", "8", "gray:" + gray_path]
     line_renderer.run_magick(arguments)
-    with open(rgba_path, "rb") as source:
-        pixels = bytearray(source.read())
-    os.remove(rgba_path)
-    line_renderer.set_every_color(pixels, (255, 255, 255))
+    with open(gray_path, "rb") as source:
+        pixels = white_pixels_with_alpha(source.read())
+    os.remove(gray_path)
     return {"advance": width + ICON_GAP, "width": width, "height": ICON_SIZE, "left": 0, "top": baseline_row - ICON_TOP_ABOVE_BASELINE, "pixels": bytes(pixels)}
 
 

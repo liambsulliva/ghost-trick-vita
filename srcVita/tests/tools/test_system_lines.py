@@ -32,6 +32,12 @@ class CharacterCodeTests(unittest.TestCase):
         self.assertEqual(message_cues.text_of_character_codes(codes), "A")
 
 
+class IconPixelTests(unittest.TestCase):
+    def test_gray_values_become_the_alpha_of_white_pixels(self):
+        pixels = talk_assets.white_pixels_with_alpha(bytes([0, 128, 255]))
+        self.assertEqual(bytes(pixels), bytes([255, 255, 255, 0, 255, 255, 255, 128, 255, 255, 255, 255]))
+
+
 class SystemLineSectionTests(unittest.TestCase):
     def setUp(self):
         self.section = talk_assets.system_line_section("one two three four", {"words_on_first_row": 3, "center_x": 464.6})
