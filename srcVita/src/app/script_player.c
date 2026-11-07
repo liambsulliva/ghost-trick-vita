@@ -229,6 +229,7 @@ static void read_next_file(void)
         read_text_table("soul", ".txt", script_tables_read_soul, 0);
         read_text_table("core_labels", ".txt", script_tables_read_core_labels, 0);
         read_text_table("route_steps", ".txt", script_tables_read_route, 0);
+        read_text_table("route_pacing", ".txt", script_tables_read_route_pacing, 0);
         read_text_table("ui_clips", ".txt", script_tables_read_ui_clips, 0);
         break;
     case 7:

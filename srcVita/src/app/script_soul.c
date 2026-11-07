@@ -1686,12 +1686,14 @@ static void run_route(struct script_machine *machine)
         }
         if (soul->route_ready_at == 0) {
             soul->route_ready_at = machine->tick + (machine->auto_press == SCRIPT_AUTO_FAST ? 0u : (unsigned int)step->dwell_ticks);
+            mark_route_step(machine, "route_step_ready", step);
         }
         if (machine->tick < soul->route_ready_at) {
             return;
         }
         soul->route_action_has_begun = 1;
         soul->route_step_began_at = machine->tick;
+        mark_route_step(machine, "route_step_began", step);
     }
     if (run_route_action(machine, step)) {
         finish_route_step(machine, step);

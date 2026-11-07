@@ -177,6 +177,15 @@ static void read_route(const char *folder)
         printf("route_steps.txt is invalid\n");
         return;
     }
+    snprintf(path, sizeof(path), "%s/route_pacing.txt", folder);
+    source = fopen(path, "r");
+    if (source != NULL) {
+        size = fread(text, 1, sizeof(text), source);
+        fclose(source);
+        if (!script_route_read_pacing(&replay_route, text, (unsigned int)size)) {
+            printf("route_pacing.txt is invalid\n");
+        }
+    }
     machine.route = &replay_route;
 }
 

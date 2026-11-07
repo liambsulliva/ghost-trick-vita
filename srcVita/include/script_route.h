@@ -33,6 +33,7 @@ struct script_route {
 };
 
 int script_route_read(struct script_route *route, const char *text, unsigned int text_size);
+int script_route_read_pacing(struct script_route *route, const char *text, unsigned int text_size);
 int script_route_first_step_of_script(const struct script_route *route, const char *script);
 const char *script_route_action_name(enum script_route_action action);
 int script_route_wait_has_token(const char *wait, const char *token);

@@ -156,7 +156,7 @@ coverage: route-check
 
 read-ahead: build/tests/golden/script_replay
 	@mkdir -p build/golden
-	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1/scripts --timing remaster --auto-paced --cues build/golden/cues_paced.tsv --stop-tick 200000 > /dev/null
+	python3 -I tools/assets/route_pacing.py build/tests/golden/script_replay tools/assets/chapter1.json ../extracted/vita_assets/chapter1/scripts build/golden/cues_paced.tsv
 	python3 -I tools/assets/read_ahead.py build/golden/cues_paced.tsv ../extracted/vita_assets/chapter1/scripts ../extracted/vita_assets/chapter1/animations
 
 route-check: build/tests/golden/script_replay

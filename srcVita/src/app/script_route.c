@@ -5,6 +5,7 @@
 
 #define ROUTE_LINE_MAX 384
 #define ROUTE_LINE_SCAN "step %95s %15s %47s %d %d %159s"
+#define PACING_LINE_SCAN "dwell %d %d"
 #define ROUTE_ACTION_WORD_MAX 16
 #define ROUTE_EMPTY_WORD "-"
 #define WAIT_TOKEN_SEPARATOR '&'
@@ -97,6 +98,27 @@ int script_route_read(struct script_route *route, const char *text, unsigned int
         if (line[0] != '\0' && !read_step(route, line)) {
             return 0;
         }
+    }
+    return 1;
+}
+
+int script_route_read_pacing(struct script_route *route, const char *text, unsigned int text_size)
+{
+    char line[ROUTE_LINE_MAX];
+    unsigned int offset;
+    int step_index;
+    int dwell_ticks;
+
+    offset = 0;
+    while (offset < text_size) {
+        offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
+        if (line[0] == '\0') {
+            continue;
+        }
+        if (sscanf(line, PACING_LINE_SCAN, &step_index, &dwell_ticks) != 2 || step_index < 0 || step_index >= route->step_count || dwell_ticks < 0) {
+            return 0;
+        }
+        route->steps[step_index].dwell_ticks = dwell_ticks;
     }
     return 1;
 }
