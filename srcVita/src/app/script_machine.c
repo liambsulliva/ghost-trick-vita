@@ -877,6 +877,9 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
             machine->chapter_mark = (int)words[0];
         }
         return SCRIPT_STEP_NEXT;
+    case 0xc4:
+    case 0x12e:
+        return SCRIPT_STEP_NEXT;
     case 0x76:
         note_entry(machine, words[0], words[1], words[2]);
         return SCRIPT_STEP_NEXT;
