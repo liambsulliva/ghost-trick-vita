@@ -125,6 +125,7 @@ static void begin_script(struct script_machine *machine, const struct script_sou
         machine->outputs->marked("script_begun", source->name);
     }
     script_soul_script_began(machine, source->name);
+    script_machine_set_world_origin(machine, 0, 0);
     machine->object_count = 0;
     machine->actor_count = 0;
     machine->gameapp_count = 0;

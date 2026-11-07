@@ -13,6 +13,8 @@
 #include "script_view.h"
 #include "sound_engine.h"
 
+#define CLASS_DRAWN_ONLY_IN_SOUL_VIEW 0x6309aa5au
+#define CLASS_DRAWN_ONLY_IN_LIVING_VIEW 0x45427fc2u
 #define BRIGHTNESS_SCALE 16.0f
 #define DIM_LEVEL_WHEN_FULL (1.0f - (float)SCRIPT_NARRATION_DIM_TOP_LEVEL / (float)SCRIPT_NARRATION_DIM_SCALE)
 #define CARD_FADE_IN_STARTS 22
@@ -91,6 +93,9 @@ static void on_stage_cleared(void)
     animation_library_clear();
     scene_layers_clear(scene_stage_layers());
     scene_effects_reset(scene_stage_effects());
+    scene_effects_set_flash(scene_stage_effects(), (float)white_level / BRIGHTNESS_SCALE);
+    mask_is_on = 0;
+    scene_view_forget_held_poses();
     scene_stage_hide_card();
     card_is_showing = 0;
     memset(open_balloon_rows, 0, sizeof(open_balloon_rows));
@@ -100,6 +105,11 @@ static void on_stage_cleared(void)
     script_view_swirl_changed(0);
     scene_stage_set_mono_mode(0);
     sound_request_stop_loop(ALL_SOUND_LOOPS);
+}
+
+static void on_world_origin_changed(int x, int y)
+{
+    scene_stage_set_object_origin((float)x, (float)y);
 }
 
 static void on_camera_moved(int x, int y)
@@ -227,6 +237,7 @@ static void on_actor_changed(const struct script_actor_view *actor)
     }
     scene_stage_place_object(actor->name, row->animation_name, (float)actor->x, (float)actor->y, (LEVEL_COUNT - actor->level) * LAYER_PER_LEVEL + (CREATION_INDEX_TOP - actor->creation_index), record_of(actor, row->records_per_frame));
     scene_stage_set_object_flipped(actor->name, actor->is_flipped);
+    scene_stage_set_object_views(actor->name, actor->class_id != CLASS_DRAWN_ONLY_IN_SOUL_VIEW, actor->class_id != CLASS_DRAWN_ONLY_IN_LIVING_VIEW);
 }
 
 static void on_brightness_changed(int signed_level)
@@ -580,6 +591,7 @@ static const struct script_outputs bridge_outputs = {
     .room_loaded = on_room_loaded,
     .camera_cut = on_camera_cut,
     .camera_moved = on_camera_moved,
+    .world_origin_changed = on_world_origin_changed,
     .shake_changed = on_shake_changed,
     .screen_filter_changed = on_screen_filter_changed,
     .mask_fade_color_changed = on_mask_fade_color_changed,

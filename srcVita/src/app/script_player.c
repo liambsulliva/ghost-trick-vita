@@ -20,6 +20,7 @@
 #include "texture_cache.h"
 
 #define MICROSECONDS_PER_VM_TICK 16666ULL
+#define MOST_TICKS_PER_DRAWN_FRAME 2ULL
 #define LONGEST_UPDATE_US 500000ULL
 #define LONGEST_AUDIO_PRELOAD_US 10000000ULL
 #define PRELOAD_PASS_MAX (TEXTURE_CACHE_ENTRY_MAX / BACKGROUND_READER_QUEUE_MAX)
@@ -442,6 +443,9 @@ static void run_ticks(unsigned long long elapsed_us)
         return;
     }
     time_owed_us = time_owed_us + elapsed_us;
+    if (time_owed_us > MICROSECONDS_PER_VM_TICK * MOST_TICKS_PER_DRAWN_FRAME) {
+        time_owed_us = MICROSECONDS_PER_VM_TICK * MOST_TICKS_PER_DRAWN_FRAME;
+    }
     while (time_owed_us >= MICROSECONDS_PER_VM_TICK) {
         time_owed_us = time_owed_us - MICROSECONDS_PER_VM_TICK;
         if (!run_one_tick()) {

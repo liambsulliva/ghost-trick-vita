@@ -255,7 +255,7 @@ MUTATIONS = [
     ("src/app/scene_view.c", "draw_mask_or_iris(&stage->effects, &view);", ""),
     ("src/app/scene_view.c", "draw_dim(&stage->effects);", ""),
     ("src/app/scene_view.c", "draw_flash(&stage->effects);", ""),
-    ("src/app/scene_view.c", "    draw_objects_in_layer_order(stage, &view);\n    draw_black_around_art(&view);", "    draw_black_around_art(&view);\n    draw_objects_in_layer_order(stage, &view);"),
+    ("src/app/scene_view.c", "    draw_objects_in_layer_order(stage, &objects_view);\n    draw_black_around_art(&view);", "    draw_black_around_art(&view);\n    draw_objects_in_layer_order(stage, &objects_view);"),
     ("src/app/scene_view.c", "draw_layers_over_the_world(stage);\n    draw_dissolve(&stage->effects);\n    draw_text_lines(stage);\n    draw_flash(&stage->effects);", "draw_flash(&stage->effects);\n    draw_text_lines(stage);\n    draw_stage_layers(stage);\n    draw_dissolve(&stage->effects);"),
     ("src/app/scene_view.c", "draw_flash(&stage->effects);\n    if (stage->card_texture[0] != '\\0') {\n        draw_card(stage->card_texture);\n    }", "if (stage->card_texture[0] != '\\0') {\n        draw_card(stage->card_texture);\n    }\n    draw_flash(&stage->effects);"),
     ("src/app/scene_view.c", "return (x - view->left) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;", "return x * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;"),

@@ -167,6 +167,16 @@ static struct screen_view view_of_stage(const struct scene_stage *stage)
     return view;
 }
 
+static struct screen_view view_for_objects(const struct scene_stage *stage, const struct screen_view *view)
+{
+    struct screen_view objects;
+
+    objects = *view;
+    objects.left = view->left - stage->object_origin_x;
+    objects.top = view->top - stage->object_origin_y;
+    return objects;
+}
+
 static struct renderer_rect world_area_to_screen(const struct screen_view *view, float x, float y, float width, float height)
 {
     struct renderer_rect area;
@@ -299,6 +309,9 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
     const char *wanted;
     float left;
 
+    if (stage->soul_mode_is_on ? object->hides_in_soul_view : object->hides_in_living_view) {
+        return;
+    }
     frame = animation_player_current_frame(&object->player);
     if (frame == NULL || animation_frame_is_blank(frame)) {
         return;
@@ -619,9 +632,12 @@ static void draw_world_layers(const struct scene_stage *stage)
 {
     struct screen_view view;
 
+    struct screen_view objects_view;
+
     view = view_of_stage(stage);
+    objects_view = view_for_objects(stage, &view);
     draw_plates(stage, &view);
-    draw_objects_in_layer_order(stage, &view);
+    draw_objects_in_layer_order(stage, &objects_view);
     draw_black_around_art(&view);
 }
 
@@ -630,6 +646,7 @@ static void draw_layers_over_the_world(const struct scene_stage *stage)
     struct screen_view view;
 
     view = view_of_stage(stage);
+    view = view_for_objects(stage, &view);
     draw_mask_or_iris(&stage->effects, &view);
     draw_overlays(stage, &view);
     draw_dim(&stage->effects);
@@ -685,10 +702,12 @@ static int texture_is_still_loading(const char *texture_name)
 int scene_view_visible_art_is_loading(const struct scene_stage *stage)
 {
     struct screen_view view;
+    struct screen_view objects_view;
     char grayscale_name[ASSET_NAME_MAX];
     int index;
 
     view = view_of_stage(stage);
+    objects_view = view_for_objects(stage, &view);
     for (index = 0; index < stage->plate_count; index++) {
         const struct scene_plate *plate;
 
@@ -709,7 +728,10 @@ int scene_view_visible_art_is_loading(const struct scene_stage *stage)
         if (frame == NULL || animation_frame_is_blank(frame)) {
             continue;
         }
-        if (area_is_on_screen(world_area_to_screen(&view, object->is_flipped ? object->x - frame->x - frame->width : object->x + frame->x, object->y + frame->y, frame->width, frame->height)) && texture_is_still_loading(art_under_the_screen_filter(stage, frame->texture_name, grayscale_name))) {
+        if (stage->soul_mode_is_on ? object->hides_in_soul_view : object->hides_in_living_view) {
+            continue;
+        }
+        if (area_is_on_screen(world_area_to_screen(&objects_view, object->is_flipped ? object->x - frame->x - frame->width : object->x + frame->x, object->y + frame->y, frame->width, frame->height)) && texture_is_still_loading(art_under_the_screen_filter(stage, frame->texture_name, grayscale_name))) {
             return 1;
         }
     }
@@ -721,8 +743,14 @@ void scene_view_world_to_screen(const struct scene_stage *stage, float x, float 
     struct screen_view view;
 
     view = view_of_stage(stage);
+    view = view_for_objects(stage, &view);
     *screen_x = (x - view.left) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
     *screen_y = (y - view.top) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+}
+
+void scene_view_forget_held_poses(void)
+{
+    memset(held_poses, 0, sizeof(held_poses));
 }
 
 void scene_view_draw_world(const struct scene_stage *stage)

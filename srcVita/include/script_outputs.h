@@ -49,6 +49,7 @@ struct script_outputs {
     void (*room_loaded)(int room, int camera_x, int camera_y);
     void (*camera_cut)(int x, int y);
     void (*camera_moved)(int x, int y);
+    void (*world_origin_changed)(int x, int y);
     void (*shake_changed)(int level, int ticks);
     void (*screen_filter_changed)(int mode);
     void (*mask_fade_color_changed)(int is_white);

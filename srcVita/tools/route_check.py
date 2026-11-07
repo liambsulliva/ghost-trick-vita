@@ -2,7 +2,7 @@ import argparse
 import sys
 
 OPENING_SCRIPT = "st01-st01_game000_Expand"
-PUSHES_STILL_EXPECTED = 1
+PUSHES_STILL_EXPECTED = 0
 EXPECTED_OPENING = [
     ("core", "shadanki"),
     ("trick", "shadanki"),

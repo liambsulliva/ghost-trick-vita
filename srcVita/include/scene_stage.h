@@ -26,6 +26,8 @@ struct scene_object {
     int layer;
     int is_flipped;
     int in_use;
+    int hides_in_living_view;
+    int hides_in_soul_view;
     int has_soul_tint;
     float soul_red;
     float soul_green;
@@ -40,6 +42,8 @@ struct scene_stage {
     struct scene_object objects[SCENE_OBJECT_MAX];
     float camera_x;
     float camera_y;
+    float object_origin_x;
+    float object_origin_y;
     float fade_amount;
     int soul_mode_is_on;
     int mono_mode_is_on;
@@ -64,6 +68,8 @@ int scene_stage_set_object(const char *object_name, const char *animation_name, 
 void scene_stage_remove_object(const char *object_name);
 void scene_stage_place_object(const char *object_name, const char *animation_name, float x, float y, int layer, int frame_index);
 void scene_stage_set_camera(float x, float y);
+void scene_stage_set_object_origin(float x, float y);
+void scene_stage_set_object_views(const char *object_name, int shows_in_living_view, int shows_in_soul_view);
 void scene_stage_show_card(const char *texture_name);
 void scene_stage_hide_card(void);
 void scene_stage_set_fade(float fade_amount);

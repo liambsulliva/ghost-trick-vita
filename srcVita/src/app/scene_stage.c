@@ -110,6 +110,9 @@ int scene_stage_set_object(const char *object_name, const char *animation_name, 
             run_log_write("scene too_many_objects name=%s", object_name);
             return 0;
         }
+        object->has_soul_tint = 0;
+        object->hides_in_living_view = 0;
+        object->hides_in_soul_view = 0;
     }
     snprintf(object->name, sizeof(object->name), "%s", object_name);
     scene_stage_request_animation_textures(animation);
@@ -157,6 +160,23 @@ void scene_stage_set_object_flipped(const char *object_name, int is_flipped)
     object = find_object(object_name);
     if (object != NULL) {
         object->is_flipped = is_flipped;
+    }
+}
+
+void scene_stage_set_object_origin(float x, float y)
+{
+    stage.object_origin_x = x;
+    stage.object_origin_y = y;
+}
+
+void scene_stage_set_object_views(const char *object_name, int shows_in_living_view, int shows_in_soul_view)
+{
+    struct scene_object *object;
+
+    object = find_object(object_name);
+    if (object != NULL) {
+        object->hides_in_living_view = !shows_in_living_view;
+        object->hides_in_soul_view = !shows_in_soul_view;
     }
 }
 

@@ -272,14 +272,23 @@ static void pan_to_object(struct script_machine *machine, struct script_vm *vm, 
     if (point < 0 || point >= SCRIPT_ACTOR_POINT_MAX) {
         point = 0;
     }
-    target_x = signed_word(words[2]) < 0 ? machine->camera_x : object->actor.x + object->actor.points[point][0] - signed_word(words[2]);
-    target_y = signed_word(words[3]) < 0 ? machine->camera_y : object->actor.y + object->actor.points[point][1] - signed_word(words[3]);
+    target_x = signed_word(words[2]) < 0 ? machine->camera_x : machine->world_origin_x + object->actor.x + object->actor.points[point][0] - signed_word(words[2]);
+    target_y = signed_word(words[3]) < 0 ? machine->camera_y : machine->world_origin_y + object->actor.y + object->actor.points[point][1] - signed_word(words[3]);
     begin_pan(machine, target_x, target_y, (int)script_machine_u32(words, 4), 1);
+}
+
+void script_machine_set_world_origin(struct script_machine *machine, int x, int y)
+{
+    machine->world_origin_x = x;
+    machine->world_origin_y = y;
+    if (machine->outputs->world_origin_changed != NULL) {
+        machine->outputs->world_origin_changed(x, y);
+    }
 }
 
 void script_machine_pan_camera_to(struct script_machine *machine, int center_x, int center_y)
 {
-    begin_pan(machine, center_x - DS_VIEW_WIDTH / 2, center_y - DS_VIEW_HEIGHT / 2, SOUL_CAMERA_SPEED_FIXED, 0);
+    begin_pan(machine, machine->world_origin_x + center_x - DS_VIEW_WIDTH / 2, machine->world_origin_y + center_y - DS_VIEW_HEIGHT / 2, SOUL_CAMERA_SPEED_FIXED, 0);
 }
 
 void script_machine_scroll_camera(struct script_machine *machine, int delta_x, int delta_y)
@@ -366,8 +375,8 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         machine->pan_is_active = 0;
         break;
     case 0xd7:
-        machine->world_origin_x = signed_word(words[0]);
-        machine->world_origin_y = signed_word(words[1]);
+        script_machine_scroll_camera(machine, signed_word(words[0]) - machine->world_origin_x, signed_word(words[1]) - machine->world_origin_y);
+        script_machine_set_world_origin(machine, signed_word(words[0]), signed_word(words[1]));
         break;
     case 0xb:
     case 0xc:

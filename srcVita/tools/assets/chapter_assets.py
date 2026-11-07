@@ -250,7 +250,9 @@ def resolve_tables(packs, scripts):
             stems_by_begin[begin].append(stem)
             table_rows.append((stem, begin, frames_of(table[2])))
         for stem, begin, frames in table_rows:
-            folder = folder_of_stem(stem, folders)
+            folder = next((peer.lower() for peer in stems_by_begin[begin] if peer.lower() in folders), None)
+            if folder is None:
+                folder = folder_of_stem(stem, folders)
             if folder is None:
                 for peer in stems_by_begin[begin]:
                     folder = folder_of_stem(peer, folders)

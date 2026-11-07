@@ -110,7 +110,12 @@ static int stream_ticks_for_distance(float distance)
 
 static int point_is_in_camera_view(const struct script_machine *machine, float x, float y)
 {
-    return x >= (float)(machine->camera_x - CAMERA_VIEW_MARGIN) && x <= (float)(machine->camera_x + CAMERA_VIEW_WIDTH + CAMERA_VIEW_MARGIN) && y >= (float)(machine->camera_y - CAMERA_VIEW_MARGIN) && y <= (float)(machine->camera_y + CAMERA_VIEW_HEIGHT + CAMERA_VIEW_MARGIN);
+    float view_left;
+    float view_top;
+
+    view_left = (float)(machine->camera_x - machine->world_origin_x);
+    view_top = (float)(machine->camera_y - machine->world_origin_y);
+    return x >= view_left - (float)CAMERA_VIEW_MARGIN && x <= view_left + (float)(CAMERA_VIEW_WIDTH + CAMERA_VIEW_MARGIN) && y >= view_top - (float)CAMERA_VIEW_MARGIN && y <= view_top + (float)(CAMERA_VIEW_HEIGHT + CAMERA_VIEW_MARGIN);
 }
 
 static void drag_soul_to(struct script_machine *machine, int object_index, int slot)

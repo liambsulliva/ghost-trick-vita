@@ -661,6 +661,7 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
     case 0xa9:
         object = script_machine_current_object(machine, vm);
         if (object != NULL && object->actor.exists && !motion_has_ended(object)) {
+            machine->last_timer_tick = machine->tick;
             return SCRIPT_STEP_MOVED_THEN_YIELD;
         }
         break;
