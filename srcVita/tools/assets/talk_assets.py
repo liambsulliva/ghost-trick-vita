@@ -39,6 +39,17 @@ ENDING_PRESS = 0
 ENDING_PAUSE_THEN_NEXT = 1
 ENDING_PAUSE_THEN_CLOSE = 2
 TAG_PATTERN = re.compile(r"<\s*(\w+)\s+(\w+)((?:\s+\w+=\"[^\"]*\")*)\s*/?\s*>")
+ICON_TAG_PATTERN = re.compile(r"<ICON (\w+)>")
+ICON_CROSS = "\ue000"
+ICON_L = "\ue001"
+ICON_R = "\ue002"
+ICON_START = "\ue003"
+CHARACTER_OF_ICON = {"TRICK": ICON_CROSS, "GHOST": ICON_L, "BACK": ICON_L, "RESTART": ICON_R, "SAVE": ICON_START}
+ICON_SIZE = 26
+ICON_WIDE_SIZE = 56
+ICON_GAP = 4
+ICON_TOP_ABOVE_BASELINE = 23
+WORD_SWAPS = [(re.compile(r"\bTapping\b"), "Pressing"), (re.compile(r"\btapping\b"), "pressing"), (re.compile(r"\bTap\b"), "Press"), (re.compile(r"\btap\b"), "press"), (re.compile(r"\bDragging\b"), "Moving"), (re.compile(r"\bdragging\b"), "moving"), (re.compile(r"\bDrag\b"), "Move"), (re.compile(r"\bdrag\b"), "move")]
 ANY_TAG_PATTERN = re.compile(r"<[^>]*>")
 ORIGIN_PATTERN = re.compile(r"origin: (-?[0-9.]+),")
 NO_FACE = "-"
@@ -49,8 +60,14 @@ def new_section():
     return {"reveal_is_fade": 0, "ending": ENDING_PRESS, "characters": []}
 
 
+def with_button_words(text):
+    for pattern, replacement in WORD_SWAPS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
 def add_plain_text(section, text, color):
-    for character in text.replace("\r", ""):
+    for character in with_button_words(text).replace("\r", ""):
         section["characters"].append((character, color))
 
 
@@ -76,6 +93,10 @@ def parse_page(raw_text):
     for match in ANY_TAG_PATTERN.finditer(raw_text):
         add_plain_text(sections[-1], raw_text[position:match.start()], color)
         position = match.end()
+        icon = ICON_TAG_PATTERN.fullmatch(match.group(0))
+        if icon is not None and icon.group(1) in CHARACTER_OF_ICON:
+            sections[-1]["characters"].append((CHARACTER_OF_ICON[icon.group(1)], color))
+            continue
         parts = TAG_PATTERN.fullmatch(match.group(0))
         if parts is None:
             continue
@@ -114,7 +135,33 @@ def measure_advance(font_path, work_folder, character):
     return origins[-1] / SUPERSAMPLE
 
 
+def icon_shape_arguments(character, font_path, size):
+    middle = size // 2
+    if character == ICON_CROSS:
+        reach = size * 22 // 100
+        return ["-fill", "white", "-stroke", "none", "-draw", "circle %d,%d %d,%d" % (middle, middle, middle, size - 2), "-fill", "none", "-stroke", "black", "-strokewidth", str(size // 9), "-draw", "line %d,%d %d,%d" % (middle - reach, middle - reach, middle + reach, middle + reach), "-draw", "line %d,%d %d,%d" % (middle - reach, middle + reach, middle + reach, middle - reach)]
+    word = {ICON_L: "L", ICON_R: "R", ICON_START: "START"}[character]
+    wide = ICON_WIDE_SIZE * SUPERSAMPLE if character == ICON_START else size
+    return ["-fill", "white", "-stroke", "none", "-draw", "roundrectangle 0,%d %d,%d %d,%d" % (size // 10, wide - 1, size - size // 10, size // 5, size // 5), "-font", font_path, "-pointsize", str(size * 45 // 100 if character == ICON_START else size * 7 // 10), "-gravity", "center", "-fill", "black", "-annotate", "+0+0", word]
+
+
+def render_icon_glyph(font_path, work_folder, character):
+    baseline_row, _ = line_renderer.line_box(PIXELS_PER_EM)
+    width = ICON_WIDE_SIZE if character == ICON_START else ICON_SIZE
+    rgba_path = os.path.join(work_folder, "icon.rgba")
+    size = ICON_SIZE * SUPERSAMPLE
+    arguments = ["magick", "-size", "%dx%d" % (width * SUPERSAMPLE, size), "xc:black"] + icon_shape_arguments(character, font_path, size) + ["-colorspace", "gray", "-alpha", "copy", "-filter", "Box", "-resize", "%dx%d!" % (width, ICON_SIZE), "-depth", "8", "rgba:" + rgba_path]
+    line_renderer.run_magick(arguments)
+    with open(rgba_path, "rb") as source:
+        pixels = bytearray(source.read())
+    os.remove(rgba_path)
+    line_renderer.set_every_color(pixels, (255, 255, 255))
+    return {"advance": width + ICON_GAP, "width": width, "height": ICON_SIZE, "left": 0, "top": baseline_row - ICON_TOP_ABOVE_BASELINE, "pixels": bytes(pixels)}
+
+
 def render_glyph(font_path, work_folder, character):
+    if character in CHARACTER_OF_ICON.values():
+        return render_icon_glyph(font_path, work_folder, character)
     baseline_row, line_height = line_renderer.line_box(PIXELS_PER_EM)
     canvas_width = PIXELS_PER_EM * 4 * SUPERSAMPLE
     canvas_height = line_height * 2 * SUPERSAMPLE
