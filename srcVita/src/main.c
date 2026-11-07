@@ -26,6 +26,7 @@
 #include "timing.h"
 #include "viewer_app.h"
 
+#define LONG_FRAME_US 50000u
 #define BURST_PAUSE_MOST_US 120000000ULL
 #define ART_HOLD_SLEEP_US 4000
 
@@ -302,6 +303,9 @@ static void run_main_loop(void)
         frame_number = frame_number + 1;
         if (frame_number >= FIRST_TIMED_FRAME) {
             frame_stats_add_frame(&stats, last_frame_us, update_ended_us - frame_started_us, draw_ended_us - update_ended_us, present_ended_us - draw_ended_us);
+            if (last_frame_us >= LONG_FRAME_US) {
+                run_log_write("frame long us=%llu update_us=%llu draw_us=%llu present_us=%llu", (unsigned long long)last_frame_us, update_ended_us - frame_started_us, draw_ended_us - update_ended_us, present_ended_us - draw_ended_us);
+            }
         }
         if (frame_stats_window_is_full(&stats)) {
             publish_frame_stats(&stats);
