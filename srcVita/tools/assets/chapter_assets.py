@@ -46,6 +46,8 @@ FIRST_FACE_RESOURCE = 204
 NO_FACE_RESOURCE = 0x8000
 FACE_LIST_NAME = "cmntexturedatalist"
 FACE_FOLDER_MARK = "08_face"
+HEAD_FACE_MARK = "cmn_do_"
+HEAD_FACE_SIZE = 256
 FACE_WIDTH = 360
 FACE_HEIGHT = 540
 MESSAGE_FOLDER = "natives/android/gamedesign/text/%s/%s_%04d.msg.22"
@@ -446,7 +448,8 @@ def add_face_textures(expanded, face_logical_paths):
         name = face_texture_name(path)
         if name not in known:
             known.add(name)
-            textures.append({"name": name, "source": pack_files_path_stem(path) + TEX_SUFFIX, "width": FACE_WIDTH, "height": FACE_HEIGHT})
+            is_head = HEAD_FACE_MARK in path.lower()
+            textures.append({"name": name, "source": pack_files_path_stem(path) + TEX_SUFFIX, "width": HEAD_FACE_SIZE if is_head else FACE_WIDTH, "height": HEAD_FACE_SIZE if is_head else FACE_HEIGHT})
     expanded["screen_textures"] = textures
 
 

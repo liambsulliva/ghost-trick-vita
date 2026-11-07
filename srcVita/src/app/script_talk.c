@@ -41,7 +41,7 @@ static int read_page_row(const char *line, struct script_talk_book *book)
         return 0;
     }
     page = &book->pages[book->page_count];
-    if (sscanf(line, "page " ASSET_NAME_SCAN " %d %d %d %d %d", page->face_texture, &page->face_is_flipped, &page->is_top_box, &page->reveal_is_fade, &ending, &line_count) != 6) {
+    if (sscanf(line, "page " ASSET_NAME_SCAN " %d %d %d %d %d %d", page->face_texture, &page->face_is_flipped, &page->is_top_box, &page->reveal_is_fade, &ending, &line_count, &page->changes_face_instantly) != 7) {
         return 0;
     }
     page->has_face = strcmp(page->face_texture, NO_FACE) != 0;
@@ -291,6 +291,9 @@ static int next_page_needs_a_slide(const struct script_machine *machine)
 
     page = current_page(machine);
     next = page + 1;
+    if (next->changes_face_instantly) {
+        return 0;
+    }
     return page->is_top_box != next->is_top_box || page->has_face != next->has_face || (page->has_face && strcmp(page->face_texture, next->face_texture) != 0);
 }
 

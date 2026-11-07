@@ -18,8 +18,8 @@ LINE_PITCH = 36
 BOTTOM_BOX_TOP = 412
 BOTTOM_BOX_HEIGHT = 132
 BOTTOM_TEXT_LEFT = 40
-TOP_BOX_TOP = 6
-TOP_BOX_HEIGHT = 132
+TOP_BOX_TOP = 3
+TOP_BOX_HEIGHT = 144
 TOP_TEXT_LEFT = 212
 ATLAS_WIDTH = 1024
 ATLAS_CELL_GAP = 4
@@ -29,6 +29,12 @@ COLOR_SHIFT = 14
 IGNORED_VERBS = ("s0", "mes_se_play", "mesflash", "mesquake")
 NEW_PAGE_CODE = 0x02
 FACE_CODE = 0x08
+POSE_CODE = 0x19
+HEAD_CODE = 0x1b
+BOX_BOTTOM = 0
+BOX_TOP_ALONE = 1
+BOX_TOP_WITH_HEAD = 2
+TOP_WITH_HEAD_TEXT_LEFT = 282
 ENDING_PRESS = 0
 ENDING_PAUSE_THEN_NEXT = 1
 ENDING_PAUSE_THEN_CLOSE = 2
@@ -179,14 +185,16 @@ def bake_font_atlas(fonts, work_folder, record, code, font_path, characters):
     return bake_record.result_of_own_size(FONT_TEXTURE, gtex_bytes), rows
 
 
-def faces_by_ds_page(language_plain, offset):
-    faces = [None]
+def layouts_by_ds_page(language_plain, offset):
+    layouts = [None]
     for code, parameters in message_cues.control_codes(language_plain, offset):
-        if code == FACE_CODE:
-            faces[-1] = parameters[0]
+        if code == FACE_CODE or code == POSE_CODE:
+            layouts[-1] = {"code": code, "value": parameters[0]}
+        elif code == HEAD_CODE:
+            layouts[-1] = {"code": code, "value": parameters[0]}
         elif code == NEW_PAGE_CODE:
-            faces.append(None)
-    return faces
+            layouts.append(None)
+    return layouts
 
 
 def read_ds_faces(section):
@@ -202,21 +210,27 @@ def read_ds_faces(section):
             targets_by_plain[identity] = message_cues.label_targets(lmg_decode.read_labels(plain, lmg_decode.read_header(plain)))
         if label in targets_by_plain[identity]:
             try:
-                faces[label] = faces_by_ds_page(plain, targets_by_plain[identity][label])
+                faces[label] = layouts_by_ds_page(plain, targets_by_plain[identity][label])
             except message_cues.CueError:
                 pass
     return faces
 
 
-def face_of_page(section, faces, label, page_index):
-    ids = faces.get(label, [])
-    face_id = ids[page_index] if page_index < len(ids) else None
-    if face_id is None and page_index > 0 and ids:
-        face_id = next((value for value in reversed(ids[:page_index]) if value is not None), None)
-    if face_id is None or face_id not in section["face_rows"]:
-        return None, 0
-    resource, flip = section["face_rows"][face_id]
-    return chapter_assets.face_texture_of(section["face_paths"], resource), flip
+def layout_of_page(section, layouts, label, page_index):
+    entries = layouts.get(label, [])
+    entry = entries[page_index] if page_index < len(entries) else None
+    changes_instantly = entry is not None and entry["code"] == POSE_CODE
+    if entry is None and page_index > 0 and entries:
+        entry = next((value for value in reversed(entries[:page_index]) if value is not None), None)
+    if entry is None:
+        return None, 0, BOX_BOTTOM, 0
+    if entry["code"] == HEAD_CODE:
+        head = section.get("head_faces", {}).get(str(entry["value"]))
+        return head, 0, BOX_TOP_WITH_HEAD if head is not None else BOX_TOP_ALONE, 0
+    if entry["value"] not in section["face_rows"]:
+        return None, 0, BOX_BOTTOM, 0
+    resource, flip = section["face_rows"][entry["value"]]
+    return chapter_assets.face_texture_of(section["face_paths"], resource), flip, BOX_BOTTOM, 1 if changes_instantly else 0
 
 
 def line_tops(line_count, box_top, box_height):
@@ -261,10 +275,10 @@ def parse_all_pages(packs, section, text_key):
             except message_file.MessageFileError:
                 skipped = skipped + 1
                 continue
-            face, flip = face_of_page(section, faces, label, page_index)
+            face, flip, box_kind, changes_instantly = layout_of_page(section, faces, label, page_index)
             if face is not None and face not in used_faces:
                 used_faces.append(face)
-            parsed[label].append((sections, face, flip))
+            parsed[label].append((sections, face, flip, box_kind, changes_instantly))
             for one_section in sections:
                 for line in one_section["lines"]:
                     characters.update(character for character, _ in line)
@@ -286,14 +300,13 @@ def bake_talk(packs, set_description, text_key, work_folder, record, code):
     rows.extend("glyph " + " ".join(str(value) for value in row) for row in glyph_rows)
     for label, pages in parsed.items():
         rows.append("talk " + label)
-        for sections, face, flip in pages:
+        for sections, face, flip, box_kind, changes_instantly in pages:
             face_name = chapter_assets.face_texture_name(face) if face is not None else NO_FACE
             for one_section in sections:
-                is_top_box = 1 if face is None else 0
-                box_top = TOP_BOX_TOP if is_top_box else BOTTOM_BOX_TOP
-                box_height = TOP_BOX_HEIGHT if is_top_box else BOTTOM_BOX_HEIGHT
-                text_left = TOP_TEXT_LEFT if is_top_box else BOTTOM_TEXT_LEFT
-                rows.append("page %s %d %d %d %d %d" % (face_name, flip, is_top_box, one_section["reveal_is_fade"], one_section["ending"], len(one_section["lines"])))
+                box_top = TOP_BOX_TOP if box_kind != BOX_BOTTOM else BOTTOM_BOX_TOP
+                box_height = TOP_BOX_HEIGHT if box_kind != BOX_BOTTOM else BOTTOM_BOX_HEIGHT
+                text_left = {BOX_BOTTOM: BOTTOM_TEXT_LEFT, BOX_TOP_ALONE: TOP_TEXT_LEFT, BOX_TOP_WITH_HEAD: TOP_WITH_HEAD_TEXT_LEFT}[box_kind]
+                rows.append("page %s %d %d %d %d %d %d" % (face_name, flip, box_kind, one_section["reveal_is_fade"], one_section["ending"], len(one_section["lines"]), changes_instantly))
                 tops = line_tops(len(one_section["lines"]), box_top, box_height)
                 for line, top in zip(one_section["lines"], tops):
                     codes = " ".join(str(glyph_of[character] | (color << COLOR_SHIFT)) for character, color in line)

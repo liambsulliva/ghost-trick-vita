@@ -19,10 +19,17 @@
 #define BOX_BOTTOM_X 0.0f
 #define BOX_BOTTOM_Y 412.0f
 #define BOX_BOTTOM_WIDTH 960.0f
-#define BOX_TOP_X 180.0f
-#define BOX_TOP_Y 6.0f
-#define BOX_TOP_WIDTH 600.0f
+#define BOX_TOP_ALONE 1
+#define BOX_TOP_WITH_HEAD 2
+#define BOX_TOP_ALONE_X 188.0f
+#define BOX_TOP_WITH_HEAD_X 255.5f
+#define BOX_TOP_Y 3.0f
+#define BOX_TOP_WIDTH 584.0f
+#define BOX_TOP_HEIGHT 144.0f
 #define BOX_HEIGHT 132.0f
+#define HEAD_X 120.0f
+#define HEAD_Y 0.5f
+#define HEAD_SIZE 180.5f
 #define FACE_X 600.0f
 #define FACE_Y 2.0f
 #define FACE_WIDTH 360.0f
@@ -31,8 +38,8 @@
 #define CURSOR_HEIGHT 24.0f
 #define CURSOR_MARGIN_RIGHT 24.0f
 #define CURSOR_MARGIN_BOTTOM 12.0f
-#define CURSOR_BOB_TICKS 30u
-#define CURSOR_BOB_PIXELS 4.0f
+#define CURSOR_SWAY_TICKS 40u
+#define CURSOR_SWAY_PIXELS 5.0f
 #define RING_PULSE_TICKS 60u
 #define RING_SMALLEST_SIZE 0.75f
 #define VIEW_CORE_MARK_MAX 64
@@ -478,8 +485,8 @@ static void draw_face(const struct script_talk_page *page)
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
         return;
     }
-    area.x = page->face_is_flipped ? FACE_X : 0.0f;
-    area.y = FACE_Y + (1.0f - talk.slide) * FACE_HEIGHT;
+    area.x = page->face_is_flipped ? FACE_X + (1.0f - talk.slide) * FACE_WIDTH : -(1.0f - talk.slide) * FACE_WIDTH;
+    area.y = FACE_Y;
     area.width = FACE_WIDTH;
     area.height = FACE_HEIGHT;
     uv = whole_texture();
@@ -490,19 +497,44 @@ static void draw_face(const struct script_talk_page *page)
     renderer_draw_sprite(texture->texture, area, uv, white);
 }
 
+static void draw_head(const struct script_talk_page *page, float slide_y)
+{
+    draw_named_texture(page->face_texture, HEAD_X, HEAD_Y + slide_y, HEAD_SIZE, HEAD_SIZE, white);
+}
+
+static float cursor_sway(void)
+{
+    unsigned int phase;
+
+    phase = age_ticks % CURSOR_SWAY_TICKS;
+    if (phase > CURSOR_SWAY_TICKS / 2u) {
+        phase = CURSOR_SWAY_TICKS - phase;
+    }
+    return (float)phase / (float)(CURSOR_SWAY_TICKS / 2u) * CURSOR_SWAY_PIXELS;
+}
+
 static void draw_talk(void)
 {
     const struct script_talk_page *page;
     float slide_y;
     float box_y;
+    float box_right;
 
     page = talk.page;
-    slide_y = (1.0f - talk.slide) * (BOX_HEIGHT + BOX_TOP_Y);
     if (page->is_top_box) {
-        slide_y = -slide_y;
+        float box_x;
+
+        box_x = page->is_top_box == BOX_TOP_WITH_HEAD ? BOX_TOP_WITH_HEAD_X : BOX_TOP_ALONE_X;
+        box_right = box_x + BOX_TOP_WIDTH;
+        slide_y = -(1.0f - talk.slide) * (BOX_TOP_HEIGHT + BOX_TOP_Y);
         box_y = BOX_TOP_Y + slide_y;
-        draw_named_texture(BOX_TOP_TEXTURE, BOX_TOP_X, box_y, BOX_TOP_WIDTH, BOX_HEIGHT, white);
+        if (page->is_top_box == BOX_TOP_WITH_HEAD && page->has_face) {
+            draw_head(page, slide_y);
+        }
+        draw_named_texture(BOX_TOP_TEXTURE, box_x, box_y, BOX_TOP_WIDTH, BOX_TOP_HEIGHT, white);
     } else {
+        box_right = BOX_BOTTOM_WIDTH;
+        slide_y = (1.0f - talk.slide) * (BOX_HEIGHT + BOX_TOP_Y);
         box_y = BOX_BOTTOM_Y + slide_y;
         if (page->has_face) {
             draw_face(page);
@@ -511,10 +543,7 @@ static void draw_talk(void)
     }
     draw_talk_text(&talk, slide_y);
     if (talk.cursor_is_on) {
-        float bob;
-
-        bob = (age_ticks % CURSOR_BOB_TICKS) < CURSOR_BOB_TICKS / 2u ? 0.0f : CURSOR_BOB_PIXELS;
-        draw_named_texture(CURSOR_TEXTURE, (page->is_top_box ? BOX_TOP_X + BOX_TOP_WIDTH : BOX_BOTTOM_WIDTH) - CURSOR_MARGIN_RIGHT, box_y + BOX_HEIGHT - CURSOR_HEIGHT - CURSOR_MARGIN_BOTTOM + bob, CURSOR_WIDTH, CURSOR_HEIGHT, white);
+        draw_named_texture(CURSOR_TEXTURE, box_right - CURSOR_MARGIN_RIGHT + cursor_sway(), box_y + (page->is_top_box ? BOX_TOP_HEIGHT : BOX_HEIGHT) - CURSOR_HEIGHT - CURSOR_MARGIN_BOTTOM, CURSOR_WIDTH, CURSOR_HEIGHT, white);
     }
 }
 

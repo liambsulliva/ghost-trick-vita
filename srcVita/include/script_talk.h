@@ -50,6 +50,7 @@ struct script_talk_page {
     int has_face;
     int face_is_flipped;
     int is_top_box;
+    int changes_face_instantly;
     int reveal_is_fade;
     enum script_talk_ending ending;
     int first_line;
