@@ -843,8 +843,17 @@ void script_player_run_until(const char *kind, const char *name)
     }
 }
 
+static int route_step_number_is(const char *step_name, const char *wanted)
+{
+    return strtoul(step_name, NULL, 10) == strtoul(wanted, NULL, 10) && step_name[0] >= '0' && step_name[0] <= '9';
+}
+
 void script_player_note_mark(const char *what, const char *name)
 {
+    if (strcmp(run_until_kind, "step") == 0 && strcmp(what, "route_step_done") == 0 && route_step_number_is(name, run_until_name)) {
+        snprintf(run_until_kind, sizeof(run_until_kind), "reached");
+        return;
+    }
     if ((strcmp(run_until_kind, "script") == 0 && strcmp(what, "script_begun") == 0 && strcmp(run_until_name, name) == 0) || (strcmp(run_until_kind, "act") == 0 && strcmp(what, "act_begun") == 0 && strcmp(run_until_name, name) == 0)) {
         snprintf(run_until_kind, sizeof(run_until_kind), "reached");
     }
