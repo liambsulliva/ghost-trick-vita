@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bake_record
 
 AHEAD_EXTENSION = ".ahead"
+BUNDLE_EXTENSION = ".anims"
 MOTIONS_EXTENSION = ".motions"
 ANCHOR_ACT_PREFIX = "game"
 
@@ -108,6 +109,24 @@ def schedules_from_cues(cues_path, scripts_folder, animation_folder):
     return schedules
 
 
+def bundle_text(scripts_folder, animation_folder, script_name):
+    parts = []
+    path = os.path.join(scripts_folder, script_name + MOTIONS_EXTENSION)
+    if not os.path.exists(path):
+        return ""
+    seen = set()
+    for line in read_lines(path):
+        fields = line.split()
+        if len(fields) > 2 and fields[0] == "motion" and fields[2] not in seen:
+            seen.add(fields[2])
+            animation_path = os.path.join(animation_folder, fields[2] + ".anim")
+            if os.path.exists(animation_path):
+                with open(animation_path) as source:
+                    text = source.read()
+                parts.append(text if text.endswith("\n") else text + "\n")
+    return "".join(parts)
+
+
 def ahead_text(entries):
     return "".join("ahead %s %d %s\n" % entry for entry in entries)
 
@@ -119,9 +138,14 @@ def main():
     parser.add_argument("animation_folder", help="baked animations folder")
     arguments = parser.parse_args()
     schedules = schedules_from_cues(arguments.cues, arguments.scripts_folder, arguments.animation_folder)
+    for path in os.listdir(arguments.scripts_folder):
+        if path.endswith(MOTIONS_EXTENSION):
+            schedules.setdefault(path[:-len(MOTIONS_EXTENSION)], [])
     for script_name, entries in sorted(schedules.items()):
         bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + AHEAD_EXTENSION), ahead_text(entries).encode("ascii"))
-        print("read ahead %s: %d textures" % (script_name, len(entries)))
+        bundle = bundle_text(arguments.scripts_folder, arguments.animation_folder, script_name)
+        bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + BUNDLE_EXTENSION), bundle.encode("ascii"))
+        print("read ahead %s: %d textures, %d animations" % (script_name, len(entries), bundle.count("animation ")))
     return 0
 
 

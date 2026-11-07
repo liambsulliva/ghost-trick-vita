@@ -3,11 +3,12 @@
 
 #include "animation.h"
 
-#define ANIMATION_LIBRARY_MAX 256
+#define ANIMATION_LIBRARY_MAX 500
 
 void animation_library_init(const char *animation_folder);
 const struct animation *animation_library_load(const char *name);
 void animation_library_clear(void);
 int animation_library_is_full(void);
+int animation_library_add_bundle(const char *text, unsigned int text_size);
 
 #endif

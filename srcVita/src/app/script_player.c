@@ -173,6 +173,10 @@ static void read_script_motions(const char *name)
         read_ahead_add_text(name, (const char *)bytes, size);
         mem_free(bytes);
     }
+    if (read_named_file(name, ".anims", &bytes, &size) == FILE_OK) {
+        run_log_write("script animations name=%s added=%d", name, animation_library_add_bundle((const char *)bytes, size));
+        mem_free(bytes);
+    }
 }
 
 static void begin_loading_animations(void);

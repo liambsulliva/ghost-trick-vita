@@ -6,6 +6,8 @@
 #include "memory.h"
 #include "run_log.h"
 
+#define BUNDLE_ANIMATION_PREFIX "animation "
+
 static char folder[FILE_PATH_MAX];
 static struct animation *loaded_animations[ANIMATION_LIBRARY_MAX];
 static int loaded_count;
@@ -82,6 +84,68 @@ const struct animation *animation_library_load(const char *name)
     loaded_animations[loaded_count] = animation;
     loaded_count = loaded_count + 1;
     return animation;
+}
+
+static const char *next_animation_start(const char *text, const char *end)
+{
+    const char *line;
+
+    line = text;
+    while (line < end) {
+        const char *line_end;
+
+        if ((unsigned int)(end - line) >= sizeof(BUNDLE_ANIMATION_PREFIX) - 1u && memcmp(line, BUNDLE_ANIMATION_PREFIX, sizeof(BUNDLE_ANIMATION_PREFIX) - 1u) == 0) {
+            return line;
+        }
+        line_end = memchr(line, '\n', (size_t)(end - line));
+        if (line_end == NULL) {
+            return end;
+        }
+        line = line_end + 1;
+    }
+    return end;
+}
+
+static int add_bundled_animation(const char *start, const char *end)
+{
+    char name[ASSET_NAME_MAX];
+    struct animation *animation;
+
+    if (sscanf(start, BUNDLE_ANIMATION_PREFIX ASSET_NAME_SCAN, name) != 1 || find_loaded(name) != NULL || loaded_count >= ANIMATION_LIBRARY_MAX) {
+        return 0;
+    }
+    animation = mem_alloc(sizeof(struct animation));
+    if (animation == NULL) {
+        return 0;
+    }
+    if (animation_parse(start, (unsigned int)(end - start), animation) != ANIMATION_OK) {
+        mem_free(animation);
+        run_log_write("animation invalid_in_bundle name=%s", name);
+        return 0;
+    }
+    snprintf(animation->name, sizeof(animation->name), "%s", name);
+    loaded_animations[loaded_count] = animation;
+    loaded_count = loaded_count + 1;
+    return 1;
+}
+
+int animation_library_add_bundle(const char *text, unsigned int text_size)
+{
+    const char *end;
+    const char *start;
+    int added;
+
+    end = text + text_size;
+    added = 0;
+    start = next_animation_start(text, end);
+    while (start < end) {
+        const char *next;
+
+        next = next_animation_start(start + sizeof(BUNDLE_ANIMATION_PREFIX) - 1u, end);
+        added = added + add_bundled_animation(start, next);
+        start = next;
+    }
+    return added;
 }
 
 int animation_library_is_full(void)
