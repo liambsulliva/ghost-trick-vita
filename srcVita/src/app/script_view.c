@@ -562,6 +562,9 @@ static void draw_fx_frame(const struct script_fx_movie *movie, const struct scri
     int index;
 
     fx_page_name(movie, frame->page, name);
+    if (scene_stage_view()->mono_mode_is_on && !soul_is_on) {
+        strncat(name, TEXTURE_CACHE_GRAYSCALE_SUFFIX, sizeof(name) - strlen(name) - 1u);
+    }
     texture = texture_cache_use_or_start_loading(name);
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
         return;

@@ -5,7 +5,7 @@
 #include "text_lines.h"
 
 #define TALK_LINE_TEXT_MAX 2048
-#define SYSTEM_LINE_HOLD_TICKS 60
+#define SYSTEM_LINE_HOLD_TICKS 90
 #define OPEN_DELAY_TICKS 5
 #define SLIDE_TICKS 9
 #define FADE_IN_TICKS 30

@@ -59,6 +59,7 @@ static int zoom_ticks_left;
 #define NO_SOUL_TEXTURE "-"
 #define SCREEN_FILTER_GRAYSCALE 1
 #define HUMAN_CLASS_ID 0x5a390072u
+#define PHONE_VIEW_PROP_CLASS_ID 0x789c5740u
 #define ALL_SOUND_LOOPS "*"
 
 static int soul_vision_is_on;
@@ -233,11 +234,15 @@ static int record_of(const struct script_actor_view *actor, int records_per_fram
     return actor->frame_word_index * records_per_frame + (actor->ticks_into_frame * records_per_frame) / DS_TICKS_PER_FRAME;
 }
 
-static void on_soul_object_styled(const char *object_name, unsigned int class_id, int has_core, int is_active, int is_dead)
+static void on_soul_object_styled(const char *object_name, unsigned int class_id, int has_core, int is_active, int is_dead, int is_phone_view)
 {
     const struct script_soul_style *style;
 
-    style = script_tables_soul_style(tables, class_id, class_id == HUMAN_CLASS_ID, has_core, is_active, is_dead);
+    if (is_phone_view && class_id != HUMAN_CLASS_ID) {
+        style = script_tables_soul_style(tables, PHONE_VIEW_PROP_CLASS_ID, 0, 0, 0, 0);
+    } else {
+        style = script_tables_soul_style(tables, class_id, class_id == HUMAN_CLASS_ID, has_core, is_active, is_dead);
+    }
     if (style != NULL) {
         scene_stage_set_object_soul_tint(object_name, style->red, style->green, style->blue, style->alpha, style->is_flat);
     }

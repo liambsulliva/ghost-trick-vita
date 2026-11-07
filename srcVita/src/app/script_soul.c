@@ -230,7 +230,7 @@ static void report_soul_view(struct script_machine *machine)
     }
     for (index = 0; index < machine->object_count; index++) {
         if (machine->outputs->soul_object_styled != NULL && machine->objects[index].actor.exists) {
-            machine->outputs->soul_object_styled(machine->objects[index].name, machine->objects[index].actor.class_id, machine->objects[index].actor.has_core, index == soul->active_object, machine->objects[index].is_dead);
+            machine->outputs->soul_object_styled(machine->objects[index].name, machine->objects[index].actor.class_id, machine->objects[index].actor.has_core, index == soul->active_object, machine->objects[index].is_dead, machine->phone_view_is_on);
         }
         if (index != soul->active_object && object_can_be_a_core(&machine->objects[index], 0)) {
             float x;
