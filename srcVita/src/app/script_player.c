@@ -678,11 +678,12 @@ static void touch_began(struct script_machine *machine, float x, float y)
 
     touch_is_dragging = 0;
     pill = script_ui_view_pill_at(x, y);
+    balloon_kind = script_ui_view_tap_balloon_kind_at(x, y);
+    run_log_write("touch began x=%d y=%d tick=%u pill=%d balloon=%d wants_tap=%d", (int)x, (int)y, machine->tick, pill, balloon_kind, script_soul_wants_a_tap(machine));
     if (pill >= 0) {
         press_the_pill(machine, pill);
         return;
     }
-    balloon_kind = script_ui_view_tap_balloon_kind_at(x, y);
     if (balloon_kind != 0) {
         script_soul_note_tap(machine, balloon_kind == SCRIPT_BALLOON_KIND_TAP_DOTS ? SCRIPT_TAP_GROUP_LEFT : SCRIPT_TAP_GROUP_RIGHT);
         return;
