@@ -117,6 +117,7 @@
 #define FILM_TILE_SIZE 45.0f
 #define FILM_FIRST_TILE_X -31.5f
 #define FILM_TILE_ABOVE_SCREEN 5.8f
+#define FILM_SCROLL_PER_TICK 0.703125f
 #define FILM_CORNER_WIDTH 45.0f
 #define FILM_CORNER_WHOLE_HEIGHT 56.25f
 #define FILM_CORNER_FIRST_V 0.1625f
@@ -160,6 +161,10 @@ struct view_core_mark {
 };
 
 static const struct renderer_color movie_black = { 0.0f, 0.0f, 0.0f, 1.0f };
+static int film_scroll_is_paused;
+static float film_scroll;
+static int still_is_wanted;
+static int still_is_ready;
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color text_colors[SCRIPT_TALK_COLOR_COUNT] = {
     { 0.0f, 0.0f, 0.0f, 1.0f },
@@ -198,6 +203,10 @@ static struct view_core_mark core_marks[VIEW_CORE_MARK_MAX];
 
 void script_view_start(const struct script_tables *new_tables)
 {
+    film_scroll_is_paused = 0;
+    film_scroll = 0.0f;
+    still_is_wanted = 0;
+    still_is_ready = 0;
     tables = new_tables;
     talk_is_showing = 0;
     soul_is_on = 0;
@@ -256,6 +265,17 @@ void script_view_mark_changed(const char *object_name, int age_ticks, float x, f
 void script_view_film_frame_changed(int is_on)
 {
     film_frame_is_on = is_on;
+}
+
+void script_view_film_scroll_paused(int is_paused)
+{
+    film_scroll_is_paused = is_paused;
+}
+
+void script_view_screen_still_changed(int is_on)
+{
+    still_is_wanted = is_on;
+    still_is_ready = 0;
 }
 
 void script_view_swirl_changed(int is_on)
@@ -334,6 +354,9 @@ void script_view_effect_deleted(const char *name)
 
 void script_view_advance(void)
 {
+    if (!film_scroll_is_paused) {
+        film_scroll = fmodf(film_scroll + FILM_SCROLL_PER_TICK, FILM_TILE_SIZE);
+    }
     soul_transition_advance();
     int index;
 
@@ -1043,7 +1066,7 @@ static void draw_film_frame(void)
     if (!film_frame_is_on) {
         return;
     }
-    for (tile_x = FILM_FIRST_TILE_X; tile_x < (float)RENDERER_WIDTH; tile_x += FILM_TILE_SIZE) {
+    for (tile_x = FILM_FIRST_TILE_X - film_scroll; tile_x < (float)RENDERER_WIDTH; tile_x += FILM_TILE_SIZE) {
         draw_named_texture(FILM_STRIP_TEXTURE, tile_x, -FILM_TILE_ABOVE_SCREEN, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
         draw_named_texture(FILM_STRIP_TEXTURE, tile_x, (float)RENDERER_HEIGHT - FILM_TILE_SIZE + FILM_TILE_ABOVE_SCREEN, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
     }
@@ -1106,16 +1129,34 @@ void script_view_draw_on_world(void)
 
 int script_view_wants_snapshot(void)
 {
-    return soul_transition_wants_snapshot();
+    return soul_transition_wants_snapshot() || (still_is_wanted && !still_is_ready);
 }
 
 void script_view_snapshot_taken(void)
 {
     soul_transition_snapshot_taken();
+    if (still_is_wanted) {
+        still_is_ready = 1;
+    }
+}
+
+static void draw_screen_still(void)
+{
+    struct renderer_rect whole_screen;
+
+    if (!still_is_ready) {
+        return;
+    }
+    whole_screen.x = 0.0f;
+    whole_screen.y = 0.0f;
+    whole_screen.width = (float)RENDERER_WIDTH;
+    whole_screen.height = (float)RENDERER_HEIGHT;
+    renderer_draw_snapshot(whole_screen, 1.0f);
 }
 
 void script_view_draw_on_covers(void)
 {
+    draw_screen_still();
     soul_transition_draw();
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {
         draw_talk();

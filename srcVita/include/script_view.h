@@ -11,6 +11,8 @@ void script_view_cursor_moved(int is_shown, float x, float y, float from_x, floa
 void script_view_core_marked(int object_index, float x, float y, int is_dead);
 void script_view_soul_flash_changed(float alpha);
 void script_view_film_frame_changed(int is_on);
+void script_view_film_scroll_paused(int is_paused);
+void script_view_screen_still_changed(int is_on);
 void script_view_swirl_changed(int is_on);
 void script_view_movie_started(const char *name);
 void script_view_soul_sparks_changed(int elapsed_ticks, float x, float y);

@@ -116,6 +116,8 @@ struct script_outputs {
     void (*soul_object_styled)(const char *object_name, unsigned int class_id, int has_core, int is_active, int is_dead);
     void (*soul_flash_changed)(float alpha);
     void (*film_frame_changed)(int is_on);
+    void (*film_scroll_paused)(int is_paused);
+    void (*screen_still_changed)(int is_on);
     void (*swirl_changed)(int is_on);
     void (*movie_started)(const char *name);
     int (*movie_of_class_started)(unsigned int class_id);

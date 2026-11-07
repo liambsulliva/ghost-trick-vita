@@ -804,6 +804,23 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
     case 0x7e:
         script_soul_start_player_mark(machine);
         return SCRIPT_STEP_NEXT;
+    case 0x73:
+        if (machine->outputs->film_scroll_paused != NULL) {
+            machine->outputs->film_scroll_paused(words[0] != 0);
+        }
+        return SCRIPT_STEP_NEXT;
+    case 0xdf:
+    case 0xe0:
+        if (machine->outputs->swirl_changed != NULL) {
+            machine->outputs->swirl_changed(op == 0xe0);
+        }
+        return SCRIPT_STEP_NEXT;
+    case 0xf3:
+    case 0xf5:
+        if (machine->outputs->screen_still_changed != NULL) {
+            machine->outputs->screen_still_changed(op == 0xf3);
+        }
+        return op == 0xf3 ? SCRIPT_STEP_NEXT_THEN_YIELD : SCRIPT_STEP_NEXT;
     case 0xe1:
         if (vm->owner != NULL) {
             vm->owner->is_dead = 1;
