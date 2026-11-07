@@ -317,10 +317,9 @@ def movies_text(movies):
 
 
 def route_steps_text(route):
-    default_dwell_ticks = route.get("dwell_ticks", 0)
     lines = []
     for step in route["steps"]:
-        lines.append("step %s %s %s %d %s %d\n" % (step["script"], step["action"], step.get("object", "-"), step.get("slot", 0), step.get("wait", "-"), step.get("dwell_ticks", default_dwell_ticks)))
+        lines.append("step %s %s %s %d %d %s\n" % (step["script"], step["action"], step.get("object", "-"), step.get("slot", 0), route["dwell_ticks"][step.get("pace", "normal")], step.get("wait", "-").replace(" & ", "&")))
     return "".join(lines)
 
 

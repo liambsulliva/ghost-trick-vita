@@ -3,15 +3,14 @@
 #include "script_route.h"
 #include "text_lines.h"
 
-#define ROUTE_LINE_MAX 256
-#define ROUTE_LINE_SCAN "step %95s %15s %47s %d %63s %d"
-#define ROUTE_WORD_MAX 64
+#define ROUTE_LINE_MAX 384
+#define ROUTE_LINE_SCAN "step %95s %15s %47s %d %d %159s"
 #define ROUTE_ACTION_WORD_MAX 16
 #define ROUTE_EMPTY_WORD "-"
-#define ACT_WAIT_PREFIX "act:"
-#define CORE_WAIT_PREFIX "core:"
+#define WAIT_TOKEN_SEPARATOR '&'
 
-static const char *const action_names[] = { "move", "trick", "ghost_on", "ghost_off", "tap_left", "tap_right", "wait" };
+static const char *const action_names[] = { "move", "trick", "ghost_on", "ghost_off", "touch", "tap_balloon", "camera", "phone_call", "wait" };
+static const char *const known_wait_words[] = { "act", "tutorial", "playable", "free", "view", "no_talk", "flag", "noflag", "core", "usable", "balloon", "camera_tutorial", "timeleap_armed", "ticks" };
 
 static int read_action(const char *word, enum script_route_action *action)
 {
@@ -26,25 +25,34 @@ static int read_action(const char *word, enum script_route_action *action)
     return 0;
 }
 
-static int read_wait(const char *word, struct script_route_step *step)
+static int wait_word_is_known(const char *token, size_t token_length)
 {
-    step->wait_name[0] = '\0';
-    if (strcmp(word, ROUTE_EMPTY_WORD) == 0) {
-        step->wait = SCRIPT_ROUTE_WAIT_NOTHING;
-    } else if (strcmp(word, "playable") == 0) {
-        step->wait = SCRIPT_ROUTE_WAIT_PLAYABLE;
-    } else if (strcmp(word, "tutorial:touch") == 0) {
-        step->wait = SCRIPT_ROUTE_WAIT_TUTORIAL_TOUCH;
-    } else if (strcmp(word, "tutorial:move") == 0) {
-        step->wait = SCRIPT_ROUTE_WAIT_TUTORIAL_MOVE;
-    } else if (strncmp(word, ACT_WAIT_PREFIX, strlen(ACT_WAIT_PREFIX)) == 0) {
-        step->wait = SCRIPT_ROUTE_WAIT_ACT;
-        return snprintf(step->wait_name, sizeof(step->wait_name), "%s", &word[strlen(ACT_WAIT_PREFIX)]) < (int)sizeof(step->wait_name);
-    } else if (strncmp(word, CORE_WAIT_PREFIX, strlen(CORE_WAIT_PREFIX)) == 0) {
-        step->wait = SCRIPT_ROUTE_WAIT_CORE;
-        return snprintf(step->wait_name, sizeof(step->wait_name), "%s", &word[strlen(CORE_WAIT_PREFIX)]) < (int)sizeof(step->wait_name);
-    } else {
-        return 0;
+    unsigned int index;
+
+    for (index = 0; index < sizeof(known_wait_words) / sizeof(known_wait_words[0]); index++) {
+        size_t word_length;
+
+        word_length = strlen(known_wait_words[index]);
+        if (token_length >= word_length && strncmp(token, known_wait_words[index], word_length) == 0 && (token_length == word_length || token[word_length] == ':')) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int wait_is_valid(const char *wait)
+{
+    while (*wait != '\0') {
+        const char *end;
+
+        end = strchr(wait, WAIT_TOKEN_SEPARATOR);
+        if (end == NULL) {
+            end = wait + strlen(wait);
+        }
+        if (!wait_word_is_known(wait, (size_t)(end - wait))) {
+            return 0;
+        }
+        wait = *end == '\0' ? end : end + 1;
     }
     return 1;
 }
@@ -53,20 +61,25 @@ static int read_step(struct script_route *route, const char *line)
 {
     struct script_route_step *step;
     char action_word[ROUTE_ACTION_WORD_MAX];
-    char wait_word[ROUTE_WORD_MAX];
 
     if (route->step_count >= SCRIPT_ROUTE_STEP_MAX) {
         return 0;
     }
     step = &route->steps[route->step_count];
-    if (sscanf(line, ROUTE_LINE_SCAN, step->script, action_word, step->object, &step->slot, wait_word, &step->dwell_ticks) != 6) {
+    if (sscanf(line, ROUTE_LINE_SCAN, step->script, action_word, step->object, &step->slot, &step->dwell_ticks, step->wait) != 6) {
         return 0;
     }
-    if (!read_action(action_word, &step->action) || !read_wait(wait_word, step)) {
+    if (!read_action(action_word, &step->action)) {
         return 0;
     }
     if (strcmp(step->object, ROUTE_EMPTY_WORD) == 0) {
         step->object[0] = '\0';
+    }
+    if (strcmp(step->wait, ROUTE_EMPTY_WORD) == 0) {
+        step->wait[0] = '\0';
+    }
+    if (!wait_is_valid(step->wait)) {
+        return 0;
     }
     route->step_count = route->step_count + 1;
     return 1;
@@ -103,4 +116,24 @@ int script_route_first_step_of_script(const struct script_route *route, const ch
 const char *script_route_action_name(enum script_route_action action)
 {
     return action_names[action];
+}
+
+int script_route_wait_has_token(const char *wait, const char *token)
+{
+    size_t token_length;
+
+    token_length = strlen(token);
+    while (*wait != '\0') {
+        const char *end;
+
+        end = strchr(wait, WAIT_TOKEN_SEPARATOR);
+        if (end == NULL) {
+            end = wait + strlen(wait);
+        }
+        if ((size_t)(end - wait) == token_length && strncmp(wait, token, token_length) == 0) {
+            return 1;
+        }
+        wait = *end == '\0' ? end : end + 1;
+    }
+    return 0;
 }

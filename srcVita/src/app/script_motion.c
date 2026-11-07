@@ -132,6 +132,10 @@ static void run_core_word(struct script_machine *machine, struct script_object *
         actor->has_core = 1;
         actor->core_x = actor->is_flipped ? -x : x;
         actor->core_y = y;
+    } else if (core == 1) {
+        actor->has_second_core = 1;
+        actor->second_core_x = actor->is_flipped ? -x : x;
+        actor->second_core_y = y;
     }
 }
 
@@ -561,6 +565,7 @@ static void face_actor(struct script_object *object, int should_flip)
         actor->points[index][0] = -actor->points[index][0];
     }
     actor->core_x = -actor->core_x;
+    actor->second_core_x = -actor->second_core_x;
     actor->is_flipped = should_flip;
 }
 
@@ -707,7 +712,7 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
     case 0x9c:
         object = script_machine_current_object(machine, vm);
         if (object != NULL) {
-            script_soul_set_first_core(machine, (int)(object - machine->objects));
+            script_soul_set_first_core(machine, (int)(object - machine->objects), (int)words[0]);
         }
         break;
     case 0x116:

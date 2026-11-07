@@ -446,11 +446,12 @@ static void start_act(struct script_machine *machine, struct script_vm *vm, cons
     scan_act_body(machine, object);
     script_machine_send(machine, object->name, "SYSTEM", "ACT_JUMP");
     act_name = script_machine_string(machine, vm, words[3]);
+    object->current_act = act_name;
     if (act_name != NULL && machine->outputs->marked != NULL) {
         machine->outputs->marked("act_begun", act_name);
     }
     if (act_name != NULL) {
-        script_soul_act_began(machine, act_name);
+        script_soul_act_began(machine, object->name, act_name);
     }
     if (act_name != NULL && machine->stop_act != NULL && strcmp(act_name, machine->stop_act) == 0) {
         machine->stop_is_requested = 1;
@@ -592,6 +593,8 @@ static void set_object_asleep(struct script_machine *machine, struct script_vm *
     }
 }
 
+#define ACTOR_REGISTER_FRAME 2u
+
 static int read_actor_register(const struct script_machine *machine, const struct script_vm *vm, unsigned int reg)
 {
     const struct script_object *object;
@@ -607,6 +610,9 @@ static int read_actor_register(const struct script_machine *machine, const struc
     }
     if (reg == 1) {
         return (actor->y + actor->points[0][1]) * 4096;
+    }
+    if (reg == ACTOR_REGISTER_FRAME) {
+        return actor->frame_word_index;
     }
     if (reg >= 4 && reg < 8) {
         return (actor->x + actor->points[reg - 4][0]) * 4096;

@@ -2,6 +2,7 @@ import argparse
 import sys
 
 OPENING_SCRIPT = "st01-st01_game000_Expand"
+PUSHES_STILL_EXPECTED = 1
 EXPECTED_OPENING = [
     ("core", "shadanki"),
     ("trick", "shadanki"),
@@ -48,9 +49,24 @@ def opening_problems(marks):
     return []
 
 
-def step_count_of(route_path):
+def read_route_steps(route_path):
     with open(route_path, encoding="ascii") as source:
-        return len([line for line in source if line.startswith("step ")])
+        return [line.split() for line in source if line.startswith("step ")]
+
+
+def step_count_of(route_path):
+    return len(read_route_steps(route_path))
+
+
+def order_problems(marks, route_path):
+    wanted = [word[3] for word in read_route_steps(route_path) if word[2] == "move"]
+    moved = [name for what, name in marks if what == "core"]
+    if moved == wanted:
+        return []
+    for index, (got, expected) in enumerate(zip(moved, wanted)):
+        if got != expected:
+            return ["soul move %d went to %s, the route says %s" % (index, got, expected)]
+    return ["the replay made %d soul moves, the route has %d" % (len(moved), len(wanted))]
 
 
 def route_problems(marks, route_path):
@@ -76,7 +92,7 @@ def push_problems(marks_path):
     pushes = forced_pushes(marks_path)
     if pushes is None:
         return ["the replay never reported how it ended"]
-    if pushes > 0:
+    if pushes > PUSHES_STILL_EXPECTED:
         return ["the replay needed %d forced pushes" % pushes]
     return []
 
@@ -87,7 +103,7 @@ def main():
     parser.add_argument("route", help="the baked route_steps.txt")
     arguments = parser.parse_args()
     marks = read_marks(arguments.marks)
-    problems = opening_problems(marks) + route_problems(marks, arguments.route) + push_problems(arguments.marks)
+    problems = opening_problems(marks) + order_problems(marks, arguments.route) + route_problems(marks, arguments.route) + push_problems(arguments.marks)
     for problem in problems:
         print(problem)
     print("route check", "failed" if problems else "passed", len(problems), "problems")

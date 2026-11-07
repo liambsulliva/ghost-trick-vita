@@ -132,7 +132,7 @@ golden: build/tests/golden/script_replay
 
 route-check: build/tests/golden/script_replay
 	@mkdir -p build/golden
-	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1/scripts --timing remaster --auto-paced --marks --stop-tick 140000 > build/golden/route_marks.txt
+	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1/scripts --timing remaster --auto-paced --marks --stop-tick 200000 > build/golden/route_marks.txt
 	python3 -I tools/route_check.py build/golden/route_marks.txt ../extracted/vita_assets/chapter1/scripts/route_steps.txt
 
 clean:
