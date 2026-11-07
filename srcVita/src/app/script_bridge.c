@@ -93,6 +93,8 @@ static void log_once(const char *what, const char *name)
     run_log_write("script %s name=%s", what, name);
 }
 
+static char grey_world_effect[ASSET_NAME_MAX];
+
 static void on_stage_cleared(void)
 {
     scene_stage_clear_room();
@@ -111,6 +113,7 @@ static void on_stage_cleared(void)
     script_view_film_frame_changed(0);
     script_view_swirl_changed(0);
     scene_stage_set_mono_mode(0);
+    grey_world_effect[0] = '\0';
     sound_request_stop_loop(ALL_SOUND_LOOPS);
 }
 
@@ -383,6 +386,10 @@ static void on_effect_spawned(int id, const char *name, float x, float y)
     case SCRIPT_EFFECT_UI_CLIP:
         script_ui_view_clip_started(row->texture_name, 0, 0);
         break;
+    case SCRIPT_EFFECT_GREY_WORLD:
+        snprintf(grey_world_effect, sizeof(grey_world_effect), "%s", name);
+        scene_stage_set_mono_mode(1);
+        break;
     case SCRIPT_EFFECT_DISSOLVE:
         start_dissolve(row, name);
         break;
@@ -401,6 +408,10 @@ static void on_effect_spawned(int id, const char *name, float x, float y)
 
 static void on_effect_deleted(const char *name)
 {
+    if (grey_world_effect[0] != '\0' && (strcmp(name, ALL_EFFECTS_NAME) == 0 || strcmp(name, grey_world_effect) == 0)) {
+        grey_world_effect[0] = '\0';
+        scene_stage_set_mono_mode(0);
+    }
     script_view_effect_deleted(name);
 }
 

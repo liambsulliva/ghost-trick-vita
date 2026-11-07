@@ -35,6 +35,15 @@
   ],
   "effects": [
     {
+      "id": 53,
+      "kind": "grey_world",
+      "texture": "-",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 0,
+      "height": 0
+    },
+    {
       "id": 14,
       "kind": "ui_clip",
       "texture": "WHITE_FILTER",

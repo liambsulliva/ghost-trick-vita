@@ -284,6 +284,8 @@ static int read_effect_line(struct script_tables *tables, const char *line)
         row->kind = SCRIPT_EFFECT_UI_CLIP;
     } else if (strcmp(kind, "dissolve") == 0) {
         row->kind = SCRIPT_EFFECT_DISSOLVE;
+    } else if (strcmp(kind, "grey_world") == 0) {
+        row->kind = SCRIPT_EFFECT_GREY_WORLD;
     } else if (strcmp(kind, "movie") == 0) {
         row->kind = SCRIPT_EFFECT_MOVIE;
     } else if (strcmp(kind, "ring") == 0) {
