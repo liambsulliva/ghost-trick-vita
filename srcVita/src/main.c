@@ -84,6 +84,8 @@ static void save_capture(const char *name)
 static unsigned int injected_buttons;
 static unsigned long long burst_pause_began_us;
 static int injected_touch_frames;
+static struct command injected_drag;
+static int injected_drag_frame;
 static float injected_touch_x;
 static float injected_touch_y;
 #endif
@@ -131,6 +133,10 @@ static int run_one_command(const struct command *command)
         injected_touch_frames = command->number;
         injected_touch_x = (float)command->touch_x;
         injected_touch_y = (float)command->touch_y;
+    } else if (command->kind == COMMAND_DRAG) {
+        injected_drag = *command;
+        injected_drag_frame = 0;
+        run_log_write("command drag from=%d,%d to=%d,%d frames=%d delay=%d", command->touch_x, command->touch_y, command->touch_end_x, command->touch_end_y, command->number, command->delay_frames);
     } else if (command->kind == COMMAND_BURST) {
         screen_burst_run_for_seconds(command->number);
 #endif
@@ -226,6 +232,17 @@ static void run_main_loop(void)
             input.touch_is_down = 1;
             input.touch_x = injected_touch_x;
             input.touch_y = injected_touch_y;
+        }
+        if (injected_drag.delay_frames > 0) {
+            injected_drag.delay_frames = injected_drag.delay_frames - 1;
+        } else if (injected_drag_frame < injected_drag.number) {
+            float share;
+
+            share = injected_drag.number > 1 ? (float)injected_drag_frame / (float)(injected_drag.number - 1) : 1.0f;
+            input.touch_is_down = 1;
+            input.touch_x = (float)injected_drag.touch_x + (float)(injected_drag.touch_end_x - injected_drag.touch_x) * share;
+            input.touch_y = (float)injected_drag.touch_y + (float)(injected_drag.touch_end_y - injected_drag.touch_y) * share;
+            injected_drag_frame = injected_drag_frame + 1;
         }
 #endif
         if ((input.pressed & INPUT_START) && !script_player_is_active()) {

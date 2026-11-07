@@ -22,6 +22,7 @@ enum command_kind {
     COMMAND_PRESS,
     COMMAND_BURST,
     COMMAND_TOUCH,
+    COMMAND_DRAG,
     COMMAND_UNKNOWN
 };
 
@@ -32,6 +33,9 @@ struct command {
     int number;
     int touch_x;
     int touch_y;
+    int touch_end_x;
+    int touch_end_y;
+    int delay_frames;
 };
 
 int command_name_is_safe(const char *name);
