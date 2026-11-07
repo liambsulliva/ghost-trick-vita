@@ -27,6 +27,8 @@ ARM9_LOAD_ADDRESS = 0x02000000
 ROOM_TABLE_ADDRESS = 0x02083328
 ROOM_ROW_SIZE = 8
 ROOM_ROW_END = 0xffff
+ROOM_BAND_FROM_ROOM_HEIGHT = 0xfffd
+ROOM_BAND_FROM_KEY = 0xfffe
 ROOM_ROW_TAGS_FROM = 0xfffa
 ROOM_ID_LIMIT = 256
 TILE_PIXELS = 16
@@ -133,6 +135,22 @@ def read_arm9(rom):
 
 def signed(value):
     return value - 0x10000 if value >= 0x8000 else value
+
+
+def read_room_bands(arm9, room):
+    _, height, rows_address = struct.unpack_from("<HHI", arm9, ROOM_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + ROOM_ROW_SIZE * room)
+    bands = []
+    position = rows_address - ARM9_LOAD_ADDRESS
+    while 0 <= position < len(arm9) - 8:
+        tag, key, amount, _ = struct.unpack_from("<4H", arm9, position)
+        position = position + 8
+        if tag == ROOM_ROW_END:
+            break
+        if tag == ROOM_BAND_FROM_ROOM_HEIGHT or tag == ROOM_BAND_FROM_KEY:
+            band_key = height if signed(key) == -1 else signed(key)
+            base = height if tag == ROOM_BAND_FROM_ROOM_HEIGHT else band_key
+            bands.append((band_key, base - signed(amount)))
+    return bands
 
 
 def read_room(arm9, room):
@@ -392,6 +410,7 @@ def expand_set(set_description, packs, rom_path, text_key):
     expanded["plates"] = plates
     section["room_plates"] = room_plates
     section["room_sizes"] = room_sizes
+    section["room_bands"] = {str(room): read_room_bands(arm9, room) for room in rooms_used(scripts)}
     animations, motion_tables, unresolved = resolve_tables(packs, scripts)
     expanded["animations"] = animations
     section["motion_tables"] = motion_tables

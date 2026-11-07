@@ -83,10 +83,33 @@ static int read_room_size_line(struct script_tables *tables, const char *line)
     return 1;
 }
 
+static int read_room_band_line(struct script_tables *tables, const char *line)
+{
+    struct script_room_bounds *bounds;
+    int room;
+    int key;
+    int value;
+
+    if (sscanf(line, "band %d %d %d", &room, &key, &value) != 3 || room < 0 || room >= SCRIPT_ROOM_ID_MAX) {
+        return 0;
+    }
+    bounds = &tables->room_bounds[room];
+    if (bounds->band_count >= SCRIPT_CAMERA_BAND_MAX) {
+        return 0;
+    }
+    bounds->band_keys[bounds->band_count] = key;
+    bounds->band_values[bounds->band_count] = value;
+    bounds->band_count = bounds->band_count + 1;
+    return 1;
+}
+
 static int read_room_line(struct script_tables *tables, const char *line)
 {
     struct script_room_plate *plate;
 
+    if (text_line_starts_with(line, "band ")) {
+        return read_room_band_line(tables, line);
+    }
     if (text_line_starts_with(line, "room ")) {
         return read_room_size_line(tables, line);
     }

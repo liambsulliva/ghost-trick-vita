@@ -10,7 +10,7 @@
 #define PILL_SLIDE_STEPS 8
 #define PILL_PRESS_TICKS 12
 #define PILL_WAIT_BEFORE_SLIDE_IN 3
-#define NORMAL_PLAY_MODE 0
+#define NORMAL_PLAY_MODE 3
 #define FIRST_PILL_EFFECT 99
 #define PILL_EFFECT_COUNT 4
 #define BIT(id) (1u << (unsigned int)(id))

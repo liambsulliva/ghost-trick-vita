@@ -297,6 +297,8 @@ def soul_plate_names(set_description):
 
 def rooms_text(section, plate_sizes, soul_plates):
     lines = ["room %s %d %d" % (room, size[0], size[1]) for room, size in section.get("room_sizes", {}).items()]
+    for room, bands in section.get("room_bands", {}).items():
+        lines.extend("band %s %d %d" % (room, key, value) for key, value in bands)
     for room, plates in section.get("room_plates", {}).items():
         for name, x, y in plates:
             width, height = plate_sizes[name]

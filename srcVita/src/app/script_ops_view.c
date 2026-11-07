@@ -18,6 +18,10 @@
 #define CAMERA_CUT_SPEED 0x3e8000
 #define DS_VIEW_WIDTH 256
 #define DS_VIEW_HEIGHT 192
+#define CAMERA_BAND_UNUSED 0xffff
+#define CAMERA_BAND_SNAP_MARGIN 16
+#define CAMERA_BAND_SNAP_MOST 4
+#define SOUL_CAMERA_RETURN_SPEED_FIXED 0x4000
 
 static int signed_word(unsigned int word)
 {
@@ -187,10 +191,97 @@ static int clamped_y(const struct script_machine *machine, int y)
     return clamped_axis(y, machine->room >= 0 && machine->room < SCRIPT_ROOM_ID_MAX ? machine->room_bounds[machine->room].height : 0, DS_VIEW_HEIGHT);
 }
 
+static void reset_camera_bands(struct script_machine *machine)
+{
+    int index;
+
+    for (index = 0; index < SCRIPT_CAMERA_BAND_MAX; index++) {
+        machine->camera_band_keys[index] = CAMERA_BAND_UNUSED;
+        machine->camera_band_values[index] = CAMERA_BAND_UNUSED;
+    }
+}
+
+static void set_camera_band(struct script_machine *machine, int key, int value)
+{
+    int index;
+    int later;
+
+    for (index = 0; index < SCRIPT_CAMERA_BAND_MAX; index++) {
+        if (machine->camera_band_keys[index] == key) {
+            machine->camera_band_values[index] = value;
+            return;
+        }
+        if (machine->camera_band_keys[index] > key) {
+            for (later = SCRIPT_CAMERA_BAND_MAX - 1; later > index; later--) {
+                machine->camera_band_keys[later] = machine->camera_band_keys[later - 1];
+                machine->camera_band_values[later] = machine->camera_band_values[later - 1];
+            }
+            machine->camera_band_keys[index] = key;
+            machine->camera_band_values[index] = value;
+            return;
+        }
+    }
+}
+
+static int band_holding(const struct script_machine *machine, int object_y)
+{
+    int index;
+
+    for (index = 0; index < SCRIPT_CAMERA_BAND_MAX; index++) {
+        if (machine->camera_band_keys[index] > object_y && machine->camera_band_values[index] < object_y) {
+            return index;
+        }
+    }
+    return -1;
+}
+
+int script_machine_camera_top_for(const struct script_machine *machine, int object_y)
+{
+    int band;
+    int top;
+
+    band = band_holding(machine, object_y);
+    top = band >= 0 ? machine->camera_band_keys[band] - DS_VIEW_HEIGHT : object_y - DS_VIEW_HEIGHT / 2;
+    return machine->world_origin_y + (top < 0 ? 0 : top);
+}
+
+int script_machine_camera_band_snap(const struct script_machine *machine, int object_y)
+{
+    int band;
+    int wanted_bottom;
+    int bottom;
+    int step;
+
+    if (machine->camera_snap_is_off) {
+        return 0;
+    }
+    band = band_holding(machine, object_y);
+    if (band < 0 || machine->camera_band_keys[band] - CAMERA_BAND_SNAP_MARGIN < object_y) {
+        return 0;
+    }
+    wanted_bottom = machine->camera_band_keys[band] + machine->world_origin_y;
+    bottom = machine->camera_y + DS_VIEW_HEIGHT;
+    step = wanted_bottom - bottom;
+    if (step > CAMERA_BAND_SNAP_MOST) {
+        return CAMERA_BAND_SNAP_MOST;
+    }
+    return step < -CAMERA_BAND_SNAP_MOST ? -CAMERA_BAND_SNAP_MOST : step;
+}
+
 static void load_room(struct script_machine *machine, const unsigned int *words)
 {
     machine->room = (int)words[0];
     machine->pan_is_active = 0;
+    reset_camera_bands(machine);
+    if (machine->room >= 0 && machine->room < SCRIPT_ROOM_ID_MAX) {
+        const struct script_room_bounds *bounds;
+        int index;
+
+        bounds = &machine->room_bounds[machine->room];
+        for (index = 0; index < bounds->band_count; index++) {
+            set_camera_band(machine, bounds->band_keys[index], bounds->band_values[index]);
+        }
+    }
     if (words[1] != KEEP_CAMERA_AXIS) {
         machine->camera_x = machine->world_origin_x + signed_word(words[1]);
     }
@@ -305,7 +396,12 @@ void script_machine_set_world_origin(struct script_machine *machine, int x, int 
 
 void script_machine_pan_camera_to(struct script_machine *machine, int center_x, int center_y)
 {
-    begin_pan(machine, machine->world_origin_x + center_x - DS_VIEW_WIDTH / 2, machine->world_origin_y + center_y - DS_VIEW_HEIGHT / 2, SOUL_CAMERA_SPEED_FIXED, 0);
+    begin_pan(machine, machine->world_origin_x + center_x - DS_VIEW_WIDTH / 2, script_machine_camera_top_for(machine, center_y), SOUL_CAMERA_SPEED_FIXED, 0);
+}
+
+void script_machine_pan_camera_back_to(struct script_machine *machine, int x, int y)
+{
+    begin_pan(machine, x, y, SOUL_CAMERA_RETURN_SPEED_FIXED, 0);
 }
 
 void script_machine_scroll_camera(struct script_machine *machine, int delta_x, int delta_y)
@@ -361,6 +457,18 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
             machine->outputs->mask_fade_color_changed(1);
         }
         script_fades_set_mask(machine, op == 0x11 ? 0 : MASK_ALPHA_FULL, (int)words[0]);
+        break;
+    case 0xcb:
+        machine->camera_snap_is_off = 0;
+        break;
+    case 0xcc:
+        machine->camera_snap_is_off = 1;
+        break;
+    case 0xd5:
+        set_camera_band(machine, signed_word(words[0]), signed_word(words[1]));
+        break;
+    case 0xd6:
+        reset_camera_bands(machine);
         break;
     case 0x13:
         if (machine->outputs->screen_filter_changed != NULL) {

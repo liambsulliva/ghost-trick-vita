@@ -58,6 +58,21 @@ enum tutorial_mode {
     TUTORIAL_MOVE
 };
 
+#define GHOST_FOLLOW_LEFT 124
+#define GHOST_FOLLOW_RIGHT 132
+#define GHOST_FOLLOW_TOP 92
+#define GHOST_FOLLOW_BOTTOM 100
+#define GHOST_FOLLOW_STEP 4
+#define NORMAL_FOLLOW_LEFT 16
+#define NORMAL_FOLLOW_RIGHT 240
+#define NORMAL_FOLLOW_TOP 8
+#define NORMAL_FOLLOW_BOTTOM 176
+#define NORMAL_FOLLOW_STEP_X 5.5f
+#define NORMAL_FOLLOW_STEP_Y 4.0f
+#define NORMAL_FOLLOW_FADE 0.953125f
+#define NORMAL_FOLLOW_STOPS_BELOW 0.25f
+#define DS_SCREEN_WIDTH 256
+#define DS_SCREEN_HEIGHT 192
 #define PILL_HOLD_AFTER_VIEW_CHANGE 2
 #define PILL_HOLD_AFTER_TRICK 1
 #define SOUL_VIEW_ENTER_TICKS 33
@@ -128,16 +143,6 @@ static int stream_ticks_for_distance(float distance)
     return ticks > SOUL_STREAM_TICKS_MOST ? SOUL_STREAM_TICKS_MOST : ticks;
 }
 
-static int point_is_in_camera_view(const struct script_machine *machine, float x, float y)
-{
-    float view_left;
-    float view_top;
-
-    view_left = (float)(machine->camera_x - machine->world_origin_x);
-    view_top = (float)(machine->camera_y - machine->world_origin_y);
-    return x >= view_left - (float)CAMERA_VIEW_MARGIN && x <= view_left + (float)(CAMERA_VIEW_WIDTH + CAMERA_VIEW_MARGIN) && y >= view_top - (float)CAMERA_VIEW_MARGIN && y <= view_top + (float)(CAMERA_VIEW_HEIGHT + CAMERA_VIEW_MARGIN);
-}
-
 static void drag_soul_to(struct script_machine *machine, int object_index, int slot)
 {
     struct script_soul *soul;
@@ -158,9 +163,6 @@ static void drag_soul_to(struct script_machine *machine, int object_index, int s
     soul->drag_slot = slot;
     soul->drag_stream_ticks = machine->objects[object_index].is_dead ? SOUL_LIGHTNING_TICKS : stream_ticks_for_distance(sqrtf((target_x - soul->drag_from_x) * (target_x - soul->drag_from_x) + (target_y - soul->drag_from_y) * (target_y - soul->drag_from_y)));
     soul->drag_ticks_left = SOUL_BEAM_TICKS + soul->drag_stream_ticks;
-    if (soul->player_opened_soul_view && !soul->camera_follow_is_off && !point_is_in_camera_view(machine, target_x, target_y)) {
-        script_machine_pan_camera_to(machine, (int)target_x, (int)target_y);
-    }
 }
 
 static void report_soul_view(struct script_machine *machine)
@@ -664,6 +666,17 @@ static void set_soul_view_with_effect(struct script_machine *machine, int is_on,
         soul->is_leaving_view = holds_the_world;
     }
     soul->view_change_ticks_left = holds_the_world ? (is_on ? SOUL_VIEW_ENTER_TICKS : SOUL_VIEW_LEAVE_TICKS) : 0;
+    if (holds_the_world && is_on) {
+        soul->camera_was_saved = 1;
+        soul->saved_camera_x = machine->camera_x;
+        soul->saved_camera_y = machine->camera_y;
+        soul->saved_camera_core = soul->active_object;
+    } else if (holds_the_world && soul->camera_was_saved) {
+        soul->camera_was_saved = 0;
+        if (soul->saved_camera_core == soul->active_object) {
+            script_machine_pan_camera_back_to(machine, soul->saved_camera_x, soul->saved_camera_y);
+        }
+    }
     machine->soul_state_keeps_pause = is_on;
     machine->pause_bit = is_on || soul->is_leaving_view;
     if (machine->outputs->soul_vision_changed != NULL) {
@@ -955,6 +968,91 @@ static void move_free_camera(struct script_machine *machine)
         return;
     }
     script_machine_scroll_camera(machine, soul->held_x * CAMERA_FREE_SPEED_PIXELS, soul->held_y * CAMERA_FREE_SPEED_PIXELS);
+}
+
+static void follow_core_in_ghost_view(struct script_machine *machine, float core_x, float core_y)
+{
+    int across;
+    int down;
+    int step_x;
+    int step_y;
+
+    if (machine->soul.view_change_ticks_left > 0) {
+        return;
+    }
+    across = (int)core_x - (machine->camera_x - machine->world_origin_x);
+    down = (int)core_y - (machine->camera_y - machine->world_origin_y);
+    step_x = across < GHOST_FOLLOW_LEFT ? -GHOST_FOLLOW_STEP : (across > GHOST_FOLLOW_RIGHT ? GHOST_FOLLOW_STEP : 0);
+    step_y = down < GHOST_FOLLOW_TOP ? -GHOST_FOLLOW_STEP : (down > GHOST_FOLLOW_BOTTOM ? GHOST_FOLLOW_STEP : 0);
+    if (step_x != 0 || step_y != 0) {
+        script_machine_scroll_camera(machine, step_x, step_y);
+    }
+}
+
+static void follow_core_in_normal_play(struct script_machine *machine, float core_x, float core_y)
+{
+    struct script_soul *soul;
+    const struct script_room_bounds *bounds;
+    int across;
+    int down;
+    float step_y;
+    int whole_x;
+    int whole_y;
+
+    soul = &machine->soul;
+    if (machine->pause_bit || machine->mode_byte != NORMAL_PLAY_MODE || machine->room < 0 || machine->room >= SCRIPT_ROOM_ID_MAX) {
+        return;
+    }
+    bounds = &machine->room_bounds[machine->room];
+    across = (int)core_x - (machine->camera_x - machine->world_origin_x);
+    down = (int)core_y - (machine->camera_y - machine->world_origin_y);
+    step_y = 0.0f;
+    if (bounds->height > DS_SCREEN_HEIGHT) {
+        step_y = (float)script_machine_camera_band_snap(machine, (int)core_y);
+        if (step_y == 0.0f) {
+            step_y = down < NORMAL_FOLLOW_TOP ? -NORMAL_FOLLOW_STEP_Y : (down > NORMAL_FOLLOW_BOTTOM ? NORMAL_FOLLOW_STEP_Y : 0.0f);
+        }
+    }
+    if (bounds->width > DS_SCREEN_WIDTH) {
+        if (across < NORMAL_FOLLOW_LEFT) {
+            soul->camera_follow_x = -NORMAL_FOLLOW_STEP_X;
+        } else if (across > NORMAL_FOLLOW_RIGHT) {
+            soul->camera_follow_x = NORMAL_FOLLOW_STEP_X;
+        }
+    } else {
+        soul->camera_follow_x = 0.0f;
+    }
+    soul->camera_carry_x = soul->camera_carry_x + soul->camera_follow_x;
+    soul->camera_carry_y = soul->camera_carry_y + step_y;
+    whole_x = (int)soul->camera_carry_x;
+    whole_y = (int)soul->camera_carry_y;
+    soul->camera_carry_x = soul->camera_carry_x - (float)whole_x;
+    soul->camera_carry_y = soul->camera_carry_y - (float)whole_y;
+    if (whole_x != 0 || whole_y != 0) {
+        script_machine_scroll_camera(machine, whole_x, whole_y);
+    }
+    soul->camera_follow_x = soul->camera_follow_x * NORMAL_FOLLOW_FADE;
+    if (fabsf(soul->camera_follow_x) < NORMAL_FOLLOW_STOPS_BELOW) {
+        soul->camera_follow_x = 0.0f;
+    }
+}
+
+static void follow_core_with_camera(struct script_machine *machine)
+{
+    struct script_soul *soul;
+    float core_x;
+    float core_y;
+
+    soul = &machine->soul;
+    if (machine->auto_press == SCRIPT_AUTO_FAST || soul->camera_follow_is_off || soul->camera_is_locked || machine->pan_is_active || soul->active_object == NO_CORE) {
+        return;
+    }
+    core_position(machine, soul->active_object, soul->active_slot, &core_x, &core_y);
+    if (soul->is_on) {
+        follow_core_in_ghost_view(machine, core_x, core_y);
+    } else {
+        follow_core_in_normal_play(machine, core_x, core_y);
+    }
 }
 
 static void press_when_the_page_has_been_read(struct script_machine *machine)
@@ -1411,6 +1509,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     }
     move_soul_tip(machine);
     move_free_camera(machine);
+    follow_core_with_camera(machine);
     finish_drag_when_due(machine);
     report_soul_view(machine);
     report_possession_effects(machine);

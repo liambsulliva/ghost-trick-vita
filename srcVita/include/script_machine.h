@@ -28,6 +28,7 @@
 #define SCRIPT_PUSHED_SITE_BYTES 1024
 #define SCRIPT_CALL_DEPTH_MAX 4
 #define SCRIPT_ROOM_ID_MAX 256
+#define SCRIPT_CAMERA_BAND_MAX 4
 #define SCRIPT_CORE_SLOT_COUNT 2
 #define SCRIPT_TAP_GROUP_LEFT 1
 #define SCRIPT_TAP_GROUP_RIGHT 2
@@ -176,6 +177,9 @@ struct script_balloon {
 struct script_room_bounds {
     int width;
     int height;
+    int band_keys[SCRIPT_CAMERA_BAND_MAX];
+    int band_values[SCRIPT_CAMERA_BAND_MAX];
+    int band_count;
 };
 
 struct script_recent_fetch {
@@ -213,6 +217,13 @@ struct script_soul {
     int pill_slide_in_wait;
     unsigned int pill_pulse_ticks;
     int ghost_pill_is_held_out;
+    float camera_follow_x;
+    float camera_carry_x;
+    float camera_carry_y;
+    int camera_was_saved;
+    int saved_camera_core;
+    int saved_camera_x;
+    int saved_camera_y;
     int rollback_is_on;
     int is_on;
     int player_opened_soul_view;
@@ -326,6 +337,9 @@ struct script_machine {
     int music_id;
     int camera_x;
     int camera_y;
+    int camera_band_keys[SCRIPT_CAMERA_BAND_MAX];
+    int camera_band_values[SCRIPT_CAMERA_BAND_MAX];
+    int camera_snap_is_off;
     int world_origin_x;
     int world_origin_y;
     int room;
@@ -368,6 +382,9 @@ int script_machine_start(struct script_machine *machine, const char *name);
 void script_machine_tick(struct script_machine *machine);
 void script_machine_name_of_path(const char *path, char *name, unsigned int name_size);
 
+void script_machine_pan_camera_back_to(struct script_machine *machine, int x, int y);
+int script_machine_camera_top_for(const struct script_machine *machine, int object_y);
+int script_machine_camera_band_snap(const struct script_machine *machine, int object_y);
 void script_machine_note(struct script_machine *machine, const struct script_vm *vm, const char *reason, const char *detail);
 void script_machine_end_block(struct script_machine *machine, struct script_vm *vm, const char *reason);
 void script_machine_skip_ahead(struct script_machine *machine);
