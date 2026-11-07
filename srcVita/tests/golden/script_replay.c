@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "script_machine.h"
+#include "script_tables.h"
 
 #define FILE_NAME_MAX 512
 #define TEXT_BYTES_MAX (1024 * 1024)
@@ -178,6 +179,48 @@ static void read_route(const char *folder)
     machine.route = &replay_route;
 }
 
+static struct script_tables tables_for_the_size_check;
+
+static void read_table_for_the_size_check(const char *folder, const char *file_name, int (*reader)(struct script_tables *, const char *, unsigned int))
+{
+    char path[FILE_NAME_MAX];
+    FILE *source;
+    char *text;
+    long size;
+
+    snprintf(path, sizeof(path), "%s/%s", folder, file_name);
+    source = fopen(path, "rb");
+    if (source == NULL) {
+        return;
+    }
+    fseek(source, 0, SEEK_END);
+    size = ftell(source);
+    fseek(source, 0, SEEK_SET);
+    text = malloc((size_t)size + 1u);
+    if (text != NULL && fread(text, 1, (size_t)size, source) == (size_t)size) {
+        text[size] = '\0';
+        reader(&tables_for_the_size_check, text, (unsigned int)size);
+    }
+    free(text);
+    fclose(source);
+}
+
+static int every_table_row_fits(const char *folder)
+{
+    read_table_for_the_size_check(folder, "chain.txt", script_tables_read_chain);
+    read_table_for_the_size_check(folder, "rooms.txt", script_tables_read_rooms);
+    read_table_for_the_size_check(folder, "audio_names.txt", script_tables_read_audio);
+    read_table_for_the_size_check(folder, "text_lines.txt", script_tables_read_text_lines);
+    read_table_for_the_size_check(folder, "balloons.txt", script_tables_read_balloons);
+    read_table_for_the_size_check(folder, "chain.preload", script_tables_read_preload);
+    read_table_for_the_size_check(folder, "effects.txt", script_tables_read_effects);
+    if (tables_for_the_size_check.rows_dropped > 0) {
+        printf("table rows dropped %d\n", tables_for_the_size_check.rows_dropped);
+        return 0;
+    }
+    return 1;
+}
+
 static void read_room_bounds(const char *folder)
 {
     char path[FILE_NAME_MAX];
@@ -268,6 +311,9 @@ int main(int argument_count, char **arguments)
             printf("unknown argument %s\n", arguments[index]);
             return 2;
         }
+    }
+    if (!every_table_row_fits(folder)) {
+        return 1;
     }
     script_machine_init(&machine, &recording_outputs, timing, NULL);
     machine.auto_press = auto_press;

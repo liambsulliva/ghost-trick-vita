@@ -7,7 +7,7 @@
 #include "ui_clips.h"
 
 #define SCRIPT_CHAIN_FILE_MAX SCRIPT_SOURCE_MAX
-#define SCRIPT_ROOM_PLATE_MAX 64
+#define SCRIPT_ROOM_PLATE_MAX 256
 #define SCRIPT_EFFECT_ROW_MAX 64
 #define SCRIPT_AUDIO_ROW_MAX 256
 #define SCRIPT_TEXT_ROW_MAX 256
@@ -179,6 +179,7 @@ struct script_tables {
     int file_count;
     struct script_room_plate room_plates[SCRIPT_ROOM_PLATE_MAX];
     int room_plate_count;
+    int rows_dropped;
     struct script_room_bounds room_bounds[SCRIPT_ROOM_ID_MAX];
     struct script_effect_row effect_rows[SCRIPT_EFFECT_ROW_MAX];
     int effect_row_count;

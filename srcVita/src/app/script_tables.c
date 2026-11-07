@@ -117,6 +117,7 @@ static int read_room_line(struct script_tables *tables, const char *line)
         return read_room_size_line(tables, line);
     }
     if (tables->room_plate_count >= SCRIPT_ROOM_PLATE_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
     plate = &tables->room_plates[tables->room_plate_count];
@@ -168,6 +169,7 @@ static int read_text_line(struct script_tables *tables, const char *line)
     struct script_text_row *row;
 
     if (tables->text_row_count >= SCRIPT_TEXT_ROW_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
     row = &tables->text_rows[tables->text_row_count];
@@ -188,6 +190,7 @@ static int read_movie_line(struct script_tables *tables, const char *line)
     struct script_movie *movie;
 
     if (tables->movie_count >= SCRIPT_MOVIE_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
     movie = &tables->movies[tables->movie_count];
@@ -203,6 +206,7 @@ static int read_fx_movie_line(struct script_tables *tables, const char *line)
     struct script_fx_movie *movie;
 
     if (tables->fx_movie_count >= SCRIPT_FX_MOVIE_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
     movie = &tables->fx_movies[tables->fx_movie_count];
@@ -224,6 +228,7 @@ static int read_fx_frame_line(struct script_tables *tables, const char *line)
         return 0;
     }
     if (tables->fx_frame_count >= SCRIPT_FX_FRAME_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
     frame = &tables->fx_frames[tables->fx_frame_count];
@@ -242,6 +247,7 @@ static int read_flipbook_line(struct script_tables *tables, const char *line)
     int found;
 
     if (tables->flipbook_count >= SCRIPT_FLIPBOOK_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
     book = &tables->flipbooks[tables->flipbook_count];
@@ -274,6 +280,7 @@ static int read_effect_line(struct script_tables *tables, const char *line)
     }
 
     if (tables->effect_row_count >= SCRIPT_EFFECT_ROW_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
     row = &tables->effect_rows[tables->effect_row_count];
@@ -362,6 +369,7 @@ static int read_soul_line(struct script_tables *tables, const char *line)
     struct script_soul_style *style;
 
     if (tables->soul_style_count >= SCRIPT_SOUL_STYLE_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
     style = &tables->soul_styles[tables->soul_style_count];
@@ -377,6 +385,7 @@ static int read_core_label_line(struct script_tables *tables, const char *line)
     struct script_core_label *label;
 
     if (tables->core_label_count >= SCRIPT_CORE_LABEL_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
     label = &tables->core_labels[tables->core_label_count];
@@ -460,6 +469,7 @@ static int read_balloon_row_line(struct script_tables *tables, const char *line)
     struct script_balloon_row *row;
 
     if (tables->balloon_row_count >= SCRIPT_BALLOON_ROW_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
     row = &tables->balloon_rows[tables->balloon_row_count];
@@ -513,6 +523,7 @@ static int read_preload_line(struct script_tables *tables, const char *line)
     char word[16];
 
     if (tables->preload_row_count >= SCRIPT_PRELOAD_ROW_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
     row = &tables->preload_rows[tables->preload_row_count];
@@ -553,6 +564,7 @@ int script_tables_read_motions(struct script_tables *tables, const char *file_na
             continue;
         }
         if (tables->motion_row_count >= SCRIPT_MOTION_ROW_MAX) {
+            tables->rows_dropped = tables->rows_dropped + 1;
             return 1;
         }
         row = &tables->motion_rows[tables->motion_row_count];

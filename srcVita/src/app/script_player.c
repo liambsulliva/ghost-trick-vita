@@ -289,6 +289,9 @@ static void begin_loading_animations(void)
     request_audio();
     preload_row = 0;
     preload_passes = 0;
+    if (data->tables.rows_dropped > 0) {
+        run_log_write("script problem reason=table_rows_dropped count=%d", data->tables.rows_dropped);
+    }
     phase = PHASE_LOADING_ANIMATIONS;
 }
 
