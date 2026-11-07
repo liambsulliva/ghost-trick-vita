@@ -109,7 +109,7 @@ def bake_movie_frames_in(packs, work_folder, record, movie):
         output.write(source)
     width = movie["width"]
     height = movie["height"]
-    frames = subprocess.run(["ffmpeg", "-v", "error", "-i", source_path, "-vf", "fps=%d,scale=%d:%d" % (movie["fps"], width, height), "-f", "rawvideo", "-pix_fmt", "rgba", "-"], capture_output=True, check=True).stdout
+    frames = subprocess.run(["ffmpeg", "-v", "error", "-i", source_path, "-vf", "fps=%d,scale=%d:%d:in_color_matrix=bt709" % (movie["fps"], width, height), "-f", "rawvideo", "-pix_fmt", "rgba", "-"], capture_output=True, check=True).stdout
     os.remove(source_path)
     code = bake_record.code_fingerprint(MOVIE_CODE_FILES)
     frame_size = width * height * 4
