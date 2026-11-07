@@ -74,13 +74,13 @@ $(OBJECT_FOLDER)/%.o: src/%.c $(wildcard include/*.h)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-build/$(TARGET).elf: $(OBJS)
+build/$(TARGET).elf: $(OBJS) FORCE
 	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
 
-build/$(TARGET).velf: build/$(TARGET).elf
+build/$(TARGET).velf: build/$(TARGET).elf FORCE
 	vita-elf-create $< $@
 
-build/eboot.bin: build/$(TARGET).velf
+build/eboot.bin: build/$(TARGET).velf FORCE
 	vita-make-fself -s $< $@
 
 build/param.sfo: Makefile
