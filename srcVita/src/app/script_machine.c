@@ -304,6 +304,21 @@ static int handler_key_matches(const struct script_handler *handler, const char 
     return strcmp(handler->verb, verb) == 0 && (handler->arg[0] == '\0' || strcmp(handler->arg, arg) == 0);
 }
 
+int script_machine_handles(const struct script_machine *machine, const char *verb, const char *arg)
+{
+    int object;
+    int handler;
+
+    for (object = 0; object < machine->object_count; object++) {
+        for (handler = 0; handler < machine->objects[object].handler_count; handler++) {
+            if (handler_key_matches(&machine->objects[object].handlers[handler], verb, arg)) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 static int deliver(struct script_handler *handler, const char *verb, const char *arg)
 {
     if (!handler_key_matches(handler, verb, arg)) {

@@ -244,7 +244,7 @@ static int actor_has_a_balloon(struct script_machine *machine, const struct scri
     return 0;
 }
 
-static void start_music(struct script_machine *machine, int id)
+void script_machine_start_music(struct script_machine *machine, int id)
 {
     if (machine->music_id == id) {
         return;
@@ -252,6 +252,14 @@ static void start_music(struct script_machine *machine, int id)
     machine->music_id = id;
     if (machine->outputs->music_started != NULL) {
         machine->outputs->music_started(id);
+    }
+}
+
+void script_machine_stop_music(struct script_machine *machine, int fade_ticks)
+{
+    machine->music_id = 0;
+    if (machine->outputs->music_stopped != NULL) {
+        machine->outputs->music_stopped(fade_ticks);
     }
 }
 
@@ -374,13 +382,10 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         start_narration(machine, vm, words);
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x106:
-        start_music(machine, (int)words[0]);
+        script_machine_start_music(machine, (int)words[0]);
         break;
     case 0x108:
-        machine->music_id = 0;
-        if (machine->outputs->music_stopped != NULL) {
-            machine->outputs->music_stopped((int)words[0]);
-        }
+        script_machine_stop_music(machine, (int)words[0]);
         break;
     case 0x10a:
         if (machine->outputs->music_prepared != NULL) {

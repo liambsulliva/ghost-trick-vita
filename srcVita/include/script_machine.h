@@ -438,6 +438,9 @@ const char *script_machine_string(struct script_machine *machine, const struct s
 struct script_object *script_machine_find_object(struct script_machine *machine, const char *name);
 struct script_object *script_machine_current_object(struct script_machine *machine, const struct script_vm *vm);
 void script_machine_send(struct script_machine *machine, const char *target, const char *verb, const char *arg);
+int script_machine_handles(const struct script_machine *machine, const char *verb, const char *arg);
+void script_machine_start_music(struct script_machine *machine, int id);
+void script_machine_stop_music(struct script_machine *machine, int fade_ticks);
 unsigned int script_machine_u32(const unsigned int *words, int first);
 
 enum script_step_result script_ops_actor_run(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words);

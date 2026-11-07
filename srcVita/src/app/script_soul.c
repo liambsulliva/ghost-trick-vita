@@ -30,6 +30,9 @@
 #define NO_CORE (-1)
 #define SOUL_BEAM_TICKS 6
 #define SOUL_LIGHTNING_TICKS 72
+#define DEAD_TRICK_LIGHT_SOUND_KIND 28
+#define DEAD_TRICK_MUSIC_ID 9
+#define DEAD_TRICK_MUSIC_STOP_FADE_TICKS 0
 #define SOUL_POSSESSION_FLASH_TICKS 18
 #define SOUL_POSSESSION_SPARK_TICKS 148
 #define SOUL_STREAM_DS_PIXELS_PER_TICK 6
@@ -162,6 +165,29 @@ static int stream_ticks_for_distance(float distance)
     return ticks > SOUL_STREAM_TICKS_MOST ? SOUL_STREAM_TICKS_MOST : ticks;
 }
 
+static void start_dead_trick_light(struct script_machine *machine)
+{
+    if (machine->outputs->sound_played != NULL) {
+        machine->outputs->sound_played(DEAD_TRICK_LIGHT_SOUND_KIND);
+    }
+    if (!script_machine_handles(machine, "timeleap", "none stop")) {
+        script_machine_stop_music(machine, DEAD_TRICK_MUSIC_STOP_FADE_TICKS);
+    }
+}
+
+static void finish_dead_trick_light(struct script_machine *machine)
+{
+    if (script_machine_handles(machine, "timeleap", "custom start")) {
+        script_machine_send(machine, "*", "timeleap", "custom start");
+        return;
+    }
+    if (script_machine_handles(machine, "timeleap", "call bgm")) {
+        script_machine_send(machine, "*", "timeleap", "call bgm");
+        return;
+    }
+    script_machine_start_music(machine, DEAD_TRICK_MUSIC_ID);
+}
+
 static void drag_soul_to(struct script_machine *machine, int object_index, int slot)
 {
     struct script_soul *soul;
@@ -173,6 +199,10 @@ static void drag_soul_to(struct script_machine *machine, int object_index, int s
         return;
     }
     if (machine->auto_press == SCRIPT_AUTO_FAST || !soul->is_on || soul->active_object == NO_CORE || soul->active_object == object_index) {
+        if (soul->is_on && soul->active_object != NO_CORE && soul->active_object != object_index && machine->objects[object_index].is_dead) {
+            start_dead_trick_light(machine);
+            finish_dead_trick_light(machine);
+        }
         arrive_at_core(machine, object_index, slot);
         return;
     }
@@ -309,6 +339,9 @@ static void finish_drag_when_due(struct script_machine *machine)
         return;
     }
     soul->drag_ticks_left = soul->drag_ticks_left - 1;
+    if (soul->drag_ticks_left == soul->drag_stream_ticks && machine->objects[soul->drag_object].is_dead) {
+        start_dead_trick_light(machine);
+    }
     if (soul->drag_ticks_left == 0) {
         if (machine->objects[soul->drag_object].is_dead) {
             soul->flash_ticks_left = SOUL_POSSESSION_FLASH_TICKS;
@@ -316,6 +349,7 @@ static void finish_drag_when_due(struct script_machine *machine)
         }
         arrive_at_core(machine, soul->drag_object, soul->drag_slot);
         if (machine->objects[soul->drag_object].is_dead) {
+            finish_dead_trick_light(machine);
             start_time_leap(machine);
         }
     }
