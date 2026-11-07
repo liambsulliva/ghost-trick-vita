@@ -57,7 +57,8 @@
     {"id": 97, "effect": "st01_mazl01"},
     {"id": 93, "effect": "st01_dosun_00"},
     {"id": 94, "effect": "st01_bed_00"},
-    {"id": 95, "effect": "st01_guiter_00"}
+    {"id": 95, "effect": "st01_guiter_00"},
+    {"id": 31, "effect": "cmn_shig_01", "only_in_soul_view": 1}
   ],
   "effects": [
     {
@@ -185,16 +186,6 @@
       "end_zoom": 1,
       "width": 110,
       "height": 110
-    },
-    {
-      "id": 31,
-      "kind": "ring",
-      "texture": "soul_dim",
-      "ticks": 0,
-      "end_zoom": 1,
-      "width": 190,
-      "height": 190,
-      "only_in_soul_view": 1
     }
   ],
   "hud": {

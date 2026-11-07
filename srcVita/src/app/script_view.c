@@ -695,7 +695,7 @@ static void draw_effects(void)
         draw_rain();
     }
     for (index = 0; index < VIEW_EFFECT_MAX; index++) {
-        if (effects[index].in_use && effects[index].row->kind == SCRIPT_EFFECT_MOVIE && !soul_is_on) {
+        if (effects[index].in_use && effects[index].row->kind == SCRIPT_EFFECT_MOVIE && soul_is_on == effects[index].row->only_in_soul_view) {
             draw_fx_movie(&effects[index]);
         }
         if (effects[index].in_use && effects[index].row->kind == SCRIPT_EFFECT_RING && (soul_is_on || !effects[index].row->only_in_soul_view)) {

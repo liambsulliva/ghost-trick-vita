@@ -38,7 +38,7 @@ def add_to_set(set_description, packs):
         effect = effect_file.read_effect(packs.read(USER_PATH % (row["effect"], row["effect"])))
         for page, path in enumerate(effect["page_paths"]):
             textures.append({"name": page_texture_name(row["effect"], page), "source": path, "width": effect["page_size"][0], "height": effect["page_size"][1]})
-        effects.append({"id": row["id"], "kind": "movie", "texture": row["effect"], "ticks": 0, "end_zoom": 1, "width": 0, "height": 0})
+        effects.append({"id": row["id"], "kind": "movie", "texture": row["effect"], "ticks": 0, "end_zoom": 1, "width": 0, "height": 0, "only_in_soul_view": row.get("only_in_soul_view", 0)})
         lines.extend(movie_rows(row, effect))
     expanded["screen_textures"] = textures
     expanded["effects"] = effects
