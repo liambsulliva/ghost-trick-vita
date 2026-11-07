@@ -8,6 +8,7 @@
 #include "script_outputs.h"
 #include "script_route.h"
 #include "script_talk.h"
+#include "soul_chain.h"
 
 #define SCRIPT_NOTE_LIST_COUNT 3
 #define SCRIPT_NOTE_ID_COUNT 64
@@ -283,6 +284,15 @@ struct script_soul {
     int tricks_fired;
     int route_tricks_when_step_began;
     int tip_is_aimed;
+    struct soul_chain chain;
+    int chain_needs_reset;
+    int chain_pick_object;
+    int chain_pick_slot;
+    int touch_was_down;
+    int touch_drags_the_tip;
+    float pen_x;
+    float pen_y;
+    int tip_input_is_held;
     float tip_aim_x;
     float tip_aim_y;
     int mark_age_ticks;

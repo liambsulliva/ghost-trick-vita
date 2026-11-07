@@ -10,6 +10,7 @@
 #include "script_outputs.h"
 #include "script_ui_view.h"
 #include "script_view.h"
+#include "soul_chain.h"
 #include "soul_transition.h"
 #include "texture_cache.h"
 
@@ -149,6 +150,8 @@
 #define SOUL_MOTION_DOT_COUNT 14
 #define SOUL_BEAM_TEXTURE "soul_beam"
 #define SOUL_BEAM_HALF_WIDTH 16.0f
+#define CHAIN_SEGMENT_SHORTEST 0.5f
+#define CHAIN_TEXTURE_S_SPAN 64.0f
 #define SOUL_SPARKS_FLIPBOOK "soul_sparks"
 #define SOUL_SPARKS_SIZE 340.0f
 #define SOUL_STREAM_LENGTH 0.7f
@@ -197,6 +200,9 @@ static int cursor_motion;
 static const struct script_core_label *mark_label;
 static int mark_object_is_shown;
 static int mark_age_ticks;
+static int chain_is_out;
+static float chain_x[SOUL_CHAIN_POINTS];
+static float chain_y[SOUL_CHAIN_POINTS];
 static float mark_x;
 static float mark_y;
 static float flash_alpha;
@@ -258,6 +264,17 @@ void script_view_soul_changed(int is_on, int with_effect)
         soul_transition_begin_entering();
     } else {
         soul_transition_begin_leaving();
+    }
+}
+
+void script_view_chain_moved(const float *x, const float *y, int is_out)
+{
+    int index;
+
+    chain_is_out = is_out;
+    for (index = 0; index < SOUL_CHAIN_POINTS; index++) {
+        chain_x[index] = x[index];
+        chain_y[index] = y[index];
     }
 }
 
@@ -906,6 +923,54 @@ static void draw_lightning(float from_x, float from_y, float to_x, float to_y);
 static void draw_lightning_stream(float from_x, float from_y, float to_x, float to_y);
 static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y);
 
+static void draw_chain_beam(void)
+{
+    static const float texture_s_of_joint[SOUL_CHAIN_POINTS] = { 8.0f, 15.0f, 22.0f, 29.0f, 35.0f, 42.0f, 49.0f, 56.0f };
+    const struct cached_texture *texture;
+    struct renderer_vertex corners[(SOUL_CHAIN_POINTS - 1) * 6];
+    float screen_x[SOUL_CHAIN_POINTS];
+    float screen_y[SOUL_CHAIN_POINTS];
+    int triangle_count;
+    int index;
+
+    texture = texture_cache_use_or_start_loading(SOUL_BEAM_TEXTURE);
+    if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
+        return;
+    }
+    for (index = 0; index < SOUL_CHAIN_POINTS; index++) {
+        scene_view_world_to_screen(scene_stage_view(), chain_x[index], chain_y[index], &screen_x[index], &screen_y[index]);
+    }
+    triangle_count = 0;
+    for (index = 0; index < SOUL_CHAIN_POINTS - 1; index++) {
+        struct renderer_vertex *quad;
+        float length;
+        float side_x;
+        float side_y;
+        float near_u;
+        float far_u;
+
+        length = sqrtf((screen_x[index + 1] - screen_x[index]) * (screen_x[index + 1] - screen_x[index]) + (screen_y[index + 1] - screen_y[index]) * (screen_y[index + 1] - screen_y[index]));
+        if (length < CHAIN_SEGMENT_SHORTEST) {
+            continue;
+        }
+        side_x = -(screen_y[index + 1] - screen_y[index]) / length * SOUL_BEAM_HALF_WIDTH;
+        side_y = (screen_x[index + 1] - screen_x[index]) / length * SOUL_BEAM_HALF_WIDTH;
+        near_u = texture_s_of_joint[index] / CHAIN_TEXTURE_S_SPAN;
+        far_u = texture_s_of_joint[index + 1] / CHAIN_TEXTURE_S_SPAN;
+        quad = &corners[triangle_count * 3];
+        quad[0] = (struct renderer_vertex){ screen_x[index] - side_x, screen_y[index] - side_y, near_u, 0.0f };
+        quad[1] = (struct renderer_vertex){ screen_x[index + 1] - side_x, screen_y[index + 1] - side_y, far_u, 0.0f };
+        quad[2] = (struct renderer_vertex){ screen_x[index] + side_x, screen_y[index] + side_y, near_u, 1.0f };
+        quad[3] = quad[1];
+        quad[4] = (struct renderer_vertex){ screen_x[index + 1] + side_x, screen_y[index + 1] + side_y, far_u, 1.0f };
+        quad[5] = quad[2];
+        triangle_count = triangle_count + 2;
+    }
+    if (triangle_count > 0) {
+        renderer_draw_triangles(texture->texture, corners, triangle_count, white);
+    }
+}
+
 static void draw_soul_motion(float screen_x, float screen_y)
 {
     float other_x;
@@ -919,6 +984,10 @@ static void draw_soul_motion(float screen_x, float screen_y)
     if (cursor_motion == SCRIPT_SOUL_LIGHTNING) {
         draw_lightning_stream(screen_x, screen_y, other_x, other_y);
         draw_lightning(screen_x, screen_y, other_x, other_y);
+        return;
+    }
+    if (cursor_motion == SCRIPT_SOUL_BEAM && chain_is_out) {
+        draw_chain_beam();
         return;
     }
     if (cursor_motion == SCRIPT_SOUL_BEAM) {

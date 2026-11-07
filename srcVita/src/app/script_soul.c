@@ -13,8 +13,14 @@
 #define SECOND_CORE_DISABLED_BIT 2
 #define ROUTE_ACTION_MOST_TICKS 1800u
 #define SOUL_REACH_DS_PIXELS 48.0f
+#define SOUL_TOUCH_GRAB_DS_PIXELS 16.0f
+#define SOUL_PEN_DEAD_ZONE_DS_PIXELS 3.0f
+#define SOUL_JUMP_SOUND_KIND 16
+#define GHOST_TIP_FOLLOW_LEFT 32
+#define GHOST_TIP_FOLLOW_RIGHT 224
+#define GHOST_TIP_FOLLOW_TOP 32
+#define GHOST_TIP_FOLLOW_BOTTOM 160
 #define SOUL_TIP_DS_PIXELS_PER_TICK 6.0f
-#define SOUL_TIP_TOUCH_DS_PIXELS_PER_TICK 12.0f
 #define SOUL_TIP_PICKUP_NEAR 16.0f
 #define SOUL_TIP_PICKUP_FAR 35.0f
 #define SOUL_TIP_PICKUP_OFF_LINE 3.0f
@@ -201,18 +207,22 @@ static void report_soul_view(struct script_machine *machine)
                 machine->outputs->soul_cursor_moved(1, soul->drag_from_x + (target_x - soul->drag_from_x) * along, soul->drag_from_y + (target_y - soul->drag_from_y) * along, soul->drag_from_x, soul->drag_from_y, SCRIPT_SOUL_STREAM);
             }
         } else if (soul->is_on && soul->active_object != NO_CORE) {
-            float x;
-            float y;
+            float flame_x;
+            float flame_y;
 
-            core_position(machine, soul->active_object, soul->active_slot, &x, &y);
+            flame_x = soul->chain.trail_x[0];
+            flame_y = soul->chain.trail_y[0];
             if (soul->tip_is_out) {
-                machine->outputs->soul_cursor_moved(1, x, y, soul->tip_x, soul->tip_y, SCRIPT_SOUL_BEAM);
+                machine->outputs->soul_cursor_moved(1, flame_x, flame_y, soul->tip_x, soul->tip_y, SCRIPT_SOUL_BEAM);
             } else {
-                machine->outputs->soul_cursor_moved(1, x, y, x, y, SCRIPT_SOUL_RESTING);
+                machine->outputs->soul_cursor_moved(1, flame_x, flame_y, flame_x, flame_y, SCRIPT_SOUL_RESTING);
             }
         } else {
             machine->outputs->soul_cursor_moved(0, 0.0f, 0.0f, 0.0f, 0.0f, SCRIPT_SOUL_RESTING);
         }
+    }
+    if (machine->outputs->soul_chain_moved != NULL) {
+        machine->outputs->soul_chain_moved(soul->chain.x, soul->chain.y, soul->is_on && soul->tip_is_out && soul->drag_ticks_left == 0);
     }
     if (machine->outputs->soul_mark_changed != NULL) {
         if (soul->mark_age_ticks >= 0 && soul->active_object != NO_CORE && soul->drag_ticks_left == 0) {
@@ -454,19 +464,57 @@ static int core_under_the_tip(const struct script_machine *machine, float root_x
     return best_object;
 }
 
-static void clamp_tip_to_reach(struct script_soul *soul, float root_x, float root_y)
+static void jump_to_picked_core(struct script_machine *machine)
 {
-    float along_x;
-    float along_y;
-    float length;
+    struct script_soul *soul;
+    float core_x;
+    float core_y;
 
-    along_x = soul->tip_x - root_x;
-    along_y = soul->tip_y - root_y;
-    length = sqrtf(along_x * along_x + along_y * along_y);
-    if (length > SOUL_REACH_DS_PIXELS) {
-        soul->tip_x = root_x + along_x * SOUL_REACH_DS_PIXELS / length;
-        soul->tip_y = root_y + along_y * SOUL_REACH_DS_PIXELS / length;
+    soul = &machine->soul;
+    core_position(machine, soul->chain_pick_object, soul->chain_pick_slot, &core_x, &core_y);
+    soul_chain_jump(&soul->chain, core_x, core_y);
+    if (machine->outputs->sound_played != NULL) {
+        machine->outputs->sound_played(SOUL_JUMP_SOUND_KIND);
     }
+    arrive_at_core(machine, soul->chain_pick_object, soul->chain_pick_slot);
+    soul->chain_pick_object = NO_CORE;
+}
+
+static int aim_the_chain_from_input(struct script_machine *machine)
+{
+    struct script_soul *soul;
+    struct soul_chain *chain;
+
+    soul = &machine->soul;
+    chain = &soul->chain;
+    if (soul->touch_is_down && !soul->touch_was_down) {
+        float grab_x;
+        float grab_y;
+
+        grab_x = soul->touch_x - chain->x[SOUL_CHAIN_TIP];
+        grab_y = soul->touch_y - chain->y[SOUL_CHAIN_TIP];
+        soul->touch_drags_the_tip = sqrtf(grab_x * grab_x + grab_y * grab_y) <= SOUL_TOUCH_GRAB_DS_PIXELS;
+        soul->pen_x = soul->touch_x;
+        soul->pen_y = soul->touch_y;
+    }
+    soul->touch_was_down = soul->touch_is_down;
+    if (soul->touch_is_down && soul->touch_drags_the_tip) {
+        if (fabsf(soul->touch_x - soul->pen_x) >= SOUL_PEN_DEAD_ZONE_DS_PIXELS || fabsf(soul->touch_y - soul->pen_y) >= SOUL_PEN_DEAD_ZONE_DS_PIXELS) {
+            soul->pen_x = soul->touch_x;
+            soul->pen_y = soul->touch_y;
+        }
+        soul_chain_aim(chain, soul->pen_x, soul->pen_y, SOUL_REACH_DS_PIXELS);
+        return 1;
+    }
+    if (soul->tip_is_aimed) {
+        soul_chain_aim(chain, chain->x[SOUL_CHAIN_TIP] + soul->tip_aim_x * SOUL_TIP_DS_PIXELS_PER_TICK, chain->y[SOUL_CHAIN_TIP] + soul->tip_aim_y * SOUL_TIP_DS_PIXELS_PER_TICK, SOUL_REACH_DS_PIXELS);
+        return 1;
+    }
+    if (soul->held_x != 0 || soul->held_y != 0) {
+        soul_chain_aim(chain, chain->x[SOUL_CHAIN_TIP] + (float)soul->held_x * SOUL_TIP_DS_PIXELS_PER_TICK, chain->y[SOUL_CHAIN_TIP] + (float)soul->held_y * SOUL_TIP_DS_PIXELS_PER_TICK, SOUL_REACH_DS_PIXELS);
+        return 1;
+    }
+    return 0;
 }
 
 static void move_soul_tip(struct script_machine *machine)
@@ -476,50 +524,62 @@ static void move_soul_tip(struct script_machine *machine)
     float root_y;
     int found_object;
     int found_slot;
+    int input_is_held;
 
     soul = &machine->soul;
-    if (!soul->is_on || soul->active_object == NO_CORE || soul->drag_ticks_left > 0 || (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent)) {
+    if (!soul->is_on || soul->active_object == NO_CORE) {
         soul->tip_is_out = 0;
-        return;
-    }
-    if (soul->held_x == 0 && soul->held_y == 0 && !soul->tip_is_aimed && !soul->touch_is_down) {
-        soul->tip_is_out = 0;
+        soul->chain_needs_reset = 1;
+        soul->chain_pick_object = NO_CORE;
+        soul->tip_input_is_held = 0;
         return;
     }
     core_position(machine, soul->active_object, soul->active_slot, &root_x, &root_y);
-    if (!soul->tip_is_out) {
-        soul->tip_x = root_x;
-        soul->tip_y = root_y;
-        soul->tip_is_out = 1;
+    if (soul->chain_needs_reset) {
+        soul_chain_rest_at(&soul->chain, root_x, root_y);
+        soul->chain_needs_reset = 0;
     }
-    if (soul->touch_is_down) {
-        float to_x;
-        float to_y;
-        float distance;
-
-        to_x = soul->touch_x - soul->tip_x;
-        to_y = soul->touch_y - soul->tip_y;
-        distance = sqrtf(to_x * to_x + to_y * to_y);
-        if (distance > SOUL_TIP_TOUCH_DS_PIXELS_PER_TICK) {
-            to_x = to_x * SOUL_TIP_TOUCH_DS_PIXELS_PER_TICK / distance;
-            to_y = to_y * SOUL_TIP_TOUCH_DS_PIXELS_PER_TICK / distance;
+    if (soul->chain.state != SOUL_CHAIN_JUMPING) {
+        soul_chain_hold_root(&soul->chain, root_x, root_y);
+    }
+    input_is_held = 0;
+    if (soul->drag_ticks_left > 0 || (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent)) {
+        if (soul->chain.state == SOUL_CHAIN_AIMING) {
+            soul_chain_retract(&soul->chain);
         }
-        soul->tip_x = soul->tip_x + to_x;
-        soul->tip_y = soul->tip_y + to_y;
-    } else if (soul->tip_is_aimed) {
-        soul->tip_x = soul->tip_x + soul->tip_aim_x * SOUL_TIP_DS_PIXELS_PER_TICK;
-        soul->tip_y = soul->tip_y + soul->tip_aim_y * SOUL_TIP_DS_PIXELS_PER_TICK;
-    } else {
-        soul->tip_x = soul->tip_x + (float)soul->held_x * SOUL_TIP_DS_PIXELS_PER_TICK;
-        soul->tip_y = soul->tip_y + (float)soul->held_y * SOUL_TIP_DS_PIXELS_PER_TICK;
+        soul->chain_pick_object = NO_CORE;
+    } else if (soul->chain_pick_object == NO_CORE && soul->chain.state != SOUL_CHAIN_JUMPING && soul->chain.state != SOUL_CHAIN_RETRACTING) {
+        input_is_held = aim_the_chain_from_input(machine);
     }
-    clamp_tip_to_reach(soul, root_x, root_y);
-    found_slot = 0;
-    found_object = core_under_the_tip(machine, root_x, root_y, &found_slot);
-    if (found_object != NO_CORE) {
-        soul->tip_is_out = 0;
-        drag_soul_to(machine, found_object, found_slot);
+    soul->tip_input_is_held = input_is_held;
+    soul_chain_step(&soul->chain);
+    soul->tip_x = soul->chain.x[SOUL_CHAIN_TIP];
+    soul->tip_y = soul->chain.y[SOUL_CHAIN_TIP];
+    if (soul->chain.state == SOUL_CHAIN_AIMING) {
+        if (soul->chain_pick_object != NO_CORE) {
+            if (soul_chain_tip_is_at_head(&soul->chain)) {
+                jump_to_picked_core(machine);
+            }
+        } else {
+            found_slot = 0;
+            found_object = core_under_the_tip(machine, root_x, root_y, &found_slot);
+            if (found_object != NO_CORE && (machine->auto_press == SCRIPT_AUTO_FAST || machine->objects[found_object].is_dead)) {
+                soul_chain_rest_at(&soul->chain, root_x, root_y);
+                drag_soul_to(machine, found_object, found_slot);
+            } else if (found_object != NO_CORE) {
+                float core_x;
+                float core_y;
+
+                core_position(machine, found_object, found_slot, &core_x, &core_y);
+                soul_chain_pick(&soul->chain, core_x, core_y);
+                soul->chain_pick_object = found_object;
+                soul->chain_pick_slot = found_slot;
+            } else if (!input_is_held && soul_chain_tip_is_at_head(&soul->chain)) {
+                soul_chain_retract(&soul->chain);
+            }
+        }
     }
+    soul->tip_is_out = soul->chain.state != SOUL_CHAIN_RESTING;
 }
 
 static void fire_trick(struct script_machine *machine)
@@ -1167,7 +1227,7 @@ static void move_free_camera(struct script_machine *machine)
     script_machine_scroll_camera(machine, soul->held_x * CAMERA_FREE_SPEED_PIXELS, soul->held_y * CAMERA_FREE_SPEED_PIXELS);
 }
 
-static void follow_core_in_ghost_view(struct script_machine *machine, float core_x, float core_y)
+static void follow_point_in_ghost_view(struct script_machine *machine, float point_x, float point_y, int left, int right, int top, int bottom)
 {
     int across;
     int down;
@@ -1177,13 +1237,18 @@ static void follow_core_in_ghost_view(struct script_machine *machine, float core
     if (machine->soul.view_change_ticks_left > 0) {
         return;
     }
-    across = (int)core_x - (machine->camera_x - machine->world_origin_x);
-    down = (int)core_y - (machine->camera_y - machine->world_origin_y);
-    step_x = across < GHOST_FOLLOW_LEFT ? -GHOST_FOLLOW_STEP : (across > GHOST_FOLLOW_RIGHT ? GHOST_FOLLOW_STEP : 0);
-    step_y = down < GHOST_FOLLOW_TOP ? -GHOST_FOLLOW_STEP : (down > GHOST_FOLLOW_BOTTOM ? GHOST_FOLLOW_STEP : 0);
+    across = (int)point_x - (machine->camera_x - machine->world_origin_x);
+    down = (int)point_y - (machine->camera_y - machine->world_origin_y);
+    step_x = across < left ? -GHOST_FOLLOW_STEP : (across > right ? GHOST_FOLLOW_STEP : 0);
+    step_y = down < top ? -GHOST_FOLLOW_STEP : (down > bottom ? GHOST_FOLLOW_STEP : 0);
     if (step_x != 0 || step_y != 0) {
         script_machine_scroll_camera(machine, step_x, step_y);
     }
+}
+
+static void follow_core_in_ghost_view(struct script_machine *machine, float core_x, float core_y)
+{
+    follow_point_in_ghost_view(machine, core_x, core_y, GHOST_FOLLOW_LEFT, GHOST_FOLLOW_RIGHT, GHOST_FOLLOW_TOP, GHOST_FOLLOW_BOTTOM);
 }
 
 static void follow_core_in_normal_play(struct script_machine *machine, float core_x, float core_y)
@@ -1245,7 +1310,9 @@ static void follow_core_with_camera(struct script_machine *machine)
         return;
     }
     core_position(machine, soul->active_object, soul->active_slot, &core_x, &core_y);
-    if (soul->is_on) {
+    if (soul->is_on && soul->tip_input_is_held && soul->tip_is_out) {
+        follow_point_in_ghost_view(machine, soul->tip_x, soul->tip_y, GHOST_TIP_FOLLOW_LEFT, GHOST_TIP_FOLLOW_RIGHT, GHOST_TIP_FOLLOW_TOP, GHOST_TIP_FOLLOW_BOTTOM);
+    } else if (soul->is_on) {
         follow_core_in_ghost_view(machine, core_x, core_y);
     } else {
         follow_core_in_normal_play(machine, core_x, core_y);
@@ -1779,6 +1846,8 @@ void script_soul_reset(struct script_machine *machine)
     script_pills_reset(machine);
     machine->soul.route_step = -1;
     machine->soul.active_object = NO_CORE;
+    machine->soul.chain_needs_reset = 1;
+    machine->soul.chain_pick_object = NO_CORE;
     machine->soul.start_message_at = -1;
     machine->soul.final_message_at = -1;
     machine->soul.leap_spokes_at = -1;
