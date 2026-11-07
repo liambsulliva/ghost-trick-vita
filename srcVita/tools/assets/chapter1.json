@@ -23,6 +23,15 @@
   },
   "effects": [
     {
+      "id": 51,
+      "kind": "ui_clip",
+      "texture": "CARD_BEFORE_DEATH",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 0,
+      "height": 0
+    },
+    {
       "id": 66,
       "kind": "card",
       "texture": "chapter_card",
@@ -119,6 +128,31 @@
       "crop": [196, 0, 84, 40],
       "width": 84,
       "height": 40
+    },
+    {
+      "name": "ui_select_button",
+      "source": "natives/android/charfiles/3d/06_id/10_select/cmn_button_01_iml4.tex.691230823",
+      "crop": [116, 0, 118, 118],
+      "width": 116,
+      "height": 116
+    },
+    {
+      "name": "rewind_rocks_far",
+      "source": "natives/android/charfiles/3d/06_id/07_rollback/cmn_ba_99_01_iml4.tex.691230823",
+      "width": 256,
+      "height": 1536
+    },
+    {
+      "name": "rewind_rocks_near",
+      "source": "natives/android/charfiles/3d/06_id/07_rollback/cmn_ba_99_02_iml4.tex.691230823",
+      "width": 256,
+      "height": 1536
+    },
+    {
+      "name": "rewind_rocks_mid",
+      "source": "natives/android/charfiles/3d/06_id/07_rollback/cmn_ba_99_03_iml4.tex.691230823",
+      "width": 256,
+      "height": 1536
     },
     {
       "name": "soul_spokes",
@@ -1125,8 +1159,8 @@
       },
       {
         "script": "st01-st01_game001_Expand",
-        "action": "wait",
-        "pace": "instant",
+        "action": "touch",
+        "pace": "normal",
         "footage_s": 860.6,
         "wait": "timeleap_armed"
       },

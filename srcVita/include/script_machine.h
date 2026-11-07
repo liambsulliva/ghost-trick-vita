@@ -263,6 +263,8 @@ struct script_soul {
     float tip_aim_x;
     float tip_aim_y;
     int mark_age_ticks;
+    int rewind_select_ticks;
+    int rewind_press_ticks;
     int flash_ticks_left;
     int sparks_elapsed_ticks;
     int drag_ticks_left;

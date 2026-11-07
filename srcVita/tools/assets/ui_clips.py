@@ -81,10 +81,10 @@ def digit_clip(name, digit_texture, widths, heights):
 
 def card_clip():
     text_scale = [(0, 3.0), (32, 3.0), (60, 1.0)]
-    text_alpha = [(0, 0.0), (31, 0.0), (60, 1.0), (68, 1.0)]
+    text_alpha = [(0, 0.0), (31, 0.0), (60, 1.0), (183, 1.0), (193, 0.0)]
     clock_scale = [(0, 3.5), (31, 0.6), (32, 0.72), (33, 0.615), (68, 0.615)]
-    return {"name": "CARD_BEFORE_DEATH", "frames": 68, "elements": [
-        element("sprite", "card_clock", WHITE, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=scaled(clock_scale, 500.0), h=scaled(clock_scale, 500.0), alpha=[(0, 0.0), (30, 1.0), (68, 1.0)]),
+    return {"name": "CARD_BEFORE_DEATH", "frames": 193, "elements": [
+        element("sprite", "card_clock", WHITE, x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=scaled(clock_scale, 500.0), h=scaled(clock_scale, 500.0), alpha=[(0, 0.0), (30, 1.0), (183, 1.0), (193, 0.0)]),
         element("rect", "-", (0.0, 0.0, 0.0), x=constant(VITA_CENTER_X), y=constant(VITA_CENTER_Y), w=constant(VITA_WIDTH), h=scaled(text_scale, 89.0), alpha=text_alpha),
         element("sprite", "card_top_text", WHITE, x=constant(VITA_CENTER_X + 1.0), y=[(frame, VITA_CENTER_Y - 86.0 * value) for frame, value in text_scale], w=scaled(text_scale, 273.0), h=scaled(text_scale, 81.0), alpha=text_alpha),
         element("sprite", "card_bottom_text", WHITE, x=constant(VITA_CENTER_X + 0.5), y=[(frame, VITA_CENTER_Y + 92.5 * value) for frame, value in text_scale], w=scaled(text_scale, 356.0), h=scaled(text_scale, 79.0), alpha=text_alpha),

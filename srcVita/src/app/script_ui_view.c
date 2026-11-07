@@ -38,6 +38,29 @@
 #define SIDE_LABEL_THICKNESS 39.5f
 #define SIDE_LABEL_ROTATION -90.0f
 
+#define REWIND_ROCK_X 405.0f
+#define REWIND_ROCK_WIDTH 150.0f
+#define REWIND_ROCK_HEIGHT 900.0f
+#define REWIND_FAR_SPEED 0.75f
+#define REWIND_MID_SPEED 1.25f
+#define REWIND_NEAR_SPEED 1.875f
+#define REWIND_BUTTON_TEXTURE "ui_select_button"
+#define REWIND_BUTTON_X 331.0f
+#define REWIND_BUTTON_Y 238.75f
+#define REWIND_BUTTON_WIDTH 298.0f
+#define REWIND_BUTTON_HEIGHT 69.0f
+#define REWIND_BUTTON_CORNER 20.0f
+#define REWIND_BUTTON_CORNER_UV 0.345f
+#define REWIND_SLIDE_TICKS 20
+#define REWIND_SLIDE_PIXELS 330.0f
+#define REWIND_PRESS_FLASH_TICKS 12
+#define REWIND_RESTING_BRIGHTNESS 0.88f
+#define REWIND_PRESS_FADE_TICKS 60
+#define REWIND_LABEL_WIDTH 210.0f
+#define REWIND_LABEL_HEIGHT 36.0f
+#define REWIND_LABEL_SHEET_Y 112.0f
+#define REWIND_LABEL_SHEET_WIDTH 420.0f
+#define REWIND_LABEL_SHEET_HEIGHT 72.0f
 #define NARRATION_ARROW_TEXTURE "narration_arrow"
 #define NARRATION_ARROW_X 459.0f
 #define NARRATION_ARROW_Y 504.0f
@@ -49,7 +72,7 @@
 #define PILL_SHEET_TEXTURE "hud_sheet"
 #define PILL_ART_SIZE 512.0f
 #define PILL_SHEET_WIDTH 512.0f
-#define PILL_SHEET_HEIGHT 128.0f
+#define PILL_SHEET_HEIGHT 192.0f
 #define PILL_SLIDE_STEPS 8
 #define PILL_SLIDE_PIXELS_PER_STEP 11.25f
 #define PILL_PRESSED_DROP 3.75f
@@ -553,6 +576,126 @@ static void draw_side_hud(void)
     }
 }
 
+static void draw_rock_layer(const char *name, float pixels_per_tick, float alpha)
+{
+    const struct cached_texture *rocks;
+    struct renderer_rect area;
+    struct renderer_color tint;
+    float scroll;
+
+    rocks = ready_texture(name);
+    if (rocks == NULL) {
+        return;
+    }
+    scroll = fmodf((float)hud.rewind_select_ticks * pixels_per_tick, REWIND_ROCK_HEIGHT);
+    tint = white;
+    tint.alpha = alpha;
+    area.x = REWIND_ROCK_X;
+    area.width = REWIND_ROCK_WIDTH;
+    area.height = REWIND_ROCK_HEIGHT;
+    area.y = -scroll;
+    renderer_draw_sprite(rocks->texture, area, whole_texture(), tint);
+    area.y = area.y + REWIND_ROCK_HEIGHT;
+    renderer_draw_sprite(rocks->texture, area, whole_texture(), tint);
+}
+
+static void draw_slice(const struct cached_texture *art, float x, float y, float width, float height, float u, float v, float cell_width, float cell_height, struct renderer_color tint)
+{
+    struct renderer_rect area;
+    struct renderer_rect part;
+
+    area.x = x;
+    area.y = y;
+    area.width = width;
+    area.height = height;
+    part.x = u;
+    part.y = v;
+    part.width = cell_width;
+    part.height = cell_height;
+    renderer_draw_sprite(art->texture, area, part, tint);
+}
+
+static void draw_select_button(float x, float y, float alpha, float brightness)
+{
+    const struct cached_texture *art;
+    struct renderer_color tint;
+    float corner;
+    float inner;
+    float far_x;
+    float far_y;
+
+    art = ready_texture(REWIND_BUTTON_TEXTURE);
+    if (art == NULL) {
+        return;
+    }
+    tint.red = brightness;
+    tint.green = brightness;
+    tint.blue = brightness;
+    tint.alpha = alpha;
+    corner = REWIND_BUTTON_CORNER;
+    inner = REWIND_BUTTON_CORNER_UV;
+    far_x = x + REWIND_BUTTON_WIDTH - corner;
+    far_y = y + REWIND_BUTTON_HEIGHT - corner;
+    draw_slice(art, x, y, corner, corner, 0.0f, 0.0f, inner, inner, tint);
+    draw_slice(art, x + corner, y, REWIND_BUTTON_WIDTH - corner * 2.0f, corner, inner, 0.0f, 1.0f - inner * 2.0f, inner, tint);
+    draw_slice(art, far_x, y, corner, corner, 1.0f - inner, 0.0f, inner, inner, tint);
+    draw_slice(art, x, y + corner, corner, REWIND_BUTTON_HEIGHT - corner * 2.0f, 0.0f, inner, inner, 1.0f - inner * 2.0f, tint);
+    draw_slice(art, x + corner, y + corner, REWIND_BUTTON_WIDTH - corner * 2.0f, REWIND_BUTTON_HEIGHT - corner * 2.0f, inner, inner, 1.0f - inner * 2.0f, 1.0f - inner * 2.0f, tint);
+    draw_slice(art, far_x, y + corner, corner, REWIND_BUTTON_HEIGHT - corner * 2.0f, 1.0f - inner, inner, inner, 1.0f - inner * 2.0f, tint);
+    draw_slice(art, x, far_y, corner, corner, 0.0f, 1.0f - inner, inner, inner, tint);
+    draw_slice(art, x + corner, far_y, REWIND_BUTTON_WIDTH - corner * 2.0f, corner, inner, 1.0f - inner, 1.0f - inner * 2.0f, inner, tint);
+    draw_slice(art, far_x, far_y, corner, corner, 1.0f - inner, 1.0f - inner, inner, inner, tint);
+}
+
+static void draw_rewind_select(void)
+{
+    const struct cached_texture *sheet;
+    struct renderer_rect area;
+    struct renderer_color tint;
+    float alpha;
+    float slide;
+    float brightness;
+    float button_x;
+
+    if (hud.rewind_select_ticks == 0) {
+        return;
+    }
+    alpha = 1.0f;
+    brightness = REWIND_RESTING_BRIGHTNESS;
+    if (hud.rewind_press_ticks > 0) {
+        brightness = hud.rewind_press_ticks < REWIND_PRESS_FLASH_TICKS ? 1.0f : REWIND_RESTING_BRIGHTNESS;
+        alpha = 1.0f - (float)hud.rewind_press_ticks / (float)REWIND_PRESS_FADE_TICKS;
+        if (alpha < 0.0f) {
+            alpha = 0.0f;
+        }
+    }
+    draw_rock_layer("rewind_rocks_far", REWIND_FAR_SPEED, alpha);
+    draw_rock_layer("rewind_rocks_mid", REWIND_MID_SPEED, alpha);
+    draw_rock_layer("rewind_rocks_near", REWIND_NEAR_SPEED, alpha);
+    slide = 1.0f - (float)hud.rewind_select_ticks / (float)REWIND_SLIDE_TICKS;
+    if (slide < 0.0f) {
+        slide = 0.0f;
+    }
+    button_x = REWIND_BUTTON_X + slide * REWIND_SLIDE_PIXELS;
+    draw_select_button(button_x, REWIND_BUTTON_Y, alpha, brightness);
+    sheet = ready_texture(PILL_SHEET_TEXTURE);
+    if (sheet != NULL) {
+        struct renderer_rect part;
+
+        area.x = button_x + (REWIND_BUTTON_WIDTH - REWIND_LABEL_WIDTH) / 2.0f;
+        area.y = REWIND_BUTTON_Y + (REWIND_BUTTON_HEIGHT - REWIND_LABEL_HEIGHT) / 2.0f;
+        area.width = REWIND_LABEL_WIDTH;
+        area.height = REWIND_LABEL_HEIGHT;
+        part.x = 0.0f;
+        part.y = REWIND_LABEL_SHEET_Y / PILL_SHEET_HEIGHT;
+        part.width = REWIND_LABEL_SHEET_WIDTH / PILL_SHEET_WIDTH;
+        part.height = REWIND_LABEL_SHEET_HEIGHT / PILL_SHEET_HEIGHT;
+        tint = white;
+        tint.alpha = alpha;
+        renderer_draw_sprite(sheet->texture, area, part, tint);
+    }
+}
+
 static void draw_narration_arrow(void)
 {
     const struct cached_texture *arrow;
@@ -696,6 +839,7 @@ void script_ui_view_draw(void)
     }
     if (!hud.is_hidden_for_movie) {
         draw_side_hud();
+        draw_rewind_select();
         draw_pills();
         draw_narration_arrow();
     }

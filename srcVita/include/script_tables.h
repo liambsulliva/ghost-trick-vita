@@ -30,6 +30,7 @@ enum script_preload_kind {
 
 enum script_effect_kind {
     SCRIPT_EFFECT_CARD,
+    SCRIPT_EFFECT_UI_CLIP,
     SCRIPT_EFFECT_DISSOLVE,
     SCRIPT_EFFECT_RING
 };

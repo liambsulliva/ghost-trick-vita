@@ -72,6 +72,8 @@ enum tutorial_mode {
 #define NORMAL_FOLLOW_STOPS_BELOW 0.25f
 #define DS_SCREEN_WIDTH 256
 #define DS_SCREEN_HEIGHT 192
+#define REWIND_SLIDE_TICKS 20
+#define REWIND_PRESS_TO_MOVIE_TICKS 63
 #define MARK_IS_OFF -1
 #define MARK_LAST_TICK 165
 #define MARK_TICKS_BEFORE_THE_CORE_SHOWS 30
@@ -584,6 +586,8 @@ static void report_hud(struct script_machine *machine)
     view.world_is_running = !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && machine->eyecatch_ticks_left == 0;
     view.is_hidden_for_movie = machine->movie_ticks_left > 0;
     view.narration_arrow_is_on = script_narration_wants_a_press(&machine->narration);
+    view.rewind_select_ticks = machine->soul.rewind_select_ticks;
+    view.rewind_press_ticks = machine->soul.rewind_press_ticks;
     script_pills_fill_view(machine, &view);
     machine->outputs->hud_changed(&view);
 }
@@ -860,6 +864,35 @@ static void run_custom_soul_command(struct script_machine *machine, const char *
     }
 }
 
+static void start_the_time_jump(struct script_machine *machine)
+{
+    if (machine->outputs->movie_started != NULL && machine->time_jump_movie_ticks > 0) {
+        machine->movie_ticks_left = machine->auto_press == SCRIPT_AUTO_FAST ? 0 : machine->time_jump_movie_ticks;
+        machine->outputs->movie_started(TIME_JUMP_MOVIE);
+    }
+    schedule_native_event(machine, &machine->soul.time_jump_event, "timeleap", "jump", machine->time_jump_movie_ticks > 0 ? machine->time_jump_movie_ticks : TIME_JUMP_AFTER_TICKS);
+}
+
+static void step_the_rewind_select(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->rewind_select_ticks == 0) {
+        return;
+    }
+    soul->rewind_select_ticks = soul->rewind_select_ticks + 1;
+    if (soul->rewind_press_ticks == 0) {
+        return;
+    }
+    soul->rewind_press_ticks = soul->rewind_press_ticks + 1;
+    if (soul->rewind_press_ticks > REWIND_PRESS_TO_MOVIE_TICKS) {
+        soul->rewind_select_ticks = 0;
+        soul->rewind_press_ticks = 0;
+        start_the_time_jump(machine);
+    }
+}
+
 void script_soul_run_command(struct script_machine *machine, const char *verb, const char *arg)
 {
     if (strcmp(verb, "SoulVision") == 0) {
@@ -883,11 +916,15 @@ void script_soul_run_command(struct script_machine *machine, const char *verb, c
             machine->outputs->swirl_changed(0);
         }
     } else if (strcmp(verb, "Timeleap") == 0 && strcmp(arg, "SELECT") == 0) {
-        if (machine->outputs->movie_started != NULL && machine->time_jump_movie_ticks > 0) {
-            machine->movie_ticks_left = machine->auto_press == SCRIPT_AUTO_FAST ? 0 : machine->time_jump_movie_ticks;
-            machine->outputs->movie_started(TIME_JUMP_MOVIE);
+        if (machine->auto_press == SCRIPT_AUTO_FAST) {
+            start_the_time_jump(machine);
+        } else {
+            machine->soul.rewind_select_ticks = 1;
+            machine->soul.rewind_press_ticks = 0;
+            if (machine->outputs->marked != NULL) {
+                machine->outputs->marked("rewind_select", arg);
+            }
         }
-        schedule_native_event(machine, &machine->soul.time_jump_event, "timeleap", "jump", machine->time_jump_movie_ticks > 0 ? machine->time_jump_movie_ticks : TIME_JUMP_AFTER_TICKS);
     }
 }
 
@@ -937,6 +974,12 @@ static void take_press(struct script_machine *machine)
     }
     if (script_narration_wants_a_press(&machine->narration)) {
         script_narration_note_press(&machine->narration);
+        return;
+    }
+    if (soul->rewind_select_ticks >= REWIND_SLIDE_TICKS) {
+        if (soul->rewind_press_ticks == 0) {
+            soul->rewind_press_ticks = 1;
+        }
         return;
     }
     if (soul->tutorial_mode != TUTORIAL_NONE) {
@@ -1224,7 +1267,7 @@ static int route_token_holds(const struct script_machine *machine, char *token)
         return soul->camera_tutorial_is_on;
     }
     if (strcmp(token, "timeleap_armed") == 0) {
-        return soul->time_jump_event.target != NULL;
+        return soul->rewind_select_ticks >= REWIND_SLIDE_TICKS || soul->time_jump_event.target != NULL;
     }
     if (first == NULL) {
         return 0;
@@ -1555,6 +1598,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     move_free_camera(machine);
     follow_core_with_camera(machine);
     age_the_player_mark(machine);
+    step_the_rewind_select(machine);
     finish_drag_when_due(machine);
     report_soul_view(machine);
     report_possession_effects(machine);

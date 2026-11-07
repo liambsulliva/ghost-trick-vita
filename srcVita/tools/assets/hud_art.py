@@ -6,7 +6,7 @@ import bake_record
 
 SHEET_NAME = "hud_sheet"
 SHEET_WIDTH = 512
-SHEET_HEIGHT = 128
+SHEET_HEIGHT = 192
 SUPERSAMPLE = 4
 GLYPH_CELL = 40
 START_WIDTH = 72
@@ -19,6 +19,11 @@ PAIRS = {"cross": "#8fb8ff", "circle": "#ff7a7a", "square": "#ff9ad5", "triangle
 FACE_ORDER = ["cross", "circle", "square", "triangle"]
 LETTER_ORDER = ["L", "R"]
 LABELS = ["Ghost", "Trick", "Back"]
+WIDE_LABEL = "Rewind Time"
+WIDE_LABEL_ROW_Y = 112
+WIDE_LABEL_WIDTH = 420
+WIDE_LABEL_HEIGHT = 72
+WIDE_LABEL_POINTS = 240
 LABEL_POINTS = 180
 LABEL_OUTLINE = 14
 KEY_WORD_NUDGE_Y = 8
@@ -68,6 +73,10 @@ def label_arguments(label_font_path, word, cell_x):
     return ["(", "-size", "%dx%d" % (scaled(LABEL_WIDTH), scaled(LABEL_HEIGHT)), "xc:none", "-font", label_font_path, "-pointsize", str(LABEL_POINTS), "-gravity", "center", "-fill", INK_NAVY, "-stroke", INK_NAVY, "-strokewidth", str(LABEL_OUTLINE), "-annotate", "+0+0", word, "-fill", WHITE, "-stroke", "none", "-annotate", "+0+0", word, ")", "-gravity", "NorthWest", "-geometry", "+%d+%d" % (scaled(cell_x), scaled(LABEL_ROW_Y)), "-composite"]
 
 
+def wide_label_arguments(label_font_path):
+    return ["(", "-size", "%dx%d" % (scaled(WIDE_LABEL_WIDTH), scaled(WIDE_LABEL_HEIGHT)), "xc:none", "-font", label_font_path, "-pointsize", str(WIDE_LABEL_POINTS), "-gravity", "center", "-fill", WHITE, "-stroke", "none", "-annotate", "+0+0", WIDE_LABEL, ")", "-gravity", "NorthWest", "-geometry", "+0+%d" % scaled(WIDE_LABEL_ROW_Y), "-composite"]
+
+
 def sheet_arguments(label_font_path, key_font_path, output_path):
     arguments = ["magick", "-respect-parentheses", "-size", "%dx%d" % (scaled(SHEET_WIDTH), scaled(SHEET_HEIGHT)), "xc:none"]
     cell_x = 0
@@ -80,6 +89,7 @@ def sheet_arguments(label_font_path, key_font_path, output_path):
     arguments += word_button_arguments(key_font_path, "START", cell_x, START_WIDTH, START_POINTS)
     for index, word in enumerate(LABELS):
         arguments += label_arguments(label_font_path, word, index * LABEL_WIDTH)
+    arguments += wide_label_arguments(label_font_path)
     arguments += ["-filter", "Box", "-resize", "%dx%d!" % (SHEET_WIDTH, SHEET_HEIGHT), "-depth", "8", "rgba:" + output_path]
     return arguments
 

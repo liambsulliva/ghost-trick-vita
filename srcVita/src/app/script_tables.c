@@ -236,6 +236,8 @@ static int read_effect_line(struct script_tables *tables, const char *line)
     }
     if (strcmp(kind, "card") == 0) {
         row->kind = SCRIPT_EFFECT_CARD;
+    } else if (strcmp(kind, "ui_clip") == 0) {
+        row->kind = SCRIPT_EFFECT_UI_CLIP;
     } else if (strcmp(kind, "dissolve") == 0) {
         row->kind = SCRIPT_EFFECT_DISSOLVE;
     } else if (strcmp(kind, "ring") == 0) {

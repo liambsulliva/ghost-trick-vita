@@ -376,6 +376,9 @@ static void on_effect_spawned(int id, const char *name, float x, float y)
     case SCRIPT_EFFECT_CARD:
         start_card(name);
         break;
+    case SCRIPT_EFFECT_UI_CLIP:
+        script_ui_view_clip_started(row->texture_name, 0, 0);
+        break;
     case SCRIPT_EFFECT_DISSOLVE:
         start_dissolve(row, name);
         break;

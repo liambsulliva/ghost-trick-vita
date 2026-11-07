@@ -64,6 +64,8 @@ struct script_hud_view {
     int world_is_running;
     int is_hidden_for_movie;
     int narration_arrow_is_on;
+    int rewind_select_ticks;
+    int rewind_press_ticks;
     int pulse_ticks;
     struct script_pill_view pills[SCRIPT_PILL_COUNT];
 };
