@@ -805,6 +805,28 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
             vm->owner->is_dead = 1;
         }
         return SCRIPT_STEP_NEXT;
+    case 0xe5:
+        machine->soul.ghost_pill_is_held_out = 0;
+        return SCRIPT_STEP_NEXT;
+    case 0xe6:
+        machine->soul.ghost_pill_is_held_out = 1;
+        return SCRIPT_STEP_NEXT;
+    case 0xe9:
+    case 0xea:
+        if (vm->owner != NULL) {
+            if (op == 0xea) {
+                vm->owner->actor.busy_cores = vm->owner->actor.busy_cores | (1 << words[0]);
+            } else {
+                vm->owner->actor.busy_cores = vm->owner->actor.busy_cores & ~(1 << words[0]);
+            }
+        }
+        return SCRIPT_STEP_NEXT;
+    case 0xfe:
+        machine->soul.rollback_is_on = 1;
+        return SCRIPT_STEP_NEXT;
+    case 0xff:
+        machine->soul.rollback_is_on = 0;
+        return SCRIPT_STEP_NEXT;
     case 0x74:
         if (words[0] == 0 || (int)words[0] > machine->chapter_mark) {
             machine->chapter_mark = (int)words[0];

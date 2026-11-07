@@ -43,11 +43,28 @@ enum script_soul_motion {
     SCRIPT_SOUL_LIGHTNING
 };
 
+enum script_pill_id {
+    SCRIPT_PILL_GHOST,
+    SCRIPT_PILL_HOURGLASS,
+    SCRIPT_PILL_BACK,
+    SCRIPT_PILL_NOTEBOOK,
+    SCRIPT_PILL_TRICK,
+    SCRIPT_PILL_COUNT
+};
+
+struct script_pill_view {
+    int is_on_screen;
+    int slide_step;
+    int is_pressed;
+};
+
 struct script_hud_view {
     int side_is_on;
     int fate_level;
     int world_is_running;
     int is_hidden_for_movie;
+    int pulse_ticks;
+    struct script_pill_view pills[SCRIPT_PILL_COUNT];
 };
 
 struct script_outputs {

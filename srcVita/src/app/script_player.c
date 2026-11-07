@@ -649,6 +649,27 @@ void script_player_ghost_button(void)
     }
 }
 
+void script_player_back_button(void)
+{
+    if (phase == PHASE_RUNNING && data != NULL && data->machine.soul.is_on) {
+        script_soul_note_ghost(&data->machine);
+    }
+}
+
+void script_player_hourglass_button(void)
+{
+    if (phase == PHASE_RUNNING && data != NULL) {
+        script_soul_note_pill(&data->machine, SCRIPT_PILL_HOURGLASS);
+    }
+}
+
+void script_player_notebook_button(void)
+{
+    if (phase == PHASE_RUNNING && data != NULL) {
+        script_soul_note_pill(&data->machine, SCRIPT_PILL_NOTEBOOK);
+    }
+}
+
 void script_player_tap_balloon(int is_right)
 {
     if (phase == PHASE_RUNNING && data != NULL) {

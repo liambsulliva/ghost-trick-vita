@@ -97,6 +97,7 @@ struct script_actor {
     int is_frozen_and_hidden;
     int is_hard_hidden;
     int disabled_cores;
+    int busy_cores;
     int loop_carry_x;
     int loop_carry_y;
     int is_after_loop;
@@ -197,7 +198,22 @@ struct script_timed_event {
     long long at;
 };
 
+struct script_pill {
+    int state;
+    int step;
+    int press_ticks;
+    int hold_ticks;
+};
+
 struct script_soul {
+    struct script_pill pills[SCRIPT_PILL_COUNT];
+    unsigned int pills_registered;
+    unsigned int pills_shown_by_effect;
+    const char *pill_effect_names[SCRIPT_PILL_COUNT];
+    int pill_slide_in_wait;
+    unsigned int pill_pulse_ticks;
+    int ghost_pill_is_held_out;
+    int rollback_is_on;
     int is_on;
     int player_opened_soul_view;
     int active_object;
@@ -381,7 +397,18 @@ void script_machine_set_world_origin(struct script_machine *machine, int x, int 
 void script_machine_pan_camera_to(struct script_machine *machine, int center_x, int center_y);
 void script_soul_run_command(struct script_machine *machine, const char *verb, const char *arg);
 void script_soul_step_before_tasks(struct script_machine *machine);
+void script_pills_reset(struct script_machine *machine);
+void script_pills_step(struct script_machine *machine);
+void script_pills_press(struct script_machine *machine, enum script_pill_id id, int ticks_after_press);
+int script_pills_is_up(const struct script_machine *machine, enum script_pill_id id);
+void script_pills_register(struct script_machine *machine, enum script_pill_id id, int is_on);
+void script_pills_register_all(struct script_machine *machine);
+void script_pills_unregister_all(struct script_machine *machine);
+void script_pills_effect_spawned(struct script_machine *machine, int effect_id, const char *name);
+void script_pills_effect_deleted(struct script_machine *machine, const char *name);
+void script_pills_fill_view(const struct script_machine *machine, struct script_hud_view *view);
 void script_soul_note_ghost(struct script_machine *machine);
+void script_soul_note_pill(struct script_machine *machine, enum script_pill_id id);
 void script_soul_note_tap(struct script_machine *machine, int tap_group);
 void script_soul_note_direction(struct script_machine *machine, int direction_x, int direction_y);
 void script_soul_set_held(struct script_machine *machine, int held_x, int held_y);

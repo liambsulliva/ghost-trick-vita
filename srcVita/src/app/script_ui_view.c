@@ -38,6 +38,84 @@
 #define SIDE_LABEL_THICKNESS 39.5f
 #define SIDE_LABEL_ROTATION -90.0f
 
+#define PILL_ART_TEXTURE "hud_button_art"
+#define PILL_SHEET_TEXTURE "hud_sheet"
+#define PILL_ART_SIZE 512.0f
+#define PILL_SHEET_WIDTH 512.0f
+#define PILL_SHEET_HEIGHT 128.0f
+#define PILL_SLIDE_STEPS 8
+#define PILL_SLIDE_PIXELS_PER_STEP 11.25f
+#define PILL_PRESSED_DROP 3.75f
+#define PILL_PRESSED_GREEN 0.5216f
+#define PILL_PULSE_PERIOD 80
+#define PILL_PULSE_PHASE_SHIFT 70
+#define PILL_PULSE_FALL_TICKS 30
+#define PILL_PULSE_RISE_ENDS_AT 59
+#define PILL_PULSE_DEPTH 0.1686f
+#define PILL_RING_HEIGHT 37.5f
+#define PILL_RING_TEXELS 78.0f
+#define PILL_RING_CELL_Y 101.0f
+#define PILL_RING_PRESSED_CELL_Y 180.0f
+#define PILL_RING_LEFT_CELL_X 161.0f
+#define PILL_RING_MIDDLE_CELL_X 211.0f
+#define PILL_RING_RIGHT_CELL_X 221.0f
+#define PILL_RING_CAP_TEXELS 60.0f
+#define PILL_RING_MIDDLE_TEXELS 20.0f
+#define PILL_RING_CAP_WIDTH 28.86f
+#define PILL_RING_THICKNESS 7.7f
+#define PILL_FILL_TOP 7.7f
+#define PILL_FILL_HEIGHT 18.3f
+#define PILL_ICON_SIZE 38.25f
+#define PILL_ICON_TEXELS 80.0f
+#define PILL_LABEL_WIDTH 80.0f
+#define PILL_LABEL_HEIGHT 32.0f
+#define PILL_LABEL_NUDGE_Y -2.0f
+#define PILL_GLYPH_SIZE 20.0f
+#define PILL_GLYPH_NUDGE_Y -2.0f
+#define PILL_BOTTOM_Y 494.0f
+#define PILL_TOP_Y 12.5f
+
+struct pill_sheet_cell {
+    float x;
+    float y;
+    float width;
+    float height;
+};
+
+struct pill_layout {
+    float x;
+    float y;
+    float width;
+    int is_at_bottom;
+    float fill_left;
+    float fill_right;
+    float icon_x;
+    float icon_y;
+    float icon_cell_x;
+    float icon_cell_y;
+    const struct pill_sheet_cell *label;
+    float label_center_x;
+    const struct pill_sheet_cell *glyph;
+    float glyph_x;
+    float glyph_width;
+};
+
+static const struct pill_sheet_cell glyph_cross = { 0.0f, 0.0f, 40.0f, 40.0f };
+static const struct pill_sheet_cell glyph_l = { 160.0f, 0.0f, 40.0f, 40.0f };
+static const struct pill_sheet_cell glyph_r = { 200.0f, 0.0f, 40.0f, 40.0f };
+static const struct pill_sheet_cell glyph_start = { 240.0f, 0.0f, 72.0f, 40.0f };
+static const struct pill_sheet_cell label_ghost = { 0.0f, 48.0f, 160.0f, 64.0f };
+static const struct pill_sheet_cell label_trick = { 160.0f, 48.0f, 160.0f, 64.0f };
+static const struct pill_sheet_cell label_back = { 320.0f, 48.0f, 160.0f, 64.0f };
+
+static const struct pill_layout pill_layouts[SCRIPT_PILL_COUNT] = {
+    [SCRIPT_PILL_GHOST] = { 9.75f, PILL_BOTTOM_Y, 201.0f, 1, 29.25f, 165.0f, 163.5f, -2.25f, 0.0f, 101.0f, &label_ghost, 96.4f, &glyph_l, 9.5f, PILL_GLYPH_SIZE },
+    [SCRIPT_PILL_BACK] = { 9.75f, PILL_BOTTOM_Y, 139.5f, 1, 29.25f, 132.0f, 0.0f, 0.0f, -1.0f, 0.0f, &label_back, 80.25f, &glyph_l, 9.5f, PILL_GLYPH_SIZE },
+    [SCRIPT_PILL_TRICK] = { 750.75f, PILL_BOTTOM_Y, 199.5f, 1, 33.75f, 169.5f, -2.25f, -1.5f, 80.0f, 101.0f, &label_trick, 103.1f, &glyph_cross, 170.0f, PILL_GLYPH_SIZE },
+    [SCRIPT_PILL_HOURGLASS] = { 880.5f, PILL_TOP_Y, 69.75f, 0, 30.0f, 41.0f, 0.0f, -1.0f, 0.0f, 181.0f, NULL, 0.0f, &glyph_r, 40.5f, PILL_GLYPH_SIZE },
+    [SCRIPT_PILL_NOTEBOOK] = { 9.75f, PILL_TOP_Y, 86.0f, 0, 41.0f, 50.0f, 47.75f, -1.0f, 80.0f, 181.0f, NULL, 0.0f, &glyph_start, 7.0f, 36.0f },
+};
+
 struct hourglass_cell {
     float x;
     float y;
@@ -131,6 +209,8 @@ void script_ui_view_advance(void)
 {
     int index;
 
+    (void)texture_cache_use_or_start_loading(PILL_ART_TEXTURE);
+    (void)texture_cache_use_or_start_loading(PILL_SHEET_TEXTURE);
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
         if (playing[index].clip != NULL) {
             playing[index].age_ticks = playing[index].age_ticks + 1;
@@ -464,6 +544,115 @@ static void draw_side_hud(void)
     }
 }
 
+static float pill_pulse_brightness(void)
+{
+    int phase;
+
+    phase = (hud.pulse_ticks + PILL_PULSE_PHASE_SHIFT) % PILL_PULSE_PERIOD;
+    if (phase < PILL_PULSE_FALL_TICKS) {
+        return 1.0f - PILL_PULSE_DEPTH * (float)phase / (float)PILL_PULSE_FALL_TICKS;
+    }
+    if (phase < PILL_PULSE_RISE_ENDS_AT) {
+        return 1.0f - PILL_PULSE_DEPTH * (float)(PILL_PULSE_RISE_ENDS_AT - phase) / (float)(PILL_PULSE_RISE_ENDS_AT - PILL_PULSE_FALL_TICKS);
+    }
+    return 1.0f;
+}
+
+static void draw_art_cell(const struct cached_texture *art, float x, float y, float width, float height, float cell_x, float cell_y, float cell_width, float cell_height)
+{
+    struct renderer_rect area;
+    struct renderer_rect part;
+
+    area.x = x;
+    area.y = y;
+    area.width = width;
+    area.height = height;
+    part.x = cell_x / PILL_ART_SIZE;
+    part.y = cell_y / PILL_ART_SIZE;
+    part.width = cell_width / PILL_ART_SIZE;
+    part.height = cell_height / PILL_ART_SIZE;
+    renderer_draw_sprite(art->texture, area, part, white);
+}
+
+static void draw_sheet_cell(const struct cached_texture *sheet, const struct pill_sheet_cell *cell, float x, float y, float width, float height)
+{
+    struct renderer_rect area;
+    struct renderer_rect part;
+
+    area.x = x;
+    area.y = y;
+    area.width = width;
+    area.height = height;
+    part.x = cell->x / PILL_SHEET_WIDTH;
+    part.y = cell->y / PILL_SHEET_HEIGHT;
+    part.width = cell->width / PILL_SHEET_WIDTH;
+    part.height = cell->height / PILL_SHEET_HEIGHT;
+    renderer_draw_sprite(sheet->texture, area, part, white);
+}
+
+static float pill_screen_y(const struct pill_layout *layout, int slide_step)
+{
+    float away;
+
+    away = (float)(PILL_SLIDE_STEPS - slide_step) * PILL_SLIDE_PIXELS_PER_STEP;
+    return layout->is_at_bottom ? layout->y + away : layout->y - away;
+}
+
+static void draw_pill(const struct pill_layout *layout, const struct script_pill_view *view, const struct cached_texture *art, const struct cached_texture *sheet)
+{
+    struct renderer_rect fill;
+    struct renderer_color fill_color;
+    float x;
+    float y;
+    float ring_cell_y;
+    float brightness;
+
+    x = layout->x;
+    y = pill_screen_y(layout, view->slide_step) + (view->is_pressed ? PILL_PRESSED_DROP : 0.0f);
+    ring_cell_y = view->is_pressed ? PILL_RING_PRESSED_CELL_Y : PILL_RING_CELL_Y;
+    fill.x = x + PILL_RING_THICKNESS;
+    fill.y = y + PILL_FILL_TOP;
+    fill.width = layout->width - PILL_RING_THICKNESS * 2.0f;
+    fill.height = PILL_FILL_HEIGHT;
+    renderer_draw_filled_rect(fill, white);
+    brightness = pill_pulse_brightness();
+    fill_color.red = view->is_pressed ? 1.0f : brightness;
+    fill_color.green = view->is_pressed ? PILL_PRESSED_GREEN : 0.0f;
+    fill_color.blue = 0.0f;
+    fill_color.alpha = 1.0f;
+    fill.x = x + layout->fill_left;
+    fill.width = layout->fill_right - layout->fill_left;
+    renderer_draw_filled_rect(fill, fill_color);
+    draw_art_cell(art, x, y, PILL_RING_CAP_WIDTH, PILL_RING_HEIGHT, PILL_RING_LEFT_CELL_X, ring_cell_y, PILL_RING_CAP_TEXELS, PILL_RING_TEXELS);
+    draw_art_cell(art, x + PILL_RING_CAP_WIDTH, y, layout->width - PILL_RING_CAP_WIDTH * 2.0f, PILL_RING_HEIGHT, PILL_RING_MIDDLE_CELL_X, ring_cell_y, PILL_RING_MIDDLE_TEXELS, PILL_RING_TEXELS);
+    draw_art_cell(art, x + layout->width - PILL_RING_CAP_WIDTH, y, PILL_RING_CAP_WIDTH, PILL_RING_HEIGHT, PILL_RING_RIGHT_CELL_X, ring_cell_y, PILL_RING_CAP_TEXELS, PILL_RING_TEXELS);
+    if (layout->icon_cell_x >= 0.0f) {
+        draw_art_cell(art, x + layout->icon_x, y + layout->icon_y, PILL_ICON_SIZE, PILL_ICON_SIZE, layout->icon_cell_x, layout->icon_cell_y, PILL_ICON_TEXELS, PILL_ICON_TEXELS);
+    }
+    if (layout->label != NULL) {
+        draw_sheet_cell(sheet, layout->label, x + layout->label_center_x - PILL_LABEL_WIDTH / 2.0f, y + PILL_RING_HEIGHT / 2.0f - PILL_LABEL_HEIGHT / 2.0f + PILL_LABEL_NUDGE_Y, PILL_LABEL_WIDTH, PILL_LABEL_HEIGHT);
+    }
+    draw_sheet_cell(sheet, layout->glyph, x + layout->glyph_x, y + PILL_RING_HEIGHT / 2.0f - PILL_GLYPH_SIZE / 2.0f + PILL_GLYPH_NUDGE_Y, layout->glyph_width, PILL_GLYPH_SIZE);
+}
+
+static void draw_pills(void)
+{
+    const struct cached_texture *art;
+    const struct cached_texture *sheet;
+    int index;
+
+    art = ready_texture(PILL_ART_TEXTURE);
+    sheet = ready_texture(PILL_SHEET_TEXTURE);
+    if (art == NULL || sheet == NULL) {
+        return;
+    }
+    for (index = 0; index < SCRIPT_PILL_COUNT; index++) {
+        if (hud.pills[index].is_on_screen) {
+            draw_pill(&pill_layouts[index], &hud.pills[index], art, sheet);
+        }
+    }
+}
+
 void script_ui_view_draw(void)
 {
     int index;
@@ -473,6 +662,7 @@ void script_ui_view_draw(void)
     }
     if (!hud.is_hidden_for_movie) {
         draw_side_hud();
+        draw_pills();
     }
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
         if (playing[index].clip != NULL) {

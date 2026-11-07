@@ -284,6 +284,9 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
     case 0x37:
     case 0x5c:
     case 0xdb:
+        if (op == 0xdb) {
+            machine->soul.rollback_is_on = 0;
+        }
         label = script_machine_string(machine, vm, words[0]);
         if (label != NULL) {
             script_talk_open(machine, label);

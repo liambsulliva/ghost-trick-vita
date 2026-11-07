@@ -64,6 +64,9 @@ static void delete_effect(struct script_machine *machine, struct script_vm *vm, 
     const char *name;
 
     name = script_machine_string(machine, vm, words[0]);
+    if (name != NULL) {
+        script_pills_effect_deleted(machine, name);
+    }
     if (name != NULL && machine->outputs->effect_deleted != NULL) {
         machine->outputs->effect_deleted(name);
     }

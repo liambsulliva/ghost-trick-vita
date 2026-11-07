@@ -459,14 +459,23 @@ static void update_player_controls(const struct input_state *input)
     }
     if (script_player_is_active()) {
         send_script_directions(input);
-        if (input->pressed & (INPUT_TRIANGLE | INPUT_CIRCLE)) {
+        if (input->pressed & INPUT_L) {
             script_player_ghost_button();
         }
-        if (input->pressed & INPUT_L) {
+        if (input->pressed & INPUT_CIRCLE) {
+            script_player_back_button();
+        }
+        if (input->pressed & INPUT_SQUARE) {
             script_player_tap_balloon(0);
         }
-        if (input->pressed & INPUT_R) {
+        if (input->pressed & INPUT_TRIANGLE) {
             script_player_tap_balloon(1);
+        }
+        if (input->pressed & INPUT_R) {
+            script_player_hourglass_button();
+        }
+        if (input->pressed & INPUT_START) {
+            script_player_notebook_button();
         }
     }
     if (!(input->pressed & INPUT_CROSS)) {

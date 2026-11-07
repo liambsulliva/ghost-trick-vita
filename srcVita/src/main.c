@@ -212,11 +212,11 @@ static void run_main_loop(void)
         input.held = input.held | injected_buttons;
         injected_buttons = 0;
 #endif
-        if (input.pressed & INPUT_START) {
+        if ((input.pressed & INPUT_START) && !script_player_is_active()) {
             run_log_write("input start pressed");
             break;
         }
-        if (input.pressed & INPUT_SQUARE) {
+        if ((input.pressed & INPUT_SQUARE) && !script_player_is_active()) {
             manual_capture_count = manual_capture_count + 1;
             snprintf(capture_name, sizeof(capture_name), "manual_%u", manual_capture_count);
             save_capture(capture_name);

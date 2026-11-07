@@ -17,6 +17,7 @@ import bake_record
 import bubble_art
 import ds_rom
 import frame_layout
+import hud_art
 import narration
 import pack_files
 import script_assets
@@ -198,6 +199,14 @@ def convert_composed_textures(packs, descriptions, work_folder, record):
         except Exception as error:
             failures.append((description["name"], str(error)))
     return results, failures
+
+
+def convert_hud_sheet(packs, set_description, work_folder, record):
+    hud = set_description.get("hud")
+    if hud is None:
+        return []
+    fonts = narration.TextFonts(packs, work_folder)
+    return [hud_art.bake_hud_sheet(fonts, work_folder, record, code_fingerprint_with_magick(TEXT_CODE_FILES + ["hud_art.py"]), hud["label_font"], hud["key_font"])]
 
 
 def convert_text_textures(packs, set_description, messages, work_folder, record):
@@ -407,6 +416,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
             narration_lines, text_results, text_failures = convert_text_textures(packs, set_description, messages, work_folder, record)
             composed_results, composed_failures = convert_composed_textures(packs, set_description.get("composed_textures", []), work_folder, record)
             talk_files, talk_results, talk_failures, _ = talk_assets.bake_talk(packs, set_description, text_key, work_folder, record, text_code_fingerprint())
+            talk_results = talk_results + convert_hud_sheet(packs, set_description, work_folder, record)
         finally:
             delete_work_folder(work_folder)
         failures = failures + text_failures + composed_failures + talk_failures

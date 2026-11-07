@@ -58,6 +58,8 @@ enum tutorial_mode {
     TUTORIAL_MOVE
 };
 
+#define PILL_HOLD_AFTER_VIEW_CHANGE 2
+#define PILL_HOLD_AFTER_TRICK 1
 #define SOUL_VIEW_ENTER_TICKS 33
 #define SOUL_VIEW_LEAVE_TICKS 13
 #define SOUL_LEAVE_SOUND_KIND 15
@@ -574,6 +576,7 @@ static void report_hud(struct script_machine *machine)
     view.fate_level = machine->fate_level;
     view.world_is_running = !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && machine->eyecatch_ticks_left == 0;
     view.is_hidden_for_movie = 0;
+    script_pills_fill_view(machine, &view);
     machine->outputs->hud_changed(&view);
 }
 
@@ -635,6 +638,7 @@ static void schedule_native_event(struct script_machine *machine, struct script_
 
 void script_soul_effect_spawned(struct script_machine *machine, int effect_id, const char *name)
 {
+    script_pills_effect_spawned(machine, effect_id, name);
     if (effect_id == PHONE_EFFECT_ID) {
         schedule_native_event(machine, &machine->soul.phone_event, name, "ready", PHONE_EFFECT_EVENT_AFTER_TICKS);
     }
@@ -745,8 +749,24 @@ static void run_button_command(struct script_machine *machine, const char *arg)
     soul = &machine->soul;
     if (strcmp(arg, "All:Off") == 0) {
         soul->trick_is_on = 0;
-    } else if (strcmp(arg, "All:On") == 0 || strcmp(arg, "Action:On") == 0 || strcmp(arg, "Trick:On") == 0) {
+        script_pills_unregister_all(machine);
+    } else if (strcmp(arg, "All:On") == 0) {
         soul->trick_is_on = 1;
+        script_pills_register_all(machine);
+    } else if (strcmp(arg, "Action:On") == 0) {
+        soul->trick_is_on = 1;
+        script_pills_register(machine, SCRIPT_PILL_TRICK, 1);
+    } else if (strcmp(arg, "Trick:On") == 0) {
+        soul->trick_is_on = 1;
+        script_pills_register(machine, SCRIPT_PILL_GHOST, 1);
+    } else if (strcmp(arg, "Trick:Off") == 0) {
+        script_pills_register(machine, SCRIPT_PILL_GHOST, 0);
+    } else if (strcmp(arg, "BackToMain:On") == 0 || strcmp(arg, "BackToMain:Off") == 0) {
+        script_pills_register(machine, SCRIPT_PILL_BACK, strcmp(arg, "BackToMain:On") == 0);
+    } else if (strcmp(arg, "Database:On") == 0 || strcmp(arg, "Database:Off") == 0) {
+        script_pills_register(machine, SCRIPT_PILL_NOTEBOOK, strcmp(arg, "Database:On") == 0);
+    } else if (strcmp(arg, "Rollback:On") == 0) {
+        soul->rollback_is_on = 1;
     } else if (strcmp(arg, "Input:Off") == 0) {
         soul->input_is_off = 1;
     } else if (strcmp(arg, "Input:On") == 0) {
@@ -837,6 +857,19 @@ int script_soul_world_is_playable(const struct script_machine *machine)
     return !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && !machine->soul.input_is_off;
 }
 
+static int pill_answers_a_press(const struct script_machine *machine, enum script_pill_id id)
+{
+    return machine->auto_press != SCRIPT_AUTO_OFF || script_pills_is_up(machine, id);
+}
+
+static int core_is_busy(const struct script_machine *machine)
+{
+    const struct script_soul *soul;
+
+    soul = &machine->soul;
+    return soul->active_object != NO_CORE && (machine->objects[soul->active_object].actor.busy_cores & (1 << soul->active_slot)) != 0;
+}
+
 static void take_press(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -859,7 +892,8 @@ static void take_press(struct script_machine *machine)
     if (soul->is_on) {
         return;
     }
-    if (script_soul_world_is_playable(machine) && soul->trick_is_on) {
+    if (script_soul_world_is_playable(machine) && soul->trick_is_on && !core_is_busy(machine) && pill_answers_a_press(machine, SCRIPT_PILL_TRICK)) {
+        script_pills_press(machine, SCRIPT_PILL_TRICK, PILL_HOLD_AFTER_TRICK);
         fire_trick(machine);
     }
 }
@@ -888,10 +922,14 @@ static void take_ghost_button(struct script_machine *machine)
         return;
     }
     if (soul->is_on && soul->player_opened_soul_view) {
-        set_soul_view(machine, 0);
+        if (pill_answers_a_press(machine, SCRIPT_PILL_BACK)) {
+            script_pills_press(machine, SCRIPT_PILL_BACK, PILL_HOLD_AFTER_VIEW_CHANGE);
+            set_soul_view(machine, 0);
+        }
         return;
     }
-    if (!soul->is_on && script_soul_world_is_playable(machine)) {
+    if (!soul->is_on && script_soul_world_is_playable(machine) && pill_answers_a_press(machine, SCRIPT_PILL_GHOST)) {
+        script_pills_press(machine, SCRIPT_PILL_GHOST, PILL_HOLD_AFTER_VIEW_CHANGE);
         soul->player_opened_soul_view = 1;
         set_soul_view(machine, 1);
         if (soul->active_object == NO_CORE) {
@@ -1378,6 +1416,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     report_possession_effects(machine);
     send_trick_action_when_due(machine);
     run_countdown(machine);
+    script_pills_step(machine);
     report_hud(machine);
     send_timed_native_event(machine, &soul->phone_event);
     send_timed_native_event(machine, &soul->time_jump_event);
@@ -1386,6 +1425,15 @@ void script_soul_step_before_tasks(struct script_machine *machine)
 void script_soul_note_ghost(struct script_machine *machine)
 {
     machine->soul.ghost_is_pending = 1;
+}
+
+void script_soul_note_pill(struct script_machine *machine, enum script_pill_id id)
+{
+    if (!script_pills_is_up(machine, id)) {
+        return;
+    }
+    script_pills_press(machine, id, 0);
+    script_machine_note(machine, NULL, "pill_not_ported", id == SCRIPT_PILL_HOURGLASS ? "hourglass" : "notebook");
 }
 
 void script_soul_note_tap(struct script_machine *machine, int tap_group)
@@ -1411,6 +1459,7 @@ void script_soul_reset(struct script_machine *machine)
         machine->outputs->soul_vision_changed(0, 0);
     }
     memset(&machine->soul, 0, sizeof(machine->soul));
+    script_pills_reset(machine);
     machine->soul.route_step = -1;
     machine->soul.active_object = NO_CORE;
     machine->soul.start_message_at = -1;

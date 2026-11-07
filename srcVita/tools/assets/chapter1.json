@@ -90,7 +90,17 @@
       "only_in_soul_view": 1
     }
   ],
+  "hud": {
+    "label_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
+    "key_font": "natives/android/gui/font/outlinefont/helveticaneueltw1g-bd.oft.1"
+  },
   "screen_textures": [
+    {
+      "name": "hud_button_art",
+      "source": "natives/android/charfiles/3d/06_id/04_button/cmn_button_02_iml4.tex.691230823",
+      "width": 512,
+      "height": 512
+    },
     {
       "name": "soul_spokes",
       "source": "natives/android/charfiles/3d/04_item/circlesubtex03_iml4.tex.691230823",
