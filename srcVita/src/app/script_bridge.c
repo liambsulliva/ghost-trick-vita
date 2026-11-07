@@ -114,6 +114,9 @@ static void on_stage_cleared(void)
     script_view_swirl_changed(0);
     scene_stage_set_mono_mode(0);
     grey_world_effect[0] = '\0';
+    mask_fade_alpha = 0.0f;
+    mask_fade_is_alive = 0;
+    mask_fade_is_white = 0;
     sound_request_stop_loop(ALL_SOUND_LOOPS);
 }
 
