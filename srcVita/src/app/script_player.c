@@ -15,6 +15,7 @@
 #include "script_bridge.h"
 #include "script_machine.h"
 #include "scene_view.h"
+#include "read_ahead.h"
 #include "script_player.h"
 #include "script_ui_view.h"
 #include "script_tables.h"
@@ -168,6 +169,10 @@ static void read_script_motions(const char *name)
         note_failure("motions_invalid", name);
     }
     mem_free(bytes);
+    if (read_named_file(name, ".ahead", &bytes, &size) == FILE_OK) {
+        read_ahead_add_text(name, (const char *)bytes, size);
+        mem_free(bytes);
+    }
 }
 
 static void begin_loading_animations(void);
@@ -547,6 +552,7 @@ void script_player_play(const char *entry_name)
     }
     memset(data, 0, sizeof(*data));
     script_tables_clear(&data->tables);
+    read_ahead_clear();
     script_machine_init(&data->machine, script_bridge_outputs(), SCRIPT_TIMING_DS, NULL);
     phase = PHASE_READING;
 }
@@ -593,6 +599,7 @@ void script_player_update(unsigned long long elapsed_us)
         elapsed_us = LONGEST_UPDATE_US;
     }
     if (phase == PHASE_RUNNING) {
+        read_ahead_step(data->machine.tick);
         if (!art_gate_holds(elapsed_us)) {
             run_ticks(elapsed_us);
             if (phase == PHASE_RUNNING && ticks_per_frame_when_fast == 0 && data->machine.movie_ticks_left == 0 && art_wait_us < ART_WAIT_MOST_US && scene_view_visible_art_is_loading(scene_stage_view())) {
@@ -851,6 +858,9 @@ static int route_step_number_is(const char *step_name, const char *wanted)
 
 void script_player_note_mark(const char *what, const char *name)
 {
+    if (data != NULL) {
+        read_ahead_note_mark(what, name, data->machine.tick);
+    }
     if (strcmp(run_until_kind, "step") == 0 && strcmp(what, "route_step_done") == 0 && route_step_number_is(name, run_until_name)) {
         snprintf(run_until_kind, sizeof(run_until_kind), "reached");
         return;

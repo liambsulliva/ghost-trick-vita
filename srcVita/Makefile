@@ -142,6 +142,11 @@ golden: build/tests/golden/script_replay
 coverage: route-check
 	python3 -I tools/coverage_report.py build/golden/route_marks.txt
 
+read-ahead: build/tests/golden/script_replay
+	@mkdir -p build/golden
+	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1/scripts --timing remaster --auto-paced --cues build/golden/cues_paced.tsv --stop-tick 200000 > /dev/null
+	python3 -I tools/assets/read_ahead.py build/golden/cues_paced.tsv ../extracted/vita_assets/chapter1/scripts ../extracted/vita_assets/chapter1/animations
+
 route-check: build/tests/golden/script_replay
 	@mkdir -p build/golden
 	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1/scripts --timing remaster --auto-paced --marks --stop-tick 200000 > build/golden/route_marks.txt
