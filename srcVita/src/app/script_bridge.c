@@ -13,6 +13,8 @@
 #include "script_view.h"
 #include "sound_engine.h"
 
+#define ALL_EFFECTS_NAME "*"
+#define MASK_FADE_ALPHA_FULL 31.0f
 #define CLASS_DRAWN_ONLY_IN_SOUL_VIEW 0x6309aa5au
 #define CLASS_DRAWN_ONLY_IN_LIVING_VIEW 0x45427fc2u
 #define BRIGHTNESS_SCALE 16.0f
@@ -47,6 +49,8 @@ static unsigned int card_started_tick;
 static int black_level;
 static int white_level;
 static int mask_fade_is_alive;
+static int mask_fade_is_white;
+static float mask_fade_alpha;
 static int zoom_ticks_left;
 #define NO_SOUL_TEXTURE "-"
 #define SCREEN_FILTER_GRAYSCALE 1
@@ -96,6 +100,7 @@ static void on_stage_cleared(void)
     scene_effects_set_flash(scene_stage_effects(), (float)white_level / BRIGHTNESS_SCALE);
     mask_is_on = 0;
     scene_view_forget_held_poses();
+    script_view_effect_deleted(ALL_EFFECTS_NAME);
     scene_stage_hide_card();
     card_is_showing = 0;
     memset(open_balloon_rows, 0, sizeof(open_balloon_rows));
@@ -130,8 +135,7 @@ static void on_screen_filter_changed(int mode)
 
 static void on_mask_fade_color_changed(int is_white)
 {
-    (void)is_white;
-    log_once("white_mask_fade_not_drawn", "-");
+    mask_fade_is_white = is_white;
 }
 
 static void on_sounds_stopped(void)
@@ -249,8 +253,12 @@ static void on_brightness_changed(int signed_level)
 
 static void on_mask_fade_changed(int is_alive, int alpha)
 {
-    (void)alpha;
+    mask_fade_alpha = (float)alpha / MASK_FADE_ALPHA_FULL;
     mask_fade_is_alive = is_alive;
+    if (!is_alive) {
+        mask_fade_is_white = 0;
+        mask_fade_alpha = 0.0f;
+    }
     if (!is_alive && card_is_showing) {
         card_is_showing = 0;
         scene_stage_hide_card();
@@ -258,10 +266,17 @@ static void on_mask_fade_changed(int is_alive, int alpha)
     }
 }
 
-static void on_beam_created(const char *name, float apex_x, float apex_y, float base_x, float base_y, float half_width)
+static void on_beam_created(const char *name, float apex_x, float apex_y, float base_x, float base_y, float half_width, float cover_alpha)
 {
     write_cue("beam", name);
     scene_effects_create_beam(scene_stage_effects(), name, apex_x, apex_y, base_x, base_y, half_width);
+    scene_effects_ramp_beam_cover(scene_stage_effects(), name, cover_alpha, 0);
+}
+
+static void on_beam_cover_ramped(const char *name, float cover_alpha, int ticks)
+{
+    write_cue("beam", name);
+    scene_effects_ramp_beam_cover(scene_stage_effects(), name, cover_alpha, ticks);
 }
 
 static void on_beam_width_ramped(const char *name, float half_width, int ticks)
@@ -599,6 +614,7 @@ static const struct script_outputs bridge_outputs = {
     .brightness_changed = on_brightness_changed,
     .mask_fade_changed = on_mask_fade_changed,
     .beam_created = on_beam_created,
+    .beam_cover_ramped = on_beam_cover_ramped,
     .beam_width_ramped = on_beam_width_ramped,
     .beam_base_ramped = on_beam_base_ramped,
     .beam_deleted = on_beam_deleted,
@@ -731,8 +747,8 @@ static void apply_mask_rule(void)
     if (should_be_on != mask_is_on) {
         mask_is_on = should_be_on;
         write_cue("mask", should_be_on ? "on" : "off");
-        scene_effects_set_mask_wanted(effects, should_be_on);
     }
+    scene_effects_set_cover_mask(effects, should_be_on, zoom_ticks_left > 0, mask_fade_alpha, mask_fade_is_white);
 }
 
 void script_bridge_finish_tick(void)

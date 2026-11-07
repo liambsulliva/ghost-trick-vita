@@ -59,6 +59,14 @@ void script_fades_add(struct script_machine *machine, const struct script_vm *vm
     machine->fade_count = machine->fade_count + 1;
 }
 
+void script_fades_end_mask(struct script_machine *machine)
+{
+    machine->mask_fade_is_alive = 0;
+    machine->mask_fade_alpha = 0;
+    machine->mask_fade_fixed = 0;
+    machine->mask_fade_frames = 0;
+}
+
 void script_fades_set_mask(struct script_machine *machine, int target_alpha, int frames)
 {
     int difference;

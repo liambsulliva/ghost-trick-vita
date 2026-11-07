@@ -1,6 +1,10 @@
 #include <stddef.h>
 #include "script_machine.h"
 
+#define BEAM_MODE_COVER_ALPHA 8u
+#define BEAM_CREATE_COVER_ALPHA_WORD 13
+#define FIXED_POINT_BITS 12
+#define COVER_ALPHA_FULL 31.0f
 #define SOUL_CAMERA_SPEED_FIXED 0x6000
 #define FIXED_ONE 4096.0f
 #define RADIUS_UNITS_TO_PIXELS (3.0f / 128.0f)
@@ -64,13 +68,18 @@ static void delete_effect(struct script_machine *machine, struct script_vm *vm, 
     }
 }
 
+static float cover_alpha_of(unsigned int fixed_alpha)
+{
+    return (float)(fixed_alpha >> FIXED_POINT_BITS) / COVER_ALPHA_FULL;
+}
+
 static void create_beam(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
     const char *name;
 
     name = script_machine_string(machine, vm, words[0]);
     if (name != NULL && machine->outputs->beam_created != NULL) {
-        machine->outputs->beam_created(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)), fixed_to_float(script_machine_u32(words, 5)), fixed_to_float(script_machine_u32(words, 7)), radius_to_pixels(script_machine_u32(words, 9)));
+        machine->outputs->beam_created(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)), fixed_to_float(script_machine_u32(words, 5)), fixed_to_float(script_machine_u32(words, 7)), radius_to_pixels(script_machine_u32(words, 9)), cover_alpha_of(script_machine_u32(words, BEAM_CREATE_COVER_ALPHA_WORD)));
     }
 }
 
@@ -93,6 +102,10 @@ static void ramp_beam(struct script_machine *machine, struct script_vm *vm, cons
     } else if (mode == BEAM_MODE_BASE) {
         if (machine->outputs->beam_base_ramped != NULL) {
             machine->outputs->beam_base_ramped(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)), ticks);
+        }
+    } else if (mode == BEAM_MODE_COVER_ALPHA) {
+        if (machine->outputs->beam_cover_ramped != NULL) {
+            machine->outputs->beam_cover_ramped(name, cover_alpha_of(script_machine_u32(words, 1)), ticks);
         }
     } else {
         script_machine_note(machine, vm, "beam_mode_not_ported", name);

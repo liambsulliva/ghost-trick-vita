@@ -36,7 +36,7 @@ static void on_camera_moved(int x, int y) { (void)x; (void)y; }
 static void on_actor(const struct script_actor_view *actor) { CUE("actor %s table=%x frame=%d into=%d x=%d y=%d level=%d visible=%d", actor->name, actor->table_offset, actor->frame_word_index, actor->ticks_into_frame, actor->x, actor->y, actor->level, actor->is_visible); }
 static void on_brightness(int level) { CUE("brightness %d", level); }
 static void on_mask_fade(int alive, int alpha) { CUE("mask_fade alive=%d alpha=%d", alive, alpha); }
-static void on_beam_created(const char *name, float ax, float ay, float bx, float by, float width) { CUE("beam_create %s %.1f %.1f %.1f %.1f %.1f", name, ax, ay, bx, by, width); }
+static void on_beam_created(const char *name, float ax, float ay, float bx, float by, float width, float cover) { (void)cover; CUE("beam_create %s %.1f %.1f %.1f %.1f %.1f", name, ax, ay, bx, by, width); }
 static void on_beam_width(const char *name, float width, int ticks) { CUE("beam_width %s %.1f ticks=%d", name, width, ticks); }
 static void on_beam_base(const char *name, float x, float y, int ticks) { CUE("beam_base %s %.1f %.1f ticks=%d", name, x, y, ticks); }
 static void on_beam_deleted(const char *name) { CUE("beam_delete %s", name); }

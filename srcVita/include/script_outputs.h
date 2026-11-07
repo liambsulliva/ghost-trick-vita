@@ -56,8 +56,9 @@ struct script_outputs {
     void (*actor_changed)(const struct script_actor_view *actor);
     void (*brightness_changed)(int signed_level);
     void (*mask_fade_changed)(int is_alive, int alpha);
-    void (*beam_created)(const char *name, float apex_x, float apex_y, float base_x, float base_y, float half_width);
+    void (*beam_created)(const char *name, float apex_x, float apex_y, float base_x, float base_y, float half_width, float cover_alpha);
     void (*beam_width_ramped)(const char *name, float half_width, int ticks);
+    void (*beam_cover_ramped)(const char *name, float cover_alpha, int ticks);
     void (*beam_base_ramped)(const char *name, float base_x, float base_y, int ticks);
     void (*beam_deleted)(const char *name);
     void (*iris_created)(const char *name, float x, float y, float radius);

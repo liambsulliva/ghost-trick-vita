@@ -21,12 +21,17 @@ struct scene_beam {
     struct scene_ramp base_x;
     struct scene_ramp base_y;
     struct scene_ramp half_width;
+    struct scene_ramp cover_alpha;
     int in_use;
 };
 
 struct scene_effects {
     struct scene_beam beams[SCENE_BEAM_MAX];
     int mask_is_on;
+    int mask_uses_cover_alpha;
+    int mask_is_opaque;
+    float mask_fade_alpha;
+    int mask_fade_is_white;
     int iris_is_on;
     float iris_x;
     float iris_y;
@@ -42,7 +47,10 @@ void scene_effects_reset(struct scene_effects *effects);
 void scene_effects_advance(struct scene_effects *effects, unsigned long long elapsed_us);
 void scene_effects_create_beam(struct scene_effects *effects, const char *name, float apex_x, float apex_y, float base_x, float base_y, float half_width);
 void scene_effects_animate_beam(struct scene_effects *effects, const char *name, float base_x, float base_y, float half_width, int ticks);
+void scene_effects_ramp_beam_cover(struct scene_effects *effects, const char *name, float cover_alpha, int ticks);
 void scene_effects_delete_beam(struct scene_effects *effects, const char *name);
+void scene_effects_set_cover_mask(struct scene_effects *effects, int should_be_on, int is_opaque, float fade_alpha, int fade_is_white);
+float scene_effects_strongest_beam_cover(const struct scene_effects *effects);
 void scene_effects_set_mask(struct scene_effects *effects, int should_be_on);
 void scene_effects_set_mask_wanted(struct scene_effects *effects, int should_be_on);
 void scene_effects_stop_iris(struct scene_effects *effects);

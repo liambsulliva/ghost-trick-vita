@@ -362,6 +362,7 @@ void script_motion_update_all(struct script_machine *machine);
 void script_fades_update(struct script_machine *machine);
 void script_fades_add(struct script_machine *machine, const struct script_vm *vm, int kind, int frames);
 void script_fades_set_mask(struct script_machine *machine, int target_alpha, int frames);
+void script_fades_end_mask(struct script_machine *machine);
 void script_balloons_count_down(struct script_machine *machine);
 void script_balloons_report_opened(struct script_machine *machine);
 void script_balloons_tap(struct script_machine *machine, int tap_group);

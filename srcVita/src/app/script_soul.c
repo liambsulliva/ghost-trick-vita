@@ -1242,6 +1242,9 @@ void script_soul_set_held(struct script_machine *machine, int held_x, int held_y
 
 void script_soul_reset(struct script_machine *machine)
 {
+    if (machine->soul.is_on && machine->outputs != NULL && machine->outputs->soul_vision_changed != NULL) {
+        machine->outputs->soul_vision_changed(0);
+    }
     memset(&machine->soul, 0, sizeof(machine->soul));
     machine->soul.route_step = -1;
     machine->soul.active_object = NO_CORE;

@@ -74,6 +74,7 @@ void scene_effects_advance(struct scene_effects *effects, unsigned long long ela
             ramp_advance(&effects->beams[index].base_x, elapsed_us);
             ramp_advance(&effects->beams[index].base_y, elapsed_us);
             ramp_advance(&effects->beams[index].half_width, elapsed_us);
+            ramp_advance(&effects->beams[index].cover_alpha, elapsed_us);
         }
     }
     ramp_advance(&effects->iris_radius, elapsed_us);
@@ -102,6 +103,7 @@ void scene_effects_create_beam(struct scene_effects *effects, const char *name, 
     beam->apex_y = apex_y;
     ramp_set(&beam->base_x, base_x);
     ramp_set(&beam->base_y, base_y);
+    ramp_set(&beam->cover_alpha, 1.0f);
     ramp_set(&beam->half_width, half_width);
     beam->in_use = 1;
 }
@@ -118,6 +120,41 @@ void scene_effects_animate_beam(struct scene_effects *effects, const char *name,
     ramp_begin(&beam->base_x, base_x, ticks);
     ramp_begin(&beam->base_y, base_y, ticks);
     ramp_begin(&beam->half_width, half_width, ticks);
+}
+
+void scene_effects_ramp_beam_cover(struct scene_effects *effects, const char *name, float cover_alpha, int ticks)
+{
+    struct scene_beam *beam;
+
+    beam = find_beam(effects, name);
+    if (beam == NULL) {
+        run_log_write("scene beam_missing name=%s", name);
+        return;
+    }
+    ramp_begin(&beam->cover_alpha, cover_alpha, ticks);
+}
+
+void scene_effects_set_cover_mask(struct scene_effects *effects, int should_be_on, int is_opaque, float fade_alpha, int fade_is_white)
+{
+    effects->mask_is_on = should_be_on;
+    effects->mask_uses_cover_alpha = 1;
+    effects->mask_is_opaque = is_opaque;
+    effects->mask_fade_alpha = fade_alpha;
+    effects->mask_fade_is_white = fade_is_white;
+}
+
+float scene_effects_strongest_beam_cover(const struct scene_effects *effects)
+{
+    float strongest;
+    int index;
+
+    strongest = 0.0f;
+    for (index = 0; index < SCENE_BEAM_MAX; index++) {
+        if (effects->beams[index].in_use && effects->beams[index].cover_alpha.value > strongest) {
+            strongest = effects->beams[index].cover_alpha.value;
+        }
+    }
+    return strongest;
 }
 
 void scene_effects_delete_beam(struct scene_effects *effects, const char *name)

@@ -1129,6 +1129,7 @@ static void tear_down_script(struct script_machine *machine)
     machine->fade_count = 0;
     machine->pan_is_active = 0;
     script_soul_reset(machine);
+    script_fades_end_mask(machine);
     machine->soul_state_keeps_pause = 0;
     machine->soul_vision_message_at = NEVER;
     if (machine->outputs->stage_cleared != NULL) {

@@ -149,7 +149,7 @@ static float view_start_along_axis(float camera_start, float camera_length, floa
 
 static int only_beams_can_be_seen(const struct scene_effects *effects)
 {
-    return effects->mask_is_on && !effects->iris_is_on;
+    return effects->mask_is_on && !effects->iris_is_on && !effects->mask_uses_cover_alpha;
 }
 
 static struct screen_view view_of_stage(const struct scene_stage *stage)
@@ -469,7 +469,24 @@ static void draw_mask(const struct scene_effects *effects, const struct screen_v
     triangle_count = find_beam_triangles_on_screen(effects, view, triangles);
     rect_count = spotlight_mask_black_rects(triangles, triangle_count, rects);
     log_mask_rect_count_when_large(rect_count);
-    renderer_draw_filled_rects(rects, rect_count, black);
+    if (!effects->mask_uses_cover_alpha || effects->mask_is_opaque) {
+        renderer_draw_filled_rects(rects, rect_count, black);
+    } else {
+        struct renderer_color cover;
+
+        cover = black;
+        cover.alpha = scene_effects_strongest_beam_cover(effects);
+        if (cover.alpha > 0.0f) {
+            renderer_draw_filled_rects(rects, rect_count, cover);
+        }
+    }
+    if (effects->mask_uses_cover_alpha && effects->mask_fade_alpha > 0.0f) {
+        struct renderer_color fade;
+
+        fade = effects->mask_fade_is_white ? white : black;
+        fade.alpha = effects->mask_fade_alpha;
+        renderer_draw_filled_rects(rects, rect_count, fade);
+    }
 }
 
 static int point_is_within_clear_part_of_iris(float x, float y, float center_x, float center_y, float clear_radius)
