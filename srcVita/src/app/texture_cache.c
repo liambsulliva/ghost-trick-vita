@@ -6,6 +6,7 @@
 #include "file_path.h"
 #include "memory.h"
 #include "run_log.h"
+#include "crc32.h"
 #include "texture_cache.h"
 #include "texture_file.h"
 
@@ -15,6 +16,7 @@
 
 static struct cached_texture entries[TEXTURE_CACHE_ENTRY_MAX];
 static char folder[FILE_PATH_MAX];
+static unsigned int bucket_count;
 static unsigned int budget;
 static unsigned int current_frame;
 static unsigned int next_request_id;
@@ -171,37 +173,22 @@ static int name_asks_for_grayscale(const char *name)
     return name_length > suffix_length && strcmp(&name[name_length - suffix_length], TEXTURE_CACHE_GRAYSCALE_SUFFIX) == 0;
 }
 
-static int group_length_of_foldered_name(const char *name)
-{
-    static const char *const foldered_prefixes[] = { "movie_", "fx_" };
-    const char *last_separator;
-    unsigned int index;
-
-    for (index = 0; index < sizeof(foldered_prefixes) / sizeof(foldered_prefixes[0]); index++) {
-        if (strncmp(name, foldered_prefixes[index], strlen(foldered_prefixes[index])) == 0) {
-            last_separator = strrchr(name, '_');
-            return (int)(last_separator - name);
-        }
-    }
-    return 0;
-}
-
 static int join_texture_path(char *path, const char *file_name)
 {
-    char group_folder[FILE_PATH_MAX];
-    int group_length;
+    char bucket_folder[FILE_PATH_MAX];
+    unsigned int bucket;
     int written;
 
-    group_length = group_length_of_foldered_name(file_name);
-    if (group_length == 0) {
+    if (bucket_count == 0u) {
         return file_path_join(path, folder, file_name, ".gtex");
     }
-    written = snprintf(group_folder, sizeof(group_folder), "%s/%.*s", folder, group_length, file_name);
-    if (written < 0 || (size_t)written >= sizeof(group_folder)) {
+    bucket = crc32_add(0u, (const unsigned char *)file_name, (unsigned int)strlen(file_name)) % bucket_count;
+    written = snprintf(bucket_folder, sizeof(bucket_folder), "%s/%02x", folder, bucket);
+    if (written < 0 || (size_t)written >= sizeof(bucket_folder)) {
         path[0] = '\0';
         return 0;
     }
-    return file_path_join(path, group_folder, file_name, ".gtex");
+    return file_path_join(path, bucket_folder, file_name, ".gtex");
 }
 
 static void start_read(struct cached_texture *entry)
@@ -378,6 +365,11 @@ unsigned int texture_cache_budget_for_free_memory(unsigned int free_bytes)
         return TEXTURE_CACHE_DEFAULT_BUDGET_BYTES;
     }
     return budget_bytes > BUDGET_MOST_BYTES ? BUDGET_MOST_BYTES : budget_bytes;
+}
+
+void texture_cache_set_bucket_count(unsigned int count)
+{
+    bucket_count = count;
 }
 
 void texture_cache_set_budget(unsigned int budget_bytes)

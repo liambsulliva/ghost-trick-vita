@@ -10,12 +10,14 @@ import struct
 import subprocess
 import sys
 import time
+import zlib
 
 VITA_HOST = os.environ.get("VITA_HOST", "10.0.0.151")
 FTP_PORT = 1337
 TEXTURE_FOLDER = "textures/"
 TEXTURE_FILE_SUFFIX = ".gtex"
-FOLDERED_TEXTURE_PREFIXES = (TEXTURE_FOLDER + "movie_", TEXTURE_FOLDER + "fx_")
+EARLIER_FOLDERED_TEXTURE_PREFIXES = (TEXTURE_FOLDER + "movie_", TEXTURE_FOLDER + "fx_")
+TEXTURE_FOLDER_BUCKETS = 64
 COMMAND_PORT = 1338
 TITLE_ID = "GHTR00001"
 APP_FOLDER = "/ux0:/app/" + TITLE_ID
@@ -239,11 +241,32 @@ def loop_files_the_set_no_longer_has(relative_paths):
     return stale
 
 
+def texture_bucket_of(name):
+    return "%02x" % (zlib.crc32(name.encode("ascii")) % TEXTURE_FOLDER_BUCKETS)
+
+
 def device_path_of_asset(relative_path):
-    if relative_path.startswith(FOLDERED_TEXTURE_PREFIXES) and relative_path.endswith(TEXTURE_FILE_SUFFIX):
+    if relative_path.startswith(TEXTURE_FOLDER) and relative_path.endswith(TEXTURE_FILE_SUFFIX):
         file_name = relative_path[len(TEXTURE_FOLDER):]
-        return TEXTURE_FOLDER + file_name.rsplit("_", 1)[0] + "/" + file_name
+        return TEXTURE_FOLDER + texture_bucket_of(file_name[:-len(TEXTURE_FILE_SUFFIX)]) + "/" + file_name
     return relative_path
+
+
+def earlier_device_paths_of_asset(relative_path):
+    paths = [relative_path]
+    if relative_path.startswith(EARLIER_FOLDERED_TEXTURE_PREFIXES) and relative_path.endswith(TEXTURE_FILE_SUFFIX):
+        file_name = relative_path[len(TEXTURE_FOLDER):]
+        paths.append(TEXTURE_FOLDER + file_name.rsplit("_", 1)[0] + "/" + file_name)
+    return [path for path in paths if path != device_path_of_asset(relative_path)]
+
+
+def move_earlier_copy(connection, relative_path, remote_path, local_size):
+    for earlier_path in earlier_device_paths_of_asset(relative_path):
+        earlier_remote = ASSETS_FOLDER + "/" + earlier_path
+        if remote_size_or_none(connection, earlier_remote) == local_size:
+            connection.rename(earlier_remote, remote_path)
+            return remote_size_or_none(connection, remote_path) == local_size
+    return False
 
 
 def upload_assets(folder):
@@ -253,6 +276,7 @@ def upload_assets(folder):
     record = load_upload_record()
     uploaded = 0
     skipped = 0
+    moved = 0
     uploaded_bytes = 0
     started = time.time()
     connection = open_ftp()
@@ -269,13 +293,16 @@ def upload_assets(folder):
             if remote_folder not in made_folders:
                 make_folders(connection, remote_folder)
                 made_folders.add(remote_folder)
+            if record.get(relative_path) == digest and move_earlier_copy(connection, relative_path, remote_path, os.path.getsize(local_path)):
+                moved = moved + 1
+                continue
             record.pop(relative_path, None)
             save_upload_record(record)
             upload_verified(connection, local_path, remote_path)
             record[relative_path] = digest
             save_upload_record(record)
-            if device_path_of_asset(relative_path) != relative_path:
-                delete_if_present(connection, ASSETS_FOLDER + "/" + relative_path)
+            for earlier_path in earlier_device_paths_of_asset(relative_path):
+                delete_if_present(connection, ASSETS_FOLDER + "/" + earlier_path)
             uploaded = uploaded + 1
             uploaded_bytes = uploaded_bytes + os.path.getsize(local_path)
         for loop_path in loop_files_the_set_no_longer_has([relative_path for _, relative_path in local_files]):
@@ -284,6 +311,7 @@ def upload_assets(folder):
                 save_upload_record(record)
     finally:
         connection.close()
+    print("assets moved", moved)
     print("assets uploaded", uploaded, "skipped", skipped, "bytes", uploaded_bytes, "seconds", int(time.time() - started))
     return 0
 

@@ -179,13 +179,16 @@ class UploadAssetsTests(DeviceFreeTestCase):
         with open(os.path.join(self.set_folder, relative_path), "wb") as output:
             output.write(data)
 
-    def test_movie_and_effect_frames_go_in_a_folder_per_group_on_the_device(self):
-        self.assertEqual(vita_loop.device_path_of_asset("textures/movie_time_jump_012.gtex"), "textures/movie_time_jump/movie_time_jump_012.gtex")
-        self.assertEqual(vita_loop.device_path_of_asset("textures/fx_chain_03.gtex"), "textures/fx_chain/fx_chain_03.gtex")
+    def test_textures_go_in_a_folder_named_by_their_bucket_on_the_device(self):
+        self.assertEqual(vita_loop.device_path_of_asset("textures/a.gtex"), "textures/03/a.gtex")
+        self.assertEqual(vita_loop.device_path_of_asset("textures/movie_time_jump_012.gtex"), "textures/30/movie_time_jump_012.gtex")
 
     def test_other_assets_keep_their_path_on_the_device(self):
-        self.assertEqual(vita_loop.device_path_of_asset("textures/st01-01.gtex"), "textures/st01-01.gtex")
         self.assertEqual(vita_loop.device_path_of_asset("music/fx_theme_01.ogg"), "music/fx_theme_01.ogg")
+
+    def test_a_texture_remembers_where_earlier_layouts_put_it(self):
+        self.assertEqual(vita_loop.earlier_device_paths_of_asset("textures/fx_chain_03.gtex"), ["textures/fx_chain_03.gtex", "textures/fx_chain/fx_chain_03.gtex"])
+        self.assertEqual(vita_loop.earlier_device_paths_of_asset("textures/st01-01.gtex"), ["textures/st01-01.gtex"])
 
     def test_only_asset_files_are_listed(self):
         relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
@@ -242,15 +245,15 @@ class UploadAssetsTests(DeviceFreeTestCase):
 
     def test_a_file_missing_from_the_device_is_uploaded_again(self):
         vita_loop.upload_assets(self.set_folder)
-        del self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/a.gtex"]
+        del self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/03/a.gtex"]
         self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
-        self.assertEqual(self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/a.gtex"], b"texture")
+        self.assertEqual(self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/03/a.gtex"], b"texture")
 
     def test_a_file_of_the_wrong_size_on_the_device_is_uploaded_again(self):
         vita_loop.upload_assets(self.set_folder)
-        self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/a.gtex"] = b"cut"
+        self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/03/a.gtex"] = b"cut"
         vita_loop.upload_assets(self.set_folder)
-        self.assertEqual(self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/a.gtex"], b"texture")
+        self.assertEqual(self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/03/a.gtex"], b"texture")
 
     def test_an_upload_that_fails_is_not_remembered_as_uploaded(self):
         vita_loop.upload_assets(self.set_folder)

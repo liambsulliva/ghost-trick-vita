@@ -21,6 +21,9 @@
 #include "ui_list.h"
 #include "viewer_app.h"
 
+#ifndef TEXTURE_FOLDER_BUCKETS
+#define TEXTURE_FOLDER_BUCKETS 0u
+#endif
 #ifdef USE_DS_MUSIC
 #define MUSIC_SUBFOLDER "music_ds"
 #else
@@ -311,6 +314,7 @@ void viewer_app_start(const char *folder)
     status_text[0] = '\0';
 
     texture_cache_init(texture_folder, TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
+    texture_cache_set_bucket_count(TEXTURE_FOLDER_BUCKETS);
     animation_library_init(animation_folder);
     scene_player_init(scene_folder);
     script_player_init(script_folder);

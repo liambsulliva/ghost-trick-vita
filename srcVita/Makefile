@@ -12,6 +12,8 @@ PREFIX  := arm-vita-eabi
 CC      := $(PREFIX)-gcc
 CFLAGS  := -Wall -Wextra -O2 -Iinclude -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -DBUILD_ID=\"$(BUILD_ID)\"
 DATA_SEGMENT_CLEAR_OF_SCE_TABLES := 0x81200000
+TEXTURE_FOLDER_BUCKETS := 64
+CFLAGS += -DTEXTURE_FOLDER_BUCKETS=$(TEXTURE_FOLDER_BUCKETS)u
 LDFLAGS := -Wl,-q -Wl,--section-start=.init_array=$(DATA_SEGMENT_CLEAR_OF_SCE_TABLES)
 LIBS    := -lvitaGL -lstdc++ -lSceLibKernel_stub -lSceAppMgr_stub -lSceAppUtil_stub -lmathneon \
            -lc -lSceCommonDialog_stub -lm -lSceGxm_stub -lSceDisplay_stub -lSceSysmodule_stub \
