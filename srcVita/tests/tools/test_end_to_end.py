@@ -43,6 +43,7 @@ SONG_PATH = "natives/android/streaming/sound/bgm_new/song.asrc.31"
 LOOPED_SONG_PATH = "natives/android/streaming/sound/bgm_new/looped_song.asrc.31"
 PING_PATH = "natives/android/streaming/sound/se_resource/sys/ping.asrc.31"
 ODD_RATE_PING_PATH = "natives/android/streaming/sound/se_resource/sys/odd.asrc.31"
+ODD_RATE = 18000
 DXT5_BLOCK_BYTES = 16
 DXT5_COLOR_ENDPOINTS_OFFSET = 8
 WHITE_RGB565 = 0xFFFF
@@ -82,8 +83,16 @@ def game_files():
         (SONG_PATH, test_audio_file.wrapped(), False),
         (LOOPED_SONG_PATH, test_audio_file.wrapped(loop_flag=1, loop_start=4, loop_last=9), True),
         (PING_PATH, test_audio_file.wrapped(channels=1), False),
-        (ODD_RATE_PING_PATH, test_audio_file.wrapped(channels=1, rate=18000), False),
+        (ODD_RATE_PING_PATH, test_audio_file.wrapped(ogg_bytes=tone_ogg(ODD_RATE), rate=ODD_RATE), False),
     ]
+
+
+def tone_ogg(rate):
+    return subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=%d:duration=0.2" % rate, "-ac", "2", "-c:a", "vorbis", "-strict", "-2", "-fflags", "+bitexact", "-flags:a", "+bitexact", "-f", "ogg", "-"], capture_output=True, check=True).stdout
+
+
+def sample_rate_of(path):
+    return int(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=sample_rate", "-of", "csv=p=0", path], capture_output=True, text=True, check=True).stdout.strip())
 
 
 def tiny_set_description():
@@ -535,11 +544,11 @@ class EndToEndTests(unittest.TestCase):
         self.convert(set_description)
         self.assertEqual(os.listdir(os.path.join(self.output_folder, "music")), [])
 
-    def test_an_effect_at_another_rate_is_refused(self):
+    def test_an_effect_at_another_rate_is_resampled_to_the_playback_rate(self):
         set_description = tiny_set_description()
         set_description["sounds"] = [{"name": "ping", "source": ODD_RATE_PING_PATH}]
-        with self.assertRaisesRegex(ValueError, "18000 Hz"):
-            self.convert(set_description)
+        self.convert(set_description)
+        self.assertEqual(sample_rate_of(os.path.join(self.output_folder, "sounds", "ping.ogg")), 44100)
 
     def test_a_music_step_naming_an_undeclared_track_is_refused(self):
         set_description = tiny_set_description()

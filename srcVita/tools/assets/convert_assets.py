@@ -33,6 +33,7 @@ MOVIE_CODE_FILES = ["convert_assets.py", "texture_encoder.py"]
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
 REPOSITORY_FOLDER = os.path.dirname(SRC_VITA_FOLDER)
+ENCODER_CHANNELS = 2
 DEFAULT_APK_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "remaster_apk")
 DEFAULT_DS_ROM_PATH = os.path.join(REPOSITORY_FOLDER, "extracted", "ds_rom", "game.nds")
 TEXTURE_TOOL_PATH = os.path.join(SRC_VITA_FOLDER, "build", "tools", "texture_tool")
@@ -298,13 +299,18 @@ def check_texture_names_differ(names):
         raise ConversionFailed(repeated)
 
 
+def ogg_at_playback_rate(stream):
+    if stream["rate"] == audio_file.PLAYBACK_RATE:
+        return stream["ogg"]
+    return subprocess.run(["ffmpeg", "-v", "error", "-f", "ogg", "-i", "-", "-ar", str(audio_file.PLAYBACK_RATE), "-ac", str(ENCODER_CHANNELS), "-c:a", "vorbis", "-strict", "-2", "-q:a", ds_music.ENCODER_QUALITY, "-fflags", "+bitexact", "-flags:a", "+bitexact", "-map_metadata", "-1", "-f", "ogg", "-"], input=stream["ogg"], capture_output=True, check=True).stdout
+
+
 def read_audio_streams(packs, entries):
     results = []
     for entry in entries:
         asset_writers.check_name(entry["name"])
         stream = audio_file.read_stream(packs.read(entry["source"]), entry["source"])
-        audio_file.check_playback_rate(stream, entry["source"])
-        results.append({"name": entry["name"], "ogg": stream["ogg"], "loop_points": stream["loop_points"]})
+        results.append({"name": entry["name"], "ogg": ogg_at_playback_rate(stream), "loop_points": audio_file.loop_points_at_playback_rate(stream["loop_points"], stream["rate"])})
     return results
 
 

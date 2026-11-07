@@ -44,5 +44,11 @@ def check_playback_rate(stream, source_name):
         raise ValueError("%s is %d Hz, and the app only plays %d Hz audio; choose another file or add a resampler" % (source_name, stream["rate"], PLAYBACK_RATE))
 
 
+def loop_points_at_playback_rate(loop_points, rate):
+    if loop_points is None:
+        return None
+    return tuple(int(round(point * PLAYBACK_RATE / rate)) for point in loop_points)
+
+
 def loop_text(loop_points):
     return "%d %d\n" % loop_points

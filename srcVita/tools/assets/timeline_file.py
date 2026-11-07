@@ -162,7 +162,7 @@ def build_timeline(objects):
     for record_index in record_indices:
         source = objects[record_index]
         shorts = source["shorts"]
-        is_blank = shorts[SHORT_BLANK_MARKER] == 0 and source["position"] == (0.0, 0.0)
+        is_blank = not starts or (shorts[SHORT_BLANK_MARKER] == 0 and source["position"] == (0.0, 0.0))
         page = None
         cell_in_page = None
         if not is_blank:

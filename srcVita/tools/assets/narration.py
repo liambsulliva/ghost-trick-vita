@@ -195,6 +195,8 @@ def stacked_lines(rendered):
 def read_bubble_message(request, raw_text):
     message = parse_requested_message(request, raw_text, ignores_other_tags=True)
     all_lines = [text.strip() for paragraph in message["paragraphs"] for text in paragraph if text.strip()]
+    if not all_lines:
+        raise NarrationError("bubble text is empty: " + request["name"])
     message["lines"] = [" ".join(all_lines)] if request.get("single_line") else wrapped_bubble_lines(all_lines)
     if request.get("joins_lines"):
         message["paragraphs"] = [[" ".join(text.strip() for paragraph in message["paragraphs"] for text in paragraph if text.strip())]]
