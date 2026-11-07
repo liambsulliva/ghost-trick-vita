@@ -1,5 +1,7 @@
 #include <string.h>
 #include <psp2/kernel/threadmgr.h>
+#include "memory.h"
+#include "texture_file.h"
 #include "background_reader.h"
 #include "file.h"
 
@@ -23,6 +25,31 @@ static SceUID work_available;
 static SceUID read_finished;
 static int reader_started;
 
+static int unpack_texture(struct finished_read *finished)
+{
+    unsigned char *unpacked;
+    unsigned int unpacked_size;
+    int was_unpacked;
+
+    unpacked_size = texture_file_unpacked_size(finished->data);
+    unpacked = mem_alloc(unpacked_size);
+    if (unpacked == NULL) {
+        mem_free(finished->data);
+        finished->data = NULL;
+        return FILE_ERR_MEMORY;
+    }
+    was_unpacked = texture_file_unpack(finished->data, finished->size, unpacked, unpacked_size);
+    mem_free(finished->data);
+    if (!was_unpacked) {
+        mem_free(unpacked);
+        finished->data = NULL;
+        return FILE_ERR_READ;
+    }
+    finished->data = unpacked;
+    finished->size = unpacked_size;
+    return FILE_OK;
+}
+
 static int reader_thread(SceSize argument_size, void *arguments)
 {
     struct read_request request;
@@ -42,6 +69,9 @@ static int reader_thread(SceSize argument_size, void *arguments)
         finished.data = NULL;
         finished.size = 0;
         finished.result = file_read_whole(request.path, &finished.data, &finished.size);
+        if (finished.result == FILE_OK && texture_file_is_packed(finished.data, finished.size)) {
+            finished.result = unpack_texture(&finished);
+        }
 
         sceKernelLockMutex(queue_lock, 1, NULL);
         finished_reads[next_finished_to_add] = finished;

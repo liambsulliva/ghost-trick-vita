@@ -4,8 +4,11 @@ import os
 import threading
 
 import asset_writers
+import gtex_pack
 
 RECORD_FILE_NAME = ".bake_record.json"
+TEXTURE_FOLDER_PREFIX = "textures/"
+TEXTURE_FILE_SUFFIX = ".gtex"
 TEMPORARY_SUFFIX = ".new"
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 
@@ -17,8 +20,8 @@ def texture_result(name, source_size, gtex_bytes):
         "source_size": source_size,
         "width": width,
         "height": height,
-        "format": texture_format,
-        "byte_count": len(gtex_bytes),
+        "format": texture_format & ~gtex_pack.PACKED_FLAG,
+        "byte_count": gtex_pack.unpacked_size(gtex_bytes),
     }
 
 
@@ -133,6 +136,8 @@ class BakeRecord:
         return self.entries.get(relative_path, {}).get("details", {})
 
     def store(self, relative_path, key, data, details=None):
+        if relative_path.startswith(TEXTURE_FOLDER_PREFIX) and relative_path.endswith(TEXTURE_FILE_SUFFIX):
+            data = gtex_pack.pack_gtex(data)
         write_file_atomically(os.path.join(self.output_folder, relative_path), data)
         entry = {"key": key, "output": sha256_of_bytes(data)}
         if details is not None:

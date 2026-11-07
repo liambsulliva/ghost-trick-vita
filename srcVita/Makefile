@@ -72,7 +72,7 @@ build/eboot.bin: build/$(TARGET).velf
 
 build/param.sfo: Makefile
 	@mkdir -p build
-	vita-mksfoex -s TITLE_ID=$(TITLE_ID) -s APP_VER=$(APP_VER) -s VERSION=$(APP_VER) "$(TITLE)" $@
+	vita-mksfoex -d ATTRIBUTE2=12 -s TITLE_ID=$(TITLE_ID) -s APP_VER=$(APP_VER) -s VERSION=$(APP_VER) "$(TITLE)" $@
 
 $(LIVEAREA_IMAGES): tools/make_livearea.py
 	python3 -I tools/make_livearea.py $(LIVEAREA_FOLDER)

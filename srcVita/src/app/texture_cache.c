@@ -9,6 +9,10 @@
 #include "texture_cache.h"
 #include "texture_file.h"
 
+#define READS_WAITING_MOST_WHEN_READING_AHEAD 2
+#define MEMORY_KEPT_FREE_BYTES (92u * 1024u * 1024u)
+#define BUDGET_MOST_BYTES (256u * 1024u * 1024u)
+
 static struct cached_texture entries[TEXTURE_CACHE_ENTRY_MAX];
 static char folder[FILE_PATH_MAX];
 static unsigned int budget;
@@ -296,6 +300,57 @@ void texture_cache_init(const char *texture_folder, unsigned int budget_bytes)
     if (!background_reader_start()) {
         run_log_write("reader thread_failed");
     }
+}
+
+static int waiting_read_count(void)
+{
+    int count;
+    int index;
+
+    count = 0;
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
+        if (entries[index].in_use && entries[index].state == CACHED_TEXTURE_LOADING && !entries[index].read_is_started) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+void texture_cache_keep_or_start_reading_ahead(const char *name)
+{
+    struct cached_texture *entry;
+
+    entry = find_entry_by_name(name);
+    if (entry != NULL) {
+        if (entry->last_used_frame < current_frame - 1u) {
+            entry->last_used_frame = current_frame - 1u;
+        }
+        return;
+    }
+    if (waiting_read_count() >= READS_WAITING_MOST_WHEN_READING_AHEAD) {
+        return;
+    }
+    entry = (struct cached_texture *)texture_cache_use_or_start_loading(name);
+    if (entry != NULL) {
+        entry->last_used_frame = current_frame - 1u;
+    }
+}
+
+unsigned int texture_cache_budget_for_free_memory(unsigned int free_bytes)
+{
+    unsigned int budget_bytes;
+
+    budget_bytes = free_bytes > MEMORY_KEPT_FREE_BYTES ? free_bytes - MEMORY_KEPT_FREE_BYTES : 0u;
+    if (budget_bytes < TEXTURE_CACHE_DEFAULT_BUDGET_BYTES) {
+        return TEXTURE_CACHE_DEFAULT_BUDGET_BYTES;
+    }
+    return budget_bytes > BUDGET_MOST_BYTES ? BUDGET_MOST_BYTES : budget_bytes;
+}
+
+void texture_cache_set_budget(unsigned int budget_bytes)
+{
+    budget = budget_bytes;
+    run_log_write("texture_cache budget=%u", budget);
 }
 
 void texture_cache_begin_frame(void)

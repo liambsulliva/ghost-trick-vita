@@ -92,7 +92,7 @@ void scene_stage_request_animation_textures(const struct animation *animation)
     }
 }
 
-int scene_stage_set_object(const char *object_name, const char *animation_name, float x, float y, int layer, int is_flipped)
+static int set_object_without_reading_ahead(const char *object_name, const char *animation_name, float x, float y, int layer, int is_flipped)
 {
     const struct animation *animation;
     struct scene_object *object;
@@ -115,13 +115,24 @@ int scene_stage_set_object(const char *object_name, const char *animation_name, 
         object->hides_in_soul_view = 0;
     }
     snprintf(object->name, sizeof(object->name), "%s", object_name);
-    scene_stage_request_animation_textures(animation);
     animation_player_start(&object->player, animation);
     object->x = x;
     object->y = y;
     object->layer = layer;
     object->is_flipped = is_flipped;
     object->in_use = 1;
+    return 1;
+}
+
+int scene_stage_set_object(const char *object_name, const char *animation_name, float x, float y, int layer, int is_flipped)
+{
+    const struct scene_object *object;
+
+    if (!set_object_without_reading_ahead(object_name, animation_name, x, y, layer, is_flipped)) {
+        return 0;
+    }
+    object = find_object(object_name);
+    scene_stage_request_animation_textures(object->player.animation);
     return 1;
 }
 
@@ -142,7 +153,7 @@ void scene_stage_place_object(const char *object_name, const char *animation_nam
 
     object = find_object(object_name);
     if (object == NULL || object->player.animation == NULL || strcmp(object->player.animation->name, animation_name) != 0) {
-        if (!scene_stage_set_object(object_name, animation_name, x, y, layer, 0)) {
+        if (!set_object_without_reading_ahead(object_name, animation_name, x, y, layer, 0)) {
             return;
         }
         object = find_object(object_name);

@@ -9,6 +9,8 @@
 #include "spotlight_mask.h"
 #include "texture_cache.h"
 
+#define OFF_SCREEN_MARGIN_DS_PIXELS 120.0f
+#define READ_AHEAD_TICKS 120u
 #define LOWER_THAN_ANY_LAYER INT_MIN
 #define IRIS_TEXTURE_SIZE 256
 #define MASK_RECT_COUNT_WORTH_LOGGING 600
@@ -55,6 +57,16 @@ static struct renderer_rect whole_screen_area(void)
     area.width = RENDERER_WIDTH;
     area.height = RENDERER_HEIGHT;
     return area;
+}
+
+static int area_is_on_screen(struct renderer_rect area)
+{
+    float left;
+    float right;
+
+    left = area.width < 0.0f ? area.x + area.width : area.x;
+    right = area.width < 0.0f ? area.x : area.x + area.width;
+    return right > 0.0f && left < (float)RENDERER_WIDTH && area.y + area.height > 0.0f && area.y < (float)RENDERER_HEIGHT;
 }
 
 static int plate_overlaps_camera(const struct scene_stage *stage, const struct scene_plate *plate)
@@ -299,6 +311,32 @@ static void draw_plates(const struct scene_stage *stage, const struct screen_vie
 
 static struct held_pose held_poses[SCENE_OBJECT_MAX];
 
+static void read_art_ahead(const struct scene_stage *stage, const struct scene_object *object)
+{
+    const struct animation *animation;
+    const char *last_name;
+    char grayscale_name[ASSET_NAME_MAX];
+    unsigned int ticks;
+    unsigned int step;
+
+    animation = object->player.animation;
+    if (animation == NULL) {
+        return;
+    }
+    ticks = 0;
+    last_name = animation->frames[object->player.frame_index].texture_name;
+    for (step = 1; step < animation->frame_count && ticks < READ_AHEAD_TICKS; step++) {
+        const struct animation_frame *ahead;
+
+        ahead = &animation->frames[(object->player.frame_index + step) % animation->frame_count];
+        ticks = ticks + ahead->ticks;
+        if (!animation_frame_is_blank(ahead) && strcmp(last_name, ahead->texture_name) != 0) {
+            texture_cache_keep_or_start_reading_ahead(art_under_the_screen_filter(stage, ahead->texture_name, grayscale_name));
+            last_name = ahead->texture_name;
+        }
+    }
+}
+
 static void draw_object(const struct scene_stage *stage, const struct screen_view *view, const struct scene_object *object)
 {
     const struct animation_frame *frame;
@@ -328,6 +366,10 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
         texture_area.x = frame->u + frame->u_size;
         texture_area.width = -frame->u_size;
     }
+    if (!area_is_on_screen(world_area_to_screen(view, left - OFF_SCREEN_MARGIN_DS_PIXELS, object->y + frame->y - OFF_SCREEN_MARGIN_DS_PIXELS, frame->width + OFF_SCREEN_MARGIN_DS_PIXELS * 2.0f, frame->height + OFF_SCREEN_MARGIN_DS_PIXELS * 2.0f))) {
+        return;
+    }
+    read_art_ahead(stage, object);
     wanted = art_under_the_screen_filter(stage, frame->texture_name, grayscale_name);
     if (draw_when_ready(wanted, world_area_to_screen(view, left, object->y + frame->y, frame->width, frame->height), texture_area, tinted_object)) {
         snprintf(held->object_name, sizeof(held->object_name), "%s", object->name);
@@ -698,16 +740,6 @@ int scene_view_snapshot_stage(const struct scene_stage *stage)
     return 1;
 }
 
-static int area_is_on_screen(struct renderer_rect area)
-{
-    float left;
-    float right;
-
-    left = area.width < 0.0f ? area.x + area.width : area.x;
-    right = area.width < 0.0f ? area.x : area.x + area.width;
-    return right > 0.0f && left < (float)RENDERER_WIDTH && area.y + area.height > 0.0f && area.y < (float)RENDERER_HEIGHT;
-}
-
 static int texture_is_still_loading(const char *texture_name)
 {
     const struct cached_texture *texture;
@@ -721,8 +753,10 @@ int scene_view_visible_art_is_loading(const struct scene_stage *stage)
     struct screen_view view;
     struct screen_view objects_view;
     char grayscale_name[ASSET_NAME_MAX];
+    int is_loading;
     int index;
 
+    is_loading = 0;
     view = view_of_stage(stage);
     objects_view = view_for_objects(stage, &view);
     for (index = 0; index < stage->plate_count; index++) {
@@ -730,7 +764,7 @@ int scene_view_visible_art_is_loading(const struct scene_stage *stage)
 
         plate = &stage->plates[index];
         if (area_is_on_screen(world_area_to_screen(&view, plate->x, plate->y, plate->width, plate->height)) && texture_is_still_loading(plate_art_name(stage, plate, grayscale_name))) {
-            return 1;
+            is_loading = 1;
         }
     }
     for (index = 0; index < SCENE_OBJECT_MAX; index++) {
@@ -749,10 +783,10 @@ int scene_view_visible_art_is_loading(const struct scene_stage *stage)
             continue;
         }
         if (area_is_on_screen(world_area_to_screen(&objects_view, object->is_flipped ? object->x - frame->x - frame->width : object->x + frame->x, object->y + frame->y, frame->width, frame->height)) && texture_is_still_loading(art_under_the_screen_filter(stage, frame->texture_name, grayscale_name))) {
-            return 1;
+            is_loading = 1;
         }
     }
-    return 0;
+    return is_loading;
 }
 
 void scene_view_world_to_screen(const struct scene_stage *stage, float x, float y, float *screen_x, float *screen_y)

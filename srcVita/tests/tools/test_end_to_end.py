@@ -16,6 +16,7 @@ from unittest import mock
 import bake_record
 import convert_assets
 import font_file
+import gtex_pack
 import line_renderer
 import narration
 import synthetic_files
@@ -192,20 +193,21 @@ class EndToEndTests(unittest.TestCase):
         with open(os.path.join(self.output_folder, *parts), "r", encoding="ascii") as source:
             return source.read()
 
-    def read_gtex_header(self, name):
+    def read_gtex(self, name):
         with open(os.path.join(self.output_folder, "textures", name + ".gtex"), "rb") as source:
-            data = source.read()
+            return gtex_pack.unpack_gtex(source.read())
+
+    def read_gtex_header(self, name):
+        data = self.read_gtex(name)
         self.assertEqual(data[:4], b"GTEX")
         return struct.unpack_from("<IIII", data, 4), len(data)
 
     def first_pixel_red(self, name):
-        with open(os.path.join(self.output_folder, "textures", name + ".gtex"), "rb") as source:
-            data = source.read()
+        data = self.read_gtex(name)
         return synthetic_files.decode_color_block(data[TEXTURE_FILE_HEADER_SIZE:TEXTURE_FILE_HEADER_SIZE + DXT1_BLOCK_BYTES])[0][0]
 
     def visible_block_color_endpoints(self, name):
-        with open(os.path.join(self.output_folder, "textures", name + ".gtex"), "rb") as source:
-            data = source.read()
+        data = self.read_gtex(name)
         endpoints = set()
         for offset in range(TEXTURE_FILE_HEADER_SIZE, len(data), DXT5_BLOCK_BYTES):
             if data[offset] != 0 or data[offset + 1] != 0:

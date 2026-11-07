@@ -9,6 +9,7 @@ import unittest
 import asset_writers
 import bake_record
 import frame_layout
+import gtex_pack
 import line_renderer
 import narration
 import synthetic_files
@@ -139,7 +140,7 @@ class ConversionTests(unittest.TestCase):
 
     def read_gtex(self, name):
         with open(os.path.join(self.work_folder, "output", "textures", name + ".gtex"), "rb") as source:
-            return source.read()
+            return gtex_pack.unpack_gtex(source.read())
 
     def test_each_line_gets_a_texture_and_a_place(self):
         raw = '<TRCK mono_pos_set posY="25"/>one\r\ntwo<TRCK paragraph_end />\r\nthree'

@@ -45,6 +45,14 @@
 
 static const struct renderer_color clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
+static void use_the_memory_this_device_has(void)
+{
+    struct device_stats stats;
+
+    device_stats_read(&stats);
+    texture_cache_set_budget(texture_cache_budget_for_free_memory(stats.video_memory_free + stats.main_memory_free));
+}
+
 static void log_memory_and_textures(void)
 {
     struct device_stats stats;
@@ -264,6 +272,7 @@ int main(void)
     full_resolution = renderer_init();
     run_log_write("renderer ready full_resolution=%d", full_resolution);
     viewer_app_start(ASSETS_FOLDER);
+    use_the_memory_this_device_has();
     log_memory_and_textures();
     run_log_write("viewer ready has_assets=%d", viewer_app_has_assets());
 

@@ -28,7 +28,7 @@
 #define FIXED_TABLE_COUNT 8
 #define FILES_PER_SCRIPT 3
 #define FAST_FORWARD_BUDGET_US 12000ULL
-#define ART_WAIT_MOST_US 700000ULL
+#define ART_WAIT_MOST_US 4000000ULL
 #define LOG_FOR_TOOLS_SCRIPT_READY "script ready name=%s preload_us=%llu texture_bytes=%u missing=%u"
 
 enum script_player_phase {
@@ -566,6 +566,9 @@ void script_player_update(unsigned long long elapsed_us)
     if (phase == PHASE_RUNNING) {
         if (!art_gate_holds(elapsed_us)) {
             run_ticks(elapsed_us);
+            if (phase == PHASE_RUNNING && ticks_per_frame_when_fast == 0 && art_wait_us < ART_WAIT_MOST_US && scene_view_visible_art_is_loading(scene_stage_view())) {
+                is_holding_for_art = 1;
+            }
         }
         return;
     }

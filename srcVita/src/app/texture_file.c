@@ -1,6 +1,8 @@
+#include <string.h>
 #include "texture_file.h"
 
 #define DXT_BLOCK_SIZE_IN_PIXELS 4
+#define PACKED_MATCH_FLAG 0x80000000u
 #define DXT5_BYTES_PER_BLOCK 16
 #define DXT1_BYTES_PER_BLOCK 8
 
@@ -162,6 +164,86 @@ void texture_file_make_grayscale(const struct texture_file_header *header, unsig
             pixel_data[offset + 2] = (unsigned char)gray;
         }
     }
+}
+
+static unsigned int bytes_per_packed_unit(unsigned int format)
+{
+    if (format == TEXTURE_FILE_FORMAT_DXT5) {
+        return DXT5_BYTES_PER_BLOCK;
+    }
+    if (format == TEXTURE_FILE_FORMAT_DXT1) {
+        return DXT1_BYTES_PER_BLOCK;
+    }
+    return RGBA_BYTES_PER_PIXEL;
+}
+
+int texture_file_is_packed(const unsigned char *data, unsigned int size)
+{
+    return size >= TEXTURE_FILE_HEADER_SIZE && memcmp(data, "GTEX", 4) == 0 && (read_u32_little_endian(&data[12]) & TEXTURE_FILE_PACKED_FLAG) != 0;
+}
+
+unsigned int texture_file_unpacked_size(const unsigned char *packed)
+{
+    return TEXTURE_FILE_HEADER_SIZE + read_u32_little_endian(&packed[16]);
+}
+
+int texture_file_unpack(const unsigned char *packed, unsigned int packed_size, unsigned char *unpacked, unsigned int unpacked_size)
+{
+    unsigned int format;
+    unsigned int unit_size;
+    unsigned int offset;
+    unsigned int written;
+
+    if (!texture_file_is_packed(packed, packed_size) || unpacked_size != texture_file_unpacked_size(packed)) {
+        return 0;
+    }
+    format = read_u32_little_endian(&packed[12]) & ~TEXTURE_FILE_PACKED_FLAG;
+    if (!format_is_known(format)) {
+        return 0;
+    }
+    unit_size = bytes_per_packed_unit(format);
+    memcpy(unpacked, packed, TEXTURE_FILE_HEADER_SIZE);
+    write_u32_little_endian(&unpacked[12], format);
+    offset = TEXTURE_FILE_HEADER_SIZE;
+    written = TEXTURE_FILE_HEADER_SIZE;
+    while (offset < packed_size) {
+        unsigned int token;
+        unsigned int bytes;
+
+        if (packed_size - offset < 4u) {
+            return 0;
+        }
+        token = read_u32_little_endian(&packed[offset]);
+        offset = offset + 4u;
+        bytes = (token & ~PACKED_MATCH_FLAG) * unit_size;
+        if (bytes > unpacked_size - written) {
+            return 0;
+        }
+        if (token & PACKED_MATCH_FLAG) {
+            unsigned int source;
+            unsigned int copied;
+
+            if (packed_size - offset < 4u) {
+                return 0;
+            }
+            source = read_u32_little_endian(&packed[offset]) * unit_size + TEXTURE_FILE_HEADER_SIZE;
+            offset = offset + 4u;
+            if (source >= written) {
+                return 0;
+            }
+            for (copied = 0; copied < bytes; copied = copied + unit_size) {
+                memcpy(&unpacked[written + copied], &unpacked[source + copied], unit_size);
+            }
+        } else {
+            if (bytes > packed_size - offset) {
+                return 0;
+            }
+            memcpy(&unpacked[written], &packed[offset], bytes);
+            offset = offset + bytes;
+        }
+        written = written + bytes;
+    }
+    return written == unpacked_size;
 }
 
 unsigned int texture_file_memory_bytes(const struct texture_file_header *header)

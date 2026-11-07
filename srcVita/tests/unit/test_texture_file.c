@@ -1,3 +1,4 @@
+#include <string.h>
 #include "fakes/fake_platform.h"
 #include "fakes/fake_texture_files.h"
 #include "test_support.h"
@@ -208,8 +209,96 @@ static void test_grayscale_keeps_a_three_color_dxt1_block_transparent(void)
     CHECK_INT(block[4], 0xe1);
 }
 
+static void write_u32_at(unsigned char *bytes, unsigned int value)
+{
+    bytes[0] = (unsigned char)(value & 0xffu);
+    bytes[1] = (unsigned char)((value >> 8) & 0xffu);
+    bytes[2] = (unsigned char)((value >> 16) & 0xffu);
+    bytes[3] = (unsigned char)(value >> 24);
+}
+
+static unsigned int make_packed_header(unsigned char *file, unsigned int format, unsigned int pixel_bytes)
+{
+    memcpy(file, "GTEX", 4);
+    write_u32_at(&file[4], 4);
+    write_u32_at(&file[8], 8);
+    write_u32_at(&file[12], format | TEXTURE_FILE_PACKED_FLAG);
+    write_u32_at(&file[16], pixel_bytes);
+    return TEXTURE_FILE_HEADER_SIZE;
+}
+
+static void test_unpacks_literal_and_repeated_blocks(void)
+{
+    unsigned char file[128];
+    unsigned char out[TEXTURE_FILE_HEADER_SIZE + 32];
+    unsigned int offset;
+    int index;
+
+    memset(file, 0, sizeof(file));
+    offset = make_packed_header(file, TEXTURE_FILE_FORMAT_DXT1, 32);
+    write_u32_at(&file[offset], 2);
+    offset = offset + 4;
+    for (index = 0; index < 16; index++) {
+        file[offset + (unsigned int)index] = (unsigned char)(index + 1);
+    }
+    offset = offset + 16;
+    write_u32_at(&file[offset], 0x80000000u | 2u);
+    write_u32_at(&file[offset + 4], 0);
+    offset = offset + 8;
+    CHECK(texture_file_is_packed(file, offset));
+    CHECK_INT(texture_file_unpacked_size(file), TEXTURE_FILE_HEADER_SIZE + 32);
+    CHECK(texture_file_unpack(file, offset, out, sizeof(out)));
+    CHECK(!texture_file_is_packed(out, sizeof(out)));
+    CHECK_INT(out[12], TEXTURE_FILE_FORMAT_DXT1);
+    CHECK_INT(out[TEXTURE_FILE_HEADER_SIZE], 1);
+    CHECK_INT(out[TEXTURE_FILE_HEADER_SIZE + 15], 16);
+    CHECK_INT(out[TEXTURE_FILE_HEADER_SIZE + 16], 1);
+    CHECK_INT(out[TEXTURE_FILE_HEADER_SIZE + 31], 16);
+}
+
+static void test_unpack_copies_overlapping_runs_forward(void)
+{
+    unsigned char file[64];
+    unsigned char out[TEXTURE_FILE_HEADER_SIZE + 32];
+    unsigned int offset;
+
+    memset(file, 0, sizeof(file));
+    offset = make_packed_header(file, TEXTURE_FILE_FORMAT_DXT1, 32);
+    write_u32_at(&file[offset], 1);
+    offset = offset + 4;
+    file[offset] = 7;
+    offset = offset + 8;
+    write_u32_at(&file[offset], 0x80000000u | 3u);
+    write_u32_at(&file[offset + 4], 0);
+    offset = offset + 8;
+    CHECK(texture_file_unpack(file, offset, out, sizeof(out)));
+    CHECK_INT(out[TEXTURE_FILE_HEADER_SIZE + 24], 7);
+}
+
+static void test_unpack_rejects_broken_files(void)
+{
+    unsigned char file[64];
+    unsigned char out[TEXTURE_FILE_HEADER_SIZE + 32];
+    unsigned int offset;
+
+    memset(file, 0, sizeof(file));
+    offset = make_packed_header(file, TEXTURE_FILE_FORMAT_DXT1, 32);
+    write_u32_at(&file[offset], 9);
+    CHECK(!texture_file_unpack(file, offset + 4, out, sizeof(out)));
+    write_u32_at(&file[offset], 0x80000000u | 1u);
+    write_u32_at(&file[offset + 4], 5);
+    CHECK(!texture_file_unpack(file, offset + 8, out, sizeof(out)));
+    write_u32_at(&file[offset], 1);
+    CHECK(!texture_file_unpack(file, offset + 2, out, sizeof(out)));
+    memcpy(file, "NOPE", 4);
+    CHECK(!texture_file_is_packed(file, sizeof(file)));
+}
+
 int main(void)
 {
+    test_unpacks_literal_and_repeated_blocks();
+    test_unpack_copies_overlapping_runs_forward();
+    test_unpack_rejects_broken_files();
     test_grayscale_averages_rgba_and_keeps_alpha();
     test_grayscale_leaves_dxt5_alpha_and_indices_alone();
     test_grayscale_keeps_a_four_color_dxt1_block_opaque();

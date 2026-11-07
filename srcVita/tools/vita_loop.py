@@ -181,6 +181,7 @@ def upload_eboot():
     quit_and_wait()
     connection = open_ftp()
     try:
+        upload_verified(connection, os.path.join(BUILD_FOLDER, "param.sfo"), APP_FOLDER + "/sce_sys/param.sfo")
         digest = upload_verified(connection, os.path.join(BUILD_FOLDER, "eboot.bin"), APP_FOLDER + "/eboot.bin")
     finally:
         connection.close()
