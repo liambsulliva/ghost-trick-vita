@@ -126,6 +126,7 @@
 #define FILM_CORNER_TOP 31.5f
 #define FILM_CORNER_BEYOND_SCREEN 19.7f
 #define MOVIE_FRAMES_LOADED_AHEAD 16
+#define MOVIE_TEXTURE_PREFIX "movie_"
 #define MOVIE_NAME_EXTRA 20
 #define SWIRL_TEXTURE "swirl_back"
 #define SWIRL_PARTICLE_TEXTURE "swirl_particle"
@@ -1183,7 +1184,7 @@ static int movie_frame_is_ready(int frame, const struct cached_texture **texture
 {
     char name[ASSET_NAME_MAX + MOVIE_NAME_EXTRA];
 
-    snprintf(name, sizeof(name), "movie_%s_%03d", playing_movie->name, frame);
+    snprintf(name, sizeof(name), MOVIE_TEXTURE_PREFIX "%s_%03d", playing_movie->name, frame);
     *texture = texture_cache_use_or_start_loading(name);
     return *texture != NULL && (*texture)->state == CACHED_TEXTURE_READY;
 }
@@ -1191,9 +1192,11 @@ static int movie_frame_is_ready(int frame, const struct cached_texture **texture
 static void draw_movie(void)
 {
     const struct cached_texture *texture;
+    const struct cached_texture *texture_ahead;
     struct renderer_rect area;
     int frame;
     int ahead;
+    int frame_is_ready;
 
     if (playing_movie == NULL) {
         return;
@@ -1201,16 +1204,19 @@ static void draw_movie(void)
     frame = (int)((age_ticks - movie_started_at_tick) / (unsigned int)playing_movie->ticks_per_frame);
     if (frame >= playing_movie->frame_count) {
         playing_movie = NULL;
+        texture_cache_drop_waiting_reads_left_behind(MOVIE_TEXTURE_PREFIX);
         return;
     }
+    frame_is_ready = movie_frame_is_ready(frame, &texture);
     for (ahead = 1; ahead <= MOVIE_FRAMES_LOADED_AHEAD && frame + ahead < playing_movie->frame_count; ahead++) {
-        movie_frame_is_ready(frame + ahead, &texture);
+        movie_frame_is_ready(frame + ahead, &texture_ahead);
     }
+    texture_cache_drop_waiting_reads_left_behind(MOVIE_TEXTURE_PREFIX);
     area.x = 0.0f;
     area.y = 0.0f;
     area.width = (float)RENDERER_WIDTH;
     area.height = (float)RENDERER_HEIGHT;
-    if (movie_frame_is_ready(frame, &texture)) {
+    if (frame_is_ready) {
         movie_last_ready_frame = frame;
     } else if (movie_last_ready_frame < 0 || !movie_frame_is_ready(movie_last_ready_frame, &texture)) {
         renderer_draw_filled_rect(area, movie_black);

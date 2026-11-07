@@ -8,6 +8,9 @@ struct finished_read {
     int result;
     unsigned char *data;
     unsigned int size;
+    unsigned long long open_us;
+    unsigned long long read_us;
+    unsigned long long unpack_us;
 };
 
 int background_reader_start(void);

@@ -216,6 +216,30 @@ static void test_dropping_waiting_reads_leaves_reads_in_flight_alone(void)
     CHECK_INT(fake_reader_pending_count(), 1);
 }
 
+static void test_waiting_reads_left_behind_are_dropped_only_under_their_prefix(void)
+{
+    const struct cached_texture *in_flight;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    add_textures_named_a_to('d');
+    texture_cache_init("tex", 1024);
+    fake_reader_hold_reads(1);
+    in_flight = texture_cache_use_or_start_loading("a");
+    texture_cache_use_or_start_loading("b");
+    texture_cache_use_or_start_loading("c");
+    texture_cache_begin_frame();
+    texture_cache_use_or_start_loading("d");
+    texture_cache_drop_waiting_reads_left_behind("d");
+    CHECK_INT(texture_cache_loading_count(), 4);
+    texture_cache_drop_waiting_reads_left_behind("a");
+    CHECK_INT(texture_cache_loading_count(), 4);
+    CHECK_INT(in_flight->state, CACHED_TEXTURE_LOADING);
+    texture_cache_drop_waiting_reads_left_behind("c");
+    CHECK_INT(texture_cache_loading_count(), 3);
+}
+
 static void test_read_out_of_memory_is_tried_again_when_asked_for_again(void)
 {
     const struct cached_texture *entry;
@@ -507,6 +531,7 @@ int main(void)
     test_page_used_this_frame_is_read_before_older_requests();
     test_more_pages_than_the_read_queue_all_load_without_refusals();
     test_dropping_waiting_reads_leaves_reads_in_flight_alone();
+    test_waiting_reads_left_behind_are_dropped_only_under_their_prefix();
     test_read_out_of_memory_is_tried_again_when_asked_for_again();
     test_clear_waits_for_reads_in_flight();
     test_clear_drops_waiting_reads_instead_of_reading_them();

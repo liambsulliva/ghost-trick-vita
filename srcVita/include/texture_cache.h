@@ -48,6 +48,7 @@ void texture_cache_set_budget(unsigned int budget_bytes);
 const struct cached_texture *texture_cache_load_now(const char *name);
 void texture_cache_upload_finished_reads(unsigned int upload_limit);
 void texture_cache_drop_waiting_reads(void);
+void texture_cache_drop_waiting_reads_left_behind(const char *name_prefix);
 int texture_cache_loading_count(void);
 void texture_cache_read_totals(struct texture_cache_totals *totals);
 void texture_cache_clear(void);

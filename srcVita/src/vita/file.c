@@ -1,5 +1,6 @@
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
+#include "clock.h"
 #include "file.h"
 #include "memory.h"
 
@@ -28,14 +29,17 @@ static int read_in_chunks(SceUID fd, unsigned char *buffer, unsigned int length)
     return 1;
 }
 
-int file_read_whole(const char *path, unsigned char **data, unsigned int *size)
+int file_read_whole_timing_open(const char *path, unsigned char **data, unsigned int *size, unsigned long long *open_us)
 {
     SceUID fd;
     SceOff length;
     int read_all;
     unsigned char *buffer;
+    unsigned long long open_started_us;
 
+    open_started_us = clock_now_us();
     fd = sceIoOpen(path, SCE_O_RDONLY, 0);
+    *open_us = clock_now_us() - open_started_us;
     if (fd < 0) {
         return FILE_ERR_OPEN;
     }
@@ -62,6 +66,13 @@ int file_read_whole(const char *path, unsigned char **data, unsigned int *size)
     *data = buffer;
     *size = (unsigned int)length;
     return FILE_OK;
+}
+
+int file_read_whole(const char *path, unsigned char **data, unsigned int *size)
+{
+    unsigned long long open_us;
+
+    return file_read_whole_timing_open(path, data, size, &open_us);
 }
 
 static int write_with_flags(const char *path, const unsigned char *data, unsigned int size, int open_flags)

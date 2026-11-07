@@ -1,5 +1,6 @@
 #include <string.h>
 #include <psp2/kernel/threadmgr.h>
+#include "clock.h"
 #include "memory.h"
 #include "texture_file.h"
 #include "background_reader.h"
@@ -54,6 +55,7 @@ static int reader_thread(SceSize argument_size, void *arguments)
 {
     struct read_request request;
     struct finished_read finished;
+    unsigned long long started_us;
 
     (void)argument_size;
     (void)arguments;
@@ -68,9 +70,14 @@ static int reader_thread(SceSize argument_size, void *arguments)
         finished.request_id = request.request_id;
         finished.data = NULL;
         finished.size = 0;
-        finished.result = file_read_whole(request.path, &finished.data, &finished.size);
+        finished.unpack_us = 0;
+        started_us = clock_now_us();
+        finished.result = file_read_whole_timing_open(request.path, &finished.data, &finished.size, &finished.open_us);
+        finished.read_us = clock_now_us() - started_us - finished.open_us;
         if (finished.result == FILE_OK && texture_file_is_packed(finished.data, finished.size)) {
+            started_us = clock_now_us();
             finished.result = unpack_texture(&finished);
+            finished.unpack_us = clock_now_us() - started_us;
         }
 
         sceKernelLockMutex(queue_lock, 1, NULL);

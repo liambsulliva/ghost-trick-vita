@@ -85,6 +85,9 @@ static void complete_first_pending(struct finished_read *finished)
     finished->request_id = pending[0].request_id;
     finished->data = NULL;
     finished->size = 0;
+    finished->open_us = 0;
+    finished->read_us = 0;
+    finished->unpack_us = 0;
     if (reads_out_of_memory > 0) {
         reads_out_of_memory = reads_out_of_memory - 1;
         finished->result = FILE_ERR_MEMORY;

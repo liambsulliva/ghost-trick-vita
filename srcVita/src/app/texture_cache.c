@@ -270,7 +270,7 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     if (wait_us > totals.longest_wait_us) {
         totals.longest_wait_us = wait_us;
     }
-    run_log_write("texture loaded name=%s width=%u height=%u file_bytes=%u memory=%u wait_us=%llu upload_us=%llu", entry->name, header.width, header.height, header.pixel_data_size, memory_bytes, wait_us, upload_us);
+    run_log_write("texture loaded name=%s width=%u height=%u file_bytes=%u memory=%u wait_us=%llu upload_us=%llu open_us=%llu read_us=%llu unpack_us=%llu", entry->name, header.width, header.height, header.pixel_data_size, memory_bytes, wait_us, upload_us, finished->open_us, finished->read_us, finished->unpack_us);
 }
 
 static void handle_finished_read(const struct finished_read *finished)
@@ -423,6 +423,19 @@ void texture_cache_drop_waiting_reads(void)
 
     for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
         if (entries[index].in_use && entries[index].state == CACHED_TEXTURE_LOADING && !entries[index].read_is_started) {
+            entries[index].in_use = 0;
+        }
+    }
+}
+
+void texture_cache_drop_waiting_reads_left_behind(const char *name_prefix)
+{
+    size_t prefix_length;
+    int index;
+
+    prefix_length = strlen(name_prefix);
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
+        if (entries[index].in_use && entries[index].state == CACHED_TEXTURE_LOADING && !entries[index].read_is_started && entries[index].last_used_frame != current_frame && strncmp(entries[index].name, name_prefix, prefix_length) == 0) {
             entries[index].in_use = 0;
         }
     }
