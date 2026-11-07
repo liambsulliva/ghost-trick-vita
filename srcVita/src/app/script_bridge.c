@@ -8,7 +8,6 @@
 #include "scene_stage.h"
 #include "scene_view.h"
 #include "script_ui_view.h"
-#include "animation_library.h"
 #include "script_bridge.h"
 #include "script_player.h"
 #include "script_view.h"
@@ -101,7 +100,6 @@ static char grey_world_effect[ASSET_NAME_MAX];
 static void on_stage_cleared(void)
 {
     scene_stage_clear_room();
-    animation_library_clear();
     scene_layers_clear(scene_stage_layers());
     scene_effects_reset(scene_stage_effects());
     scene_effects_set_flash(scene_stage_effects(), (float)white_level / BRIGHTNESS_SCALE);

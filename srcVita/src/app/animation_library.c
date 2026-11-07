@@ -55,6 +55,7 @@ static struct animation *read_animation_file(const char *name)
         return NULL;
     }
     snprintf(animation->name, sizeof(animation->name), "%s", name);
+    run_log_write("animation read_from_card name=%s", name);
     return animation;
 }
 
