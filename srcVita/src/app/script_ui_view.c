@@ -849,7 +849,7 @@ static void draw_tap_balloons(void)
         return;
     }
     for (index = 0; index < TAP_BALLOON_MAX; index++) {
-        if (tap_balloons[index].is_open) {
+        if (tap_balloons[index].is_open && tap_balloons[index].age_ticks > 0) {
             draw_tap_balloon(&tap_balloons[index]);
         }
     }
@@ -936,7 +936,7 @@ static void advance_tap_balloons(void)
         struct tap_balloon *balloon;
 
         balloon = &tap_balloons[index];
-        if (!balloon->is_open) {
+        if (!balloon->is_open || (!hud.world_is_running && balloon->closing_ticks == 0)) {
             continue;
         }
         balloon->age_ticks = balloon->age_ticks + 1;

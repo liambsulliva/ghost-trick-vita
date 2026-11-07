@@ -1793,7 +1793,7 @@
         "object": "linne_talk",
         "pace": "normal",
         "footage_s": 1730.5,
-        "wait": "balloon:linne_talk"
+        "wait": "balloon:linne_talk & playable"
       },
       {
         "script": "st01-st01_game014_Expand",
@@ -1801,7 +1801,7 @@
         "object": "linneballoon",
         "pace": "normal",
         "footage_s": 1789.5,
-        "wait": "act:game:gameAct006 & balloon:linneballoon"
+        "wait": "act:game:gameAct006 & balloon:linneballoon & playable"
       },
       {
         "script": "st01-st01_game014_Expand",

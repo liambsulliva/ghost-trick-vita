@@ -814,6 +814,10 @@ static void age_the_player_mark(struct script_machine *machine)
     if (soul->mark_age_ticks < 0) {
         return;
     }
+    if (machine->pause_bit && machine->talk.phase != SCRIPT_TALK_CLOSED) {
+        soul->mark_age_ticks = MARK_IS_OFF;
+        return;
+    }
     soul->mark_age_ticks = soul->mark_age_ticks + 1;
     if (soul->mark_age_ticks > MARK_LAST_TICK) {
         soul->mark_age_ticks = MARK_IS_OFF;
