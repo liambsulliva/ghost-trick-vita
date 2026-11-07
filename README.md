@@ -71,7 +71,7 @@ It prints each stage as it starts, with a progress bar while it copies the game 
 4. **Build the converter.**
 5. **Convert the art, sound, text and DS scripts** into `extracted/vita_assets/chapter1/` (about 500 MB). The app plays the opening from the DS game's own scripts, so the cartridge dump is required. A cartridge from another region is refused, because no other region's scripts have been checked.
 6. **Plan the loading.** It replays the chapter on this computer and writes, for each scene, the list of textures to read ahead and one bundle of its animations.
-7. **Build the package**, if VitaSDK is installed. [The app's README](srcVita/README.md#build-and-test) lists its libraries.
+7. **Build the package**, if VitaSDK is installed. [The app's README](srcVita/README.md#build-and-test) lists its libraries. The package plays the DS soundtrack; add `--arranged-music` to use the remaster's arranged soundtrack instead.
 8. **Copy everything to the Vita.** The script tells you what to install and copy, which the next section explains.
 
 Running it again skips what is already done and converts only what changed, so it is also how you update after pulling this repository. Stages 2 and 3 are skipped once their files are in place, so `--apk` is only needed the first time. If a stage fails, the script stops and shows the last lines that stage printed.

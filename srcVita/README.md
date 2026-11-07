@@ -41,7 +41,7 @@ export VITASDK=/usr/local/vitasdk PATH="/usr/local/vitasdk/bin:$PATH"
 make -C srcVita -j8
 ```
 
-The build plays the DS soundtrack, rendered from your own ROM during the bake. `make -C srcVita -j8 DS_MUSIC=0` plays the remaster's soundtrack instead.
+The build plays the DS soundtrack by default, rendered from your own ROM during the bake. `make -C srcVita -j8 DS_MUSIC=0` plays the remaster's arranged soundtrack instead. The bake always writes both, so switching only needs a rebuild and a reinstall, and the build relinks every time so a changed flag always reaches the package.
 
 This writes the installable package to `srcVita/build/ghosttrick.vpk`. It holds only the app. The art goes on the Vita separately, as [the top-level README](../README.md#run-it-on-a-vita) explains, and the Vita also needs its shader compiler at `ur0:data/libshacccg.suprx`.
 
