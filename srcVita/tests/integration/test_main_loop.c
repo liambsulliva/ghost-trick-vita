@@ -34,6 +34,7 @@ void input_poll(struct input_state *state)
 {
     fake_clock_advance_us(FRAME_US);
     state->pressed = frames_polled == frame_that_quits ? INPUT_START : 0;
+    state->touch_is_down = 0;
     if (frames_polled == frame_that_changes_the_state) {
         fake_system_state_set(1, 0);
     }

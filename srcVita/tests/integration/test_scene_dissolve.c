@@ -1,3 +1,4 @@
+#include <string.h>
 #include "fakes/fake_audio.h"
 #include "fakes/fake_platform.h"
 #include "fakes/fake_reader.h"
@@ -40,7 +41,7 @@ static void run_frames(int frame_count)
     struct input_state no_input;
     int frame;
 
-    no_input.pressed = 0;
+    memset(&no_input, 0, sizeof(no_input));
     for (frame = 0; frame < frame_count; frame++) {
         fake_clock_advance_us(FRAME_US);
         viewer_app_update(&no_input, FRAME_US);
@@ -51,6 +52,7 @@ static void press(unsigned int button)
 {
     struct input_state input;
 
+    memset(&input, 0, sizeof(input));
     input.pressed = button;
     viewer_app_update(&input, 0);
 }

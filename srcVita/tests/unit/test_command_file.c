@@ -1,3 +1,4 @@
+#include <string.h>
 #include "command_file.h"
 #include "test_support.h"
 

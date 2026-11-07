@@ -49,7 +49,6 @@ ICON_SIZE = 26
 ICON_WIDE_SIZE = 56
 ICON_GAP = 4
 ICON_TOP_ABOVE_BASELINE = 23
-WORD_SWAPS = [(re.compile(r"\bTapping\b"), "Pressing"), (re.compile(r"\btapping\b"), "pressing"), (re.compile(r"\bTap\b"), "Press"), (re.compile(r"\btap\b"), "press"), (re.compile(r"\bDragging\b"), "Moving"), (re.compile(r"\bdragging\b"), "moving"), (re.compile(r"\bDrag\b"), "Move"), (re.compile(r"\bdrag\b"), "move")]
 ANY_TAG_PATTERN = re.compile(r"<[^>]*>")
 ORIGIN_PATTERN = re.compile(r"origin: (-?[0-9.]+),")
 NO_FACE = "-"
@@ -60,14 +59,8 @@ def new_section():
     return {"reveal_is_fade": 0, "ending": ENDING_PRESS, "characters": []}
 
 
-def with_button_words(text):
-    for pattern, replacement in WORD_SWAPS:
-        text = pattern.sub(replacement, text)
-    return text
-
-
 def add_plain_text(section, text, color):
-    for character in with_button_words(text).replace("\r", ""):
+    for character in text.replace("\r", ""):
         section["characters"].append((character, color))
 
 

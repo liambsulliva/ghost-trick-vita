@@ -21,6 +21,7 @@ enum command_kind {
     COMMAND_SKIP_AHEAD,
     COMMAND_PRESS,
     COMMAND_BURST,
+    COMMAND_TOUCH,
     COMMAND_UNKNOWN
 };
 
@@ -29,6 +30,8 @@ struct command {
     char name[ASSET_NAME_MAX];
     char detail[16];
     int number;
+    int touch_x;
+    int touch_y;
 };
 
 int command_name_is_safe(const char *name);

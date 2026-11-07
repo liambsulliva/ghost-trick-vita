@@ -217,6 +217,13 @@ struct script_soul {
     int pill_slide_in_wait;
     unsigned int pill_pulse_ticks;
     int ghost_pill_is_held_out;
+    int touch_is_down;
+    float touch_x;
+    float touch_y;
+    float camera_drag_x;
+    float camera_drag_y;
+    int free_camera_is_forbidden;
+    int leaving_shows_the_mark;
     float camera_follow_x;
     float camera_carry_x;
     float camera_carry_y;
@@ -430,6 +437,9 @@ void script_pills_effect_spawned(struct script_machine *machine, int effect_id, 
 void script_pills_effect_deleted(struct script_machine *machine, const char *name);
 void script_pills_fill_view(const struct script_machine *machine, struct script_hud_view *view);
 void script_soul_start_player_mark(struct script_machine *machine);
+int script_soul_wants_a_tap(const struct script_machine *machine);
+void script_soul_set_touch(struct script_machine *machine, int is_down, float x, float y);
+void script_soul_drag_camera(struct script_machine *machine, float delta_x, float delta_y);
 void script_soul_note_ghost(struct script_machine *machine);
 void script_soul_note_pill(struct script_machine *machine, enum script_pill_id id);
 void script_soul_note_tap(struct script_machine *machine, int tap_group);

@@ -17,6 +17,7 @@ void script_player_skip_ahead(void);
 int script_player_is_holding_for_art(void);
 void script_player_press(void);
 void script_player_ghost_button(void);
+void script_player_touch(int is_down, float x, float y);
 void script_player_back_button(void);
 void script_player_hourglass_button(void);
 void script_player_notebook_button(void);

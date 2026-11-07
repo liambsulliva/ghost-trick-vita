@@ -15,10 +15,12 @@
 #include "script_machine.h"
 #include "scene_view.h"
 #include "script_player.h"
+#include "script_ui_view.h"
 #include "script_tables.h"
 #include "sound_engine.h"
 #include "texture_cache.h"
 
+#define TOUCH_SCREEN_PIXELS_PER_DS_PIXEL 2.8125f
 #define MICROSECONDS_PER_VM_TICK 16666ULL
 #define MOST_TICKS_PER_DRAWN_FRAME 2ULL
 #define LONGEST_UPDATE_US 500000ULL
@@ -51,6 +53,10 @@ struct script_data {
     struct script_talk_book *talk_book;
 };
 
+static int touch_was_down;
+static int touch_is_dragging;
+static float touch_last_x;
+static float touch_last_y;
 static char folder[FILE_PATH_MAX];
 static char entry[ASSET_NAME_MAX];
 static struct script_data *data;
@@ -647,6 +653,87 @@ void script_player_ghost_button(void)
     if (phase == PHASE_RUNNING && data != NULL) {
         script_soul_note_ghost(&data->machine);
     }
+}
+
+static void press_the_pill(struct script_machine *machine, int pill)
+{
+    switch (pill) {
+    case SCRIPT_PILL_GHOST:
+    case SCRIPT_PILL_BACK:
+        script_soul_note_ghost(machine);
+        break;
+    case SCRIPT_PILL_TRICK:
+        script_machine_note_press(machine);
+        break;
+    default:
+        script_soul_note_pill(machine, (enum script_pill_id)pill);
+        break;
+    }
+}
+
+static void touch_began(struct script_machine *machine, float x, float y)
+{
+    int pill;
+    int balloon_kind;
+
+    touch_is_dragging = 0;
+    pill = script_ui_view_pill_at(x, y);
+    if (pill >= 0) {
+        press_the_pill(machine, pill);
+        return;
+    }
+    balloon_kind = script_ui_view_tap_balloon_kind_at(x, y);
+    if (balloon_kind != 0) {
+        script_soul_note_tap(machine, balloon_kind == SCRIPT_BALLOON_KIND_TAP_DOTS ? SCRIPT_TAP_GROUP_LEFT : SCRIPT_TAP_GROUP_RIGHT);
+        return;
+    }
+    if (machine->soul.rewind_select_ticks > 0) {
+        if (script_ui_view_rewind_button_is_at(x, y)) {
+            script_machine_note_press(machine);
+        }
+        return;
+    }
+    if (script_soul_wants_a_tap(machine)) {
+        script_machine_note_press(machine);
+        return;
+    }
+    touch_is_dragging = 1;
+    touch_last_x = x;
+    touch_last_y = y;
+}
+
+static void touch_dragged(struct script_machine *machine, float x, float y)
+{
+    float world_x;
+    float world_y;
+
+    if (machine->soul.is_on) {
+        scene_view_screen_to_world(scene_stage_view(), x, y, &world_x, &world_y);
+        script_soul_set_touch(machine, 1, world_x, world_y);
+    } else {
+        script_soul_drag_camera(machine, (touch_last_x - x) / TOUCH_SCREEN_PIXELS_PER_DS_PIXEL, (touch_last_y - y) / TOUCH_SCREEN_PIXELS_PER_DS_PIXEL);
+    }
+    touch_last_x = x;
+    touch_last_y = y;
+}
+
+void script_player_touch(int is_down, float x, float y)
+{
+    if (phase != PHASE_RUNNING || data == NULL || data->machine.auto_press != SCRIPT_AUTO_OFF) {
+        touch_was_down = 0;
+        return;
+    }
+    if (is_down && !touch_was_down) {
+        touch_began(&data->machine, x, y);
+    }
+    if (is_down && touch_is_dragging) {
+        touch_dragged(&data->machine, x, y);
+    }
+    if (!is_down && touch_was_down) {
+        touch_is_dragging = 0;
+        script_soul_set_touch(&data->machine, 0, 0.0f, 0.0f);
+    }
+    touch_was_down = is_down;
 }
 
 void script_player_back_button(void)

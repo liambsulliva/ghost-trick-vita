@@ -17,6 +17,9 @@
 struct input_state {
     unsigned int pressed;
     unsigned int held;
+    int touch_is_down;
+    float touch_x;
+    float touch_y;
 };
 
 void input_poll(struct input_state *state);

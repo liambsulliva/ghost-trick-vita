@@ -242,7 +242,7 @@ vitaGL rounds compressed textures up to power-of-two sizes, so a texture can tak
 - **Most effects.** Effect art uses a different file format from character art that has not been read, so only rings, the chapter card and the close-up dissolve are drawn. The rest are noted in the log.
 - **Soul view art past the rings.** Object tints and class gates are not drawn, and every core can be reached from every other, with no range limit.
 - **Some HUD pieces.** The countdown runs and sends its events but draws nothing, and the same goes for the `EyeCatch` banners and the time jump and phone screens.
-- **Touch.** The Vita's screens are not read. The D-pad and buttons do everything.
+- **Touch.** The back touch pad is not read. The front screen works alongside the buttons: tap pills, balloons, Rewind Time and talk, drag the soul in Ghost view, and drag the camera where the game allows it.
 - **A second chapter.** `chapter.xml` is not baked, so Chapter 1's end goes to an end screen.
 
 The hand-written scene's timing is hand-tuned against the reference video rather than taken from the game. The VM's comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.

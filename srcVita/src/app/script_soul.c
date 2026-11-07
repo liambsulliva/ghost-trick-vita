@@ -14,6 +14,7 @@
 #define ROUTE_ACTION_MOST_TICKS 1800u
 #define SOUL_REACH_DS_PIXELS 48.0f
 #define SOUL_TIP_DS_PIXELS_PER_TICK 6.0f
+#define SOUL_TIP_TOUCH_DS_PIXELS_PER_TICK 12.0f
 #define SOUL_TIP_PICKUP_NEAR 16.0f
 #define SOUL_TIP_PICKUP_FAR 35.0f
 #define SOUL_TIP_PICKUP_OFF_LINE 3.0f
@@ -437,7 +438,7 @@ static void move_soul_tip(struct script_machine *machine)
         soul->tip_is_out = 0;
         return;
     }
-    if (soul->held_x == 0 && soul->held_y == 0 && !soul->tip_is_aimed) {
+    if (soul->held_x == 0 && soul->held_y == 0 && !soul->tip_is_aimed && !soul->touch_is_down) {
         soul->tip_is_out = 0;
         return;
     }
@@ -447,7 +448,21 @@ static void move_soul_tip(struct script_machine *machine)
         soul->tip_y = root_y;
         soul->tip_is_out = 1;
     }
-    if (soul->tip_is_aimed) {
+    if (soul->touch_is_down) {
+        float to_x;
+        float to_y;
+        float distance;
+
+        to_x = soul->touch_x - soul->tip_x;
+        to_y = soul->touch_y - soul->tip_y;
+        distance = sqrtf(to_x * to_x + to_y * to_y);
+        if (distance > SOUL_TIP_TOUCH_DS_PIXELS_PER_TICK) {
+            to_x = to_x * SOUL_TIP_TOUCH_DS_PIXELS_PER_TICK / distance;
+            to_y = to_y * SOUL_TIP_TOUCH_DS_PIXELS_PER_TICK / distance;
+        }
+        soul->tip_x = soul->tip_x + to_x;
+        soul->tip_y = soul->tip_y + to_y;
+    } else if (soul->tip_is_aimed) {
         soul->tip_x = soul->tip_x + soul->tip_aim_x * SOUL_TIP_DS_PIXELS_PER_TICK;
         soul->tip_y = soul->tip_y + soul->tip_aim_y * SOUL_TIP_DS_PIXELS_PER_TICK;
     } else {
@@ -759,7 +774,8 @@ static void finish_leaving_view_when_due(struct script_machine *machine)
         return;
     }
     soul->view_change_ticks_left = soul->view_change_ticks_left - 1;
-    if (soul->is_leaving_view && soul->view_change_ticks_left == SOUL_VIEW_LEAVE_TICKS - MARK_AFTER_LEAVING_TICKS && machine->mode_byte == NORMAL_PLAY_MODE) {
+    if (soul->is_leaving_view && soul->view_change_ticks_left == SOUL_VIEW_LEAVE_TICKS - MARK_AFTER_LEAVING_TICKS && (machine->mode_byte == NORMAL_PLAY_MODE || soul->leaving_shows_the_mark)) {
+        soul->leaving_shows_the_mark = 0;
         script_soul_start_player_mark(machine);
     }
     if (soul->is_on && soul->view_change_ticks_left == 0 && soul->player_opened_soul_view) {
@@ -798,6 +814,7 @@ static void run_tutorial_command(struct script_machine *machine, const char *arg
     } else if (strcmp(arg, "TouchCheckEnd") == 0 || strcmp(arg, "MoveEnd") == 0) {
         soul->tutorial_mode = TUTORIAL_NONE;
     } else if (strcmp(arg, "ReturnGame") == 0) {
+        soul->leaving_shows_the_mark = 1;
         leave_soul_view(machine);
     }
 }
@@ -1044,6 +1061,38 @@ static void take_ghost_button(struct script_machine *machine)
     }
 }
 
+static int free_camera_is_allowed(const struct script_machine *machine)
+{
+    const struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->is_on || soul->camera_is_locked || (machine->pause_bit && !soul->camera_tutorial_is_on)) {
+        return 0;
+    }
+    return !soul->free_camera_is_forbidden || soul->camera_tutorial_is_on;
+}
+
+void script_soul_drag_camera(struct script_machine *machine, float delta_x, float delta_y)
+{
+    struct script_soul *soul;
+    int whole_x;
+    int whole_y;
+
+    soul = &machine->soul;
+    if (!free_camera_is_allowed(machine)) {
+        return;
+    }
+    soul->camera_drag_x = soul->camera_drag_x + delta_x;
+    soul->camera_drag_y = soul->camera_drag_y + delta_y;
+    whole_x = (int)soul->camera_drag_x;
+    whole_y = (int)soul->camera_drag_y;
+    soul->camera_drag_x = soul->camera_drag_x - (float)whole_x;
+    soul->camera_drag_y = soul->camera_drag_y - (float)whole_y;
+    if (whole_x != 0 || whole_y != 0) {
+        script_machine_scroll_camera(machine, whole_x, whole_y);
+    }
+}
+
 static void move_free_camera(struct script_machine *machine)
 {
     const struct script_soul *soul;
@@ -1052,7 +1101,7 @@ static void move_free_camera(struct script_machine *machine)
     if (soul->held_x == 0 && soul->held_y == 0) {
         return;
     }
-    if (soul->is_on || soul->camera_is_locked || (machine->pause_bit && !soul->camera_tutorial_is_on)) {
+    if (!free_camera_is_allowed(machine)) {
         return;
     }
     script_machine_scroll_camera(machine, soul->held_x * CAMERA_FREE_SPEED_PIXELS, soul->held_y * CAMERA_FREE_SPEED_PIXELS);
@@ -1609,6 +1658,24 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     report_hud(machine);
     send_timed_native_event(machine, &soul->phone_event);
     send_timed_native_event(machine, &soul->time_jump_event);
+}
+
+int script_soul_wants_a_tap(const struct script_machine *machine)
+{
+    if (machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine)) {
+        return 1;
+    }
+    if (script_narration_wants_a_press(&machine->narration)) {
+        return 1;
+    }
+    return machine->soul.tutorial_mode == TUTORIAL_TOUCH_CHECK && !machine->soul.tutorial_click_was_sent;
+}
+
+void script_soul_set_touch(struct script_machine *machine, int is_down, float x, float y)
+{
+    machine->soul.touch_is_down = is_down;
+    machine->soul.touch_x = x;
+    machine->soul.touch_y = y;
 }
 
 void script_soul_note_ghost(struct script_machine *machine)

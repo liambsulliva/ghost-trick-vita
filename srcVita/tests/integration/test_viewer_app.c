@@ -1,3 +1,4 @@
+#include <string.h>
 #include <stdlib.h>
 #include "animation_library.h"
 #include "fakes/fake_audio.h"
@@ -108,7 +109,7 @@ static void run_frames(int frame_count)
     struct input_state no_input;
     int frame;
 
-    no_input.pressed = 0;
+    memset(&no_input, 0, sizeof(no_input));
     for (frame = 0; frame < frame_count; frame++) {
         fake_clock_advance_us(FRAME_US);
         viewer_app_update(&no_input, FRAME_US);
@@ -128,6 +129,7 @@ static void press(unsigned int button)
 {
     struct input_state input;
 
+    memset(&input, 0, sizeof(input));
     input.pressed = button;
     viewer_app_update(&input, 0);
 }
@@ -1441,7 +1443,7 @@ static void update_with_elapsed_time(unsigned long long elapsed_us)
 {
     struct input_state no_input;
 
-    no_input.pressed = 0;
+    memset(&no_input, 0, sizeof(no_input));
     fake_clock_advance_us(elapsed_us);
     viewer_app_update(&no_input, elapsed_us);
 }

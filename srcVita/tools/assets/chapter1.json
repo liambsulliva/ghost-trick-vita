@@ -1029,7 +1029,7 @@
         "script": "st01-st01_game000_Expand",
         "action": "trick",
         "object": "shadanki",
-        "pace": "normal",
+        "pace": "quick",
         "footage_s": 184.6,
         "wait": "act:game:gameAct030 & flag:3 & playable"
       },
@@ -1045,7 +1045,7 @@
         "script": "st01-st01_game000_Expand",
         "action": "trick",
         "object": "guitar",
-        "pace": "normal",
+        "pace": "quick",
         "footage_s": 270.9,
         "wait": "act:game:gameAct045 & flag:3 & playable"
       },

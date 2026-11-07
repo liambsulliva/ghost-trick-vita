@@ -1,7 +1,11 @@
 #include <psp2/ctrl.h>
+#include <psp2/touch.h>
 #include "input.h"
 
+#define TOUCH_PANEL_UNITS_PER_SCREEN_PIXEL 2.0f
+
 static unsigned int previous_buttons;
+static int touch_is_sampling;
 
 static unsigned int add_button_if_held(unsigned int vita_buttons, unsigned int vita_button, unsigned int app_button)
 {
@@ -31,11 +35,30 @@ static unsigned int read_app_buttons(unsigned int vita_buttons)
     return buttons;
 }
 
+static void read_front_touch(struct input_state *state)
+{
+    SceTouchData touch;
+
+    if (!touch_is_sampling) {
+        sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
+        touch_is_sampling = 1;
+    }
+    state->touch_is_down = 0;
+    state->touch_x = 0.0f;
+    state->touch_y = 0.0f;
+    if (sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touch, 1) > 0 && touch.reportNum > 0) {
+        state->touch_is_down = 1;
+        state->touch_x = (float)touch.report[0].x / TOUCH_PANEL_UNITS_PER_SCREEN_PIXEL;
+        state->touch_y = (float)touch.report[0].y / TOUCH_PANEL_UNITS_PER_SCREEN_PIXEL;
+    }
+}
+
 void input_poll(struct input_state *state)
 {
     SceCtrlData pad;
     unsigned int buttons;
 
+    read_front_touch(state);
     sceCtrlPeekBufferPositive(0, &pad, 1);
     buttons = read_app_buttons(pad.buttons);
     state->pressed = buttons & ~previous_buttons;

@@ -789,6 +789,16 @@ int scene_view_visible_art_is_loading(const struct scene_stage *stage)
     return is_loading;
 }
 
+void scene_view_screen_to_world(const struct scene_stage *stage, float screen_x, float screen_y, float *x, float *y)
+{
+    struct screen_view view;
+
+    view = view_of_stage(stage);
+    view = view_for_objects(stage, &view);
+    *x = screen_x / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL + view.left;
+    *y = screen_y / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL + view.top;
+}
+
 void scene_view_world_to_screen(const struct scene_stage *stage, float x, float y, float *screen_x, float *screen_y)
 {
     struct screen_view view;

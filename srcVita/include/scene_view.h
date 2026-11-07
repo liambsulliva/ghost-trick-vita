@@ -17,6 +17,7 @@
 void scene_view_start(void);
 void scene_view_stop(void);
 int scene_view_visible_art_is_loading(const struct scene_stage *stage);
+void scene_view_screen_to_world(const struct scene_stage *stage, float screen_x, float screen_y, float *x, float *y);
 void scene_view_world_to_screen(const struct scene_stage *stage, float x, float y, float *screen_x, float *screen_y);
 void scene_view_forget_held_poses(void);
 void scene_view_draw_world(const struct scene_stage *stage);

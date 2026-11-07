@@ -63,6 +63,7 @@
 #define REWIND_LABEL_SHEET_Y 112.0f
 #define REWIND_LABEL_SHEET_WIDTH 420.0f
 #define REWIND_LABEL_SHEET_HEIGHT 72.0f
+#define TOUCH_SLOP_PIXELS 6.0f
 #define TAP_BALLOON_MAX 8
 #define TAP_BALLOON_KEY_COUNT 5
 #define TAP_BALLOON_CLOSE_TICKS 12
@@ -768,6 +769,17 @@ static void draw_tap_balloon_art(const struct cached_texture *art, float x, floa
     draw_slice(art, x - width / 2.0f, y - height / 2.0f, width, height, cell_x / TAP_ART_WIDTH, cell_y / TAP_ART_HEIGHT, cell_width / TAP_ART_WIDTH, cell_height / TAP_ART_HEIGHT, tint);
 }
 
+static void tap_balloon_center(const struct tap_balloon *balloon, float *x, float *y)
+{
+    if (balloon->kind == SCRIPT_BALLOON_KIND_TAP_MARKS) {
+        *x = TAP_MARKS_X;
+        *y = TAP_MARKS_Y;
+        return;
+    }
+    scene_view_world_to_screen(scene_stage_view(), balloon->anchor_x, balloon->anchor_y, x, y);
+    *y = *y + TAP_DOTS_ABOVE_ANCHOR;
+}
+
 static void draw_tap_balloon(const struct tap_balloon *balloon)
 {
     const struct cached_texture *art;
@@ -800,13 +812,7 @@ static void draw_tap_balloon(const struct tap_balloon *balloon)
         width_scale = 1.0f + closed * TAP_BALLOON_CLOSE_WIDEN;
         height_scale = 1.0f - closed;
     }
-    if (is_marks) {
-        x = TAP_MARKS_X;
-        y = TAP_MARKS_Y;
-    } else {
-        scene_view_world_to_screen(scene_stage_view(), balloon->anchor_x, balloon->anchor_y, &x, &y);
-        y = y + TAP_DOTS_ABOVE_ANCHOR;
-    }
+    tap_balloon_center(balloon, &x, &y);
     full_height = is_marks ? TAP_OVAL_HEIGHT : TAP_OVAL_WITH_TAIL_HEIGHT;
     draw_tap_balloon_art(art, x, y, TAP_OVAL_WIDTH * width_scale, full_height * height_scale, TAP_OVAL_CELL_X, TAP_OVAL_CELL_Y, TAP_OVAL_CELL_WIDTH, is_marks ? TAP_OVAL_CELL_HEIGHT : TAP_OVAL_WITH_TAIL_CELL_HEIGHT, white);
     if (balloon->age_ticks < TAP_CONTENT_SHOWS_AT || balloon->closing_ticks > 0) {
@@ -846,6 +852,58 @@ static void draw_tap_balloons(void)
             draw_tap_balloon(&tap_balloons[index]);
         }
     }
+}
+
+static int point_is_in_box(float x, float y, float left, float top, float width, float height)
+{
+    return x >= left - TOUCH_SLOP_PIXELS && x <= left + width + TOUCH_SLOP_PIXELS && y >= top - TOUCH_SLOP_PIXELS && y <= top + height + TOUCH_SLOP_PIXELS;
+}
+
+int script_ui_view_pill_at(float x, float y)
+{
+    int index;
+
+    if (hud.is_hidden_for_movie) {
+        return -1;
+    }
+    for (index = 0; index < SCRIPT_PILL_COUNT; index++) {
+        const struct script_pill_view *pill;
+
+        pill = &hud.pills[index];
+        if (pill->is_on_screen && pill->slide_step == PILL_SLIDE_STEPS && !pill->is_pressed && point_is_in_box(x, y, pill_layouts[index].x, pill_layouts[index].y, pill_layouts[index].width, PILL_RING_HEIGHT)) {
+            return index;
+        }
+    }
+    return -1;
+}
+
+int script_ui_view_tap_balloon_kind_at(float x, float y)
+{
+    int index;
+
+    if (hud.soul_view_is_on) {
+        return 0;
+    }
+    for (index = 0; index < TAP_BALLOON_MAX; index++) {
+        const struct tap_balloon *balloon;
+        float center_x;
+        float center_y;
+
+        balloon = &tap_balloons[index];
+        if (!balloon->is_open || balloon->closing_ticks > 0) {
+            continue;
+        }
+        tap_balloon_center(balloon, &center_x, &center_y);
+        if (point_is_in_box(x, y, center_x - TAP_OVAL_WIDTH / 2.0f, center_y - TAP_OVAL_HEIGHT / 2.0f, TAP_OVAL_WIDTH, TAP_OVAL_HEIGHT)) {
+            return balloon->kind;
+        }
+    }
+    return 0;
+}
+
+int script_ui_view_rewind_button_is_at(float x, float y)
+{
+    return hud.rewind_select_ticks > 0 && point_is_in_box(x, y, REWIND_BUTTON_X, REWIND_BUTTON_Y, REWIND_BUTTON_WIDTH, REWIND_BUTTON_HEIGHT);
 }
 
 void script_ui_view_tap_balloon_opened(int slot, int kind, float anchor_x, float anchor_y)

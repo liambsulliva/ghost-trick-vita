@@ -15,7 +15,7 @@ LDFLAGS := -Wl,-q
 LIBS    := -lvitaGL -lstdc++ -lSceLibKernel_stub -lSceAppMgr_stub -lSceAppUtil_stub -lmathneon \
            -lc -lSceCommonDialog_stub -lm -lSceGxm_stub -lSceDisplay_stub -lSceSysmodule_stub \
            -lvitashark -lSceShaccCgExt -ltaihen_stub -lSceShaccCg_stub \
-           -lSceKernelDmacMgr_stub -lSceCtrl_stub -lSceIofilemgr_stub -lSceProcessmgr_stub \
+           -lSceKernelDmacMgr_stub -lSceCtrl_stub -lSceTouch_stub -lSceIofilemgr_stub -lSceProcessmgr_stub \
            -lSceAudio_stub -lScePower_stub
 
 STB_VORBIS_SOURCE := src/third_party/stb_vorbis.c

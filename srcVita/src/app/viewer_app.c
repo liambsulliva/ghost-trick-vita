@@ -459,6 +459,7 @@ static void update_player_controls(const struct input_state *input)
     }
     if (script_player_is_active()) {
         send_script_directions(input);
+        script_player_touch(input->touch_is_down, input->touch_x, input->touch_y);
         if (input->pressed & INPUT_L) {
             script_player_ghost_button();
         }

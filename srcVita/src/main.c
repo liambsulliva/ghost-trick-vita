@@ -81,6 +81,9 @@ static void save_capture(const char *name)
 
 #ifdef FAST_FORWARD_BUILD
 static unsigned int injected_buttons;
+static int injected_touch_frames;
+static float injected_touch_x;
+static float injected_touch_y;
 #endif
 
 static int run_one_command(const struct command *command)
@@ -121,6 +124,10 @@ static int run_one_command(const struct command *command)
         script_player_skip_ahead();
     } else if (command->kind == COMMAND_PRESS) {
         injected_buttons = (unsigned int)command->number;
+    } else if (command->kind == COMMAND_TOUCH) {
+        injected_touch_frames = command->number;
+        injected_touch_x = (float)command->touch_x;
+        injected_touch_y = (float)command->touch_y;
     } else if (command->kind == COMMAND_BURST) {
         screen_burst_run_for_seconds(command->number);
 #endif
@@ -211,6 +218,12 @@ static void run_main_loop(void)
         input.pressed = input.pressed | injected_buttons;
         input.held = input.held | injected_buttons;
         injected_buttons = 0;
+        if (injected_touch_frames > 0) {
+            injected_touch_frames = injected_touch_frames - 1;
+            input.touch_is_down = 1;
+            input.touch_x = injected_touch_x;
+            input.touch_y = injected_touch_y;
+        }
 #endif
         if ((input.pressed & INPUT_START) && !script_player_is_active()) {
             run_log_write("input start pressed");
