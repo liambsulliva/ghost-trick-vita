@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "page_tiles.h"
 #include "background_reader.h"
 #include "clock.h"
 #include "file.h"
@@ -339,7 +340,17 @@ static int waiting_read_count(void)
 void texture_cache_keep_or_start_reading_ahead(const char *name)
 {
     struct cached_texture *entry;
+    const struct page_tile_set *tiles;
 
+    tiles = page_tiles_find(name);
+    if (tiles != NULL) {
+        int tile;
+
+        for (tile = 0; tile < tiles->tile_count; tile++) {
+            texture_cache_keep_or_start_reading_ahead(tiles->tiles[tile].name);
+        }
+        return;
+    }
     entry = find_entry_by_name(name);
     if (entry != NULL) {
         if (entry->last_used_frame < current_frame - 1u) {
@@ -383,10 +394,45 @@ void texture_cache_begin_frame(void)
     current_frame = current_frame + 1;
 }
 
+static const struct cached_texture *use_or_start_loading_tiles(struct page_tile_set *tiles)
+{
+    int tile;
+    int ready_count;
+    int missing_count;
+
+    ready_count = 0;
+    missing_count = 0;
+    for (tile = 0; tile < tiles->tile_count; tile++) {
+        const struct cached_texture *entry;
+
+        entry = texture_cache_use_or_start_loading(tiles->tiles[tile].name);
+        if (entry == NULL) {
+            return NULL;
+        }
+        if (entry->state == CACHED_TEXTURE_READY) {
+            ready_count = ready_count + 1;
+        } else if (entry->state == CACHED_TEXTURE_MISSING) {
+            missing_count = missing_count + 1;
+        }
+    }
+    tiles->as_page.state = CACHED_TEXTURE_LOADING;
+    if (missing_count > 0) {
+        tiles->as_page.state = CACHED_TEXTURE_MISSING;
+    } else if (ready_count == tiles->tile_count) {
+        tiles->as_page.state = CACHED_TEXTURE_READY;
+    }
+    return &tiles->as_page;
+}
+
 const struct cached_texture *texture_cache_use_or_start_loading(const char *name)
 {
     struct cached_texture *entry;
+    struct page_tile_set *tiles;
 
+    tiles = page_tiles_find(name);
+    if (tiles != NULL) {
+        return use_or_start_loading_tiles(tiles);
+    }
     entry = find_entry_by_name(name);
     if (entry != NULL) {
         entry->last_used_frame = current_frame;
@@ -426,6 +472,7 @@ const struct cached_texture *texture_cache_load_now(const char *name)
     while (entry != NULL && entry->state == CACHED_TEXTURE_LOADING) {
         background_reader_wait_for_finished(&finished);
         handle_finished_read(&finished);
+        entry = texture_cache_use_or_start_loading(name);
     }
     return entry;
 }

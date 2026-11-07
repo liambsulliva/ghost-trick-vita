@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+#include "page_tiles.h"
 #include "iris_pattern.h"
 #include "memory.h"
 #include "run_log.h"
@@ -200,6 +201,38 @@ static struct renderer_rect world_area_to_screen(const struct screen_view *view,
     return area;
 }
 
+static void draw_page_area(const char *texture_name, const struct cached_texture *texture, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color, int is_flat)
+{
+    const struct page_tile_set *tiles;
+    struct page_tile_part parts[PAGE_TILE_MOST];
+    int part_count;
+    int part;
+
+    tiles = page_tiles_find(texture_name);
+    if (tiles == NULL) {
+        if (is_flat) {
+            renderer_draw_flat_sprite(texture->texture, screen_area, texture_area, color);
+        } else {
+            renderer_draw_sprite(texture->texture, screen_area, texture_area, color);
+        }
+        return;
+    }
+    part_count = page_tiles_cut(tiles, screen_area, texture_area, parts);
+    for (part = 0; part < part_count; part++) {
+        const struct cached_texture *tile_texture;
+
+        tile_texture = texture_cache_use_or_start_loading(parts[part].tile->name);
+        if (tile_texture == NULL || tile_texture->state != CACHED_TEXTURE_READY) {
+            continue;
+        }
+        if (is_flat) {
+            renderer_draw_flat_sprite(tile_texture->texture, parts[part].screen_area, parts[part].texture_area, color);
+        } else {
+            renderer_draw_sprite(tile_texture->texture, parts[part].screen_area, parts[part].texture_area, color);
+        }
+    }
+}
+
 static void draw_texture_or_placeholder(const char *texture_name, struct renderer_rect screen_area, struct renderer_rect texture_area)
 {
     const struct cached_texture *texture;
@@ -213,7 +246,7 @@ static void draw_texture_or_placeholder(const char *texture_name, struct rendere
         return;
     }
     if (texture->state == CACHED_TEXTURE_READY) {
-        renderer_draw_sprite(texture->texture, screen_area, texture_area, white);
+        draw_page_area(texture_name, texture, screen_area, texture_area, white, 0);
     }
 }
 
@@ -249,13 +282,9 @@ static int draw_when_ready(const char *texture_name, struct renderer_rect screen
         color.green = tinted_object->soul_green;
         color.blue = tinted_object->soul_blue;
         color.alpha = tinted_object->soul_alpha;
-        if (tinted_object->soul_is_flat) {
-            renderer_draw_flat_sprite(texture->texture, screen_area, texture_area, color);
-        } else {
-            renderer_draw_sprite(texture->texture, screen_area, texture_area, color);
-        }
+        draw_page_area(texture_name, texture, screen_area, texture_area, color, tinted_object->soul_is_flat);
     } else {
-        renderer_draw_sprite(texture->texture, screen_area, texture_area, white);
+        draw_page_area(texture_name, texture, screen_area, texture_area, white, 0);
     }
     return 1;
 }

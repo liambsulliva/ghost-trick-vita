@@ -22,6 +22,7 @@ import frame_layout
 import hud_art
 import narration
 import pack_files
+import page_tiles
 import script_assets
 import chapter_assets
 import talk_assets
@@ -79,7 +80,7 @@ def add_atlas_page_jobs(jobs, animations, timelines):
             if frame_layout.record_draws_art(timeline, record):
                 logical_path = timeline["pages"][record["page"]]
                 name = frame_layout.texture_name_for(logical_path)
-                jobs[name] = {"name": name, "source": frame_layout.pack_path_for(logical_path)}
+                jobs[name] = {"name": name, "source": frame_layout.pack_path_for(logical_path), "may_tile": True}
     for name, crop in crops.items():
         jobs[name]["crop"] = list(crop)
     return crops
@@ -165,11 +166,31 @@ def convert_one_texture(packs, work_folder, job, record, code):
     if "flat_color" in job:
         settings["flat_color"] = job["flat_color"]
     key = record.key_for(code, settings, tex_bytes)
+    if job.get("may_tile") and page_tiles.needs_tiles(width, height):
+        return convert_tiled_page(work_folder, job, record, key, tex_bytes, source_size, width, height)
     gtex_bytes = record.read_if_current(relative_path, key)
     if gtex_bytes is None:
         gtex_bytes, _ = texture_encoder.convert_tex_to_gtex(TEXTURE_TOOL_PATH, work_folder, job["name"], tex_bytes, width, height, job.get("crop"), job.get("soul_ramp"), flat_color=job.get("flat_color"))
         record.store(relative_path, key, gtex_bytes)
-    return bake_record.texture_result(job["name"], source_size, gtex_bytes)
+    return [bake_record.texture_result(job["name"], source_size, gtex_bytes)]
+
+
+def convert_tiled_page(work_folder, job, record, key, tex_bytes, source_size, width, height):
+    tiles = page_tiles.tile_layout(job["name"], width, height)
+    stored = [record.read_if_current("textures/" + tile["name"] + ".gtex", key) for tile in tiles]
+    if any(data is None for data in stored):
+        page_gtex, _ = texture_encoder.convert_tex_to_gtex(TEXTURE_TOOL_PATH, work_folder, job["name"], tex_bytes, width, height, job.get("crop"), job.get("soul_ramp"), flat_color=job.get("flat_color"))
+        stored = []
+        for tile in tiles:
+            tile_gtex = page_tiles.cut_gtex(page_gtex, tile["left"], tile["top"], tile["right"], tile["bottom"])
+            record.store("textures/" + tile["name"] + ".gtex", key, tile_gtex)
+            stored.append(tile_gtex)
+    results = []
+    for tile, data in zip(tiles, stored):
+        result = bake_record.texture_result(tile["name"], source_size, data)
+        result["page"] = {"name": job["name"], "width": width, "height": height, "left": tile["left"], "top": tile["top"], "draw": tile["draw"]}
+        results.append(result)
+    return results
 
 
 def convert_all_textures(packs, jobs, work_folder, record):
@@ -181,7 +202,8 @@ def convert_all_textures(packs, jobs, work_folder, record):
         try:
             for name, future in futures.items():
                 try:
-                    results.append(future.result())
+                    outcome = future.result()
+                    results.extend(outcome if isinstance(outcome, list) else [outcome])
                 except Exception as error:
                     failures.append((name, str(error)))
         except BaseException:
@@ -449,6 +471,9 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         texture_sizes = {result["name"]: (result["width"], result["height"]) for result in texture_results}
         files.update(talk_files)
         files.update(script_assets.table_files(set_description, output_folder, motion_lines, narration_lines, texture_sizes, plate_size_lookup(texture_results, plates), list(table_texts), talk_assets.talk_texture_names(talk_files)))
+        tile_table = page_tiles.table_text(texture_results)
+        if tile_table:
+            files[page_tiles.TABLE_PATH] = tile_table.encode("ascii")
         write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts), script_paths)
     finally:
         record.save()

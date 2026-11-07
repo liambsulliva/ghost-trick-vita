@@ -9,6 +9,7 @@
 #include "file_path.h"
 #include "memory.h"
 #include "music_engine.h"
+#include "page_tiles.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "scene_player.h"
@@ -31,6 +32,7 @@
 #define MUSIC_SUBFOLDER "music"
 #endif
 #define LIST_VISIBLE_ROWS 20
+#define PAGE_TILES_FILE_NAME "tiles"
 #define LIST_ROW_HEIGHT 22.0f
 #define LIST_PANEL_X 40.0f
 #define LIST_PANEL_Y 40.0f
@@ -290,6 +292,20 @@ static void play_opening(void)
     }
 }
 
+static void read_page_tiles(const char *script_folder)
+{
+    char path[FILE_PATH_MAX];
+    unsigned char *bytes;
+    unsigned int size;
+
+    page_tiles_clear();
+    if (!file_path_join(path, script_folder, PAGE_TILES_FILE_NAME, ".txt") || file_read_whole(path, &bytes, &size) != FILE_OK) {
+        return;
+    }
+    run_log_write("page tiles read count=%d", page_tiles_read_text((const char *)bytes, size));
+    mem_free(bytes);
+}
+
 void viewer_app_start(const char *folder)
 {
     char texture_folder[FILE_PATH_MAX];
@@ -320,6 +336,7 @@ void viewer_app_start(const char *folder)
     animation_library_init(animation_folder);
     scene_player_init(scene_folder);
     script_player_init(script_folder);
+    read_page_tiles(script_folder);
     music_engine_init(music_folder);
     sound_engine_init(sound_folder);
     if (!debug_font_init()) {
