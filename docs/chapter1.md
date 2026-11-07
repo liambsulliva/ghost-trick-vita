@@ -51,4 +51,4 @@ The prior BFM phase milestones remain recorded in `docs/inventory.md`. The user 
 
 ## Roadmap after Chapter 1
 
-- **Original or remastered soundtrack.** Let the player choose between the remaster's soundtrack and the DS original. This is not urgent. The app plays the remaster's music today.
+- **Original or remastered soundtrack.** Let the player choose between the remaster's soundtrack and the DS original from inside the game. This is not urgent. Today the choice is the `DS_MUSIC` build flag, which is on by default; `make DS_MUSIC=0` selects the remaster's music.

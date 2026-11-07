@@ -26,6 +26,12 @@ CFLAGS += -DFAST_FORWARD_BUILD
 OBJECT_FOLDER := build/obj_fast_forward
 endif
 
+DS_MUSIC ?= 1
+ifeq ($(DS_MUSIC),1)
+CFLAGS += -DUSE_DS_MUSIC
+OBJECT_FOLDER := $(OBJECT_FOLDER)_ds_music
+endif
+
 SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
 OBJS := $(patsubst src/%.c,$(OBJECT_FOLDER)/%.o,$(SRCS))
 

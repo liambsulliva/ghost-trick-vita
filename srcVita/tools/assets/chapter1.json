@@ -21,6 +21,24 @@
       "talk_cursor"
     ]
   },
+  "ds_music": {
+    "archive": "sound_data.sdat",
+    "sequences": {
+      "bgm01_new": "SEQ_GHOST_BGM001",
+      "bgm02_new": "SEQ_GHOST_BGM011",
+      "bgm03_new": "SEQ_GHOST_BGM015",
+      "bgm04_new": "SEQ_GHOST_BGM018",
+      "bgm06_new": "SEQ_GHOST_BGM017",
+      "bgm09_new": "SEQ_GHOST_BGM022",
+      "bgm10_new": "SEQ_GHOST_BGM027",
+      "bgm11_new": "SEQ_GHOST_BGM037",
+      "bgm15_new": "SEQ_GHOST_BGM023",
+      "bgm17_new": "SEQ_GHOST_BGM035",
+      "bgm20_new": "SEQ_GHOST_BGM010",
+      "bgm30_new": "SEQ_GHOST_BGM054",
+      "bgm37_new": "SEQ_GHOST_BGM054_B"
+    }
+  },
   "effect_movies": [
     {"id": 90, "effect": "st01_streetlight"},
     {"id": 91, "effect": "ef01_light_001"},

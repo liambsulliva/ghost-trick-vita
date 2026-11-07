@@ -242,6 +242,7 @@ vitaGL rounds compressed textures up to power-of-two sizes, so a texture can tak
 - **Most effects.** Effect art uses a different file format from character art that has not been read, so only rings, the chapter card and the close-up dissolve are drawn. The rest are noted in the log.
 - **Soul view art past the rings.** Object tints and class gates are not drawn, and every core can be reached from every other, with no range limit.
 - **Some HUD pieces.** The countdown runs and sends its events but draws nothing, and the same goes for the `EyeCatch` banners and the time jump and phone screens.
+- **Music.** The build plays the DS soundtrack, rendered from your own ROM during the bake. `make DS_MUSIC=0` plays the remaster's soundtrack instead. Sound effects always come from the remaster.
 - **Touch.** The back touch pad is not read. The front screen works alongside the buttons: tap pills, balloons, Rewind Time and talk, drag the soul in Ghost view, and drag the camera where the game allows it.
 - **A second chapter.** `chapter.xml` is not baked, so Chapter 1's end goes to an end screen.
 

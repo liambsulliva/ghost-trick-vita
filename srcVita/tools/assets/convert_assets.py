@@ -15,6 +15,7 @@ import asset_writers
 import audio_file
 import bake_record
 import bubble_art
+import ds_music
 import ds_rom
 import effect_movies
 import frame_layout
@@ -35,7 +36,7 @@ DEFAULT_APK_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "remaster_apk"
 DEFAULT_DS_ROM_PATH = os.path.join(REPOSITORY_FOLDER, "extracted", "ds_rom", "game.nds")
 TEXTURE_TOOL_PATH = os.path.join(SRC_VITA_FOLDER, "build", "tools", "texture_tool")
 FORMAT_NAMES = {asset_writers.FORMAT_RGBA8888: "RGBA8888", asset_writers.FORMAT_DXT5: "DXT5", asset_writers.FORMAT_DXT1: "DXT1"}
-OUTPUT_FOLDER_NAMES = ("textures", "animations", "scenes", "music", "sounds", "scripts")
+OUTPUT_FOLDER_NAMES = ("textures", "animations", "scenes", "music", "music_ds", "sounds", "scripts")
 TEXTURE_CODE_FILES = ["asset_writers.py", "astc_decode.c", "astc_decode.h", "etc_decode.c", "etc_decode.h", "texture_encoder.py", "texture_tool.c"]
 COMPOSED_CODE_FILES = TEXTURE_CODE_FILES + ["bubble_art.py"]
 TEXT_CODE_FILES = ["asset_writers.py", "chapter_assets.py", "font_file.py", "line_renderer.py", "message_cues.py", "message_file.py", "narration.py", "talk_assets.py", "texture_encoder.py"]
@@ -296,6 +297,15 @@ def audio_output_files(music_results, sound_results):
     return files
 
 
+def ds_music_output_files(set_description, rom_path, music_results, record):
+    section = set_description.get("ds_music")
+    if section is None:
+        return {}
+    with ds_rom.DsRom(rom_path) as rom:
+        sdat = rom.read_file(section["archive"])
+    return ds_music.music_files(section, sdat, music_results, record)
+
+
 def text_output_files(set_description, animation_texts, steps):
     files = {"animations/" + name + ".anim": text.encode("ascii") for name, text in animation_texts.items()}
     scene_name = set_description.get("scene_name")
@@ -432,6 +442,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         steps = narration.expand_text_steps(steps, narration_lines, {result["name"]: (result["width"], result["height"]) for result in texture_results})
         check_steps_refer_to_known_assets(steps, set(result["name"] for result in texture_results), set(animation_texts.keys()), set(result["name"] for result in music_results), set(result["name"] for result in sound_results))
         files = audio_output_files(music_results, sound_results)
+        files.update(ds_music_output_files(set_description, ds_rom_path, music_results, record))
         files.update(text_output_files(set_description, animation_texts, steps))
         table_texts, motion_lines = script_assets.table_animations(set_description, output_folder, timelines, crops)
         files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in table_texts.items()})

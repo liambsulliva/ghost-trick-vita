@@ -673,7 +673,7 @@ PYTHON_MUTATIONS = [
     ("tools/assets/script_assets.py", 'known = set(section["files"]) | set(section.get("never_taken", []))', 'known = set(section.get("never_taken", []))'),
     ("tools/assets/script_assets.py", 'known = set(section["files"]) | set(section.get("never_taken", []))', 'known = set(section["files"])'),
     ("tools/assets/script_assets.py", "        check_script_changes(section, {path: plain for path, (plain, _) in scripts.items()})\n", ""),
-    ("tools/vita_loop.py", '"music", "sounds", "scripts"):\n        if not os.path.isdir', '"music", "sounds"):\n        if not os.path.isdir'),
+    ("tools/vita_loop.py", '"music", "music_ds", "sounds", "scripts"):\n        if not os.path.isdir', '"music", "sounds"):\n        if not os.path.isdir'),
     ("tools/assets/convert_assets.py", "future.cancel()", "pass"),
     ("tools/assets/chapter1_opening.json", '"oval_bubble", 98.8444, 242.8444', '"oval_bubble", 98.93, 242.67'),
     ("tools/assets/chapter1_opening.json", '"oval_bubble_text", 113.7778, 251.0222', '"oval_bubble_text", 113.64, 250.93'),
