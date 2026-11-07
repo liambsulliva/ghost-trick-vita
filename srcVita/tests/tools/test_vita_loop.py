@@ -179,6 +179,14 @@ class UploadAssetsTests(DeviceFreeTestCase):
         with open(os.path.join(self.set_folder, relative_path), "wb") as output:
             output.write(data)
 
+    def test_movie_and_effect_frames_go_in_a_folder_per_group_on_the_device(self):
+        self.assertEqual(vita_loop.device_path_of_asset("textures/movie_time_jump_012.gtex"), "textures/movie_time_jump/movie_time_jump_012.gtex")
+        self.assertEqual(vita_loop.device_path_of_asset("textures/fx_chain_03.gtex"), "textures/fx_chain/fx_chain_03.gtex")
+
+    def test_other_assets_keep_their_path_on_the_device(self):
+        self.assertEqual(vita_loop.device_path_of_asset("textures/st01-01.gtex"), "textures/st01-01.gtex")
+        self.assertEqual(vita_loop.device_path_of_asset("music/fx_theme_01.ogg"), "music/fx_theme_01.ogg")
+
     def test_only_asset_files_are_listed(self):
         relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
         self.assertEqual(relative_paths, ["manifest.txt", "textures/a.gtex", "animations/a.anim", "scenes/s.scene", "music/song.loop", "music/song.ogg", "sounds/ping.ogg"])

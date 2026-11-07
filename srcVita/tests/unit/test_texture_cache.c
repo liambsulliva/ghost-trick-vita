@@ -216,6 +216,20 @@ static void test_dropping_waiting_reads_leaves_reads_in_flight_alone(void)
     CHECK_INT(fake_reader_pending_count(), 1);
 }
 
+static void test_movie_and_effect_frames_are_read_from_their_group_folder(void)
+{
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    fake_files_add_rgba_texture("tex/movie_time_jump/movie_time_jump_012.gtex", 2, 2);
+    fake_files_add_rgba_texture("tex/fx_chain/fx_chain_03.gtex", 2, 2);
+    fake_files_add_rgba_texture("tex/plain_name_05.gtex", 2, 2);
+    texture_cache_init("tex", 1024);
+    CHECK_INT(texture_cache_load_now("movie_time_jump_012")->state, CACHED_TEXTURE_READY);
+    CHECK_INT(texture_cache_load_now("fx_chain_03")->state, CACHED_TEXTURE_READY);
+    CHECK_INT(texture_cache_load_now("plain_name_05")->state, CACHED_TEXTURE_READY);
+}
+
 static void test_waiting_reads_left_behind_are_dropped_only_under_their_prefix(void)
 {
     const struct cached_texture *in_flight;
@@ -531,6 +545,7 @@ int main(void)
     test_page_used_this_frame_is_read_before_older_requests();
     test_more_pages_than_the_read_queue_all_load_without_refusals();
     test_dropping_waiting_reads_leaves_reads_in_flight_alone();
+    test_movie_and_effect_frames_are_read_from_their_group_folder();
     test_waiting_reads_left_behind_are_dropped_only_under_their_prefix();
     test_read_out_of_memory_is_tried_again_when_asked_for_again();
     test_clear_waits_for_reads_in_flight();

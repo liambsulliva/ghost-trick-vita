@@ -13,6 +13,9 @@ import time
 
 VITA_HOST = os.environ.get("VITA_HOST", "10.0.0.151")
 FTP_PORT = 1337
+TEXTURE_FOLDER = "textures/"
+TEXTURE_FILE_SUFFIX = ".gtex"
+FOLDERED_TEXTURE_PREFIXES = (TEXTURE_FOLDER + "movie_", TEXTURE_FOLDER + "fx_")
 COMMAND_PORT = 1338
 TITLE_ID = "GHTR00001"
 APP_FOLDER = "/ux0:/app/" + TITLE_ID
@@ -236,6 +239,13 @@ def loop_files_the_set_no_longer_has(relative_paths):
     return stale
 
 
+def device_path_of_asset(relative_path):
+    if relative_path.startswith(FOLDERED_TEXTURE_PREFIXES) and relative_path.endswith(TEXTURE_FILE_SUFFIX):
+        file_name = relative_path[len(TEXTURE_FOLDER):]
+        return TEXTURE_FOLDER + file_name.rsplit("_", 1)[0] + "/" + file_name
+    return relative_path
+
+
 def upload_assets(folder):
     if not os.path.isfile(os.path.join(folder, "manifest.txt")):
         print("no manifest.txt in: " + folder)
@@ -251,7 +261,7 @@ def upload_assets(folder):
         local_files = list_local_files(folder)
         for local_path, relative_path in local_files:
             digest = sha256_of_file(local_path)
-            remote_path = ASSETS_FOLDER + "/" + relative_path
+            remote_path = ASSETS_FOLDER + "/" + device_path_of_asset(relative_path)
             if record.get(relative_path) == digest and remote_size_or_none(connection, remote_path) == os.path.getsize(local_path):
                 skipped = skipped + 1
                 continue
@@ -264,6 +274,8 @@ def upload_assets(folder):
             upload_verified(connection, local_path, remote_path)
             record[relative_path] = digest
             save_upload_record(record)
+            if device_path_of_asset(relative_path) != relative_path:
+                delete_if_present(connection, ASSETS_FOLDER + "/" + relative_path)
             uploaded = uploaded + 1
             uploaded_bytes = uploaded_bytes + os.path.getsize(local_path)
         for loop_path in loop_files_the_set_no_longer_has([relative_path for _, relative_path in local_files]):

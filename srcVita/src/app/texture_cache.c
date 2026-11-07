@@ -171,6 +171,39 @@ static int name_asks_for_grayscale(const char *name)
     return name_length > suffix_length && strcmp(&name[name_length - suffix_length], TEXTURE_CACHE_GRAYSCALE_SUFFIX) == 0;
 }
 
+static int group_length_of_foldered_name(const char *name)
+{
+    static const char *const foldered_prefixes[] = { "movie_", "fx_" };
+    const char *last_separator;
+    unsigned int index;
+
+    for (index = 0; index < sizeof(foldered_prefixes) / sizeof(foldered_prefixes[0]); index++) {
+        if (strncmp(name, foldered_prefixes[index], strlen(foldered_prefixes[index])) == 0) {
+            last_separator = strrchr(name, '_');
+            return (int)(last_separator - name);
+        }
+    }
+    return 0;
+}
+
+static int join_texture_path(char *path, const char *file_name)
+{
+    char group_folder[FILE_PATH_MAX];
+    int group_length;
+    int written;
+
+    group_length = group_length_of_foldered_name(file_name);
+    if (group_length == 0) {
+        return file_path_join(path, folder, file_name, ".gtex");
+    }
+    written = snprintf(group_folder, sizeof(group_folder), "%s/%.*s", folder, group_length, file_name);
+    if (written < 0 || (size_t)written >= sizeof(group_folder)) {
+        path[0] = '\0';
+        return 0;
+    }
+    return file_path_join(path, group_folder, file_name, ".gtex");
+}
+
 static void start_read(struct cached_texture *entry)
 {
     char path[FILE_PATH_MAX];
@@ -180,7 +213,7 @@ static void start_read(struct cached_texture *entry)
     if (name_asks_for_grayscale(file_name)) {
         file_name[strlen(file_name) - strlen(TEXTURE_CACHE_GRAYSCALE_SUFFIX)] = '\0';
     }
-    if (!file_path_join(path, folder, file_name, ".gtex")) {
+    if (!join_texture_path(path, file_name)) {
         mark_missing(entry, "path_too_long", 0);
         return;
     }
