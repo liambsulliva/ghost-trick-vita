@@ -21,6 +21,11 @@
 #include "ui_list.h"
 #include "viewer_app.h"
 
+#ifdef USE_DS_MUSIC
+#define MUSIC_SUBFOLDER "music_ds"
+#else
+#define MUSIC_SUBFOLDER "music"
+#endif
 #define LIST_VISIBLE_ROWS 20
 #define LIST_ROW_HEIGHT 22.0f
 #define LIST_PANEL_X 40.0f
@@ -293,7 +298,7 @@ void viewer_app_start(const char *folder)
     asset_subfolder_path(texture_folder, "textures");
     asset_subfolder_path(animation_folder, "animations");
     asset_subfolder_path(scene_folder, "scenes");
-    asset_subfolder_path(music_folder, "music");
+    asset_subfolder_path(music_folder, MUSIC_SUBFOLDER);
     asset_subfolder_path(sound_folder, "sounds");
     asset_subfolder_path(script_folder, "scripts");
     manifest = NULL;
@@ -659,6 +664,10 @@ static void draw_centred_scene_end_line(float y, const char *text)
 
 static void draw_game_picture(void)
 {
+    if (script_player_is_active() && script_view_movie_covers_the_screen()) {
+        script_view_draw_on_covers();
+        return;
+    }
     scene_view_draw_world(scene_stage_view());
     if (script_player_is_active()) {
         script_view_draw_on_world();
