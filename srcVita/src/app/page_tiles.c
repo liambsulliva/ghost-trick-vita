@@ -52,12 +52,44 @@ static struct page_tile_set *set_for_page(const char *page_name, float page_widt
     return set;
 }
 
+static int add_tile(const char *page_name, float page_width, float page_height, const struct page_tile *tile)
+{
+    struct page_tile_set *set;
+
+    set = set_for_page(page_name, page_width, page_height);
+    if (set == NULL || set->tile_count >= PAGE_TILE_MOST) {
+        return 0;
+    }
+    set->tiles[set->tile_count] = *tile;
+    set->tile_count = set->tile_count + 1;
+    return 1;
+}
+
+static int with_grayscale_suffix(char *named, size_t size, const char *name)
+{
+    int written;
+
+    written = snprintf(named, size, "%s%s", name, TEXTURE_CACHE_GRAYSCALE_SUFFIX);
+    return written > 0 && (size_t)written < size;
+}
+
+static void add_grayscale_twin(const char *page_name, float page_width, float page_height, const struct page_tile *tile)
+{
+    char grayscale_page_name[ASSET_NAME_MAX];
+    struct page_tile grayscale_tile;
+
+    grayscale_tile = *tile;
+    if (!with_grayscale_suffix(grayscale_page_name, sizeof(grayscale_page_name), page_name) || !with_grayscale_suffix(grayscale_tile.name, sizeof(grayscale_tile.name), tile->name)) {
+        return;
+    }
+    (void)add_tile(grayscale_page_name, page_width, page_height, &grayscale_tile);
+}
+
 int page_tiles_read_text(const char *text, unsigned int text_size)
 {
     char line[PAGE_TILE_LINE_MAX];
     char page_name[ASSET_NAME_MAX];
     struct page_tile tile;
-    struct page_tile_set *set;
     float page_width;
     float page_height;
     unsigned int offset;
@@ -71,13 +103,13 @@ int page_tiles_read_text(const char *text, unsigned int text_size)
         if (sscanf(line, PAGE_TILE_LINE_SCAN, page_name, &page_width, &page_height, tile.name, &tile.left, &tile.top, &tile.width, &tile.height, &tile.draw_left, &tile.draw_top, &tile.draw_right, &tile.draw_bottom) != 12) {
             continue;
         }
-        set = set_for_page(page_name, page_width, page_height);
-        if (set == NULL || set->tile_count >= PAGE_TILE_MOST || tile.width <= 0.0f || tile.height <= 0.0f) {
+        if (tile.width <= 0.0f || tile.height <= 0.0f) {
             continue;
         }
-        set->tiles[set->tile_count] = tile;
-        set->tile_count = set->tile_count + 1;
-        tile_count = tile_count + 1;
+        if (add_tile(page_name, page_width, page_height, &tile)) {
+            tile_count = tile_count + 1;
+            add_grayscale_twin(page_name, page_width, page_height, &tile);
+        }
     }
     return tile_count;
 }
