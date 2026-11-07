@@ -511,12 +511,12 @@ def pull_burst_window():
         connection.close()
 
 
-def request_burst(seconds, rounds, output_folder):
+def request_burst(seconds, rounds, output_folder, ms_between_pictures=0):
     os.makedirs(output_folder, exist_ok=True)
     rgb_of_color = every_565_color_as_rgb()
     next_slot = 0
     for round_number in range(1, rounds + 1):
-        write_app_commands("burst %d\nresume\n" % seconds)
+        write_app_commands("burst %d %d\nresume\n" % (seconds, ms_between_pictures))
         time.sleep(seconds + SECONDS_FOR_BURST_TO_FINISH_WRITING)
         started = time.time()
         data = pull_burst_window()
@@ -549,6 +549,7 @@ def build_parser():
     burst_action = actions.add_parser("burst", help="record half-size pictures five times a second on the Vita, then pause the game while they are pulled")
     burst_action.add_argument("--seconds", type=int, default=60, help="seconds in each recording window; the game pauses after each one while the pictures are pulled")
     burst_action.add_argument("--rounds", type=int, default=1, help="how many recording windows")
+    burst_action.add_argument("--ms-between-pictures", type=int, default=0, help="spacing between pictures in milliseconds, 33 at the shortest; 0 keeps five a second")
     burst_action.add_argument("--output", required=True, help="local folder for the pictures; a scratch folder, because it fills with up to 1000 of each kind")
     pull_action = actions.add_parser("pull", help="pull a capture the app saved earlier")
     pull_action.add_argument("name", help="name of the capture, without .bmp")
@@ -584,7 +585,7 @@ def main():
     if arguments.action == "capture":
         return request_capture(arguments.name, arguments.output, arguments.seconds)
     if arguments.action == "burst":
-        return request_burst(arguments.seconds, arguments.rounds, arguments.output)
+        return request_burst(arguments.seconds, arguments.rounds, arguments.output, arguments.ms_between_pictures)
     if arguments.action == "pull":
         return pull_capture(arguments.name, arguments.output)
     if arguments.action == "device-command":

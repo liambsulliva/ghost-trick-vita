@@ -97,7 +97,8 @@ static int read_fast_forward_command(const char *line, struct command *command)
         command->kind = COMMAND_SKIP_AHEAD;
         return 1;
     }
-    if (sscanf(line, "burst %d", &command->number) == 1) {
+    command->ms_between_pictures = 0;
+    if (sscanf(line, "burst %d %d", &command->number, &command->ms_between_pictures) >= 1) {
         command->kind = COMMAND_BURST;
         return 1;
     }

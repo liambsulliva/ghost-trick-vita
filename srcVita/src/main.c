@@ -154,7 +154,7 @@ static int run_one_command(const struct command *command)
         injected_drag_frame = 0;
         run_log_write("command drag from=%d,%d to=%d,%d frames=%d delay=%d", command->touch_x, command->touch_y, command->touch_end_x, command->touch_end_y, command->number, command->delay_frames);
     } else if (command->kind == COMMAND_BURST) {
-        screen_burst_run_for_seconds(command->number);
+        screen_burst_run_for_seconds(command->number, command->ms_between_pictures);
 #endif
     } else if (command->kind == COMMAND_QUIT) {
         run_log_write("command quit");

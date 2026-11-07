@@ -18,6 +18,8 @@
 #define BURST_BYTES_PER_PIXEL 2u
 #define BURST_LARGEST_PICTURE (BURST_HEADER_SIZE + BURST_LARGEST_WIDTH * BURST_LARGEST_HEIGHT * BURST_BYTES_PER_PIXEL)
 #define BURST_US_BETWEEN_FRAMES 200000ull
+#define BURST_SHORTEST_US_BETWEEN_FRAMES 33000ull
+#define US_PER_MS 1000ull
 #define BURST_QUEUE_LENGTH 4u
 #define BURST_WRITER_PRIORITY 0x10000100
 #define BURST_WRITER_STACK 0x4000
@@ -41,6 +43,7 @@ static unsigned long long started_us;
 static unsigned long long stops_at_us;
 static unsigned long long last_copy_us;
 static unsigned long long longest_copy_us;
+static unsigned long long us_between_pictures = BURST_US_BETWEEN_FRAMES;
 
 static void write_u32(unsigned char *bytes, unsigned int value)
 {
@@ -105,11 +108,18 @@ static void stop_burst(void)
     is_on = 0;
 }
 
-void screen_burst_run_for_seconds(int seconds)
+void screen_burst_run_for_seconds(int seconds, int ms_between_pictures)
 {
     if (seconds <= 0) {
         stop_burst();
         return;
+    }
+    us_between_pictures = BURST_US_BETWEEN_FRAMES;
+    if (ms_between_pictures > 0) {
+        us_between_pictures = (unsigned long long)ms_between_pictures * US_PER_MS;
+    }
+    if (us_between_pictures < BURST_SHORTEST_US_BETWEEN_FRAMES) {
+        us_between_pictures = BURST_SHORTEST_US_BETWEEN_FRAMES;
     }
     if (is_on) {
         stops_at_us = clock_now_us() + (unsigned long long)seconds * US_PER_SECOND;
@@ -136,7 +146,7 @@ void screen_burst_run_for_seconds(int seconds)
     last_copy_us = 0;
     session = (unsigned int)started_us;
     is_on = 1;
-    run_log_write("burst on session=%u", session);
+    run_log_write("burst on session=%u us_between=%llu", session, us_between_pictures);
 }
 
 static void copy_half_size(unsigned char *destination, const unsigned char *source, unsigned int source_stride, unsigned int width, unsigned int height)
@@ -178,7 +188,7 @@ int screen_burst_note_frame_and_say_if_it_ended(void)
         stop_burst();
         return 1;
     }
-    if (last_copy_us != 0 && now_us - last_copy_us < BURST_US_BETWEEN_FRAMES) {
+    if (last_copy_us != 0 && now_us - last_copy_us < us_between_pictures) {
         return 0;
     }
     if (pictures_copied - pictures_written >= BURST_QUEUE_LENGTH) {

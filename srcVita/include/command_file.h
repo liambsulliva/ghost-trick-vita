@@ -37,6 +37,7 @@ struct command {
     int touch_end_x;
     int touch_end_y;
     int delay_frames;
+    int ms_between_pictures;
 };
 
 int command_name_is_safe(const char *name);
