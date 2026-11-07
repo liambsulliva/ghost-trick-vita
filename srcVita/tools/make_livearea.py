@@ -116,7 +116,7 @@ def compose_command(logo_path, logo_width, logo_height, layout, output_path):
         "-background", FIELD_COLOR, "-flatten", "-trim", "+repage",
         "-resize", "%dx%d" % (box_width, box_height),
         "-gravity", "center", "-extent", "%dx%d" % (canvas_width, canvas_height),
-        "-colors", "256", "PNG8:" + output_path,
+        "-colors", "256", "-define", "png:exclude-chunks=date,time", "PNG8:" + output_path,
     ]
 
 
@@ -140,7 +140,11 @@ def main():
     parser.add_argument("output_folder")
     parser.add_argument("--assets-folder", default=ASSETS_FOLDER)
     parser.add_argument("--texture-tool", default=TEXTURE_TOOL)
+    parser.add_argument("--logo", action="store_true", help="build the images from the title logo in the extracted assets instead of the monogram")
     arguments = parser.parse_args()
+    if not arguments.logo:
+        write_procedural_images(arguments.output_folder)
+        return 0
     if assets_available(arguments.assets_folder, arguments.texture_tool):
         write_logo_images(arguments.output_folder, arguments.assets_folder, arguments.texture_tool)
     else:

@@ -39,7 +39,10 @@ SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS
 OBJS := $(patsubst src/%.c,$(OBJECT_FOLDER)/%.o,$(SRCS))
 
 LIVEAREA_FOLDER := build/sce_sys
-LIVEAREA_IMAGES := $(LIVEAREA_FOLDER)/icon0.png $(LIVEAREA_FOLDER)/livearea/contents/bg.png $(LIVEAREA_FOLDER)/livearea/contents/startup.png
+LIVEAREA_LOGO ?= 0
+LIVEAREA_STYLE := $(if $(filter 1,$(LIVEAREA_LOGO)),logo,monogram)
+LIVEAREA_SOURCE := build/livearea_$(LIVEAREA_STYLE)
+LIVEAREA_IMAGE_NAMES := icon0.png livearea/contents/bg.png livearea/contents/startup.png
 
 HOST_CC     := clang
 HOST_CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -g -O1 -Iinclude -Itests -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
@@ -83,10 +86,15 @@ build/param.sfo: Makefile
 	@mkdir -p build
 	vita-mksfoex -d ATTRIBUTE2=12 -s TITLE_ID=$(TITLE_ID) -s APP_VER=$(APP_VER) -s VERSION=$(APP_VER) "$(TITLE)" $@
 
-$(LIVEAREA_IMAGES): tools/make_livearea.py
-	python3 -I tools/make_livearea.py $(LIVEAREA_FOLDER)
+$(LIVEAREA_SOURCE)/icon0.png: tools/make_livearea.py
+	python3 -I tools/make_livearea.py $(LIVEAREA_SOURCE) $(if $(filter 1,$(LIVEAREA_LOGO)),--logo,)
 
-build/$(TARGET).vpk: build/eboot.bin build/param.sfo $(LIVEAREA_IMAGES) sce_sys/livearea/contents/template.xml
+.PHONY: FORCE
+FORCE:
+
+build/$(TARGET).vpk: build/eboot.bin build/param.sfo $(LIVEAREA_SOURCE)/icon0.png sce_sys/livearea/contents/template.xml FORCE
+	@mkdir -p $(LIVEAREA_FOLDER)/livearea/contents
+	@for name in $(LIVEAREA_IMAGE_NAMES); do cp $(LIVEAREA_SOURCE)/$$name $(LIVEAREA_FOLDER)/$$name; done
 	vita-pack-vpk -s build/param.sfo -b build/eboot.bin \
 		-a $(LIVEAREA_FOLDER)/icon0.png=sce_sys/icon0.png \
 		-a $(LIVEAREA_FOLDER)/livearea/contents/bg.png=sce_sys/livearea/contents/bg.png \
