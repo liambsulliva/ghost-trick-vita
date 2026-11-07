@@ -300,6 +300,7 @@ struct script_soul {
     int rewind_press_ticks;
     int flash_ticks_left;
     int sparks_elapsed_ticks;
+    int dead_light_ticks_left;
     int drag_ticks_left;
     int drag_stream_ticks;
     int drag_object;

@@ -31,6 +31,7 @@
 #define SOUL_BEAM_TICKS 6
 #define SOUL_LIGHTNING_TICKS 72
 #define DEAD_TRICK_LIGHT_SOUND_KIND 28
+#define DEAD_TRICK_LIGHT_TICKS 78
 #define DEAD_TRICK_MUSIC_ID 9
 #define DEAD_TRICK_MUSIC_STOP_FADE_TICKS 0
 #define SOUL_POSSESSION_FLASH_TICKS 18
@@ -343,9 +344,6 @@ static void finish_drag_when_due(struct script_machine *machine)
         return;
     }
     soul->drag_ticks_left = soul->drag_ticks_left - 1;
-    if (soul->drag_ticks_left == soul->drag_stream_ticks && machine->objects[soul->drag_object].is_dead) {
-        start_dead_trick_light(machine);
-    }
     if (soul->drag_ticks_left == 0) {
         if (machine->objects[soul->drag_object].is_dead) {
             soul->flash_ticks_left = SOUL_POSSESSION_FLASH_TICKS;
@@ -353,7 +351,8 @@ static void finish_drag_when_due(struct script_machine *machine)
         }
         arrive_at_core(machine, soul->drag_object, soul->drag_slot);
         if (machine->objects[soul->drag_object].is_dead) {
-            finish_dead_trick_light(machine);
+            start_dead_trick_light(machine);
+            soul->dead_light_ticks_left = DEAD_TRICK_LIGHT_TICKS;
             start_time_leap(machine);
         }
     }
@@ -379,6 +378,12 @@ static void report_possession_effects(struct script_machine *machine)
     }
     if (soul->sparks_elapsed_ticks > 0) {
         soul->sparks_elapsed_ticks = soul->sparks_elapsed_ticks >= SOUL_POSSESSION_SPARK_TICKS ? 0 : soul->sparks_elapsed_ticks + 1;
+    }
+    if (soul->dead_light_ticks_left > 0) {
+        soul->dead_light_ticks_left = soul->dead_light_ticks_left - 1;
+        if (soul->dead_light_ticks_left == 0) {
+            finish_dead_trick_light(machine);
+        }
     }
 }
 
