@@ -194,7 +194,8 @@ static int read_movie_line(struct script_tables *tables, const char *line)
         return 1;
     }
     movie = &tables->movies[tables->movie_count];
-    if (sscanf(line, "movie " NAME_SCAN " %d %d %x", movie->name, &movie->frame_count, &movie->ticks_per_frame, &movie->class_id) != 4) {
+    movie->sound_kind = -1;
+    if (sscanf(line, "movie " NAME_SCAN " %d %d %x %d", movie->name, &movie->frame_count, &movie->ticks_per_frame, &movie->class_id, &movie->sound_kind) < 4) {
         return 0;
     }
     tables->movie_count = tables->movie_count + 1;

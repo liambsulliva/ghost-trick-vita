@@ -103,6 +103,7 @@ struct script_movie {
     int frame_count;
     int ticks_per_frame;
     unsigned int class_id;
+    int sound_kind;
 };
 
 struct script_core_label {

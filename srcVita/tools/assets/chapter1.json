@@ -1085,9 +1085,9 @@
     }
   },
   "movies": [
-    {"name": "time_jump", "pack_key": [1055199497, 206956949], "fps": 20, "width": 640, "height": 360},
-    {"name": "short_jump", "pack_key": [395138614, 3624828312], "fps": 20, "width": 640, "height": 360, "class_id": "034157e8"},
-    {"name": "time_jump_b", "pack_key": [861545708, 2080337922], "fps": 20, "width": 640, "height": 360, "class_id": "7b0ddf0f"},
+    {"name": "time_jump", "pack_key": [1055199497, 206956949], "fps": 20, "width": 640, "height": 360, "sound": 82},
+    {"name": "short_jump", "pack_key": [395138614, 3624828312], "fps": 20, "width": 640, "height": 360, "class_id": "034157e8", "sound": 82},
+    {"name": "time_jump_b", "pack_key": [861545708, 2080337922], "fps": 20, "width": 640, "height": 360, "class_id": "7b0ddf0f", "sound": 82},
     {"name": "tell_move", "pack_key": [3908734962, 697356822], "fps": 20, "width": 640, "height": 360, "class_id": "41ee4e1e"}
   ],
   "route": {
