@@ -627,6 +627,10 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         break;
     case 0x6f:
     case 0x70:
+        machine->film_frame_is_on = op == 0x6f;
+        if (machine->film_frame_is_on) {
+            script_pills_hide_at_once(machine);
+        }
         if (machine->outputs->film_frame_changed != NULL) {
             machine->outputs->film_frame_changed(op == 0x6f);
         }

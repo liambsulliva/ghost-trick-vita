@@ -1265,6 +1265,7 @@ static void tear_down_script(struct script_machine *machine)
     script_fades_end_mask(machine);
     machine->soul_state_keeps_pause = 0;
     machine->soul_vision_message_at = NEVER;
+    machine->film_frame_is_on = 0;
     if (machine->outputs->stage_cleared != NULL) {
         machine->outputs->stage_cleared();
     }

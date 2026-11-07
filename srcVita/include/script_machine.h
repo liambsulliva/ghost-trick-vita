@@ -333,6 +333,7 @@ struct script_machine {
     struct script_flags flags;
     int pause_bit;
     int mode_byte;
+    int film_frame_is_on;
     int talk_is_open;
     int has_runner;
     struct script_vm runner;
@@ -470,6 +471,7 @@ int script_pills_is_up(const struct script_machine *machine, enum script_pill_id
 void script_pills_register(struct script_machine *machine, enum script_pill_id id, int is_on);
 void script_pills_register_all(struct script_machine *machine);
 void script_pills_unregister_all(struct script_machine *machine);
+void script_pills_hide_at_once(struct script_machine *machine);
 void script_pills_effect_spawned(struct script_machine *machine, int effect_id, const char *name);
 void script_pills_effect_deleted(struct script_machine *machine, const char *name);
 void script_pills_fill_view(const struct script_machine *machine, struct script_hud_view *view);

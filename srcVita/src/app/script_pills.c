@@ -54,6 +54,17 @@ void script_pills_register_all(struct script_machine *machine)
     machine->soul.pills_registered = NON_NATIVE_ALL;
 }
 
+void script_pills_hide_at_once(struct script_machine *machine)
+{
+    int index;
+
+    for (index = 0; index < SCRIPT_PILL_COUNT; index++) {
+        machine->soul.pills[index].state = PILL_HIDDEN;
+        machine->soul.pills[index].step = 0;
+        machine->soul.pills[index].hold_ticks = 0;
+    }
+}
+
 void script_pills_unregister_all(struct script_machine *machine)
 {
     int index;
@@ -99,7 +110,7 @@ static enum pill_group current_group(const struct script_machine *machine)
     const struct script_soul *soul;
 
     soul = &machine->soul;
-    if (machine->eyecatch_ticks_left > 0 || soul->is_leaving_view || (soul->is_on && soul->view_change_ticks_left > 0)) {
+    if (machine->film_frame_is_on || machine->eyecatch_ticks_left > 0 || soul->is_leaving_view || (soul->is_on && soul->view_change_ticks_left > 0)) {
         return GROUP_NONE;
     }
     if (machine->pause_bit && machine->talk.phase != SCRIPT_TALK_CLOSED) {
