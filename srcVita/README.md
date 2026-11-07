@@ -2,7 +2,7 @@
 
 The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real Vita and plays the opening of Chapter 1 at 60 fps, using art converted from the remaster.
 
-The opening runs in one of two ways: a hand-written scene, or the DS's own script bytes run by the script VM (see [The script VM](#the-script-vm)). Only Chapter 1 is baked, and parts of the game are still missing. See [What is missing](#what-is-missing).
+The opening runs from the DS's own script bytes on the script VM (see [The script VM](#the-script-vm)). Only Chapter 1 is baked, and parts of the game are still missing. See [What is missing](#what-is-missing).
 
 No game data lives in this folder. Converted assets, captures, reference video and the text key stay in the ignored `extracted/` and `build/` folders.
 
@@ -25,7 +25,7 @@ No game data lives in this folder. Converted assets, captures, reference video a
 | `tools/mutation_check.py` | Breaks the code on purpose to prove the tests notice |
 | `docs/asset_format.md` | The file formats shared by the converter and the app |
 
-A good first read is `src/app/viewer_app.c`, then `scene_player.c` and `scene_view.c`.
+A good first read is `src/app/viewer_app.c`, then `script_player.c`, `script_machine.c` and `scene_view.c`.
 
 The scene fills the Vita's 960 by 544 screen at 2.8125 screen pixels per DS pixel, so wide rooms show about 85 more DS pixels across than the DS did. Art that stops short of the screen, such as room 11's close-up and the chapter card, is centred with black around it and never stretched. `docs/asset_format.md` has the rule.
 
@@ -92,7 +92,7 @@ A package with the logo contains game art, so keep it for your own Vita. The pac
 
 [The top-level README](../README.md#run-it-on-a-vita) explains how to copy the game files out of your Android package, convert them and put them on the Vita. The app loads them from `ux0:data/ghosttrick/assets/`.
 
-`tools/assets/chapter1_opening.json` lists what goes into the set and scripts the scene.
+`tools/assets/chapter1.json` lists what goes into the chapter's set.
 
 Converting needs the text key, which step 2 of the top-level README finds in your own copy of the package.
 
@@ -113,18 +113,20 @@ Upload the assets after this step, so the Vita gets both files.
 
 Music and sounds are the remaster's own Ogg Vorbis files, unchanged apart from losing their wrappers.
 
-The DS scene scripts are baked from your own USA DS ROM, if you have one, into `scripts/`, with the tables the app needs to run them. If `scripts/chain.txt` is there, the app plays the opening from those scripts. Otherwise it plays the hand-written scene. [The top-level README](../README.md#3-convert-the-art-sound-and-text) has the optional step, and `docs/asset_format.md` the format.
+The DS scene scripts are baked from your own USA DS ROM, if you have one, into `scripts/`, with the tables the app needs to run them. The app always plays the opening from those scripts, so the ROM step is required. Without `scripts/chain.txt` it logs `opening needs_scripts` and opens the asset browser instead. [The top-level README](../README.md#3-convert-the-art-sound-and-text) has the optional step, and `docs/asset_format.md` the format.
 
 The converter bakes only what changed. `.bake_record.json` in the output folder holds hashes for each texture and script, so one is baked again only when its source bytes, its settings or the code that bakes it changes, or when its output file is missing or edited. Music, sounds, animations, the scene and the manifest are rewritten only when their bytes differ. On this Mac a clean conversion took about 4 seconds and a repeat with nothing changed about 0.2 seconds, and a repeat and a clean run gave the same files byte for byte. If a texture fails, it is named on stderr with `failed:`, the rest still bake, and the last good scene and manifest stay.
 
 An animation can have up to 1024 frames, and the app allocates each animation's frame list to the size its own file needs.
+
+vitaGL rounds compressed textures up to power-of-two sizes, so a texture can take about twice its file size in memory. The cache counts the rounded size, and the converter crops each atlas page to the cells in use.
 
 ## Run on the Vita
 
 This loop is for working on the app. It needs Vita Companion on the Vita, at the address in `VITA_HOST` (10.0.0.151 if unset). It uses FTP on port 1337 and the command port 1338, which stay up while the app runs, so nobody has to touch the device.
 
 ```bash
-python3 -I srcVita/tools/vita_loop.py upload-assets extracted/vita_assets/chapter1_opening
+python3 -I srcVita/tools/vita_loop.py upload-assets extracted/vita_assets/chapter1
 ```
 
 Under `ux0:data/ghosttrick/assets/`, textures live in 64 folders: `textures/<two hex digits>/<name>.gtex`, where the digits are `crc32(name) % 64` in hex. The uploader moves an older flat copy into its folder by rename when the size matches, and uploads the file if the Vita refuses the rename. Upload while the game is running, because the app keeps the Vita awake only while it runs.
@@ -258,35 +260,21 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 
 ## Debug controls
 
-SELECT turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the scene. SELECT turns them off again, which resumes a paused scene and restarts one you browsed away from.
+SELECT turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the opening. SELECT turns them off again, which resumes a paused scene and restarts the opening if you browsed away from it.
 
 They stay off during normal play, so that no button can stall the scene. The log records every button press, pause and skipped hold, as `input pressed buttons=...`, `scene paused` and `scene hold_skipped`.
 
 ## The script VM
 
-`script_machine.c` and the `script_*` files beside it run the DS's own script bytes, one tick per 16,666 microseconds. The core has no SDK calls and no clock, and everything it tells the rest of the app goes through the `void` functions in `script_outputs.h`. On the Vita those are `script_bridge.c`, which drives the same stage, effects, text, overlays and audio the hand-written scene uses. In `tests/golden/script_replay.c` they print. `script_player.c` reads the files before tick zero, one per frame, and owns the clock.
+`script_machine.c` and the `script_*` files beside it run the DS's own script bytes, one tick per 16,666 microseconds. The core has no SDK calls and no clock, and everything it tells the rest of the app goes through the `void` functions in `script_outputs.h`. On the Vita those are `script_bridge.c`, which drives the stage, effects, text, overlays and audio. In `tests/golden/script_replay.c` they print. `script_player.c` reads the files before tick zero, one per frame, and owns the clock.
 
 Nothing halts the game. An op, table word, effect id or GameApp pair the VM does not know writes one note to the log and the script carries on. If the script stops making progress, a stuck check closes the talk box, ends the narration, fires a waiting handler, moves on to the next act and at last the next script, so the chapter can always be finished. L and R together does the same on demand.
 
 `script_soul.c` is the player's side: soul view, core selection, tricks and the game events that only native code sends. Pressing the trick button sends `core|ready` at once and `core|action` 8 ticks later, as the DS does. A dead person's core sends `timeleap|start` instead.
 
-From the Vita's commands file, `play_script route` plays the VM and `play_scene opening` plays the hand-written scene. X replays whichever one just finished.
+From the Vita's commands file, `play_script route` restarts the opening. X replays it when it finishes. `play_scene <name>` plays a single baked scene, which the reference check uses to hold exact poses.
 
 `make -C srcVita golden` compares the VM's fetches with the saved DS trace, on a machine that has one in `extracted/trace/vm_golden/`. It exits 2 with a message otherwise.
-
-## Measured on the Vita
-
-| What | Result |
-|---|---|
-| Frame rate through the full scene | 59.9 fps, about 16.68 ms a frame, no slow frames outside captures |
-| Draw time | about 0.4 ms a frame |
-| Late or skipped animation frames | none (14 of 14 and 38 of 38 frames shown) |
-| Scene preload | about 2.4 s for 39 textures, none missing |
-| Asset size | 8.6 MB of files, about 20 MB of texture memory |
-| Free memory during the scene | about 66 MB video, 147 MB main |
-| Sprite placement against the video | 0 offset on all 28 object and motion measurements |
-
-vitaGL rounds compressed textures up to power-of-two sizes, so a texture can take about twice its file size in memory. The cache counts the rounded size, and the converter crops each atlas page to the cells in use.
 
 ## What is missing
 
@@ -336,7 +324,7 @@ As of 2026-11-07. Items under "Built, not proven" are written but not checked on
 - **Touch.** The back touch pad is not read. The front screen works alongside the buttons: tap pills, balloons, Rewind Time and talk, drag the soul in Ghost view, and drag the camera where the game allows it.
 - **A second chapter.** `chapter.xml` is not baked, so Chapter 1's end goes to an end screen.
 
-The hand-written scene's timing is hand-tuned against the reference video rather than taken from the game. The VM's comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.
+The VM's timing comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.
 
 The converter was built and checked with the Android files only. The Steam copy has not been compared.
 
