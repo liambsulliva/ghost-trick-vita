@@ -804,6 +804,12 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
     case 0x7e:
         script_soul_start_player_mark(machine);
         return SCRIPT_STEP_NEXT;
+    case 0x77:
+        machine->phone_view_is_on = 1;
+        if (machine->outputs->soul_vision_changed != NULL) {
+            machine->outputs->soul_vision_changed(1, 1);
+        }
+        return SCRIPT_STEP_NEXT;
     case 0x73:
         if (machine->outputs->film_scroll_paused != NULL) {
             machine->outputs->film_scroll_paused(words[0] != 0);
@@ -875,6 +881,12 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         }
         return SCRIPT_STEP_NEXT;
     case 0xec:
+        if (machine->phone_view_is_on) {
+            machine->phone_view_is_on = 0;
+            if (machine->outputs->soul_vision_changed != NULL) {
+                machine->outputs->soul_vision_changed(0, 0);
+            }
+        }
         if (machine->auto_press != SCRIPT_AUTO_FAST && machine->outputs->movie_of_class_started != NULL) {
             machine->movie_ticks_left = machine->outputs->movie_of_class_started(script_machine_u32(words, 0));
             if (machine->movie_ticks_left > 0 && machine->outputs->sound_played != NULL) {
@@ -1170,6 +1182,7 @@ static void update_object(struct script_machine *machine, struct script_object *
 
 static void tear_down_script(struct script_machine *machine)
 {
+    machine->phone_view_is_on = 0;
     machine->has_runner = 0;
     machine->object_count = 0;
     machine->actor_count = 0;
