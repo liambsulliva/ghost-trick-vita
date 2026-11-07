@@ -39,8 +39,9 @@ SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS
 OBJS := $(patsubst src/%.c,$(OBJECT_FOLDER)/%.o,$(SRCS))
 
 LIVEAREA_FOLDER := build/sce_sys
-LIVEAREA_LOGO ?= 0
-LIVEAREA_STYLE := $(if $(filter 1,$(LIVEAREA_LOGO)),logo,monogram)
+RELEASE ?= 0
+LIVEAREA_ASSETS_PRESENT := $(and $(wildcard ../extracted/remaster_apk/GTPD_ANDROID_Release.list),$(wildcard build/tools/texture_tool))
+LIVEAREA_STYLE := $(if $(and $(filter-out 1,$(RELEASE)),$(LIVEAREA_ASSETS_PRESENT)),logo,monogram)
 LIVEAREA_SOURCE := build/livearea_$(LIVEAREA_STYLE)
 LIVEAREA_IMAGE_NAMES := icon0.png livearea/contents/bg.png livearea/contents/startup.png
 
@@ -56,7 +57,7 @@ APP_TEST_OBJECTS := $(patsubst src/app/%.c,build/test_objects/app/%.o,$(APP_SRCS
 FAKE_TEST_OBJECTS := $(patsubst tests/fakes/%.c,build/test_objects/fakes/%.o,$(FAKE_SRCS))
 TEST_RUNS := $(addprefix run-,$(TEST_BINS))
 
-.PHONY: all clean check-sdk test test-binaries test-parallel test-all golden coverage always-rebuild $(TEST_RUNS)
+.PHONY: all release clean check-sdk test test-binaries test-parallel test-all golden coverage always-rebuild $(TEST_RUNS)
 
 all: check-sdk build/$(TARGET).vpk
 
@@ -87,7 +88,10 @@ build/param.sfo: Makefile
 	vita-mksfoex -d ATTRIBUTE2=12 -s TITLE_ID=$(TITLE_ID) -s APP_VER=$(APP_VER) -s VERSION=$(APP_VER) "$(TITLE)" $@
 
 $(LIVEAREA_SOURCE)/icon0.png: tools/make_livearea.py
-	python3 -I tools/make_livearea.py $(LIVEAREA_SOURCE) $(if $(filter 1,$(LIVEAREA_LOGO)),--logo,)
+	python3 -I tools/make_livearea.py $(LIVEAREA_SOURCE) $(if $(filter monogram,$(LIVEAREA_STYLE)),--monogram,)
+
+release:
+	$(MAKE) RELEASE=1 build/$(TARGET).vpk
 
 .PHONY: FORCE
 FORCE:

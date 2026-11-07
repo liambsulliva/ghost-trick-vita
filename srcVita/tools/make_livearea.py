@@ -140,9 +140,9 @@ def main():
     parser.add_argument("output_folder")
     parser.add_argument("--assets-folder", default=ASSETS_FOLDER)
     parser.add_argument("--texture-tool", default=TEXTURE_TOOL)
-    parser.add_argument("--logo", action="store_true", help="build the images from the title logo in the extracted assets instead of the monogram")
+    parser.add_argument("--monogram", action="store_true", help="use the monogram even when the extracted assets are present, as release packages do")
     arguments = parser.parse_args()
-    if not arguments.logo:
+    if arguments.monogram:
         write_procedural_images(arguments.output_folder)
         return 0
     if assets_available(arguments.assets_folder, arguments.texture_tool):

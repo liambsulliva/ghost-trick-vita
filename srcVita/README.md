@@ -43,7 +43,7 @@ make -C srcVita -j8
 
 The build plays the DS soundtrack, rendered from your own ROM during the bake. `make -C srcVita -j8 DS_MUSIC=0` plays the remaster's soundtrack instead.
 
-The package's LiveArea icon, background and startup image are a plain monogram by default, which is how release packages are built, so they carry no game art. `make -C srcVita -j8 LIVEAREA_LOGO=1` builds them from the title logo in your extracted assets instead. A package built that way contains game art, so keep it for your own Vita.
+The package's LiveArea icon, background and startup image come from the title logo when your extracted assets are in `extracted/remaster_apk` and the converter's texture tool is built. Otherwise they are a plain monogram. A package with the logo contains game art, so keep it for your own Vita. `make -C srcVita release` builds the package that is published on GitHub: it always uses the monogram, as if no assets were present.
 
 This writes the installable package to `srcVita/build/ghosttrick.vpk`. It holds only the app. The art goes on the Vita separately, as [the top-level README](../README.md#run-it-on-a-vita) explains, and the Vita also needs its shader compiler at `ur0:data/libshacccg.suprx`.
 
