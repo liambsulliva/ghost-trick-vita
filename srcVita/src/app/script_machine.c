@@ -1215,6 +1215,10 @@ static void update_object(struct script_machine *machine, struct script_object *
 
 static void tear_down_script(struct script_machine *machine)
 {
+    unsigned int pills_registered;
+    int rollback_is_on;
+    int trick_is_on;
+
     machine->phone_view_is_on = 0;
     memset(machine->anchored_effects, 0, sizeof(machine->anchored_effects));
     machine->has_runner = 0;
@@ -1230,7 +1234,13 @@ static void tear_down_script(struct script_machine *machine)
     machine->pause_clear_at = NEVER;
     machine->fade_count = 0;
     machine->pan_is_active = 0;
+    pills_registered = machine->soul.pills_registered;
+    rollback_is_on = machine->soul.rollback_is_on;
+    trick_is_on = machine->soul.trick_is_on;
     script_soul_reset(machine);
+    machine->soul.pills_registered = pills_registered;
+    machine->soul.rollback_is_on = rollback_is_on;
+    machine->soul.trick_is_on = trick_is_on;
     script_fades_end_mask(machine);
     machine->soul_state_keeps_pause = 0;
     machine->soul_vision_message_at = NEVER;
