@@ -25,6 +25,7 @@ ATLAS_WIDTH = 1024
 ATLAS_CELL_GAP = 4
 COLOR_BLACK = 0
 COLOR_OF_TAG = {"c1": 1, "c2": 2}
+COLOR_SYSTEM_GREEN = 3
 COLOR_SHIFT = 14
 IGNORED_VERBS = ("s0", "mes_se_play", "mesflash", "mesquake")
 NEW_PAGE_CODE = 0x02
@@ -38,6 +39,7 @@ TOP_WITH_HEAD_TEXT_LEFT = 282
 ENDING_PRESS = 0
 ENDING_PAUSE_THEN_NEXT = 1
 ENDING_PAUSE_THEN_CLOSE = 2
+ENDING_HOLD_THEN_CLOSE = 3
 TAG_PATTERN = re.compile(r"<\s*(\w+)\s+(\w+)((?:\s+\w+=\"[^\"]*\")*)\s*/?\s*>")
 ICON_TAG_PATTERN = re.compile(r"<ICON (\w+)>")
 ICON_CROSS = "\ue000"
@@ -52,6 +54,7 @@ ICON_TOP_ABOVE_BASELINE = 23
 ANY_TAG_PATTERN = re.compile(r"<[^>]*>")
 ORIGIN_PATTERN = re.compile(r"origin: (-?[0-9.]+),")
 NO_FACE = "-"
+GLYPH_ROW_ADVANCE = 6
 SUPERSAMPLE = line_renderer.SUPERSAMPLE
 
 
@@ -256,6 +259,21 @@ def read_ds_faces(section):
     return faces
 
 
+def system_line_section(text, line):
+    words = text.split(" ")
+    wrapped = " ".join(words[:line["words_on_first_row"]]) + "\n" + " ".join(words[line["words_on_first_row"]:])
+    section = new_section()
+    section["ending"] = ENDING_HOLD_THEN_CLOSE
+    section["center_x"] = line["center_x"]
+    add_plain_text(section, wrapped, COLOR_SYSTEM_GREEN)
+    return section_lines(section)
+
+
+def centered_left(line, center_x, glyph_rows, glyph_of):
+    width = sum(glyph_rows[glyph_of[character]][GLYPH_ROW_ADVANCE] for character, _ in line)
+    return int(round(center_x - width / 2))
+
+
 def layout_of_page(section, layouts, label, page_index):
     entries = layouts.get(label, [])
     entry = entries[page_index] if page_index < len(entries) else None
@@ -324,6 +342,11 @@ def parse_all_pages(packs, section, text_key):
                     characters.update(character for character, _ in line)
     if skipped:
         print("talk pages skipped: %d" % skipped)
+    for label, line in section.get("system_lines", {}).items():
+        one_section = system_line_section(section["system_line_texts"][label], line)
+        parsed[label] = [([one_section], None, 0, BOX_BOTTOM, 0)]
+        for one_line in one_section["lines"]:
+            characters.update(character for character, _ in one_line)
     return parsed, characters, used_faces
 
 
@@ -350,7 +373,8 @@ def bake_talk(packs, set_description, text_key, work_folder, record, code):
                 tops = line_tops(len(one_section["lines"]), box_top, box_height)
                 for line, top in zip(one_section["lines"], tops):
                     codes = " ".join(str(glyph_of[character] | (color << COLOR_SHIFT)) for character, color in line)
-                    rows.append("line %d %d %d %s" % (text_left, top, len(line), codes))
+                    line_left = centered_left(line, one_section["center_x"], glyph_rows, glyph_of) if "center_x" in one_section else text_left
+                    rows.append("line %d %d %d %s" % (line_left, top, len(line), codes))
     return {TALK_FILE: ("\n".join(rows) + "\n").encode("ascii")}, [result], [], used_faces
 
 

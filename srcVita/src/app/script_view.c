@@ -174,7 +174,7 @@ static const struct renderer_color text_colors[SCRIPT_TALK_COLOR_COUNT] = {
     { 0.0f, 0.0f, 0.0f, 1.0f },
     { 0.902f, 0.22f, 0.141f, 1.0f },
     { 0.173f, 0.588f, 0.878f, 1.0f },
-    { 1.0f, 1.0f, 1.0f, 1.0f }
+    { 0.212f, 0.635f, 0.231f, 1.0f }
 };
 
 static const struct script_tables *tables;

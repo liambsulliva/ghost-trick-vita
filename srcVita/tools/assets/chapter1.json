@@ -8,6 +8,13 @@
   },
   "narration_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
   "talk": {
+    "system_lines": {
+      "sys_add_data": {
+        "file": "system/system_0000.en.msg.xml.lz",
+        "words_on_first_row": 3,
+        "center_x": 464.6
+      }
+    },
     "font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
     "head_faces": {
       "1": "CharFiles/3D/08_Face/cmn_do_10_01.user",

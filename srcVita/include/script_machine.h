@@ -9,6 +9,8 @@
 #include "script_route.h"
 #include "script_talk.h"
 
+#define SCRIPT_NOTE_LIST_COUNT 3
+#define SCRIPT_NOTE_ID_COUNT 64
 #define SCRIPT_SOURCE_MAX 32
 #define SCRIPT_SOURCE_NAME_MAX 96
 #define SCRIPT_OBJECT_MAX 64
@@ -380,6 +382,8 @@ struct script_machine {
     int shake_level;
     int shake_ticks_left;
     int chapter_mark;
+    unsigned char note_levels[SCRIPT_NOTE_LIST_COUNT][SCRIPT_NOTE_ID_COUNT];
+    int note_was_added;
     int time_jump_movie_ticks;
     int movie_ticks_left;
     int phone_view_is_on;

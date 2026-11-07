@@ -15,6 +15,12 @@ class CueError(ValueError):
     pass
 
 
+DS_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+DS_PERIOD_CODE = 225
+DS_SPACE_CODE = 255
+DS_CHARACTER_OF_CODE = {**dict(enumerate(DS_ALPHABET)), DS_PERIOD_CODE: ".", DS_SPACE_CODE: " "}
+
+
 def new_page():
     return {"limit": 0, "options": 0, "groups": 1, "holds": {}}
 
@@ -36,6 +42,28 @@ def control_codes(data, offset):
         parameters = struct.unpack_from("<%dH" % count, data, position + 2)
         yield code, parameters
         position = position + 2 + 2 * count
+
+
+def character_codes(data, offset):
+    position = offset
+    codes = []
+    while True:
+        try:
+            word = struct.unpack_from("<H", data, position)[0]
+        except struct.error:
+            raise CueError("a message runs past the end of its file") from None
+        if word == END_OF_MESSAGE:
+            return codes
+        position = position + 2
+        if word < CONTROL_CODE_BASE:
+            codes.append(word)
+            continue
+        code = word - CONTROL_CODE_BASE
+        position = position + 2 * (PARAMETER_COUNTS[code] if code < len(PARAMETER_COUNTS) else 0)
+
+
+def text_of_character_codes(codes):
+    return "".join(DS_CHARACTER_OF_CODE[code] for code in codes if code in DS_CHARACTER_OF_CODE).strip()
 
 
 def pages_of_message(data, offset):

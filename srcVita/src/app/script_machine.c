@@ -3,6 +3,7 @@
 #include "script_machine.h"
 #include "script_opcodes.h"
 
+#define NOTE_ADDED_TALK_LABEL "sys_add_data"
 #define MODE_BYTE_LOADING 1
 #define MODE_BYTE_NORMAL 2
 #define MODE_BYTE_ALSO_RUNS_IDLE 3
@@ -703,6 +704,17 @@ static enum script_step_result return_from_subroutine(struct script_machine *mac
     return SCRIPT_STEP_MOVED;
 }
 
+static void note_entry(struct script_machine *machine, unsigned int list, unsigned int id, unsigned int level)
+{
+    if (list >= SCRIPT_NOTE_LIST_COUNT || id == 0 || id >= SCRIPT_NOTE_ID_COUNT) {
+        return;
+    }
+    if (level + 1u > machine->note_levels[list][id]) {
+        machine->note_levels[list][id] = (unsigned char)(level + 1u);
+        machine->note_was_added = 1;
+    }
+}
+
 static enum script_step_result run_control_op(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words)
 {
     switch (op) {
@@ -865,9 +877,21 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
             machine->chapter_mark = (int)words[0];
         }
         return SCRIPT_STEP_NEXT;
+    case 0x76:
+        note_entry(machine, words[0], words[1], words[2]);
+        return SCRIPT_STEP_NEXT;
+    case 0x79:
+        machine->note_was_added = 0;
+        return SCRIPT_STEP_NEXT;
     case 0x7a:
+        vm->condition = machine->note_was_added;
+        if (machine->note_was_added) {
+            script_talk_open(machine, NOTE_ADDED_TALK_LABEL);
+            return SCRIPT_STEP_NEXT_THEN_YIELD;
+        }
+        return SCRIPT_STEP_NEXT;
     case 0x7b:
-        vm->condition = 0;
+        vm->condition = machine->note_was_added;
         return SCRIPT_STEP_NEXT;
     case 0xe2:
         machine->pause_bit = 1;

@@ -373,6 +373,15 @@ def entries_by_label(packs, chapter, text_key):
     return {label: [found[index] for index in sorted(found)] for label, found in pages.items()}
 
 
+def read_system_line_texts(rom, system_lines):
+    texts = {}
+    for label, line in system_lines.items():
+        plain = lz.try_decompress(rom.read_file(line["file"]))
+        targets = message_cues.label_targets(lmg_decode.read_labels(plain, lmg_decode.read_header(plain)))
+        texts[label] = message_cues.text_of_character_codes(message_cues.character_codes(plain, targets[label]))
+    return texts
+
+
 def name_entry_of(core_labels, name_id):
     if name_id.startswith(SECOND_NAME_TABLE_MARK):
         return core_labels["second_name_entry"] + name_id[len(SECOND_NAME_TABLE_MARK):]
@@ -418,6 +427,7 @@ def expand_set(set_description, packs, rom_path, text_key):
             language_path = language_path_of(path, section.get("language", "en"))
             if rom.file_id_of(language_path) is not None:
                 languages[path] = lz.try_decompress(rom.read_file(language_path))
+        system_line_texts = read_system_line_texts(rom, set_description.get("talk", {}).get("system_lines", {}))
     section["files"] = list(scripts)
     plates, room_plates, room_sizes = plates_and_rooms(packs, scripts, arm9, soul_ramp)
     expanded["plates"] = plates
@@ -473,6 +483,7 @@ def expand_set(set_description, packs, rom_path, text_key):
     talk = dict(set_description.get("talk", {}))
     talk["entries"] = {label: entries[label] for label in talk_labels}
     talk["language_files"] = {label: languages.get(path) for label, path in talk_labels.items()}
+    talk["system_line_texts"] = system_line_texts
     talk["face_rows"] = face_rows
     talk["face_paths"] = paths
     expanded["talk"] = talk

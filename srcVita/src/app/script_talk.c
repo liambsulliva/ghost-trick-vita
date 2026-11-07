@@ -5,6 +5,7 @@
 #include "text_lines.h"
 
 #define TALK_LINE_TEXT_MAX 2048
+#define SYSTEM_LINE_HOLD_TICKS 60
 #define OPEN_DELAY_TICKS 5
 #define SLIDE_TICKS 9
 #define FADE_IN_TICKS 30
@@ -321,6 +322,10 @@ static void finish_reveal(struct script_machine *machine)
 
     machine->talk.phase = SCRIPT_TALK_WAITING;
     page = current_page(machine);
+    if (page != NULL && page->ending == SCRIPT_TALK_ENDS_AFTER_HOLD) {
+        machine->talk.timer = 0;
+        return;
+    }
     if (page != NULL && page->ending != SCRIPT_TALK_ENDS_ON_PRESS) {
         script_machine_send(machine, "*", "message", "pause in");
     }
@@ -376,6 +381,12 @@ static void step_waiting(struct script_machine *machine)
             talk->press_is_pending = 0;
             play_sound(machine, SOUND_KIND_PAGE_PRESS);
             go_to_next_page_or_close(machine);
+        }
+        return;
+    }
+    if (page->ending == SCRIPT_TALK_ENDS_AFTER_HOLD) {
+        if (talk->timer >= SYSTEM_LINE_HOLD_TICKS) {
+            schedule_close(machine);
         }
         return;
     }
