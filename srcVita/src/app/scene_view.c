@@ -250,6 +250,8 @@ static void draw_texture_or_placeholder(const char *texture_name, struct rendere
     }
 }
 
+#define POSE_WAIT_FRAMES_WORTH_LOGGING 2
+
 struct held_pose {
     char object_name[ASSET_NAME_MAX];
     char texture_name[ASSET_NAME_MAX];
@@ -258,6 +260,7 @@ struct held_pose {
     float width;
     float height;
     struct renderer_rect texture_area;
+    int frames_waiting;
 };
 
 static int draw_when_ready(const char *texture_name, struct renderer_rect screen_area, struct renderer_rect texture_area, const struct scene_object *tinted_object)
@@ -401,6 +404,10 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
     read_art_ahead(stage, object);
     wanted = art_under_the_screen_filter(stage, frame->texture_name, grayscale_name);
     if (draw_when_ready(wanted, world_area_to_screen(view, left, object->y + frame->y, frame->width, frame->height), texture_area, tinted_object)) {
+        if (held->frames_waiting >= POSE_WAIT_FRAMES_WORTH_LOGGING && strcmp(held->object_name, object->name) == 0) {
+            run_log_write("pose held object=%s frames=%d waited_for=%s", object->name, held->frames_waiting, wanted);
+        }
+        held->frames_waiting = 0;
         snprintf(held->object_name, sizeof(held->object_name), "%s", object->name);
         snprintf(held->texture_name, sizeof(held->texture_name), "%s", wanted);
         held->world_left = left;
@@ -411,6 +418,7 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
         return;
     }
     if (strcmp(held->object_name, object->name) == 0) {
+        held->frames_waiting = held->frames_waiting + 1;
         draw_when_ready(held->texture_name, world_area_to_screen(view, held->world_left, held->world_top, held->width, held->height), held->texture_area, tinted_object);
     }
 }
