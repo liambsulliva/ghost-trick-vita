@@ -241,6 +241,8 @@ static void report_soul_view(struct script_machine *machine)
     }
 }
 
+static void set_soul_view_with_effect(struct script_machine *machine, int is_on, int with_effect);
+
 static void start_time_leap(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -266,8 +268,14 @@ static void step_the_time_leap(struct script_machine *machine)
     if (soul->leap_spokes_at == (long long)machine->tick && machine->outputs->soul_vision_changed != NULL) {
         machine->outputs->soul_vision_changed(1, 1);
     }
-    if (soul->leap_swirl_at == (long long)machine->tick && machine->outputs->swirl_changed != NULL) {
-        machine->outputs->swirl_changed(1);
+    if (soul->leap_swirl_at == (long long)machine->tick) {
+        if (machine->outputs->swirl_changed != NULL) {
+            machine->outputs->swirl_changed(1);
+        }
+        if (soul->is_on) {
+            set_soul_view_with_effect(machine, 0, 0);
+            machine->pause_bit = 1;
+        }
     }
     if (soul->leap_message_at == (long long)machine->tick) {
         script_machine_send(machine, "*", "timeleap", "start");

@@ -1149,15 +1149,22 @@ static void draw_film_corner(float x, int is_at_left, int is_at_bottom)
     renderer_draw_sprite(texture->texture, area, part, white);
 }
 
+static void draw_film_belts(void);
+
 static void draw_film_frame(void)
+{
+    if (!film_frame_is_on || still_is_wanted) {
+        return;
+    }
+    draw_film_belts();
+}
+
+static void draw_film_belts(void)
 {
     float left_corner_x;
     float right_corner_x;
     float tile_x;
 
-    if (!film_frame_is_on) {
-        return;
-    }
     for (tile_x = FILM_FIRST_TILE_X - film_scroll; tile_x < (float)RENDERER_WIDTH; tile_x += FILM_TILE_SIZE) {
         draw_named_texture(FILM_STRIP_TEXTURE, tile_x, -FILM_TILE_ABOVE_SCREEN, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
         draw_named_texture(FILM_STRIP_TEXTURE, tile_x, (float)RENDERER_HEIGHT - FILM_TILE_SIZE + FILM_TILE_ABOVE_SCREEN, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
@@ -1249,6 +1256,9 @@ static void draw_screen_still(void)
 void script_view_draw_on_covers(void)
 {
     draw_screen_still();
+    if (film_frame_is_on && still_is_ready) {
+        draw_film_belts();
+    }
     soul_transition_draw();
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {
         draw_talk();
