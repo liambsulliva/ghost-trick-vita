@@ -214,6 +214,8 @@ int viewer_app_show_background(const char *name)
 int viewer_app_play_scene(const char *name)
 {
     pending_background_index = NO_PENDING_BACKGROUND;
+    hud_is_visible = 0;
+    debug_controls_are_on = 0;
     script_player_stop();
     return scene_player_play(name);
 }
@@ -285,11 +287,7 @@ static void start_browsing_first_assets(void)
 
 static void play_opening(void)
 {
-    if (script_player_is_available()) {
-        viewer_app_play_script(SCRIPT_ENTRY_NAME);
-    } else {
-        viewer_app_play_scene(manifest->scene_names[0]);
-    }
+    viewer_app_play_script(SCRIPT_ENTRY_NAME);
 }
 
 static void read_page_tiles(const char *script_folder)
@@ -350,12 +348,13 @@ void viewer_app_start(const char *folder)
         return;
     }
     ui_list_init(&animation_list, manifest->animation_count, LIST_VISIBLE_ROWS);
-    if (script_player_is_available() || manifest->scene_count > 0) {
+    if (script_player_is_available()) {
         hud_is_visible = 0;
         debug_controls_are_on = 0;
         play_opening();
         return;
     }
+    run_log_write("opening needs_scripts entry=%s", SCRIPT_ENTRY_NAME);
     start_browsing_first_assets();
 }
 
@@ -431,7 +430,7 @@ static void update_list(const struct input_state *input)
 
 static int opening_can_play(void)
 {
-    return manifest != NULL && (manifest->scene_count > 0 || script_player_is_available());
+    return manifest != NULL && script_player_is_available();
 }
 
 static void set_debug_controls(int should_be_on)
@@ -451,11 +450,7 @@ static void set_debug_controls(int should_be_on)
 
 static void replay_what_finished(void)
 {
-    if (script_player_is_active()) {
-        viewer_app_play_script(SCRIPT_ENTRY_NAME);
-    } else {
-        viewer_app_play_scene(manifest->scene_names[0]);
-    }
+    viewer_app_play_script(SCRIPT_ENTRY_NAME);
 }
 
 static int axis_of(unsigned int buttons, unsigned int negative, unsigned int positive)

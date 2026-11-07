@@ -84,6 +84,12 @@ static void set_up_scene_assets(const char *scene_text)
     add_text_file("assets/scenes/opening.scene", scene_text);
 }
 
+static void start_and_play_scene(void)
+{
+    viewer_app_start("assets");
+    viewer_app_play_scene("opening");
+}
+
 static const char *log_text(void)
 {
     unsigned int size;
@@ -533,7 +539,7 @@ static void test_scene_waits_for_textures_before_running(void)
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 256 192\nobject hero walk 100 150 1 0\nwait 60\n");
     fake_reader_hold_reads(1);
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(FRAMES_LONGER_THAN_EVERY_PRELOAD_PASS);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_PRELOADING);
     CHECK(strstr(log_text(), "scene ready") == NULL);
@@ -558,7 +564,7 @@ static void test_scene_applies_camera_flip_and_layers(void)
 
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nobject hero walk 200 150 2 1\nobject front idle 150 40 5 0\nobject back idle 160 40 1 0\ncamera 100 20\nwait 600\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(8);
     draw_frame();
     back = fake_renderer_draw(1);
@@ -591,7 +597,7 @@ static const struct fake_draw *draw_plate_with_camera(const char *scene_text)
 {
     set_up_platform();
     set_up_scene_assets(scene_text);
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(8);
     draw_frame();
     return find_draw_with_texture_width(ROOM_A_WIDTH);
@@ -663,7 +669,7 @@ static void test_a_card_is_centred_at_its_own_shape_over_black(void)
 
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncard card\nwait 600\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(8);
     draw_frame();
     card = find_draw_with_texture_width(CARD_WIDTH);
@@ -683,7 +689,7 @@ static void test_a_fade_covers_the_whole_screen(void)
 
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nfade_out 6\nwait 600\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(20);
     draw_frame();
     fade = fake_renderer_draw(fake_renderer_draw_count() - 1);
@@ -733,7 +739,7 @@ static const struct fake_draw *play_scene_and_draw_after(const char *scene_text,
 {
     set_up_platform();
     set_up_scene_assets(scene_text);
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(frame_count);
     draw_frame();
     return find_mask_draw();
@@ -922,7 +928,7 @@ static void test_the_iris_draws_a_soft_circle_with_black_around_it(void)
 
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 344 96\nmask_on\niris 400 150 100 120\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     run_frames(1);
     draw_frame();
@@ -955,7 +961,7 @@ static void test_a_closed_iris_leaves_the_screen_black_and_an_open_one_draws_not
 {
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 344 96\niris 400 150 1000 600\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     run_frames(1);
     draw_frame();
@@ -981,7 +987,7 @@ static int iris_at_screen_corner_is_drawn(float corner_x, float corner_y, float 
         radius);
     set_up_platform();
     set_up_scene_assets(scene_text);
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     run_frames(1);
     draw_frame();
@@ -1075,7 +1081,7 @@ static void test_browsing_after_a_masked_scene_shows_no_mask(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 256 192\nmask_on\ndim_to 0.5 0\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(8);
     draw_frame();
     CHECK(find_mask_draw() != NULL);
@@ -1092,12 +1098,12 @@ static void test_watching_it_again_starts_with_no_mask_left_over(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nwait 6\nmask_on\ndim_to 0.5 0\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(20);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
     draw_frame();
     CHECK(find_mask_draw() != NULL);
-    press(INPUT_CROSS);
+    viewer_app_play_scene("opening");
     run_frames(4);
     draw_frame();
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
@@ -1124,7 +1130,8 @@ static void test_the_iris_pattern_is_made_once_and_freed_at_the_end(void)
 
     set_up_platform();
     set_up_scene_assets("scene opening\nwait 6\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
+    run_frames(4);
     created_before = fake_renderer_textures_created();
     run_frames(30);
     CHECK_INT(fake_renderer_textures_created(), created_before);
@@ -1164,7 +1171,7 @@ static void test_a_failed_iris_pattern_is_logged_and_the_iris_stays_black_around
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\niris 100 100 50 0\nwait 6000\n");
     fake_renderer_fail_uploads(1);
-    viewer_app_start("assets");
+    start_and_play_scene();
     CHECK_HAS_TEXT(log_text(), "scene iris_texture_failed");
     fake_renderer_fail_uploads(0);
     run_frames_until_scene_is_no_longer_preloading();
@@ -1196,7 +1203,7 @@ static void test_scene_runs_steps_in_order_and_finishes(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\ncard card\nwait 6\nhide_card\nroom 1\nplate room_a 0 0 256 192\nwait 6\nroom 2\nplate room_b 0 0 256 192\nremove_object nobody\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(5);
     draw_frame();
     CHECK(find_draw_with_texture_width(CARD_WIDTH) != NULL);
@@ -1223,7 +1230,7 @@ static void test_scene_fades_and_pans_over_time(void)
 
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 256 192\nfade_out 60\ncamera_pan 100 0 60\nfade_in 60\nwait 60\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(4);
     stage = scene_stage_view();
     run_frames(30);
@@ -1245,14 +1252,14 @@ static void test_scene_survives_bad_files_and_missing_assets(void)
 {
     set_up_platform();
     set_up_scene_assets("not a scene\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     CHECK_HAS_TEXT(log_text(), "scene invalid name=opening");
     CHECK_INT(scene_player_status(), SCENE_PLAYER_IDLE);
     viewer_app_stop();
 
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate not_there 0 0 256 192\nobject hero not_an_animation 0 0 0 0\nwait 1\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(8);
     CHECK_HAS_TEXT(log_text(), "texture missing name=not_there");
     CHECK_HAS_TEXT(log_text(), "animation missing name=not_an_animation");
@@ -1265,7 +1272,7 @@ static void test_browsing_stops_a_running_scene(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\ncard card\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(4);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
     CHECK(viewer_app_show_animation("walk"));
@@ -1274,8 +1281,7 @@ static void test_browsing_stops_a_running_scene(void)
     draw_frame();
     CHECK(find_draw_with_texture_width(CARD_WIDTH) == NULL);
     CHECK(find_draw_with_texture_width(CHARACTER_WIDTH) != NULL);
-    press(INPUT_SELECT);
-    press(INPUT_L);
+    viewer_app_play_scene("opening");
     run_frames(4);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
     viewer_app_stop();
@@ -1289,7 +1295,7 @@ static void test_browsing_centres_an_animation_on_its_first_drawn_frame_wherever
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 200 100\nwait 6000\n");
     add_text_file("assets/animations/offset.anim", "animation offset\nloops 0\nframe - 6 0 0 0 0 0 0 0 0\nframe walk_page 6 -300 -400 30 40 0 0 1 1\n");
     add_text_file("assets/manifest.txt", "scene opening\nanimation offset\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(4);
     CHECK(viewer_app_show_animation("offset"));
     run_frames(8);
@@ -1305,7 +1311,7 @@ static void test_cross_skips_the_current_hold_instead_of_pausing(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\nwait 6000\nwait 6000\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(4);
     CHECK_INT(scene_player_next_step(), 1);
     press(INPUT_CROSS);
@@ -1323,7 +1329,7 @@ static void test_skipping_a_fade_or_pan_finishes_it_at_once(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nfade_out 6000\ncamera_pan 200 0 6000\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(4);
     press(INPUT_CROSS);
     run_frames(1);
@@ -1341,7 +1347,7 @@ static void test_buttons_a_player_might_press_never_stall_the_scene(void)
 
     set_up_platform();
     set_up_scene_assets("scene opening\ncard card\nwait 6\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(4);
     for (index = 0; index < sizeof(buttons) / sizeof(buttons[0]); index++) {
         press(buttons[index]);
@@ -1355,14 +1361,14 @@ static void test_buttons_a_player_might_press_never_stall_the_scene(void)
     viewer_app_stop();
 }
 
-static void test_the_end_of_a_scene_says_so_and_cross_plays_it_again(void)
+static void test_the_end_of_a_scene_says_so_and_it_can_play_again(void)
 {
     int draws_before;
     int draws_at_the_end;
 
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nwait 30\nfade_out 6\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(8);
     draw_frame();
     draws_before = fake_renderer_draw_count();
@@ -1371,7 +1377,7 @@ static void test_the_end_of_a_scene_says_so_and_cross_plays_it_again(void)
     draw_frame();
     draws_at_the_end = fake_renderer_draw_count();
     CHECK_INT(draws_at_the_end, draws_before + 1 + SCENE_END_PROMPT_VISIBLE_CHARACTERS);
-    press(INPUT_CROSS);
+    viewer_app_play_scene("opening");
     CHECK(scene_player_status() != SCENE_PLAYER_FINISHED);
     CHECK_INT(scene_player_next_step(), 0);
     run_frames(4);
@@ -1384,7 +1390,7 @@ static void test_select_turns_the_debug_controls_on_and_off(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\ncard card\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(4);
     press(INPUT_SELECT);
     CHECK_HAS_TEXT(log_text(), "debug controls on");
@@ -1398,18 +1404,18 @@ static void test_select_turns_the_debug_controls_on_and_off(void)
     viewer_app_stop();
 }
 
-static void test_leaving_debug_controls_after_browsing_plays_the_scene_again(void)
+static void test_leaving_debug_controls_never_falls_back_to_a_hand_written_scene(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\ncard card\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(4);
     press(INPUT_SELECT);
     press(INPUT_DOWN);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_IDLE);
     press(INPUT_SELECT);
-    CHECK(scene_player_status() != SCENE_PLAYER_IDLE);
-    CHECK_INT(scene_player_next_step(), 0);
+    CHECK_INT(scene_player_status(), SCENE_PLAYER_IDLE);
+    CHECK_HAS_TEXT(log_text(), "opening needs_scripts");
     viewer_app_stop();
 }
 
@@ -1417,7 +1423,7 @@ static void test_a_list_left_open_closes_when_debug_controls_go_off(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\ncard card\nwait 6\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(4);
     press(INPUT_SELECT);
     press(INPUT_R);
@@ -1432,7 +1438,7 @@ static void test_every_button_press_is_logged(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\ncard card\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(4);
     press(INPUT_CROSS);
     CHECK_HAS_TEXT(log_text(), "input pressed buttons=0x0010");
@@ -1455,7 +1461,7 @@ static void set_up_text_scene(const char *scene_text)
     add_texture("line_a", TEXT_LINE_WIDTH, TEXT_LINE_HEIGHT);
     add_texture("line_b", OTHER_TEXT_LINE_WIDTH, TEXT_LINE_HEIGHT);
     add_texture("art", OVERLAY_ART_WIDTH, 60);
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     run_frames(1);
 }
@@ -1496,7 +1502,7 @@ static void test_a_line_starts_invisible_and_is_not_drawn_until_it_has_alpha(voi
     set_up_platform();
     set_up_scene_assets("scene opening\ntext_show 1 line_a 480 72 60\nwait 6000\n");
     add_texture("line_a", TEXT_LINE_WIDTH, TEXT_LINE_HEIGHT);
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     update_with_elapsed_time(0);
     draw_frame();
@@ -1539,8 +1545,7 @@ static void test_hiding_all_text_cuts_every_line_in_one_frame(void)
 static void test_replaying_a_scene_clears_its_text_and_overlays(void)
 {
     set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\noverlay 1 art 0 0 30 20 0\nwait 6000\n");
-    press(INPUT_SELECT);
-    press(INPUT_L);
+    viewer_app_play_scene("opening");
     CHECK_INT(scene_player_next_step(), 0);
     CHECK(!scene_stage_view()->layers.text_lines[0].in_use);
     CHECK(!scene_stage_view()->layers.overlays[0].in_use);
@@ -1858,7 +1863,7 @@ static void test_a_scene_that_ends_leaves_its_last_text_fading_and_clears_on_rep
     run_frames(62);
     draw_frame();
     CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) == NULL);
-    press(INPUT_CROSS);
+    viewer_app_play_scene("opening");
     CHECK_INT(scene_player_next_step(), 0);
     CHECK(!scene_stage_view()->layers.overlays[0].in_use);
     CHECK(!scene_stage_view()->layers.text_lines[0].in_use);
@@ -1942,7 +1947,7 @@ static void test_scene_with_more_textures_than_the_read_queue_loads_them_all(voi
         snprintf(name, sizeof(name), "t%d", index);
         add_texture(name, 4, 4);
     }
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
     CHECK_HAS_TEXT(log_text(), "scene ready name=opening");
@@ -1971,7 +1976,7 @@ static void test_more_textures_than_cache_entries_says_so_and_still_plays(void)
         snprintf(name, sizeof(name), "t%d", index);
         add_texture(name, 4, 4);
     }
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX + 8; index++) {
         snprintf(name, sizeof(name), "t%d", index);
@@ -1991,7 +1996,7 @@ static void test_scene_larger_than_the_memory_budget_says_so_and_still_plays(voi
     add_texture("big_b", HALF_BUDGET_TEXTURE_WIDTH, HALF_BUDGET_TEXTURE_WIDTH);
     add_texture("big_c", HALF_BUDGET_TEXTURE_WIDTH, HALF_BUDGET_TEXTURE_WIDTH);
     add_texture("big_d", HALF_BUDGET_TEXTURE_WIDTH, HALF_BUDGET_TEXTURE_WIDTH);
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
     CHECK_HAS_TEXT(log_text(), "scene does_not_fit_in_cache name=opening");
@@ -2002,7 +2007,7 @@ static void test_time_past_the_end_of_a_hold_counts_towards_the_next_hold(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\nwait 6\nfade_out 60\nwait 600\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     update_with_elapsed_time(0);
     CHECK_INT(scene_player_next_step(), 1);
@@ -2017,7 +2022,7 @@ static void test_each_frame_change_of_a_moving_object_is_logged(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\nobject hero walk 100 150 1 0\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     run_frames(10);
     CHECK_HAS_TEXT(log_text(), "frame_change object=hero from=0 to=1 passed_over=0");
@@ -2029,7 +2034,7 @@ static void test_a_long_frame_logs_the_frames_it_passed_over_and_does_not_count_
     set_up_platform();
     add_text_file("assets/animations/three.anim", "animation three\nloops 0\nframe walk_page 6 0 0 10 10 0 0 1 1\nframe walk_page 6 0 0 10 10 0 0 1 1\nframe walk_page 6 0 0 10 10 0 0 1 1\n");
     set_up_scene_assets("scene opening\nobject hero three 100 150 1 0\nwait 6000\nremove_object hero\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     update_with_elapsed_time(0);
     update_with_elapsed_time(13 * 16667);
@@ -2044,7 +2049,7 @@ static void test_the_first_update_does_not_shorten_the_first_hold(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\nwait 6\nwait 600\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     update_with_elapsed_time(6 * 16666 + 100000);
     CHECK_INT(scene_player_next_step(), 1);
@@ -2055,7 +2060,7 @@ static void test_a_scene_that_fails_to_play_leaves_the_room_alone(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 256 192\nobject hero walk 100 150 1 0\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(8);
     CHECK_INT(viewer_app_play_scene("missing"), 0);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
@@ -2069,7 +2074,7 @@ static void test_a_long_stall_only_counts_as_half_a_second(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\nfade_out 60\nwait 600\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_until_scene_is_no_longer_preloading();
     update_with_elapsed_time(0);
     update_with_elapsed_time(20000000);
@@ -2152,12 +2157,12 @@ static void test_replaying_a_paused_scene_starts_it_unpaused(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\ncard card\nwait 6000\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(4);
     press(INPUT_SELECT);
     press(INPUT_CROSS);
     CHECK(scene_player_is_paused());
-    press(INPUT_L);
+    viewer_app_play_scene("opening");
     CHECK_INT(scene_player_next_step(), 0);
     run_frames(8);
     CHECK(!scene_player_is_paused());
@@ -2227,7 +2232,7 @@ static void test_a_scene_with_audio_plays_through_both_ports(void)
     set_up_platform();
     set_up_scene_assets(AUDIO_SCENE);
     add_audio_files();
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames(10);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_PRELOADING);
     run_frames_and_workers_until_scene_runs();
@@ -2252,7 +2257,7 @@ static void test_a_stalled_main_loop_costs_the_workers_nothing(void)
     set_up_platform();
     set_up_scene_assets(AUDIO_SCENE);
     add_audio_files();
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_and_workers_until_scene_runs();
     run_frames(10);
     pump_audio_workers(1);
@@ -2269,7 +2274,7 @@ static void test_stopping_the_app_closes_both_ports_before_returning(void)
     set_up_platform();
     set_up_scene_assets(AUDIO_SCENE);
     add_audio_files();
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_and_workers_until_scene_runs();
     run_frames(10);
     pump_audio_workers(3);
@@ -2290,7 +2295,7 @@ static void test_a_scene_with_missing_audio_files_still_plays_to_its_end(void)
 {
     set_up_platform();
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nmusic song 1\nsound ping\nwait 30\n");
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_and_workers_until_scene_runs();
     CHECK_HAS_TEXT(log_text(), "music file_missing name=song");
     CHECK_HAS_TEXT(log_text(), "sound file_missing name=ping");
@@ -2316,7 +2321,7 @@ static void test_a_scene_with_damaged_audio_files_still_plays_to_its_end(void)
     memcpy(damaged_ping, sine_mono_ogg, sizeof(sine_mono_ogg));
     damaged_ping[SINE_MONO_VENDOR_LENGTH_TOP_BYTE_OFFSET] ^= 0x80;
     fake_files_add("assets/sounds/ping.ogg", damaged_ping, sizeof(damaged_ping));
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_and_workers_until_scene_runs();
     CHECK_HAS_TEXT(log_text(), "music decoder_failed name=song error=-1");
     CHECK_HAS_TEXT(log_text(), "sound decoder_failed name=ping error=-1");
@@ -2337,7 +2342,7 @@ static void test_a_port_that_will_not_open_leaves_the_scene_running(void)
     add_audio_files();
     fake_audio_port_fail_open(AUDIO_PORT_MUSIC, -7);
     fake_audio_port_fail_open(AUDIO_PORT_SOUND, -8);
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_and_workers_until_scene_runs();
     run_frames(20);
     pump_audio_workers(3);
@@ -2353,7 +2358,7 @@ static void test_running_out_of_memory_for_audio_leaves_the_scene_running(void)
     set_up_platform();
     set_up_scene_assets("scene opening\nmusic song 1\nsound ping\nwait 6000\n");
     add_audio_files();
-    viewer_app_start("assets");
+    start_and_play_scene();
     fake_memory_set_largest_block(64);
     run_frames_and_workers_until_scene_runs();
     CHECK_HAS_TEXT(log_text(), "music out_of_memory name=song");
@@ -2364,12 +2369,12 @@ static void test_running_out_of_memory_for_audio_leaves_the_scene_running(void)
     viewer_app_stop();
 }
 
-static void test_browsing_silences_the_scene_and_debug_off_plays_it_again(void)
+static void test_browsing_silences_the_scene_and_playing_it_again_restores_sound(void)
 {
     set_up_platform();
     set_up_scene_assets(AUDIO_SCENE);
     add_audio_files();
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_and_workers_until_scene_runs();
     run_frames(20);
     pump_audio_workers(3);
@@ -2377,8 +2382,7 @@ static void test_browsing_silences_the_scene_and_debug_off_plays_it_again(void)
     pump_audio_workers(2);
     CHECK(!fake_audio_port_is_open(AUDIO_PORT_MUSIC));
     CHECK(!fake_audio_port_is_open(AUDIO_PORT_SOUND));
-    press(INPUT_SELECT);
-    press(INPUT_SELECT);
+    viewer_app_play_scene("opening");
     run_frames_and_workers_until_scene_runs();
     run_frames(20);
     pump_audio_workers(2);
@@ -2387,14 +2391,14 @@ static void test_browsing_silences_the_scene_and_debug_off_plays_it_again(void)
     viewer_app_stop();
 }
 
-static void test_cross_can_skip_every_hold_of_a_scene_with_audio_and_replay_it(void)
+static void test_cross_can_skip_every_hold_of_a_scene_with_audio_and_it_can_replay(void)
 {
     int press_count;
 
     set_up_platform();
     set_up_scene_assets(AUDIO_SCENE);
     add_audio_files();
-    viewer_app_start("assets");
+    start_and_play_scene();
     run_frames_and_workers_until_scene_runs();
     run_frames(1);
     for (press_count = 0; press_count < 3; press_count++) {
@@ -2405,7 +2409,7 @@ static void test_cross_can_skip_every_hold_of_a_scene_with_audio_and_replay_it(v
     CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
     pump_audio_workers(2);
     CHECK(!fake_audio_port_is_open(AUDIO_PORT_MUSIC));
-    press(INPUT_CROSS);
+    viewer_app_play_scene("opening");
     CHECK_INT(scene_player_status(), SCENE_PLAYER_PRELOADING);
     run_frames_and_workers_until_scene_runs();
     run_frames(20);
@@ -2522,9 +2526,9 @@ int main(void)
     test_cross_skips_the_current_hold_instead_of_pausing();
     test_skipping_a_fade_or_pan_finishes_it_at_once();
     test_buttons_a_player_might_press_never_stall_the_scene();
-    test_the_end_of_a_scene_says_so_and_cross_plays_it_again();
+    test_the_end_of_a_scene_says_so_and_it_can_play_again();
     test_select_turns_the_debug_controls_on_and_off();
-    test_leaving_debug_controls_after_browsing_plays_the_scene_again();
+    test_leaving_debug_controls_never_falls_back_to_a_hand_written_scene();
     test_a_list_left_open_closes_when_debug_controls_go_off();
     test_every_button_press_is_logged();
     test_scene_with_more_textures_than_the_read_queue_loads_them_all();
@@ -2548,8 +2552,8 @@ int main(void)
     test_a_scene_with_damaged_audio_files_still_plays_to_its_end();
     test_a_port_that_will_not_open_leaves_the_scene_running();
     test_running_out_of_memory_for_audio_leaves_the_scene_running();
-    test_browsing_silences_the_scene_and_debug_off_plays_it_again();
-    test_cross_can_skip_every_hold_of_a_scene_with_audio_and_replay_it();
+    test_browsing_silences_the_scene_and_playing_it_again_restores_sound();
+    test_cross_can_skip_every_hold_of_a_scene_with_audio_and_it_can_replay();
     test_long_run_keeps_memory_bounded();
     fake_audio_reset();
     fake_files_reset();

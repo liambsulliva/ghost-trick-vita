@@ -82,6 +82,7 @@ static void start_scene(const char *scene_text)
     add_text_file("assets/manifest.txt", "scene opening\nbackground room\n");
     add_text_file("assets/scenes/opening.scene", scene_text);
     viewer_app_start("assets");
+    viewer_app_play_scene("opening");
     for (frame = 0; frame < 4096 && scene_player_status() == SCENE_PLAYER_PRELOADING; frame++) {
         run_frames(1);
     }
@@ -327,8 +328,7 @@ static void test_a_replay_during_a_dissolve_clears_it(void)
     run_frames(4);
     draw_frame();
     CHECK(index_of_snapshot_draw() >= 0);
-    press(INPUT_SELECT);
-    press(INPUT_L);
+    viewer_app_play_scene("opening");
     CHECK(!scene_stage_view()->effects.dissolve_is_on);
     viewer_app_stop();
 }
