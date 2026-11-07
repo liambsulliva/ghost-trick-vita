@@ -225,6 +225,13 @@ static void report_soul_view(struct script_machine *machine)
             machine->outputs->soul_mark_changed(NULL, 0, 0.0f, 0.0f);
         }
     }
+    if (machine->phone_view_is_on && machine->outputs->soul_object_styled != NULL) {
+        for (index = 0; index < machine->object_count; index++) {
+            if (machine->objects[index].actor.exists) {
+                machine->outputs->soul_object_styled(machine->objects[index].name, machine->objects[index].actor.class_id, 0, 0, 0, 1);
+            }
+        }
+    }
     if (!soul->is_on || machine->outputs->soul_core_marked == NULL) {
         return;
     }

@@ -111,6 +111,7 @@ struct script_outputs {
     void (*sound_loop_stopped)(const char *loop_tag);
     void (*music_volume_changed)(int volume, int ticks);
     void (*soul_vision_changed)(int is_on, int with_effect);
+    void (*phone_view_ended)(void);
     void (*soul_cursor_moved)(int is_shown, float x, float y, float from_x, float from_y, int motion);
     void (*soul_core_marked)(int object_index, float x, float y, int is_dead);
     void (*soul_mark_changed)(const char *object_name, int age_ticks, float x, float y);

@@ -763,6 +763,7 @@ static const struct script_outputs bridge_outputs = {
     .sound_played = on_sound_played,
     .sounds_stopped = on_sounds_stopped,
     .soul_vision_changed = on_soul_vision_changed,
+    .phone_view_ended = scene_stage_clear_room,
     .soul_cursor_moved = script_view_cursor_moved,
     .soul_core_marked = script_view_core_marked,
     .soul_mark_changed = script_view_mark_changed,

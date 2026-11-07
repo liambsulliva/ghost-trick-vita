@@ -809,6 +809,9 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0x67:
         machine->mode_byte = MODE_BYTE_ALSO_RUNS_IDLE;
+        if (machine->soul.mark_age_ticks < 0) {
+            script_soul_start_player_mark(machine);
+        }
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x68:
         machine->mode_byte = MODE_BYTE_NORMAL;
@@ -918,6 +921,9 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
             machine->phone_view_is_on = 0;
             if (machine->outputs->soul_vision_changed != NULL) {
                 machine->outputs->soul_vision_changed(0, 0);
+            }
+            if (machine->outputs->phone_view_ended != NULL) {
+                machine->outputs->phone_view_ended();
             }
         }
         if (machine->auto_press != SCRIPT_AUTO_FAST && machine->outputs->movie_of_class_started != NULL) {
