@@ -2,7 +2,7 @@
 
 The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real Vita and plays the opening of Chapter 1 at 60 fps, using art converted from the remaster.
 
-The opening is a hand-written scene for now, not the game running. It has the opening's music, sounds, narration, balloons and spotlights. The DS game logic, talk text boxes and player input are not connected yet. See [What is missing](#what-is-missing).
+The opening runs in one of two ways: a hand-written scene, or the DS's own script bytes run by the script VM (see [The script VM](#the-script-vm)). Only Chapter 1 is baked, and parts of the game are still missing. See [What is missing](#what-is-missing).
 
 No game data lives in this folder. Converted assets, captures, reference video and the text key stay in the ignored `extracted/` and `build/` folders.
 
@@ -40,6 +40,8 @@ export VITASDK=/usr/local/vitasdk PATH="/usr/local/vitasdk/bin:$PATH"
 ```bash
 make -C srcVita -j8
 ```
+
+The build plays the DS soundtrack, rendered from your own ROM during the bake. `make -C srcVita -j8 DS_MUSIC=0` plays the remaster's soundtrack instead.
 
 This writes the installable package to `srcVita/build/ghosttrick.vpk`. It holds only the app. The art goes on the Vita separately, as [the top-level README](../README.md#run-it-on-a-vita) explains, and the Vita also needs its shader compiler at `ur0:data/libshacccg.suprx`.
 
@@ -91,6 +93,8 @@ This loop is for working on the app. It needs Vita Companion on the Vita, at the
 python3 -I srcVita/tools/vita_loop.py upload-assets extracted/vita_assets/chapter1_opening
 ```
 
+Under `ux0:data/ghosttrick/assets/`, textures live in 64 folders: `textures/<two hex digits>/<name>.gtex`, where the digits are `crc32(name) % 64` in hex. The uploader moves an older flat copy into its folder by rename when the size matches, and uploads the file if the Vita refuses the rename. Upload while the game is running, because the app keeps the Vita awake only while it runs.
+
 ```bash
 python3 -I srcVita/tools/vita_loop.py first-install
 ```
@@ -114,6 +118,12 @@ python3 -I srcVita/tools/vita_loop.py log
 ```
 
 The log is `ux0:data/ghosttrick/run.log`. Each second it records frame timing, free memory, texture totals and how often the displayed picture really changed (`screen flips=... changed=... longest_still=...`). Moving objects log each frame change with the frames passed over, and each animation reports which frames it showed and how many arrived late. `system state overlay=... bgm_adopt=...` is logged at startup and whenever either value changes, because the only freeze seen so far came with the system UI overlaid and the BGM port not adopted. The SDK header says that adopt value means the port is in use, and no log has it from a healthy device before a music port opens, so 0 at startup means nothing yet; `music port ... adopt=0` is the line to look for. That freeze stopped the whole process with no crash until the app called `sceKernelPowerTick`, so it now does at startup and every 30 frames. It uses `SCE_KERNEL_POWER_TICK_DEFAULT`, which the SDK header describes as cancelling every timer, so that the screen does not dim or turn off during long stretches with no input, including on the end prompt and in browse view. **This tick kind is untested:** only `SCE_KERNEL_POWER_TICK_DISABLE_AUTO_SUSPEND` has been run on hardware, and neither the freeze nor the dimming has been checked with this one. Run `vita_loop.py` with `--help` for the other commands, including `capture <name>`, which saves the screen and pulls it back as a BMP.
+
+`burst` pulls half-size pictures of the screen from the Vita into `--output`. Use a scratch folder: it fills with up to 1000 pictures of each kind. `--ms-between-pictures` sets the gap in milliseconds. It defaults to 200, five a second, and the app raises anything under 33 to 33.
+
+```bash
+python3 -I srcVita/tools/vita_loop.py burst --seconds 20 --ms-between-pictures 33 --output build/bursts
+```
 
 ## Check against the reference video
 
@@ -161,7 +171,7 @@ The main thread never touches the decoder. It posts a request to the mailbox and
 
 ## Fast forward build
 
-An agent can play through the game by itself with this build, at normal speed or far faster than a person:
+The build can play through the game by itself, at normal speed or far faster than a person:
 
 ```bash
 make -C srcVita FAST_FORWARD=1
@@ -177,9 +187,11 @@ It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`,
 | `resume` | Carry on from a pause |
 | `skip` | Same as L and R together: push on to the next act or script |
 | `press <hex>` | Press a button mask for one frame |
-| `burst <seconds>`, `burst 0` | Record a half-size picture of the screen five times a second for that long, into one file on the Vita. It then pauses the script until `resume`. `vita_loop.py burst` drives this, so nothing talks to the Vita while it records |
+| `drag x0 y0 x1 y1 frames delay` | Move an injected finger in a straight line from `x0,y0` to `x1,y1` over `frames` frames, after waiting `delay` frames |
+| `drag_soul dx dy frames delay` | Start the finger on the soul's screen position and move it by `dx,dy` over `frames` frames, after `delay` frames. Does nothing if the soul is not on screen |
+| `burst <seconds> [ms]`, `burst 0` | Record a half-size picture of the screen for that long, `ms` apart (default 200; anything under 33 is raised to 33), into one file on the Vita. It then pauses the script until `resume`. `vita_loop.py burst` drives this, so nothing talks to the Vita while it records |
 
-Automatic play closes dialogue and follows the route in `tools/assets/chapter1.json`, baked to `route_steps.txt`, through the same inputs a player uses. Each step waits for a named game state. A step it can't finish logs `route_step_failed` and play carries on, and `make route-check` fails if a replay stops matching the route. Sounds stay quiet at speed.
+Automatic play closes dialogue and follows the route in `tools/assets/chapter1.json`, baked to `route_steps.txt`, through the same inputs a player uses. Each step waits for a named game state. A step it can't finish logs `route_step_failed` and play carries on, and `make route-check` fails if a replay stops matching the route. Sounds stay quiet at speed. Each picture copy costs the game about 59 ms, so the game runs at about 50 fps during a burst and 59.9 fps outside one.
 
 The Mac replay does the same with no device:
 
@@ -239,13 +251,68 @@ vitaGL rounds compressed textures up to power-of-two sizes, so a texture can tak
 
 ## What is missing
 
-- **Most effects.** Effect art uses a different file format from character art that has not been read, so only rings, the chapter card and the close-up dissolve are drawn. The rest are noted in the log.
+As of 2026-11-07. Items under "Built, not proven" are written but not checked on the device.
+
+**Seen working on the device**
+
+- Textures in their folders, with none missing.
+- The core-to-core snap sound (sound 16), checked by ear.
+- The soul's eight-point chain reaches about 48 DS pixels and shrinks back on release.
+- No placeholder colours anywhere.
+- The soul's ring and label clear when talk opens.
+- DS music, touch, rain, split-screen rooms and the Chapter 2 card.
+
+**Built, not proven**
+
+- The chain's bend and trail. This needs a faster burst.
+- The camera panning with the tip while it is held.
+- Tap balloons advancing only while play runs.
+- The Back pill, shown only in a ghost view the player opened.
+
+**Open Chapter 1 findings**, checked against the reference footage
+
+- The umbrella is dim and see-through in the phone view.
+- A second speech bubble is missing late in the chapter.
+- Some core labels are on the wrong side, or on one line instead of two.
+- The thin pill words.
+- The soul's fly-in from the trick pill.
+- Film-still bubbles are about 40% too wide, and the bubble close is squashed.
+- The camera is about 110 px off in the stairs room.
+- The split-screen's left panel is black for about 1.4 s at its start.
+- Short black or white holds that the footage does not have.
+- The stairs walk is slow.
+- Pacing: narration pages in the opening run about 9.6 s longer in total than the footage (the first page alone about 4 s). Talk pages cycle about every 2.8 s, against 2.5 s.
+
+**Effects**
+
+- Effect 31, the loops on the corpse in ghost view, is the remaster movie `cmn_shig_01` (native kind 0x1d, from the st01_game000 effect list). The port still draws a plain disc there. Wiring it as a movie, shown only in ghost view, is in progress.
+- Effect 4, the core ring, is drawn as a soft glow. The footage shows a thin white ring that pulses every 70 frames.
+- Effects 8 (`efc_tsunagu`, kind 0xd8) and 9 (`efc_chain`, kind 0xce) have no art in any remaster effect list. `coreactionexchangecore` is an unconfirmed candidate for 8. Notes are in `extracted/audit_notes_2026-11-06/effects_8_9.md`.
+- Effects without art are noted in the log and not drawn.
+
+**Not in the port yet**
+
 - **Soul view art past the rings.** Object tints and class gates are not drawn, and every core can be reached from every other, with no range limit.
-- **Some HUD pieces.** The countdown runs and sends its events but draws nothing, and the same goes for the `EyeCatch` banners and the time jump and phone screens.
-- **Music.** The build plays the DS soundtrack, rendered from your own ROM during the bake. `make DS_MUSIC=0` plays the remaster's soundtrack instead. Sound effects always come from the remaster.
+- **Some HUD pieces.** The countdown runs and sends its events but draws nothing, and the same goes for the `EyeCatch` banners.
 - **Touch.** The back touch pad is not read. The front screen works alongside the buttons: tap pills, balloons, Rewind Time and talk, drag the soul in Ghost view, and drag the camera where the game allows it.
 - **A second chapter.** `chapter.xml` is not baked, so Chapter 1's end goes to an end screen.
 
 The hand-written scene's timing is hand-tuned against the reference video rather than taken from the game. The VM's comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.
 
 The converter was built and checked with the Android files only. The Steam copy has not been compared.
+
+## Roadmap
+
+1. Finish Chapter 1 to zero findings against the footage. Each pass uses full-chapter burst captures and reviews.
+2. Chapter 2, played by auto-play. The route has 93 steps and is listed in `extracted/audit_notes_2026-11-06/chapter2_route.md`. It starts at st01_game015, goes through `chapter.xml` to st14 (the parlor), then `phone.xml` with place 15, then st06 game000, demo000, game001, game002, game003 and game006, and back to `chapter.xml` for Chapter 3. The blockers are:
+   - Phone-book place selection (register 0x1a).
+   - The converter bakes one stage at a time, so `phone.xml` and st06 are dropped, and st06 text is baked per script.
+   - Op 0x69.
+   - Class-1 scripts are frozen in ghost view.
+   - Effect 48 events.
+   - SV_DEADCORE with DemoModeOn/Off, ReturnGame, OpenSubScreen and DeadTalk.
+   - Ops 0x127, 0x128 and 0x12d.
+   - About 20 missing effect rows, 67 and 52 among them.
+   - Core positions.
+   - DS music bgm 8, 21 and 43.
+3. Later chapters, on the same data-driven code.
