@@ -112,6 +112,7 @@ static void on_stage_cleared(void)
     script_view_talk_changed(NULL);
     script_view_film_frame_changed(0);
     script_view_swirl_changed(0);
+    script_view_screen_still_changed(0);
     scene_stage_set_mono_mode(0);
     grey_world_effect[0] = '\0';
     mask_fade_alpha = 0.0f;

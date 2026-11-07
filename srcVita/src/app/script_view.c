@@ -289,6 +289,8 @@ void script_view_swirl_changed(int is_on)
 void script_view_movie_started(const char *name)
 {
     playing_movie = script_tables_find_movie(tables, name);
+    still_is_wanted = 0;
+    still_is_ready = 0;
     movie_started_at_tick = age_ticks;
     movie_last_ready_frame = -1;
 }
