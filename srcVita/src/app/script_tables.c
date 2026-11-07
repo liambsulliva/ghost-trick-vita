@@ -289,6 +289,10 @@ static int read_effect_line(struct script_tables *tables, const char *line)
         row->kind = SCRIPT_EFFECT_DISSOLVE;
     } else if (strcmp(kind, "grey_world") == 0) {
         row->kind = SCRIPT_EFFECT_GREY_WORLD;
+    } else if (strcmp(kind, "phone_split") == 0) {
+        row->kind = SCRIPT_EFFECT_PHONE_SPLIT;
+    } else if (strcmp(kind, "rain") == 0) {
+        row->kind = SCRIPT_EFFECT_RAIN;
     } else if (strcmp(kind, "movie") == 0) {
         row->kind = SCRIPT_EFFECT_MOVIE;
     } else if (strcmp(kind, "ring") == 0) {

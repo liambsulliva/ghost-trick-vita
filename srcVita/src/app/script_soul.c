@@ -49,7 +49,8 @@
 #define EYECATCH_SOUND_UPDATE 12
 #define EYECATCH_SOUND_NUMBER 13
 #define PHONE_EFFECT_ID 49
-#define PHONE_EFFECT_EVENT_AFTER_TICKS 30
+#define PHONE_EFFECT_READY_AFTER_TICKS 50
+#define PHONE_EFFECT_END_AFTER_TICKS 18
 #define CAMERA_FREE_SPEED_PIXELS 4
 
 enum tutorial_mode {
@@ -635,7 +636,7 @@ static void report_hud(struct script_machine *machine)
     view.side_is_on = script_flags_read(&machine->flags, FATE_SECTION_FLAG);
     view.fate_level = machine->fate_level;
     view.world_is_running = !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && machine->eyecatch_ticks_left == 0;
-    view.is_hidden_for_movie = machine->movie_ticks_left > 0;
+    view.is_hidden_for_movie = machine->movie_ticks_left > 0 || machine->soul.phone_split_name[0] != '\0';
     view.narration_arrow_is_on = script_narration_wants_a_press(&machine->narration);
     view.soul_view_is_on = machine->soul.is_on;
     view.rewind_select_ticks = machine->soul.rewind_select_ticks;
@@ -709,13 +710,21 @@ void script_soul_effect_spawned(struct script_machine *machine, int effect_id, c
 {
     script_pills_effect_spawned(machine, effect_id, name);
     if (effect_id == PHONE_EFFECT_ID) {
-        schedule_native_event(machine, &machine->soul.phone_event, name, "ready", PHONE_EFFECT_EVENT_AFTER_TICKS);
+        schedule_native_event(machine, &machine->soul.phone_event, name, "ready", PHONE_EFFECT_READY_AFTER_TICKS);
+        snprintf(machine->soul.phone_split_name, sizeof(machine->soul.phone_split_name), "%s", name);
+    }
+}
+
+void script_soul_effect_deleted(struct script_machine *machine, const char *name)
+{
+    if (name[0] == '*' || strcmp(machine->soul.phone_split_name, name) == 0) {
+        machine->soul.phone_split_name[0] = '\0';
     }
 }
 
 void script_soul_effect_signalled(struct script_machine *machine, const char *name)
 {
-    schedule_native_event(machine, &machine->soul.phone_event, name, "end", PHONE_EFFECT_EVENT_AFTER_TICKS);
+    schedule_native_event(machine, &machine->soul.phone_event, name, "end", PHONE_EFFECT_END_AFTER_TICKS);
 }
 
 static void set_soul_view_with_effect(struct script_machine *machine, int is_on, int with_effect)

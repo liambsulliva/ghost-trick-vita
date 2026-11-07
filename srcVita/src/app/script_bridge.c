@@ -46,6 +46,8 @@ struct pending_overlay {
 
 static const struct script_tables *tables;
 static unsigned int tick;
+#define PHONE_SPLIT_BASE_Y 128.0f
+
 static int card_is_showing;
 static unsigned int card_started_tick;
 static int black_level;
@@ -371,6 +373,17 @@ static void start_card(const char *name)
 
 static void on_sound_played(int kind);
 
+static float phone_split_slide_px(float x, float y)
+{
+    const struct scene_stage *stage;
+
+    stage = scene_stage_view();
+    if (y == 0.0f) {
+        return x * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    }
+    return ((stage->camera_x - stage->object_origin_x) - (y - PHONE_SPLIT_BASE_Y)) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+}
+
 static void on_effect_spawned(int id, const char *name, float x, float y)
 {
     const struct script_effect_row *row;
@@ -396,6 +409,9 @@ static void on_effect_spawned(int id, const char *name, float x, float y)
         break;
     case SCRIPT_EFFECT_DISSOLVE:
         start_dissolve(row, name);
+        break;
+    case SCRIPT_EFFECT_PHONE_SPLIT:
+        script_view_phone_split_spawned(row, name, phone_split_slide_px(x, y));
         break;
     case SCRIPT_EFFECT_MOVIE:
         fx_movie = script_tables_find_fx_movie(tables, row->texture_name);
@@ -727,6 +743,7 @@ static const struct script_outputs bridge_outputs = {
     .iris_deleted = on_iris_deleted,
     .effect_spawned = on_effect_spawned,
     .effect_deleted = on_effect_deleted,
+    .effect_signalled = script_view_effect_signalled,
     .effect_moved = script_view_effect_moved,
     .narration_changed = on_narration_changed,
     .balloon_opened = on_balloon_opened,

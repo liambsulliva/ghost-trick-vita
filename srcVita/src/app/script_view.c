@@ -1,6 +1,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "phone_split.h"
+#include "rain_field.h"
 #include "renderer.h"
 #include "scene_stage.h"
 #include "scene_view.h"
@@ -125,6 +127,13 @@
 #define FILM_CORNER_FIRST_V 0.1625f
 #define FILM_CORNER_TOP 31.5f
 #define FILM_CORNER_BEYOND_SCREEN 19.7f
+#define RAIN_HALF_WIDTH 0.5f
+#define PHONE_CAP_TEXTURE "phone_cap"
+#define PHONE_STRIP_TEXTURE "phone_strip"
+#define PHONE_STRIP_TOP 69.5f
+#define PHONE_STRIP_HEIGHT 405.0f
+#define PHONE_CAP_TOP 25.1375f
+#define PHONE_CAP_HEIGHT 98.4375f
 #define MOVIE_FRAMES_LOADED_AHEAD 16
 #define MOVIE_TEXTURE_PREFIX "movie_"
 #define MOVIE_NAME_EXTRA 20
@@ -193,6 +202,12 @@ static float mark_y;
 static float flash_alpha;
 static int film_frame_is_on;
 static int swirl_is_on;
+static struct rain_field rain;
+static int phone_split_index = -1;
+static int phone_split_signal_age;
+static int phone_split_belts_were_on;
+static int phone_split_capture_is_ready;
+static float phone_split_slide_px;
 static const struct script_movie *playing_movie;
 static unsigned int movie_started_at_tick;
 static int movie_last_ready_frame;
@@ -217,6 +232,8 @@ void script_view_start(const struct script_tables *new_tables)
     cursor_is_shown = 0;
     age_ticks = 0;
     memset(effects, 0, sizeof(effects));
+    phone_split_index = -1;
+    rain_field_seed(&rain);
     scene_stage_set_soul_mode(0);
 }
 
@@ -331,6 +348,23 @@ static struct view_effect *find_free_effect(void)
     return NULL;
 }
 
+static void rain_screen_origin(float *center_x, float *top_y)
+{
+    scene_view_screen_to_world(scene_stage_view(), (float)RENDERER_WIDTH / 2.0f, ((float)RENDERER_HEIGHT - SCENE_VIEW_DS_SCREEN_HEIGHT * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL) / 2.0f, center_x, top_y);
+}
+
+static int rain_is_alive(void)
+{
+    int index;
+
+    for (index = 0; index < VIEW_EFFECT_MAX; index++) {
+        if (effects[index].in_use && effects[index].row->kind == SCRIPT_EFFECT_RAIN) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void script_view_effect_spawned(const struct script_effect_row *row, const char *name, float x, float y)
 {
     struct view_effect *effect;
@@ -345,6 +379,49 @@ void script_view_effect_spawned(const struct script_effect_row *row, const char 
     effect->x = x;
     effect->y = y;
     effect->age_ticks = 0;
+    if (row->kind == SCRIPT_EFFECT_RAIN) {
+        float center_x;
+        float top_y;
+
+        rain_screen_origin(&center_x, &top_y);
+        rain_field_start(&rain, (int)row->width, (int)row->height, center_x, top_y);
+    }
+}
+
+void script_view_phone_split_spawned(const struct script_effect_row *row, const char *name, float slide_px)
+{
+    int index;
+
+    script_view_effect_spawned(row, name, 0.0f, 0.0f);
+    for (index = 0; index < VIEW_EFFECT_MAX; index++) {
+        if (effects[index].in_use && effects[index].row == row && strcmp(effects[index].name, name) == 0) {
+            phone_split_index = index;
+            phone_split_signal_age = PHONE_SPLIT_NOT_SIGNALLED;
+            phone_split_belts_were_on = film_frame_is_on;
+            phone_split_capture_is_ready = 0;
+            phone_split_slide_px = slide_px;
+            film_frame_is_on = 1;
+        }
+    }
+}
+
+void script_view_effect_signalled(const char *name)
+{
+    if (phone_split_index >= 0 && strcmp(effects[phone_split_index].name, name) == 0) {
+        phone_split_signal_age = effects[phone_split_index].age_ticks;
+    }
+}
+
+static int phone_split_layout(struct phone_split_layout *layout)
+{
+    if (phone_split_index < 0) {
+        layout->belt_offset = 0.0f;
+        layout->side_column_width = 0.0f;
+        layout->panels_are_up = 0;
+        return 0;
+    }
+    phone_split_layout_at(effects[phone_split_index].age_ticks, phone_split_signal_age, phone_split_belts_were_on, phone_split_slide_px, layout);
+    return 1;
 }
 
 static void fx_page_name(const struct script_fx_movie *movie, int page, char *name)
@@ -372,6 +449,10 @@ void script_view_effect_deleted(const char *name)
     for (index = 0; index < VIEW_EFFECT_MAX; index++) {
         if (effects[index].in_use && (name[0] == '*' || strcmp(effects[index].name, name) == 0)) {
             effects[index].in_use = 0;
+            if (index == phone_split_index) {
+                phone_split_index = -1;
+                film_frame_is_on = phone_split_belts_were_on;
+            }
         }
     }
 }
@@ -386,6 +467,17 @@ void script_view_advance(void)
 
     script_ui_view_advance();
     age_ticks = age_ticks + 1;
+    if (phone_split_index >= 0) {
+        (void)texture_cache_use_or_start_loading(PHONE_CAP_TEXTURE);
+        (void)texture_cache_use_or_start_loading(PHONE_STRIP_TEXTURE);
+    }
+    if (rain_is_alive()) {
+        float center_x;
+        float top_y;
+
+        rain_screen_origin(&center_x, &top_y);
+        rain_field_advance(&rain, center_x, top_y);
+    }
     for (index = 0; index < VIEW_EFFECT_MAX; index++) {
         if (effects[index].in_use) {
             effects[index].age_ticks = effects[index].age_ticks + 1;
@@ -545,10 +637,34 @@ static void draw_effect(const struct view_effect *effect)
     draw_named_texture(effect->row->texture_name, screen_x - effect->row->width * size / 2.0f, screen_y - effect->row->height * size / 2.0f, effect->row->width * size, effect->row->height * size, white);
 }
 
+static void draw_rain(void)
+{
+    struct renderer_color color;
+    float left;
+    float top;
+    int index;
+
+    scene_view_screen_to_world(scene_stage_view(), 0.0f, 0.0f, &left, &top);
+    color = white;
+    for (index = 0; index < rain.count; index++) {
+        struct renderer_rect area;
+
+        area.x = (rain.streaks[index].x - RAIN_HALF_WIDTH - left) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+        area.y = (rain.streaks[index].y - rain.streaks[index].half_length - top) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+        area.width = SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+        area.height = rain.streaks[index].half_length * 2.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+        color.alpha = rain_field_alpha_of(index);
+        renderer_draw_filled_rect(area, color);
+    }
+}
+
 static void draw_effects(void)
 {
     int index;
 
+    if (!soul_is_on && rain_is_alive()) {
+        draw_rain();
+    }
     for (index = 0; index < VIEW_EFFECT_MAX; index++) {
         if (effects[index].in_use && effects[index].row->kind == SCRIPT_EFFECT_MOVIE && !soul_is_on) {
             draw_fx_movie(&effects[index]);
@@ -1131,7 +1247,7 @@ static void draw_swirl(void)
     }
 }
 
-static void draw_film_corner(float x, int is_at_left, int is_at_bottom)
+static void draw_film_corner(float x, float offset, int is_at_left, int is_at_bottom)
 {
     const struct cached_texture *texture;
     struct renderer_rect area;
@@ -1144,7 +1260,7 @@ static void draw_film_corner(float x, int is_at_left, int is_at_bottom)
     area.x = x;
     area.width = FILM_CORNER_WIDTH;
     area.height = FILM_CORNER_WHOLE_HEIGHT * (1.0f - FILM_CORNER_FIRST_V);
-    area.y = is_at_bottom ? (float)RENDERER_HEIGHT - FILM_CORNER_TOP - area.height : FILM_CORNER_TOP;
+    area.y = is_at_bottom ? (float)RENDERER_HEIGHT - FILM_CORNER_TOP - area.height + offset : FILM_CORNER_TOP - offset;
     part.x = is_at_left ? 1.0f : 0.0f;
     part.width = is_at_left ? -1.0f : 1.0f;
     part.y = is_at_bottom ? 1.0f : FILM_CORNER_FIRST_V;
@@ -1164,20 +1280,22 @@ static void draw_film_frame(void)
 
 static void draw_film_belts(void)
 {
+    struct phone_split_layout split;
     float left_corner_x;
     float right_corner_x;
     float tile_x;
 
+    phone_split_layout(&split);
     for (tile_x = FILM_FIRST_TILE_X - film_scroll; tile_x < (float)RENDERER_WIDTH; tile_x += FILM_TILE_SIZE) {
-        draw_named_texture(FILM_STRIP_TEXTURE, tile_x, -FILM_TILE_ABOVE_SCREEN, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
-        draw_named_texture(FILM_STRIP_TEXTURE, tile_x, (float)RENDERER_HEIGHT - FILM_TILE_SIZE + FILM_TILE_ABOVE_SCREEN, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
+        draw_named_texture(FILM_STRIP_TEXTURE, tile_x, -FILM_TILE_ABOVE_SCREEN - split.belt_offset, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
+        draw_named_texture(FILM_STRIP_TEXTURE, tile_x, (float)RENDERER_HEIGHT - FILM_TILE_SIZE + FILM_TILE_ABOVE_SCREEN + split.belt_offset, FILM_TILE_SIZE, FILM_TILE_SIZE, white);
     }
-    left_corner_x = -FILM_CORNER_BEYOND_SCREEN;
-    right_corner_x = (float)RENDERER_WIDTH + FILM_CORNER_BEYOND_SCREEN - FILM_CORNER_WIDTH;
-    draw_film_corner(left_corner_x, 1, 0);
-    draw_film_corner(right_corner_x, 0, 0);
-    draw_film_corner(left_corner_x, 1, 1);
-    draw_film_corner(right_corner_x, 0, 1);
+    left_corner_x = -FILM_CORNER_BEYOND_SCREEN + split.side_column_width;
+    right_corner_x = (float)RENDERER_WIDTH + FILM_CORNER_BEYOND_SCREEN - FILM_CORNER_WIDTH - split.side_column_width;
+    draw_film_corner(left_corner_x, split.belt_offset, 1, 0);
+    draw_film_corner(right_corner_x, split.belt_offset, 0, 0);
+    draw_film_corner(left_corner_x, split.belt_offset, 1, 1);
+    draw_film_corner(right_corner_x, split.belt_offset, 0, 1);
 }
 
 static int movie_frame_is_ready(int frame, const struct cached_texture **texture)
@@ -1225,11 +1343,88 @@ static void draw_movie(void)
     renderer_draw_sprite(texture->texture, area, whole_texture(), white);
 }
 
+static void draw_phone_split_under_the_film(const struct phone_split_layout *split)
+{
+    static const struct renderer_color door_black = { 0.0f, 0.0f, 0.0f, 1.0f };
+    struct renderer_rect area;
+
+    if (!split->panels_are_up) {
+        return;
+    }
+    if (split->capture_is_shown && phone_split_capture_is_ready) {
+        area.x = split->capture_x;
+        area.y = 0.0f;
+        area.width = (float)RENDERER_WIDTH;
+        area.height = (float)RENDERER_HEIGHT;
+        renderer_draw_snapshot(area, 1.0f);
+    }
+    if (split->door_right <= 0.0f) {
+        return;
+    }
+    area.x = 0.0f;
+    area.width = split->door_right;
+    area.y = 0.0f;
+    area.height = split->top_door_bottom;
+    renderer_draw_filled_rect(area, door_black);
+    area.y = split->bottom_door_top;
+    area.height = (float)RENDERER_HEIGHT - split->bottom_door_top;
+    renderer_draw_filled_rect(area, door_black);
+}
+
+static void draw_phone_cap(float left, float right, float top, int is_upside_down)
+{
+    const struct cached_texture *texture;
+    struct renderer_rect area;
+    struct renderer_rect part;
+
+    texture = texture_cache_use_or_start_loading(PHONE_CAP_TEXTURE);
+    if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
+        return;
+    }
+    area.x = left;
+    area.y = top;
+    area.width = right - left;
+    area.height = PHONE_CAP_HEIGHT;
+    part.x = 0.0f;
+    part.width = 1.0f;
+    part.y = is_upside_down ? 1.0f : 0.0f;
+    part.height = is_upside_down ? -1.0f : 1.0f;
+    renderer_draw_sprite(texture->texture, area, part, white);
+}
+
+static void draw_phone_split_over_the_film(const struct phone_split_layout *split)
+{
+    static const struct renderer_color column_black = { 0.0f, 0.0f, 0.0f, 1.0f };
+    struct renderer_rect area;
+
+    if (!split->panels_are_up) {
+        return;
+    }
+    draw_named_texture(PHONE_STRIP_TEXTURE, split->strip_left, PHONE_STRIP_TOP, split->strip_right - split->strip_left, PHONE_STRIP_HEIGHT, white);
+    draw_phone_cap(split->cap_left, split->cap_right, PHONE_CAP_TOP, 0);
+    draw_phone_cap(split->cap_left, split->cap_right, (float)RENDERER_HEIGHT - PHONE_CAP_TOP - PHONE_CAP_HEIGHT, 1);
+    if (split->side_column_width <= 0.0f) {
+        return;
+    }
+    area.y = 0.0f;
+    area.height = (float)RENDERER_HEIGHT;
+    area.width = split->side_column_width;
+    area.x = 0.0f;
+    renderer_draw_filled_rect(area, column_black);
+    area.x = (float)RENDERER_WIDTH - split->side_column_width;
+    renderer_draw_filled_rect(area, column_black);
+}
+
 void script_view_draw_on_world(void)
 {
+    struct phone_split_layout split;
+
+    phone_split_layout(&split);
     draw_effects();
+    draw_phone_split_under_the_film(&split);
     draw_swirl();
     draw_film_frame();
+    draw_phone_split_over_the_film(&split);
     draw_soul();
     draw_mark();
 }
@@ -1239,14 +1434,22 @@ int script_view_movie_covers_the_screen(void)
     return playing_movie != NULL;
 }
 
+static int phone_split_wants_capture(void)
+{
+    return phone_split_index >= 0 && !phone_split_capture_is_ready && effects[phone_split_index].age_ticks >= PHONE_SPLIT_CAPTURE_AGE;
+}
+
 int script_view_wants_snapshot(void)
 {
-    return soul_transition_wants_snapshot() || (still_is_wanted && !still_is_ready);
+    return soul_transition_wants_snapshot() || (still_is_wanted && !still_is_ready) || phone_split_wants_capture();
 }
 
 void script_view_snapshot_taken(void)
 {
     soul_transition_snapshot_taken();
+    if (phone_split_wants_capture()) {
+        phone_split_capture_is_ready = 1;
+    }
     if (still_is_wanted) {
         still_is_ready = 1;
     }

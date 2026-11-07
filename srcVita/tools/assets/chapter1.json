@@ -61,6 +61,42 @@
   ],
   "effects": [
     {
+      "id": 45,
+      "kind": "rain",
+      "texture": "-",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 342,
+      "height": -171
+    },
+    {
+      "id": 46,
+      "kind": "rain",
+      "texture": "-",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 171,
+      "height": 0
+    },
+    {
+      "id": 47,
+      "kind": "rain",
+      "texture": "-",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 171,
+      "height": -171
+    },
+    {
+      "id": 49,
+      "kind": "phone_split",
+      "texture": "-",
+      "ticks": 0,
+      "end_zoom": 1,
+      "width": 0,
+      "height": 0
+    },
+    {
       "id": 53,
       "kind": "grey_world",
       "texture": "-",
@@ -234,6 +270,18 @@
       "width": 720,
       "height": 540,
       "list_as_background": true
+    },
+    {
+      "name": "phone_cap",
+      "source": "natives/android/charfiles/3d/04_item/demotell01_iml4.tex.691230823",
+      "width": 128,
+      "height": 140
+    },
+    {
+      "name": "phone_strip",
+      "source": "natives/android/charfiles/3d/04_item/demotell02_iml4.tex.691230823",
+      "width": 64,
+      "height": 64
     },
     {
       "name": "next_chapter_card",

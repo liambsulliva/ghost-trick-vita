@@ -126,6 +126,7 @@ struct script_outputs {
     void (*marked)(const char *what, const char *name);
     void (*talk_changed)(const struct script_talk_view *view);
     void (*effect_deleted)(const char *name);
+    void (*effect_signalled)(const char *name);
     void (*effect_moved)(const char *name, float x, float y, float aim_degrees);
 };
 

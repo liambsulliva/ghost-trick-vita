@@ -166,6 +166,7 @@ static void delete_effect(struct script_machine *machine, struct script_vm *vm, 
         int index;
 
         script_pills_effect_deleted(machine, name);
+        script_soul_effect_deleted(machine, name);
         for (index = 0; index < SCRIPT_ANCHORED_EFFECT_MAX; index++) {
             if (machine->anchored_effects[index].name != NULL && (strcmp(name, "*") == 0 || strcmp(machine->anchored_effects[index].name, name) == 0)) {
                 machine->anchored_effects[index].name = NULL;
@@ -633,6 +634,9 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
     case 0xb2:
         if (script_machine_string(machine, vm, words[0]) != NULL) {
             script_soul_effect_signalled(machine, script_machine_string(machine, vm, words[0]));
+            if (machine->outputs->effect_signalled != NULL) {
+                machine->outputs->effect_signalled(script_machine_string(machine, vm, words[0]));
+            }
         }
         break;
     case 0xd8:

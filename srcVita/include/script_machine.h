@@ -304,6 +304,7 @@ struct script_soul {
     int countdown_step;
     int countdown_ticks;
     struct script_timed_event phone_event;
+    char phone_split_name[SCRIPT_SOURCE_NAME_MAX];
     struct script_timed_event time_jump_event;
 };
 
@@ -476,6 +477,7 @@ void script_soul_set_countdown_interval(struct script_machine *machine, int inte
 void script_soul_set_fate_level(struct script_machine *machine, int level);
 int script_soul_step_eyecatch(struct script_machine *machine);
 void script_soul_effect_spawned(struct script_machine *machine, int effect_id, const char *name);
+void script_soul_effect_deleted(struct script_machine *machine, const char *name);
 void script_soul_effect_signalled(struct script_machine *machine, const char *name);
 int script_soul_waits_on_the_player(const struct script_machine *machine);
 int script_soul_world_is_playable(const struct script_machine *machine);
