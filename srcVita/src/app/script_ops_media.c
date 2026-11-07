@@ -7,6 +7,8 @@
 #define SOUND_KIND_REFUSED 33
 #define PARAGRAPH_ARG_COUNT 8
 #define TAP_BALLOON_ICON_KIND 5
+#define ANY_TAP_GROUP -1
+#define LABEL_THAT_CLOSES 0u
 
 static const char *const paragraph_args[PARAGRAPH_ARG_COUNT] = { "paragraph0", "paragraph1", "paragraph2", "paragraph3", "paragraph4", "paragraph5", "paragraph6", "paragraph7" };
 
@@ -196,12 +198,12 @@ void script_balloons_report_opened(struct script_machine *machine)
     }
 }
 
-static void close_all_balloons(struct script_machine *machine)
+static void close_balloons(struct script_machine *machine, int only_tap_group)
 {
     int index;
 
     for (index = 0; index < SCRIPT_BALLOON_MAX; index++) {
-        if (machine->balloons[index].in_use) {
+        if (machine->balloons[index].in_use && (only_tap_group == ANY_TAP_GROUP || machine->balloons[index].tap_group == only_tap_group)) {
             machine->balloons[index].in_use = 0;
             if (machine->outputs->balloon_closed != NULL) {
                 machine->outputs->balloon_closed(index);
@@ -324,6 +326,10 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         break;
     case 0x45:
     case 0x4c:
+        if (op == 0x45 && words[0] == LABEL_THAT_CLOSES) {
+            close_balloons(machine, SCRIPT_TAP_GROUP_LEFT);
+            break;
+        }
         label = script_machine_string(machine, vm, words[0]);
         if (label != NULL) {
             open_tap_balloon(machine, vm, label, (int)script_machine_u32(words, 2), op == 0x45 ? SCRIPT_TAP_GROUP_LEFT : SCRIPT_TAP_GROUP_RIGHT);
@@ -334,8 +340,10 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         open_tap_balloon_that_sends(machine, vm, words, op == 0x46 ? SCRIPT_TAP_GROUP_LEFT : SCRIPT_TAP_GROUP_RIGHT);
         break;
     case 0x4d:
+        close_balloons(machine, SCRIPT_TAP_GROUP_RIGHT);
+        break;
     case 0x57:
-        close_all_balloons(machine);
+        close_balloons(machine, ANY_TAP_GROUP);
         break;
     case 0x54:
     case 0x55:
