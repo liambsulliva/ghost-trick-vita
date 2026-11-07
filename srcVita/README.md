@@ -43,8 +43,6 @@ make -C srcVita -j8
 
 The build plays the DS soundtrack, rendered from your own ROM during the bake. `make -C srcVita -j8 DS_MUSIC=0` plays the remaster's soundtrack instead.
 
-The package's LiveArea icon, background and startup image come from the title logo when your extracted assets are in `extracted/remaster_apk` and the converter's texture tool is built. Otherwise they are a plain monogram. A package with the logo contains game art, so keep it for your own Vita. `make -C srcVita release` builds the package that is published on GitHub: it always uses the monogram, as if no assets were present.
-
 This writes the installable package to `srcVita/build/ghosttrick.vpk`. It holds only the app. The art goes on the Vita separately, as [the top-level README](../README.md#run-it-on-a-vita) explains, and the Vita also needs its shader compiler at `ur0:data/libshacccg.suprx`.
 
 The tests run on the Mac and need no SDK. The first command runs the C tests, and the second also runs the converter and tool tests, which need Python's `numpy` and ImageMagick's `magick`.
@@ -69,6 +67,27 @@ Before pushing, run the audit from the top of the repository with your key file 
 python3 -I tools/rom_audit.py
 ```
 
+### LiveArea art
+
+The package's LiveArea icon, background and startup image are built while the package is built. With your extracted game files in place they come from the game's title logo; without them they are a plain monogram. To bundle the logo into your own package:
+
+1. Extract the remaster's files into `extracted/remaster_apk`, as step 2 of [the top-level README](../README.md#run-it-on-a-vita) explains.
+2. Build the converter's texture tool, which the logo needs to decode the game's texture:
+
+   ```bash
+   make -C srcVita/tools/assets
+   ```
+
+3. Build the package. It picks up the logo by itself:
+
+   ```bash
+   make -C srcVita -j8
+   ```
+
+4. Install `srcVita/build/ghosttrick.vpk` on the Vita with VitaShell. The Vita reads LiveArea art only when a package is installed, so replacing `eboot.bin` alone does not change it.
+
+A package with the logo contains game art, so keep it for your own Vita. The package published on GitHub is built with `make -C srcVita release`, which always uses the monogram, as if no game files were present.
+
 ## Make the assets
 
 [The top-level README](../README.md#run-it-on-a-vita) explains how to copy the game files out of your Android package, convert them and put them on the Vita. The app loads them from `ux0:data/ghosttrick/assets/`.
@@ -79,7 +98,18 @@ Converting needs the text key, which step 2 of the top-level README finds in you
 
 Narration and bubble text are rendered by the converter, not the app. `convert_assets.py` reads the English text from the remaster's `.msg` files, decodes its `.oft` fonts into its temporary work folder, and draws each line with `magick` into its own DXT5 texture. The app draws these like any other texture, so it has no fonts. `magick` needs FreeType support, which `magick -list format | grep OTF` shows. Decoded fonts are deleted when the converter finishes, fails or is stopped with SIGINT, SIGTERM or SIGHUP, even twice. A SIGKILL can leave them in the system's temporary folder, and the next conversion removes any such folder older than an hour. The output folder holds each line only as a picture, and no story text or font reaches the output folder or git. The file formats and scene steps are in `docs/asset_format.md`.
 
-After a bake, run `make -C srcVita read-ahead`. It replays the chapter's scripts on the Mac at auto-play pace and writes a `<script>.ahead` list beside each script: every texture a scene's actors and effects use, keyed to the scene's last `game` act and the ticks since it. The app reads those textures a few seconds before they are due, so a room change or a new animation finds its art already loaded.
+After every bake, run the loading step:
+
+```bash
+make -C srcVita read-ahead
+```
+
+It replays the chapter's scripts on the Mac at auto-play pace and writes two files beside each script in `scripts/`:
+
+- `<script>.ahead` lists every texture the scene's actors and effects use, keyed to the scene's last `game` act and the ticks since it. The app reads each texture a few seconds before it is due, so a room change or a new animation finds its art already loaded.
+- `<script>.anims` holds all of the scene's animations in one file. The app reads it once while the scene loads, so starting a new animation never waits on the memory card.
+
+Upload the assets after this step, so the Vita gets both files.
 
 Music and sounds are the remaster's own Ogg Vorbis files, unchanged apart from losing their wrappers.
 
