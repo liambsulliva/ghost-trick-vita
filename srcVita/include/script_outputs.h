@@ -105,7 +105,7 @@ struct script_outputs {
     void (*soul_vision_changed)(int is_on, int with_effect);
     void (*soul_cursor_moved)(int is_shown, float x, float y, float from_x, float from_y, int motion);
     void (*soul_core_marked)(int object_index, float x, float y, int is_dead);
-    void (*soul_tooltip_changed)(const char *object_name, float alpha);
+    void (*soul_mark_changed)(const char *object_name, int age_ticks, float x, float y);
     void (*soul_object_styled)(const char *object_name, unsigned int class_id, int has_core, int is_active, int is_dead);
     void (*soul_flash_changed)(float alpha);
     void (*film_frame_changed)(int is_on);

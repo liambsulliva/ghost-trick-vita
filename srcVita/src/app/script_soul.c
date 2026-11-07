@@ -25,7 +25,6 @@
 #define SOUL_LIGHTNING_TICKS 72
 #define SOUL_POSSESSION_FLASH_TICKS 18
 #define SOUL_POSSESSION_SPARK_TICKS 148
-#define SOUL_TOOLTIP_FADE_TICKS 24
 #define SOUL_STREAM_DS_PIXELS_PER_TICK 6
 #define SOUL_STREAM_TICKS_LEAST 8
 #define SOUL_STREAM_TICKS_MOST 20
@@ -73,6 +72,11 @@ enum tutorial_mode {
 #define NORMAL_FOLLOW_STOPS_BELOW 0.25f
 #define DS_SCREEN_WIDTH 256
 #define DS_SCREEN_HEIGHT 192
+#define MARK_IS_OFF -1
+#define MARK_LAST_TICK 165
+#define MARK_TICKS_BEFORE_THE_CORE_SHOWS 30
+#define MARK_AFTER_LEAVING_TICKS 5
+#define MARK_SOUND_KIND 18
 #define PILL_HOLD_AFTER_VIEW_CHANGE 2
 #define PILL_HOLD_AFTER_TRICK 1
 #define SOUL_VIEW_ENTER_TICKS 33
@@ -122,7 +126,9 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
     soul->active_object = object_index;
     soul->active_slot = slot;
     machine->active_core_name = machine->objects[object_index].name;
-    soul->tooltip_is_on = soul->is_on;
+    if (soul->is_on) {
+        soul->mark_age_ticks = MARK_TICKS_BEFORE_THE_CORE_SHOWS;
+    }
     if (machine->outputs->marked != NULL) {
         machine->outputs->marked("core", machine->objects[object_index].name);
     }
@@ -201,17 +207,16 @@ static void report_soul_view(struct script_machine *machine)
             machine->outputs->soul_cursor_moved(0, 0.0f, 0.0f, 0.0f, 0.0f, SCRIPT_SOUL_RESTING);
         }
     }
-    if (machine->outputs->soul_tooltip_changed != NULL) {
-        float alpha;
+    if (machine->outputs->soul_mark_changed != NULL) {
+        if (soul->mark_age_ticks >= 0 && soul->active_object != NO_CORE && soul->drag_ticks_left == 0) {
+            float x;
+            float y;
 
-        alpha = 1.0f;
-        if (soul->drag_ticks_left > 0) {
-            int elapsed;
-
-            elapsed = SOUL_BEAM_TICKS + soul->drag_stream_ticks - soul->drag_ticks_left;
-            alpha = machine->objects[soul->drag_object].is_dead && elapsed < SOUL_TOOLTIP_FADE_TICKS ? 1.0f - (float)elapsed / (float)SOUL_TOOLTIP_FADE_TICKS : 0.0f;
+            core_position(machine, soul->active_object, soul->active_slot, &x, &y);
+            machine->outputs->soul_mark_changed(machine->objects[soul->active_object].name, soul->mark_age_ticks, x, y);
+        } else {
+            machine->outputs->soul_mark_changed(NULL, 0, 0.0f, 0.0f);
         }
-        machine->outputs->soul_tooltip_changed(soul->is_on && soul->tooltip_is_on && alpha > 0.0f && soul->active_object != NO_CORE ? machine->objects[soul->active_object].name : NULL, alpha);
     }
     if (!soul->is_on || machine->outputs->soul_core_marked == NULL) {
         return;
@@ -608,6 +613,7 @@ static void start_eye_catch(struct script_machine *machine, const char *kind)
         machine->outputs->sound_played(strcmp(kind, "DestinyUpdate") == 0 ? EYECATCH_SOUND_UPDATE : (strcmp(clip, "BANGO") == 0 ? EYECATCH_SOUND_NUMBER : EYECATCH_SOUND_TRICK));
     }
     machine->mode_byte = DEMO_MODE;
+    machine->eyecatch_marks_the_core = strcmp(kind, "Trick") == 0;
     machine->eyecatch_ticks_left = machine->auto_press == SCRIPT_AUTO_FAST ? 0 : frames + EYECATCH_RELEASE_TICKS;
 }
 
@@ -617,6 +623,10 @@ int script_soul_step_eyecatch(struct script_machine *machine)
         return 0;
     }
     machine->eyecatch_ticks_left = machine->eyecatch_ticks_left - 1;
+    if (machine->eyecatch_ticks_left == 0 && machine->eyecatch_marks_the_core) {
+        machine->eyecatch_marks_the_core = 0;
+        script_soul_start_player_mark(machine);
+    }
     report_hud(machine);
     return 1;
 }
@@ -662,7 +672,7 @@ static void set_soul_view_with_effect(struct script_machine *machine, int is_on,
     soul->is_leaving_view = 0;
     if (!is_on) {
         soul->player_opened_soul_view = 0;
-        soul->tooltip_is_on = 0;
+        soul->mark_age_ticks = MARK_IS_OFF;
         soul->is_leaving_view = holds_the_world;
     }
     soul->view_change_ticks_left = holds_the_world ? (is_on ? SOUL_VIEW_ENTER_TICKS : SOUL_VIEW_LEAVE_TICKS) : 0;
@@ -709,6 +719,31 @@ static int leaving_skips_the_effect(struct script_machine *machine)
     return is_quiet;
 }
 
+void script_soul_start_player_mark(struct script_machine *machine)
+{
+    if (machine->soul.active_object == NO_CORE) {
+        return;
+    }
+    machine->soul.mark_age_ticks = 0;
+    if (machine->outputs->sound_played != NULL) {
+        machine->outputs->sound_played(MARK_SOUND_KIND);
+    }
+}
+
+static void age_the_player_mark(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->mark_age_ticks < 0) {
+        return;
+    }
+    soul->mark_age_ticks = soul->mark_age_ticks + 1;
+    if (soul->mark_age_ticks > MARK_LAST_TICK) {
+        soul->mark_age_ticks = MARK_IS_OFF;
+    }
+}
+
 static void finish_leaving_view_when_due(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -718,6 +753,12 @@ static void finish_leaving_view_when_due(struct script_machine *machine)
         return;
     }
     soul->view_change_ticks_left = soul->view_change_ticks_left - 1;
+    if (soul->is_leaving_view && soul->view_change_ticks_left == SOUL_VIEW_LEAVE_TICKS - MARK_AFTER_LEAVING_TICKS && machine->mode_byte == NORMAL_PLAY_MODE) {
+        script_soul_start_player_mark(machine);
+    }
+    if (soul->is_on && soul->view_change_ticks_left == 0 && soul->player_opened_soul_view) {
+        soul->mark_age_ticks = MARK_TICKS_BEFORE_THE_CORE_SHOWS;
+    }
     if (soul->view_change_ticks_left == 0 && soul->is_leaving_view) {
         soul->is_leaving_view = 0;
         machine->pause_bit = 0;
@@ -907,6 +948,7 @@ static void take_press(struct script_machine *machine)
     }
     if (script_soul_world_is_playable(machine) && soul->trick_is_on && !core_is_busy(machine) && pill_answers_a_press(machine, SCRIPT_PILL_TRICK)) {
         script_pills_press(machine, SCRIPT_PILL_TRICK, PILL_HOLD_AFTER_TRICK);
+        soul->mark_age_ticks = MARK_IS_OFF;
         fire_trick(machine);
     }
 }
@@ -1510,6 +1552,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     move_soul_tip(machine);
     move_free_camera(machine);
     follow_core_with_camera(machine);
+    age_the_player_mark(machine);
     finish_drag_when_due(machine);
     report_soul_view(machine);
     report_possession_effects(machine);
@@ -1563,6 +1606,7 @@ void script_soul_reset(struct script_machine *machine)
     machine->soul.active_object = NO_CORE;
     machine->soul.start_message_at = -1;
     machine->soul.final_message_at = -1;
+    machine->soul.mark_age_ticks = MARK_IS_OFF;
     machine->soul.trick_is_on = 1;
     machine->countdown_interval = COUNTDOWN_DEFAULT_INTERVAL;
     machine->active_core_name = NULL;

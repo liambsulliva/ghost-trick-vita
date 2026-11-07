@@ -68,15 +68,39 @@
 #define SOUL_WISP_RADIUS_SMALLEST 1.0f
 #define CORE_GLOW_SIZE 84.0f
 #define CORE_ORB_SIZE 40.0f
-#define TOOLTIP_RING_TEXTURE "soul_tooltip_ring"
-#define TOOLTIP_NO_ACTION "-"
-#define TOOLTIP_RING_SIZE 135.0f
-#define TOOLTIP_UNKNOWN_OBJECT "?"
-#define TOOLTIP_LINE_START 24.0f
-#define TOOLTIP_LINE_END 135.0f
-#define TOOLTIP_BEND_RISE 85.0f
-#define TOOLTIP_BEND_STOPS_ABOVE_CORE 22.0f
-#define TOOLTIP_BEND_LENGTH 120.0f
+#define MARK_ART_TEXTURE "ui_mark"
+#define MARK_ART_WIDTH 512.0f
+#define MARK_ART_HEIGHT 256.0f
+#define MARK_ORB_CELL_X 2.0f
+#define MARK_ORB_CELL_Y 2.0f
+#define MARK_ORB_CELL_SIZE 192.0f
+#define MARK_RING_CELL_X 197.0f
+#define MARK_RING_CELL_Y 1.0f
+#define MARK_RING_CELL_SIZE 182.0f
+#define MARK_ORB_SIZE 96.0f
+#define MARK_RING_SIZE 91.0f
+#define MARK_RING_GROWTH 45.5f
+#define MARK_CORE_STARTS_AT 30.0f
+#define MARK_GROW_TICKS 10.0f
+#define MARK_ORB_FADES_AT 125.0f
+#define MARK_ORB_GONE_AT 130.0f
+#define MARK_CORE_ENDS_AT 135.0f
+#define MARK_LEADER_STARTS_AT 30.0f
+#define MARK_LEADER_SHOWN_AT 40.0f
+#define MARK_LEADER_FADES_AT 155.0f
+#define MARK_LEADER_GONE_AT 165.0f
+#define MARK_LEADER_REACH 135.0f
+#define MARK_LEADER_DRIFT 15.0f
+#define MARK_ELBOW_RISE 75.0f
+#define MARK_ELBOW_LENGTH 120.0f
+#define MARK_NO_ACTION "-"
+#define MARK_UNKNOWN_OBJECT "?"
+#define MARK_LINE_THICKNESS 2.0f
+#define MARK_GLYPH_SHEET "hud_sheet"
+#define MARK_GLYPH_SIZE 18.0f
+#define MARK_GLYPH_GAP 3.0f
+#define MARK_GLYPH_CELL_WIDTH 0.078125f
+#define MARK_GLYPH_CELL_HEIGHT 0.3125f
 #define LIGHTNING_POINT_COUNT 36
 #define LIGHTNING_WAVES 14.0f
 #define LIGHTNING_WAVE_STEP 1.1f
@@ -89,7 +113,6 @@
 #define LIGHTNING_LUMP_SPREAD 34.0f
 #define LIGHTNING_LUMP_RADIUS_LEAST 8.0f
 #define LIGHTNING_LUMP_RADIUS_SPREAD 16.0f
-#define TOOLTIP_LINE_THICKNESS 2.0f
 #define FILM_STRIP_TEXTURE "film_strip"
 #define FILM_CORNER_TEXTURE "film_corner"
 #define FILM_TILE_SIZE 45.0f
@@ -154,8 +177,11 @@ static struct view_effect effects[VIEW_EFFECT_MAX];
 static unsigned int age_ticks;
 static int cursor_is_shown;
 static int cursor_motion;
-static const struct script_core_label *tooltip_label;
-static float tooltip_alpha;
+static const struct script_core_label *mark_label;
+static int mark_object_is_shown;
+static int mark_age_ticks;
+static float mark_x;
+static float mark_y;
 static float flash_alpha;
 static int film_frame_is_on;
 static int swirl_is_on;
@@ -216,14 +242,17 @@ void script_view_cursor_moved(int is_shown, float x, float y, float from_x, floa
     cursor_motion = motion;
 }
 
-void script_view_tooltip_changed(const char *object_name, float alpha)
+void script_view_mark_changed(const char *object_name, int age_ticks, float x, float y)
 {
-    tooltip_alpha = alpha;
-    tooltip_label = NULL;
+    mark_object_is_shown = object_name != NULL;
+    mark_age_ticks = age_ticks;
+    mark_x = x;
+    mark_y = y;
+    mark_label = NULL;
     if (object_name != NULL && tables != NULL) {
-        tooltip_label = script_tables_find_core_label(tables, object_name);
-        if (tooltip_label == NULL) {
-            tooltip_label = script_tables_find_core_label(tables, TOOLTIP_UNKNOWN_OBJECT);
+        mark_label = script_tables_find_core_label(tables, object_name);
+        if (mark_label == NULL) {
+            mark_label = script_tables_find_core_label(tables, MARK_UNKNOWN_OBJECT);
         }
     }
 }
@@ -687,30 +716,141 @@ static void draw_tooltip_line(float x, float y, float width, float height, struc
     renderer_draw_filled_rect(line, tint);
 }
 
-static void draw_tooltip(float screen_x, float screen_y)
+static float ramp(float value, float from, float to)
+{
+    if (value <= from) {
+        return 0.0f;
+    }
+    return value >= to ? 1.0f : (value - from) / (to - from);
+}
+
+static float along(float amount, float from, float to)
+{
+    return from + (to - from) * amount;
+}
+
+static void draw_mark_cell(const struct cached_texture *art, float x, float y, float size, float cell_x, float cell_y, float cell_size, float alpha)
+{
+    struct renderer_rect area;
+    struct renderer_rect part;
+    struct renderer_color tint;
+
+    area.x = x - size / 2.0f;
+    area.y = y - size / 2.0f;
+    area.width = size;
+    area.height = size;
+    part.x = cell_x / MARK_ART_WIDTH;
+    part.y = cell_y / MARK_ART_HEIGHT;
+    part.width = cell_size / MARK_ART_WIDTH;
+    part.height = cell_size / MARK_ART_HEIGHT;
+    tint = white;
+    tint.alpha = alpha;
+    renderer_draw_sprite(art->texture, area, part, tint);
+}
+
+static void draw_mark_core(float x, float y, float age)
+{
+    const struct cached_texture *art;
+    float clip;
+
+    art = texture_cache_use_or_start_loading(MARK_ART_TEXTURE);
+    clip = age - MARK_CORE_STARTS_AT;
+    if (art == NULL || art->state != CACHED_TEXTURE_READY || clip < 0.0f || clip > MARK_CORE_ENDS_AT) {
+        return;
+    }
+    draw_mark_cell(art, x, y, along(ramp(clip, 0.0f, MARK_GROW_TICKS), 0.0f, MARK_RING_SIZE) + along(ramp(clip, MARK_GROW_TICKS, MARK_CORE_ENDS_AT), 0.0f, MARK_RING_GROWTH), MARK_RING_CELL_X, MARK_RING_CELL_Y, MARK_RING_CELL_SIZE, ramp(clip, 0.0f, 1.0f) - ramp(clip, MARK_GROW_TICKS, MARK_CORE_ENDS_AT));
+    draw_mark_cell(art, x, y, along(ramp(clip, 0.0f, MARK_GROW_TICKS), 0.0f, MARK_ORB_SIZE) - along(ramp(clip, MARK_ORB_FADES_AT, MARK_ORB_GONE_AT), 0.0f, MARK_ORB_SIZE / 2.0f), MARK_ORB_CELL_X, MARK_ORB_CELL_Y, MARK_ORB_CELL_SIZE, ramp(clip, 0.0f, MARK_GROW_TICKS) - ramp(clip, MARK_ORB_FADES_AT, MARK_ORB_GONE_AT));
+}
+
+static void draw_mark_glyph(float x, float y, float alpha)
+{
+    const struct cached_texture *sheet;
+    struct renderer_rect area;
+    struct renderer_rect part;
+    struct renderer_color tint;
+
+    sheet = texture_cache_use_or_start_loading(MARK_GLYPH_SHEET);
+    if (sheet == NULL || sheet->state != CACHED_TEXTURE_READY) {
+        return;
+    }
+    area.x = x;
+    area.y = y;
+    area.width = MARK_GLYPH_SIZE;
+    area.height = MARK_GLYPH_SIZE;
+    part.x = 0.0f;
+    part.y = 0.0f;
+    part.width = MARK_GLYPH_CELL_WIDTH;
+    part.height = MARK_GLYPH_CELL_HEIGHT;
+    tint = white;
+    tint.alpha = alpha;
+    renderer_draw_sprite(sheet->texture, area, part, tint);
+}
+
+static void draw_mark_words(float text_end_x, float line_y, float side, float alpha)
 {
     struct renderer_color tint;
-    float line_end;
+    float left;
 
-    if (tooltip_label == NULL) {
-        return;
-    }
     tint = white;
-    tint.alpha = tooltip_alpha;
-    draw_centered(TOOLTIP_RING_TEXTURE, screen_x, screen_y, TOOLTIP_RING_SIZE, tint);
-    if (strcmp(tooltip_label->action_texture, TOOLTIP_NO_ACTION) == 0) {
-        float corner_y;
+    tint.alpha = alpha;
+    left = side > 0.0f ? text_end_x - mark_label->name_width : text_end_x;
+    draw_label_text(mark_label->name_texture, mark_label->name_width, mark_label->name_height, left, line_y - mark_label->name_height, tint);
+    if (strcmp(mark_label->action_texture, MARK_NO_ACTION) != 0) {
+        left = side > 0.0f ? text_end_x - mark_label->action_width : text_end_x;
+        draw_label_text(mark_label->action_texture, mark_label->action_width, mark_label->action_height, left, line_y, tint);
+        if (!soul_is_on) {
+            draw_mark_glyph(left - MARK_GLYPH_SIZE - MARK_GLYPH_GAP, line_y + (mark_label->action_height - MARK_GLYPH_SIZE) / 2.0f, alpha);
+        }
+    }
+}
 
-        corner_y = screen_y - TOOLTIP_BEND_RISE;
-        draw_tooltip_line(screen_x, corner_y, TOOLTIP_LINE_THICKNESS, TOOLTIP_BEND_RISE - TOOLTIP_BEND_STOPS_ABOVE_CORE, tint);
-        draw_tooltip_line(screen_x - TOOLTIP_BEND_LENGTH, corner_y, TOOLTIP_BEND_LENGTH + TOOLTIP_LINE_THICKNESS, TOOLTIP_LINE_THICKNESS, tint);
-        draw_label_text(tooltip_label->name_texture, tooltip_label->name_width, tooltip_label->name_height, screen_x - TOOLTIP_BEND_LENGTH, corner_y - tooltip_label->name_height, tint);
+static void draw_mark_leader(float x, float y, float age)
+{
+    struct renderer_color tint;
+    float side;
+    float show;
+    float drift;
+    float text_end;
+    float line_y;
+
+    show = ramp(age, MARK_LEADER_STARTS_AT, MARK_LEADER_SHOWN_AT) - ramp(age, MARK_LEADER_FADES_AT, MARK_LEADER_GONE_AT);
+    if (show <= 0.0f) {
         return;
     }
-    line_end = screen_x + TOOLTIP_LINE_END;
-    draw_tooltip_line(screen_x + TOOLTIP_LINE_START, screen_y - TOOLTIP_LINE_THICKNESS / 2.0f, TOOLTIP_LINE_END - TOOLTIP_LINE_START, TOOLTIP_LINE_THICKNESS, tint);
-    draw_label_text(tooltip_label->name_texture, tooltip_label->name_width, tooltip_label->name_height, line_end - tooltip_label->name_width, screen_y - tooltip_label->name_height, tint);
-    draw_label_text(tooltip_label->action_texture, tooltip_label->action_width, tooltip_label->action_height, line_end - tooltip_label->action_width, screen_y, tint);
+    drift = ramp(age, MARK_LEADER_SHOWN_AT, MARK_LEADER_FADES_AT) * MARK_LEADER_DRIFT;
+    side = x > (float)RENDERER_WIDTH / 2.0f ? -1.0f : 1.0f;
+    tint = white;
+    tint.alpha = show;
+    if (strcmp(mark_label->action_texture, MARK_NO_ACTION) == 0) {
+        float rise;
+
+        rise = MARK_ELBOW_RISE + drift;
+        line_y = y - rise;
+        draw_tooltip_line(x, line_y, MARK_LINE_THICKNESS, rise, tint);
+        draw_tooltip_line(side > 0.0f ? x : x - MARK_ELBOW_LENGTH, line_y, MARK_ELBOW_LENGTH, MARK_LINE_THICKNESS, tint);
+        text_end = x + side * MARK_ELBOW_LENGTH;
+    } else {
+        float reach;
+
+        reach = MARK_LEADER_REACH * ramp(age, MARK_LEADER_STARTS_AT, MARK_LEADER_SHOWN_AT) + drift;
+        line_y = y;
+        draw_tooltip_line(side > 0.0f ? x : x - reach, y - MARK_LINE_THICKNESS / 2.0f, reach, MARK_LINE_THICKNESS, tint);
+        text_end = x + side * reach;
+    }
+    draw_mark_words(text_end, line_y, side, show);
+}
+
+static void draw_mark(void)
+{
+    float screen_x;
+    float screen_y;
+
+    if (!mark_object_is_shown || mark_label == NULL) {
+        return;
+    }
+    scene_view_world_to_screen(scene_stage_view(), mark_x, mark_y, &screen_x, &screen_y);
+    draw_mark_core(screen_x, screen_y, (float)mark_age_ticks);
+    draw_mark_leader(screen_x, screen_y, (float)mark_age_ticks);
 }
 
 static void draw_flat_dot(float center_x, float center_y, float radius, struct renderer_color color)
@@ -822,7 +962,6 @@ static void draw_soul(void)
     draw_soul_motion(screen_x, screen_y);
     draw_soul_body(screen_x, screen_y);
     draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, SOUL_ORB_SIZE, orb);
-    draw_tooltip(screen_x, screen_y);
     draw_possession_sparks();
     if (flash_alpha > 0.0f) {
         struct renderer_rect whole_screen;
@@ -964,6 +1103,7 @@ void script_view_draw_on_world(void)
     draw_swirl();
     draw_film_frame();
     draw_soul();
+    draw_mark();
 }
 
 int script_view_wants_snapshot(void)

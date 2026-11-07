@@ -262,7 +262,7 @@ struct script_soul {
     int tip_is_aimed;
     float tip_aim_x;
     float tip_aim_y;
-    int tooltip_is_on;
+    int mark_age_ticks;
     int flash_ticks_left;
     int sparks_elapsed_ticks;
     int drag_ticks_left;
@@ -316,6 +316,7 @@ struct script_machine {
     struct script_talk talk;
     const struct script_talk_book *talk_book;
     int soul_state_keeps_pause;
+    int eyecatch_marks_the_core;
     int press_is_pending;
     struct script_soul soul;
     const char *active_core_name;
@@ -424,6 +425,7 @@ void script_pills_unregister_all(struct script_machine *machine);
 void script_pills_effect_spawned(struct script_machine *machine, int effect_id, const char *name);
 void script_pills_effect_deleted(struct script_machine *machine, const char *name);
 void script_pills_fill_view(const struct script_machine *machine, struct script_hud_view *view);
+void script_soul_start_player_mark(struct script_machine *machine);
 void script_soul_note_ghost(struct script_machine *machine);
 void script_soul_note_pill(struct script_machine *machine, enum script_pill_id id);
 void script_soul_note_tap(struct script_machine *machine, int tap_group);

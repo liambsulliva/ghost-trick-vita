@@ -800,6 +800,9 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
     case 0x68:
         machine->mode_byte = MODE_BYTE_NORMAL;
         return SCRIPT_STEP_NEXT_THEN_YIELD;
+    case 0x7e:
+        script_soul_start_player_mark(machine);
+        return SCRIPT_STEP_NEXT;
     case 0xe1:
         if (vm->owner != NULL) {
             vm->owner->is_dead = 1;
