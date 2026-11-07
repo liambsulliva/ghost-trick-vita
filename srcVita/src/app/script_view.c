@@ -152,8 +152,7 @@
 #define SOUL_BEAM_HALF_WIDTH 16.0f
 #define CHAIN_SEGMENT_SHORTEST 0.5f
 #define CHAIN_TEXTURE_S_SPAN 64.0f
-#define SOUL_SPARKS_FLIPBOOK "soul_sparks"
-#define SOUL_SPARKS_SIZE 340.0f
+#define SOUL_SPARKS_MOVIE "deadtricklight"
 #define SOUL_STREAM_LENGTH 0.7f
 #define SOUL_STREAM_RADIUS 18.0f
 #define SOUL_STREAM_RADIUS_LEAST 3.0f
@@ -621,12 +620,12 @@ static void draw_fx_frame(const struct script_fx_movie *movie, const struct scri
     renderer_draw_triangles(texture->texture, corners, 2, white);
 }
 
-static void draw_fx_movie(struct view_effect *effect)
+static void draw_fx_movie_named(struct view_effect *effect, const char *movie_name)
 {
     const struct script_fx_movie *movie;
     int frame;
 
-    movie = script_tables_find_fx_movie(tables, effect->row->texture_name);
+    movie = script_tables_find_fx_movie(tables, movie_name);
     if (movie == NULL || movie->frame_count == 0 || movie->ticks_per_frame <= 0.0f) {
         return;
     }
@@ -645,6 +644,11 @@ static void draw_fx_movie(struct view_effect *effect)
     if (tables->fx_frames[movie->first_frame + frame].page >= 0) {
         draw_fx_frame(movie, &tables->fx_frames[movie->first_frame + frame], effect);
     }
+}
+
+static void draw_fx_movie(struct view_effect *effect)
+{
+    draw_fx_movie_named(effect, effect->row->texture_name);
 }
 
 static void draw_effect(const struct view_effect *effect)
@@ -1235,16 +1239,19 @@ static void draw_lightning_stream(float from_x, float from_y, float to_x, float 
 
 static void draw_possession_sparks(void)
 {
-    const struct script_flipbook *sparks;
-    float screen_x;
-    float screen_y;
+    struct view_effect sparks;
+    static const struct script_effect_row sparks_row = { 0 };
 
-    sparks = script_tables_find_flipbook(tables, SOUL_SPARKS_FLIPBOOK);
-    if (sparks_elapsed_ticks <= 0 || sparks == NULL) {
+    if (sparks_elapsed_ticks <= 0 || script_tables_find_fx_movie(tables, SOUL_SPARKS_MOVIE) == NULL) {
         return;
     }
-    scene_view_world_to_screen(scene_stage_view(), sparks_x, sparks_y, &screen_x, &screen_y);
-    draw_flipbook(sparks, (unsigned int)sparks_elapsed_ticks, screen_x, screen_y, SOUL_SPARKS_SIZE, SOUL_SPARKS_SIZE, white);
+    memset(&sparks, 0, sizeof(sparks));
+    sparks.row = &sparks_row;
+    sparks.in_use = 1;
+    sparks.x = sparks_x;
+    sparks.y = sparks_y;
+    sparks.age_ticks = sparks_elapsed_ticks - 1;
+    draw_fx_movie_named(&sparks, SOUL_SPARKS_MOVIE);
 }
 
 static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y)

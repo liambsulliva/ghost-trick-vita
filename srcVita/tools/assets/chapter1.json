@@ -58,7 +58,8 @@
     {"id": 93, "effect": "st01_dosun_00"},
     {"id": 94, "effect": "st01_bed_00"},
     {"id": 95, "effect": "st01_guiter_00"},
-    {"id": 31, "effect": "cmn_shig_01", "only_in_soul_view": 1}
+    {"id": 31, "effect": "cmn_shig_01", "only_in_soul_view": 1},
+    {"effect": "deadtricklight"}
   ],
   "effects": [
     {
@@ -345,24 +346,6 @@
         173,
         244
       ]
-    },
-    {
-      "name": "soul_sparks_00",
-      "source": "natives/android/charfiles/3d/05_effect/deadtricklight/23_deadtricklight_00_iml4.tex.691230823",
-      "width": 1024,
-      "height": 1024
-    },
-    {
-      "name": "soul_sparks_01",
-      "source": "natives/android/charfiles/3d/05_effect/deadtricklight/23_deadtricklight_01_iml4.tex.691230823",
-      "width": 1024,
-      "height": 1024
-    },
-    {
-      "name": "soul_sparks_02",
-      "source": "natives/android/charfiles/3d/05_effect/deadtricklight/23_deadtricklight_02_iml4.tex.691230823",
-      "width": 1024,
-      "height": 1024
     },
     {
       "name": "soul_beam",
@@ -1008,20 +991,6 @@
         "soul_dim_00",
         "soul_dim_01",
         "soul_dim_02"
-      ]
-    },
-    {
-      "name": "soul_sparks",
-      "ticks_per_frame": 2,
-      "frames": 74,
-      "columns": 5,
-      "rows": 5,
-      "cell_width": 0.1758,
-      "cell_height": 0.1758,
-      "pages": [
-        "soul_sparks_00",
-        "soul_sparks_01",
-        "soul_sparks_02"
       ]
     }
   ],
