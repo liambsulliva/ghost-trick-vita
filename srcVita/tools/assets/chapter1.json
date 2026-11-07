@@ -898,6 +898,7 @@
   "core_labels": {
     "file": "natives/android/gamedesign/text/st01/st01_id.msg.22",
     "name_entry": "st01_id_st01a_gn_",
+    "second_name_entry": "st01_id_st01b_gn_",
     "action_entry": "st01_id_st01a_acn_",
     "font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
     "pixels_per_em": 20,
@@ -907,6 +908,10 @@
       255
     ],
     "objects": {
+      "cardoor": ["b:0e", null],
+      "hyousiki": ["02", null],
+      "kuneri2": ["04", null],
+      "lkasa": ["17", null],
       "cicel": [
         "00",
         null
@@ -933,7 +938,7 @@
       ],
       "freezer": [
         "08",
-        null
+        "08_1"
       ],
       "mixer": [
         "09",
@@ -983,8 +988,7 @@
         "18",
         null
       ]
-    },
-    "unknown_text": "???"
+    }
   },
   "movies": [
     {"name": "time_jump", "pack_key": [1055199497, 206956949], "fps": 20, "width": 640, "height": 360},

@@ -94,7 +94,6 @@
 #define MARK_ELBOW_RISE 75.0f
 #define MARK_ELBOW_LENGTH 120.0f
 #define MARK_NO_ACTION "-"
-#define MARK_UNKNOWN_OBJECT "?"
 #define MARK_LINE_THICKNESS 2.0f
 #define MARK_GLYPH_SHEET "hud_sheet"
 #define MARK_GLYPH_SIZE 18.0f
@@ -251,9 +250,6 @@ void script_view_mark_changed(const char *object_name, int age_ticks, float x, f
     mark_label = NULL;
     if (object_name != NULL && tables != NULL) {
         mark_label = script_tables_find_core_label(tables, object_name);
-        if (mark_label == NULL) {
-            mark_label = script_tables_find_core_label(tables, MARK_UNKNOWN_OBJECT);
-        }
     }
 }
 
@@ -845,12 +841,14 @@ static void draw_mark(void)
     float screen_x;
     float screen_y;
 
-    if (!mark_object_is_shown || mark_label == NULL) {
+    if (!mark_object_is_shown) {
         return;
     }
     scene_view_world_to_screen(scene_stage_view(), mark_x, mark_y, &screen_x, &screen_y);
     draw_mark_core(screen_x, screen_y, (float)mark_age_ticks);
-    draw_mark_leader(screen_x, screen_y, (float)mark_age_ticks);
+    if (mark_label != NULL) {
+        draw_mark_leader(screen_x, screen_y, (float)mark_age_ticks);
+    }
 }
 
 static void draw_flat_dot(float center_x, float center_y, float radius, struct renderer_color color)
