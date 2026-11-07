@@ -10,6 +10,7 @@
 #include "memory.h"
 #include "music_engine.h"
 #include "run_log.h"
+#include "next_chapter_card.h"
 #include "scene_stage.h"
 #include "script_bridge.h"
 #include "script_machine.h"
@@ -39,6 +40,7 @@ enum script_player_phase {
     PHASE_LOADING_ANIMATIONS,
     PHASE_PRELOADING,
     PHASE_RUNNING,
+    PHASE_NEXT_CHAPTER_CARD,
     PHASE_FINISHED
 };
 
@@ -66,6 +68,7 @@ static int is_active;
 static int is_paused;
 static int read_step;
 static int auto_play_is_on;
+static float next_chapter_card_age_ticks;
 static int is_holding_for_art;
 static unsigned long long art_wait_us;
 static int preload_row;
@@ -380,6 +383,22 @@ static void finish_run(void)
     music_request_stop(MUSIC_QUICK_FADE_TICKS);
     run_log_write("script finished name=%s tick=%u", entry, data->machine.tick);
     run_log_write("script tick_us_max=%llu", longest_tick_us);
+    if (data->tables.next_chapter_card_texture[0] != '\0') {
+        phase = PHASE_NEXT_CHAPTER_CARD;
+        next_chapter_card_age_ticks = 0.0f;
+        scene_stage_show_card(data->tables.next_chapter_card_texture);
+        scene_stage_set_fade(next_chapter_card_fade(next_chapter_card_age_ticks));
+    }
+}
+
+static void step_next_chapter_card(unsigned long long elapsed_us)
+{
+    next_chapter_card_age_ticks = next_chapter_card_age_ticks + (float)elapsed_us / (float)MICROSECONDS_PER_VM_TICK;
+    scene_stage_set_fade(next_chapter_card_fade(next_chapter_card_age_ticks));
+    if (next_chapter_card_is_over(next_chapter_card_age_ticks)) {
+        scene_stage_hide_card();
+        phase = PHASE_FINISHED;
+    }
 }
 
 static int run_one_tick(void)
@@ -578,6 +597,10 @@ void script_player_update(unsigned long long elapsed_us)
         }
         return;
     }
+    if (phase == PHASE_NEXT_CHAPTER_CARD) {
+        step_next_chapter_card(elapsed_us);
+        return;
+    }
     scene_effects_advance(scene_stage_effects(), elapsed_us);
     scene_layers_advance(scene_stage_layers(), elapsed_us);
 }
@@ -617,6 +640,11 @@ int script_player_is_active(void)
     return is_active;
 }
 
+int script_player_is_showing_next_chapter_card(void)
+{
+    return phase == PHASE_NEXT_CHAPTER_CARD;
+}
+
 enum scene_playback_state script_player_status(void)
 {
     switch (phase) {
@@ -627,6 +655,7 @@ enum scene_playback_state script_player_status(void)
     case PHASE_PRELOADING:
         return SCENE_PLAYER_PRELOADING;
     case PHASE_RUNNING:
+    case PHASE_NEXT_CHAPTER_CARD:
         return SCENE_PLAYER_RUNNING;
     default:
         return SCENE_PLAYER_FINISHED;

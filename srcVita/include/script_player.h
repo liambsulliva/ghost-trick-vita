@@ -12,6 +12,7 @@ void script_player_stop(void);
 void script_player_set_paused(int should_pause);
 int script_player_is_paused(void);
 int script_player_is_active(void);
+int script_player_is_showing_next_chapter_card(void);
 enum scene_playback_state script_player_status(void);
 void script_player_skip_ahead(void);
 int script_player_is_holding_for_art(void);

@@ -664,6 +664,10 @@ static void draw_centred_scene_end_line(float y, const char *text)
 
 static void draw_game_picture(void)
 {
+    if (script_player_is_showing_next_chapter_card()) {
+        scene_view_draw_covers(scene_stage_view());
+        return;
+    }
     if (script_player_is_active() && script_view_movie_covers_the_screen()) {
         script_view_draw_on_covers();
         return;

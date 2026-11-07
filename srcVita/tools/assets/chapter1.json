@@ -4,7 +4,8 @@
     "entry": "route.xml",
     "language": "en",
     "timing": "remaster",
-    "card_texture": "chapter_card"
+    "card_texture": "chapter_card",
+    "next_chapter_card_texture": "next_chapter_card"
   },
   "narration_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
   "talk": {
@@ -230,6 +231,13 @@
     {
       "name": "chapter_card",
       "source": "natives/android/charfiles/3d/06_id/12_chapter/cmn_ch_00_00_iml3.tex.691230823.en",
+      "width": 720,
+      "height": 540,
+      "list_as_background": true
+    },
+    {
+      "name": "next_chapter_card",
+      "source": "natives/android/charfiles/3d/06_id/12_chapter/cmn_ch_00_01_iml3.tex.691230823.en",
       "width": 720,
       "height": 540,
       "list_as_background": true
