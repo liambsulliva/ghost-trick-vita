@@ -905,6 +905,7 @@
     "file": "natives/android/gamedesign/text/st01/st01_id.msg.22",
     "name_entry": "st01_id_st01a_gn_",
     "second_name_entry": "st01_id_st01b_gn_",
+    "unknown_text": "???",
     "action_entry": "st01_id_st01a_acn_",
     "font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
     "pixels_per_em": 20,
@@ -918,10 +919,7 @@
       "hyousiki": ["02", null],
       "kuneri2": ["04", null],
       "lkasa": ["17", null],
-      "cicel": [
-        "00",
-        null
-      ],
+      "cicel": ["?", "?"],
       "bed": [
         "03",
         "03"

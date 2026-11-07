@@ -59,6 +59,7 @@ TABLE_VARIANT_PATTERN = re.compile(r"^(st\d\d_.+_\d{3})_(\d{2,3}[a-z]?)$")
 NARRATION_OP = 0x5d
 WORDED_BALLOON_OP = 0x51
 SECOND_NAME_TABLE_MARK = "b:"
+UNKNOWN_LABEL_ID = "?"
 THORN_BALLOON_KIND = 2
 TALK_OPS = (0x37, 0x5c, 0xdb)
 BALLOON_LABEL_OPS = (0x51, 0x45, 0x46, 0x4c, 0x4e)
@@ -454,6 +455,11 @@ def expand_set(set_description, packs, rom_path, text_key):
     if core_labels is not None:
         for object_name, (name_id, action_id) in core_labels["objects"].items():
             style = {"font": core_labels["font"], "pixels_per_em": core_labels["pixels_per_em"], "color": core_labels["color"], "joins_lines": True, "single_line": True, "file": core_labels["file"]}
+            if name_id == UNKNOWN_LABEL_ID:
+                literal = {"literal": core_labels["unknown_text"], "font": core_labels["font"], "pixels_per_em": core_labels["pixels_per_em"], "color": core_labels["color"]}
+                bubble_rows.append(dict(literal, name="core_name_" + object_name))
+                bubble_rows.append(dict(literal, name="core_action_" + object_name))
+                continue
             bubble_rows.append(dict(style, name="core_name_" + object_name, entry=name_entry_of(core_labels, name_id)))
             if action_id is not None:
                 bubble_rows.append(dict(style, name="core_action_" + object_name, entry=core_labels["action_entry"] + (action_id if "_" in action_id else action_id + "_0")))

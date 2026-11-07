@@ -746,6 +746,9 @@ void script_soul_start_player_mark(struct script_machine *machine)
         return;
     }
     machine->soul.mark_age_ticks = 0;
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("player_mark", machine->objects[machine->soul.active_object].name);
+    }
     if (machine->outputs->sound_played != NULL) {
         machine->outputs->sound_played(MARK_SOUND_KIND);
     }
