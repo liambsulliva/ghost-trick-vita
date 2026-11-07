@@ -264,7 +264,10 @@ def move_earlier_copy(connection, relative_path, remote_path, local_size):
     for earlier_path in earlier_device_paths_of_asset(relative_path):
         earlier_remote = ASSETS_FOLDER + "/" + earlier_path
         if remote_size_or_none(connection, earlier_remote) == local_size:
-            connection.rename(earlier_remote, remote_path)
+            try:
+                connection.rename(earlier_remote, remote_path)
+            except ftplib.error_perm:
+                return False
             return remote_size_or_none(connection, remote_path) == local_size
     return False
 
