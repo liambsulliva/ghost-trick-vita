@@ -343,3 +343,8 @@ The converter was built and checked with the Android files only. The Steam copy 
    - Core positions.
    - DS music bgm 8, 21 and 43.
 3. Later chapters, on the same data-driven code.
+4. DS assets when there is no APK. A player who can supply only the DS cartridge gets the port with the DS game's own assets instead of the remaster's:
+   - Art: the DS sprites, rooms and effects, converted from the cartridge's own graphics and drawn at the DS's resolution, scaled up to the Vita's screen.
+   - Text: the DS text and font in place of the remaster's encrypted text, so no text key is needed.
+   - Sound: the DS soundtrack is already rendered from the cartridge; DS sound effects would replace the remaster's.
+   - The setup script would choose this path by itself when no APK is given, and the LiveArea would use the monogram.
