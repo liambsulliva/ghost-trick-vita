@@ -35,8 +35,19 @@
 #define TRICK_ACTION_AFTER_TICKS 8
 #define TIME_JUMP_AFTER_TICKS 30
 #define TIME_JUMP_MOVIE "time_jump"
-#define COUNTDOWN_STEP_TICKS 90
-#define COUNTDOWN_LAST_STEP 3
+#define COUNTDOWN_DEFAULT_INTERVAL 300
+#define COUNTDOWN_ZERO_STEP 3
+#define COUNTDOWN_ENDING_STEP 4
+#define FATE_LEVEL_MOST 7
+#define FATE_LEVEL_LOWEST_WIPE 2
+#define FATE_LEVEL_HIGHEST_WIPE 4
+#define FATE_SECTION_FLAG 0x1020u
+#define EYECATCH_FRAMES 114
+#define EYECATCH_FRAMES_WITH_HOURGLASS 124
+#define EYECATCH_RELEASE_TICKS 3
+#define EYECATCH_SOUND_TRICK 11
+#define EYECATCH_SOUND_UPDATE 12
+#define EYECATCH_SOUND_NUMBER 13
 #define PHONE_EFFECT_ID 49
 #define PHONE_EFFECT_EVENT_AFTER_TICKS 30
 #define CAMERA_FREE_SPEED_PIXELS 4
@@ -48,6 +59,8 @@ enum tutorial_mode {
 };
 
 static const char *const core_verbs[SCRIPT_CORE_SLOT_COUNT] = { "core", "core1" };
+static const char *const fate_wipe_clips[] = { "TIME_1", "TIME_2", "TIME_3" };
+static const char *const countdown_clips[] = { "DEATH_COUNT_3", "DEATH_COUNT_2", "DEATH_COUNT_1", "DEATH_COUNT_0" };
 
 static int object_can_be_a_core(const struct script_object *object, int slot)
 {
@@ -445,6 +458,9 @@ static void fire_trick(struct script_machine *machine)
     }
     object = &machine->objects[soul->active_object];
     soul->tricks_fired = soul->tricks_fired + 1;
+    if (soul->countdown_is_running && soul->countdown_step >= COUNTDOWN_ENDING_STEP && soul->countdown_ticks < TRICK_ACTION_AFTER_TICKS) {
+        soul->countdown_ticks = TRICK_ACTION_AFTER_TICKS;
+    }
     if (machine->outputs->marked != NULL) {
         machine->outputs->marked("trick", object->name);
     }
@@ -471,6 +487,34 @@ static void send_trick_action_when_due(struct script_machine *machine)
     }
 }
 
+static void start_ui_clip(struct script_machine *machine, const char *name, int level_from, int level_to)
+{
+    if (machine->outputs->ui_clip_started != NULL) {
+        machine->outputs->ui_clip_started(name, level_from, level_to);
+    }
+}
+
+void script_soul_set_fate_level(struct script_machine *machine, int level)
+{
+    int previous;
+
+    if (level < 0) {
+        level = 0;
+    }
+    if (level > FATE_LEVEL_MOST) {
+        level = FATE_LEVEL_MOST;
+    }
+    previous = machine->fate_level;
+    if (previous == level) {
+        return;
+    }
+    machine->fate_previous_level = previous;
+    machine->fate_level = level;
+    if (level >= FATE_LEVEL_LOWEST_WIPE && level <= FATE_LEVEL_HIGHEST_WIPE && previous > level && script_flags_read(&machine->flags, FATE_SECTION_FLAG)) {
+        start_ui_clip(machine, fate_wipe_clips[level - FATE_LEVEL_LOWEST_WIPE], level, level);
+    }
+}
+
 static void run_countdown(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -479,30 +523,92 @@ static void run_countdown(struct script_machine *machine)
     if (!soul->countdown_is_running || machine->pause_bit || machine->mode_byte != NORMAL_PLAY_MODE) {
         return;
     }
+    script_soul_set_fate_level(machine, soul->countdown_step >= COUNTDOWN_ENDING_STEP ? 0 : 1);
     soul->countdown_ticks = soul->countdown_ticks - 1;
     if (soul->countdown_ticks > 0) {
         return;
     }
-    soul->countdown_step = soul->countdown_step + 1;
-    if (soul->countdown_step == COUNTDOWN_LAST_STEP) {
+    if (soul->countdown_step < COUNTDOWN_ZERO_STEP) {
+        start_ui_clip(machine, countdown_clips[soul->countdown_step], machine->fate_level, machine->fate_level);
+        soul->countdown_ticks = machine->countdown_interval;
+        soul->countdown_step = soul->countdown_step + 1;
+    } else if (soul->countdown_step == COUNTDOWN_ZERO_STEP) {
+        start_ui_clip(machine, countdown_clips[COUNTDOWN_ZERO_STEP], machine->fate_level, machine->fate_level);
         script_machine_send(machine, "*", "countdown", "zero");
-        soul->countdown_ticks = COUNTDOWN_STEP_TICKS * 3 / 2;
-    } else if (soul->countdown_step > COUNTDOWN_LAST_STEP) {
+        soul->countdown_ticks = machine->countdown_interval * 3 / 2;
+        soul->countdown_step = COUNTDOWN_ENDING_STEP;
+    } else {
         script_machine_send(machine, "*", "countdown", "end");
         soul->countdown_is_running = 0;
-    } else {
-        soul->countdown_ticks = COUNTDOWN_STEP_TICKS;
     }
 }
 
-void script_soul_set_countdown(struct script_machine *machine, int is_on)
+void script_soul_set_countdown(struct script_machine *machine, int first_tick_count)
 {
     struct script_soul *soul;
 
     soul = &machine->soul;
-    soul->countdown_is_running = is_on;
+    soul->countdown_is_running = first_tick_count != 0;
     soul->countdown_step = 0;
-    soul->countdown_ticks = COUNTDOWN_STEP_TICKS;
+    soul->countdown_ticks = first_tick_count;
+}
+
+void script_soul_set_countdown_interval(struct script_machine *machine, int interval)
+{
+    machine->countdown_interval = interval < 0 ? COUNTDOWN_DEFAULT_INTERVAL : interval;
+}
+
+static void report_hud(struct script_machine *machine)
+{
+    struct script_hud_view view;
+
+    if (machine->outputs->hud_changed == NULL) {
+        return;
+    }
+    view.side_is_on = script_flags_read(&machine->flags, FATE_SECTION_FLAG);
+    view.fate_level = machine->fate_level;
+    view.world_is_running = !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && machine->eyecatch_ticks_left == 0;
+    view.is_hidden_for_movie = 0;
+    machine->outputs->hud_changed(&view);
+}
+
+static void start_eye_catch(struct script_machine *machine, const char *kind)
+{
+    const char *clip;
+    int frames;
+
+    if (strcmp(kind, "Trick") == 0) {
+        clip = "TRICK";
+        frames = EYECATCH_FRAMES;
+    } else if (strcmp(kind, "DestinyUpdate") == 0) {
+        clip = "KOSHIN";
+        frames = EYECATCH_FRAMES_WITH_HOURGLASS;
+    } else if (strcmp(kind, "DestinyLock") == 0) {
+        clip = "KANRYO";
+        frames = EYECATCH_FRAMES;
+    } else if (strcmp(kind, "NumberGet") == 0 || strcmp(kind, "NumberGetForce") == 0) {
+        clip = "BANGO";
+        frames = EYECATCH_FRAMES;
+    } else {
+        script_machine_note(machine, NULL, "eyecatch_kind_not_ported", kind);
+        return;
+    }
+    start_ui_clip(machine, clip, machine->fate_previous_level, machine->fate_level);
+    if (machine->outputs->sound_played != NULL) {
+        machine->outputs->sound_played(strcmp(kind, "DestinyUpdate") == 0 ? EYECATCH_SOUND_UPDATE : (strcmp(clip, "BANGO") == 0 ? EYECATCH_SOUND_NUMBER : EYECATCH_SOUND_TRICK));
+    }
+    machine->mode_byte = DEMO_MODE;
+    machine->eyecatch_ticks_left = machine->auto_press == SCRIPT_AUTO_FAST ? 0 : frames + EYECATCH_RELEASE_TICKS;
+}
+
+int script_soul_step_eyecatch(struct script_machine *machine)
+{
+    if (machine->eyecatch_ticks_left <= 0) {
+        return 0;
+    }
+    machine->eyecatch_ticks_left = machine->eyecatch_ticks_left - 1;
+    report_hud(machine);
+    return 1;
 }
 
 static void send_timed_native_event(struct script_machine *machine, struct script_timed_event *event)
@@ -644,6 +750,8 @@ void script_soul_run_command(struct script_machine *machine, const char *verb, c
         run_exception_command(machine, arg);
     } else if (strcmp(verb, "CustomSoulVision") == 0) {
         run_custom_soul_command(machine, arg);
+    } else if (strcmp(verb, "EyeCatch") == 0) {
+        start_eye_catch(machine, arg);
     } else if (strcmp(verb, "FreeCamera") == 0) {
         machine->soul.camera_tutorial_is_on = strcmp(arg, "TutorialStart") == 0;
     } else if (strcmp(verb, "Timeleap") == 0 && strcmp(arg, "BREAK") == 0) {
@@ -1214,6 +1322,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     report_possession_effects(machine);
     send_trick_action_when_due(machine);
     run_countdown(machine);
+    report_hud(machine);
     send_timed_native_event(machine, &soul->phone_event);
     send_timed_native_event(machine, &soul->time_jump_event);
 }
@@ -1250,6 +1359,7 @@ void script_soul_reset(struct script_machine *machine)
     machine->soul.active_object = NO_CORE;
     machine->soul.start_message_at = -1;
     machine->soul.trick_is_on = 1;
+    machine->countdown_interval = COUNTDOWN_DEFAULT_INTERVAL;
     machine->active_core_name = NULL;
 }
 

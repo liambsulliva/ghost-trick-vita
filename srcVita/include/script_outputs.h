@@ -43,6 +43,13 @@ enum script_soul_motion {
     SCRIPT_SOUL_LIGHTNING
 };
 
+struct script_hud_view {
+    int side_is_on;
+    int fate_level;
+    int world_is_running;
+    int is_hidden_for_movie;
+};
+
 struct script_outputs {
     void (*fetched)(const struct script_fetch *fetch);
     void (*stage_cleared)(void);
@@ -50,6 +57,8 @@ struct script_outputs {
     void (*camera_cut)(int x, int y);
     void (*camera_moved)(int x, int y);
     void (*world_origin_changed)(int x, int y);
+    void (*ui_clip_started)(const char *name, int level_from, int level_to);
+    void (*hud_changed)(const struct script_hud_view *view);
     void (*shake_changed)(int level, int ticks);
     void (*screen_filter_changed)(int mode);
     void (*mask_fade_color_changed)(int is_white);

@@ -7,6 +7,7 @@
 #include "run_log.h"
 #include "scene_stage.h"
 #include "scene_view.h"
+#include "script_ui_view.h"
 #include "animation_library.h"
 #include "script_bridge.h"
 #include "script_player.h"
@@ -110,6 +111,12 @@ static void on_stage_cleared(void)
     script_view_swirl_changed(0);
     scene_stage_set_mono_mode(0);
     sound_request_stop_loop(ALL_SOUND_LOOPS);
+}
+
+static void on_ui_clip_started(const char *name, int level_from, int level_to)
+{
+    write_cue("ui_clip", name);
+    script_ui_view_clip_started(name, level_from, level_to);
 }
 
 static void on_world_origin_changed(int x, int y)
@@ -607,6 +614,8 @@ static const struct script_outputs bridge_outputs = {
     .camera_cut = on_camera_cut,
     .camera_moved = on_camera_moved,
     .world_origin_changed = on_world_origin_changed,
+    .ui_clip_started = on_ui_clip_started,
+    .hud_changed = script_ui_view_hud_changed,
     .shake_changed = on_shake_changed,
     .screen_filter_changed = on_screen_filter_changed,
     .mask_fade_color_changed = on_mask_fade_color_changed,
@@ -683,6 +692,7 @@ void script_bridge_start(const struct script_tables *new_tables)
     shake_level = 0;
     shake_ticks_left = 0;
     script_view_start(new_tables);
+    script_ui_view_start(new_tables);
     memset(open_balloon_rows, 0, sizeof(open_balloon_rows));
     memset(pending_overlays, 0, sizeof(pending_overlays));
     scene_stage_clear_room();

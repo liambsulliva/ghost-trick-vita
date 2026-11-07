@@ -259,7 +259,7 @@ void script_machine_send(struct script_machine *machine, const char *target, con
 
 static int gameapp_verb_is_known(const char *verb)
 {
-    static const char *const verbs[] = { "Button", "Message", "SVTUTO", "SoulVision", "Exception", "CustomSoulVision", "FreeCamera", "Timeleap" };
+    static const char *const verbs[] = { "Button", "Message", "SVTUTO", "SoulVision", "Exception", "CustomSoulVision", "FreeCamera", "Timeleap", "EyeCatch" };
     unsigned int index;
 
     for (index = 0; index < sizeof(verbs) / sizeof(verbs[0]); index++) {
@@ -1500,6 +1500,9 @@ void script_machine_tick(struct script_machine *machine)
 {
     int index;
 
+    if (script_soul_step_eyecatch(machine)) {
+        return;
+    }
     if (machine->is_finished) {
         return;
     }

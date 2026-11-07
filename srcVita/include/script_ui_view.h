@@ -1,0 +1,14 @@
+#ifndef SCRIPT_UI_VIEW_H
+#define SCRIPT_UI_VIEW_H
+
+#include "script_outputs.h"
+#include "script_tables.h"
+
+void script_ui_view_start(const struct script_tables *tables);
+void script_ui_view_clear(void);
+void script_ui_view_clip_started(const char *name, int level_from, int level_to);
+void script_ui_view_hud_changed(const struct script_hud_view *view);
+void script_ui_view_advance(void);
+void script_ui_view_draw(void);
+
+#endif

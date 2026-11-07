@@ -306,6 +306,11 @@ int script_tables_read_soul(struct script_tables *tables, const char *text, unsi
     return read_all_lines(tables, text, text_size, read_soul_line);
 }
 
+int script_tables_read_ui_clips(struct script_tables *tables, const char *text, unsigned int text_size)
+{
+    return ui_clips_read(&tables->ui_clips, text, text_size);
+}
+
 int script_tables_read_route(struct script_tables *tables, const char *text, unsigned int text_size)
 {
     return script_route_read(&tables->route, text, text_size);

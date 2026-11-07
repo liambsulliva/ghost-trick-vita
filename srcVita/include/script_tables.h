@@ -4,6 +4,7 @@
 #include "asset_name.h"
 #include "script_machine.h"
 #include "script_narration.h"
+#include "ui_clips.h"
 
 #define SCRIPT_CHAIN_FILE_MAX SCRIPT_SOURCE_MAX
 #define SCRIPT_ROOM_PLATE_MAX 64
@@ -138,6 +139,7 @@ struct script_preload_row {
 
 struct script_tables {
     struct script_route route;
+    struct ui_clips ui_clips;
     char card_texture[ASSET_NAME_MAX];
     enum script_timing timing;
     char file_names[SCRIPT_CHAIN_FILE_MAX][SCRIPT_SOURCE_NAME_MAX];
@@ -183,6 +185,7 @@ const struct script_movie *script_tables_find_movie(const struct script_tables *
 const struct script_flipbook *script_tables_find_flipbook(const struct script_tables *tables, const char *name);
 int script_tables_read_soul(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_route(struct script_tables *tables, const char *text, unsigned int text_size);
+int script_tables_read_ui_clips(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_core_labels(struct script_tables *tables, const char *text, unsigned int text_size);
 const struct script_core_label *script_tables_find_core_label(const struct script_tables *tables, const char *object_name);
 const struct script_soul_style *script_tables_soul_style(const struct script_tables *tables, unsigned int class_id, int is_human, int has_core, int is_active, int is_dead);

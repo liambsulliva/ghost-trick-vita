@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include "script_machine.h"
 
+#define FATE_LEVEL_FULL 5
 #define BEAM_MODE_COVER_ALPHA 8u
 #define BEAM_CREATE_COVER_ALPHA_WORD 13
 #define FIXED_POINT_BITS 12
@@ -421,7 +422,22 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         }
         break;
     case 0xd8:
-        script_soul_set_countdown(machine, words[0] != 0);
+        script_soul_set_countdown(machine, (int)words[0]);
+        break;
+    case 0xd9:
+        script_soul_set_countdown_interval(machine, signed_word(words[0]));
+        break;
+    case 0x102:
+        script_soul_set_fate_level(machine, FATE_LEVEL_FULL);
+        break;
+    case 0x103:
+        script_soul_set_fate_level(machine, (int)words[0]);
+        break;
+    case 0x104:
+        script_soul_set_fate_level(machine, machine->fate_level + 1);
+        break;
+    case 0x105:
+        script_soul_set_fate_level(machine, machine->fate_level - 1);
         break;
     case 0xbb:
         create_beam(machine, vm, words);

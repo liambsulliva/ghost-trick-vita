@@ -6,6 +6,7 @@
 #include "scene_view.h"
 #include "script_talk.h"
 #include "script_outputs.h"
+#include "script_ui_view.h"
 #include "script_view.h"
 #include "texture_cache.h"
 
@@ -297,6 +298,7 @@ void script_view_advance(void)
 {
     int index;
 
+    script_ui_view_advance();
     age_ticks = age_ticks + 1;
     for (index = 0; index < VIEW_EFFECT_MAX; index++) {
         if (effects[index].in_use) {
@@ -948,5 +950,6 @@ void script_view_draw_on_covers(void)
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {
         draw_talk();
     }
+    script_ui_view_draw();
     draw_movie();
 }

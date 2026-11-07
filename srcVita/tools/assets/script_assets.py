@@ -5,6 +5,7 @@ import asset_writers
 import bake_record
 import ds_rom
 import frame_layout
+import ui_clips
 
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
@@ -23,7 +24,7 @@ ACT_OP = 0x19
 ACT_END_LOW_OPERAND = 1
 ACT_END_HIGH_OPERAND = 2
 ACT_NAME_OPERAND = 3
-SCRIPT_CODE_FILES = ["ds_rom.py", "message_cues.py", "script_assets.py", "../../../tools/lz.py"]
+SCRIPT_CODE_FILES = ["ds_rom.py", "message_cues.py", "script_assets.py", "ui_clips.py", "../../../tools/lz.py"]
 CUES_EXTENSION = ".cues"
 MOTIONS_EXTENSION = ".motions"
 CHAIN_FILE = SCRIPTS_FOLDER + "/chain.txt"
@@ -35,6 +36,7 @@ BALLOONS_FILE = SCRIPTS_FOLDER + "/balloons.txt"
 SOUL_FILE = SCRIPTS_FOLDER + "/soul.txt"
 CORE_LABELS_FILE = SCRIPTS_FOLDER + "/core_labels.txt"
 ROUTE_FILE = SCRIPTS_FOLDER + "/route_steps.txt"
+UI_CLIPS_FILE = SCRIPTS_FOLDER + "/ui_clips.txt"
 EFFECTS_FILE = SCRIPTS_FOLDER + "/effects.txt"
 CHAPTER_PRELOADED_MESSAGES = 6
 CHAPTER_PRELOADED_ROOMS = 2
@@ -459,6 +461,8 @@ def table_files(set_description, output_folder, motion_lines, narration_lines, t
         extra_textures.append(set_description["soul_view"]["ring"])
     if "route" in set_description:
         texts[ROUTE_FILE] = route_steps_text(set_description["route"])
+    if set_description.get("ui_clips"):
+        texts[UI_CLIPS_FILE] = ui_clips.clips_text()
     texts[EFFECTS_FILE] = movies_text(set_description.get("movies", [])) + flipbooks_text(set_description.get("flipbooks", [])) + effects_text(set_description.get("effects", []))
     if "chapter" in set_description:
         texts[PRELOAD_FILE] = chapter_preload_text(set_description, section, narration_lines, extra_textures)

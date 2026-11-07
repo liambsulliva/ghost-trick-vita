@@ -233,6 +233,170 @@
       "source": "natives/android/charfiles/3d/06_id/07_rollback/deadkaiwaryu_iml4.tex.691230823",
       "width": 128,
       "height": 128
+    },
+    {
+      "name": "banner_star",
+      "source": "natives/android/gui/ui010200/tex/ig_010205_00_iml4.tex.691230823",
+      "crop": [
+        2,
+        3746,
+        348,
+        348
+      ]
+    },
+    {
+      "name": "banner_trick",
+      "source": "natives/android/gui/ui010200/tex/ig_010205_00_iml4.tex.691230823",
+      "crop": [
+        1384,
+        0,
+        1384,
+        304
+      ]
+    },
+    {
+      "name": "banner_trace",
+      "source": "natives/android/gui/ui010200/tex/ig_010205_00_iml4.tex.691230823",
+      "crop": [
+        1388,
+        912,
+        1388,
+        316
+      ]
+    },
+    {
+      "name": "banner_averted",
+      "source": "natives/android/gui/ui010200/tex/ig_010205_00_iml4.tex.691230823",
+      "crop": [
+        1428,
+        1860,
+        1428,
+        308
+      ]
+    },
+    {
+      "name": "banner_changed",
+      "source": "natives/android/gui/ui010200/tex/ig_010205_00_iml4.tex.691230823",
+      "crop": [
+        1416,
+        2784,
+        1416,
+        308
+      ]
+    },
+    {
+      "name": "ui_hourglass",
+      "source": "natives/android/gui/ui010200/tex/ig_010200_00_iml4.tex.691230823",
+      "crop": [
+        0,
+        0,
+        480,
+        1024
+      ]
+    },
+    {
+      "name": "ui_wave_quadrant",
+      "source": "natives/android/gui/ui010200/tex/ig_010200_00_iml4.tex.691230823",
+      "crop": [
+        3,
+        623,
+        400,
+        400
+      ]
+    },
+    {
+      "name": "wipe_time_passing",
+      "source": "natives/android/gui/ui010200/tex/ig_010206_00_iml4.tex.691230823",
+      "crop": [
+        0,
+        312,
+        1384,
+        312
+      ]
+    },
+    {
+      "name": "digit_label",
+      "source": "natives/android/gui/ui010200/tex/ig_010202_00_iml4.tex.691230823",
+      "crop": [
+        768,
+        0,
+        768,
+        384
+      ]
+    },
+    {
+      "name": "digit_3",
+      "source": "natives/android/gui/ui010200/tex/ig_010202_00_iml4.tex.691230823",
+      "crop": [
+        1695,
+        1281,
+        350,
+        765
+      ]
+    },
+    {
+      "name": "digit_2",
+      "source": "natives/android/gui/ui010200/tex/ig_010202_00_iml4.tex.691230823",
+      "crop": [
+        1306,
+        1342,
+        383,
+        704
+      ]
+    },
+    {
+      "name": "digit_1",
+      "source": "natives/android/gui/ui010200/tex/ig_010202_00_iml4.tex.691230823",
+      "crop": [
+        1120,
+        1341,
+        182,
+        705
+      ]
+    },
+    {
+      "name": "digit_0",
+      "source": "natives/android/gui/ui010200/tex/ig_010202_00_iml4.tex.691230823",
+      "crop": [
+        781,
+        1325,
+        338,
+        720
+      ]
+    },
+    {
+      "name": "card_clock",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [
+        1433,
+        429,
+        500,
+        500
+      ]
+    },
+    {
+      "name": "card_top_text",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [
+        548,
+        1,
+        546,
+        162
+      ]
+    },
+    {
+      "name": "card_bottom_text",
+      "source": "natives/android/gui/ui010200/tex/ig_010204_00_iml4.tex.691230823",
+      "crop": [
+        716,
+        329,
+        712,
+        158
+      ]
+    },
+    {
+      "name": "side_label",
+      "source": "natives/android/charfiles/2d/05_status/00_maininfo/cmn/cmn_upp_05_iml4.tex.691230823.en"
     }
   ],
   "composed_textures": [
@@ -1478,5 +1642,6 @@
         "wait": "act:game:gameAct060"
       }
     ]
-  }
+  },
+  "ui_clips": true
 }
