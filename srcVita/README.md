@@ -285,7 +285,7 @@ As of 2026-11-07. Items under "Built, not proven" are written but not checked on
 
 **Effects**
 
-- Effect 31, the loops on the corpse in ghost view, is the remaster movie `cmn_shig_01` (native kind 0x1d, from the st01_game000 effect list). The port still draws a plain disc there. Wiring it as a movie, shown only in ghost view, is in progress.
+- Effect 31, the loops on the corpse in ghost view, is the remaster movie `cmn_shig_01` (native kind 0x1d, from the st01_game000 effect list). It is now drawn as that movie, shown only in ghost view; not yet checked on the device.
 - Effect 4, the core ring, is drawn as a soft glow. The footage shows a thin white ring that pulses every 70 frames.
 - Effects 8 (`efc_tsunagu`, kind 0xd8) and 9 (`efc_chain`, kind 0xce) have no art in any remaster effect list. `coreactionexchangecore` is an unconfirmed candidate for 8. Notes are in `extracted/audit_notes_2026-11-06/effects_8_9.md`.
 - Effects without art are noted in the log and not drawn.
