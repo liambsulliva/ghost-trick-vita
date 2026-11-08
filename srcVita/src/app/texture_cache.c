@@ -617,6 +617,25 @@ void texture_cache_read_totals(struct texture_cache_totals *totals_out)
     *totals_out = totals;
 }
 
+int texture_cache_drawn_loading_count(void)
+{
+    int count;
+    int index;
+
+    count = 0;
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
+        if (entries[index].in_use && entries[index].state == CACHED_TEXTURE_LOADING && entries[index].was_drawn) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+int texture_cache_read_ahead_is_behind(void)
+{
+    return waiting_read_count() >= READS_WAITING_MOST_WHEN_READING_AHEAD;
+}
+
 int texture_cache_loading_count(void)
 {
     int count;

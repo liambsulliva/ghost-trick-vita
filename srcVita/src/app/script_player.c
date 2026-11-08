@@ -31,9 +31,17 @@
 #define CHAIN_FILE_NAME "chain"
 #define FIXED_TABLE_COUNT 8
 #define FILES_PER_SCRIPT 3
-#define FAST_FORWARD_BUDGET_US 8000ULL
-#define FAST_FORWARD_MOST_TICKS_PER_FRAME 8
-#define FAST_FORWARD_TICKS_WHILE_ART_LOADS 1
+#define FAST_FORWARD_FRAME_US 16667ULL
+#define FAST_FORWARD_FRAME_SLACK_US 600ULL
+#define FAST_FORWARD_LEAST_BUDGET_US 2000ULL
+#define FAST_FORWARD_MOST_BUDGET_US 13000ULL
+#define FAST_FORWARD_BUDGET_SHRINK_US 1500ULL
+#define FAST_FORWARD_BUDGET_GROWTH_US 250ULL
+#define FAST_FORWARD_MOST_TICKS_PER_FRAME 32
+#define FAST_FORWARD_TICKS_WHILE_DRAWN_ART_LOADS 1
+#define FAST_FORWARD_SHARE_WHILE_READ_AHEAD_IS_BEHIND 4
+#define READ_AHEAD_MOST_LOOKAHEAD_SCALE 8
+#define FAST_FORWARD_REPORT_EVERY_US 1000000ULL
 #define ART_WAIT_MOST_US 30000000ULL
 #define LOG_FOR_TOOLS_SCRIPT_READY "script ready name=%s preload_us=%llu texture_bytes=%u missing=%u"
 
@@ -84,6 +92,10 @@ static unsigned long long preload_started_us;
 static unsigned long long time_owed_us;
 static unsigned long long longest_tick_us;
 static int ticks_per_frame_when_fast;
+static unsigned long long fast_forward_budget_us = FAST_FORWARD_LEAST_BUDGET_US;
+static unsigned long long fast_forward_report_us;
+static unsigned int fast_forward_ticks_since_report;
+static unsigned int fast_forward_slowed_frames_since_report;
 static char run_until_kind[16];
 static char run_until_name[ASSET_NAME_MAX];
 static unsigned int run_until_tick;
@@ -529,39 +541,74 @@ static void stop_at_the_run_until_point(void)
 
 static int fast_ticks_the_art_allows(void)
 {
-    if (texture_cache_loading_count() > 0) {
-        return FAST_FORWARD_TICKS_WHILE_ART_LOADS;
+    int share;
+
+    if (texture_cache_drawn_loading_count() > 0) {
+        return FAST_FORWARD_TICKS_WHILE_DRAWN_ART_LOADS;
+    }
+    if (texture_cache_read_ahead_is_behind()) {
+        share = ticks_per_frame_when_fast / FAST_FORWARD_SHARE_WHILE_READ_AHEAD_IS_BEHIND;
+        return share > 1 ? share : 1;
     }
     return ticks_per_frame_when_fast;
 }
 
-static void run_ticks_as_fast_as_the_frame_allows(void)
+static void fit_the_fast_forward_budget_to_the_frame(unsigned long long frame_us)
+{
+    if (frame_us > FAST_FORWARD_FRAME_US + FAST_FORWARD_FRAME_SLACK_US) {
+        fast_forward_budget_us = fast_forward_budget_us > FAST_FORWARD_LEAST_BUDGET_US + FAST_FORWARD_BUDGET_SHRINK_US ? fast_forward_budget_us - FAST_FORWARD_BUDGET_SHRINK_US : FAST_FORWARD_LEAST_BUDGET_US;
+    } else if (fast_forward_budget_us + FAST_FORWARD_BUDGET_GROWTH_US <= FAST_FORWARD_MOST_BUDGET_US) {
+        fast_forward_budget_us = fast_forward_budget_us + FAST_FORWARD_BUDGET_GROWTH_US;
+    }
+}
+
+static void report_fast_forward_speed(unsigned long long frame_us, int ticks_run, int ticks_allowed)
+{
+    fast_forward_report_us = fast_forward_report_us + frame_us;
+    fast_forward_ticks_since_report = fast_forward_ticks_since_report + (unsigned int)ticks_run;
+    if (ticks_allowed < ticks_per_frame_when_fast) {
+        fast_forward_slowed_frames_since_report = fast_forward_slowed_frames_since_report + 1u;
+    }
+    if (fast_forward_report_us < FAST_FORWARD_REPORT_EVERY_US) {
+        return;
+    }
+    run_log_write("script fast_forward_speed ticks_per_second=%llu budget_us=%llu slowed_for_art_frames=%u", (unsigned long long)fast_forward_ticks_since_report * 1000000ULL / fast_forward_report_us, fast_forward_budget_us, fast_forward_slowed_frames_since_report);
+    fast_forward_report_us = 0;
+    fast_forward_ticks_since_report = 0;
+    fast_forward_slowed_frames_since_report = 0;
+}
+
+static void run_ticks_as_fast_as_the_frame_allows(unsigned long long frame_us)
 {
     unsigned long long started_us;
-    int ticks;
+    int ticks_run;
     int ticks_allowed;
 
+    fit_the_fast_forward_budget_to_the_frame(frame_us);
     started_us = clock_now_us();
     ticks_allowed = fast_ticks_the_art_allows();
-    for (ticks = 0; ticks < ticks_allowed; ticks++) {
+    ticks_run = 0;
+    while (ticks_run < ticks_allowed) {
         if (!run_one_tick()) {
-            return;
+            break;
         }
+        ticks_run = ticks_run + 1;
         if (reached_the_run_until_point()) {
             stop_at_the_run_until_point();
-            return;
+            break;
         }
-        if (clock_now_us() - started_us > FAST_FORWARD_BUDGET_US) {
-            return;
+        if (clock_now_us() - started_us > fast_forward_budget_us) {
+            break;
         }
     }
+    report_fast_forward_speed(frame_us, ticks_run, ticks_allowed);
 }
 
 static void run_ticks(unsigned long long elapsed_us)
 {
     if (ticks_per_frame_when_fast > 0) {
         time_owed_us = 0;
-        run_ticks_as_fast_as_the_frame_allows();
+        run_ticks_as_fast_as_the_frame_allows(elapsed_us);
         return;
     }
     time_owed_us = time_owed_us + elapsed_us;
@@ -933,7 +980,8 @@ void script_player_set_fast_forward(int ticks_per_frame)
         data->machine.auto_press = wanted_auto_play();
     }
     script_bridge_set_quiet(ticks_per_frame > 0);
-    read_ahead_set_lookahead_scale(ticks_per_frame > 1 ? ticks_per_frame : 1);
+    read_ahead_set_lookahead_scale(ticks_per_frame > READ_AHEAD_MOST_LOOKAHEAD_SCALE ? READ_AHEAD_MOST_LOOKAHEAD_SCALE : (ticks_per_frame > 1 ? ticks_per_frame : 1));
+    fast_forward_budget_us = FAST_FORWARD_LEAST_BUDGET_US;
     if (ticks_per_frame > 0) {
         is_paused = 0;
     }

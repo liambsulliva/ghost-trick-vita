@@ -57,6 +57,8 @@ void texture_cache_upload_finished_reads(unsigned int upload_limit);
 void texture_cache_drop_waiting_reads(void);
 void texture_cache_drop_waiting_reads_left_behind(const char *name_prefix);
 int texture_cache_loading_count(void);
+int texture_cache_drawn_loading_count(void);
+int texture_cache_read_ahead_is_behind(void);
 void texture_cache_read_totals(struct texture_cache_totals *totals);
 void texture_cache_clear(void);
 

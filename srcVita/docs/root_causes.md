@@ -188,6 +188,12 @@ The soul sent the phone border's `ready` and `end` events only for effect id 49.
 
 Guard: when port behaviour belongs to an effect class, key it by every id whose kind uses that factory. Before keying a rule by effect id, list the ids sharing its factory from the two tables. The pill buttons (99 to 102, factory 0x020ce820) share their class with ids 242 and 243, which stage 13 spawns and the port does not handle yet.
 
+### 26. Fast forward slowed for art nobody was drawing
+
+Fast forward fell to one tick a frame whenever any texture was loading, and read-ahead keeps textures loading most of the time, so a run asked for 8 ticks a frame averaged 245 ticks a second, about 4 times normal speed, while update used 1.7 ms of each 16.7 ms frame.
+
+Guard: fast forward slows to one tick a frame only while a texture that is being drawn is loading, and to a quarter while read-ahead is behind. Its tick budget fits itself to the frame: it grows while frames make vsync and shrinks when one misses, up to 32 ticks a frame. `script fast_forward_speed` logs the ticks a second it reached, its budget and how many frames art slowed it.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
