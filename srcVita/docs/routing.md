@@ -24,3 +24,7 @@ Read the decoded script (`../extracted/lmg/<stage>/<script>_Expand.xml.lz.txt`):
 ## Checking a chapter
 
 Replay the whole game from Chapter 1 with the scene timeout off (`scene_most_ticks` removed from the route copy) and `--marks`. A chapter is done when every step is done with no `route_step_failed` or `route_hop_beyond_reach`, no `stuck_pushed_handler` appears between its steps, and each script hands over to the next as the footage shows. Then run it on the Vita and compare bursts with the footage shot by shot.
+
+## Routing chapters side by side
+
+Chapters are routed three at a time and linked afterwards. Each worker starts its replays at its own chapter instead of from Chapter 1: `script_replay --save-state-at <script> <file>` saves the chapter mark, phone place and flag banks when a whole-game replay first reaches the chapter's first script, and `--load-state <file> --start <script>` starts there. Where the saved flags differ from the story (earlier chapters not yet routed), the worker corrects them with `--set-flag` and `--clear-flag` and records the entry it settled on as one `entry:` line. Linking appends each chapter's blocks in story order and replays the whole game from Chapter 1: a chapter links when the flags the earlier chapters leave match its `entry:` line, and a difference names the step that should have set or cleared the flag.
