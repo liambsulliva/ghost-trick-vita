@@ -967,9 +967,10 @@
         {"texture": "thorn_bubble_m", "widest_text": 238},
         {"texture": "thorn_bubble_l", "widest_text": 100000}
       ],
+      "room_pixels_per_em": 30,
       "text": {
         "font": "natives/android/gui/font/outlinefont/helveticaneueltw1g-bd.oft.1",
-        "pixels_per_em": 30,
+        "pixels_per_em": 27,
         "color": [
           0,
           0,

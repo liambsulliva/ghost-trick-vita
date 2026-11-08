@@ -614,7 +614,7 @@ def expand_set(set_description, packs, rom_path, text_key):
             for label in script.strings_of_ops(BALLOON_LABEL_OPS):
                 if label in entries and all(row["name"] != "bubble_" + label for row in bubble_rows):
                     bubble_rows.append(dict(balloon_style["text"], joins_lines=True, name="bubble_" + label, file=entries[label][0][0], entry=entries[label][0][1]))
-                    art = dict(balloon_style["art"], fits="bubble_" + label)
+                    art = dict(balloon_style["art"], fits="bubble_" + label, room_per_text=balloon_style.get("room_pixels_per_em", balloon_style["text"]["pixels_per_em"]) / balloon_style["text"]["pixels_per_em"])
                     if label in script.thorn_balloon_labels() and "thorn_sizes" in balloon_style:
                         art = dict(art, thorn_sizes=balloon_style["thorn_sizes"], texture=balloon_style["thorn_sizes"][0]["texture"])
                     balloon_rows.append({"label": label, "delay": balloon_style["delay"], "parts": [art, dict(balloon_style["text_part"], texture="bubble_" + label)]})

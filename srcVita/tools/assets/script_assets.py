@@ -431,7 +431,7 @@ def text_lines_text(narration_lines):
 def with_thorn_chosen_by_text(part, texture_sizes):
     if "thorn_sizes" not in part or part.get("fits") not in texture_sizes:
         return part
-    text_width = texture_sizes[part["fits"]][0]
+    text_width = texture_sizes[part["fits"]][0] * part.get("room_per_text", 1.0)
     chosen = next(size["texture"] for size in part["thorn_sizes"] if text_width <= size["widest_text"])
     return dict(part, texture=chosen)
 
@@ -447,8 +447,9 @@ def balloons_text(balloons, texture_sizes):
             width, height = texture_sizes[part["texture"]]
             if part.get("fits") in texture_sizes and "thorn_sizes" not in part:
                 text_width, text_height = texture_sizes[part["fits"]]
-                width = max(width, text_width + BUBBLE_MARGIN_WIDTH)
-                height = max(height, text_height + BUBBLE_MARGIN_HEIGHT)
+                room = part.get("room_per_text", 1.0)
+                width = max(width, text_width * room + BUBBLE_MARGIN_WIDTH)
+                height = max(height, text_height * room + BUBBLE_MARGIN_HEIGHT)
             lines.append("part %s %s %s %s %s %d %d" % (part["texture"], asset_writers.format_number(part["dx"]), asset_writers.format_number(part["dy"]), asset_writers.format_number(width / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), asset_writers.format_number(height / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), part["after"], part["grow"]))
     return "\n".join(lines) + "\n"
 
