@@ -19,6 +19,8 @@
 #define READ_AHEAD_SPARES_FRAMES_DRAWN_WITHIN 60u
 #define READ_AHEAD_WANT_LASTS_FRAMES 2u
 #define READ_AHEAD_LEAST_ROOM_BYTES (4u * 1024u * 1024u)
+#define NAME_BUCKET_COUNT 4096u
+#define NO_ENTRY (-1)
 
 enum texture_wanter {
     WANTED_BY_DRAWING,
@@ -26,6 +28,11 @@ enum texture_wanter {
 };
 
 static struct cached_texture entries[TEXTURE_CACHE_ENTRY_MAX];
+static int first_entry_in_bucket[NAME_BUCKET_COUNT];
+static int next_entry_in_bucket[TEXTURE_CACHE_ENTRY_MAX];
+static unsigned int read_ahead_checked_frame;
+static int read_ahead_had_room;
+static int read_ahead_waiting_reads;
 static char folder[FILE_PATH_MAX];
 static unsigned int bucket_count;
 static unsigned int budget;
@@ -37,12 +44,62 @@ static struct texture_cache_totals totals;
 
 static struct cached_texture *start_loading(const char *name, enum texture_wanter wanter);
 
+static unsigned int name_bucket(const char *name)
+{
+    return crc32_add(0u, (const unsigned char *)name, (unsigned int)strlen(name)) % NAME_BUCKET_COUNT;
+}
+
+static void forget_all_names(void)
+{
+    unsigned int bucket;
+    int index;
+
+    for (bucket = 0; bucket < NAME_BUCKET_COUNT; bucket++) {
+        first_entry_in_bucket[bucket] = NO_ENTRY;
+    }
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
+        next_entry_in_bucket[index] = NO_ENTRY;
+    }
+}
+
+static void remember_name(struct cached_texture *entry)
+{
+    unsigned int bucket;
+    int index;
+
+    index = (int)(entry - entries);
+    bucket = name_bucket(entry->name);
+    next_entry_in_bucket[index] = first_entry_in_bucket[bucket];
+    first_entry_in_bucket[bucket] = index;
+}
+
+static void stop_using_entry(struct cached_texture *entry)
+{
+    unsigned int bucket;
+    int index;
+    int *link;
+
+    if (!entry->in_use) {
+        return;
+    }
+    index = (int)(entry - entries);
+    bucket = name_bucket(entry->name);
+    for (link = &first_entry_in_bucket[bucket]; *link != NO_ENTRY; link = &next_entry_in_bucket[*link]) {
+        if (*link == index) {
+            *link = next_entry_in_bucket[index];
+            break;
+        }
+    }
+    next_entry_in_bucket[index] = NO_ENTRY;
+    entry->in_use = 0;
+}
+
 static struct cached_texture *find_entry_by_name(const char *name)
 {
     int index;
 
-    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
-        if (entries[index].in_use && strcmp(entries[index].name, name) == 0) {
+    for (index = first_entry_in_bucket[name_bucket(name)]; index != NO_ENTRY; index = next_entry_in_bucket[index]) {
+        if (strcmp(entries[index].name, name) == 0) {
             return &entries[index];
         }
     }
@@ -69,7 +126,7 @@ static void release_entry(struct cached_texture *entry)
     }
     entry->texture = RENDERER_NO_TEXTURE;
     entry->memory_bytes = 0;
-    entry->in_use = 0;
+    stop_using_entry(entry);
 }
 
 static int is_wanted_ahead(const struct cached_texture *entry)
@@ -331,7 +388,7 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     if (!make_room_for(memory_bytes, entry->was_drawn ? WANTED_BY_DRAWING : WANTED_BY_READ_AHEAD)) {
         if (!entry->was_drawn) {
             totals.read_ahead_dropped = totals.read_ahead_dropped + 1u;
-            entry->in_use = 0;
+            stop_using_entry(entry);
             return;
         }
     }
@@ -375,6 +432,8 @@ static void handle_finished_read(const struct finished_read *finished)
 void texture_cache_init(const char *texture_folder, unsigned int budget_bytes)
 {
     memset(entries, 0, sizeof(entries));
+    forget_all_names();
+    read_ahead_checked_frame = 0;
     memset(&totals, 0, sizeof(totals));
     snprintf(folder, sizeof(folder), "%s", texture_folder);
     budget = budget_bytes;
@@ -420,10 +479,18 @@ void texture_cache_keep_or_start_reading_ahead(const char *name)
         entry->wanted_ahead_until_frame = current_frame + READ_AHEAD_WANT_LASTS_FRAMES;
         return;
     }
-    if (waiting_read_count() >= READS_WAITING_MOST_WHEN_READING_AHEAD || !read_ahead_has_room()) {
+    if (read_ahead_checked_frame != current_frame) {
+        read_ahead_checked_frame = current_frame;
+        read_ahead_waiting_reads = waiting_read_count();
+        read_ahead_had_room = read_ahead_has_room();
+    }
+    if (read_ahead_waiting_reads >= READS_WAITING_MOST_WHEN_READING_AHEAD || !read_ahead_had_room) {
         return;
     }
-    start_loading(name, WANTED_BY_READ_AHEAD);
+    if (start_loading(name, WANTED_BY_READ_AHEAD) != NULL) {
+        read_ahead_waiting_reads = read_ahead_waiting_reads + 1;
+        read_ahead_had_room = read_ahead_has_room();
+    }
 }
 
 unsigned int texture_cache_budget_for_free_memory(unsigned int free_bytes)
@@ -513,6 +580,7 @@ static struct cached_texture *start_loading(const char *name, enum texture_wante
     entry->retry_at_frame = current_frame;
     entry->retries = 0u;
     entry->in_use = 1;
+    remember_name(entry);
     start_waiting_reads();
     return entry;
 }
@@ -594,7 +662,7 @@ void texture_cache_drop_waiting_reads(void)
 
     for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
         if (entries[index].in_use && entries[index].state == CACHED_TEXTURE_LOADING && !entries[index].read_is_started) {
-            entries[index].in_use = 0;
+            stop_using_entry(&entries[index]);
         }
     }
 }
@@ -607,7 +675,7 @@ void texture_cache_drop_waiting_reads_left_behind(const char *name_prefix)
     prefix_length = strlen(name_prefix);
     for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
         if (entries[index].in_use && entries[index].state == CACHED_TEXTURE_LOADING && !entries[index].read_is_started && entries[index].last_used_frame != current_frame && strncmp(entries[index].name, name_prefix, prefix_length) == 0) {
-            entries[index].in_use = 0;
+            stop_using_entry(&entries[index]);
         }
     }
 }
