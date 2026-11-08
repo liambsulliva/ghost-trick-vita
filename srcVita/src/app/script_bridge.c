@@ -64,6 +64,8 @@ static int soul_vision_is_on;
 static int mask_is_on;
 static int is_quiet;
 #define NO_MOVIE_SOUND -1
+
+typedef char the_stage_holds_every_script_object[SCENE_OBJECT_MAX >= SCRIPT_OBJECT_MAX ? 1 : -1];
 static int movie_sound_kind_waiting = NO_MOVIE_SOUND;
 static unsigned int movie_started_at_tick;
 static const char *current_music;

@@ -42,7 +42,9 @@ static void move_the_full_file_aside(void)
     int note_size;
 
     sceIoRemove(earlier_part_path);
-    sceIoRename(sink_path, earlier_part_path);
+    if (sceIoRename(sink_path, earlier_part_path) < 0) {
+        sceIoRemove(sink_path);
+    }
     note_size = snprintf(note, sizeof(note), "log continued_after_bytes=%llu\n", bytes_in_file);
     file_append(sink_path, (const unsigned char *)note, (unsigned int)note_size);
     bytes_in_file = (unsigned long long)note_size;

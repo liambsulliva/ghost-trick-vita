@@ -345,9 +345,19 @@ def movies_text(movies):
     return "".join("movie %s %d %d %s %d\n" % (movie["name"], movie.get("frames", 0), TICKS_PER_SECOND // movie["fps"], movie.get("class_id", "0"), movie.get("sound", -1)) for movie in movies)
 
 
+ROUTE_FIELD_WIDTHS = {"script": 95, "object": 47, "wait": 159}
+
+
+def check_route_field_widths(step):
+    for field, width in ROUTE_FIELD_WIDTHS.items():
+        if len(step.get(field, "")) > width:
+            raise ValueError("route step %s %r is longer than the player reads (%d)" % (field, step[field], width))
+
+
 def route_steps_text(route):
     lines = ["scene_most_ticks %d\n" % route["scene_most_ticks"]] if "scene_most_ticks" in route else []
     for step in route["steps"]:
+        check_route_field_widths(step)
         lines.append("step %s %s %s %d %d %s\n" % (step["script"], step["action"], step.get("object", "-"), step.get("place", step.get("slot", 0)), route["dwell_ticks"][step.get("pace", "normal")], step.get("wait", "-").replace(" & ", "&")))
     return "".join(lines)
 

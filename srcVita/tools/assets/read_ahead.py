@@ -199,7 +199,13 @@ def scene_order_from_cues(cues_path):
     return scenes
 
 
+SCENE_NAME_WIDTH = 95
+
+
 def scenes_text(scenes):
+    for name in scenes:
+        if len(name) > SCENE_NAME_WIDTH:
+            raise ValueError("scene name %r is longer than the player reads (%d)" % (name, SCENE_NAME_WIDTH))
     return "".join("scene %s\n" % name for name in scenes)
 
 

@@ -132,6 +132,7 @@ int script_route_read(struct script_route *route, const char *text, unsigned int
                 return 0;
             }
         } else if (line[0] != '\0' && !read_step(route, line)) {
+            route->step_count = 0;
             return 0;
         }
     }
@@ -151,6 +152,7 @@ int script_route_read_scenes(struct script_route *route, const char *text, unsig
             continue;
         }
         if (route->scene_count >= SCRIPT_ROUTE_SCENE_MAX || sscanf(line, SCENE_LINE_SCAN, route->scenes[route->scene_count]) != 1) {
+            route->scene_count = 0;
             return 0;
         }
         route->scene_count = route->scene_count + 1;

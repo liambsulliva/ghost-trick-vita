@@ -551,6 +551,8 @@ static int move_vm_to_offset(struct script_machine *machine, struct script_vm *v
     return 1;
 }
 
+static void begin_script_change(struct script_machine *machine, const char *path);
+
 static void request_script_change(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
     const char *path;
@@ -559,10 +561,7 @@ static void request_script_change(struct script_machine *machine, struct script_
     if (path == NULL) {
         return;
     }
-    machine->pause_bit = 1;
-    machine->pending_script = path;
-    machine->teardown_at = (long long)machine->tick + 1;
-    machine->load_at = machine->teardown_at + LOAD_AFTER_TEARDOWN_TICKS;
+    begin_script_change(machine, path);
 }
 
 static void read_flag_into_condition(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
@@ -1866,6 +1865,15 @@ static const char *exit_of_this_scene(const struct script_machine *machine)
     return path;
 }
 
+static void force_script_change(struct script_machine *machine, const char *path)
+{
+    machine->is_finished = 0;
+    if (machine->outputs->scene_change_was_forced != NULL) {
+        machine->outputs->scene_change_was_forced();
+    }
+    begin_script_change(machine, path);
+}
+
 static void move_to_next_script(struct script_machine *machine)
 {
     const char *path;
@@ -1877,7 +1885,7 @@ static void move_to_next_script(struct script_machine *machine)
         return;
     }
     script_machine_note(machine, NULL, "stuck_moved_to_next_script", path);
-    begin_script_change(machine, path);
+    force_script_change(machine, path);
 }
 
 void script_machine_skip_ahead(struct script_machine *machine)
@@ -1993,11 +2001,7 @@ static void move_on_when_the_scene_runs_too_long(struct script_machine *machine)
         machine->outputs->marked("scene_timeout_left", machine->scene_name != NULL ? machine->scene_name : "");
         machine->outputs->marked("scene_timeout_moved_to", next);
     }
-    machine->is_finished = 0;
-    if (machine->outputs->scene_change_was_forced != NULL) {
-        machine->outputs->scene_change_was_forced();
-    }
-    begin_script_change(machine, next);
+    force_script_change(machine, next);
 }
 
 void script_machine_tick(struct script_machine *machine)

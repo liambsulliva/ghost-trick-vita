@@ -290,13 +290,13 @@ Guard: a scene timeout in the shared machine. `scene_most_ticks` in the route (5
 
 Native's teardown on every script change (`func_0200fe74`, run from the `0x24` chain through `pGameRestartDirect`) kills scripts, UI clips (`uSwfPlayGame`), custom effects, past-death sprites, soul background gimmicks, spot and point lights, phone-book objects, mask fades and soul tentacles, and kills the countdown (`uCountdown`) unless flag 0x1008 is set, clearing that flag every time (`func_02027518` reads it, `func_02027538` clears it). It leaves music alone. The port kept playing UI clips across a change and always dropped the countdown.
 
-Guard: the stage clear stops every playing UI clip, the machine keeps the countdown across a change only while flag 0x1008 is set and clears the flag at each teardown, and each new script checks that no talk, narration or press is still pending from the earlier one (`scene_leftover_cleared` names what it cleared). Music follows native and carries over, except on a forced move from the scene timeout, which stops it so the earlier scene's music cannot play over a scene native never reached that way. The movie and its waiting sound are left alone, because the phone ride's movie plays across the change.
+Guard: the stage clear stops every playing UI clip, the machine keeps the countdown across a change only while flag 0x1008 is set and clears the flag at each teardown, and each new script checks that no talk, narration or press is still pending from the earlier one (`scene_leftover_cleared` names what it cleared). Music follows native and carries over, except on a forced move (the scene timeout or the stuck detector's own exit, both through one `force_script_change`), which stops it so the earlier scene's music cannot play over a scene native never reached that way. The movie and its waiting sound are left alone, because the phone ride's movie plays across the change.
 
 ### 41. A run log with no ceiling
 
 Run 23's log reached 2.5 GB in five hours of the junkyard loop, almost all of it per-frame animation lines, and the Vita's FTP server cannot seek past 2 GB, so the tools could not read it at all.
 
-Guard: the Vita log sink moves `run.log` aside to `run.log.earlier` when it passes 128 MB and starts a fresh file with `log continued_after_bytes=`, so the newest part always stays small enough to pull; a launch removes a stale earlier part.
+Guard: the Vita log sink moves `run.log` aside to `run.log.earlier` when it passes 128 MB and starts a fresh file with `log continued_after_bytes=`, so the newest part always stays small enough to pull; if the move fails it deletes the full file instead, and a launch removes a stale earlier part. The route tables follow the same rule from the other side: route steps (4096) and scenes (512) clear themselves on a line they cannot hold instead of keeping half a route, and the bake refuses a field wider than the player reads.
 
 ### 42. Fixed caps below what the scripts declare
 
