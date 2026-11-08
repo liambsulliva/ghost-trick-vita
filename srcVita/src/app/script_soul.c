@@ -562,7 +562,7 @@ static int aim_the_chain_from_input(struct script_machine *machine)
 
 static int talk_holds_the_soul(const struct script_machine *machine)
 {
-    return machine->talk_is_open || machine->talk.phase != SCRIPT_TALK_CLOSED;
+    return machine->pause_bit && machine->soul.tutorial_mode == TUTORIAL_NONE && (machine->talk_is_open || machine->talk.phase != SCRIPT_TALK_CLOSED);
 }
 
 static void move_soul_tip(struct script_machine *machine)
