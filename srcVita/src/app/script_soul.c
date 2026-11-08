@@ -66,6 +66,8 @@
 #define PHONE_EFFECT_READY_AFTER_TICKS 50
 #define PHONE_EFFECT_END_AFTER_TICKS 18
 #define CAMERA_FREE_SPEED_PIXELS 4
+#define BALLOON_NAMED_BY_LABEL "label"
+
 
 enum tutorial_mode {
     TUTORIAL_NONE,
@@ -1647,6 +1649,18 @@ static int balloon_sending(const struct script_machine *machine, const char *kin
     return -1;
 }
 
+static int balloon_labelled(const struct script_machine *machine, const char *label)
+{
+    int index;
+
+    for (index = 0; index < SCRIPT_BALLOON_MAX; index++) {
+        if (machine->balloons[index].in_use && machine->balloons[index].label != NULL && strcmp(machine->balloons[index].label, label) == 0) {
+            return index;
+        }
+    }
+    return -1;
+}
+
 static int balloon_named(const struct script_machine *machine, const char *name)
 {
     char kind[SCRIPT_ROUTE_NAME_MAX];
@@ -1658,6 +1672,9 @@ static int balloon_named(const struct script_machine *machine, const char *name)
     }
     memcpy(kind, name, (size_t)(separator - name));
     kind[separator - name] = '\0';
+    if (strcmp(kind, BALLOON_NAMED_BY_LABEL) == 0) {
+        return balloon_labelled(machine, separator + 1);
+    }
     return balloon_sending(machine, kind, separator + 1);
 }
 
@@ -1721,6 +1738,9 @@ static int route_token_holds(const struct script_machine *machine, const struct 
         object_index = script_machine_index_of_object(machine, first);
         return object_index != SCRIPT_NO_OBJECT && object_can_be_a_core(&machine->objects[object_index], second != NULL ? atoi(second) : 0);
     case SCRIPT_ROUTE_WAIT_BALLOON:
+        if (second != NULL && strcmp(first, BALLOON_NAMED_BY_LABEL) == 0) {
+            return balloon_labelled(machine, second) >= 0;
+        }
         return (second != NULL ? balloon_sending(machine, first, second) : balloon_sending(machine, NULL, first)) >= 0;
     case SCRIPT_ROUTE_WAIT_TICKS:
         return machine->tick - soul->route_last_action_tick >= (unsigned int)atoi(first);
