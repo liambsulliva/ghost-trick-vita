@@ -17,7 +17,13 @@
     "language": "en",
     "timing": "remaster",
     "card_texture": "chapter_card",
-    "next_chapter_card_texture": "next_chapter_card"
+    "next_chapter_card_texture": "next_chapter_card",
+    "start_commands": [
+      [
+        "Button",
+        "All:On"
+      ]
+    ]
   },
   "narration_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
   "talk": {

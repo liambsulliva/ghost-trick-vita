@@ -141,6 +141,9 @@ static void add_script(const char *folder, const char *name)
 }
 
 static char chain_entry[SCRIPT_SOURCE_NAME_MAX] = "route";
+static char start_verbs[SCRIPT_START_COMMAND_MAX][SCRIPT_SOURCE_NAME_MAX];
+static char start_args[SCRIPT_START_COMMAND_MAX][SCRIPT_SOURCE_NAME_MAX];
+static int start_count;
 
 static void add_every_script_of_the_chain(const char *folder)
 {
@@ -163,6 +166,8 @@ static void add_every_script_of_the_chain(const char *folder)
             snprintf(chain_entry, sizeof(chain_entry), "%s", name);
         } else if (sscanf(line, "chapter_mark %d", &chapter_mark) == 1) {
             machine.chapter_mark = chapter_mark;
+        } else if (start_count < SCRIPT_START_COMMAND_MAX && sscanf(line, "start_command %95s %95s", start_verbs[start_count], start_args[start_count]) == 2) {
+            start_count = start_count + 1;
         }
     }
     fclose(source);
@@ -391,6 +396,9 @@ int main(int argument_count, char **arguments)
     if (!script_machine_start(&machine, chain_entry)) {
         printf("cannot start %s\n", chain_entry);
         return 1;
+    }
+    for (index = 0; index < start_count; index++) {
+        script_soul_run_command(&machine, start_verbs[index], start_args[index]);
     }
     while (machine.tick <= stop_tick && !machine.is_finished) {
         for (press = 0; press < press_count; press++) {

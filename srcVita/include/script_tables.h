@@ -20,6 +20,7 @@
 #define SCRIPT_BALLOON_PART_MAX 4
 #define SCRIPT_MOTION_ROW_MAX 16384
 #define SCRIPT_PRELOAD_ROW_MAX 2048
+#define SCRIPT_START_COMMAND_MAX 8
 
 enum script_preload_kind {
     SCRIPT_PRELOAD_ANIMATION,
@@ -178,6 +179,9 @@ struct script_tables {
     enum script_timing timing;
     char entry_name[SCRIPT_SOURCE_NAME_MAX];
     int chapter_mark;
+    char start_command_verbs[SCRIPT_START_COMMAND_MAX][ASSET_NAME_MAX];
+    char start_command_args[SCRIPT_START_COMMAND_MAX][ASSET_NAME_MAX];
+    int start_command_count;
     char file_names[SCRIPT_CHAIN_FILE_MAX][SCRIPT_SOURCE_NAME_MAX];
     int file_count;
     struct script_room_plate room_plates[SCRIPT_ROOM_PLATE_MAX];

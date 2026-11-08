@@ -49,6 +49,16 @@ static int read_chain_line(struct script_tables *tables, const char *line)
     if (sscanf(line, "chapter_mark %d", &tables->chapter_mark) == 1) {
         return tables->chapter_mark >= 0;
     }
+    if (text_line_starts_with(line, "start_command ")) {
+        if (tables->start_command_count >= SCRIPT_START_COMMAND_MAX) {
+            return 0;
+        }
+        if (sscanf(line, "start_command " NAME_SCAN " " NAME_SCAN, tables->start_command_verbs[tables->start_command_count], tables->start_command_args[tables->start_command_count]) != 2) {
+            return 0;
+        }
+        tables->start_command_count = tables->start_command_count + 1;
+        return 1;
+    }
     if (sscanf(line, "timing " NAME_SCAN, word) == 1) {
         if (strcmp(word, "ds") == 0) {
             tables->timing = SCRIPT_TIMING_DS;

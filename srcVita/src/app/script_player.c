@@ -361,6 +361,7 @@ static int audio_is_ready(void)
 static void start_running(void)
 {
     struct texture_cache_totals totals;
+    int command;
 
     texture_cache_read_totals(&totals);
     run_log_write(LOG_FOR_TOOLS_SCRIPT_READY, entry, clock_now_us() - preload_started_us, totals.bytes_in_use, totals.missing);
@@ -368,6 +369,9 @@ static void start_running(void)
         note_failure("script_entry_missing", entry);
         phase = PHASE_FINISHED;
         return;
+    }
+    for (command = 0; command < data->tables.start_command_count; command++) {
+        script_soul_run_command(&data->machine, data->tables.start_command_verbs[command], data->tables.start_command_args[command]);
     }
     time_owed_us = 0;
     longest_tick_us = 0;

@@ -291,6 +291,7 @@ def chain_text(section):
     lines = ["timing " + section["timing"], "entry " + script_name(section["entry"])]
     if "chapter_mark" in section:
         lines.append("chapter_mark %d" % section["chapter_mark"])
+    lines.extend("start_command %s %s" % (verb, arg) for verb, arg in section.get("start_commands", []))
     if "stop_at_act" in section:
         lines.insert(0, "stop " + section["stop_at_act"])
     if "card_texture" in section:
