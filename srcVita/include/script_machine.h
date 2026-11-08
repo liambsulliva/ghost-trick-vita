@@ -477,8 +477,13 @@ void script_machine_name_of_path(const char *path, char *name, unsigned int name
 
 void script_machine_pan_camera_back_to(struct script_machine *machine, int x, int y);
 #define SCRIPT_FIRST_CORE_NODE 10
+#define PAUSE_CLASS_NORMAL 0
+#define PAUSE_CLASS_ONE 1
+#define PAUSE_CLASS_TALK 2
+#define PAUSE_CLASS_FREE 3
 
 void script_machine_node_position(const struct script_object *object, int node, float *x, float *y);
+int script_machine_vm_is_paused(const struct script_machine *machine, const struct script_vm *vm);
 void script_machine_move_anchored_effects(struct script_machine *machine);
 void script_machine_spawn_table_effect(struct script_machine *machine, struct script_object *object, int effect_id, float offset_x, float offset_y, const char *name);
 int script_machine_camera_band_snap(const struct script_machine *machine, int object_y);

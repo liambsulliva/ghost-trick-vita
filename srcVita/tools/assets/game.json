@@ -1202,15 +1202,33 @@
       "thorn_sizes": [
         {
           "texture": "thorn_bubble_s",
-          "widest_text": 170, "text_box": [34, 34, 145, 81]
+          "widest_text": 170,
+          "text_box": [
+            34,
+            34,
+            145,
+            81
+          ]
         },
         {
           "texture": "thorn_bubble_m",
-          "widest_text": 238, "text_box": [35, 36, 254, 106]
+          "widest_text": 238,
+          "text_box": [
+            35,
+            36,
+            254,
+            106
+          ]
         },
         {
           "texture": "thorn_bubble_l",
-          "widest_text": 100000, "text_box": [28, 28, 308, 127]
+          "widest_text": 100000,
+          "text_box": [
+            28,
+            28,
+            308,
+            127
+          ]
         }
       ],
       "thorn_pixels_per_em": 44,
@@ -2313,14 +2331,6 @@
         "pace": "normal",
         "footage_s": 2510.75,
         "wait": "view & usable:telephone"
-      },
-      {
-        "script": "st14-st14_game000_Expand",
-        "action": "ghost_off",
-        "object": "telephone",
-        "pace": "quick",
-        "footage_s": 2511.75,
-        "wait": "view & core:telephone"
       },
       {
         "script": "st14-st14_game000_Expand",
@@ -3830,14 +3840,6 @@
       },
       {
         "script": "st02-st02_game010_Expand",
-        "action": "ghost_off",
-        "object": "telephone",
-        "pace": "quick",
-        "footage_s": 7300.0,
-        "wait": "view & core:telephone"
-      },
-      {
-        "script": "st02-st02_game010_Expand",
         "action": "phone_call",
         "object": "telephone",
         "pace": "normal",
@@ -4169,14 +4171,6 @@
         "pace": "normal",
         "footage_s": 8741.8,
         "wait": "view & usable:caster"
-      },
-      {
-        "script": "st02-st02_game024_Expand",
-        "action": "ghost_off",
-        "object": "caster",
-        "pace": "quick",
-        "footage_s": 8742.3,
-        "wait": "view & core:caster"
       },
       {
         "script": "st02-st02_game024_Expand",

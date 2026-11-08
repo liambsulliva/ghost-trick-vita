@@ -15,10 +15,6 @@
 #define MOVIE_SOUND_KIND 82
 #define NEVER -1
 #define SCRIPT_CHANGE_OP 0x24u
-#define PAUSE_CLASS_NORMAL 0
-#define PAUSE_CLASS_ONE 1
-#define PAUSE_CLASS_TALK 2
-#define PAUSE_CLASS_FREE 3
 #define GAME_APP_TARGET "GameApp"
 #define XML_SUFFIX ".xml"
 #define STUCK_AFTER_QUIET_TICKS 240
@@ -1315,7 +1311,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
     }
 }
 
-static int vm_is_paused(const struct script_machine *machine, const struct script_vm *vm)
+int script_machine_vm_is_paused(const struct script_machine *machine, const struct script_vm *vm)
 {
     int pause_class;
 
@@ -1328,6 +1324,14 @@ static int vm_is_paused(const struct script_machine *machine, const struct scrip
     }
     if (pause_class == PAUSE_CLASS_TALK) {
         return machine->talk_is_open;
+    }
+    if (pause_class == PAUSE_CLASS_ONE) {
+        if (machine->talk_is_open || machine->soul.dead_talk_is_on || machine->choice.is_open) {
+            return 1;
+        }
+        if (machine->soul.is_on || machine->soul.is_leaving_view) {
+            return 0;
+        }
     }
     return machine->pause_bit;
 }
@@ -1432,7 +1436,7 @@ static int step_vm(struct script_machine *machine, struct script_vm *vm)
     if (vm->has_ended) {
         return 0;
     }
-    if (vm_is_paused(machine, vm)) {
+    if (script_machine_vm_is_paused(machine, vm)) {
         return 0;
     }
     if (vm->wait_ticks > 0) {
