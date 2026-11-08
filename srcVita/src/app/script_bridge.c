@@ -72,7 +72,7 @@ static int log_once_full_was_logged;
 
 static void write_cue(const char *kind, const char *name)
 {
-    run_log_write("cue tick=%u kind=%s name=%s", tick, kind, name);
+    run_log_write("cue tick=%u kind=%s name=%s", script_player_tick(), kind, name);
 }
 
 static void log_once(const char *what, const char *name)
@@ -723,7 +723,7 @@ static void on_soul_vision_changed(int is_on, int with_effect)
 {
     soul_vision_is_on = is_on;
     script_view_soul_changed(is_on, with_effect);
-    run_log_write("script soul_vision on=%d tick=%u", is_on, tick);
+    run_log_write("script soul_vision on=%d tick=%u", is_on, script_player_tick());
 }
 
 static void on_marked(const char *what, const char *name)
