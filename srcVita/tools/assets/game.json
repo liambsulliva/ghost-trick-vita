@@ -2331,6 +2331,14 @@
       },
       {
         "script": "st14-st14_game000_Expand",
+        "action": "ghost_off",
+        "object": "telephone",
+        "pace": "quick",
+        "footage_s": 2511.75,
+        "wait": "view & core:telephone"
+      },
+      {
+        "script": "st14-st14_game000_Expand",
         "action": "ghost_on",
         "object": "telephone",
         "pace": "normal",
