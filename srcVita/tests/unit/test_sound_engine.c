@@ -12,6 +12,7 @@
 #include "pcm_mix.h"
 #include "pcm_ramp.h"
 #include "run_log.h"
+#include "playback_speed.h"
 #include "sound_engine.h"
 #include "test_support.h"
 #include "vorbis_stream.h"
@@ -174,6 +175,31 @@ static void test_a_started_sound_plays_in_the_next_grain_on_both_channels_and_th
     }
     CHECK(grain_is_silent(played_grain(first + SINE_MONO_FRAMES / SOUND_GRAIN_FRAMES + 1)));
     CHECK_HAS_TEXT(log_text(), "sound started name=ping voice=0 at=2048 waited_us=0");
+    finish();
+}
+
+static void test_a_sped_up_sound_is_cut_to_its_share_of_the_clip(void)
+{
+    int first;
+    int index;
+    int full_grains;
+    int frames_in_the_last_grain;
+
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    pump(3);
+    first = grains_played();
+    playback_speed_set(2 * PLAYBACK_SPEED_NORMAL);
+    sound_request_play("ping");
+    pump(GRAINS_LONGER_THAN_THE_CLIP);
+    playback_speed_set(PLAYBACK_SPEED_NORMAL);
+    full_grains = (SINE_MONO_FRAMES / 2) / SOUND_GRAIN_FRAMES;
+    frames_in_the_last_grain = (SINE_MONO_FRAMES / 2) % SOUND_GRAIN_FRAMES;
+    for (index = 0; index < full_grains; index++) {
+        CHECK(memcmp(played_grain(first + index), &clip_frames[index * SOUND_GRAIN_FRAMES * 2], GRAIN_SAMPLES * sizeof(short)) == 0);
+    }
+    CHECK(memcmp(played_grain(first + full_grains), &clip_frames[full_grains * SOUND_GRAIN_FRAMES * 2], (unsigned int)frames_in_the_last_grain * 2 * sizeof(short)) == 0);
+    CHECK(grain_is_silent(played_grain(first + full_grains + 1)));
     finish();
 }
 
@@ -827,6 +853,7 @@ int main(void)
     decode_reference_clip();
     test_prepare_decodes_the_whole_clip_then_opens_the_port_with_a_zero_grain();
     test_a_started_sound_plays_in_the_next_grain_on_both_channels_and_then_ends();
+    test_a_sped_up_sound_is_cut_to_its_share_of_the_clip();
     test_the_wait_before_a_sound_starts_is_logged();
     test_two_sounds_at_once_add_together();
     test_one_sound_past_the_voice_limit_is_dropped_and_logged();

@@ -11,6 +11,7 @@
 #include "music_engine.h"
 #include "run_log.h"
 #include "next_chapter_card.h"
+#include "playback_speed.h"
 #include "packed_file.h"
 #include "scene_stage.h"
 #include "script_bridge.h"
@@ -26,6 +27,8 @@
 #include "ds_units.h"
 
 #define MICROSECONDS_PER_VM_TICK 16666ULL
+#define AUDIO_MOST_SPEED_OUT_OF_256 (32 * PLAYBACK_SPEED_NORMAL)
+#define AUDIO_SPEED_SMOOTHING 8
 #define MOST_TICKS_PER_DRAWN_FRAME 2ULL
 #define LONGEST_UPDATE_US 500000ULL
 #define LONGEST_AUDIO_PRELOAD_US 10000000ULL
@@ -94,6 +97,7 @@ static unsigned long long preload_started_us;
 static unsigned long long time_owed_us;
 static unsigned long long longest_tick_us;
 static int ticks_per_frame_when_fast;
+static int audio_speed_out_of_256 = PLAYBACK_SPEED_NORMAL;
 static unsigned long long fast_forward_budget_us = FAST_FORWARD_LEAST_BUDGET_US;
 static unsigned long long fast_forward_report_us;
 static unsigned int fast_forward_ticks_since_report;
@@ -573,7 +577,8 @@ static void stop_at_the_run_until_point(void)
     run_until_kind[0] = '\0';
     ticks_per_frame_when_fast = 0;
     data->machine.auto_press = wanted_auto_play();
-    script_bridge_set_quiet(0);
+    audio_speed_out_of_256 = PLAYBACK_SPEED_NORMAL;
+    playback_speed_set(PLAYBACK_SPEED_NORMAL);
     is_paused = 1;
 }
 
@@ -616,6 +621,21 @@ static void report_fast_forward_speed(unsigned long long frame_us, int ticks_run
     fast_forward_slowed_frames_since_report = 0;
 }
 
+static void follow_the_tick_rate_with_audio(unsigned long long frame_us, int ticks_run)
+{
+    int frame_speed;
+
+    if (frame_us == 0) {
+        return;
+    }
+    frame_speed = (int)((unsigned long long)ticks_run * MICROSECONDS_PER_VM_TICK * PLAYBACK_SPEED_NORMAL / frame_us);
+    if (frame_speed > AUDIO_MOST_SPEED_OUT_OF_256) {
+        frame_speed = AUDIO_MOST_SPEED_OUT_OF_256;
+    }
+    audio_speed_out_of_256 = (audio_speed_out_of_256 * (AUDIO_SPEED_SMOOTHING - 1) + frame_speed) / AUDIO_SPEED_SMOOTHING;
+    playback_speed_set(audio_speed_out_of_256);
+}
+
 static void run_ticks_as_fast_as_the_frame_allows(unsigned long long frame_us)
 {
     unsigned long long started_us;
@@ -640,6 +660,7 @@ static void run_ticks_as_fast_as_the_frame_allows(unsigned long long frame_us)
         }
     }
     report_fast_forward_speed(frame_us, ticks_run, ticks_allowed);
+    follow_the_tick_rate_with_audio(frame_us, ticks_run);
 }
 
 static void run_ticks(unsigned long long elapsed_us)
@@ -1025,7 +1046,8 @@ void script_player_set_fast_forward(int ticks_per_frame)
     if (data != NULL) {
         data->machine.auto_press = wanted_auto_play();
     }
-    script_bridge_set_quiet(ticks_per_frame > 0);
+    audio_speed_out_of_256 = PLAYBACK_SPEED_NORMAL;
+    playback_speed_set(PLAYBACK_SPEED_NORMAL);
     read_ahead_set_lookahead_scale(ticks_per_frame > READ_AHEAD_MOST_LOOKAHEAD_SCALE ? READ_AHEAD_MOST_LOOKAHEAD_SCALE : (ticks_per_frame > 1 ? ticks_per_frame : 1));
     fast_forward_budget_us = FAST_FORWARD_LEAST_BUDGET_US;
     if (ticks_per_frame > 0) {

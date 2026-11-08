@@ -60,13 +60,11 @@ static int zoom_ticks_left;
 
 static int soul_vision_is_on;
 static int mask_is_on;
-static int is_quiet;
 #define NO_MOVIE_SOUND -1
 
 typedef char the_stage_holds_every_script_object[SCENE_OBJECT_MAX >= SCRIPT_OBJECT_MAX ? 1 : -1];
 static int movie_sound_kind_waiting = NO_MOVIE_SOUND;
 static unsigned int movie_started_at_tick;
-static const char *current_music;
 static const struct script_balloon_row *open_balloon_rows[SCRIPT_BALLOON_MAX];
 static struct pending_overlay pending_overlays[PENDING_OVERLAY_MAX];
 static char logged_once[LOGGED_ONCE_MAX][ASSET_NAME_MAX];
@@ -132,7 +130,6 @@ static void on_stage_cleared(void)
 static void on_scene_change_was_forced(void)
 {
     write_cue("music_stop", "-");
-    current_music = NULL;
     music_request_stop(0);
 }
 
@@ -164,9 +161,7 @@ static void on_mask_fade_color_changed(int is_white)
 
 static void on_sounds_stopped(void)
 {
-    if (!is_quiet) {
-        sound_request_stop();
-    }
+    sound_request_stop();
 }
 
 static void on_sound_loop_started(int kind, const char *loop_tag)
@@ -174,23 +169,19 @@ static void on_sound_loop_started(int kind, const char *loop_tag)
     const char *name;
 
     name = script_tables_sound_name(tables, kind);
-    if (name != NULL && !is_quiet) {
+    if (name != NULL) {
         sound_request_loop(name, loop_tag);
     }
 }
 
 static void on_sound_loop_stopped(const char *loop_tag)
 {
-    if (!is_quiet) {
-        sound_request_stop_loop(loop_tag);
-    }
+    sound_request_stop_loop(loop_tag);
 }
 
 static void on_music_volume_changed(int volume, int ticks)
 {
-    if (!is_quiet) {
-        music_request_volume(volume, ticks);
-    }
+    music_request_volume(volume, ticks);
 }
 
 static void on_talk_changed(const struct script_talk_view *view)
@@ -663,9 +654,7 @@ static void on_music_prepared(int id)
         log_once("no_music_row", number);
         return;
     }
-    if (!is_quiet) {
-        music_request_prepare(name);
-    }
+    music_request_prepare(name);
 }
 
 static void play_music(int id, int fade_in_ticks)
@@ -680,10 +669,7 @@ static void play_music(int id, int fade_in_ticks)
         return;
     }
     write_cue("music", name);
-    current_music = name;
-    if (!is_quiet) {
-        music_request_play_fading_in(name, 1, fade_in_ticks);
-    }
+    music_request_play_fading_in(name, 1, fade_in_ticks);
 }
 
 static void on_music_started(int id)
@@ -699,8 +685,7 @@ static void on_music_faded_in(int id, int fade_in_ticks)
 static void on_music_stopped(int fade_ticks)
 {
     write_cue("music_stop", "-");
-    current_music = NULL;
-    music_request_stop(is_quiet ? 0 : fade_ticks);
+    music_request_stop(fade_ticks);
 }
 
 static void play_sound(int kind)
@@ -715,9 +700,7 @@ static void play_sound(int kind)
         return;
     }
     write_cue("sound", name);
-    if (!is_quiet) {
-        sound_request_play(name);
-    }
+    sound_request_play(name);
 }
 
 static int sound_is_the_waiting_movie_sound(int kind)
@@ -848,19 +831,6 @@ static const struct script_outputs bridge_outputs = {
     .talk_changed = on_talk_changed
 };
 
-void script_bridge_set_quiet(int should_be_quiet)
-{
-    if (is_quiet && !should_be_quiet && current_music != NULL) {
-        music_request_prepare(current_music);
-        music_request_play(current_music, 1);
-    }
-    if (!is_quiet && should_be_quiet) {
-        music_request_stop(0);
-        sound_request_stop();
-    }
-    is_quiet = should_be_quiet;
-}
-
 const struct script_outputs *script_bridge_outputs(void)
 {
     return &bridge_outputs;
@@ -880,7 +850,6 @@ void script_bridge_start(const struct script_tables *new_tables)
     mask_is_on = 0;
     logged_once_count = 0;
     log_once_full_was_logged = 0;
-    current_music = NULL;
     movie_sound_kind_waiting = NO_MOVIE_SOUND;
     script_view_start(new_tables);
     script_ui_view_start(new_tables);

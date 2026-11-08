@@ -9,6 +9,7 @@
 #include "file_path.h"
 #include "memory.h"
 #include "music_engine.h"
+#include "playback_speed.h"
 #include "music_source.h"
 #include "pcm_ramp.h"
 #include "run_log.h"
@@ -462,6 +463,7 @@ static void play_one_grain(void)
     note_window_start();
     decode_started_us = clock_now_us();
     music_source_fill(&source, grain, MUSIC_GRAIN_FRAMES);
+    music_source_skip(&source, playback_speed_frames_to_skip(MUSIC_GRAIN_FRAMES, playback_speed_get()));
     decode_ended_us = clock_now_us();
     ramp_in_again_if_the_submit_will_miss_its_deadline(decode_ended_us);
     pcm_ramp_apply(&ramp, grain, MUSIC_GRAIN_FRAMES);

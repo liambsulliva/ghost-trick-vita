@@ -17,7 +17,7 @@ STB_VORBIS_FLAGS := -std=c99 -w -O2 -ffp-contract=off -include alloca.h -DSTB_VO
 STB_VORBIS_OBJECT := $(TOOLS_BUILD_FOLDER)/stb_vorbis.o
 MUSIC_SOURCES := $(APP_FOLDER)/crc32.c $(APP_FOLDER)/pcm_ramp.c $(APP_FOLDER)/ogg_pages.c $(APP_FOLDER)/vorbis_stream.c $(APP_FOLDER)/music_source.c
 MUSIC_REFERENCE_FLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -O2 -Wall -Wextra -ffp-contract=off -I$(INCLUDE_FOLDER)
-LOG_WRITER_SOURCES := $(TESTS_FOLDER)/music_log_writer.c $(MUSIC_SOURCES) $(APP_FOLDER)/music_engine.c $(APP_FOLDER)/sound_engine.c $(APP_FOLDER)/pcm_mix.c $(APP_FOLDER)/file_path.c $(APP_FOLDER)/run_log.c $(TEST_FAKES_FOLDER)/fake_audio.c $(TEST_FAKES_FOLDER)/fake_platform.c
+LOG_WRITER_SOURCES := $(TESTS_FOLDER)/music_log_writer.c $(MUSIC_SOURCES) $(APP_FOLDER)/music_engine.c $(APP_FOLDER)/sound_engine.c $(APP_FOLDER)/playback_speed.c $(APP_FOLDER)/pcm_mix.c $(APP_FOLDER)/file_path.c $(APP_FOLDER)/run_log.c $(TEST_FAKES_FOLDER)/fake_audio.c $(TEST_FAKES_FOLDER)/fake_platform.c
 
 TEXTURE_TOOL := $(TOOLS_BUILD_FOLDER)/texture_tool
 MUSIC_REFERENCE := $(TOOLS_BUILD_FOLDER)/music_reference

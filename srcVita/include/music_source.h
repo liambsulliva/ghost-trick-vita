@@ -18,6 +18,7 @@ int music_source_open(struct music_source *source, const unsigned char *data, un
 void music_source_set_loop_points(struct music_source *source, unsigned int loop_start, unsigned int loop_last);
 int music_source_begin(struct music_source *source, int is_looping);
 void music_source_fill(struct music_source *source, short *stereo_frames, unsigned int frame_count);
+void music_source_skip(struct music_source *source, unsigned int frame_count);
 void music_source_close(struct music_source *source);
 
 #endif

@@ -136,6 +136,40 @@ static void test_a_loop_start_at_the_very_end_ends_instead_of_spinning(void)
     music_source_close(&source);
 }
 
+static void test_a_skip_jumps_ahead_and_wraps_inside_the_loop(void)
+{
+    unsigned int skip_inside;
+    unsigned int skip_past_the_end;
+    unsigned int wrapped_to;
+
+    CHECK_INT(music_source_open(&source, sine_stereo_ogg, sizeof(sine_stereo_ogg)), VORBIS_STREAM_OK);
+    music_source_set_loop_points(&source, LOOP_START, LOOP_LAST);
+    CHECK(music_source_begin(&source, 1));
+    music_source_fill(&source, output, GRAIN_FRAMES);
+    skip_inside = GRAIN_FRAMES;
+    music_source_skip(&source, skip_inside);
+    music_source_fill(&source, output, GRAIN_FRAMES);
+    CHECK(memcmp(output, &linear[(GRAIN_FRAMES + skip_inside) * 2], GRAIN_FRAMES * 4) == 0);
+    skip_past_the_end = LOOP_LAST + 1 - source.next_frame + GRAIN_FRAMES;
+    wrapped_to = LOOP_START + GRAIN_FRAMES;
+    music_source_skip(&source, skip_past_the_end);
+    CHECK_INT((int)source.next_frame, (int)wrapped_to);
+    CHECK_INT(source.loop_count, 1);
+    music_source_fill(&source, output, GRAIN_FRAMES);
+    CHECK(memcmp(output, &linear[wrapped_to * 2], GRAIN_FRAMES * 4) == 0);
+    CHECK(!source.has_ended);
+    music_source_close(&source);
+}
+
+static void test_a_skip_past_the_end_of_a_one_shot_track_ends_it(void)
+{
+    CHECK_INT(music_source_open(&source, sine_stereo_ogg, sizeof(sine_stereo_ogg)), VORBIS_STREAM_OK);
+    CHECK(music_source_begin(&source, 0));
+    music_source_skip(&source, SINE_STEREO_FRAMES * 2);
+    CHECK(source.has_ended);
+    music_source_close(&source);
+}
+
 int main(void)
 {
     decode_linear_reference();
@@ -146,5 +180,7 @@ int main(void)
     test_a_loop_of_one_frame_keeps_giving_that_frame();
     test_a_looping_stream_without_audio_ends_instead_of_spinning();
     test_a_loop_start_at_the_very_end_ends_instead_of_spinning();
+    test_a_skip_jumps_ahead_and_wraps_inside_the_loop();
+    test_a_skip_past_the_end_of_a_one_shot_track_ends_it();
     return test_finish("unit/music_source");
 }

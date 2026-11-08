@@ -9,11 +9,13 @@
 #include "memory.h"
 #include "pcm_mix.h"
 #include "pcm_ramp.h"
+#include "playback_speed.h"
 #include "run_log.h"
 #include "sound_engine.h"
 #include "vorbis_stream.h"
 
 #define SAMPLES_PER_FRAME 2
+#define SOUND_LEAST_FRAMES_WHEN_SPED_UP 4800u
 #define BYTES_PER_FRAME (SAMPLES_PER_FRAME * (unsigned int)sizeof(short))
 #define GRAIN_US 11610LL
 #define LATE_SLACK_US 2000LL
@@ -72,6 +74,7 @@ struct sound_clip {
 struct sound_voice {
     const struct sound_clip *clip;
     unsigned int next_frame;
+    unsigned int end_frame;
     char loop_tag[ASSET_NAME_MAX];
 };
 
@@ -474,6 +477,7 @@ static void start_voice(const struct sound_start *start)
     voices[voice].clip = clip;
     voices[voice].next_frame = 0;
     memcpy(voices[voice].loop_tag, start->loop_tag, ASSET_NAME_MAX);
+    voices[voice].end_frame = voices[voice].loop_tag[0] == '\0' ? playback_speed_frames_to_play(clip->frame_count, SOUND_LEAST_FRAMES_WHEN_SPED_UP, playback_speed_get()) : clip->frame_count;
     window.started = window.started + 1;
     run_log_write(LOG_FOR_TOOLS_SOUND_STARTED, start->name, voice, totals.frames_submitted, clock_now_us() - start->requested_us);
 }
@@ -501,12 +505,12 @@ static void mix_voice_into_grain(struct sound_voice *voice)
         unsigned int frames_left;
         unsigned int frames;
 
-        frames_left = voice->clip->frame_count - voice->next_frame;
+        frames_left = voice->end_frame - voice->next_frame;
         frames = frames_left < SOUND_GRAIN_FRAMES - frames_mixed ? frames_left : SOUND_GRAIN_FRAMES - frames_mixed;
         pcm_mix_add(&grain[frames_mixed * SAMPLES_PER_FRAME], &voice->clip->frames[voice->next_frame * SAMPLES_PER_FRAME], frames * SAMPLES_PER_FRAME);
         voice->next_frame = voice->next_frame + frames;
         frames_mixed = frames_mixed + frames;
-        if (voice->next_frame >= voice->clip->frame_count) {
+        if (voice->next_frame >= voice->end_frame) {
             if (voice->loop_tag[0] == '\0') {
                 voice->clip = NULL;
             } else {

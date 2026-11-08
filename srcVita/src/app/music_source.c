@@ -84,6 +84,29 @@ void music_source_fill(struct music_source *source, short *stereo_frames, unsign
     memset(&stereo_frames[filled * SAMPLES_PER_FRAME], 0, (frame_count - filled) * SAMPLES_PER_FRAME * sizeof(short));
 }
 
+void music_source_skip(struct music_source *source, unsigned int frame_count)
+{
+    unsigned int target;
+    unsigned int loop_length;
+
+    if (frame_count == 0 || source->has_ended) {
+        return;
+    }
+    target = source->next_frame + frame_count;
+    if (source->is_looping && source->has_loop_points && target > source->loop_last) {
+        loop_length = source->loop_last + 1 - source->loop_start;
+        target = source->loop_start + (target - source->loop_start) % loop_length;
+        source->loop_count = source->loop_count + 1;
+    }
+    if (vorbis_stream_seek(&source->stream, target)) {
+        source->next_frame = target;
+        return;
+    }
+    if (!go_back_to_the_loop_start(source)) {
+        source->has_ended = 1;
+    }
+}
+
 void music_source_close(struct music_source *source)
 {
     vorbis_stream_close(&source->stream);
