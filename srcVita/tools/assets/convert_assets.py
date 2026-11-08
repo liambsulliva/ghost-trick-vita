@@ -439,7 +439,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
     plates = set_description.get("plates", [])
     timelines = load_timelines(packs, animations)
     jobs = {}
-    crops = add_atlas_page_jobs(jobs, animations, timelines, set(set_description.get("scripts", {}).get("motion_tables", {}).values()))
+    crops = add_atlas_page_jobs(jobs, animations, timelines, script_assets.folders_played_by_tables(set_description.get("scripts", {}).get("motion_tables", {})))
     atlas_page_names = list(jobs)
     add_plate_jobs(jobs, plates, set_description.get("soul_view", {}).get("ramp"))
     used_faces = talk_assets.faces_the_set_will_use(packs, set_description, text_key)

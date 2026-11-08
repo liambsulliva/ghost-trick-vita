@@ -1,3 +1,4 @@
+import collections
 import os
 import sys
 
@@ -230,8 +231,22 @@ def walk_table_frames(data, offset):
         position = position + 2 * lmg_decode.MOTION_LENGTHS[tag]
 
 
-def table_animation_name(table_name):
+def table_animation_name(table_name, folder, names_differ_by_stage):
+    if table_name.lower() in names_differ_by_stage:
+        return TABLE_ANIMATION_PREFIX + table_name.lower() + "_" + folder.lower()
     return TABLE_ANIMATION_PREFIX + table_name.lower()
+
+
+def folders_played_by_tables(motion_tables):
+    return set(folder for tables in motion_tables.values() for folder in tables.values())
+
+
+def table_names_with_several_folders(motion_tables):
+    folders_of_name = collections.defaultdict(set)
+    for tables in motion_tables.values():
+        for table_name, folder in tables.items():
+            folders_of_name[table_name.lower()].add(folder.lower())
+    return set(name for name, folders in folders_of_name.items() if len(folders) > 1)
 
 
 def table_offsets_of(data):
@@ -258,13 +273,14 @@ def table_animations(set_description, output_folder, timelines, crops):
     animation_texts = {}
     motion_lines = {}
     tables_without_records = set()
+    names_differ_by_stage = table_names_with_several_folders(section["motion_tables"])
     for path in section["files"]:
         plain = read_baked_script(output_folder, path)
         if plain is None:
             continue
         offsets = table_offsets_of(plain)
         lines = []
-        for table_name, animation_name in section["motion_tables"].items():
+        for table_name, animation_name in section["motion_tables"].get(path, {}).items():
             if table_name not in offsets:
                 continue
             timeline = timeline_of_hand_animation(set_description, timelines, animation_name)
@@ -277,7 +293,7 @@ def table_animations(set_description, output_folder, timelines, crops):
             frame_count = len(timeline["records"]) // timeline["records_per_ds_frame"]
             ds_frames = [min(frame, frame_count - 1) for frame in ds_frames]
             frames, records_per_frame = frame_layout.frames_for_table(timeline, ds_frames, crops)
-            name = table_animation_name(table_name)
+            name = table_animation_name(table_name, animation_name, names_differ_by_stage)
             animation_texts[name] = asset_writers.anim_text(name, 0, frames)
             lines.append("motion %x %s %d" % (offsets[table_name], name, records_per_frame))
         if lines:

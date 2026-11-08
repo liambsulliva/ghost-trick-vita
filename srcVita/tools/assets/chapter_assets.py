@@ -268,7 +268,8 @@ def resolve_tables(packs, scripts):
     frames_by_folder = collections.defaultdict(set)
     paths_by_folder = {}
     unresolved = []
-    for script in scripts.values():
+    for script_path, script in scripts.items():
+        script_tables = motion_tables.setdefault(script_path, {})
         folders = {}
         for _, path in read_list_or_nothing(packs, "chara", script.list_name()):
             name = os.path.basename(path)[:-len(".user")].lower()
@@ -294,7 +295,7 @@ def resolve_tables(packs, scripts):
             if folder is None:
                 unresolved.append(stem)
                 continue
-            motion_tables[stem] = folder
+            script_tables[stem] = folder
             paths_by_folder[folder] = folders[folder]
             frames_by_folder[folder].update(frames)
     animations = []
