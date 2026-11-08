@@ -176,11 +176,6 @@ void scene_effects_set_mask(struct scene_effects *effects, int should_be_on)
     effects->iris_is_on = 0;
 }
 
-void scene_effects_set_mask_wanted(struct scene_effects *effects, int should_be_on)
-{
-    effects->mask_is_on = should_be_on;
-}
-
 void scene_effects_stop_iris(struct scene_effects *effects)
 {
     effects->iris_is_on = 0;

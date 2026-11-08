@@ -113,18 +113,6 @@ const struct script_cue_message *script_cues_find(const struct script_cue_list *
     return NULL;
 }
 
-int script_cue_message_waits_for_button(const struct script_cue_list *cues, const struct script_cue_message *message)
-{
-    int index;
-
-    for (index = 0; index < message->page_count; index++) {
-        if (cues->pages[message->first_page + index].limit == 0) {
-            return 1;
-        }
-    }
-    return message->page_count == 0;
-}
-
 static void load_page(struct script_narration *narration, int page_index)
 {
     const struct script_cue_page *page;

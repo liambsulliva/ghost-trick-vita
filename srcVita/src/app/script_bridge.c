@@ -909,7 +909,3 @@ void script_bridge_finish_tick(void)
     tick = tick + 1;
 }
 
-unsigned int script_bridge_tick(void)
-{
-    return tick;
-}

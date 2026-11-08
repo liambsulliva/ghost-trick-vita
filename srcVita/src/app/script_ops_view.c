@@ -8,7 +8,6 @@
 #define BEAM_CREATE_COVER_ALPHA_WORD 13
 #define FIXED_POINT_BITS 12
 #define COVER_ALPHA_FULL 31.0f
-#define SOUL_CAMERA_SPEED_FIXED 0x6000
 #define FIXED_ONE 4096.0f
 #define RADIUS_UNITS_TO_PIXELS (3.0f / 128.0f)
 #define BEAM_MODE_WIDTH 1
@@ -560,11 +559,6 @@ void script_machine_set_world_origin(struct script_machine *machine, int x, int 
     if (machine->outputs->world_origin_changed != NULL) {
         machine->outputs->world_origin_changed(x, y);
     }
-}
-
-void script_machine_pan_camera_to(struct script_machine *machine, int center_x, int center_y)
-{
-    begin_pan(machine, machine->world_origin_x + center_x - DS_VIEW_WIDTH / 2, script_machine_camera_top_for(machine, center_y), SOUL_CAMERA_SPEED_FIXED, 0);
 }
 
 void script_machine_pan_camera_back_to(struct script_machine *machine, int x, int y)

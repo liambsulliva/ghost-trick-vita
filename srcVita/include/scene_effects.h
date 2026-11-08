@@ -53,7 +53,6 @@ void scene_effects_delete_beam(struct scene_effects *effects, const char *name);
 void scene_effects_set_cover_mask(struct scene_effects *effects, int should_be_on, int is_opaque, float fade_alpha, int fade_is_white);
 float scene_effects_strongest_beam_cover(const struct scene_effects *effects);
 void scene_effects_set_mask(struct scene_effects *effects, int should_be_on);
-void scene_effects_set_mask_wanted(struct scene_effects *effects, int should_be_on);
 void scene_effects_stop_iris(struct scene_effects *effects);
 void scene_effects_set_flash(struct scene_effects *effects, float level);
 const struct scene_beam *scene_effects_find_beam(const struct scene_effects *effects, const char *name);

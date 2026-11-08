@@ -8,6 +8,5 @@ void script_bridge_start(const struct script_tables *tables);
 const struct script_outputs *script_bridge_outputs(void);
 void script_bridge_finish_tick(void);
 void script_bridge_set_quiet(int should_be_quiet);
-unsigned int script_bridge_tick(void);
 
 #endif
