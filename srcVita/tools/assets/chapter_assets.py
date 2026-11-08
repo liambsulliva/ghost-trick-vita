@@ -13,6 +13,7 @@ import resource_list
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))), "tools"))
 
+import line_renderer
 import lmg_decode
 import lz
 import message_cues
@@ -633,10 +634,12 @@ def expand_set(set_description, packs, rom_path, text_key):
                 if label not in entries:
                     labels_with_no_text.add(label)
                 if label in entries and all(row["name"] != "bubble_" + label for row in bubble_rows):
-                    bubble_rows.append(dict(balloon_style["text"], joins_lines=True, name="bubble_" + label, file=entries[label][0][0], entry=entries[label][0][1]))
-                    art = dict(balloon_style["art"], fits="bubble_" + label, room_per_text=balloon_style.get("room_pixels_per_em", balloon_style["text"]["pixels_per_em"]) / balloon_style["text"]["pixels_per_em"])
-                    if label in script.thorn_balloon_labels() and "thorn_sizes" in balloon_style:
-                        art = dict(art, thorn_sizes=balloon_style["thorn_sizes"], texture=balloon_style["thorn_sizes"][0]["texture"])
+                    is_thorn = label in script.thorn_balloon_labels() and "thorn_sizes" in balloon_style
+                    text_style = dict(balloon_style["text"], pixels_per_em=balloon_style.get("thorn_pixels_per_em", balloon_style["text"]["pixels_per_em"])) if is_thorn else balloon_style["text"]
+                    bubble_rows.append(dict(text_style, joins_lines=True, name="bubble_" + label, file=entries[label][0][0], entry=entries[label][0][1]))
+                    art = dict(balloon_style["art"], fits="bubble_" + label, room_per_text=balloon_style.get("room_pixels_per_em", text_style["pixels_per_em"]) / text_style["pixels_per_em"])
+                    if is_thorn:
+                        art = dict(art, thorn_sizes=balloon_style["thorn_sizes"], texture=balloon_style["thorn_sizes"][0]["texture"], least_text_scale=balloon_style["text"]["pixels_per_em"] / text_style["pixels_per_em"], text_line_height=line_renderer.line_box(text_style["pixels_per_em"])[1])
                     balloon_rows.append({"label": label, "delay": balloon_style["delay"], "parts": [art, dict(balloon_style["text_part"], texture="bubble_" + label)]})
     if labels_with_no_text:
         print("talk and balloon labels with no text: %d (%s)" % (len(labels_with_no_text), ", ".join(sorted(labels_with_no_text)[:12])))

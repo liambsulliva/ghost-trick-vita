@@ -1086,17 +1086,18 @@
       "thorn_sizes": [
         {
           "texture": "thorn_bubble_s",
-          "widest_text": 170
+          "widest_text": 170, "text_box": [34, 34, 145, 81]
         },
         {
           "texture": "thorn_bubble_m",
-          "widest_text": 238
+          "widest_text": 238, "text_box": [35, 36, 254, 106]
         },
         {
           "texture": "thorn_bubble_l",
-          "widest_text": 100000
+          "widest_text": 100000, "text_box": [28, 28, 308, 127]
         }
       ],
+      "thorn_pixels_per_em": 44,
       "room_pixels_per_em": 30,
       "text": {
         "font": "natives/android/gui/font/outlinefont/helveticaneueltw1g-bd.oft.1",

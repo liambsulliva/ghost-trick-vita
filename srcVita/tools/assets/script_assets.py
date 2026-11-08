@@ -45,6 +45,8 @@ NARRATION_OP = 0x5d
 BUBBLE_MARGIN_WIDTH = 30
 TICKS_PER_SECOND = 60
 BUBBLE_MARGIN_HEIGHT = 21
+THORN_TEXT_FILL_WIDTH = 0.86
+THORN_TEXT_FILL_HEIGHT = 0.8
 MOTION_LABEL_SUFFIX = ".mtbl.xml"
 FLAGS_SCRIPT = "flags.xml"
 LANGUAGE_SUFFIX_FORMAT = ".%s.xml.lz"
@@ -428,29 +430,55 @@ def text_lines_text(narration_lines):
     return "\n".join(lines) + "\n"
 
 
+def chosen_thorn_size(part, texture_sizes):
+    text_width = texture_sizes[part["fits"]][0] * part.get("room_per_text", 1.0)
+    return next(size for size in part["thorn_sizes"] if text_width <= size["widest_text"])
+
+
 def with_thorn_chosen_by_text(part, texture_sizes):
     if "thorn_sizes" not in part or part.get("fits") not in texture_sizes:
         return part
-    text_width = texture_sizes[part["fits"]][0] * part.get("room_per_text", 1.0)
-    chosen = next(size["texture"] for size in part["thorn_sizes"] if text_width <= size["widest_text"])
-    return dict(part, texture=chosen)
+    return dict(part, texture=chosen_thorn_size(part, texture_sizes)["texture"])
+
+
+def thorn_art_of(balloon, texture_sizes):
+    for part in balloon["parts"]:
+        if "thorn_sizes" in part and part.get("fits") in texture_sizes:
+            return part
+    return None
+
+
+def text_placed_in_thorn(art, text_width, text_height, texture_sizes):
+    size = chosen_thorn_size(art, texture_sizes)
+    box_x, box_y, box_width, box_height = size["text_box"]
+    art_width, art_height = texture_sizes[size["texture"]]
+    scale = art.get("least_text_scale", 1.0)
+    if size["texture"] == art["thorn_sizes"][0]["texture"] and text_height <= art.get("text_line_height", 0):
+        scale = max(scale, min(1.0, box_width * THORN_TEXT_FILL_WIDTH / text_width, box_height * THORN_TEXT_FILL_HEIGHT / text_height))
+    dx = art["dx"] + (box_x + box_width / 2.0 - art_width / 2.0) / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL
+    dy = art["dy"] + (box_y + box_height / 2.0 - art_height / 2.0) / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL
+    return dx, dy, text_width * scale, text_height * scale
 
 
 def balloons_text(balloons, texture_sizes):
     lines = []
     for balloon in balloons:
         lines.append("balloon %d %s %d" % (balloon.get("kind", NO_KIND), balloon.get("label", NO_LABEL), balloon["delay"]))
+        thorn_art = thorn_art_of(balloon, texture_sizes)
         for part in balloon["parts"]:
             part = with_thorn_chosen_by_text(part, texture_sizes)
             if part["texture"] not in texture_sizes:
                 continue
             width, height = texture_sizes[part["texture"]]
+            dx, dy = part["dx"], part["dy"]
             if part.get("fits") in texture_sizes and "thorn_sizes" not in part:
                 text_width, text_height = texture_sizes[part["fits"]]
                 room = part.get("room_per_text", 1.0)
                 width = max(width, text_width * room + BUBBLE_MARGIN_WIDTH)
                 height = max(height, text_height * room + BUBBLE_MARGIN_HEIGHT)
-            lines.append("part %s %s %s %s %s %d %d" % (part["texture"], asset_writers.format_number(part["dx"]), asset_writers.format_number(part["dy"]), asset_writers.format_number(width / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), asset_writers.format_number(height / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), part["after"], part["grow"]))
+            if thorn_art is not None and part["texture"] == thorn_art["fits"] and "text_box" in chosen_thorn_size(thorn_art, texture_sizes):
+                dx, dy, width, height = text_placed_in_thorn(thorn_art, width, height, texture_sizes)
+            lines.append("part %s %s %s %s %s %d %d" % (part["texture"], asset_writers.format_number(dx), asset_writers.format_number(dy), asset_writers.format_number(width / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), asset_writers.format_number(height / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL), part["after"], part["grow"]))
     return "\n".join(lines) + "\n"
 
 
