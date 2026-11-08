@@ -105,6 +105,7 @@ struct script_outputs {
     void (*balloon_shaken)(int slot, int strength, int ticks);
     void (*music_prepared)(int id);
     void (*music_started)(int id);
+    void (*music_faded_in)(int id, int fade_in_ticks);
     void (*music_stopped)(int fade_ticks);
     void (*sound_played)(int kind);
     void (*sounds_stopped)(void);

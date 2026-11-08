@@ -282,6 +282,16 @@ void script_machine_start_music(struct script_machine *machine, int id)
     }
 }
 
+static void fade_in_music(struct script_machine *machine, int id, int fade_in_ticks)
+{
+    if (machine->music_id == id || fade_in_ticks <= 0 || machine->outputs->music_faded_in == NULL) {
+        script_machine_start_music(machine, id);
+        return;
+    }
+    machine->music_id = id;
+    machine->outputs->music_faded_in(id, fade_in_ticks);
+}
+
 void script_machine_stop_music(struct script_machine *machine, int fade_ticks)
 {
     machine->music_id = 0;
@@ -424,6 +434,9 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x106:
         script_machine_start_music(machine, (int)words[0]);
+        break;
+    case 0x107:
+        fade_in_music(machine, (int)words[0], (int)words[2]);
         break;
     case 0x108:
         script_machine_stop_music(machine, (int)words[0]);

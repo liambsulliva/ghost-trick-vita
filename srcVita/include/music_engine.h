@@ -12,6 +12,7 @@ void music_engine_init(const char *music_folder);
 void music_request_prepare(const char *name);
 int music_prepare_is_done(const char *name);
 void music_request_play(const char *name, int is_looping);
+void music_request_play_fading_in(const char *name, int is_looping, int fade_in_ticks);
 void music_request_stop(int fade_ticks);
 void music_request_volume(int volume_out_of_256, int ticks);
 void music_request_starve(int milliseconds);

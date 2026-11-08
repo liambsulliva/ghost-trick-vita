@@ -42,6 +42,7 @@ struct music_wish {
     int should_play;
     int is_looping;
     int fade_ticks;
+    int fade_in_ticks;
     int should_shut_down;
     int starve_ms;
 };
@@ -126,7 +127,7 @@ void music_engine_init(const char *music_folder)
     }
 }
 
-static void post_wish(const char *name, int should_play, int is_looping, int fade_ticks)
+static void post_wish(const char *name, int should_play, int is_looping, int fade_ticks, int fade_in_ticks)
 {
     audio_mailbox_lock();
     mailbox.generation = mailbox.generation + 1;
@@ -134,13 +135,14 @@ static void post_wish(const char *name, int should_play, int is_looping, int fad
     mailbox.should_play = should_play;
     mailbox.is_looping = is_looping;
     mailbox.fade_ticks = fade_ticks;
+    mailbox.fade_in_ticks = fade_in_ticks;
     prepared_name[0] = '\0';
     audio_mailbox_unlock();
 }
 
 void music_request_prepare(const char *name)
 {
-    post_wish(name, 0, 0, MUSIC_QUICK_FADE_TICKS);
+    post_wish(name, 0, 0, MUSIC_QUICK_FADE_TICKS, 0);
 }
 
 int music_prepare_is_done(const char *name)
@@ -158,12 +160,17 @@ int music_prepare_is_done(const char *name)
 
 void music_request_play(const char *name, int is_looping)
 {
-    post_wish(name, 1, is_looping, MUSIC_QUICK_FADE_TICKS);
+    post_wish(name, 1, is_looping, MUSIC_QUICK_FADE_TICKS, 0);
+}
+
+void music_request_play_fading_in(const char *name, int is_looping, int fade_in_ticks)
+{
+    post_wish(name, 1, is_looping, MUSIC_QUICK_FADE_TICKS, fade_in_ticks);
 }
 
 void music_request_stop(int fade_ticks)
 {
-    post_wish("", 0, 0, fade_ticks);
+    post_wish("", 0, 0, fade_ticks, 0);
 }
 
 void music_request_volume(int volume_out_of_256, int ticks)
@@ -187,7 +194,7 @@ void music_shutdown(void)
     if (!worker_is_running) {
         return;
     }
-    post_wish("", 0, 0, MUSIC_QUICK_FADE_TICKS);
+    post_wish("", 0, 0, MUSIC_QUICK_FADE_TICKS, 0);
     audio_mailbox_lock();
     mailbox.should_shut_down = 1;
     audio_mailbox_unlock();
@@ -485,7 +492,7 @@ static int open_port(void)
     return 1;
 }
 
-static void start_playing(int is_looping)
+static void start_playing(int is_looping, int fade_in_ticks)
 {
     if (!music_source_begin(&source, is_looping)) {
         run_log_write("music decoder_failed name=%s error=rewind", loaded_name);
@@ -508,7 +515,7 @@ static void start_playing(int is_looping)
         return;
     }
     playing_gain = PCM_RAMP_FULL_GAIN;
-    begin_ramp(0, playing_gain, RAMP_IN_FRAMES);
+    begin_ramp(0, playing_gain, fade_in_ticks > 0 ? (unsigned int)fade_in_ticks * FRAMES_PER_TICK : RAMP_IN_FRAMES);
 }
 
 static void act_on_wish(const struct music_wish *wish)
@@ -521,7 +528,7 @@ static void act_on_wish(const struct music_wish *wish)
     }
     publish_prepared_name(wish->track_name);
     if (wish->should_play && track_is_loaded) {
-        start_playing(wish->is_looping);
+        start_playing(wish->is_looping, wish->fade_in_ticks);
     }
 }
 

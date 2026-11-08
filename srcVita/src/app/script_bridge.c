@@ -651,7 +651,7 @@ static void on_music_prepared(int id)
     }
 }
 
-static void on_music_started(int id)
+static void play_music(int id, int fade_in_ticks)
 {
     const char *name;
     char number[16];
@@ -665,8 +665,18 @@ static void on_music_started(int id)
     write_cue("music", name);
     current_music = name;
     if (!is_quiet) {
-        music_request_play(name, 1);
+        music_request_play_fading_in(name, 1, fade_in_ticks);
     }
+}
+
+static void on_music_started(int id)
+{
+    play_music(id, 0);
+}
+
+static void on_music_faded_in(int id, int fade_in_ticks)
+{
+    play_music(id, fade_in_ticks);
 }
 
 static void on_music_stopped(int fade_ticks)
@@ -769,6 +779,7 @@ static const struct script_outputs bridge_outputs = {
     .balloon_shaken = on_balloon_shaken,
     .music_prepared = on_music_prepared,
     .music_started = on_music_started,
+    .music_faded_in = on_music_faded_in,
     .music_stopped = on_music_stopped,
     .music_volume_changed = on_music_volume_changed,
     .sound_loop_started = on_sound_loop_started,
