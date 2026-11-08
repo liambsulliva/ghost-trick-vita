@@ -19,6 +19,7 @@
 #define SCRIPT_SOUL_STYLE_MAX 16
 #define SCRIPT_BALLOON_PART_MAX 4
 #define SCRIPT_MOTION_ROW_MAX 16384
+#define SCRIPT_MOTION_BUCKET_COUNT 8192
 #define SCRIPT_PRELOAD_ROW_MAX 2048
 #define SCRIPT_START_COMMAND_MAX 8
 
@@ -212,6 +213,8 @@ struct script_tables {
     int balloon_row_count;
     struct script_motion_row motion_rows[SCRIPT_MOTION_ROW_MAX];
     int motion_row_count;
+    int first_motion_row_in_bucket[SCRIPT_MOTION_BUCKET_COUNT];
+    int next_motion_row_in_bucket[SCRIPT_MOTION_ROW_MAX];
     struct script_preload_row preload_rows[SCRIPT_PRELOAD_ROW_MAX];
     int preload_row_count;
 };

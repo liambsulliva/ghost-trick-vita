@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "crc32.h"
 #include "script_tables.h"
 
 #define SOUL_CORE_CLASS_ID 0x4080f0cdu
@@ -572,6 +573,25 @@ int script_tables_read_preload(struct script_tables *tables, const char *text, u
     return read_all_lines(tables, text, text_size, read_preload_line);
 }
 
+static unsigned int motion_bucket(const char *file_name, unsigned int table_offset)
+{
+    return crc32_add(table_offset, (const unsigned char *)file_name, (unsigned int)strlen(file_name)) % SCRIPT_MOTION_BUCKET_COUNT;
+}
+
+static void index_motion_row(struct script_tables *tables, int row_index)
+{
+    const struct script_motion_row *row;
+    unsigned int bucket;
+
+    row = &tables->motion_rows[row_index];
+    if (script_tables_find_motion(tables, row->file_name, row->table_offset) != NULL) {
+        return;
+    }
+    bucket = motion_bucket(row->file_name, row->table_offset);
+    tables->next_motion_row_in_bucket[row_index] = tables->first_motion_row_in_bucket[bucket];
+    tables->first_motion_row_in_bucket[bucket] = row_index + 1;
+}
+
 int script_tables_read_motions(struct script_tables *tables, const char *file_name, const char *text, unsigned int text_size)
 {
     char line[TABLE_LINE_MAX];
@@ -594,6 +614,7 @@ int script_tables_read_motions(struct script_tables *tables, const char *file_na
             return 0;
         }
         snprintf(row->file_name, sizeof(row->file_name), "%s", file_name);
+        index_motion_row(tables, tables->motion_row_count);
         tables->motion_row_count = tables->motion_row_count + 1;
     }
     return 1;
@@ -601,11 +622,11 @@ int script_tables_read_motions(struct script_tables *tables, const char *file_na
 
 const struct script_motion_row *script_tables_find_motion(const struct script_tables *tables, const char *file_name, unsigned int table_offset)
 {
-    int index;
+    int linked;
 
-    for (index = 0; index < tables->motion_row_count; index++) {
-        if (tables->motion_rows[index].table_offset == table_offset && strcmp(tables->motion_rows[index].file_name, file_name) == 0) {
-            return &tables->motion_rows[index];
+    for (linked = tables->first_motion_row_in_bucket[motion_bucket(file_name, table_offset)]; linked != 0; linked = tables->next_motion_row_in_bucket[linked - 1]) {
+        if (tables->motion_rows[linked - 1].table_offset == table_offset && strcmp(tables->motion_rows[linked - 1].file_name, file_name) == 0) {
+            return &tables->motion_rows[linked - 1];
         }
     }
     return NULL;

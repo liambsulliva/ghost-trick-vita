@@ -216,6 +216,12 @@ Native maps an effect id to a kind (`data_02086624`); kinds below 0x8000 are spr
 
 Guard: the converter reads the kind table and every script from the ROM at bake time and adds a movie row for each spawned id that has none, so a new chapter's effects arrive without hand rows. Hand rows still win, so a hand row can still fix a wrong guess. The bake prints the ids whose art differs by stage (only id 60, two noise variants, keeps the first). Class kinds (0x8000 and up, 48 ids) still need class code. The device tables now hold 512 effect rows, 256 movies and 16384 movie frames.
 
+### 30. Game-wide tables searched row by row
+
+The whole-game set holds 14,169 motion rows, and every actor change looked its row up by a linear search. Rows of later scripts sit later in the table, so stage 6's scenes paid the most: about 2 ms a tick, which held fast forward to 300 ticks a second in the opening demo of the house next door (38 s of wall time) against 1,900 in Chapter 1.
+
+Guard: motion rows are found through a hash index on script and table offset; the first row of a duplicate still wins. Any lookup that runs per tick or per actor over a table that grows with the set must be indexed. A Mac replay cannot show this (it runs the machine without the bridge), so measure per-tick cost on the device with `script fast_forward_speed`.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
