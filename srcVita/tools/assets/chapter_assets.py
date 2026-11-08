@@ -496,7 +496,7 @@ def expand_set(set_description, packs, rom_path, text_key):
             if label in entries and first_source_of_label.setdefault(label, entries[label][0][0]) != entries[label][0][0]:
                 labels_meaning_two_things.add(label)
         for label in script.strings_of_ops((NARRATION_OP,)):
-            if label in entries:
+            if label in entries and all(row["name"] != label for row in narration_rows):
                 narration_rows.append({"name": label, "file": entries[label][0][0], "entry": entries[label][0][1], "later_entries": [entry for _, entry in entries[label][1:]]})
         for label in script.strings_of_ops(TALK_OPS):
             if label in entries:
