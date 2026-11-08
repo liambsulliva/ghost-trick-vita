@@ -1608,16 +1608,36 @@ static void finish_route_step(struct script_machine *machine, const struct scrip
     go_to_route_step(machine, machine->soul.route_step + 1);
 }
 
-static int balloon_sending(const struct script_machine *machine, const char *event)
+static int balloon_sending(const struct script_machine *machine, const char *kind, const char *event)
 {
     int index;
 
     for (index = 0; index < SCRIPT_BALLOON_MAX; index++) {
-        if (machine->balloons[index].in_use && machine->balloons[index].tap_arg != NULL && strcmp(machine->balloons[index].tap_arg, event) == 0) {
+        const struct script_balloon *balloon;
+
+        balloon = &machine->balloons[index];
+        if (!balloon->in_use || balloon->tap_arg == NULL || strcmp(balloon->tap_arg, event) != 0) {
+            continue;
+        }
+        if (kind == NULL || (balloon->tap_verb != NULL && strcmp(balloon->tap_verb, kind) == 0)) {
             return index;
         }
     }
     return -1;
+}
+
+static int balloon_named(const struct script_machine *machine, const char *name)
+{
+    char kind[SCRIPT_ROUTE_NAME_MAX];
+    const char *separator;
+
+    separator = strchr(name, ':');
+    if (separator == NULL || (size_t)(separator - name) >= sizeof(kind)) {
+        return balloon_sending(machine, NULL, name);
+    }
+    memcpy(kind, name, (size_t)(separator - name));
+    kind[separator - name] = '\0';
+    return balloon_sending(machine, kind, separator + 1);
 }
 
 static int route_word_without_argument_holds(const struct script_machine *machine, enum script_route_wait_word word)
@@ -1680,7 +1700,7 @@ static int route_token_holds(const struct script_machine *machine, const struct 
         object_index = script_machine_index_of_object(machine, first);
         return object_index != SCRIPT_NO_OBJECT && object_can_be_a_core(&machine->objects[object_index], second != NULL ? atoi(second) : 0);
     case SCRIPT_ROUTE_WAIT_BALLOON:
-        return balloon_sending(machine, first) >= 0;
+        return (second != NULL ? balloon_sending(machine, first, second) : balloon_sending(machine, NULL, first)) >= 0;
     case SCRIPT_ROUTE_WAIT_TICKS:
         return machine->tick - soul->route_last_action_tick >= (unsigned int)atoi(first);
     default:
@@ -1874,7 +1894,7 @@ static int run_route_action(struct script_machine *machine, const struct script_
         soul->ghost_is_pending = 1;
         return 0;
     case SCRIPT_ROUTE_TAP_BALLOON:
-        balloon = balloon_sending(machine, step->object);
+        balloon = balloon_named(machine, step->object);
         if (balloon < 0) {
             return 0;
         }
