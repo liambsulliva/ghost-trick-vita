@@ -48,19 +48,41 @@ static void start_narration(struct script_machine *machine, struct script_vm *vm
     machine->narration_started_this_tick = 1;
 }
 
-static struct script_balloon *find_slot(struct script_machine *machine)
+static void close_slot(struct script_machine *machine, int slot)
+{
+    if (!machine->balloons[slot].in_use) {
+        return;
+    }
+    machine->balloons[slot].in_use = 0;
+    if (machine->outputs->balloon_closed != NULL) {
+        machine->outputs->balloon_closed(slot);
+    }
+}
+
+static struct script_balloon *claim_slot(struct script_machine *machine, int tap_group)
 {
     int index;
+    int shortest;
 
-    for (index = 0; index < SCRIPT_BALLOON_MAX; index++) {
+    if (tap_group == SCRIPT_TAP_GROUP_LEFT || tap_group == SCRIPT_TAP_GROUP_RIGHT) {
+        index = tap_group == SCRIPT_TAP_GROUP_LEFT ? 0 : 1;
+        close_slot(machine, index);
+        return &machine->balloons[index];
+    }
+    shortest = SCRIPT_TAP_BALLOON_SLOTS;
+    for (index = SCRIPT_TAP_BALLOON_SLOTS; index < SCRIPT_BALLOON_MAX; index++) {
         if (!machine->balloons[index].in_use) {
             return &machine->balloons[index];
         }
+        if (machine->balloons[index].timer < machine->balloons[shortest].timer) {
+            shortest = index;
+        }
     }
-    return &machine->balloons[0];
+    close_slot(machine, shortest);
+    return &machine->balloons[shortest];
 }
 
-static struct script_balloon *open_balloon(struct script_machine *machine, struct script_vm *vm, const char *label, int kind, int ticks)
+static struct script_balloon *open_balloon(struct script_machine *machine, struct script_vm *vm, const char *label, int kind, int ticks, int tap_group)
 {
     struct script_object *object;
     struct script_balloon *balloon;
@@ -69,9 +91,10 @@ static struct script_balloon *open_balloon(struct script_machine *machine, struc
     if (object == NULL || !object->actor.exists) {
         return NULL;
     }
-    balloon = find_slot(machine);
+    balloon = claim_slot(machine, tap_group);
     memset(balloon, 0, sizeof(*balloon));
     balloon->in_use = 1;
+    balloon->tap_group = tap_group;
     balloon->owner_object = (int)(object - machine->objects);
     balloon->label = label;
     balloon->kind = kind;
@@ -82,23 +105,17 @@ static struct script_balloon *open_balloon(struct script_machine *machine, struc
 
 static void open_tap_balloon(struct script_machine *machine, struct script_vm *vm, const char *label, int ticks, int tap_group)
 {
-    struct script_balloon *balloon;
-
-    balloon = open_balloon(machine, vm, label, label == NULL ? TAP_BALLOON_ICON_KIND : 0, ticks);
-    if (balloon != NULL) {
-        balloon->tap_group = tap_group;
-    }
+    open_balloon(machine, vm, label, label == NULL ? TAP_BALLOON_ICON_KIND : 0, ticks, tap_group);
 }
 
 static void open_tap_balloon_that_sends(struct script_machine *machine, struct script_vm *vm, const unsigned int *words, int tap_group)
 {
     struct script_balloon *balloon;
 
-    balloon = open_balloon(machine, vm, NULL, tap_group == SCRIPT_TAP_GROUP_LEFT ? SCRIPT_BALLOON_KIND_TAP_DOTS : SCRIPT_BALLOON_KIND_TAP_MARKS, (int)script_machine_u32(words, 0));
+    balloon = open_balloon(machine, vm, NULL, tap_group == SCRIPT_TAP_GROUP_LEFT ? SCRIPT_BALLOON_KIND_TAP_DOTS : SCRIPT_BALLOON_KIND_TAP_MARKS, (int)script_machine_u32(words, 0), tap_group);
     if (balloon == NULL) {
         return;
     }
-    balloon->tap_group = tap_group;
     balloon->tap_target = script_machine_string(machine, vm, words[2]);
     balloon->tap_verb = script_machine_string(machine, vm, words[3]);
     balloon->tap_arg = script_machine_string(machine, vm, words[4]);
@@ -383,11 +400,11 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
     case 0x51:
         label = script_machine_string(machine, vm, words[0]);
         if (label != NULL) {
-            open_balloon(machine, vm, label, (int)words[2], (int)words[3]);
+            open_balloon(machine, vm, label, (int)words[2], (int)words[3], SCRIPT_NO_TAP_GROUP);
         }
         break;
     case 0x52:
-        open_balloon(machine, vm, NULL, (int)words[0], (int)words[1]);
+        open_balloon(machine, vm, NULL, (int)words[0], (int)words[1], SCRIPT_NO_TAP_GROUP);
         break;
     case 0x53:
         place_balloon(machine, vm, words);

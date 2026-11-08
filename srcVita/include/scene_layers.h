@@ -4,7 +4,7 @@
 #include "asset_name.h"
 
 #define SCENE_TEXT_LINE_MAX 8
-#define SCENE_OVERLAY_MAX 8
+#define SCENE_OVERLAY_MAX 32
 
 struct scene_text_line {
     char texture_name[ASSET_NAME_MAX];
