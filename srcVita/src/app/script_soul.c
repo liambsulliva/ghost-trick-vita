@@ -1100,8 +1100,10 @@ static void run_custom_soul_command(struct script_machine *machine, const char *
     }
     if (strcmp(arg, "DemoModeOn") == 0) {
         soul->view_demo_is_on = 1;
+        machine->pause_bit = 0;
     } else if (strcmp(arg, "DemoModeOff") == 0 || strcmp(arg, "DemoModeOffButtonOff") == 0) {
         soul->view_demo_is_on = 0;
+        machine->pause_bit = soul->is_on || soul->is_leaving_view;
         soul->view_follow_is_off = 0;
         soul->view_back_is_offered = strcmp(arg, "DemoModeOff") == 0;
     } else if (strcmp(arg, "HoseiOff") == 0) {
