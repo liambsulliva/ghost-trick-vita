@@ -15,6 +15,9 @@ static struct script_machine machine;
 static struct script_cue_list cue_lists[SCRIPT_SOURCE_MAX];
 static int cue_list_count;
 static int marks_to_stdout;
+static const char *state_save_script;
+static const char *state_save_path;
+static int state_was_saved;
 
 static void print_fetch(const struct script_fetch *fetch)
 {
@@ -56,7 +59,86 @@ static void on_music_started(int id) { CUE("music_start %d", id); }
 static void on_music_stopped(int fade) { CUE("music_stop %d", fade); }
 static void on_sound(int kind) { CUE("sound %d", kind); }
 static void on_soul_vision(int is_on, int with_effect) { (void)with_effect; CUE("soul_vision %d", is_on); }
-static void on_marked(const char *what, const char *name) { CUE("mark %s %s", what, name); if (marks_to_stdout) { printf("mark %s %s\n", what, name); } }
+static void write_bytes(FILE *file, const char *name, const unsigned char *bytes, unsigned int count)
+{
+    unsigned int index;
+
+    fprintf(file, "%s ", name);
+    for (index = 0; index < count; index++) {
+        fprintf(file, "%02x", bytes[index]);
+    }
+    fprintf(file, "\n");
+}
+
+static void save_state_when_due(const char *what, const char *name)
+{
+    FILE *file;
+
+    if (state_was_saved || state_save_script == NULL || strcmp(what, "script_begun") != 0 || strcmp(name, state_save_script) != 0) {
+        return;
+    }
+    state_was_saved = 1;
+    file = fopen(state_save_path, "w");
+    if (file == NULL) {
+        return;
+    }
+    fprintf(file, "chapter_mark %d\nphone_book_place %d\n", machine.chapter_mark, machine.phone_book_place);
+    write_bytes(file, "game_flags", machine.flags.game, sizeof(machine.flags.game));
+    write_bytes(file, "chapter_flags", machine.flags.chapter, sizeof(machine.flags.chapter));
+    write_bytes(file, "game_bank_saved", machine.flags.game_bank_saved, sizeof(machine.flags.game_bank_saved));
+    fclose(file);
+}
+
+static int read_bytes(const char *hex, unsigned char *bytes, unsigned int count)
+{
+    unsigned int index;
+    unsigned int value;
+
+    for (index = 0; index < count; index++) {
+        if (sscanf(hex + 2 * index, "%2x", &value) != 1) {
+            return 0;
+        }
+        bytes[index] = (unsigned char)value;
+    }
+    return 1;
+}
+
+static int load_state(const char *path)
+{
+    FILE *file;
+    char line[4 * SCRIPT_FLAG_BYTES];
+    char *value;
+    int is_whole;
+
+    file = fopen(path, "r");
+    if (file == NULL) {
+        return 0;
+    }
+    is_whole = 1;
+    while (fgets(line, sizeof(line), file) != NULL) {
+        value = strchr(line, ' ');
+        if (value == NULL) {
+            continue;
+        }
+        *value = '\0';
+        value = value + 1;
+        if (strcmp(line, "chapter_mark") == 0) {
+            machine.chapter_mark = atoi(value);
+        } else if (strcmp(line, "phone_book_place") == 0) {
+            machine.phone_book_place = atoi(value);
+        } else if (strcmp(line, "game_flags") == 0) {
+            is_whole = is_whole && read_bytes(value, machine.flags.game, sizeof(machine.flags.game));
+        } else if (strcmp(line, "chapter_flags") == 0) {
+            is_whole = is_whole && read_bytes(value, machine.flags.chapter, sizeof(machine.flags.chapter));
+        } else if (strcmp(line, "game_bank_saved") == 0) {
+            is_whole = is_whole && read_bytes(value, machine.flags.game_bank_saved, sizeof(machine.flags.game_bank_saved));
+        }
+    }
+    fclose(file);
+    return is_whole;
+}
+
+static void on_marked(const char *what, const char *name) { CUE("mark %s %s", what, name); if (marks_to_stdout) { printf("mark %s %s\n", what, name); } save_state_when_due(what, name); }
 static void on_talk(const struct script_talk_view *view) { CUE("talk slide=%.2f alpha=%.2f glyphs=%d cursor=%d open=%d", view->slide, view->text_alpha, view->glyphs_shown, view->cursor_is_on, view->page != NULL); }
 static void on_effect_deleted(const char *name) { CUE("effect_deleted %s", name); }
 static void on_screen_filter(int mode) { CUE("screen_filter %d", mode); }
@@ -141,6 +223,7 @@ static void add_script(const char *folder, const char *name)
     }
 }
 
+#define SCRIPT_FLAG_CHANGE_MAX 64
 static char chain_entry[SCRIPT_SOURCE_NAME_MAX] = "route";
 static char start_verbs[SCRIPT_START_COMMAND_MAX][SCRIPT_SOURCE_NAME_MAX];
 static char start_args[SCRIPT_START_COMMAND_MAX][SCRIPT_SOURCE_NAME_MAX];
@@ -356,7 +439,17 @@ int main(int argument_count, char **arguments)
     int index;
     int press;
     int auto_press;
+    const char *state_load_path;
+    const char *start_override;
+    int chapter_mark_override;
+    unsigned int flag_changes[SCRIPT_FLAG_CHANGE_MAX];
+    int flag_values[SCRIPT_FLAG_CHANGE_MAX];
+    int flag_change_count;
 
+    state_load_path = NULL;
+    start_override = NULL;
+    chapter_mark_override = -1;
+    flag_change_count = 0;
     folder = "extracted/vita_assets/chapter1_opening/scripts";
     stop_tick = 100000;
     timing = SCRIPT_TIMING_DS;
@@ -387,6 +480,19 @@ int main(int argument_count, char **arguments)
             rows_output = fopen(arguments[++index], "w");
         } else if (strcmp(arguments[index], "--cues") == 0) {
             cues_output = fopen(arguments[++index], "w");
+        } else if (strcmp(arguments[index], "--save-state-at") == 0 && index + 2 < argument_count) {
+            state_save_script = arguments[++index];
+            state_save_path = arguments[++index];
+        } else if (strcmp(arguments[index], "--load-state") == 0) {
+            state_load_path = arguments[++index];
+        } else if (strcmp(arguments[index], "--start") == 0) {
+            start_override = arguments[++index];
+        } else if (strcmp(arguments[index], "--chapter-mark") == 0) {
+            chapter_mark_override = atoi(arguments[++index]);
+        } else if ((strcmp(arguments[index], "--set-flag") == 0 || strcmp(arguments[index], "--clear-flag") == 0) && flag_change_count < SCRIPT_FLAG_CHANGE_MAX) {
+            flag_values[flag_change_count] = strcmp(arguments[index], "--set-flag") == 0;
+            flag_changes[flag_change_count] = (unsigned int)strtoul(arguments[++index], NULL, 16);
+            flag_change_count = flag_change_count + 1;
         } else {
             printf("unknown argument %s\n", arguments[index]);
             return 2;
@@ -402,6 +508,19 @@ int main(int argument_count, char **arguments)
     read_talk_book(folder);
     if (auto_press != SCRIPT_AUTO_OFF) {
         read_route(folder);
+    }
+    if (state_load_path != NULL && !load_state(state_load_path)) {
+        printf("cannot read state %s\n", state_load_path);
+        return 1;
+    }
+    if (chapter_mark_override >= 0) {
+        machine.chapter_mark = chapter_mark_override;
+    }
+    for (index = 0; index < flag_change_count; index++) {
+        script_flags_write_known(&machine.flags, flag_changes[index], flag_values[index]);
+    }
+    if (start_override != NULL) {
+        snprintf(chain_entry, sizeof(chain_entry), "%s", start_override);
     }
     if (!script_machine_start(&machine, chain_entry)) {
         printf("cannot start %s\n", chain_entry);
