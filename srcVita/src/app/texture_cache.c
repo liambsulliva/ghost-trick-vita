@@ -147,10 +147,18 @@ static int may_evict(const struct cached_texture *entry, enum texture_wanter wan
     return wanter == WANTED_BY_DRAWING || (!is_wanted_ahead(entry) && !was_drawn_lately(entry));
 }
 
+static int eviction_tier(const struct cached_texture *entry)
+{
+    if (was_drawn_lately(entry)) {
+        return 2;
+    }
+    return is_wanted_ahead(entry) ? 1 : 0;
+}
+
 static int is_evicted_before(const struct cached_texture *entry, const struct cached_texture *other)
 {
-    if (is_wanted_ahead(entry) != is_wanted_ahead(other)) {
-        return !is_wanted_ahead(entry);
+    if (eviction_tier(entry) != eviction_tier(other)) {
+        return eviction_tier(entry) < eviction_tier(other);
     }
     return entry->last_used_frame < other->last_used_frame;
 }
