@@ -278,6 +278,8 @@ After the parsing fixes (28), run 21's script changes still stalled 170 to 325 m
 
 Guard: the read-ahead step writes bundles as `GPK1`, the unpacked size and raw deflate; the player's file reader unpacks any file carrying that header (`packed_file.c`, a table-driven inflate written for this port) and still reads plain files as before. The largest bundle unpacks in under 1 ms on the Mac. Any other large text table read on the main thread can use the same header without a loader change.
 
+Run 22 measured it on the Vita: unpacking took 8 to 34 ms, and the slowest script changes fell from 257, 315 and 325 ms to 136, 248 and 210 ms. What remains of each read is per-file latency behind the texture reads (a 10-byte empty bundle took 18 to 84 ms), so the player now skips the bundle for any script with no motion rows instead of opening an empty file.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

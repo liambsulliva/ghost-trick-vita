@@ -227,6 +227,7 @@ int script_tables_read_effects(struct script_tables *tables, const char *text, u
 int script_tables_read_balloons(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_preload(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_motions(struct script_tables *tables, const char *file_name, const char *text, unsigned int text_size);
+int script_tables_has_motions(const struct script_tables *tables, const char *file_name);
 const struct script_motion_row *script_tables_find_motion(const struct script_tables *tables, const char *file_name, unsigned int table_offset);
 const struct script_fx_movie *script_tables_find_fx_movie(const struct script_tables *tables, const char *name);
 const struct script_movie *script_tables_find_movie_of_class(const struct script_tables *tables, unsigned int class_id);

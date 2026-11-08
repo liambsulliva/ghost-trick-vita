@@ -589,6 +589,18 @@ static void index_motion_row(struct script_tables *tables, int row_index)
     tables->first_motion_row_in_bucket[bucket] = row_index + 1;
 }
 
+int script_tables_has_motions(const struct script_tables *tables, const char *file_name)
+{
+    int index;
+
+    for (index = 0; index < tables->motion_row_count; index++) {
+        if (strcmp(tables->motion_rows[index].file_name, file_name) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int script_tables_read_motions(struct script_tables *tables, const char *file_name, const char *text, unsigned int text_size)
 {
     char line[TABLE_LINE_MAX];

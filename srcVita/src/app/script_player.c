@@ -279,6 +279,10 @@ static void load_script_animations(const char *name)
         run_log_write("script animations name=%s kept", name);
         return;
     }
+    if (data != NULL && !script_tables_has_motions(&data->tables, name)) {
+        run_log_write("script animations name=%s none", name);
+        return;
+    }
     started_us = clock_now_us();
     if (read_named_file(name, ".anims", &bytes, &size) != FILE_OK) {
         return;
