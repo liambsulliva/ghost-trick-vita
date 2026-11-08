@@ -294,8 +294,6 @@ struct script_soul {
     unsigned int route_step_began_at;
     int route_action_has_begun;
     int route_acted_step;
-    int route_furthest_acted_step;
-    int route_step_after_retry;
     unsigned int route_action_began_at;
     unsigned int route_last_action_tick;
     int route_camera_is_scrolling;
@@ -455,6 +453,8 @@ struct script_machine {
     unsigned int scene_hashes_seen[SCRIPT_SCENES_SEEN_MAX];
     int scenes_seen;
     int furthest_scene;
+    int route_furthest_acted_step;
+    int route_step_after_retry;
     int scene_is_behind_the_story;
     unsigned int last_new_scene_tick;
     int demo_soul_is_on;

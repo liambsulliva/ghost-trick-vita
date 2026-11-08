@@ -72,6 +72,8 @@ void script_machine_init(struct script_machine *machine, const struct script_out
     machine->teardown_at = NEVER;
     machine->load_at = NEVER;
     machine->furthest_scene = -1;
+    machine->route_furthest_acted_step = -1;
+    machine->route_step_after_retry = -1;
     machine->game_start_at = NEVER;
     machine->camera_follow_object = SCRIPT_NO_SELECTION;
     machine->pause_clear_at = NEVER;

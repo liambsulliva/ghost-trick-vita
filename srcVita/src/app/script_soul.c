@@ -1280,7 +1280,7 @@ static void retry_after_the_game_over(struct script_machine *machine)
         script_machine_send(machine, "*", "SYSTEM", "RESTART");
         return;
     }
-    machine->soul.route_step_after_retry = machine->soul.route_step;
+    machine->route_step_after_retry = machine->soul.route_step;
     script_machine_reload_scene(machine);
 }
 
@@ -1959,8 +1959,8 @@ static void run_route(struct script_machine *machine)
         soul->route_action_has_begun = 1;
         soul->route_step_began_at = machine->tick;
         soul->route_acted_step = soul->route_step;
-        if (soul->route_step > soul->route_furthest_acted_step) {
-            soul->route_furthest_acted_step = soul->route_step;
+        if (soul->route_step > machine->route_furthest_acted_step) {
+            machine->route_furthest_acted_step = soul->route_step;
         }
         soul->route_action_began_at = machine->tick;
         mark_route_step(machine, "route_step_began", step);
@@ -1982,7 +1982,7 @@ static int first_step_not_yet_played(const struct script_machine *machine, const
     if (route == NULL || route->step_count == 0) {
         return -1;
     }
-    floor = machine->soul.route_furthest_acted_step;
+    floor = machine->route_furthest_acted_step;
     if (floor < 0) {
         return script_route_first_step_of_script(route, script);
     }
@@ -2015,12 +2015,12 @@ void script_soul_script_began(struct script_machine *machine, const char *script
     }
     soul->route_script = script;
     soul->route_camera_is_scrolling = 0;
-    if (machine->route != NULL && soul->route_step_after_retry >= 0 && soul->route_step_after_retry < machine->route->step_count && strcmp(machine->route->steps[soul->route_step_after_retry].script, script) == 0) {
-        go_to_route_step(machine, soul->route_step_after_retry);
+    if (machine->route != NULL && machine->route_step_after_retry >= 0 && machine->route_step_after_retry < machine->route->step_count && strcmp(machine->route->steps[machine->route_step_after_retry].script, script) == 0) {
+        go_to_route_step(machine, machine->route_step_after_retry);
     } else {
         go_to_route_step(machine, first_step_not_yet_played(machine, script));
     }
-    soul->route_step_after_retry = -1;
+    machine->route_step_after_retry = -1;
     soul->route_last_action_tick = machine->tick;
 }
 
@@ -2221,8 +2221,6 @@ void script_soul_reset(struct script_machine *machine)
     script_pills_reset(machine);
     machine->soul.route_step = -1;
     machine->soul.route_acted_step = -1;
-    machine->soul.route_furthest_acted_step = -1;
-    machine->soul.route_step_after_retry = -1;
     machine->soul.active_object = NO_CORE;
     machine->soul.chain_needs_reset = 1;
     machine->soul.chain_pick_object = NO_CORE;
