@@ -4447,19 +4447,27 @@
       },
       {
         "script": "st04-st04_game000_Expand",
-        "action": "move",
-        "object": "denwa",
+        "action": "ghost_on",
+        "object": "shitai",
         "pace": "normal",
-        "footage_s": 10815.0,
-        "wait": "view & usable:denwa"
+        "footage_s": 10822.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st04-st04_game000_Expand",
+        "action": "move",
+        "object": "shitai",
+        "pace": "normal",
+        "footage_s": 10823.5,
+        "wait": "view & usable:shitai"
       },
       {
         "script": "st04-st04_game000_Expand",
         "action": "ghost_off",
-        "object": "denwa",
+        "object": "shitai",
         "pace": "quick",
-        "footage_s": 10817.5,
-        "wait": "view & core:denwa"
+        "footage_s": 10824.5,
+        "wait": "view & core:shitai"
       },
       {
         "script": "st04-st04_game000_Expand",
