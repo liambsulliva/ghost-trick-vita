@@ -27,7 +27,7 @@ ERROR_LINE_STARTS = (
     "music port_open_failed", "music submit_failed", "music out_of_memory", "music file_missing", "music decoder_failed",
     "music wrong_rate", "music bad_loop_file", "music thread_failed", "music path_too_long",
     "sound port_open_failed", "sound submit_failed", "sound out_of_memory", "sound file_missing", "sound decoder_failed",
-    "sound wrong_rate", "sound thread_failed", "sound path_too_long", "sound too_many_clips",
+    "sound wrong_rate", "sound thread_failed", "sound path_too_long", "sound prepare_list_full",
     "scene audio_wait_gave_up", "log dropped_bytes",
 )
 

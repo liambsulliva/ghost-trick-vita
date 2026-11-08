@@ -104,6 +104,7 @@ static struct sound_mailbox mailbox;
 
 static struct vorbis_stream stream;
 static struct sound_clip clips[SOUND_CLIP_MAX];
+static int prepare_requests_left_out;
 static int clip_count;
 static unsigned long long clip_bytes_total;
 static struct sound_voice voices[SOUND_VOICE_MAX];
@@ -121,6 +122,7 @@ void sound_engine_init(const char *sound_folder)
     snprintf(folder, sizeof(folder), "%s", sound_folder);
     memset(&mailbox, 0, sizeof(mailbox));
     memset(voices, 0, sizeof(voices));
+    prepare_requests_left_out = 0;
     clip_count = 0;
     clip_bytes_total = 0;
     port_is_open = 0;
@@ -154,7 +156,10 @@ void sound_request_prepare(const char *name)
     mailbox.port_is_wanted = 1;
     audio_mailbox_unlock();
     if (is_full) {
-        run_log_write("sound too_many_clips name=%s", name);
+        if (prepare_requests_left_out == 0) {
+            run_log_write("sound prepare_list_full kept=%d first_left_out=%s", SOUND_CLIP_MAX, name);
+        }
+        prepare_requests_left_out = prepare_requests_left_out + 1;
     }
 }
 

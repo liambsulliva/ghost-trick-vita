@@ -346,20 +346,20 @@ static void test_a_clip_asked_for_twice_loads_once(void)
     finish();
 }
 
-static void test_too_many_clips_are_logged_and_never_hold_up_the_preload(void)
+static void test_a_full_prepare_list_is_logged_once_and_never_holds_up_the_preload(void)
 {
     char name[32];
     int index;
 
     set_up();
-    for (index = 0; index < SOUND_CLIP_MAX + 1; index++) {
+    for (index = 0; index < SOUND_CLIP_MAX + 3; index++) {
         snprintf(name, sizeof(name), "clip_%d", index);
         add_clip(name);
         sound_request_prepare(name);
     }
-    snprintf(name, sizeof(name), "name=clip_%d", SOUND_CLIP_MAX);
+    snprintf(name, sizeof(name), "first_left_out=clip_%d", SOUND_CLIP_MAX);
     CHECK_HAS_TEXT(log_text(), name);
-    CHECK_HAS_TEXT(log_text(), "sound too_many_clips");
+    CHECK_INT(count_in_log("sound prepare_list_full"), 1);
     pump(SOUND_CLIP_MAX);
     CHECK(sound_prepare_is_done());
     CHECK_INT(count_in_log("sound loaded"), SOUND_CLIP_MAX);
@@ -837,7 +837,7 @@ int main(void)
     test_a_clip_that_was_not_prepared_is_dropped_and_logged();
     test_a_missing_file_reports_done_and_the_others_still_load();
     test_a_clip_asked_for_twice_loads_once();
-    test_too_many_clips_are_logged_and_never_hold_up_the_preload();
+    test_a_full_prepare_list_is_logged_once_and_never_holds_up_the_preload();
     test_running_out_of_memory_logs_and_stays_silent();
     test_a_clip_at_another_rate_is_refused();
     test_a_file_that_is_not_ogg_is_refused();
