@@ -8,6 +8,10 @@ ifeq ($(FAST_FORWARD),1)
 BUILD_ID := $(BUILD_ID)-ff
 endif
 
+ifeq ($(FPS_COUNTER),1)
+BUILD_ID := $(BUILD_ID)-fps
+endif
+
 PREFIX  := arm-vita-eabi
 CC      := $(PREFIX)-gcc
 CFLAGS  := -Wall -Wextra -O2 -Iinclude -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -DBUILD_ID=\"$(BUILD_ID)\"
@@ -39,7 +43,6 @@ FPS_COUNTER ?= 0
 ifeq ($(FPS_COUNTER),1)
 CFLAGS += -DFPS_COUNTER_BUILD
 OBJECT_FOLDER := $(OBJECT_FOLDER)_fps_counter
-BUILD_ID := $(BUILD_ID)-fps
 endif
 
 SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
