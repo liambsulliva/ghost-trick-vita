@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "script_machine.h"
+#include "ds_units.h"
 
 #define SOUL_VISION_MESSAGE_AFTER_TICKS 90
 #define DEMO_MODE 2
@@ -40,8 +41,6 @@
 #define SOUL_STREAM_DS_PIXELS_PER_TICK 6
 #define SOUL_STREAM_TICKS_LEAST 8
 #define SOUL_STREAM_TICKS_MOST 20
-#define CAMERA_VIEW_WIDTH 256
-#define CAMERA_VIEW_HEIGHT 192
 #define CAMERA_VIEW_MARGIN 24
 #define TRICK_ACTION_AFTER_TICKS 8
 #define TIME_JUMP_AFTER_TICKS 30
@@ -83,8 +82,6 @@ enum tutorial_mode {
 #define NORMAL_FOLLOW_STEP_Y 4.0f
 #define NORMAL_FOLLOW_FADE 0.953125f
 #define NORMAL_FOLLOW_STOPS_BELOW 0.25f
-#define DS_SCREEN_WIDTH 256
-#define DS_SCREEN_HEIGHT 192
 #define LEAP_SPOKES_AFTER_TICKS 87
 #define LEAP_SWIRL_AFTER_TICKS 102
 #define LEAP_MESSAGE_AFTER_TICKS 282
@@ -396,8 +393,8 @@ static int nearest_core_to_camera(const struct script_machine *machine)
     int best_object;
     int object_index;
 
-    camera_x = (float)machine->camera_x + (float)CAMERA_VIEW_WIDTH / 2.0f;
-    camera_y = (float)machine->camera_y + (float)CAMERA_VIEW_HEIGHT / 2.0f;
+    camera_x = (float)machine->camera_x + (float)DS_VIEW_WIDTH / 2.0f;
+    camera_y = (float)machine->camera_y + (float)DS_VIEW_HEIGHT / 2.0f;
     best = 0.0f;
     best_object = NO_CORE;
     for (object_index = 0; object_index < machine->object_count; object_index++) {
@@ -1322,13 +1319,13 @@ static void follow_core_in_normal_play(struct script_machine *machine, float cor
     across = (int)core_x - (machine->camera_x - machine->world_origin_x);
     down = (int)core_y - (machine->camera_y - machine->world_origin_y);
     step_y = 0.0f;
-    if (bounds->height > DS_SCREEN_HEIGHT) {
+    if (bounds->height > DS_VIEW_HEIGHT) {
         step_y = (float)script_machine_camera_band_snap(machine, (int)core_y);
         if (step_y == 0.0f) {
             step_y = down < NORMAL_FOLLOW_TOP ? -NORMAL_FOLLOW_STEP_Y : (down > NORMAL_FOLLOW_BOTTOM ? NORMAL_FOLLOW_STEP_Y : 0.0f);
         }
     }
-    if (bounds->width > DS_SCREEN_WIDTH) {
+    if (bounds->width > DS_VIEW_WIDTH) {
         if (across < NORMAL_FOLLOW_LEFT) {
             soul->camera_follow_x = -NORMAL_FOLLOW_STEP_X;
         } else if (across > NORMAL_FOLLOW_RIGHT) {

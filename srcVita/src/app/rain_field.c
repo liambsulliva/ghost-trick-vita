@@ -1,4 +1,5 @@
 #include "rain_field.h"
+#include "ds_units.h"
 
 #define STREAKS_PER_SPAN_DS_PIXEL 0.4f
 #define LENGTH_CHOICES 48u
@@ -11,7 +12,6 @@
 #define LATER_ROW_START 96
 #define LAST_ROW 160.0f
 #define ALPHA_MASK 15
-#define ALPHA_DIVISOR 31.0f
 #define RANDOM_SEED 12345u
 #define RANDOM_MULTIPLIER 1103515245u
 #define RANDOM_INCREMENT 12345u
@@ -78,5 +78,5 @@ void rain_field_advance(struct rain_field *field, float center_x, float top_y)
 
 float rain_field_alpha_of(int index)
 {
-    return (float)((index & ALPHA_MASK) + 1) / ALPHA_DIVISOR;
+    return (float)((index & ALPHA_MASK) + 1) / (float)NATIVE_ALPHA_FULL;
 }

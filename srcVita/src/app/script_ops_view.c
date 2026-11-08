@@ -2,13 +2,12 @@
 #include <string.h>
 #include <stddef.h>
 #include "script_machine.h"
+#include "ds_units.h"
 
 #define FATE_LEVEL_FULL 5
 #define BEAM_MODE_COVER_ALPHA 8u
 #define BEAM_CREATE_COVER_ALPHA_WORD 13
 #define FIXED_POINT_BITS 12
-#define COVER_ALPHA_FULL 31.0f
-#define FIXED_ONE 4096.0f
 #define RADIUS_UNITS_TO_PIXELS (3.0f / 128.0f)
 #define BEAM_MODE_WIDTH 1
 #define BEAM_MODE_BASE 4
@@ -16,13 +15,8 @@
 #define IRIS_MODE_CENTRE 2u
 #define IRIS_MODE_ALPHA 4u
 #define LIGHT_ALPHA_FRACTION_BITS 12
-#define LIGHT_ALPHA_FULL 31.0f
-#define MASK_ALPHA_FULL 0x1f
 #define KEEP_CAMERA_AXIS 0xffffu
-#define FIXED_ONE_INT 4096
 #define CAMERA_CUT_SPEED 0x3e8000
-#define DS_VIEW_WIDTH 256
-#define DS_VIEW_HEIGHT 192
 #define FRAMING_FARTHEST_FROM_CORE 120
 #define SHAKE_DIRECTION_COUNT 8
 #define SHAKE_TICKS_PER_DIRECTION 4
@@ -44,7 +38,7 @@ static int signed_word(unsigned int word)
 
 static float fixed_to_float(unsigned int value)
 {
-    return (float)(int)value / FIXED_ONE;
+    return (float)(int)value / ((float)NATIVE_FIXED_ONE);
 }
 
 static float radius_to_pixels(unsigned int value)
@@ -190,7 +184,7 @@ static void delete_effect(struct script_machine *machine, struct script_vm *vm, 
 
 static float cover_alpha_of(unsigned int fixed_alpha)
 {
-    return (float)(fixed_alpha >> FIXED_POINT_BITS) / COVER_ALPHA_FULL;
+    return (float)(fixed_alpha >> FIXED_POINT_BITS) / ((float)NATIVE_ALPHA_FULL);
 }
 
 static void create_beam(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
@@ -244,7 +238,7 @@ static void delete_beam(struct script_machine *machine, struct script_vm *vm, co
 
 static float light_alpha(unsigned int fixed_alpha)
 {
-    return (float)(fixed_alpha >> LIGHT_ALPHA_FRACTION_BITS) / LIGHT_ALPHA_FULL;
+    return (float)(fixed_alpha >> LIGHT_ALPHA_FRACTION_BITS) / ((float)NATIVE_ALPHA_FULL);
 }
 
 static void create_iris(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
@@ -456,22 +450,22 @@ static void begin_pan(struct script_machine *machine, int target_x, int target_y
         return;
     }
     if (speed_fixed <= 0) {
-        speed_fixed = FIXED_ONE_INT;
+        speed_fixed = NATIVE_FIXED_ONE;
     }
     longest = delta_x < 0 ? -delta_x : delta_x;
     if ((delta_y < 0 ? -delta_y : delta_y) > longest) {
         longest = delta_y < 0 ? -delta_y : delta_y;
     }
-    ticks = (longest * FIXED_ONE_INT) / speed_fixed;
+    ticks = (longest * NATIVE_FIXED_ONE) / speed_fixed;
     if (ticks < 1) {
         ticks = 1;
     }
     machine->pan_is_active = 1;
     machine->pan_ticks_left = ticks;
-    machine->pan_x_fixed = machine->camera_x * FIXED_ONE_INT;
-    machine->pan_y_fixed = machine->camera_y * FIXED_ONE_INT;
-    machine->pan_step_x_fixed = delta_x * FIXED_ONE_INT / ticks;
-    machine->pan_step_y_fixed = delta_y * FIXED_ONE_INT / ticks;
+    machine->pan_x_fixed = machine->camera_x * NATIVE_FIXED_ONE;
+    machine->pan_y_fixed = machine->camera_y * NATIVE_FIXED_ONE;
+    machine->pan_step_x_fixed = delta_x * NATIVE_FIXED_ONE / ticks;
+    machine->pan_step_y_fixed = delta_y * NATIVE_FIXED_ONE / ticks;
     machine->pan_target_x = target_x;
     machine->pan_target_y = target_y;
     machine->pan_sends_hosei_end = sends_hosei_end;
@@ -631,8 +625,8 @@ void script_machine_update_camera(struct script_machine *machine)
     machine->pan_ticks_left = machine->pan_ticks_left - 1;
     machine->pan_x_fixed = machine->pan_x_fixed + machine->pan_step_x_fixed;
     machine->pan_y_fixed = machine->pan_y_fixed + machine->pan_step_y_fixed;
-    machine->camera_x = machine->pan_x_fixed / FIXED_ONE_INT;
-    machine->camera_y = machine->pan_y_fixed / FIXED_ONE_INT;
+    machine->camera_x = machine->pan_x_fixed / NATIVE_FIXED_ONE;
+    machine->camera_y = machine->pan_y_fixed / NATIVE_FIXED_ONE;
     if (machine->pan_ticks_left <= 0) {
         machine->camera_x = machine->pan_target_x;
         machine->camera_y = machine->pan_target_y;
@@ -661,7 +655,7 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         if (machine->outputs->mask_fade_color_changed != NULL) {
             machine->outputs->mask_fade_color_changed(1);
         }
-        script_fades_set_mask(machine, op == 0x11 ? 0 : MASK_ALPHA_FULL, (int)words[0]);
+        script_fades_set_mask(machine, op == 0x11 ? 0 : NATIVE_ALPHA_FULL, (int)words[0]);
         break;
     case 0xcb:
         machine->camera_snap_is_off = 0;
@@ -722,7 +716,7 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         script_fades_set_mask(machine, 0, (int)words[0]);
         break;
     case 0x10:
-        script_fades_set_mask(machine, MASK_ALPHA_FULL, (int)words[0]);
+        script_fades_set_mask(machine, NATIVE_ALPHA_FULL, (int)words[0]);
         break;
     case 0xb0:
         spawn_effect(machine, vm, words);

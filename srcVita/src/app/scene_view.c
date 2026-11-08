@@ -194,10 +194,10 @@ static struct renderer_rect world_area_to_screen(const struct screen_view *view,
 {
     struct renderer_rect area;
 
-    area.x = (x - view->left) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
-    area.y = (y - view->top) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
-    area.width = width * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
-    area.height = height * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    area.x = (x - view->left) * VITA_PIXELS_PER_DS_PIXEL;
+    area.y = (y - view->top) * VITA_PIXELS_PER_DS_PIXEL;
+    area.width = width * VITA_PIXELS_PER_DS_PIXEL;
+    area.height = height * VITA_PIXELS_PER_DS_PIXEL;
     return area;
 }
 
@@ -501,12 +501,12 @@ static void draw_card(const char *texture_name)
 
 static float world_x_to_screen(const struct screen_view *view, float x)
 {
-    return (x - view->left) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    return (x - view->left) * VITA_PIXELS_PER_DS_PIXEL;
 }
 
 static float world_y_to_screen(const struct screen_view *view, float y)
 {
-    return (y - view->top) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    return (y - view->top) * VITA_PIXELS_PER_DS_PIXEL;
 }
 
 static int find_beam_triangles_on_screen(const struct scene_effects *effects, const struct screen_view *view, struct spotlight_triangle *triangles)
@@ -523,7 +523,7 @@ static int find_beam_triangles_on_screen(const struct scene_effects *effects, co
             triangles[count].apex_y = world_y_to_screen(view, beam->apex_y);
             triangles[count].base_x = world_x_to_screen(view, beam->base_x.value);
             triangles[count].base_y = world_y_to_screen(view, beam->base_y.value);
-            triangles[count].half_width = beam->half_width.value * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+            triangles[count].half_width = beam->half_width.value * VITA_PIXELS_PER_DS_PIXEL;
             count = count + 1;
         }
     }
@@ -601,7 +601,7 @@ static void draw_iris(const struct scene_effects *effects, const struct screen_v
 
     center_x = world_x_to_screen(view, effects->iris_x.value);
     center_y = world_y_to_screen(view, effects->iris_y.value);
-    radius = effects->iris_radius.value * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    radius = effects->iris_radius.value * VITA_PIXELS_PER_DS_PIXEL;
     if (effects->iris_alpha.value <= 0.0f || iris_clears_whole_screen(center_x, center_y, radius)) {
         return;
     }
@@ -840,8 +840,8 @@ void scene_view_screen_to_world(const struct scene_stage *stage, float screen_x,
 
     view = view_of_stage(stage);
     view = view_for_objects(stage, &view);
-    *x = screen_x / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL + view.left;
-    *y = screen_y / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL + view.top;
+    *x = screen_x / VITA_PIXELS_PER_DS_PIXEL + view.left;
+    *y = screen_y / VITA_PIXELS_PER_DS_PIXEL + view.top;
 }
 
 void scene_view_world_to_screen(const struct scene_stage *stage, float x, float y, float *screen_x, float *screen_y)
@@ -850,8 +850,8 @@ void scene_view_world_to_screen(const struct scene_stage *stage, float x, float 
 
     view = view_of_stage(stage);
     view = view_for_objects(stage, &view);
-    *screen_x = (x - view.left) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
-    *screen_y = (y - view.top) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    *screen_x = (x - view.left) * VITA_PIXELS_PER_DS_PIXEL;
+    *screen_y = (y - view.top) * VITA_PIXELS_PER_DS_PIXEL;
 }
 
 void scene_view_forget_held_poses(void)

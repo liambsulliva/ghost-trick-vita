@@ -2,6 +2,7 @@
 #include <string.h>
 #include "script_machine.h"
 #include "script_opcodes.h"
+#include "ds_units.h"
 
 #define NOTE_ADDED_TALK_LABEL "sys_add_data"
 #define MODE_BYTE_LOADING 1
@@ -682,10 +683,10 @@ static int read_actor_register(const struct script_machine *machine, const struc
         return 0;
     }
     if (reg == 0) {
-        return (actor->x + actor->points[0][0]) * 4096;
+        return (actor->x + actor->points[0][0]) * NATIVE_FIXED_ONE;
     }
     if (reg == 1) {
-        return (actor->y + actor->points[0][1]) * 4096;
+        return (actor->y + actor->points[0][1]) * NATIVE_FIXED_ONE;
     }
     if (reg == ACTOR_REGISTER_FRAME) {
         return actor->frame_word_index;
@@ -694,10 +695,10 @@ static int read_actor_register(const struct script_machine *machine, const struc
         return actor->is_flipped ? 1 : 0;
     }
     if (reg >= 4 && reg < 8) {
-        return (actor->x + actor->points[reg - 4][0]) * 4096;
+        return (actor->x + actor->points[reg - 4][0]) * NATIVE_FIXED_ONE;
     }
     if (reg >= 8 && reg < 12) {
-        return (actor->y + actor->points[reg - 8][1]) * 4096;
+        return (actor->y + actor->points[reg - 8][1]) * NATIVE_FIXED_ONE;
     }
     if (reg >= COUNTER_REGISTER_FIRST && reg <= COUNTER_REGISTER_LAST) {
         return actor->counters[reg - COUNTER_REGISTER_FIRST];
@@ -717,7 +718,7 @@ static int ghost_target_position(const struct script_machine *machine, int along
         return along_x ? TARGET_POSITION_WHEN_NONE : 0;
     }
     script_machine_node_position(&machine->objects[machine->soul.active_object], SCRIPT_FIRST_CORE_NODE + machine->soul.active_slot, &core_x, &core_y);
-    return (int)(along_x ? core_x : core_y) * 4096;
+    return (int)(along_x ? core_x : core_y) * NATIVE_FIXED_ONE;
 }
 
 static int read_register(const struct script_machine *machine, const struct script_vm *vm, unsigned int reg)
@@ -732,9 +733,9 @@ static int read_register(const struct script_machine *machine, const struct scri
     case 0x1d:
         return LANGUAGE_ENGLISH;
     case 0x14:
-        return machine->camera_x * 4096;
+        return machine->camera_x * NATIVE_FIXED_ONE;
     case 0x15:
-        return machine->camera_y * 4096;
+        return machine->camera_y * NATIVE_FIXED_ONE;
     case 0x19:
         return machine->chapter_mark;
     case 0x1a:
@@ -858,7 +859,7 @@ static void store_distance_between_points(struct script_machine *machine, struct
     if (first == NULL || second == NULL) {
         return;
     }
-    difference = (point_position(second, words[3], axis == DISTANCE_ALONG_X) - point_position(first, words[1], axis == DISTANCE_ALONG_X)) * 4096;
+    difference = (point_position(second, words[3], axis == DISTANCE_ALONG_X) - point_position(first, words[1], axis == DISTANCE_ALONG_X)) * NATIVE_FIXED_ONE;
     vm->reg_a = difference < 0 ? -difference : difference;
 }
 

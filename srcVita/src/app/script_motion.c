@@ -1,5 +1,6 @@
 #include <string.h>
 #include "script_machine.h"
+#include "ds_units.h"
 
 #define DEFAULT_LEVEL_FOR_GIMMICK 9
 #define DEFAULT_LEVEL_FOR_HUMAN 6
@@ -17,7 +18,6 @@
 #define WORD_CORE_VALUE 0xfff6u
 #define WORD_SOUND 0xfff7u
 #define WORD_EFFECT 0xfff8u
-#define FIXED_UNITS_PER_PIXEL 4096.0f
 #define WORD_LOOP 0xffffu
 #define WORD_FRAME_WITH_TICKS 0xfffbu
 #define LOOP_BACK_WORDS 3
@@ -156,7 +156,7 @@ static void run_effect_word(struct script_machine *machine, struct script_object
         stop_table_for(machine, object, "motion_word_past_code");
         return;
     }
-    script_machine_spawn_table_effect(machine, object, effect_id, (float)(int)(((unsigned int)x_low & 0xffffu) | ((unsigned int)x_high << 16)) / FIXED_UNITS_PER_PIXEL, (float)(int)(((unsigned int)y_low & 0xffffu) | ((unsigned int)y_high << 16)) / FIXED_UNITS_PER_PIXEL, script_file_string(&actor->table_source->file, (unsigned int)name_word & 0xffffu));
+    script_machine_spawn_table_effect(machine, object, effect_id, (float)(int)(((unsigned int)x_low & 0xffffu) | ((unsigned int)x_high << 16)) / ((float)NATIVE_FIXED_ONE), (float)(int)(((unsigned int)y_low & 0xffffu) | ((unsigned int)y_high << 16)) / ((float)NATIVE_FIXED_ONE), script_file_string(&actor->table_source->file, (unsigned int)name_word & 0xffffu));
 }
 
 static void run_sound_word(struct script_machine *machine, struct script_object *object)
@@ -647,8 +647,8 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
     case 0x87:
         object = script_machine_current_object(machine, vm);
         if (object != NULL && object->actor.exists) {
-            object->actor.x = (int)script_machine_u32(words, 0) / 4096;
-            object->actor.y = (int)script_machine_u32(words, 2) / 4096;
+            object->actor.x = (int)script_machine_u32(words, 0) / NATIVE_FIXED_ONE;
+            object->actor.y = (int)script_machine_u32(words, 2) / NATIVE_FIXED_ONE;
         }
         break;
     case 0x8f:

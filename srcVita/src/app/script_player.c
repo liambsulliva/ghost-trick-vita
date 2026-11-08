@@ -21,8 +21,8 @@
 #include "script_tables.h"
 #include "sound_engine.h"
 #include "texture_cache.h"
+#include "ds_units.h"
 
-#define TOUCH_SCREEN_PIXELS_PER_DS_PIXEL 2.8125f
 #define MICROSECONDS_PER_VM_TICK 16666ULL
 #define MOST_TICKS_PER_DRAWN_FRAME 2ULL
 #define LONGEST_UPDATE_US 500000ULL
@@ -787,7 +787,7 @@ static void touch_dragged(struct script_machine *machine, float x, float y)
         scene_view_screen_to_world(scene_stage_view(), x, y, &world_x, &world_y);
         script_soul_set_touch(machine, 1, world_x, world_y);
     } else {
-        script_soul_drag_camera(machine, (touch_last_x - x) / TOUCH_SCREEN_PIXELS_PER_DS_PIXEL, (touch_last_y - y) / TOUCH_SCREEN_PIXELS_PER_DS_PIXEL);
+        script_soul_drag_camera(machine, (touch_last_x - x) / VITA_PIXELS_PER_DS_PIXEL, (touch_last_y - y) / VITA_PIXELS_PER_DS_PIXEL);
     }
     touch_last_x = x;
     touch_last_y = y;

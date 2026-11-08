@@ -1,8 +1,8 @@
 #include <string.h>
 #include "script_machine.h"
+#include "ds_units.h"
 
 #define MODE_BYTE_NARRATION 0x12
-#define FIXED_ONE 4096.0f
 #define SOUND_KIND_NONE 0
 #define SOUND_KIND_REFUSED 33
 #define PARAGRAPH_ARG_COUNT 8
@@ -165,8 +165,8 @@ static void place_balloon(struct script_machine *machine, const struct script_vm
     }
     for (index = 0; index < SCRIPT_BALLOON_MAX; index++) {
         if (machine->balloons[index].in_use && machine->balloons[index].owner_object == (int)(object - machine->objects)) {
-            machine->balloons[index].offset_x = (float)(int)script_machine_u32(words, 0) / FIXED_ONE;
-            machine->balloons[index].offset_y = (float)(int)script_machine_u32(words, 2) / FIXED_ONE;
+            machine->balloons[index].offset_x = (float)(int)script_machine_u32(words, 0) / ((float)NATIVE_FIXED_ONE);
+            machine->balloons[index].offset_y = (float)(int)script_machine_u32(words, 2) / ((float)NATIVE_FIXED_ONE);
         }
     }
 }

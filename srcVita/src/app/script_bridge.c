@@ -12,13 +12,12 @@
 #include "script_player.h"
 #include "script_view.h"
 #include "sound_engine.h"
+#include "ds_units.h"
 
 #define ALL_EFFECTS_NAME "*"
-#define MASK_FADE_ALPHA_FULL 31.0f
 #define CLASS_DRAWN_ONLY_IN_SOUL_VIEW 0x6309aa5au
 #define CLASS_DRAWN_ONLY_IN_LIVING_VIEW 0x45427fc2u
-#define BRIGHTNESS_SCALE 16.0f
-#define DIM_LEVEL_WHEN_FULL (1.0f - (float)SCRIPT_NARRATION_DIM_TOP_LEVEL / (float)SCRIPT_NARRATION_DIM_SCALE)
+#define DIM_LEVEL_WHEN_FULL (1.0f - (float)SCRIPT_NARRATION_DIM_TOP_LEVEL / (float)NATIVE_ALPHA_FULL)
 #define CARD_FADE_IN_STARTS 22
 #define CARD_FADE_IN_ENDS 31
 #define CARD_FADE_OUT_STARTS 242
@@ -106,7 +105,7 @@ static void on_stage_cleared(void)
     scene_stage_clear_room();
     scene_layers_clear(scene_stage_layers());
     scene_effects_reset(scene_stage_effects());
-    scene_effects_set_flash(scene_stage_effects(), (float)white_level / BRIGHTNESS_SCALE);
+    scene_effects_set_flash(scene_stage_effects(), (float)white_level / ((float)NATIVE_BRIGHTNESS_SCALE));
     mask_is_on = 0;
     scene_view_forget_held_poses();
     script_view_effect_deleted(ALL_EFFECTS_NAME);
@@ -266,12 +265,12 @@ static void on_brightness_changed(int signed_level)
 {
     black_level = signed_level < 0 ? -signed_level : 0;
     white_level = signed_level > 0 ? signed_level : 0;
-    scene_effects_set_flash(scene_stage_effects(), (float)white_level / BRIGHTNESS_SCALE);
+    scene_effects_set_flash(scene_stage_effects(), (float)white_level / ((float)NATIVE_BRIGHTNESS_SCALE));
 }
 
 static void on_mask_fade_changed(int is_alive, int alpha)
 {
-    mask_fade_alpha = (float)alpha / MASK_FADE_ALPHA_FULL;
+    mask_fade_alpha = (float)alpha / ((float)NATIVE_ALPHA_FULL);
     mask_fade_is_alive = is_alive;
     if (!is_alive) {
         mask_fade_is_white = 0;
@@ -389,9 +388,9 @@ static float phone_split_slide_px(float x, float y)
 
     stage = scene_stage_view();
     if (y == 0.0f) {
-        return x * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+        return x * VITA_PIXELS_PER_DS_PIXEL;
     }
-    return ((stage->camera_x - stage->object_origin_x) - (y - PHONE_SPLIT_BASE_Y)) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    return ((stage->camera_x - stage->object_origin_x) - (y - PHONE_SPLIT_BASE_Y)) * VITA_PIXELS_PER_DS_PIXEL;
 }
 
 static void on_effect_spawned(int id, const char *name, float x, float y)
@@ -870,7 +869,7 @@ static void apply_fade(void)
     float brightness_fade;
     float card_fade;
 
-    brightness_fade = (float)black_level / BRIGHTNESS_SCALE;
+    brightness_fade = (float)black_level / ((float)NATIVE_BRIGHTNESS_SCALE);
     card_fade = card_fade_amount();
     scene_stage_set_fade(brightness_fade > card_fade ? brightness_fade : card_fade);
 }

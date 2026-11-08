@@ -1,5 +1,6 @@
 #include <string.h>
 #include "script_machine.h"
+#include "ds_units.h"
 
 #define FADE_IN_KIND 0
 #define FADE_OUT_KIND 1
@@ -11,7 +12,6 @@
 #define SHORT_FRAMES_FOR_HALF_STRENGTH 12
 #define FULL_SCALE 0x100
 #define HALF_SCALE 0x80
-#define BRIGHTNESS_SCALE 16
 #define MASK_FIXED_BITS 12
 #define MASK_FIXED_ONE (1 << MASK_FIXED_BITS)
 
@@ -22,15 +22,15 @@ static int brightness_from_level(const struct script_fade *fade)
     whole = fade->level >> 12;
     switch (fade->kind) {
     case FADE_IN_KIND:
-        return whole != 0 ? -((whole * BRIGHTNESS_SCALE + 255) >> 8) : 0;
+        return whole != 0 ? -((whole * NATIVE_BRIGHTNESS_SCALE + 255) >> 8) : 0;
     case FADE_OUT_KIND:
         whole = LEVEL_FULL_WHOLE - whole;
-        return whole != 0 ? -((whole * BRIGHTNESS_SCALE + 255) >> 8) : 0;
+        return whole != 0 ? -((whole * NATIVE_BRIGHTNESS_SCALE + 255) >> 8) : 0;
     case WHITE_IN_KIND:
-        return (whole * BRIGHTNESS_SCALE) >> 8;
+        return (whole * NATIVE_BRIGHTNESS_SCALE) >> 8;
     default:
         whole = LEVEL_FULL_WHOLE - whole;
-        return (whole * BRIGHTNESS_SCALE) >> 8;
+        return (whole * NATIVE_BRIGHTNESS_SCALE) >> 8;
     }
 }
 

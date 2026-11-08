@@ -186,12 +186,12 @@ static int index_of_draw_with_texture_width(int width)
 
 static float screen_x_when_camera_is_centred(float world_x, float camera_x)
 {
-    return ((float)RENDERER_WIDTH - SCENE_VIEW_DS_SCREEN_WIDTH * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL) / 2.0f + (world_x - camera_x) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    return ((float)RENDERER_WIDTH - SCENE_VIEW_DS_SCREEN_WIDTH * VITA_PIXELS_PER_DS_PIXEL) / 2.0f + (world_x - camera_x) * VITA_PIXELS_PER_DS_PIXEL;
 }
 
 static float screen_y_when_camera_is_centred(float world_y, float camera_y)
 {
-    return ((float)RENDERER_HEIGHT - SCENE_VIEW_DS_SCREEN_HEIGHT * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL) / 2.0f + (world_y - camera_y) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    return ((float)RENDERER_HEIGHT - SCENE_VIEW_DS_SCREEN_HEIGHT * VITA_PIXELS_PER_DS_PIXEL) / 2.0f + (world_y - camera_y) * VITA_PIXELS_PER_DS_PIXEL;
 }
 
 static int nearly_equal(float first, float second)
@@ -247,10 +247,10 @@ static void test_browsing_draws_a_small_background_centred_with_the_character_ov
     CHECK(nearly_equal(background->screen_area.x, left));
     CHECK(nearly_equal(background->screen_area.y, top));
     CHECK(nearly_equal(background->screen_area.width, ROOM_A_WIDTH));
-    CHECK(nearly_equal(character->screen_area.x + character->screen_area.width / 2.0f, left + 128.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL));
-    CHECK(nearly_equal(character->screen_area.y + character->screen_area.height / 2.0f, top + 96.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL));
-    CHECK(character->screen_area.width == 30.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
-    CHECK(character->screen_area.height == 40.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
+    CHECK(nearly_equal(character->screen_area.x + character->screen_area.width / 2.0f, left + 128.0f * VITA_PIXELS_PER_DS_PIXEL));
+    CHECK(nearly_equal(character->screen_area.y + character->screen_area.height / 2.0f, top + 96.0f * VITA_PIXELS_PER_DS_PIXEL));
+    CHECK(character->screen_area.width == 30.0f * VITA_PIXELS_PER_DS_PIXEL);
+    CHECK(character->screen_area.height == 40.0f * VITA_PIXELS_PER_DS_PIXEL);
     CHECK(character->texture_area.width == 0.5f);
     viewer_app_stop();
     CHECK_INT(fake_renderer_textures_alive(), 0);
@@ -982,8 +982,8 @@ static int iris_at_screen_corner_is_drawn(float corner_x, float corner_y, float 
     int is_drawn;
 
     snprintf(scene_text, sizeof(scene_text), "scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 344 96\niris %f %f %f 0\nwait 6000\n",
-        344.0f + (corner_x - screen_x_when_camera_is_centred(344.0f, 344.0f)) / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL,
-        96.0f + (corner_y - screen_y_when_camera_is_centred(96.0f, 96.0f)) / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL,
+        344.0f + (corner_x - screen_x_when_camera_is_centred(344.0f, 344.0f)) / VITA_PIXELS_PER_DS_PIXEL,
+        96.0f + (corner_y - screen_y_when_camera_is_centred(96.0f, 96.0f)) / VITA_PIXELS_PER_DS_PIXEL,
         radius);
     set_up_platform();
     set_up_scene_assets(scene_text);
@@ -1748,10 +1748,10 @@ static void test_an_overlay_goes_through_the_view_and_grows_about_its_centre(voi
     float full_height;
 
     set_up_text_scene("scene opening\nroom 1\nplate room_a 0 0 1024 384\ncamera 0 192\noverlay 1 art 100 240 40 20 60\nwait 6000\n");
-    full_width = 40.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
-    full_height = 20.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
-    center_x = 120.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
-    center_y = RENDERER_HEIGHT - (384.0f - 250.0f) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+    full_width = 40.0f * VITA_PIXELS_PER_DS_PIXEL;
+    full_height = 20.0f * VITA_PIXELS_PER_DS_PIXEL;
+    center_x = 120.0f * VITA_PIXELS_PER_DS_PIXEL;
+    center_y = RENDERER_HEIGHT - (384.0f - 250.0f) * VITA_PIXELS_PER_DS_PIXEL;
     run_frames(29);
     draw_frame();
     overlay = find_draw_with_texture_width(OVERLAY_ART_WIDTH);
@@ -1763,7 +1763,7 @@ static void test_an_overlay_goes_through_the_view_and_grows_about_its_centre(voi
     run_frames(40);
     draw_frame();
     overlay = find_draw_with_texture_width(OVERLAY_ART_WIDTH);
-    CHECK(nearly_equal(overlay->screen_area.x, 100.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL));
+    CHECK(nearly_equal(overlay->screen_area.x, 100.0f * VITA_PIXELS_PER_DS_PIXEL));
     CHECK(nearly_equal(overlay->screen_area.width, full_width));
     CHECK(nearly_equal(overlay->screen_area.height, full_height));
     CHECK(overlay->color.alpha == 1.0f);

@@ -118,7 +118,7 @@ static void replace_room_with_background(const char *name)
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
         scene_stage_add_plate(name, 0.0f, 0.0f, SCENE_VIEW_DS_SCREEN_WIDTH, SCENE_VIEW_DS_SCREEN_HEIGHT);
     } else {
-        scene_stage_add_plate(name, 0.0f, 0.0f, (float)texture->width / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL, (float)texture->height / SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL);
+        scene_stage_add_plate(name, 0.0f, 0.0f, (float)texture->width / VITA_PIXELS_PER_DS_PIXEL, (float)texture->height / VITA_PIXELS_PER_DS_PIXEL);
     }
     scene_stage_set_camera(0.0f, 0.0f);
 }

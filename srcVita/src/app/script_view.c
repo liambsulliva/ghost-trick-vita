@@ -13,6 +13,7 @@
 #include "soul_chain.h"
 #include "soul_transition.h"
 #include "texture_cache.h"
+#include "ds_units.h"
 
 #define VIEW_EFFECT_MAX 16
 #define VIEW_EFFECT_NAME_MAX 32
@@ -123,7 +124,6 @@
 #define FILM_TILE_ABOVE_SCREEN 5.8f
 #define FILM_SCROLL_PER_TICK 0.703125f
 #define FX_DEGREES_TO_RADIANS 0.017453293f
-#define FX_VITA_PIXELS_PER_DS_PIXEL 2.8125f
 #define FILM_CORNER_WIDTH 45.0f
 #define FILM_CORNER_WHOLE_HEIGHT 56.25f
 #define FILM_CORNER_FIRST_V 0.1625f
@@ -379,7 +379,7 @@ static struct view_effect *find_free_effect(void)
 
 static void rain_screen_origin(float *center_x, float *top_y)
 {
-    scene_view_screen_to_world(scene_stage_view(), (float)RENDERER_WIDTH / 2.0f, ((float)RENDERER_HEIGHT - SCENE_VIEW_DS_SCREEN_HEIGHT * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL) / 2.0f, center_x, top_y);
+    scene_view_screen_to_world(scene_stage_view(), (float)RENDERER_WIDTH / 2.0f, ((float)RENDERER_HEIGHT - SCENE_VIEW_DS_SCREEN_HEIGHT * VITA_PIXELS_PER_DS_PIXEL) / 2.0f, center_x, top_y);
 }
 
 static int rain_is_alive(void)
@@ -623,8 +623,8 @@ static void draw_fx_frame(const struct script_fx_movie *movie, const struct scri
 
         x = frame->corners[index * 2];
         y = frame->corners[index * 2 + 1];
-        corners[index].x = screen_x + (x * cosine - y * sine) * FX_VITA_PIXELS_PER_DS_PIXEL;
-        corners[index].y = screen_y + (x * sine + y * cosine) * FX_VITA_PIXELS_PER_DS_PIXEL;
+        corners[index].x = screen_x + (x * cosine - y * sine) * VITA_PIXELS_PER_DS_PIXEL;
+        corners[index].y = screen_y + (x * sine + y * cosine) * VITA_PIXELS_PER_DS_PIXEL;
     }
     corners[0].u = frame->u0;
     corners[0].v = frame->v0;
@@ -702,10 +702,10 @@ static void draw_rain(void)
     for (index = 0; index < rain.count; index++) {
         struct renderer_rect area;
 
-        area.x = (rain.streaks[index].x - RAIN_HALF_WIDTH - left) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
-        area.y = (rain.streaks[index].y - rain.streaks[index].half_length - top) * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
-        area.width = SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
-        area.height = rain.streaks[index].half_length * 2.0f * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
+        area.x = (rain.streaks[index].x - RAIN_HALF_WIDTH - left) * VITA_PIXELS_PER_DS_PIXEL;
+        area.y = (rain.streaks[index].y - rain.streaks[index].half_length - top) * VITA_PIXELS_PER_DS_PIXEL;
+        area.width = VITA_PIXELS_PER_DS_PIXEL;
+        area.height = rain.streaks[index].half_length * 2.0f * VITA_PIXELS_PER_DS_PIXEL;
         color.alpha = rain_field_alpha_of(index);
         renderer_draw_filled_rect(area, color);
     }

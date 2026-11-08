@@ -3,6 +3,7 @@
 #include "renderer.h"
 #include "soul_transition.h"
 #include "texture_cache.h"
+#include "ds_units.h"
 
 #define SPOKE_TEXTURE "soul_spokes"
 #define SPOKE_COUNT 32
@@ -23,7 +24,6 @@
 #define SPUN_LAYER_START_ALPHA 124
 #define SPUN_LAYER_ALPHA_PER_STEP 6
 #define SPUN_LAYER_OUTER_ALPHA_MOST 8
-#define SPUN_LAYER_ALPHA_SCALE 31.0f
 #define SPUN_LAYER_GROWTH_PER_STEP (3.0f / 128.0f)
 #define SPUN_LAYER_DEGREES_PER_STEP 0.824f
 #define LEAVING_BLACK_LAST_TICK 2
@@ -32,7 +32,6 @@
 #define SWEEP_NATIVE_Y_PER_TICK 2
 #define SWEEP_NATIVE_Y_LOWEST -159
 #define SWEEP_NATIVE_Y_WRAP 159
-#define VITA_PIXELS_PER_DS_PIXEL 2.8125f
 #define SWEEP_FOOTAGE_NUDGE 1.875f
 #define SWEEP_HEIGHT 2.8f
 #define FINE_LINE_BRIGHT_CENTER 0.3125f
@@ -179,7 +178,7 @@ static void draw_spun_layers(int step)
             alpha = SPUN_LAYER_OUTER_ALPHA_MOST;
         }
         growth = 1.0f + (float)((layer + 1) * step) * SPUN_LAYER_GROWTH_PER_STEP;
-        renderer_draw_turned_snapshot(SCREEN_CENTER_X, SCREEN_CENTER_Y, SCREEN_CENTER_X * growth, SCREEN_CENTER_Y * growth, (float)((layer + 1) * step) * SPUN_LAYER_DEGREES_PER_STEP, (float)alpha / SPUN_LAYER_ALPHA_SCALE);
+        renderer_draw_turned_snapshot(SCREEN_CENTER_X, SCREEN_CENTER_Y, SCREEN_CENTER_X * growth, SCREEN_CENTER_Y * growth, (float)((layer + 1) * step) * SPUN_LAYER_DEGREES_PER_STEP, (float)alpha / ((float)NATIVE_ALPHA_FULL));
     }
 }
 
