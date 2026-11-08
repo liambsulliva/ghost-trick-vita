@@ -1071,6 +1071,11 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0xc4:
     case 0x12e:
+    case 0x12f:
+    case 0x130:
+    case 0x131:
+    case 0x132:
+    case 0xf0:
         return SCRIPT_STEP_NEXT;
     case 0x76:
         note_entry(machine, words[0], words[1], words[2]);
