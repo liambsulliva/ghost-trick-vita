@@ -382,6 +382,12 @@ Rooms and characters drawn in the grey world (the `-mono` copies of textures, ma
 
 Guard: graying a DXT5 colour block keeps the first endpoint larger, swapping the endpoints and flipping each index's low bit when they cross, and points every index at the first colour when both ends gray to the same value. The baked colour textures were checked: none of the 3601 DXT5 textures has a block that uses index 3 with its endpoints in DXT1 order, so the fault was only in the runtime grey copies.
 
+### 56. An op that had a size but no family
+
+Op 0x6b (two sites, Chapter 7's st04_game001 `click linne_balloon1` among them) sets the condition to whether a scene change is pending: native returns `game+0xe58 != 0` (`func_0202657c`), the word op 0x24 sets to 0x19 through `func_02010350` and a player mode request sets to 0x18 through `func_020110b8`. The port had the op's length in `script_opcodes.c` but no family, so `run_op` logged `op_not_ported`, left the condition as it was, and the balloon's handler took whichever branch the last test had chosen.
+
+Guard: op 0x6b is a control op whose condition is the port's pending script change (teardown or load scheduled); `tests/unit/test_script_change_pending.c` runs it with and without an op 0x24 first. When porting an op, add it to the family table as well as the switch, or the case is never reached.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

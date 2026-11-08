@@ -598,6 +598,11 @@ static int move_vm_to_offset(struct script_machine *machine, struct script_vm *v
 
 static void begin_script_change(struct script_machine *machine, const char *path);
 
+static int script_change_is_pending(const struct script_machine *machine)
+{
+    return machine->teardown_at != NEVER || machine->load_at != NEVER;
+}
+
 static void request_script_change(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
     const char *path;
@@ -1093,6 +1098,9 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x69:
         vm->condition = machine->mode_byte == MODE_BYTE_NORMAL;
+        return SCRIPT_STEP_NEXT;
+    case 0x6b:
+        vm->condition = script_change_is_pending(machine);
         return SCRIPT_STEP_NEXT;
     case 0x7e:
         script_soul_start_player_mark(machine);
@@ -1948,7 +1956,7 @@ static void move_to_next_script(struct script_machine *machine)
 void script_machine_skip_ahead(struct script_machine *machine)
 {
     machine->last_new_site_tick = machine->tick;
-    if (machine->teardown_at != NEVER || machine->load_at != NEVER) {
+    if (script_change_is_pending(machine)) {
         return;
     }
     machine->talk_close_at = (long long)machine->tick + 1;
@@ -1967,7 +1975,7 @@ static void push_when_stuck(struct script_machine *machine)
     unsigned int quiet_ticks;
 
     quiet_ticks = machine->tick - machine->last_new_site_tick;
-    if (machine->teardown_at != NEVER || machine->load_at != NEVER) {
+    if (script_change_is_pending(machine)) {
         return;
     }
     if (game_waits_on_a_press_that_works(machine)) {
@@ -2032,7 +2040,7 @@ static int scene_has_run_too_long(const struct script_machine *machine)
     if (machine->route == NULL || machine->route->scene_most_ticks <= 0 || machine->auto_press == SCRIPT_AUTO_OFF) {
         return 0;
     }
-    if (machine->teardown_at != NEVER || machine->load_at != NEVER || machine->stop_is_requested) {
+    if (script_change_is_pending(machine) || machine->stop_is_requested) {
         return 0;
     }
     return machine->tick - machine->last_new_scene_tick >= (unsigned int)machine->route->scene_most_ticks;
@@ -2042,7 +2050,7 @@ static void move_on_when_the_story_went_back(struct script_machine *machine)
 {
     const char *next;
 
-    if (!machine->scene_is_behind_the_story || machine->teardown_at != NEVER || machine->load_at != NEVER || machine->stop_is_requested) {
+    if (!machine->scene_is_behind_the_story || script_change_is_pending(machine) || machine->stop_is_requested) {
         return;
     }
     machine->scene_is_behind_the_story = 0;
