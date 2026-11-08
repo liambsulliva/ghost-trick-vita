@@ -223,6 +223,18 @@ void scene_stage_set_last_plate_soul_texture(const char *texture_name)
     }
 }
 
+int scene_stage_plays_animation(const struct animation *animation)
+{
+    int index;
+
+    for (index = 0; index < SCENE_OBJECT_MAX; index++) {
+        if (stage.objects[index].in_use && stage.objects[index].player.animation == animation) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void scene_stage_remove_object(const char *object_name)
 {
     struct scene_object *object;

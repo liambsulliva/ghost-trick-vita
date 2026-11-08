@@ -332,6 +332,7 @@ void viewer_app_start(const char *folder)
     texture_cache_init(texture_folder, TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
     texture_cache_set_bucket_count(TEXTURE_FOLDER_BUCKETS);
     animation_library_init(animation_folder);
+    animation_library_set_in_use_check(scene_stage_plays_animation);
     scene_player_init(scene_folder);
     script_player_init(script_folder);
     read_page_tiles(script_folder);

@@ -76,5 +76,6 @@ void scene_stage_set_fade(float fade_amount);
 void scene_stage_advance_objects(unsigned long long elapsed_us);
 void scene_stage_log_coverage(void);
 void scene_stage_request_animation_textures(const struct animation *animation);
+int scene_stage_plays_animation(const struct animation *animation);
 
 #endif

@@ -10,7 +10,17 @@
 
 static char folder[FILE_PATH_MAX];
 static struct animation *loaded_animations[ANIMATION_LIBRARY_MAX];
+static unsigned long long last_used[ANIMATION_LIBRARY_MAX];
+static unsigned long long use_clock;
 static int loaded_count;
+static int evicted_count;
+static animation_library_in_use_check in_use_check;
+
+static void note_use(int index)
+{
+    use_clock = use_clock + 1;
+    last_used[index] = use_clock;
+}
 
 static const struct animation *find_loaded(const char *name)
 {
@@ -18,10 +28,48 @@ static const struct animation *find_loaded(const char *name)
 
     for (index = 0; index < loaded_count; index++) {
         if (strcmp(loaded_animations[index]->name, name) == 0) {
+            note_use(index);
             return loaded_animations[index];
         }
     }
     return NULL;
+}
+
+static int evict_least_recent_unused(void)
+{
+    int index;
+    int oldest;
+
+    if (in_use_check == NULL) {
+        return 0;
+    }
+    oldest = -1;
+    for (index = 0; index < loaded_count; index++) {
+        if (in_use_check(loaded_animations[index])) {
+            continue;
+        }
+        if (oldest < 0 || last_used[index] < last_used[oldest]) {
+            oldest = index;
+        }
+    }
+    if (oldest < 0) {
+        return 0;
+    }
+    run_log_write("animation evicted name=%s", loaded_animations[oldest]->name);
+    animation_free_frames(loaded_animations[oldest]);
+    mem_free(loaded_animations[oldest]);
+    loaded_count = loaded_count - 1;
+    loaded_animations[oldest] = loaded_animations[loaded_count];
+    last_used[oldest] = last_used[loaded_count];
+    evicted_count = evicted_count + 1;
+    return 1;
+}
+
+static void add_loaded(struct animation *animation)
+{
+    loaded_animations[loaded_count] = animation;
+    note_use(loaded_count);
+    loaded_count = loaded_count + 1;
 }
 
 static struct animation *read_animation_file(const char *name)
@@ -63,6 +111,18 @@ void animation_library_init(const char *animation_folder)
 {
     snprintf(folder, sizeof(folder), "%s", animation_folder);
     loaded_count = 0;
+    evicted_count = 0;
+    use_clock = 0;
+}
+
+void animation_library_set_in_use_check(animation_library_in_use_check check)
+{
+    in_use_check = check;
+}
+
+int animation_library_evicted_count(void)
+{
+    return evicted_count;
 }
 
 const struct animation *animation_library_load(const char *name)
@@ -74,7 +134,7 @@ const struct animation *animation_library_load(const char *name)
     if (existing != NULL) {
         return existing;
     }
-    if (loaded_count >= ANIMATION_LIBRARY_MAX) {
+    if (loaded_count >= ANIMATION_LIBRARY_MAX && !evict_least_recent_unused()) {
         run_log_write("animation library_full name=%s", name);
         return NULL;
     }
@@ -82,8 +142,7 @@ const struct animation *animation_library_load(const char *name)
     if (animation == NULL) {
         return NULL;
     }
-    loaded_animations[loaded_count] = animation;
-    loaded_count = loaded_count + 1;
+    add_loaded(animation);
     return animation;
 }
 
@@ -125,8 +184,7 @@ static int add_bundled_animation(const char *start, const char *end)
         return 0;
     }
     snprintf(animation->name, sizeof(animation->name), "%s", name);
-    loaded_animations[loaded_count] = animation;
-    loaded_count = loaded_count + 1;
+    add_loaded(animation);
     return 1;
 }
 
