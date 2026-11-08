@@ -9,14 +9,13 @@
 #include "scene_view.h"
 #include "script_ui_view.h"
 #include "script_bridge.h"
+#include "script_classes.h"
 #include "script_player.h"
 #include "script_view.h"
 #include "sound_engine.h"
 #include "ds_units.h"
 
 #define ALL_EFFECTS_NAME "*"
-#define CLASS_DRAWN_ONLY_IN_SOUL_VIEW 0x6309aa5au
-#define CLASS_DRAWN_ONLY_IN_LIVING_VIEW 0x45427fc2u
 #define DIM_LEVEL_WHEN_FULL (1.0f - (float)SCRIPT_NARRATION_DIM_TOP_LEVEL / (float)NATIVE_ALPHA_FULL)
 #define CARD_FADE_IN_STARTS 22
 #define CARD_FADE_IN_ENDS 31
@@ -56,7 +55,6 @@ static float mask_fade_alpha;
 static int zoom_ticks_left;
 #define NO_SOUL_TEXTURE "-"
 #define SCREEN_FILTER_GRAYSCALE 1
-#define HUMAN_CLASS_ID 0x5a390072u
 #define PHONE_VIEW_PROP_CLASS_ID 0x789c5740u
 #define ALL_SOUND_LOOPS "*"
 
@@ -246,10 +244,10 @@ static void on_soul_object_styled(const char *object_name, unsigned int class_id
 {
     const struct script_soul_style *style;
 
-    if (is_phone_view && class_id != HUMAN_CLASS_ID) {
+    if (is_phone_view && !script_class_is_human(class_id)) {
         style = script_tables_soul_style(tables, PHONE_VIEW_PROP_CLASS_ID, 0, 0, 0, 0);
     } else {
-        style = script_tables_soul_style(tables, class_id, class_id == HUMAN_CLASS_ID, has_core, is_active, is_dead);
+        style = script_tables_soul_style(tables, script_class_of_soul_style(class_id), script_class_is_human(class_id), has_core, is_active, is_dead);
     }
     if (style != NULL) {
         scene_stage_set_object_soul_tint(object_name, style->red, style->green, style->blue, style->alpha, style->is_flat);
@@ -271,7 +269,7 @@ static void on_actor_changed(const struct script_actor_view *actor)
     }
     scene_stage_place_object(actor->name, row->animation_name, (float)actor->x, (float)actor->y, (LEVEL_COUNT - actor->level) * LAYER_PER_LEVEL + (CREATION_INDEX_TOP - actor->creation_index), record_of(actor, row->records_per_frame));
     scene_stage_set_object_flipped(actor->name, actor->is_flipped);
-    scene_stage_set_object_views(actor->name, actor->class_id != CLASS_DRAWN_ONLY_IN_SOUL_VIEW, actor->class_id != CLASS_DRAWN_ONLY_IN_LIVING_VIEW);
+    scene_stage_set_object_views(actor->name, script_class_draws_in_living_view(actor->class_id), script_class_draws_in_soul_view(actor->class_id));
 }
 
 static void on_brightness_changed(int signed_level)

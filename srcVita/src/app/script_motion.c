@@ -1,10 +1,8 @@
 #include <string.h>
 #include "script_machine.h"
+#include "script_classes.h"
 #include "ds_units.h"
 
-#define DEFAULT_LEVEL_FOR_GIMMICK 9
-#define DEFAULT_LEVEL_FOR_HUMAN 6
-#define HUMAN_CLASS_ID 0x5a390072u
 #define UNPLACED_X 128
 #define UNPLACED_Y 96
 #define WORD_FRAME_LIMIT 0xfff0u
@@ -459,7 +457,7 @@ static void create_actor(struct script_machine *machine, struct script_vm *vm, c
     actor->x = UNPLACED_X;
     actor->y = UNPLACED_Y;
     actor->class_id = script_machine_u32(words, 0);
-    actor->level = actor->class_id == HUMAN_CLASS_ID ? DEFAULT_LEVEL_FOR_HUMAN : DEFAULT_LEVEL_FOR_GIMMICK;
+    actor->level = script_class_default_level(actor->class_id);
 }
 
 static void select_actor(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)

@@ -310,6 +310,12 @@ Guard: `SCRIPT_OBJECT_MAX` and the view's `SCENE_OBJECT_MAX` are 128 and `SCRIPT
 
 Guard: a `dead_talk` route action starts the talk with the native targeting (the step's object, or every object), play holds while it runs, and the `DeadTalk` command handles Finish, Abort and Restart. Still open: the player's own way in (the prompt and its confirm), and `CORETALK`.
 
+### 44. Two Missiles, two Lynnes: classes the port drew alike
+
+Run 27 showed two Lynnes, the class behind the two Missiles of Chapter 2. Native draws an object's sprite by its class (slot 7 of each vtable, `opcodes_objects.md` and `object_visibility.md`): humans (`uHumCommon` and `uHuman`) and script objects (`uScrObj`) only in normal view, soul-vision gimmicks only in ghost view, and past-dead bodies (`uHumPastDead`, `func_02053dd0`) never; a past-dead object instead hands its first visible frame to a separate `uPastDeadSprite` (`func_02053dd4`). In ghost view every human is an orange silhouette (`uSoulBGHuman`, built per human at entry). The port knew only `uHumCommon` as human and gated two classes, so the 13 past-dead objects in the game (`carcass_silhouette`, `linne_dead`, `linnedead`, `linne_s2`, `caron_dead` and others) drew as a second live character, and the 41 `uHuman` objects (`linne`, `girl`, `dog`, `madam`, `killerB` and others) kept their colours or a core's tint in ghost view and sat on the gimmick draw level.
+
+Guard: `script_classes.c` holds every class rule in one place, keyed by the class ids read from the native class registry (id at +0x18 of each class info): which classes are human, which views each draws in, the soul style a class takes, and its default level (humans 6, dead gimmicks 4 from `func_02053010`, other gimmicks 9). The bridge and the motion code ask it instead of comparing ids. A new class goes in that file, never in a caller. Still open: the `uPastDeadSprite` itself (how and when its snapshot draws) is not ported.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
