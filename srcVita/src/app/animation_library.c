@@ -259,12 +259,30 @@ static const char *next_animation_start(const char *text, const char *end)
     return end;
 }
 
+static int read_bundled_name(const char *start, const char *end, char *name)
+{
+    const char *text;
+    size_t length;
+
+    text = start + sizeof(BUNDLE_ANIMATION_PREFIX) - 1u;
+    while (text < end && (*text == ' ' || *text == '\t')) {
+        text = text + 1;
+    }
+    length = 0;
+    while (text + length < end && length + 1u < ASSET_NAME_MAX && text[length] != ' ' && text[length] != '\t' && text[length] != '\r' && text[length] != '\n') {
+        name[length] = text[length];
+        length = length + 1;
+    }
+    name[length] = '\0';
+    return length > 0;
+}
+
 static int add_bundled_animation(const char *start, const char *end)
 {
     char name[ASSET_NAME_MAX];
     struct animation *animation;
 
-    if (sscanf(start, BUNDLE_ANIMATION_PREFIX ASSET_NAME_SCAN, name) != 1 || find_loaded(name) != NULL) {
+    if (!read_bundled_name(start, end, name) || find_loaded(name) != NULL) {
         return 0;
     }
     if (loaded_count >= ANIMATION_LIBRARY_MAX && !evict_least_recent_unused()) {
@@ -292,7 +310,7 @@ static int bundled_animations_not_loaded(const char *text, const char *end)
 
     missing = 0;
     for (start = next_animation_start(text, end); start < end; start = next_animation_start(start + sizeof(BUNDLE_ANIMATION_PREFIX) - 1u, end)) {
-        if (sscanf(start, BUNDLE_ANIMATION_PREFIX ASSET_NAME_SCAN, name) == 1 && find_loaded(name) == NULL) {
+        if (read_bundled_name(start, end, name) && find_loaded(name) == NULL) {
             missing = missing + 1;
         }
     }
