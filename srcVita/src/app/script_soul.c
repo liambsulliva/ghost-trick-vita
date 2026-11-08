@@ -864,6 +864,11 @@ static void set_soul_view_with_effect(struct script_machine *machine, int is_on,
     int holds_the_world;
 
     soul = &machine->soul;
+    if (is_on && !soul->is_on) {
+        soul->view_demo_is_on = 0;
+        soul->view_follow_is_off = 0;
+        soul->view_back_is_offered = 0;
+    }
     soul->is_on = is_on;
     holds_the_world = with_effect && machine->auto_press != SCRIPT_AUTO_FAST;
     soul->is_leaving_view = 0;
@@ -1052,17 +1057,44 @@ static void run_exception_command(struct script_machine *machine, const char *ar
     }
 }
 
+static void return_from_soul_view(struct script_machine *machine, int mode)
+{
+    if (machine->soul.is_on) {
+        machine->mode_byte = mode;
+        set_soul_view_with_effect(machine, 0, !leaving_skips_the_effect(machine));
+    }
+}
+
 static void run_custom_soul_command(struct script_machine *machine, const char *arg)
 {
+    struct script_soul *soul;
+
+    soul = &machine->soul;
     if (strcmp(arg, "Start") == 0) {
         set_soul_view(machine, 1);
-    } else if (strcmp(arg, "NoEffectStart") == 0) {
+        return;
+    }
+    if (strcmp(arg, "NoEffectStart") == 0) {
         set_soul_view_with_effect(machine, 1, 0);
+        return;
+    }
+    if (!soul->is_on && !soul->is_leaving_view) {
+        return;
+    }
+    if (strcmp(arg, "DemoModeOn") == 0) {
+        soul->view_demo_is_on = 1;
+    } else if (strcmp(arg, "DemoModeOff") == 0 || strcmp(arg, "DemoModeOffButtonOff") == 0) {
+        soul->view_demo_is_on = 0;
+        soul->view_follow_is_off = 0;
+        soul->view_back_is_offered = strcmp(arg, "DemoModeOff") == 0;
+    } else if (strcmp(arg, "HoseiOff") == 0) {
+        soul->view_follow_is_off = 1;
     } else if (strcmp(arg, "NoEffectFinish") == 0) {
-        machine->soul.next_leaving_is_quiet = 1;
-    } else if (strcmp(arg, "ReturnDemo") == 0 && machine->soul.is_on) {
-        machine->mode_byte = DEMO_MODE;
-        set_soul_view_with_effect(machine, 0, !leaving_skips_the_effect(machine));
+        soul->next_leaving_is_quiet = 1;
+    } else if (strcmp(arg, "ReturnGame") == 0) {
+        return_from_soul_view(machine, NORMAL_PLAY_MODE);
+    } else if (strcmp(arg, "ReturnDemo") == 0) {
+        return_from_soul_view(machine, DEMO_MODE);
     }
 }
 
@@ -1125,13 +1157,18 @@ static void run_free_camera_command(struct script_machine *machine, const char *
     machine->soul.camera_tutorial_is_on = strcmp(arg, "TutorialStart") == 0;
 }
 
+static int timeleap_is_up(const struct script_machine *machine)
+{
+    return machine->soul.rewind_select_ticks != 0 || machine->soul.time_jump_event.target != NULL;
+}
+
 static void run_timeleap_command(struct script_machine *machine, const char *arg)
 {
     if (strcmp(arg, "BREAK") == 0) {
         if (machine->outputs->swirl_changed != NULL) {
             machine->outputs->swirl_changed(0);
         }
-    } else if (strcmp(arg, "SELECT") == 0) {
+    } else if (strcmp(arg, "SELECT") == 0 || ((strcmp(arg, "RESTART") == 0 || strcmp(arg, "RESTART FINAL") == 0) && !timeleap_is_up(machine))) {
         if (machine->auto_press == SCRIPT_AUTO_FAST) {
             start_the_time_jump(machine);
         } else {
@@ -1268,6 +1305,9 @@ static void take_direction(struct script_machine *machine)
     struct script_soul *soul;
 
     soul = &machine->soul;
+    if (soul->is_on && soul->view_demo_is_on) {
+        return;
+    }
     if (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent) {
         player_moved_in_tutorial(machine);
         return;
@@ -1286,7 +1326,7 @@ static void take_ghost_button(struct script_machine *machine)
     if (soul->view_change_ticks_left > 0) {
         return;
     }
-    if (soul->is_on && soul->player_opened_soul_view) {
+    if (soul->is_on && (soul->player_opened_soul_view || soul->view_back_is_offered) && !soul->view_demo_is_on) {
         if (pill_answers_a_press(machine, SCRIPT_PILL_BACK)) {
             script_pills_press(machine, SCRIPT_PILL_BACK, PILL_HOLD_AFTER_VIEW_CHANGE);
             set_soul_view(machine, 0);
@@ -1433,7 +1473,7 @@ static void follow_core_with_camera(struct script_machine *machine)
     float core_y;
 
     soul = &machine->soul;
-    if (machine->auto_press == SCRIPT_AUTO_FAST || soul->camera_follow_is_off || soul->camera_is_locked || machine->pan_is_active || soul->active_object == NO_CORE) {
+    if (machine->auto_press == SCRIPT_AUTO_FAST || soul->camera_follow_is_off || soul->view_follow_is_off || soul->camera_is_locked || machine->pan_is_active || soul->active_object == NO_CORE) {
         return;
     }
     core_position(machine, soul->active_object, soul->active_slot, &core_x, &core_y);
@@ -1536,7 +1576,7 @@ static int route_word_without_argument_holds(const struct script_machine *machin
     case SCRIPT_ROUTE_WAIT_FREE:
         return script_soul_world_is_playable(machine);
     case SCRIPT_ROUTE_WAIT_VIEW:
-        return soul->is_on;
+        return soul->is_on && !soul->view_demo_is_on;
     case SCRIPT_ROUTE_WAIT_NO_TALK:
         return machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->talk_is_open;
     case SCRIPT_ROUTE_WAIT_CAMERA_TUTORIAL:

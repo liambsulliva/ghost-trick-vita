@@ -334,6 +334,18 @@ Run 28 played on past Chapter 12 and then started Chapter 1 again, twice. Stage 
 
 Guard: two rules in the shared path. Under auto-play, a script that was already visited and whose chapter mark (its op 0x74, the first words of every chapter's scripts) is below the highest mark reached is behind the story: the machine moves on to the scene after the furthest one reached in story order and logs `scene_behind_the_story_left` and `scene_behind_the_story_moved_to`. A rewind inside a chapter keeps its mark and stays, and manual play may go anywhere. And the route never plays a block it has passed: a script's steps are looked up from the block of the furthest step acted on, so a revisit to an earlier block logs `route_block_already_played` and plays nothing. Chapters 1 to 3 replay unchanged (235 steps done), and the whole-game replay no longer returns to `st01_game000`.
 
+### 48. Ghost-view commands the port dropped
+
+41 scripts send `GameApp CustomSoulVision` commands the port ignored: `DemoModeOn` (343 sends), `DemoModeOff` (88), `CloseStatus` (102), `HoseiOff` (32), `ReturnGame` (25) and a few rarer ones. Native `func_02033504` handles them all, and every one but `Start` and `NoEffectStart` only while the soul-vision task exists. `DemoModeOn` takes the soul's input away (clears bit 0x20 of the soul at +0x7c, `func_02061138`), hides every pill (`func_02010ef4`) and sets the task's demo byte (+0x35). `DemoModeOff` gives input back, clears the demo byte and the camera-correction byte (+0x32), and shows pills 1 and 2, the hourglass and the back pill, even in a view the script opened; `DemoModeOffButtonOff` does the same with those pills hidden. `HoseiOff` sets +0x32. `ReturnGame` and `ReturnDemo` leave the view into play (mode 3) or demo (mode 2) through `func_0201192c`. `CloseStatus` and `OpenStatus` gate the status panel. Chapter 6's floor lifts in st02_game024 hold the view in demo mode and give it back with `DemoModeOff`.
+
+Guard: `run_custom_soul_command` follows the native handler: the commands act only while the view is on or leaving; demo mode stops the soul's movement, the route's `view` wait and the back pill; `DemoModeOff` offers the back pill in a script-opened view; `HoseiOff` stops the camera following the core until `DemoModeOff` or the next view; and `ReturnGame` leaves into play. The demo, follow and back flags reset when a view opens, as native builds a new task. Still open: the status panel (`CloseStatus`, `OpenStatus`) and `CancelCameraHosei` (`func_020337f8`).
+
+### 49. A rewind the lab never armed
+
+Chapter 4's lab ends its talk with `GameApp Timeleap RESTART` and no `SELECT`; the port knew only `SELECT` and `BREAK`, so the rewind never armed and the lab looped through `phone.xml`. Native `func_0203e538` creates the time-leap task for `RESTART` and for `SELECT` when none exists (`RESTART FINAL` builds it in its final mode), and with a task, `SELECT` opens the choice (`func_0203e4a4`) and `BREAK` breaks it (`func_0203e508`).
+
+Guard: `RESTART` and `RESTART FINAL` arm the rewind as `SELECT` does when no time leap is up. The lab now clears: its three panel picks, then the rewind, then st02_demo003 and st02_game004.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
