@@ -174,6 +174,8 @@ A route step's `footage_s` is when its action fires in the footage, but bursts s
 
 Guard: bursts (`GTB3`) stamp the last route step whose action fired and the ticks since then. The device log's mark lines carry `tick=`, and `tools/burst_reference.py --log` stretches each window between two actions to the footage's length, so both ends line up. Before reporting a mismatch inside a long talk, compare the order of talk lines, not the time.
 
+Even anchored and stretched, times drift over a long run, and timing gaps are not what the comparison is for. `burst_reference.py` now searches the footage within 45 s of the expected time for the closest-looking frame (colour, 64 by 48, the talk box area left out) and pairs each picture with that. It scores the pair: same shot (difference up to 0.08), possibly the same shot (up to 0.11), or no close shot, and writes `matches.tsv`. Review what differs inside a same-shot pair; a picture with no close shot is a scene question, not a timing one.
+
 The log also had two clocks: `cue` and `soul_vision` lines used the bridge's tick, which counts on while the script machine's tick holds, and ran 400 ticks ahead of the burst stamps by Chapter 1's middle, so the watcher read the ghost view as off where it was on. Every device log tick, route mark and burst stamp now uses the script machine's tick.
 
 ### 24. Read-ahead evicted what was on screen
