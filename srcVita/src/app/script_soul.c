@@ -1065,6 +1065,25 @@ static void run_custom_soul_command(struct script_machine *machine, const char *
     }
 }
 
+static void start_dead_talk(struct script_machine *machine, int object_index)
+{
+    machine->soul.dead_talk_is_on = 1;
+    machine->soul.dead_talk_object = object_index;
+    script_machine_send(machine, object_index != NO_CORE ? machine->objects[object_index].name : "*", "SYSTEM", "DEADTALK");
+}
+
+static void run_dead_talk_command(struct script_machine *machine, const char *arg)
+{
+    if (strcmp(arg, "Finish") == 0) {
+        machine->soul.dead_talk_is_on = 0;
+    } else if (strcmp(arg, "Abort") == 0) {
+        machine->soul.dead_talk_is_on = 0;
+        run_custom_soul_command(machine, "NoEffectFinish");
+    } else if (strcmp(arg, "Restart") == 0) {
+        start_dead_talk(machine, machine->soul.dead_talk_is_on ? machine->soul.dead_talk_object : NO_CORE);
+    }
+}
+
 static void start_the_time_jump(struct script_machine *machine)
 {
     if (machine->outputs->movie_started != NULL && machine->time_jump_movie_ticks > 0) {
@@ -1139,6 +1158,7 @@ static const struct gameapp_command gameapp_commands[] = {
     { "EyeCatch", start_eye_catch },
     { "FreeCamera", run_free_camera_command },
     { "Timeleap", run_timeleap_command },
+    { "DeadTalk", run_dead_talk_command },
 };
 
 static const struct gameapp_command *find_gameapp_command(const char *verb)
@@ -1187,7 +1207,7 @@ static void player_moved_in_tutorial(struct script_machine *machine)
 
 int script_soul_world_is_playable(const struct script_machine *machine)
 {
-    return !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && !machine->soul.input_is_off;
+    return !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on;
 }
 
 static int pill_answers_a_press(const struct script_machine *machine, enum script_pill_id id)
@@ -1752,6 +1772,9 @@ static int run_route_action(struct script_machine *machine, const struct script_
     case SCRIPT_ROUTE_PHONE_CALL:
         machine->phone_book_place = step->slot;
         script_machine_send(machine, "*", "phone", "movie");
+        return 1;
+    case SCRIPT_ROUTE_DEAD_TALK:
+        start_dead_talk(machine, step->object[0] != '\0' ? script_machine_index_of_object(machine, step->object) : NO_CORE);
         return 1;
     default:
         return 1;

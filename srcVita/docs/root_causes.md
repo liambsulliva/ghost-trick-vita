@@ -304,6 +304,12 @@ The Chapter 3 junkyard (st01_game020) logged `too_many_objects`: it declares 69 
 
 Guard: `SCRIPT_OBJECT_MAX` and the view's `SCENE_OBJECT_MAX` are 128 and `SCRIPT_HANDLER_MAX` is 96, above the largest counts in the decoded dumps (objects per script, handlers per act, since starting an act clears and re-registers its object's handlers). The machine grows to 1.4 MB on the heap. Before raising a limit again, count the worst case across every script, not the chapter at hand.
 
+### 43. The talk with the dead that no input started
+
+22 scripts from Chapter 2 on hold a `SYSTEM|DEADTALK` handler that plays a talk and ends with `GameApp DeadTalk|Finish`. Native starts it from the soul's dead-core state machine (`func_02032914`): `func_02033408` either starts it at once (when scripts handle both `SYSTEM|SV_DEADCORE` and `SVTUTO|onClick`, checked with `func_02012518`) or opens a yes/no prompt that starts it on confirm, pushing `pGameMainDeadTalk` and state 0x15. The scene sends `SYSTEM|DEADTALK` to the dead core's object, or to every object when it has none (`func_0203bfc8`; `CORETALK` instead when its mode byte at +0x49 is 1), and `cGameAppCmdDeadTalk` (`func_0203c03c`) takes `Finish` (back to play), `Abort` (`CustomSoulVision|NoEffectFinish`, state 2) and `Restart`. The port had none of it, so these talks only ran when the stuck detector pushed them, and `DeadTalk|Finish` logged `gameapp_not_ported`.
+
+Guard: a `dead_talk` route action starts the talk with the native targeting (the step's object, or every object), play holds while it runs, and the `DeadTalk` command handles Finish, Abort and Restart. Still open: the player's own way in (the prompt and its confirm), and `CORETALK`.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

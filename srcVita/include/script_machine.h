@@ -330,6 +330,8 @@ struct script_soul {
     int countdown_is_running;
     int countdown_step;
     int countdown_ticks;
+    int dead_talk_is_on;
+    int dead_talk_object;
     struct script_timed_event phone_event;
     char phone_split_name[SCRIPT_SOURCE_NAME_MAX];
     struct script_timed_event time_jump_event;

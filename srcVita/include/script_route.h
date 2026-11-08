@@ -16,7 +16,8 @@ enum script_route_action {
     SCRIPT_ROUTE_TAP_BALLOON,
     SCRIPT_ROUTE_CAMERA,
     SCRIPT_ROUTE_PHONE_CALL,
-    SCRIPT_ROUTE_WAIT
+    SCRIPT_ROUTE_WAIT,
+    SCRIPT_ROUTE_DEAD_TALK
 };
 
 enum script_route_wait_word {
