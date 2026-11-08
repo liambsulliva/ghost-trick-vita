@@ -3481,6 +3481,761 @@
         "pace": "normal",
         "footage_s": 5772.0,
         "wait": "timeleap_armed"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "tap_balloon",
+        "object": "cicel_talk:click",
+        "pace": "normal",
+        "footage_s": 6040.0,
+        "wait": "balloon:cicel_talk:click & no_talk"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "wait",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 6046.0,
+        "wait": "act:keikan:keikan_act060"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "ghost_on",
+        "object": "ball",
+        "pace": "normal",
+        "footage_s": 6040.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "move",
+        "object": "ball",
+        "pace": "normal",
+        "footage_s": 6040.0,
+        "wait": "view & usable:ball"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "ghost_off",
+        "object": "ball",
+        "pace": "quick",
+        "footage_s": 6040.0,
+        "wait": "core:ball"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "wait",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 6041.0,
+        "wait": "flag:20"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "ghost_on",
+        "object": "lampK",
+        "pace": "normal",
+        "footage_s": 6144.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "move",
+        "object": "lampK",
+        "pace": "normal",
+        "footage_s": 6144.75,
+        "wait": "view & usable:lampK"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "ghost_off",
+        "object": "lampK",
+        "pace": "quick",
+        "footage_s": 6145.5,
+        "wait": "core:lampK"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "trick",
+        "object": "lampK",
+        "pace": "quick",
+        "footage_s": 6146.0,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "tap_balloon",
+        "object": "click",
+        "pace": "normal",
+        "footage_s": 6981.5,
+        "wait": "balloon:click"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "ghost_on",
+        "object": "stand",
+        "slot": 1,
+        "pace": "normal",
+        "footage_s": 7041.0,
+        "wait": "act:sys:sys_act020 & free & no_talk"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "move",
+        "object": "stand",
+        "slot": 1,
+        "pace": "normal",
+        "footage_s": 7043.0,
+        "wait": "view & usable:stand:1"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "ghost_off",
+        "object": "stand",
+        "slot": 1,
+        "pace": "quick",
+        "footage_s": 7045.0,
+        "wait": "view & core:stand:1"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "trick",
+        "object": "stand",
+        "slot": 1,
+        "pace": "quick",
+        "footage_s": 7045.5,
+        "wait": "core:stand:1 & playable"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "ghost_on",
+        "object": "stand",
+        "pace": "normal",
+        "footage_s": 7136.75,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "move",
+        "object": "stand",
+        "pace": "normal",
+        "footage_s": 7137.0,
+        "wait": "view & usable:stand"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "ghost_off",
+        "object": "stand",
+        "pace": "quick",
+        "footage_s": 7137.5,
+        "wait": "view & core:stand"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "trick",
+        "object": "stand",
+        "pace": "quick",
+        "footage_s": 7138.0,
+        "wait": "core:stand & playable"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "ghost_on",
+        "object": "motor",
+        "pace": "normal",
+        "footage_s": 7145.75,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "move",
+        "object": "motor",
+        "pace": "normal",
+        "footage_s": 7146.5,
+        "wait": "view & usable:motor"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "ghost_off",
+        "object": "motor",
+        "pace": "quick",
+        "footage_s": 7147.5,
+        "wait": "view & core:motor"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "trick",
+        "object": "motor",
+        "pace": "quick",
+        "footage_s": 7148.0,
+        "wait": "core:motor & playable"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "ghost_on",
+        "object": "stand",
+        "slot": 1,
+        "pace": "normal",
+        "footage_s": 7158.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "move",
+        "object": "stand",
+        "slot": 1,
+        "pace": "normal",
+        "footage_s": 7158.5,
+        "wait": "view & usable:stand:1"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "ghost_off",
+        "object": "stand",
+        "slot": 1,
+        "pace": "quick",
+        "footage_s": 7159.0,
+        "wait": "view & core:stand:1"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "trick",
+        "object": "stand",
+        "slot": 1,
+        "pace": "quick",
+        "footage_s": 7159.5,
+        "wait": "core:stand:1 & playable"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "ghost_on",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 7298.25,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "move",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 7298.75,
+        "wait": "view & usable:telephone"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "ghost_off",
+        "object": "telephone",
+        "pace": "quick",
+        "footage_s": 7300.0,
+        "wait": "view & core:telephone"
+      },
+      {
+        "script": "st02-st02_game010_Expand",
+        "action": "phone_call",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 7301.5,
+        "wait": "playable",
+        "place": 2
+      },
+      {
+        "script": "st02-st02_game100_Expand",
+        "action": "ghost_on",
+        "object": "book",
+        "pace": "normal",
+        "footage_s": 7518.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game100_Expand",
+        "action": "move",
+        "object": "book",
+        "pace": "normal",
+        "footage_s": 7519.5,
+        "wait": "view & usable:book"
+      },
+      {
+        "script": "st02-st02_game100_Expand",
+        "action": "ghost_off",
+        "object": "book",
+        "pace": "quick",
+        "footage_s": 7523.0,
+        "wait": "view & core:book"
+      },
+      {
+        "script": "st02-st02_game100_Expand",
+        "action": "ghost_on",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 7578.75,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game100_Expand",
+        "action": "move",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 7579.5,
+        "wait": "view & usable:telephone"
+      },
+      {
+        "script": "st02-st02_game100_Expand",
+        "action": "ghost_off",
+        "object": "telephone",
+        "pace": "quick",
+        "footage_s": 7580.5,
+        "wait": "view & core:telephone"
+      },
+      {
+        "script": "st02-st02_game100_Expand",
+        "action": "phone_call",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 7582.0,
+        "wait": "playable",
+        "place": 2
+      },
+      {
+        "script": "st02-st02_game100_Expand",
+        "action": "ghost_on",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 7636.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game100_Expand",
+        "action": "move",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 7636.5,
+        "wait": "view & usable:telephone"
+      },
+      {
+        "script": "st02-st02_game100_Expand",
+        "action": "ghost_off",
+        "object": "telephone",
+        "pace": "quick",
+        "footage_s": 7638.0,
+        "wait": "view & core:telephone"
+      },
+      {
+        "script": "st02-st02_game100_Expand",
+        "action": "phone_call",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 7639.5,
+        "wait": "playable",
+        "place": 3
+      },
+      {
+        "script": "st02-st02_game020_Expand",
+        "action": "ghost_on",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 7753.75,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game020_Expand",
+        "action": "move",
+        "object": "lamp",
+        "pace": "normal",
+        "footage_s": 7755.0,
+        "wait": "view & usable:lamp"
+      },
+      {
+        "script": "st02-st02_game020_Expand",
+        "action": "move",
+        "object": "linne_s",
+        "pace": "normal",
+        "footage_s": 7756.0,
+        "wait": "view & usable:linne_s"
+      },
+      {
+        "script": "st02-st02_game020_Expand",
+        "action": "touch",
+        "pace": "normal",
+        "footage_s": 7805.5,
+        "wait": "timeleap_armed"
+      },
+      {
+        "script": "st02-st02_game023_Expand",
+        "action": "ghost_on",
+        "object": "linne_s",
+        "pace": "normal",
+        "footage_s": 7976.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game023_Expand",
+        "action": "ghost_off",
+        "object": "linne_s",
+        "pace": "quick",
+        "footage_s": 7980.0,
+        "wait": "view"
+      },
+      {
+        "script": "st02-st02_game023_Expand",
+        "action": "ghost_on",
+        "object": "linne_s",
+        "pace": "normal",
+        "footage_s": 7984.25,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game023_Expand",
+        "action": "ghost_off",
+        "object": "linne_s",
+        "pace": "quick",
+        "footage_s": 7985.5,
+        "wait": "view"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "ghost_on",
+        "object": "b1_tool",
+        "pace": "normal",
+        "footage_s": 8732.25,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "move",
+        "object": "b1_tool",
+        "pace": "normal",
+        "footage_s": 8733.0,
+        "wait": "view & usable:b1_tool"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "ghost_off",
+        "object": "b1_tool",
+        "pace": "quick",
+        "footage_s": 8733.5,
+        "wait": "view & core:b1_tool"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "trick",
+        "object": "b1_tool",
+        "pace": "quick",
+        "footage_s": 8734.0,
+        "wait": "core:b1_tool & playable"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "ghost_on",
+        "object": "crane",
+        "pace": "normal",
+        "footage_s": 8735.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "move",
+        "object": "crane",
+        "pace": "normal",
+        "footage_s": 8735.5,
+        "wait": "view & usable:crane"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "ghost_off",
+        "object": "crane",
+        "pace": "quick",
+        "footage_s": 8737.5,
+        "wait": "view & core:crane"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "trick",
+        "object": "crane",
+        "pace": "quick",
+        "footage_s": 8738.0,
+        "wait": "core:crane & playable"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "ghost_on",
+        "object": "crane",
+        "pace": "normal",
+        "footage_s": 8740.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "move",
+        "object": "caster",
+        "pace": "normal",
+        "footage_s": 8741.8,
+        "wait": "view & usable:caster"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "ghost_off",
+        "object": "caster",
+        "pace": "quick",
+        "footage_s": 8742.3,
+        "wait": "view & core:caster"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "ghost_on",
+        "object": "stand",
+        "pace": "normal",
+        "footage_s": 8742.8,
+        "wait": "act:motor:motorAct010"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "move",
+        "object": "stand",
+        "pace": "normal",
+        "footage_s": 8743.8,
+        "wait": "view & usable:stand"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "move",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 8747.0,
+        "wait": "view & usable:telephone"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "phone_call",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 8750.0,
+        "wait": "view & core:telephone",
+        "place": 4
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "ghost_on",
+        "object": "tel",
+        "pace": "normal",
+        "footage_s": 8838.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "move",
+        "object": "memo1",
+        "pace": "normal",
+        "footage_s": 8839.5,
+        "wait": "view & usable:memo1"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "ghost_off",
+        "object": "memo1",
+        "pace": "quick",
+        "footage_s": 8841.0,
+        "wait": "view & core:memo1"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "trick",
+        "object": "memo1",
+        "pace": "quick",
+        "footage_s": 8841.5,
+        "wait": "core:memo1 & playable"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "ghost_on",
+        "object": "tel",
+        "pace": "normal",
+        "footage_s": 9104.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "move",
+        "object": "monitor",
+        "pace": "normal",
+        "footage_s": 9108.5,
+        "wait": "view & usable:monitor"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "ghost_off",
+        "object": "monitor",
+        "pace": "quick",
+        "footage_s": 9109.5,
+        "wait": "view & core:monitor"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "trick",
+        "object": "monitor",
+        "pace": "quick",
+        "footage_s": 9110.0,
+        "wait": "core:monitor & playable"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "ghost_on",
+        "object": "camera",
+        "pace": "normal",
+        "footage_s": 9380.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "move",
+        "object": "switch",
+        "pace": "normal",
+        "footage_s": 9386.0,
+        "wait": "view & usable:switch"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "ghost_off",
+        "object": "switch",
+        "pace": "quick",
+        "footage_s": 9388.0,
+        "wait": "view & core:switch"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "trick",
+        "object": "switch",
+        "pace": "quick",
+        "footage_s": 9390.0,
+        "wait": "core:switch & playable"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "ghost_on",
+        "object": "door",
+        "pace": "normal",
+        "footage_s": 9389.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "move",
+        "object": "door",
+        "pace": "normal",
+        "footage_s": 9390.5,
+        "wait": "view & usable:door"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "ghost_off",
+        "object": "door",
+        "pace": "quick",
+        "footage_s": 9391.5,
+        "wait": "view & core:door"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "trick",
+        "object": "door",
+        "pace": "quick",
+        "footage_s": 9392.0,
+        "wait": "core:door & playable"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "tap_balloon",
+        "object": "memocatch3",
+        "pace": "normal",
+        "footage_s": 9400.0,
+        "wait": "balloon:memocatch3"
+      },
+      {
+        "script": "st04-st04_game000_Expand",
+        "action": "tap_balloon",
+        "object": "cock_balloon",
+        "pace": "normal",
+        "footage_s": 10813.0,
+        "wait": "free & balloon:cock_balloon"
+      },
+      {
+        "script": "st04-st04_game000_Expand",
+        "action": "ghost_on",
+        "object": "denwa",
+        "pace": "normal",
+        "footage_s": 10814.0,
+        "wait": "no_talk"
+      },
+      {
+        "script": "st04-st04_game000_Expand",
+        "action": "move",
+        "object": "denwa",
+        "pace": "normal",
+        "footage_s": 10815.0,
+        "wait": "view & usable:denwa"
+      },
+      {
+        "script": "st04-st04_game000_Expand",
+        "action": "ghost_off",
+        "object": "denwa",
+        "pace": "quick",
+        "footage_s": 10817.5,
+        "wait": "view & core:denwa"
+      },
+      {
+        "script": "st04-st04_game000_Expand",
+        "action": "dead_talk",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 10826.0,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st04-st04_game000_Expand",
+        "action": "choose",
+        "object": "about_d99",
+        "pace": "normal",
+        "footage_s": 10846.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st04-st04_game000_Expand",
+        "action": "choose",
+        "object": "offender",
+        "pace": "normal",
+        "footage_s": 10866.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st04-st04_game000_Expand",
+        "action": "choose",
+        "object": "punishment",
+        "pace": "normal",
+        "footage_s": 10880.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st04-st04_game000_Expand",
+        "action": "choose",
+        "object": "reason",
+        "pace": "normal",
+        "footage_s": 10892.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st04-st04_game000_Expand",
+        "action": "choose",
+        "object": "restaurant",
+        "pace": "normal",
+        "footage_s": 10904.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st04-st04_game001_Expand",
+        "action": "tap_balloon",
+        "object": "linne_balloon1",
+        "pace": "normal",
+        "footage_s": 10909.0,
+        "wait": "free & balloon:linne_balloon1"
       }
     ]
   }
