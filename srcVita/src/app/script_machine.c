@@ -1204,13 +1204,18 @@ static void update_object(struct script_machine *machine, struct script_object *
 
     if (object->is_sleeping) {
         int message;
+        int kept;
 
+        kept = 0;
         for (message = 0; message < object->message_count; message++) {
             if (strcmp(object->messages[message].verb, "command") == 0 && strcmp(object->messages[message].arg, "wake") == 0) {
                 object->is_sleeping = 0;
+            } else {
+                object->messages[kept] = object->messages[message];
+                kept = kept + 1;
             }
         }
-        object->message_count = 0;
+        object->message_count = kept;
         return;
     }
     run_vm(machine, &object->main_vm);
