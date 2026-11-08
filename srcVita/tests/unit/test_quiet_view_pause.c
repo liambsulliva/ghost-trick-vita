@@ -1,0 +1,72 @@
+#include <string.h>
+#include "script_file.h"
+#include "script_machine.h"
+#include "test_support.h"
+
+#define TICKS_FOR_THE_SCENE_TO_START 60
+
+static struct script_machine machine;
+static const struct script_outputs no_outputs;
+static unsigned char scene[SCRIPT_FILE_HEADER_SIZE + 16];
+
+static void put_u16(unsigned char *at, unsigned int value)
+{
+    at[0] = (unsigned char)(value & 0xffu);
+    at[1] = (unsigned char)(value >> 8);
+}
+
+static void run_ticks(int ticks)
+{
+    int tick;
+
+    for (tick = 0; tick < ticks; tick++) {
+        script_machine_tick(&machine);
+    }
+}
+
+static void start_an_idle_scene(void)
+{
+    static const unsigned int words[] = { 0x2f, 6000, 0x0 };
+    unsigned int index;
+
+    memset(scene, 0, sizeof(scene));
+    memcpy(scene, "1LMG", 4);
+    put_u16(&scene[0x08], sizeof(words) / sizeof(words[0]) * 2);
+    for (index = 0; index < sizeof(words) / sizeof(words[0]); index++) {
+        put_u16(&scene[SCRIPT_FILE_HEADER_SIZE + 2 * index], words[index]);
+    }
+    script_machine_init(&machine, &no_outputs, SCRIPT_TIMING_REMASTER, NULL);
+    CHECK(script_machine_add_source(&machine, "a", scene, SCRIPT_FILE_HEADER_SIZE + sizeof(words) / sizeof(words[0]) * 2, NULL));
+    CHECK(script_machine_start(&machine, "a"));
+    run_ticks(TICKS_FOR_THE_SCENE_TO_START);
+}
+
+static void test_a_view_opened_quietly_never_pauses_the_world(void)
+{
+    start_an_idle_scene();
+    script_soul_run_command(&machine, "CustomSoulVision", "NoEffectStart");
+    CHECK_INT(machine.pause_bit, 0);
+    script_soul_run_command(&machine, "CustomSoulVision", "DemoModeOn");
+    CHECK_INT(machine.pause_bit, 0);
+    script_soul_run_command(&machine, "CustomSoulVision", "DemoModeOff");
+    CHECK_INT(machine.pause_bit, 0);
+    CHECK_INT(machine.soul.is_on, 1);
+}
+
+static void test_a_view_opened_with_its_effect_pauses_again_after_demo_mode(void)
+{
+    start_an_idle_scene();
+    script_soul_run_command(&machine, "CustomSoulVision", "Start");
+    CHECK_INT(machine.pause_bit, 1);
+    script_soul_run_command(&machine, "CustomSoulVision", "DemoModeOn");
+    CHECK_INT(machine.pause_bit, 0);
+    script_soul_run_command(&machine, "CustomSoulVision", "DemoModeOff");
+    CHECK_INT(machine.pause_bit, 1);
+}
+
+int main(void)
+{
+    test_a_view_opened_quietly_never_pauses_the_world();
+    test_a_view_opened_with_its_effect_pauses_again_after_demo_mode();
+    return test_finish("unit/quiet_view_pause");
+}

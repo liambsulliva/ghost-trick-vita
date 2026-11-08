@@ -394,6 +394,12 @@ A picked panel from op 0x3c (talk label in word 2) or op 0x3d (word 3) opens tha
 
 Guard: `Script.talk_labels_of_choice_panels` adds the panel talks to the baked talk labels; `tests/tools/test_choice_talk_labels.py` covers both panel ops and an event panel that names no talk. Any op that opens a talk by label must feed the same list.
 
+### 58. Demo mode's end paused a view that was opened quietly
+
+Root causes 52 and the quiet-view rule (only a ghost view entered with its effect pauses the world, `func_02033504`) left one path behind: `DemoModeOff` set the pause whenever any view was open. Scripts that open a view with `NoEffectStart` and then run `DemoModeOn` / `DemoModeOff` (Chapter 8's st03_game033 `func_init_sv_core`, and others) therefore froze the world after demo mode, so core-ready handlers never ran and no trick became playable.
+
+Guard: the soul remembers whether the open view was entered with its effect, and `DemoModeOff` pauses only then. `tests/unit/test_quiet_view_pause.c` covers both the quiet and the effect view. The whole-game replay plays 401 route steps (393 before), Chapters 1 to 4 unchanged.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

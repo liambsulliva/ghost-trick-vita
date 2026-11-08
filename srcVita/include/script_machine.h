@@ -328,6 +328,7 @@ struct script_soul {
     float drag_from_y;
     int camera_follow_is_off;
     int view_demo_is_on;
+    int view_was_entered_with_effect;
     int view_follow_is_off;
     int view_back_is_offered;
     int action_is_due_in;

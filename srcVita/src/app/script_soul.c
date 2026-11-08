@@ -883,6 +883,9 @@ static void set_soul_view_with_effect(struct script_machine *machine, int is_on,
         close_the_view_task(soul);
     }
     soul->is_on = is_on;
+    if (is_on) {
+        soul->view_was_entered_with_effect = with_effect;
+    }
     holds_the_world = with_effect && machine->auto_press != SCRIPT_AUTO_FAST;
     soul->is_leaving_view = 0;
     if (!is_on && !holds_the_world) {
@@ -1103,7 +1106,7 @@ static void run_custom_soul_command(struct script_machine *machine, const char *
         machine->pause_bit = 0;
     } else if (strcmp(arg, "DemoModeOff") == 0 || strcmp(arg, "DemoModeOffButtonOff") == 0) {
         soul->view_demo_is_on = 0;
-        machine->pause_bit = soul->is_on || soul->is_leaving_view;
+        machine->pause_bit = (soul->is_on && soul->view_was_entered_with_effect) || soul->is_leaving_view;
         soul->view_follow_is_off = 0;
         soul->view_back_is_offered = strcmp(arg, "DemoModeOff") == 0;
     } else if (strcmp(arg, "HoseiOff") == 0) {
