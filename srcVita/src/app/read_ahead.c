@@ -68,6 +68,13 @@ void read_ahead_note_mark(const char *what, const char *name, unsigned int tick)
     }
 }
 
+static unsigned int lookahead_ticks = READ_AHEAD_LOOKAHEAD_TICKS;
+
+void read_ahead_set_lookahead_scale(int scale)
+{
+    lookahead_ticks = READ_AHEAD_LOOKAHEAD_TICKS * (unsigned int)(scale > 1 ? scale : 1);
+}
+
 int read_ahead_step(unsigned int tick)
 {
     unsigned int elapsed;
@@ -83,7 +90,7 @@ int read_ahead_step(unsigned int tick)
         const struct read_ahead_entry *entry;
 
         entry = &entries[index];
-        if (entry->offset_ticks > elapsed + READ_AHEAD_LOOKAHEAD_TICKS || entry->offset_ticks + READ_AHEAD_KEEP_BEHIND_TICKS < elapsed) {
+        if (entry->offset_ticks > elapsed + lookahead_ticks || entry->offset_ticks + READ_AHEAD_KEEP_BEHIND_TICKS < elapsed) {
             continue;
         }
         if (strcmp(entry->anchor, current_anchor) != 0 || strcmp(entry->script_name, current_script) != 0) {

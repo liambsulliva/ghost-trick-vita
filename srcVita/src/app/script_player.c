@@ -343,10 +343,10 @@ static void request_audio(void)
 
 static enum script_auto_play wanted_auto_play(void)
 {
-    if (ticks_per_frame_when_fast > 0) {
-        return SCRIPT_AUTO_FAST;
+    if (auto_play_is_on) {
+        return SCRIPT_AUTO_PACED;
     }
-    return auto_play_is_on ? SCRIPT_AUTO_PACED : SCRIPT_AUTO_OFF;
+    return ticks_per_frame_when_fast > 0 ? SCRIPT_AUTO_FAST : SCRIPT_AUTO_OFF;
 }
 
 static void begin_loading_animations(void)
@@ -933,6 +933,7 @@ void script_player_set_fast_forward(int ticks_per_frame)
         data->machine.auto_press = wanted_auto_play();
     }
     script_bridge_set_quiet(ticks_per_frame > 0);
+    read_ahead_set_lookahead_scale(ticks_per_frame > 1 ? ticks_per_frame : 1);
     if (ticks_per_frame > 0) {
         is_paused = 0;
     }

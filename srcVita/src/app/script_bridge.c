@@ -360,9 +360,6 @@ static void start_dissolve(const struct script_effect_row *row, const char *name
     int has_snapshot;
 
     write_cue("dissolve", name);
-    if (is_quiet) {
-        return;
-    }
     started_us = clock_now_us();
     has_snapshot = scene_view_snapshot_stage(scene_stage_view());
     if (has_snapshot) {
