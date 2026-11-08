@@ -94,8 +94,10 @@ struct script_outputs {
     void (*beam_cover_ramped)(const char *name, float cover_alpha, int ticks);
     void (*beam_base_ramped)(const char *name, float base_x, float base_y, int ticks);
     void (*beam_deleted)(const char *name);
-    void (*iris_created)(const char *name, float x, float y, float radius);
+    void (*iris_created)(const char *name, float x, float y, float radius, float alpha);
     void (*iris_radius_ramped)(const char *name, float radius, int ticks);
+    void (*iris_alpha_ramped)(const char *name, float alpha, int ticks);
+    void (*iris_moved)(const char *name, float x, float y, int ticks);
     void (*iris_deleted)(const char *name);
     void (*effect_spawned)(int id, const char *name, float x, float y);
     void (*narration_changed)(const char *label, enum script_narration_event event, int group);

@@ -42,7 +42,8 @@ static void on_beam_created(const char *name, float ax, float ay, float bx, floa
 static void on_beam_width(const char *name, float width, int ticks) { CUE("beam_width %s %.1f ticks=%d", name, width, ticks); }
 static void on_beam_base(const char *name, float x, float y, int ticks) { CUE("beam_base %s %.1f %.1f ticks=%d", name, x, y, ticks); }
 static void on_beam_deleted(const char *name) { CUE("beam_delete %s", name); }
-static void on_iris_created(const char *name, float x, float y, float radius) { CUE("iris_create %s %.1f %.1f %.1f", name, x, y, radius); }
+static void on_iris_created(const char *name, float x, float y, float radius, float alpha) { CUE("iris_create %s %.1f %.1f %.1f alpha=%.2f", name, x, y, radius, alpha); }
+static void on_iris_alpha(const char *name, float alpha, int ticks) { CUE("iris_alpha %s %.2f ticks=%d", name, alpha, ticks); }
 static void on_iris_radius(const char *name, float radius, int ticks) { CUE("iris_radius %s %.1f ticks=%d", name, radius, ticks); }
 static void on_iris_deleted(const char *name) { CUE("iris_delete %s", name); }
 static void on_effect(int id, const char *name, float x, float y) { CUE("effect %d %s %.1f %.1f", id, name, x, y); }
@@ -74,6 +75,7 @@ static const struct script_outputs recording_outputs = {
     .beam_deleted = on_beam_deleted,
     .iris_created = on_iris_created,
     .iris_radius_ramped = on_iris_radius,
+    .iris_alpha_ramped = on_iris_alpha,
     .iris_deleted = on_iris_deleted,
     .effect_spawned = on_effect,
     .effect_deleted = on_effect_deleted,

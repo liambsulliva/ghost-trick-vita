@@ -13,7 +13,11 @@
 #define RADIUS_UNITS_TO_PIXELS (3.0f / 128.0f)
 #define BEAM_MODE_WIDTH 1
 #define BEAM_MODE_BASE 4
-#define IRIS_MODE_RADIUS 1
+#define IRIS_MODE_RADIUS 1u
+#define IRIS_MODE_CENTRE 2u
+#define IRIS_MODE_ALPHA 4u
+#define LIGHT_ALPHA_FRACTION_BITS 12
+#define LIGHT_ALPHA_FULL 31.0f
 #define MASK_ALPHA_FULL 0x1f
 #define KEEP_CAMERA_AXIS 0xffffu
 #define FIXED_ONE_INT 4096
@@ -232,30 +236,44 @@ static void delete_beam(struct script_machine *machine, struct script_vm *vm, co
     }
 }
 
+static float light_alpha(unsigned int fixed_alpha)
+{
+    return (float)(fixed_alpha >> LIGHT_ALPHA_FRACTION_BITS) / LIGHT_ALPHA_FULL;
+}
+
 static void create_iris(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
     const char *name;
 
     name = script_machine_string(machine, vm, words[0]);
     if (name != NULL && machine->outputs->iris_created != NULL) {
-        machine->outputs->iris_created(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)), radius_to_pixels(script_machine_u32(words, 5)));
+        machine->outputs->iris_created(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)), radius_to_pixels(script_machine_u32(words, 5)), light_alpha(script_machine_u32(words, 7)));
     }
 }
 
 static void ramp_iris(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
     const char *name;
+    unsigned int mode;
+    int ticks;
 
     name = script_machine_string(machine, vm, words[0]);
     if (name == NULL) {
         return;
     }
-    if (script_machine_u32(words, 7) != IRIS_MODE_RADIUS) {
-        script_machine_note(machine, vm, "iris_mode_not_ported", name);
-        return;
+    mode = script_machine_u32(words, 7);
+    ticks = script_machine_u32(words, 5) == 0u ? 1 : (int)script_machine_u32(words, 5);
+    if ((mode & IRIS_MODE_RADIUS) && machine->outputs->iris_radius_ramped != NULL) {
+        machine->outputs->iris_radius_ramped(name, radius_to_pixels(script_machine_u32(words, 1)), ticks);
     }
-    if (machine->outputs->iris_radius_ramped != NULL) {
-        machine->outputs->iris_radius_ramped(name, radius_to_pixels(script_machine_u32(words, 1)), (int)script_machine_u32(words, 5));
+    if ((mode & IRIS_MODE_CENTRE) && machine->outputs->iris_moved != NULL) {
+        machine->outputs->iris_moved(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)), ticks);
+    }
+    if ((mode & IRIS_MODE_ALPHA) && machine->outputs->iris_alpha_ramped != NULL) {
+        machine->outputs->iris_alpha_ramped(name, light_alpha(script_machine_u32(words, 1)), ticks);
+    }
+    if (mode & ~(unsigned int)(IRIS_MODE_RADIUS | IRIS_MODE_CENTRE | IRIS_MODE_ALPHA)) {
+        script_machine_note(machine, vm, "iris_mode_not_ported", name);
     }
 }
 

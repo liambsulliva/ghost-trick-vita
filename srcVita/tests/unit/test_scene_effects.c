@@ -230,8 +230,8 @@ static void test_the_iris_opens_from_nothing(void)
     scene_effects_set_mask(&effects, 1);
     scene_effects_start_iris(&effects, 144.0f, 359.0f, 384.0f, 120);
     CHECK(effects.iris_is_on);
-    CHECK(effects.iris_x == 144.0f);
-    CHECK(effects.iris_y == 359.0f);
+    CHECK(effects.iris_x.value == 144.0f);
+    CHECK(effects.iris_y.value == 359.0f);
     CHECK(effects.iris_radius.value == 0.0f);
     advance_ticks(60);
     CHECK(nearly(effects.iris_radius.value, 192.0f));

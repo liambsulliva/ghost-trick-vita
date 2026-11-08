@@ -77,7 +77,10 @@ void scene_effects_advance(struct scene_effects *effects, unsigned long long ela
             ramp_advance(&effects->beams[index].cover_alpha, elapsed_us);
         }
     }
+    ramp_advance(&effects->iris_x, elapsed_us);
+    ramp_advance(&effects->iris_y, elapsed_us);
     ramp_advance(&effects->iris_radius, elapsed_us);
+    ramp_advance(&effects->iris_alpha, elapsed_us);
     ramp_advance(&effects->brightness, elapsed_us);
     ramp_advance(&effects->flash_level, elapsed_us);
     ramp_advance(&effects->dissolve_progress, elapsed_us);
@@ -204,11 +207,37 @@ void scene_effects_start_iris(struct scene_effects *effects, float x, float y, f
 {
     if (!effects->iris_is_on) {
         ramp_set(&effects->iris_radius, 0.0f);
+        ramp_set(&effects->iris_alpha, 1.0f);
     }
     effects->iris_is_on = 1;
-    effects->iris_x = x;
-    effects->iris_y = y;
+    ramp_set(&effects->iris_x, x);
+    ramp_set(&effects->iris_y, y);
     ramp_begin(&effects->iris_radius, radius, ticks);
+}
+
+void scene_effects_create_iris(struct scene_effects *effects, float x, float y, float radius, float alpha)
+{
+    effects->iris_is_on = 1;
+    ramp_set(&effects->iris_x, x);
+    ramp_set(&effects->iris_y, y);
+    ramp_set(&effects->iris_radius, radius);
+    ramp_set(&effects->iris_alpha, alpha);
+}
+
+void scene_effects_ramp_iris_radius(struct scene_effects *effects, float radius, int ticks)
+{
+    ramp_begin(&effects->iris_radius, radius, ticks);
+}
+
+void scene_effects_ramp_iris_alpha(struct scene_effects *effects, float alpha, int ticks)
+{
+    ramp_begin(&effects->iris_alpha, alpha, ticks);
+}
+
+void scene_effects_move_iris(struct scene_effects *effects, float x, float y, int ticks)
+{
+    ramp_begin(&effects->iris_x, x, ticks);
+    ramp_begin(&effects->iris_y, y, ticks);
 }
 
 void scene_effects_dim_to(struct scene_effects *effects, float brightness, int ticks)

@@ -596,21 +596,27 @@ static void draw_iris(const struct scene_effects *effects, const struct screen_v
     float center_x;
     float center_y;
     float radius;
+    struct renderer_color edge;
+    struct renderer_color cover;
 
-    center_x = world_x_to_screen(view, effects->iris_x);
-    center_y = world_y_to_screen(view, effects->iris_y);
+    center_x = world_x_to_screen(view, effects->iris_x.value);
+    center_y = world_y_to_screen(view, effects->iris_y.value);
     radius = effects->iris_radius.value * SCENE_VIEW_SCREEN_PIXELS_PER_DS_PIXEL;
-    if (iris_clears_whole_screen(center_x, center_y, radius)) {
+    if (effects->iris_alpha.value <= 0.0f || iris_clears_whole_screen(center_x, center_y, radius)) {
         return;
     }
+    edge = white;
+    edge.alpha = effects->iris_alpha.value;
+    cover = black;
+    cover.alpha = effects->iris_alpha.value;
     circle.x = center_x - radius;
     circle.y = center_y - radius;
     circle.width = radius * 2.0f;
     circle.height = radius * 2.0f;
     if (iris_texture != RENDERER_NO_TEXTURE) {
-        renderer_draw_sprite(iris_texture, circle, whole_texture_area(), white);
+        renderer_draw_sprite(iris_texture, circle, whole_texture_area(), edge);
     }
-    renderer_draw_filled_rects(rects, spotlight_mask_rects_around_area(circle, rects), black);
+    renderer_draw_filled_rects(rects, spotlight_mask_rects_around_area(circle, rects), cover);
 }
 
 static void draw_mask_or_iris(const struct scene_effects *effects, const struct screen_view *view)

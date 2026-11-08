@@ -327,19 +327,28 @@ static void on_beam_deleted(const char *name)
     scene_effects_delete_beam(scene_stage_effects(), name);
 }
 
-static void on_iris_created(const char *name, float x, float y, float radius)
+static void on_iris_created(const char *name, float x, float y, float radius, float alpha)
 {
     write_cue("iris_create", name);
-    scene_effects_start_iris(scene_stage_effects(), x, y, radius, 0);
+    scene_effects_create_iris(scene_stage_effects(), x, y, radius, alpha);
 }
 
 static void on_iris_radius_ramped(const char *name, float radius, int ticks)
 {
-    struct scene_effects *effects;
-
     write_cue("iris", name);
-    effects = scene_stage_effects();
-    scene_effects_start_iris(effects, effects->iris_x, effects->iris_y, radius, ticks);
+    scene_effects_ramp_iris_radius(scene_stage_effects(), radius, ticks);
+}
+
+static void on_iris_alpha_ramped(const char *name, float alpha, int ticks)
+{
+    write_cue("iris_alpha", name);
+    scene_effects_ramp_iris_alpha(scene_stage_effects(), alpha, ticks);
+}
+
+static void on_iris_moved(const char *name, float x, float y, int ticks)
+{
+    write_cue("iris_move", name);
+    scene_effects_move_iris(scene_stage_effects(), x, y, ticks);
 }
 
 static void on_iris_deleted(const char *name)
@@ -754,6 +763,8 @@ static const struct script_outputs bridge_outputs = {
     .beam_deleted = on_beam_deleted,
     .iris_created = on_iris_created,
     .iris_radius_ramped = on_iris_radius_ramped,
+    .iris_alpha_ramped = on_iris_alpha_ramped,
+    .iris_moved = on_iris_moved,
     .iris_deleted = on_iris_deleted,
     .effect_spawned = on_effect_spawned,
     .effect_deleted = on_effect_deleted,
