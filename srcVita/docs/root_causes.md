@@ -263,3 +263,7 @@ Guard: the set names the first chapter-start id and the card source pattern; the
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
 - Telephone, Lynne and the dead core have no name entry in the tables read so far.
 - Action selection for player mark layouts: 14 shapes exist and the port uses 4 by a position rule.
+- Effect classes with no port yet, named from the class registry in the RAM dump: `uTimeOverChainEffect` (id 50, the time-over sequence; constructor `func_020473ec`, 0xd8 bytes), `uPhoneBorderEffect` (id 59), `uBlackDarkness` (ids 151, 228, 229), `uLanternLightBlackSt02_01` (id 119, 57 sites in stage 2), `uNightVisionGoggle` (57), `uElectricTorch` (56). Class ids group by factory in `data_020ac194`; key any port by factory, as the chapter cards are.
+- Plain effect kinds with no row in any remaster effect list: kind 3 (id 6, the ripple, 50 sites in nine stages), 0x83 (id 207, the dog's bark) and 0x84 (id 209). Where the remaster draws them from is not found.
+- Telephone lines: op 0x82 makes a `uTelephoneLine` free unit and op 0x84 kills every task of a class (always a telephone line class). Neither is ported, so no line is drawn and 0x84 has nothing to remove.
+- Ops 0xe7 and 0xe8 clear and set bit 11 of the game word at `game+8`; `func_020100bc` reads it, from `func_0204f850` (pill slides) and `func_0204ff00`. Not ported.
