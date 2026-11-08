@@ -386,6 +386,7 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         vm->condition = script_balloons_can_be_tapped(machine, SCRIPT_TAP_GROUP_RIGHT);
         break;
     case 0x57:
+    case 0x5b:
         close_balloons(machine, ANY_TAP_GROUP);
         break;
     case 0x54:
