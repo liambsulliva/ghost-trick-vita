@@ -388,7 +388,7 @@ def message_files_for_script(packs, set_description, path, cache):
 
 
 def entries_by_label(packs, chapter, text_key, paths=None):
-    pages = collections.defaultdict(dict)
+    pages_by_file = collections.defaultdict(lambda: collections.defaultdict(dict))
     for path in (paths if paths is not None else message_files_of(packs, chapter)):
         prefix = os.path.basename(path).split(".")[0] + "_"
         for name in message_file.read_entry_names(packs.read(path), text_key):
@@ -397,10 +397,14 @@ def entries_by_label(packs, chapter, text_key, paths=None):
             label = name[len(prefix):]
             match = ENTRY_PAGE_PATTERN.match(label)
             if match:
-                pages[match.group(1)][int(match.group(2))] = (path, name)
+                pages_by_file[match.group(1)][path][int(match.group(2))] = name
             else:
-                pages[label][0] = (path, name)
-    return {label: [found[index] for index in sorted(found)] for label, found in pages.items()}
+                pages_by_file[label][path][0] = name
+    entries = {}
+    for label, files in pages_by_file.items():
+        path = next((path for path, pages in files.items() if 0 in pages), next(iter(files)))
+        entries[label] = [(path, files[path][index]) for index in sorted(files[path])]
+    return entries
 
 
 def read_system_line_texts(rom, system_lines):
