@@ -261,22 +261,9 @@ void script_machine_send(struct script_machine *machine, const char *target, con
     }
 }
 
-static int gameapp_verb_is_known(const char *verb)
-{
-    static const char *const verbs[] = { "Button", "Message", "SVTUTO", "SoulVision", "Exception", "CustomSoulVision", "FreeCamera", "Timeleap", "EyeCatch" };
-    unsigned int index;
-
-    for (index = 0; index < sizeof(verbs) / sizeof(verbs[0]); index++) {
-        if (strcmp(verb, verbs[index]) == 0) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
 static void queue_gameapp(struct script_machine *machine, const struct script_vm *vm, const char *verb, const char *arg)
 {
-    if (!gameapp_verb_is_known(verb)) {
+    if (!script_soul_knows_command(verb)) {
         char pair[SCRIPT_SOURCE_NAME_MAX];
 
         snprintf(pair, sizeof(pair), "%s|%s", verb, arg);

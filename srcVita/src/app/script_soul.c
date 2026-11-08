@@ -1081,29 +1081,24 @@ static void step_the_rewind_select(struct script_machine *machine)
     }
 }
 
-void script_soul_run_command(struct script_machine *machine, const char *verb, const char *arg)
+static void run_message_command(struct script_machine *machine, const char *arg)
 {
-    if (strcmp(verb, "SoulVision") == 0) {
-        enter_scripted_soul_view(machine, arg);
-    } else if (strcmp(verb, "Message") == 0) {
-        script_talk_note_forward(machine);
-    } else if (strcmp(verb, "SVTUTO") == 0) {
-        run_tutorial_command(machine, arg);
-    } else if (strcmp(verb, "Button") == 0) {
-        run_button_command(machine, arg);
-    } else if (strcmp(verb, "Exception") == 0) {
-        run_exception_command(machine, arg);
-    } else if (strcmp(verb, "CustomSoulVision") == 0) {
-        run_custom_soul_command(machine, arg);
-    } else if (strcmp(verb, "EyeCatch") == 0) {
-        start_eye_catch(machine, arg);
-    } else if (strcmp(verb, "FreeCamera") == 0) {
-        machine->soul.camera_tutorial_is_on = strcmp(arg, "TutorialStart") == 0;
-    } else if (strcmp(verb, "Timeleap") == 0 && strcmp(arg, "BREAK") == 0) {
+    (void)arg;
+    script_talk_note_forward(machine);
+}
+
+static void run_free_camera_command(struct script_machine *machine, const char *arg)
+{
+    machine->soul.camera_tutorial_is_on = strcmp(arg, "TutorialStart") == 0;
+}
+
+static void run_timeleap_command(struct script_machine *machine, const char *arg)
+{
+    if (strcmp(arg, "BREAK") == 0) {
         if (machine->outputs->swirl_changed != NULL) {
             machine->outputs->swirl_changed(0);
         }
-    } else if (strcmp(verb, "Timeleap") == 0 && strcmp(arg, "SELECT") == 0) {
+    } else if (strcmp(arg, "SELECT") == 0) {
         if (machine->auto_press == SCRIPT_AUTO_FAST) {
             start_the_time_jump(machine);
         } else {
@@ -1113,6 +1108,50 @@ void script_soul_run_command(struct script_machine *machine, const char *verb, c
                 machine->outputs->marked("rewind_select", arg);
             }
         }
+    }
+}
+
+struct gameapp_command {
+    const char *verb;
+    void (*run)(struct script_machine *machine, const char *arg);
+};
+
+static const struct gameapp_command gameapp_commands[] = {
+    { "SoulVision", enter_scripted_soul_view },
+    { "Message", run_message_command },
+    { "SVTUTO", run_tutorial_command },
+    { "Button", run_button_command },
+    { "Exception", run_exception_command },
+    { "CustomSoulVision", run_custom_soul_command },
+    { "EyeCatch", start_eye_catch },
+    { "FreeCamera", run_free_camera_command },
+    { "Timeleap", run_timeleap_command },
+};
+
+static const struct gameapp_command *find_gameapp_command(const char *verb)
+{
+    unsigned int index;
+
+    for (index = 0; index < sizeof(gameapp_commands) / sizeof(gameapp_commands[0]); index++) {
+        if (strcmp(verb, gameapp_commands[index].verb) == 0) {
+            return &gameapp_commands[index];
+        }
+    }
+    return NULL;
+}
+
+int script_soul_knows_command(const char *verb)
+{
+    return find_gameapp_command(verb) != NULL;
+}
+
+void script_soul_run_command(struct script_machine *machine, const char *verb, const char *arg)
+{
+    const struct gameapp_command *command;
+
+    command = find_gameapp_command(verb);
+    if (command != NULL) {
+        command->run(machine, arg);
     }
 }
 

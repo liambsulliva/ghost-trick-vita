@@ -474,6 +474,7 @@ void script_machine_note_press(struct script_machine *machine);
 void script_machine_scroll_camera(struct script_machine *machine, int delta_x, int delta_y);
 void script_machine_set_world_origin(struct script_machine *machine, int x, int y);
 void script_soul_run_command(struct script_machine *machine, const char *verb, const char *arg);
+int script_soul_knows_command(const char *verb);
 void script_soul_step_before_tasks(struct script_machine *machine);
 void script_pills_reset(struct script_machine *machine);
 void script_pills_step(struct script_machine *machine);
