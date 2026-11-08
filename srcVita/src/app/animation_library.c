@@ -223,5 +223,6 @@ void animation_library_clear(void)
         animation_free_frames(loaded_animations[index]);
         mem_free(loaded_animations[index]);
     }
+    evicted_count = evicted_count + loaded_count;
     loaded_count = 0;
 }

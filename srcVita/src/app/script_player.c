@@ -180,18 +180,67 @@ static void read_script_motions(const char *name)
     }
 }
 
+#define LOADED_BUNDLE_MAX 64
+
+static char loaded_bundle_names[LOADED_BUNDLE_MAX][ASSET_NAME_MAX];
+static int loaded_bundle_evictions[LOADED_BUNDLE_MAX];
+static int loaded_bundle_count;
+static int next_loaded_bundle_slot;
+
+static void forget_loaded_bundles(void)
+{
+    loaded_bundle_count = 0;
+    next_loaded_bundle_slot = 0;
+}
+
+static int bundle_is_still_whole(const char *name)
+{
+    int index;
+
+    for (index = 0; index < loaded_bundle_count; index++) {
+        if (strcmp(loaded_bundle_names[index], name) == 0) {
+            return loaded_bundle_evictions[index] == animation_library_evicted_count();
+        }
+    }
+    return 0;
+}
+
+static void remember_loaded_bundle(const char *name)
+{
+    int index;
+
+    for (index = 0; index < loaded_bundle_count; index++) {
+        if (strcmp(loaded_bundle_names[index], name) == 0) {
+            loaded_bundle_evictions[index] = animation_library_evicted_count();
+            return;
+        }
+    }
+    index = next_loaded_bundle_slot;
+    next_loaded_bundle_slot = (next_loaded_bundle_slot + 1) % LOADED_BUNDLE_MAX;
+    if (loaded_bundle_count < LOADED_BUNDLE_MAX) {
+        loaded_bundle_count = loaded_bundle_count + 1;
+    }
+    snprintf(loaded_bundle_names[index], sizeof(loaded_bundle_names[index]), "%s", name);
+    loaded_bundle_evictions[index] = animation_library_evicted_count();
+}
+
 static void load_script_animations(const char *name)
 {
     unsigned char *bytes;
     unsigned int size;
     unsigned long long started_us;
 
+    if (bundle_is_still_whole(name)) {
+        run_log_write("script animations name=%s kept", name);
+        return;
+    }
     started_us = clock_now_us();
     if (read_named_file(name, ".anims", &bytes, &size) != FILE_OK) {
         return;
     }
     run_log_write("script animations name=%s added=%d us=%llu", name, animation_library_add_bundle((const char *)bytes, size), clock_now_us() - started_us);
     mem_free(bytes);
+    remember_loaded_bundle(name);
 }
 
 static void begin_loading_animations(void);
@@ -574,6 +623,7 @@ void script_player_play(const char *entry_name)
     scene_stage_clear_room();
     scene_layers_clear(scene_stage_layers());
     animation_library_clear();
+    forget_loaded_bundles();
     scene_stage_hide_card();
     scene_stage_set_fade(0.0f);
     scene_effects_reset(scene_stage_effects());
