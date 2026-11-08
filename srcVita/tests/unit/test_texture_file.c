@@ -275,6 +275,53 @@ static void test_unpack_copies_overlapping_runs_forward(void)
     CHECK_INT(out[TEXTURE_FILE_HEADER_SIZE + 24], 7);
 }
 
+static void test_unpack_repeats_a_two_unit_pattern_with_an_odd_tail(void)
+{
+    unsigned char file[96];
+    unsigned char out[TEXTURE_FILE_HEADER_SIZE + 56];
+    unsigned int offset;
+    int unit;
+
+    memset(file, 0, sizeof(file));
+    offset = make_packed_header(file, TEXTURE_FILE_FORMAT_DXT1, 56);
+    write_u32_at(&file[offset], 2);
+    offset = offset + 4;
+    file[offset] = 3;
+    file[offset + 8] = 9;
+    offset = offset + 16;
+    write_u32_at(&file[offset], 0x80000000u | 5u);
+    write_u32_at(&file[offset + 4], 0);
+    offset = offset + 8;
+    CHECK(texture_file_unpack(file, offset, out, sizeof(out)));
+    for (unit = 0; unit < 7; unit++) {
+        CHECK_INT(out[TEXTURE_FILE_HEADER_SIZE + unit * 8], unit % 2 == 0 ? 3 : 9);
+    }
+}
+
+static void test_unpack_copies_a_distant_run_in_one_piece(void)
+{
+    unsigned char file[96];
+    unsigned char out[TEXTURE_FILE_HEADER_SIZE + 40];
+    unsigned int offset;
+    int unit;
+
+    memset(file, 0, sizeof(file));
+    offset = make_packed_header(file, TEXTURE_FILE_FORMAT_DXT1, 40);
+    write_u32_at(&file[offset], 3);
+    offset = offset + 4;
+    file[offset] = 1;
+    file[offset + 8] = 2;
+    file[offset + 16] = 4;
+    offset = offset + 24;
+    write_u32_at(&file[offset], 0x80000000u | 2u);
+    write_u32_at(&file[offset + 4], 0);
+    offset = offset + 8;
+    CHECK(texture_file_unpack(file, offset, out, sizeof(out)));
+    for (unit = 0; unit < 5; unit++) {
+        CHECK_INT(out[TEXTURE_FILE_HEADER_SIZE + unit * 8], unit < 3 ? (1 << unit) : (1 << (unit - 3)));
+    }
+}
+
 static void test_unpack_rejects_broken_files(void)
 {
     unsigned char file[64];
@@ -298,6 +345,8 @@ int main(void)
 {
     test_unpacks_literal_and_repeated_blocks();
     test_unpack_copies_overlapping_runs_forward();
+    test_unpack_repeats_a_two_unit_pattern_with_an_odd_tail();
+    test_unpack_copies_a_distant_run_in_one_piece();
     test_unpack_rejects_broken_files();
     test_grayscale_averages_rgba_and_keeps_alpha();
     test_grayscale_leaves_dxt5_alpha_and_indices_alone();

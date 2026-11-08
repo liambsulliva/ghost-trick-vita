@@ -140,10 +140,43 @@ static int load_state(const char *path)
     return is_whole;
 }
 
-static void on_marked(const char *what, const char *name) { CUE("mark %s %s", what, name); if (marks_to_stdout) { printf("mark %s %s\n", what, name); } save_state_when_due(what, name); }
+static struct script_flags flags_at_last_step;
+static void note_flag_changes(void)
+{
+    char changes[1024];
+    size_t used;
+    unsigned int flag;
+
+    used = 0;
+    changes[0] = '\0';
+    for (flag = 0; flag < 2u * SCRIPT_FLAG_COUNT && used + 16 < sizeof(changes); flag++) {
+        int now;
+
+        if (!script_flags_is_known(flag)) {
+            continue;
+        }
+        now = script_flags_read(&machine.flags, flag);
+        if (now != script_flags_read(&flags_at_last_step, flag)) {
+            used = used + (size_t)snprintf(changes + used, sizeof(changes) - used, " %c0x%x", now ? '+' : '-', flag);
+        }
+    }
+    flags_at_last_step = machine.flags;
+    if (used > 0) {
+        CUE("flags%s", changes);
+        if (marks_to_stdout) {
+            printf("flags%s\n", changes);
+        }
+    }
+}
+static void on_marked(const char *what, const char *name) { CUE("mark %s %s", what, name); if (marks_to_stdout) { printf("mark %s %s\n", what, name); } save_state_when_due(what, name); if (strcmp(what, "route_step_done") == 0) { note_flag_changes(); } }
 static void on_talk(const struct script_talk_view *view) { CUE("talk slide=%.2f alpha=%.2f glyphs=%d cursor=%d open=%d", view->slide, view->text_alpha, view->glyphs_shown, view->cursor_is_on, view->page != NULL); }
 static void on_effect_deleted(const char *name) { CUE("effect_deleted %s", name); }
 static void on_screen_filter(int mode) { CUE("screen_filter %d", mode); }
+static unsigned char second_core_was_marked[SCRIPT_OBJECT_MAX];
+static int pills_on_screen_before = -1;
+static void on_film_frame(int is_on) { CUE("film_frame %d", is_on); }
+static void on_hud(const struct script_hud_view *view) { int mask = 0; int index; for (index = 0; index < SCRIPT_PILL_COUNT; index++) { if (view->pills[index].is_on_screen) { mask |= 1 << index; } } if (mask != pills_on_screen_before) { pills_on_screen_before = mask; CUE("pills_on_screen %d", mask); } }
+static void on_core_marked(int object_index, int slot, float x, float y, int is_dead) { (void)x; (void)y; (void)is_dead; if (slot == 1 && object_index >= 0 && object_index < SCRIPT_OBJECT_MAX && !second_core_was_marked[object_index]) { second_core_was_marked[object_index] = 1; CUE("second_core_marked %s", machine.objects[object_index].name); } }
 
 static const struct script_outputs recording_outputs = {
     .fetched = print_fetch,
@@ -174,7 +207,10 @@ static const struct script_outputs recording_outputs = {
     .soul_vision_changed = on_soul_vision,
     .screen_filter_changed = on_screen_filter,
     .marked = on_marked,
-    .talk_changed = on_talk
+    .talk_changed = on_talk,
+    .soul_core_marked = on_core_marked,
+    .film_frame_changed = on_film_frame,
+    .hud_changed = on_hud
 };
 
 static unsigned char *read_file(const char *path, unsigned int *size)

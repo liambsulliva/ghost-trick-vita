@@ -45,6 +45,15 @@ class TimelineFileTests(unittest.TestCase):
         self.assertEqual(record["page"], 1)
         self.assertEqual(record["cell_in_page"], 1)
 
+    def test_records_on_pages_without_art_are_blank_and_counted(self):
+        records = [(synthetic_files.record_shorts(10, (0, 0), (0, 0)), (1.0, 2.0), 0), (synthetic_files.record_shorts(10, (0, 0), (0, 0)), (1.0, 2.0), 9)]
+        empty_page = timeline_file.decode_timeline(synthetic_files.timeline_file(["a"], (64, 32), (16, 16), [0], records[:1], 1))
+        self.assertTrue(empty_page["records"][0]["is_blank"])
+        self.assertEqual(empty_page["records_without_art"], 1)
+        unlisted_pages = timeline_file.decode_timeline(synthetic_files.timeline_file([], (64, 32), (16, 16), [8, 2], records, 1))
+        self.assertTrue(all(record["is_blank"] for record in unlisted_pages["records"]))
+        self.assertEqual(unlisted_pages["records_without_art"], 2)
+
     def test_not_a_user_file_is_refused(self):
         with self.assertRaises(timeline_file.TimelineError):
             timeline_file.decode_timeline(b"NOPE" + bytes(64))

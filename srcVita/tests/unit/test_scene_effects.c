@@ -312,6 +312,23 @@ static void test_effects_run_side_by_side(void)
     CHECK(nearly(effects.iris_radius.value, 50.0f));
 }
 
+static void test_an_iris_mask_fades_out_by_its_alpha_ramp(void)
+{
+    struct scene_effects effects;
+
+    scene_effects_reset(&effects);
+    scene_effects_create_iris(&effects, 128.0f, 72.0f, 0.0f, 0.0f);
+    scene_effects_ramp_iris_alpha(&effects, 0.58f, 90);
+    scene_effects_advance(&effects, 90ull * 16667ull);
+    CHECK(effects.iris_alpha.value > 0.57f);
+    scene_effects_ramp_iris_alpha(&effects, 0.0f, 90);
+    scene_effects_move_iris(&effects, 10.0f, 20.0f, 90);
+    scene_effects_advance(&effects, 91ull * 16667ull);
+    CHECK(effects.iris_alpha.value == 0.0f);
+    CHECK(effects.iris_x.value == 10.0f);
+    CHECK(effects.iris_y.value == 20.0f);
+}
+
 int main(void)
 {
     test_a_fresh_set_of_effects_shows_nothing();
@@ -334,5 +351,6 @@ int main(void)
     test_resetting_the_effects_ends_a_dissolve();
     test_effects_run_side_by_side();
     fake_files_reset();
+    test_an_iris_mask_fades_out_by_its_alpha_ramp();
     return test_finish("unit/scene_effects");
 }

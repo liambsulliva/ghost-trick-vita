@@ -89,11 +89,27 @@ static void test_a_flipped_area_keeps_its_flip_in_each_part(void)
     CHECK(parts[1].texture_area.width < 0.0f);
 }
 
+static void test_every_tiled_page_also_tiles_its_grayscale_copy(void)
+{
+    const struct page_tile_set *set;
+
+    page_tiles_clear();
+    CHECK_INT(page_tiles_read_text(two_by_two_page, (unsigned int)strlen(two_by_two_page)), 4);
+    set = page_tiles_find("big-mono");
+    CHECK(set != NULL);
+    CHECK_INT(set->tile_count, 4);
+    CHECK_TEXT(set->tiles[0].name, "big_t00-mono");
+    CHECK_TEXT(set->tiles[3].name, "big_t11-mono");
+    CHECK_INT(tenths(set->tiles[1].draw_left), 20460);
+    CHECK_INT(page_tiles_dropped_count(), 0);
+}
+
 int main(void)
 {
     test_the_table_groups_tiles_under_their_page();
     test_an_area_inside_one_tile_maps_to_that_tile_alone();
     test_an_area_across_the_seam_splits_at_the_middle_of_the_overlap();
     test_a_flipped_area_keeps_its_flip_in_each_part();
+    test_every_tiled_page_also_tiles_its_grayscale_copy();
     return test_finish("unit/page_tiles");
 }

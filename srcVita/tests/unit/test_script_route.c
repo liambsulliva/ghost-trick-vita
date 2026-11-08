@@ -67,6 +67,33 @@ static void test_finds_whole_wait_tokens_only(void)
     CHECK(!script_route_wait_has_token("", "view"));
 }
 
+static void test_pacing_overrides_the_dwell_of_named_steps(void)
+{
+    const char *pacing;
+
+    CHECK(read_text("step a move x 0 90 -\nstep a trick x 0 90 -\nstep a ghost_off - 0 45 -\n"));
+    pacing = "dwell 1 250\ndwell 2 60\n";
+    CHECK(script_route_read_pacing(&route, pacing, (unsigned int)strlen(pacing)));
+    CHECK_INT(route.steps[0].dwell_ticks, 90);
+    CHECK_INT(route.steps[1].dwell_ticks, 250);
+    CHECK_INT(route.steps[2].dwell_ticks, 60);
+}
+
+static void test_pacing_rejects_steps_outside_the_route(void)
+{
+    const char *pacing;
+
+    CHECK(read_text("step a move x 0 90 -\n"));
+    pacing = "dwell 1 250\n";
+    CHECK(!script_route_read_pacing(&route, pacing, (unsigned int)strlen(pacing)));
+    pacing = "dwell 0 -5\n";
+    CHECK(!script_route_read_pacing(&route, pacing, (unsigned int)strlen(pacing)));
+    pacing = "pace 0 5\n";
+    CHECK(!script_route_read_pacing(&route, pacing, (unsigned int)strlen(pacing)));
+    CHECK(script_route_read_pacing(&route, "", 0));
+    CHECK_INT(route.steps[0].dwell_ticks, 90);
+}
+
 int main(void)
 {
     test_reads_every_field_of_a_step();
@@ -76,5 +103,7 @@ int main(void)
     test_finds_the_first_step_of_a_script();
     test_names_each_action();
     test_finds_whole_wait_tokens_only();
+    test_pacing_overrides_the_dwell_of_named_steps();
+    test_pacing_rejects_steps_outside_the_route();
     return test_finish("unit/script_route");
 }
