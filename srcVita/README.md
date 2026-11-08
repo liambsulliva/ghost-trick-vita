@@ -213,6 +213,8 @@ The build can play through the game by itself, at normal speed or far faster tha
 make -C srcVita FAST_FORWARD=1
 ```
 
+Add `FPS_COUNTER=1` to any build to draw the frame rate in the top-left corner: the average over the last 60 frames and the slowest of them, so a dip shows in screenshots and burst captures. It adds `-fps` to the build id and keeps its own objects.
+
 It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`, so it never mixes with the normal build. It reads these extra lines from the commands file, which `vita_loop.py app-command` writes:
 
 | Line | What it does |

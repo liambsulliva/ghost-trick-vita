@@ -35,6 +35,13 @@ CFLAGS += -DUSE_DS_MUSIC
 OBJECT_FOLDER := $(OBJECT_FOLDER)_ds_music
 endif
 
+FPS_COUNTER ?= 0
+ifeq ($(FPS_COUNTER),1)
+CFLAGS += -DFPS_COUNTER_BUILD
+OBJECT_FOLDER := $(OBJECT_FOLDER)_fps_counter
+BUILD_ID := $(BUILD_ID)-fps
+endif
+
 SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
 OBJS := $(patsubst src/%.c,$(OBJECT_FOLDER)/%.o,$(SRCS))
 

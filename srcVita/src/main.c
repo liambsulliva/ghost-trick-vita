@@ -8,6 +8,7 @@
 #include "build_info.h"
 #include "file.h"
 #include "file_path.h"
+#include "fps_overlay.h"
 #include "frame_stats.h"
 #include "input.h"
 #include "keep_awake.h"
@@ -281,6 +282,9 @@ static void run_main_loop(void)
         } else {
             renderer_begin_frame(clear_color);
             viewer_app_draw();
+#ifdef FPS_COUNTER_BUILD
+            fps_overlay_draw();
+#endif
             draw_ended_us = clock_now_us();
 
             renderer_end_frame();
@@ -288,6 +292,9 @@ static void run_main_loop(void)
         }
 
         last_frame_us = frame_timer_tick(&frame_timer);
+#ifdef FPS_COUNTER_BUILD
+        fps_overlay_note_frame(last_frame_us);
+#endif
         screen_watch_note_frame();
 #ifdef FAST_FORWARD_BUILD
         if (burst_pause_began_us != 0 && clock_now_us() - burst_pause_began_us > BURST_PAUSE_MOST_US) {
