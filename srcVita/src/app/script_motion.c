@@ -553,7 +553,7 @@ static void dock_actor(struct script_machine *machine, struct script_vm *vm, con
         return;
     }
     if (words[1] >= SCRIPT_ACTOR_POINT_MAX || words[2] >= SCRIPT_ACTOR_POINT_MAX) {
-        script_machine_note(machine, vm, "dock_point_not_ported", object->name);
+        script_machine_note(machine, vm, "dock_point_out_of_range", object->name);
         return;
     }
     object->actor.dock_is_pending = 1;

@@ -412,8 +412,14 @@ Scripts often open talks numbered for another stage: st04_game101 opens `m02_12x
 
 Guard: `entries_for` in `chapter_assets.py` looks in the script's own files first and then in every message file of the set. The bake prints `talk and balloon labels with no text` with the count, which is 49 now: labels the remaster's text does not have at all (Chapter 2's `st06_m00xx`, Chapter 5's `m02_2480`, and talks in Chapters 5, 9, 13, 14 and 16). Their text is only in the DS ROM's language file for the script.
 
+### 61. Points past the fourth were refused
+
+Native keeps an actor's points as 12-byte entries from node +0xe4 (`func_02059204`), written by motion word 0xfff5 with any index and read by docks 0x85 and 0x86 (`func_020593f8`). The port held four points, so docks to point 10 (Chapter 2's susi onto file, Chapter 16's linne_dead_core, Chapter 17's joedo_d_core, Chapter 14's start_point) were logged as unported and the objects never moved.
+
+Guard: the table holds 16 points (the scripts use up to 10), and a point past it is noted as `dock_point_out_of_range` or `motion_point_out_of_range`. `tests/unit/test_dock_far_point.c` docks to point 10 and refuses point 16.
+
 ## Still open
-- Pause class 1 (op 0x21, native stores 1 through the VM's virtual +0x44 setter; 0x1e stores 2, 0x20 stores 3). Treated like the normal class, three scenes deadlock: a controller sets class 1, opens a ghost view with its effect, and its own handler that would release the pause cannot run (Chapter 7's cock_talk act change, Chapter 14's denwa_act10, Chapter 15's sys_act100 SV_START with DemoModeOn). Letting class 1 run through every ghost-view pause clears those but breaks Chapter 2 steps 112 to 117, so native's rule is narrower. The native reader of the stored class is not found yet; find it before changing `vm_is_paused`.
+- Pause class 1. Native's reader is `func_02027db8`, the VM's is-paused check (vtable +0x18), called by the VM step `func_02023fdc` before a wait counts down: class 0 pauses on game+8 bits 0, 1, 3 or +0x10 bit 18 (bit 1 is the halt every ghost-view start sets, bit 0 is cleared each frame only by pGameMainNormal); class 1 pauses while a talk shows (game+0xf08) and otherwise runs in pGameMainNormal, pGameMainSV, pGameMainExchange and pGameMainReturnNormal; class 2 pauses only for a talk; class 3 never. That clears the deadlocks of Chapters 7, 14 and 15 (and lets the telephones' class-1 handlers end the view themselves, so route ghost-offs after a move to a phone go away), but the whole-game replay loses Chapter 6's floor lift: `func_move_up_end` then clears flag 9 inside the view before sys's SV_END reads it. Find what native does there before changing `vm_is_paused`.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
