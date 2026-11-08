@@ -122,6 +122,8 @@ struct script_room_plate {
     int room;
     char texture_name[ASSET_NAME_MAX];
     char soul_texture_name[ASSET_NAME_MAX];
+    char missile_texture_name[ASSET_NAME_MAX];
+    char boss_texture_name[ASSET_NAME_MAX];
     float x;
     float y;
     float width;

@@ -135,7 +135,9 @@ static int read_room_line(struct script_tables *tables, const char *line)
         return 1;
     }
     plate = &tables->room_plates[tables->room_plate_count];
-    if (sscanf(line, "plate %d " NAME_SCAN " %f %f %f %f " NAME_SCAN, &plate->room, plate->texture_name, &plate->x, &plate->y, &plate->width, &plate->height, plate->soul_texture_name) < 6) {
+    snprintf(plate->missile_texture_name, sizeof(plate->missile_texture_name), "-");
+    snprintf(plate->boss_texture_name, sizeof(plate->boss_texture_name), "-");
+    if (sscanf(line, "plate %d " NAME_SCAN " %f %f %f %f " NAME_SCAN " " NAME_SCAN " " NAME_SCAN, &plate->room, plate->texture_name, &plate->x, &plate->y, &plate->width, &plate->height, plate->soul_texture_name, plate->missile_texture_name, plate->boss_texture_name) < 6) {
         return 0;
     }
     tables->room_plate_count = tables->room_plate_count + 1;

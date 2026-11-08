@@ -33,6 +33,14 @@ struct screen_view {
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color black = { 0.0f, 0.0f, 0.0f, 1.0f };
+#define GHOST_SCANLINE_PITCH 3.0f
+#define GHOST_SCANLINE_HEIGHT 1.0f
+#define GHOST_SCANLINE_ALPHA 0.28f
+#define GHOST_SCANLINE_ROWS_MAX 256
+#define GHOST_SWEEP_HEIGHT 3.0f
+#define GHOST_SWEEP_FRAMES 240u
+static const struct renderer_color missile_sweep_color = { 0.2f, 1.0f, 0.2f, 0.55f };
+static const struct renderer_color boss_sweep_color = { 0.15f, 0.35f, 1.0f, 0.55f };
 static const struct renderer_color missing_texture_color = { 1.0f, 0.0f, 1.0f, 0.6f };
 
 static renderer_texture iris_texture;
@@ -318,6 +326,12 @@ static const char *art_under_the_screen_filter(const struct scene_stage *stage, 
 
 static const char *plate_art_name(const struct scene_stage *stage, const struct scene_plate *plate, char *grayscale_name)
 {
+    if (stage->soul_mode_is_on && stage->soul_ghost == SCENE_GHOST_MISSILE && plate->missile_texture_name[0] != '\0') {
+        return plate->missile_texture_name;
+    }
+    if (stage->soul_mode_is_on && stage->soul_ghost == SCENE_GHOST_BOSS && plate->boss_texture_name[0] != '\0') {
+        return plate->boss_texture_name;
+    }
     if (stage->soul_mode_is_on && plate->soul_texture_name[0] != '\0') {
         return plate->soul_texture_name;
     }
@@ -877,10 +891,46 @@ void scene_view_draw_world(const struct scene_stage *stage)
     draw_world_layers(stage);
 }
 
+static void draw_ghost_scanlines(const struct scene_stage *stage)
+{
+    static unsigned int sweep_frame;
+    struct renderer_rect screen;
+    struct renderer_rect rows[GHOST_SCANLINE_ROWS_MAX];
+    struct renderer_rect sweep;
+    struct renderer_color shade;
+    struct renderer_color glow;
+    int count;
+    float y;
+
+    if (!stage->soul_mode_is_on || (stage->soul_ghost != SCENE_GHOST_MISSILE && stage->soul_ghost != SCENE_GHOST_BOSS)) {
+        return;
+    }
+    screen = whole_screen_area();
+    count = 0;
+    for (y = screen.y; y < screen.y + screen.height && count < GHOST_SCANLINE_ROWS_MAX; y = y + GHOST_SCANLINE_PITCH) {
+        rows[count].x = screen.x;
+        rows[count].y = y;
+        rows[count].width = screen.width;
+        rows[count].height = GHOST_SCANLINE_HEIGHT;
+        count = count + 1;
+    }
+    shade = black;
+    shade.alpha = GHOST_SCANLINE_ALPHA;
+    renderer_draw_filled_rects(rows, count, shade);
+    sweep_frame = sweep_frame + 1u;
+    sweep.x = screen.x;
+    sweep.width = screen.width;
+    sweep.height = GHOST_SWEEP_HEIGHT;
+    sweep.y = screen.y + (float)(sweep_frame % GHOST_SWEEP_FRAMES) * screen.height / (float)GHOST_SWEEP_FRAMES;
+    glow = stage->soul_ghost == SCENE_GHOST_MISSILE ? missile_sweep_color : boss_sweep_color;
+    renderer_draw_filled_rect(sweep, glow);
+}
+
 void scene_view_draw_covers(const struct scene_stage *stage)
 {
     struct renderer_color fade_color;
 
+    draw_ghost_scanlines(stage);
     draw_layers_over_the_world(stage);
     draw_dissolve(&stage->effects);
     draw_text_lines(stage);

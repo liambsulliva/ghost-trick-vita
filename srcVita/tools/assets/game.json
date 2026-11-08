@@ -1095,6 +1095,10 @@
     "cores": [
       "shadanki"
     ],
+    "ghost_ramps": {
+      "missile": {"white_percent": 66, "dark": "#000d00", "bright": "#099c04", "commands": ["Missile:On"]},
+      "boss": {"white_percent": 66, "dark": "#000317", "bright": "#136ae3", "commands": ["Boss:On"]}
+    },
     "ramp": {
       "white_percent": 66,
       "dark": "#0a0000",

@@ -92,11 +92,14 @@ def add_atlas_page_jobs(jobs, animations, timelines, played_by_tables=()):
     return crops
 
 
-def add_plate_jobs(jobs, plates, soul_ramp):
+def add_plate_jobs(jobs, plates, soul_ramp, ghost_ramps=None):
     for plate in plates:
         jobs[plate["name"]] = {"name": plate["name"], "source": plate["source"]}
         if "soul_plate" in plate:
             jobs[plate["soul_plate"]] = {"name": plate["soul_plate"], "source": plate["source"], "soul_ramp": soul_ramp}
+        for ghost, name in plate.get("ghost_plates", {}).items():
+            ramp = {key: value for key, value in (ghost_ramps or {})[ghost].items() if key != "commands"}
+            jobs[name] = {"name": name, "source": plate["source"], "soul_ramp": ramp}
 
 
 def add_screen_texture_jobs(jobs, screen_textures):
@@ -450,7 +453,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
     jobs = {}
     crops = add_atlas_page_jobs(jobs, animations, timelines, script_assets.folders_played_by_tables(set_description.get("scripts", {}).get("motion_tables", {})))
     atlas_page_names = list(jobs)
-    add_plate_jobs(jobs, plates, set_description.get("soul_view", {}).get("ramp"))
+    add_plate_jobs(jobs, plates, set_description.get("soul_view", {}).get("ramp"), set_description.get("soul_view", {}).get("ghost_ramps"))
     used_faces = talk_assets.faces_the_set_will_use(packs, set_description, text_key)
     chapter_assets.add_face_textures(set_description, used_faces) if used_faces else None
     add_screen_texture_jobs(jobs, set_description.get("screen_textures", []))

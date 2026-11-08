@@ -233,6 +233,23 @@ void scene_stage_set_object_soul_tint(const char *object_name, float red, float 
     }
 }
 
+void scene_stage_set_last_plate_ghost_textures(const char *missile_texture_name, const char *boss_texture_name)
+{
+    struct scene_plate *plate;
+
+    if (stage.plate_count == 0) {
+        return;
+    }
+    plate = &stage.plates[stage.plate_count - 1];
+    snprintf(plate->missile_texture_name, sizeof(plate->missile_texture_name), "%s", missile_texture_name);
+    snprintf(plate->boss_texture_name, sizeof(plate->boss_texture_name), "%s", boss_texture_name);
+}
+
+void scene_stage_set_soul_ghost(int ghost)
+{
+    stage.soul_ghost = ghost;
+}
+
 void scene_stage_set_last_plate_soul_texture(const char *texture_name)
 {
     if (stage.plate_count > 0) {
@@ -292,6 +309,7 @@ void scene_stage_add_plate(const char *texture_name, float x, float y, float wid
         return;
     }
     plate = &stage.plates[stage.plate_count];
+    memset(plate, 0, sizeof(*plate));
     snprintf(plate->texture_name, sizeof(plate->texture_name), "%s", texture_name);
     plate->x = x;
     plate->y = y;

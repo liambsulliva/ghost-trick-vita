@@ -227,7 +227,16 @@ def read_list_or_nothing(packs, kind, name):
         return []
 
 
-def plates_and_rooms(packs, scripts, arm9, soul_ramp):
+def rooms_of_scripts_naming(scripts, words):
+    rooms = set()
+    for path, script in scripts.items():
+        if words & set(script.strings.values()):
+            rooms.update(rooms_used({path: script}))
+    return rooms
+
+
+def plates_and_rooms(packs, scripts, arm9, soul_ramp, ghost_ramps=None):
+    ghost_rooms = {ghost: rooms_of_scripts_naming(scripts, set(ramp["commands"])) for ghost, ramp in (ghost_ramps or {}).items()}
     plate_paths = {}
     for script in scripts.values():
         for plate_id, path in read_list_or_nothing(packs, "bg", script.list_name()):
@@ -247,6 +256,9 @@ def plates_and_rooms(packs, scripts, arm9, soul_ramp):
                 plates[name] = {"name": name, "source": plate_source(plate_paths[plate_id])}
                 if soul_ramp is not None:
                     plates[name]["soul_plate"] = name + "-soul"
+            for ghost, rooms in ghost_rooms.items():
+                if room in rooms and soul_ramp is not None:
+                    plates[name].setdefault("ghost_plates", {})[ghost] = name + "-soul-" + ghost
             placed.append([name, x, y])
         if placed:
             room_plates[str(room)] = placed
@@ -578,7 +590,7 @@ def expand_set(set_description, packs, rom_path, text_key):
                 languages[path] = lz.try_decompress(rom.read_file(language_path))
         system_line_texts = read_system_line_texts(rom, set_description.get("talk", {}).get("system_lines", {}))
     section["files"] = list(scripts)
-    plates, room_plates, room_sizes = plates_and_rooms(packs, scripts, arm9, soul_ramp)
+    plates, room_plates, room_sizes = plates_and_rooms(packs, scripts, arm9, soul_ramp, set_description.get("soul_view", {}).get("ghost_ramps"))
     expanded["plates"] = plates
     section["room_plates"] = room_plates
     section["room_sizes"] = room_sizes

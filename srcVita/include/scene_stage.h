@@ -7,11 +7,15 @@
 #include "scene_layers.h"
 
 #define SCENE_PLATE_MAX 16
+#define SCENE_GHOST_MISSILE 1
+#define SCENE_GHOST_BOSS 2
 #define SCENE_OBJECT_MAX 128
 
 struct scene_plate {
     char texture_name[ASSET_NAME_MAX];
     char soul_texture_name[ASSET_NAME_MAX];
+    char missile_texture_name[ASSET_NAME_MAX];
+    char boss_texture_name[ASSET_NAME_MAX];
     float x;
     float y;
     float width;
@@ -49,6 +53,7 @@ struct scene_stage {
     float object_origin_y;
     float fade_amount;
     int soul_mode_is_on;
+    int soul_ghost;
     int mono_mode_is_on;
     int background_color_level;
     char card_texture[ASSET_NAME_MAX];
@@ -64,6 +69,8 @@ void scene_stage_clear_room(void);
 void scene_stage_clear_plates(void);
 void scene_stage_add_plate(const char *texture_name, float x, float y, float width, float height);
 void scene_stage_set_last_plate_soul_texture(const char *texture_name);
+void scene_stage_set_last_plate_ghost_textures(const char *missile_texture_name, const char *boss_texture_name);
+void scene_stage_set_soul_ghost(int ghost);
 void scene_stage_set_soul_mode(int is_on);
 void scene_stage_set_mono_mode(int is_on);
 void scene_stage_set_object_flipped(const char *object_name, int is_flipped);

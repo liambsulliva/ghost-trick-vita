@@ -208,6 +208,7 @@ static void on_room_loaded(int room, int camera_x, int camera_y)
             if (strcmp(plate->soul_texture_name, NO_SOUL_TEXTURE) != 0) {
                 scene_stage_set_last_plate_soul_texture(plate->soul_texture_name);
             }
+            scene_stage_set_last_plate_ghost_textures(strcmp(plate->missile_texture_name, NO_SOUL_TEXTURE) != 0 ? plate->missile_texture_name : "", strcmp(plate->boss_texture_name, NO_SOUL_TEXTURE) != 0 ? plate->boss_texture_name : "");
             found = 1;
         }
     }
@@ -753,6 +754,12 @@ static int on_movie_of_class_started(unsigned int class_id)
     return movie->frame_count * movie->ticks_per_frame;
 }
 
+static void on_hud_changed(const struct script_hud_view *view)
+{
+    scene_stage_set_soul_ghost(view->active_ghost);
+    script_ui_view_hud_changed(view);
+}
+
 static void on_soul_vision_changed(int is_on, int with_effect)
 {
     soul_vision_is_on = is_on;
@@ -778,7 +785,7 @@ static const struct script_outputs bridge_outputs = {
     .camera_moved = on_camera_moved,
     .world_origin_changed = on_world_origin_changed,
     .ui_clip_started = on_ui_clip_started,
-    .hud_changed = script_ui_view_hud_changed,
+    .hud_changed = on_hud_changed,
     .screen_filter_changed = on_screen_filter_changed,
     .mask_fade_color_changed = on_mask_fade_color_changed,
     .actor_changed = on_actor_changed,

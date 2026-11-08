@@ -322,14 +322,19 @@ def soul_plate_names(set_description):
     return {plate["name"]: plate["soul_plate"] for plate in set_description.get("plates", []) if "soul_plate" in plate}
 
 
-def rooms_text(section, plate_sizes, soul_plates):
+def ghost_plate_names(set_description):
+    return {plate["name"]: plate.get("ghost_plates", {}) for plate in set_description.get("plates", [])}
+
+
+def rooms_text(section, plate_sizes, soul_plates, ghost_plates=None):
     lines = ["room %s %d %d" % (room, size[0], size[1]) for room, size in section.get("room_sizes", {}).items()]
     for room, bands in section.get("room_bands", {}).items():
         lines.extend("band %s %d %d" % (room, key, value) for key, value in bands)
     for room, plates in section.get("room_plates", {}).items():
         for name, x, y in plates:
             width, height = plate_sizes[name]
-            lines.append("plate %s %s %s %s %s %s %s" % (room, name, asset_writers.format_number(x), asset_writers.format_number(y), asset_writers.format_number(width), asset_writers.format_number(height), soul_plates.get(name, NO_LABEL)))
+            ghosts = (ghost_plates or {}).get(name, {})
+            lines.append("plate %s %s %s %s %s %s %s %s %s" % (room, name, asset_writers.format_number(x), asset_writers.format_number(y), asset_writers.format_number(width), asset_writers.format_number(height), soul_plates.get(name, NO_LABEL), ghosts.get("missile", NO_LABEL), ghosts.get("boss", NO_LABEL)))
     return "\n".join(lines) + "\n"
 
 
@@ -525,7 +530,7 @@ def table_files(set_description, output_folder, motion_lines, narration_lines, t
     texts = dict(motion_lines)
     texts[CHAIN_FILE] = chain_text(section)
     soul_plates = soul_plate_names(set_description)
-    texts[ROOMS_FILE] = rooms_text(section, plate_sizes, soul_plates)
+    texts[ROOMS_FILE] = rooms_text(section, plate_sizes, soul_plates, ghost_plate_names(set_description))
     texts[AUDIO_FILE] = audio_text(section)
     texts[TEXT_LINES_FILE] = text_lines_text(narration_lines)
     texts[BALLOONS_FILE] = balloons_text(balloons, texture_sizes)

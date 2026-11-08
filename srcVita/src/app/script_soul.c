@@ -778,6 +778,7 @@ static void report_hud(struct script_machine *machine)
     view.is_hidden_for_movie = machine->movie_ticks_left > 0 || machine->soul.phone_split_name[0] != '\0';
     view.narration_arrow_is_on = script_narration_wants_a_press(&machine->narration);
     view.soul_view_is_on = machine->soul.is_on;
+    view.active_ghost = machine->soul.active_ghost;
     view.rewind_select_ticks = machine->soul.rewind_select_ticks;
     view.rewind_press_ticks = machine->soul.rewind_press_ticks;
     script_pills_fill_view(machine, &view);
