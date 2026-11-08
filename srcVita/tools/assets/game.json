@@ -2920,6 +2920,13 @@
         "wait": "playable & no_talk"
       },
       {
+        "script": "st06-st06_game004_Expand",
+        "action": "dead_talk",
+        "pace": "normal",
+        "footage_s": 4080.0,
+        "wait": "playable & no_talk"
+      },
+      {
         "script": "st05-st05_game000_Expand",
         "action": "phone_call",
         "object": "tel",
