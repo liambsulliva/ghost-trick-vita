@@ -59,6 +59,16 @@ int script_flags_read(const struct script_flags *flags, unsigned int flag)
     return (store_to_read(flags, flag)[index / 8] >> (index % 8)) & 1;
 }
 
+void script_flags_save_game_bank(struct script_flags *flags)
+{
+    memcpy(flags->game_bank_saved, flags->game, sizeof(flags->game_bank_saved));
+}
+
+void script_flags_restore_game_bank(struct script_flags *flags)
+{
+    memcpy(flags->game, flags->game_bank_saved, sizeof(flags->game_bank_saved));
+}
+
 void script_flags_write(struct script_flags *flags, unsigned int flag, int value)
 {
     unsigned char *store;

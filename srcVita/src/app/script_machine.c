@@ -514,6 +514,41 @@ static void read_flag_into_condition(struct script_machine *machine, struct scri
     vm->condition = script_flags_read(&machine->flags, flag) ? 1 : 0;
 }
 
+#define FLAGS_IN_A_FLAG_BYTE 8u
+
+static void write_flag_byte(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+{
+    unsigned int first_flag;
+    unsigned int bits;
+    unsigned int index;
+
+    first_flag = script_machine_u32(words, 0);
+    bits = words[2] & 0xffu;
+    for (index = 0; index < FLAGS_IN_A_FLAG_BYTE; index++) {
+        if (!script_flags_is_known(first_flag + index)) {
+            script_machine_note(machine, vm, "flag_out_of_range", "");
+            return;
+        }
+        script_flags_write(&machine->flags, first_flag + index, (int)((bits >> index) & 1u));
+    }
+}
+
+static void read_flag_byte(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+{
+    unsigned int first_flag;
+    unsigned int index;
+    int mask;
+
+    first_flag = script_machine_u32(words, 0);
+    mask = 0;
+    for (index = 0; index < FLAGS_IN_A_FLAG_BYTE; index++) {
+        if (script_flags_is_known(first_flag + index) && script_flags_read(&machine->flags, first_flag + index)) {
+            mask = mask | (1 << index);
+        }
+    }
+    vm->reg_a = mask;
+}
+
 static void write_flag(struct script_machine *machine, struct script_vm *vm, const unsigned int *words, int value)
 {
     unsigned int flag;
@@ -592,6 +627,22 @@ static void cancel_handlers(struct script_machine *machine, struct script_vm *vm
     for (index = 0; index < machine->object_count; index++) {
         if (text_matches_target(machine->objects[index].name, target)) {
             cancel_on_object(&machine->objects[index], vm, verb, arg);
+        }
+    }
+}
+
+static void set_every_other_object_asleep(struct script_machine *machine, struct script_vm *vm, const unsigned int *words, int is_asleep)
+{
+    const char *name;
+    int index;
+
+    name = script_machine_string(machine, vm, words[0]);
+    if (name == NULL) {
+        return;
+    }
+    for (index = 0; index < machine->object_count; index++) {
+        if (strcmp(machine->objects[index].name, name) != 0) {
+            machine->objects[index].is_sleeping = is_asleep;
         }
     }
 }
@@ -727,6 +778,64 @@ static void store_register(struct script_machine *machine, struct script_vm *vm,
     } else if (reg == REGISTER_A) {
         vm->reg_a = value;
     }
+}
+
+#define NAME_OF_CURRENT_ACTOR '?'
+#define DISTANCE_WHEN_AN_ACTOR_IS_MISSING (-4096)
+#define DISTANCE_ALONG_X 0
+
+static const struct script_actor *named_actor(struct script_machine *machine, struct script_vm *vm, unsigned int name_word)
+{
+    const char *name;
+    const struct script_object *object;
+
+    name = script_machine_string(machine, vm, name_word);
+    if (name == NULL) {
+        return NULL;
+    }
+    if (name[0] == NAME_OF_CURRENT_ACTOR) {
+        return current_actor(machine, vm);
+    }
+    object = script_machine_find_object(machine, name);
+    return object != NULL && object->actor.exists ? &object->actor : NULL;
+}
+
+static int object_is_named_or_current(struct script_machine *machine, struct script_vm *vm, unsigned int name_word)
+{
+    const char *name;
+
+    name = script_machine_string(machine, vm, name_word);
+    if (name == NULL) {
+        return 0;
+    }
+    if (name[0] == NAME_OF_CURRENT_ACTOR) {
+        return current_actor(machine, vm) != NULL;
+    }
+    return script_machine_find_object(machine, name) != NULL;
+}
+
+static int point_position(const struct script_actor *actor, unsigned int point, int along_x)
+{
+    if (point >= SCRIPT_ACTOR_POINT_MAX) {
+        point = 0;
+    }
+    return along_x ? actor->x + actor->points[point][0] : actor->y + actor->points[point][1];
+}
+
+static void store_distance_between_points(struct script_machine *machine, struct script_vm *vm, const unsigned int *words, int axis)
+{
+    const struct script_actor *first;
+    const struct script_actor *second;
+    int difference;
+
+    vm->reg_a = DISTANCE_WHEN_AN_ACTOR_IS_MISSING;
+    first = named_actor(machine, vm, words[0]);
+    second = named_actor(machine, vm, words[2]);
+    if (first == NULL || second == NULL) {
+        return;
+    }
+    difference = (point_position(second, words[3], axis == DISTANCE_ALONG_X) - point_position(first, words[1], axis == DISTANCE_ALONG_X)) * 4096;
+    vm->reg_a = difference < 0 ? -difference : difference;
 }
 
 static void patch_own_code(struct script_machine *machine, struct script_vm *vm, unsigned int word_offset, unsigned int value, int word_count)
@@ -1008,6 +1117,31 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0xef:
         return SCRIPT_STEP_NEXT_THEN_YIELD;
+    case 0x18:
+        vm->condition = object_is_named_or_current(machine, vm, words[0]);
+        return SCRIPT_STEP_NEXT;
+    case 0x28:
+        set_every_other_object_asleep(machine, vm, words, 1);
+        return SCRIPT_STEP_NEXT;
+    case 0x29:
+        set_every_other_object_asleep(machine, vm, words, 0);
+        return SCRIPT_STEP_NEXT;
+    case 0x63:
+        write_flag_byte(machine, vm, words);
+        return SCRIPT_STEP_NEXT;
+    case 0x64:
+        read_flag_byte(machine, vm, words);
+        return SCRIPT_STEP_NEXT;
+    case 0x92:
+    case 0x93:
+        store_distance_between_points(machine, vm, words, (int)op - 0x92);
+        return SCRIPT_STEP_NEXT;
+    case 0xfb:
+        script_flags_save_game_bank(&machine->flags);
+        return SCRIPT_STEP_NEXT;
+    case 0xfc:
+        script_flags_restore_game_bank(&machine->flags);
+        return SCRIPT_STEP_NEXT;
     case 0x127:
         vm->reg_a = read_register(machine, vm, words[0]);
         return SCRIPT_STEP_NEXT;

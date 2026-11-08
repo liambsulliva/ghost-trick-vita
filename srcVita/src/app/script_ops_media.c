@@ -212,6 +212,18 @@ static void close_balloons(struct script_machine *machine, int only_tap_group)
     }
 }
 
+static int a_balloon_is_open_in(const struct script_machine *machine, int tap_group)
+{
+    int index;
+
+    for (index = 0; index < SCRIPT_BALLOON_MAX; index++) {
+        if (machine->balloons[index].in_use && machine->balloons[index].tap_group == tap_group) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void shake_the_actors_balloon(struct script_machine *machine, const struct script_vm *vm, int strength, int ticks)
 {
     const struct script_object *object;
@@ -341,6 +353,12 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         break;
     case 0x4d:
         close_balloons(machine, SCRIPT_TAP_GROUP_RIGHT);
+        break;
+    case 0x4b:
+        vm->condition = a_balloon_is_open_in(machine, SCRIPT_TAP_GROUP_LEFT);
+        break;
+    case 0x50:
+        vm->condition = a_balloon_is_open_in(machine, SCRIPT_TAP_GROUP_RIGHT);
         break;
     case 0x57:
         close_balloons(machine, ANY_TAP_GROUP);
