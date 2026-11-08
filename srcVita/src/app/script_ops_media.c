@@ -154,7 +154,7 @@ int script_balloons_can_be_tapped(const struct script_machine *machine, int tap_
     return 0;
 }
 
-static void place_balloon(struct script_machine *machine, const struct script_vm *vm, const unsigned int *words)
+static void place_balloon(struct script_machine *machine, const struct script_vm *vm, const unsigned int *words, int placement)
 {
     const struct script_object *object;
     int index;
@@ -167,6 +167,7 @@ static void place_balloon(struct script_machine *machine, const struct script_vm
         if (machine->balloons[index].in_use && machine->balloons[index].owner_object == (int)(object - machine->objects)) {
             machine->balloons[index].offset_x = (float)(int)script_machine_u32(words, 0) / ((float)NATIVE_FIXED_ONE);
             machine->balloons[index].offset_y = (float)(int)script_machine_u32(words, 2) / ((float)NATIVE_FIXED_ONE);
+            machine->balloons[index].placement = placement;
         }
     }
 }
@@ -209,7 +210,14 @@ void script_balloons_report_opened(struct script_machine *machine)
         }
         balloon->open_is_pending = 0;
         actor = &machine->objects[balloon->owner_object].actor;
-        if (machine->outputs->balloon_opened != NULL) {
+        if (machine->outputs->balloon_opened == NULL) {
+            continue;
+        }
+        if (balloon->placement == SCRIPT_BALLOON_AT_WORLD_POINT) {
+            machine->outputs->balloon_opened(index, balloon->label, balloon->kind, balloon->offset_x, balloon->offset_y);
+        } else if (balloon->placement == SCRIPT_BALLOON_AT_SCREEN_POINT) {
+            machine->outputs->balloon_opened(index, balloon->label, balloon->kind, (float)machine->camera_x + balloon->offset_x, (float)machine->camera_y + balloon->offset_y);
+        } else {
             machine->outputs->balloon_opened(index, balloon->label, balloon->kind, (float)(actor->x + actor->points[0][0]) + balloon->offset_x, (float)(actor->y + actor->points[0][1]) + balloon->offset_y);
         }
     }
@@ -369,8 +377,10 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         close_balloons(machine, ANY_TAP_GROUP);
         break;
     case 0x54:
+        place_balloon(machine, vm, words, SCRIPT_BALLOON_AT_WORLD_POINT);
+        break;
     case 0x55:
-        place_balloon(machine, vm, words);
+        place_balloon(machine, vm, words, SCRIPT_BALLOON_AT_SCREEN_POINT);
         break;
     case 0x5a:
         if (actor_has_a_balloon(machine, vm)) {
@@ -407,7 +417,7 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         open_balloon(machine, vm, NULL, (int)words[0], (int)words[1], SCRIPT_NO_TAP_GROUP);
         break;
     case 0x53:
-        place_balloon(machine, vm, words);
+        place_balloon(machine, vm, words, SCRIPT_BALLOON_ON_OWNER);
         break;
     case 0x5d:
         start_narration(machine, vm, words);

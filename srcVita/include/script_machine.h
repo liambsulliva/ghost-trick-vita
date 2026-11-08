@@ -21,6 +21,9 @@
 #define SCRIPT_BALLOON_MAX 8
 #define SCRIPT_TAP_BALLOON_SLOTS 2
 #define SCRIPT_NO_TAP_GROUP 0
+#define SCRIPT_BALLOON_ON_OWNER 0
+#define SCRIPT_BALLOON_AT_WORLD_POINT 1
+#define SCRIPT_BALLOON_AT_SCREEN_POINT 2
 #define SCRIPT_FADE_MAX 8
 #define SCRIPT_RECENT_FETCH_MAX 64
 #define SCRIPT_RUN_STEP_MAX 4096
@@ -174,6 +177,7 @@ struct script_balloon {
     int timer;
     float offset_x;
     float offset_y;
+    int placement;
     int open_is_pending;
     int tap_group;
     const char *tap_target;
