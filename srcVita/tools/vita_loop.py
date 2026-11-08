@@ -29,7 +29,8 @@ COMMANDS_PATH = DATA_FOLDER + "/commands.txt"
 CAPTURE_FOLDER = DATA_FOLDER + "/captures"
 BURST_WINDOW_PATH = CAPTURE_FOLDER + "/burst/window.bin"
 BURST_SLOTS = 1000
-BURST_MAGIC = b"GTB2"
+BURST_MAGIC_LENGTH = 4
+BURST_TIME_FIELDS_BY_MAGIC = {b"GTB2": ("route_step", "ticks_into_step"), b"GTB3": ("acted_step", "ticks_since_action")}
 BURST_HEADER_SIZE = 32
 BURST_NO_ROUTE_STEP = 0xffffffff
 BURST_BYTES_PER_PIXEL = 2
@@ -480,14 +481,15 @@ def every_565_color_as_rgb():
 def split_burst_window(data):
     pictures = []
     offset = 0
-    while offset + BURST_HEADER_SIZE <= len(data) and data[offset:offset + len(BURST_MAGIC)] == BURST_MAGIC:
-        _, sequence, elapsed_ms, size, tick, route_step, ticks_into_step = struct.unpack_from("<IIIIIII", data, offset + len(BURST_MAGIC))
+    while offset + BURST_HEADER_SIZE <= len(data) and bytes(data[offset:offset + BURST_MAGIC_LENGTH]) in BURST_TIME_FIELDS_BY_MAGIC:
+        step_field, ticks_field = BURST_TIME_FIELDS_BY_MAGIC[bytes(data[offset:offset + BURST_MAGIC_LENGTH])]
+        _, sequence, elapsed_ms, size, tick, route_step, ticks_into_step = struct.unpack_from("<IIIIIII", data, offset + BURST_MAGIC_LENGTH)
         width = size & 0xffff
         height = size >> 16
         pixel_bytes = width * height * BURST_BYTES_PER_PIXEL
         if offset + BURST_HEADER_SIZE + pixel_bytes > len(data):
             break
-        pictures.append({"sequence": sequence, "elapsed_ms": elapsed_ms, "width": width, "height": height, "tick": tick, "route_step": -1 if route_step == BURST_NO_ROUTE_STEP else route_step, "ticks_into_step": ticks_into_step, "pixels": data[offset + BURST_HEADER_SIZE:offset + BURST_HEADER_SIZE + pixel_bytes]})
+        pictures.append({"sequence": sequence, "elapsed_ms": elapsed_ms, "width": width, "height": height, "tick": tick, "step_field": step_field, "ticks_field": ticks_field, "route_step": -1 if route_step == BURST_NO_ROUTE_STEP else route_step, "ticks_into_step": ticks_into_step, "pixels": data[offset + BURST_HEADER_SIZE:offset + BURST_HEADER_SIZE + pixel_bytes]})
         offset = offset + BURST_HEADER_SIZE + pixel_bytes
     return pictures
 
@@ -541,7 +543,7 @@ def request_burst(seconds, rounds, output_folder, ms_between_pictures=0):
         for picture in pictures:
             slot_name = BURST_PICTURE_NAME % (next_slot % BURST_SLOTS)
             save_burst_picture(picture, os.path.join(output_folder, slot_name + ".jpg"), rgb_of_color)
-            note_picture_time(output_folder, "%s round=%d sequence=%d device_ms=%d tick=%d route_step=%d ticks_into_step=%d" % (slot_name, round_number, picture["sequence"], picture["elapsed_ms"], picture["tick"], picture["route_step"], picture["ticks_into_step"]))
+            note_picture_time(output_folder, "%s round=%d sequence=%d device_ms=%d tick=%d %s=%d %s=%d" % (slot_name, round_number, picture["sequence"], picture["elapsed_ms"], picture["tick"], picture["step_field"], picture["route_step"], picture["ticks_field"], picture["ticks_into_step"]))
             next_slot = next_slot + 1
         print("burst round", round_number, "pictures", len(pictures), "bytes", len(data), "pulled in %.1f s," % pulled_seconds, "saved by %.1f s" % (time.time() - started), flush=True)
     write_app_commands("resume\n")

@@ -30,8 +30,8 @@ void script_player_set_fast_forward(int ticks_per_frame);
 void script_player_run_until(const char *kind, const char *name);
 void script_player_note_mark(const char *what, const char *name);
 unsigned int script_player_tick(void);
-int script_player_route_step(void);
-unsigned int script_player_route_step_began_at(void);
+int script_player_acted_route_step(void);
+unsigned int script_player_route_action_began_at(void);
 void script_player_shutdown(void);
 
 #endif

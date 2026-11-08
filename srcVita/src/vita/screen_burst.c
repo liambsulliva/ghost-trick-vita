@@ -11,7 +11,7 @@
 
 #define BURST_FOLDER_NAME FILE_DATA_FOLDER "/captures/burst"
 #define BURST_WINDOW_FILE BURST_FOLDER_NAME "/window.bin"
-#define BURST_MAGIC "GTB2"
+#define BURST_MAGIC "GTB3"
 #define BURST_HEADER_SIZE 32u
 #define BURST_NO_ROUTE_STEP 0xffffffffu
 #define BURST_LARGEST_WIDTH 480u
@@ -46,8 +46,8 @@ static unsigned long long last_copy_us;
 static unsigned long long longest_copy_us;
 static unsigned long long us_between_pictures = BURST_US_BETWEEN_FRAMES;
 static unsigned int game_tick;
-static unsigned int game_route_step = BURST_NO_ROUTE_STEP;
-static unsigned int game_ticks_into_step;
+static unsigned int game_acted_route_step = BURST_NO_ROUTE_STEP;
+static unsigned int game_ticks_since_route_action;
 
 static void write_u32(unsigned char *bytes, unsigned int value)
 {
@@ -112,11 +112,11 @@ static int get_ready(void)
     return 1;
 }
 
-void screen_burst_note_game_time(unsigned int tick, int route_step, unsigned int route_step_began_at)
+void screen_burst_note_game_time(unsigned int tick, int acted_route_step, unsigned int route_action_began_at)
 {
     game_tick = tick;
-    game_route_step = route_step < 0 ? BURST_NO_ROUTE_STEP : (unsigned int)route_step;
-    game_ticks_into_step = route_step < 0 || tick < route_step_began_at ? 0u : tick - route_step_began_at;
+    game_acted_route_step = acted_route_step < 0 ? BURST_NO_ROUTE_STEP : (unsigned int)acted_route_step;
+    game_ticks_since_route_action = acted_route_step < 0 || tick < route_action_began_at ? 0u : tick - route_action_began_at;
 }
 
 void screen_burst_reserve_memory(void)
@@ -240,8 +240,8 @@ int screen_burst_note_frame_and_say_if_it_ended(void)
     write_u32(&picture[12], (unsigned int)((now_us - started_us) / 1000ull));
     write_u32(&picture[16], width | (height << 16));
     write_u32(&picture[20], game_tick);
-    write_u32(&picture[24], game_route_step);
-    write_u32(&picture[28], game_ticks_into_step);
+    write_u32(&picture[24], game_acted_route_step);
+    write_u32(&picture[28], game_ticks_since_route_action);
     copy_half_size(&picture[BURST_HEADER_SIZE], frame_buffer.base, (unsigned int)frame_buffer.pitch * BURST_SOURCE_BYTES_PER_PIXEL, width, height);
     picture_sizes[queue_index] = BURST_HEADER_SIZE + width * height * BURST_BYTES_PER_PIXEL;
     pictures_copied = pictures_copied + 1;

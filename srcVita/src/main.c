@@ -302,7 +302,7 @@ static void run_main_loop(void)
             script_player_set_paused(0);
             run_log_write("burst pause_timed_out");
         }
-        screen_burst_note_game_time(script_player_tick(), script_player_route_step(), script_player_route_step_began_at());
+        screen_burst_note_game_time(script_player_tick(), script_player_acted_route_step(), script_player_route_action_began_at());
         if (screen_burst_note_frame_and_say_if_it_ended()) {
             burst_pause_began_us = clock_now_us();
             script_player_set_paused(1);

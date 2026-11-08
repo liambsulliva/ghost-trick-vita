@@ -75,8 +75,8 @@ static float next_chapter_card_age_ticks;
 static int is_holding_for_art;
 static unsigned long long art_wait_us;
 static int art_wait_gave_up_was_logged;
-static int latest_route_step = -1;
-static unsigned int latest_route_step_began_at;
+static int latest_acted_route_step = -1;
+static unsigned int latest_route_action_began_at;
 static int preload_row;
 static int preload_passes;
 static const char *preload_music_name;
@@ -617,8 +617,8 @@ int script_player_is_available(void)
 void script_player_play(const char *entry_name)
 {
     snprintf(entry, sizeof(entry), "%s", entry_name);
-    latest_route_step = -1;
-    latest_route_step_began_at = 0;
+    latest_acted_route_step = -1;
+    latest_route_action_began_at = 0;
     free_data();
     scene_stage_clear_room();
     scene_layers_clear(scene_stage_layers());
@@ -977,24 +977,24 @@ unsigned int script_player_tick(void)
     return data != NULL ? data->machine.tick : 0;
 }
 
-static void remember_latest_route_step(void)
+static void remember_latest_route_action(void)
 {
-    if (data != NULL && data->machine.soul.route_step >= 0) {
-        latest_route_step = data->machine.soul.route_step;
-        latest_route_step_began_at = data->machine.soul.route_step_began_at;
+    if (data != NULL && data->machine.soul.route_acted_step >= 0) {
+        latest_acted_route_step = data->machine.soul.route_acted_step;
+        latest_route_action_began_at = data->machine.soul.route_action_began_at;
     }
 }
 
-int script_player_route_step(void)
+int script_player_acted_route_step(void)
 {
-    remember_latest_route_step();
-    return latest_route_step;
+    remember_latest_route_action();
+    return latest_acted_route_step;
 }
 
-unsigned int script_player_route_step_began_at(void)
+unsigned int script_player_route_action_began_at(void)
 {
-    remember_latest_route_step();
-    return latest_route_step_began_at;
+    remember_latest_route_action();
+    return latest_route_action_began_at;
 }
 
 void script_player_shutdown(void)

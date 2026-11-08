@@ -287,6 +287,8 @@ struct script_soul {
     unsigned int route_ready_at;
     unsigned int route_step_began_at;
     int route_action_has_begun;
+    int route_acted_step;
+    unsigned int route_action_began_at;
     unsigned int route_last_action_tick;
     int route_camera_is_scrolling;
     int tricks_fired;

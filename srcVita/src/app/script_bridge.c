@@ -733,7 +733,7 @@ static void on_marked(const char *what, const char *name)
         return;
     }
     script_player_note_mark(what, name);
-    run_log_write("script %s name=%s", what, name);
+    run_log_write("script %s name=%s tick=%u", what, name, script_player_tick());
 }
 
 static const struct script_outputs bridge_outputs = {

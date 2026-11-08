@@ -1863,6 +1863,8 @@ static void run_route(struct script_machine *machine)
         }
         soul->route_action_has_begun = 1;
         soul->route_step_began_at = machine->tick;
+        soul->route_acted_step = soul->route_step;
+        soul->route_action_began_at = machine->tick;
         mark_route_step(machine, "route_step_began", step);
     }
     if (run_route_action(machine, step)) {
@@ -2060,6 +2062,7 @@ void script_soul_reset(struct script_machine *machine)
     memset(&machine->soul, 0, sizeof(machine->soul));
     script_pills_reset(machine);
     machine->soul.route_step = -1;
+    machine->soul.route_acted_step = -1;
     machine->soul.active_object = NO_CORE;
     machine->soul.chain_needs_reset = 1;
     machine->soul.chain_pick_object = NO_CORE;
