@@ -148,7 +148,7 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
         machine->outputs->marked("core", machine->objects[object_index].name);
     }
     if (soul->is_on) {
-        script_machine_send(machine, "*", "SYSTEM", "SV_CHGCORE");
+        script_machine_send(machine, "*", "SYSTEM", machine->objects[object_index].is_dead ? "SV_DEADCORE" : "SV_CHGCORE");
     }
     player_moved_in_tutorial(machine);
 }
