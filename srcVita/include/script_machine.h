@@ -460,6 +460,7 @@ void script_machine_skip_ahead(struct script_machine *machine);
 void script_machine_update_camera(struct script_machine *machine);
 const char *script_machine_string(struct script_machine *machine, const struct script_vm *vm, unsigned int string_offset);
 int script_machine_index_of_object(const struct script_machine *machine, const char *name);
+int script_machine_name_matches_target(const char *name, const char *target);
 struct script_object *script_machine_find_object(struct script_machine *machine, const char *name);
 struct script_object *script_machine_current_object(struct script_machine *machine, const struct script_vm *vm);
 void script_machine_send(struct script_machine *machine, const char *target, const char *verb, const char *arg);

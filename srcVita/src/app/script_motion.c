@@ -573,17 +573,6 @@ static void compare_active_core(struct script_machine *machine, struct script_vm
     }
 }
 
-static int name_matches_target(const char *name, const char *target)
-{
-    if (target[0] == '*') {
-        return 1;
-    }
-    if (target[0] == '@') {
-        return strstr(name, target + 1) != NULL;
-    }
-    return strcmp(name, target) == 0;
-}
-
 static void set_hold_on_targets(struct script_machine *machine, struct script_vm *vm, unsigned int name_word, int frozen_value, int hard_value, int shows)
 {
     const char *target;
@@ -597,7 +586,7 @@ static void set_hold_on_targets(struct script_machine *machine, struct script_vm
         struct script_actor *actor;
 
         actor = &machine->objects[index].actor;
-        if (!actor->exists || !name_matches_target(machine->objects[index].name, target)) {
+        if (!actor->exists || !script_machine_name_matches_target(machine->objects[index].name, target)) {
             continue;
         }
         if (frozen_value >= 0) {

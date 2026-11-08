@@ -539,7 +539,7 @@ static void set_pause_class(struct script_vm *vm, int pause_class)
     }
 }
 
-static int text_matches_target(const char *name, const char *target)
+int script_machine_name_matches_target(const char *name, const char *target)
 {
     if (target[0] == '*') {
         return 1;
@@ -594,7 +594,7 @@ static void cancel_handlers(struct script_machine *machine, struct script_vm *vm
         return;
     }
     for (index = 0; index < machine->object_count; index++) {
-        if (text_matches_target(machine->objects[index].name, target)) {
+        if (script_machine_name_matches_target(machine->objects[index].name, target)) {
             cancel_on_object(&machine->objects[index], vm, verb, arg);
         }
     }
