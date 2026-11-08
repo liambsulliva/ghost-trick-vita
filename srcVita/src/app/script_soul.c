@@ -906,7 +906,7 @@ static void set_soul_view_with_effect(struct script_machine *machine, int is_on,
         }
     }
     machine->soul_state_keeps_pause = is_on;
-    machine->pause_bit = is_on || soul->is_leaving_view;
+    machine->pause_bit = (is_on && with_effect) || soul->is_leaving_view;
     if (machine->outputs->soul_vision_changed != NULL) {
         machine->outputs->soul_vision_changed(is_on, with_effect);
     }
