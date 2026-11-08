@@ -43,6 +43,8 @@ def bake_track(sdat, sequence, name, record, code):
 
 
 def sequence_of_music_id(sdat, music_ids):
+    if not music_ids:
+        return {}
     by_index = {index: name for name, index in sseq_render.named_sequences(sseq_render.read_archive(sdat)).items()}
     return {name: by_index[int(music_id)] for music_id, name in music_ids.items() if int(music_id) in by_index}
 
