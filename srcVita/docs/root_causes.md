@@ -264,6 +264,12 @@ Ops 0xe7 and 0xe8 logged as not ported in Chapter 2. Their native case clears or
 
 Guard: 0xe7 and 0xe8 clear and set a Trick pill hold beside the Ghost pill hold, reset with the pills. Before porting one of a pair of HUD ops, read the pill rule in `func_0204f850` for every pill, since each pill's wanted state combines several native bits.
 
+### 37. An op whose length depends on its object
+
+Op 0xaa logged as not ported on the stage 6 dog. The port then advanced it by its table length, 3 words, which also skipped the op 0xa9 that follows it in the script. Native 0xaa (case at `0x0202543e`) checks that the current object is a `uScript2dR`; if so it calls `func_02008abc` on the motion controller (count at `+0x127`, counted-loop bit 3 set and done bit 4 cleared at `+0x126`), advances 2 words and runs on; otherwise it advances 3 and yields. The stepper `func_02007c54` decrements the count each time a frame ends just before the loop word and, at zero, sets the done bit instead of looping; 0xa9's end test reads that bit. So the script's 0xaa then 0xa9 lets the current loop finish before the next motion.
+
+Guard: 0xaa sets a counted loop on the actor and moves the pc itself (2 words with an actor, 3 and a yield without), the stepper stops at the loop word when the count runs out, the end test reads the done bit, and a new motion clears both. Before routing an op, check its native case for a pc step that differs from the length table.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

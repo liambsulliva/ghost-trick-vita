@@ -152,6 +152,7 @@ static const unsigned char families[SCRIPT_OPCODE_COUNT] = {
     [0x7a] = SCRIPT_OP_CONTROL,
     [0x7b] = SCRIPT_OP_CONTROL,
     [0x82] = SCRIPT_OP_ACTOR,
+    [0xaa] = SCRIPT_OP_ACTOR,
     [0x85] = SCRIPT_OP_ACTOR,
     [0x87] = SCRIPT_OP_ACTOR,
     [0x8f] = SCRIPT_OP_ACTOR,

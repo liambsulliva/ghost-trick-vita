@@ -23,6 +23,8 @@
 #define LOOP_BACK_WORDS 3
 #define OFF_WORLD_LIMIT 10000
 #define TABLE_STEP_MAX 4096
+#define COUNTED_LOOP_WORDS 2
+#define COUNTED_LOOP_WORDS_WITHOUT_AN_ACTOR 3
 
 static int read_signed_word(const struct script_source *source, unsigned int word_index, int *value)
 {
@@ -283,10 +285,36 @@ static void start_queued_table(struct script_machine *machine, struct script_obj
     actor->frame_word_index = -1;
     actor->frame_hold_ticks = 0;
     actor->ticks_left = 0;
+    actor->counts_loops = 0;
+    actor->loops_left = 0;
+    actor->motion_is_done = 0;
     run_table(machine, object, actor->queued_keeps_point_zero);
     actor->queued_keeps_point_zero = 0;
     actor->is_visible = !actor->is_hard_hidden;
     actor->is_frozen_and_hidden = 0;
+}
+
+static int next_word_loops_back(const struct script_actor *actor)
+{
+    unsigned int word;
+
+    return script_file_read_word(&actor->table_source->file, actor->table_word + 1, &word) == SCRIPT_FILE_OK && word == WORD_LOOP;
+}
+
+static int counted_loops_have_run_out(struct script_actor *actor)
+{
+    if (!actor->counts_loops || !next_word_loops_back(actor)) {
+        return 0;
+    }
+    if (actor->loops_left > 0) {
+        actor->loops_left = actor->loops_left - 1;
+    }
+    if (actor->loops_left != 0) {
+        return 0;
+    }
+    actor->motion_is_done = 1;
+    actor->counts_loops = 0;
+    return 1;
 }
 
 static void step_table(struct script_machine *machine, struct script_object *object)
@@ -295,6 +323,9 @@ static void step_table(struct script_machine *machine, struct script_object *obj
     unsigned int word;
 
     actor = &object->actor;
+    if (actor->motion_is_done) {
+        return;
+    }
     if (script_file_read_word(&actor->table_source->file, actor->table_word, &word) != SCRIPT_FILE_OK) {
         stop_table_for(machine, object, "motion_word_past_code");
         return;
@@ -304,6 +335,9 @@ static void step_table(struct script_machine *machine, struct script_object *obj
     }
     if (actor->ticks_left != 0) {
         actor->ticks_left = actor->ticks_left - 1;
+        return;
+    }
+    if (counted_loops_have_run_out(actor)) {
         return;
     }
     actor->table_word = actor->table_word + 1;
@@ -600,13 +634,29 @@ static int motion_has_ended(const struct script_object *object)
     unsigned int word;
 
     actor = &object->actor;
-    if (!actor->has_table) {
+    if (!actor->has_table || actor->motion_is_done) {
         return 1;
     }
     if (script_file_read_word(&actor->table_source->file, actor->table_word, &word) != SCRIPT_FILE_OK) {
         return 1;
     }
     return word == WORD_END;
+}
+
+static enum script_step_result count_loops(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+{
+    struct script_object *object;
+
+    object = script_machine_current_object(machine, vm);
+    if (object == NULL || !object->actor.exists) {
+        vm->pc = vm->pc + COUNTED_LOOP_WORDS_WITHOUT_AN_ACTOR;
+        return SCRIPT_STEP_MOVED_THEN_YIELD;
+    }
+    object->actor.loops_left = (int)(words[0] & 0xffu);
+    object->actor.counts_loops = 1;
+    object->actor.motion_is_done = 0;
+    vm->pc = vm->pc + COUNTED_LOOP_WORDS;
+    return SCRIPT_STEP_MOVED;
 }
 
 static void set_core_enabled(struct script_machine *machine, struct script_vm *vm, const unsigned int *words, int is_disabled)
@@ -683,6 +733,8 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
     case 0x9e:
         set_core_enabled(machine, vm, words, 1);
         break;
+    case 0xaa:
+        return count_loops(machine, vm, words);
     case 0xa9:
         object = script_machine_current_object(machine, vm);
         if (object != NULL && object->actor.exists && !motion_has_ended(object)) {

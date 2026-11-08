@@ -124,6 +124,9 @@ struct script_actor {
     int frame_word_index;
     int frame_hold_ticks;
     int ticks_left;
+    int counts_loops;
+    int loops_left;
+    int motion_is_done;
     unsigned int class_id;
     int has_core;
     int core_x;
