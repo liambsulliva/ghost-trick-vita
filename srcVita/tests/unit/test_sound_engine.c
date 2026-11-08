@@ -303,7 +303,7 @@ static void test_a_clip_that_was_not_prepared_is_dropped_and_logged(void)
     prepare_one_clip_and_open_the_port("ping");
     sound_request_play("other");
     pump(1);
-    CHECK_HAS_TEXT(log_text(), "sound dropped name=other reason=not_prepared");
+    CHECK_HAS_TEXT(log_text(), "sound dropped name=other reason=not_loaded");
     finish();
 }
 
@@ -323,7 +323,7 @@ static void test_a_missing_file_reports_done_and_the_others_still_load(void)
     sound_request_play("gone");
     sound_request_play("ping");
     pump(1);
-    CHECK_HAS_TEXT(log_text(), "sound dropped name=gone reason=not_prepared");
+    CHECK_HAS_TEXT(log_text(), "sound dropped name=gone reason=not_loaded");
     CHECK_HAS_TEXT(log_text(), "sound started name=ping");
     finish();
 }
@@ -379,7 +379,7 @@ static void test_running_out_of_memory_logs_and_stays_silent(void)
     pump(1);
     sound_request_play("ping");
     pump(1);
-    CHECK_HAS_TEXT(log_text(), "sound dropped name=ping reason=not_prepared");
+    CHECK_HAS_TEXT(log_text(), "sound dropped name=ping reason=not_loaded");
     finish();
 
     set_up();
@@ -456,7 +456,7 @@ static void test_a_clip_of_only_headers_is_a_decoder_failure_not_a_memory_failur
     pump(1);
     sound_request_play("ping");
     pump(1);
-    CHECK_HAS_TEXT(log_text(), "sound dropped name=ping reason=not_prepared");
+    CHECK_HAS_TEXT(log_text(), "sound dropped name=ping reason=not_loaded");
     finish();
 }
 

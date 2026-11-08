@@ -29,6 +29,8 @@
 #define LOG_FOR_TOOLS_SOUND_WINDOW "sound window index=%u at=%llu grains=%u wall_us=%llu late=%u voices_max=%d started=%u dropped=%u mix_us_max=%llu block_us_max=%llu gap_us_max=%llu period_us_max=%llu"
 #define LOG_FOR_TOOLS_SOUND_STOPPED "sound stopped reason=%s submitted=%llu grains=%u late=%u"
 
+#define SOUND_PCM_BUDGET_BYTES (32ull * 1024ull * 1024ull)
+
 struct sound_start {
     char name[ASSET_NAME_MAX];
     char loop_tag[ASSET_NAME_MAX];
@@ -64,6 +66,7 @@ struct sound_clip {
     char name[ASSET_NAME_MAX];
     short *frames;
     unsigned int frame_count;
+    unsigned long long last_used_us;
 };
 
 struct sound_voice {
@@ -102,6 +105,7 @@ static struct sound_mailbox mailbox;
 static struct vorbis_stream stream;
 static struct sound_clip clips[SOUND_CLIP_MAX];
 static int clip_count;
+static unsigned long long clip_bytes_total;
 static struct sound_voice voices[SOUND_VOICE_MAX];
 static struct sound_totals totals;
 static struct window_totals window;
@@ -118,6 +122,7 @@ void sound_engine_init(const char *sound_folder)
     memset(&mailbox, 0, sizeof(mailbox));
     memset(voices, 0, sizeof(voices));
     clip_count = 0;
+    clip_bytes_total = 0;
     port_is_open = 0;
     port_has_failed = 0;
     thread_line_is_written = 0;
@@ -290,6 +295,65 @@ static unsigned int decode_stream_into(short *frames, unsigned int frame_limit)
     return decoded;
 }
 
+static int clip_is_playing(const struct sound_clip *clip)
+{
+    int voice;
+
+    for (voice = 0; voice < SOUND_VOICE_MAX; voice++) {
+        if (voices[voice].clip == clip) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int evict_least_recent_clip(void)
+{
+    struct sound_clip *oldest;
+    int index;
+
+    oldest = NULL;
+    for (index = 0; index < clip_count; index++) {
+        if (clips[index].name[0] == '\0' || clip_is_playing(&clips[index])) {
+            continue;
+        }
+        if (oldest == NULL || clips[index].last_used_us < oldest->last_used_us) {
+            oldest = &clips[index];
+        }
+    }
+    if (oldest == NULL) {
+        return 0;
+    }
+    clip_bytes_total = clip_bytes_total - (unsigned long long)oldest->frame_count * BYTES_PER_FRAME;
+    mem_free(oldest->frames);
+    oldest->frames = NULL;
+    oldest->frame_count = 0;
+    oldest->name[0] = '\0';
+    return 1;
+}
+
+static struct sound_clip *free_clip_slot(void)
+{
+    int index;
+
+    for (index = 0; index < clip_count; index++) {
+        if (clips[index].name[0] == '\0') {
+            return &clips[index];
+        }
+    }
+    return clip_count < SOUND_CLIP_MAX ? &clips[clip_count] : NULL;
+}
+
+static struct sound_clip *slot_for_new_clip(unsigned int bytes_needed)
+{
+    while (clip_bytes_total + bytes_needed > SOUND_PCM_BUDGET_BYTES || free_clip_slot() == NULL) {
+        if (!evict_least_recent_clip()) {
+            return NULL;
+        }
+    }
+    return free_clip_slot();
+}
+
 static void decode_clip(const char *name, unsigned int size, unsigned long long read_us)
 {
     struct sound_clip *clip;
@@ -304,7 +368,11 @@ static void decode_clip(const char *name, unsigned int size, unsigned long long 
         run_log_write(LOG_NO_FRAMES, name);
         return;
     }
-    clip = &clips[clip_count];
+    clip = slot_for_new_clip(stream.frame_count * BYTES_PER_FRAME);
+    if (clip == NULL) {
+        run_log_write("sound over_budget name=%s", name);
+        return;
+    }
     clip->frames = mem_alloc(stream.frame_count * BYTES_PER_FRAME);
     if (clip->frames == NULL) {
         run_log_write("sound out_of_memory name=%s", name);
@@ -317,7 +385,11 @@ static void decode_clip(const char *name, unsigned int size, unsigned long long 
         return;
     }
     snprintf(clip->name, sizeof(clip->name), "%s", name);
-    clip_count = clip_count + 1;
+    clip->last_used_us = clock_now_us();
+    clip_bytes_total = clip_bytes_total + (unsigned long long)clip->frame_count * BYTES_PER_FRAME;
+    if (clip == &clips[clip_count]) {
+        clip_count = clip_count + 1;
+    }
     run_log_write(LOG_FOR_TOOLS_SOUND_LOADED, name, size, clip->frame_count, stream.channel_count, stream.sample_rate, read_us, clock_now_us() - decode_started_us);
 }
 
@@ -344,12 +416,12 @@ static void load_clip(const char *name)
     mem_free(data);
 }
 
-static const struct sound_clip *find_clip(const char *name)
+static struct sound_clip *find_clip(const char *name)
 {
     int index;
 
     for (index = 0; index < clip_count; index++) {
-        if (strcmp(clips[index].name, name) == 0) {
+        if (clips[index].name[0] != '\0' && strcmp(clips[index].name, name) == 0) {
             return &clips[index];
         }
     }
@@ -376,14 +448,19 @@ static int find_free_voice(void)
 
 static void start_voice(const struct sound_start *start)
 {
-    const struct sound_clip *clip;
+    struct sound_clip *clip;
     int voice;
 
     clip = find_clip(start->name);
     if (clip == NULL) {
-        drop_sound(start->name, "not_prepared");
+        load_clip(start->name);
+        clip = find_clip(start->name);
+    }
+    if (clip == NULL) {
+        drop_sound(start->name, "not_loaded");
         return;
     }
+    clip->last_used_us = clock_now_us();
     voice = find_free_voice();
     if (voice < 0) {
         drop_sound(start->name, "all_voices_busy");
@@ -613,9 +690,12 @@ static void free_clips(void)
     int index;
 
     for (index = 0; index < clip_count; index++) {
-        mem_free(clips[index].frames);
+        if (clips[index].frames != NULL) {
+            mem_free(clips[index].frames);
+        }
     }
     clip_count = 0;
+    clip_bytes_total = 0;
 }
 
 static void log_thread_facts_once(void)

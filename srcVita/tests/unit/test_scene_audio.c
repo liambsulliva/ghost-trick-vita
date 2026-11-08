@@ -171,7 +171,7 @@ static void test_missing_files_never_hang_the_preload_and_the_scene_runs_silentl
     run_frames(1);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
     CHECK_INT(fake_audio_port_open_count(AUDIO_PORT_MUSIC), 0);
-    CHECK_HAS_TEXT(log_text(), "sound dropped name=missing reason=not_prepared");
+    CHECK_HAS_TEXT(log_text(), "sound dropped name=missing reason=not_loaded");
     finish();
 }
 
@@ -197,7 +197,7 @@ static void test_damaged_files_never_hang_the_preload_and_the_scene_runs_silentl
     run_frames(1);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_FINISHED);
     CHECK_INT(fake_audio_port_open_count(AUDIO_PORT_MUSIC), 0);
-    CHECK_HAS_TEXT(log_text(), "sound dropped name=ping reason=not_prepared");
+    CHECK_HAS_TEXT(log_text(), "sound dropped name=ping reason=not_loaded");
     finish();
 }
 
