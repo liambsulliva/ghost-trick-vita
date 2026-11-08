@@ -2992,6 +2992,14 @@
       },
       {
         "script": "st05-st05_game000_Expand",
+        "action": "tap_balloon",
+        "object": "talkopen",
+        "pace": "normal",
+        "footage_s": 4240.0,
+        "wait": "balloon:talkopen"
+      },
+      {
+        "script": "st05-st05_game000_Expand",
         "action": "phone_call",
         "object": "tel",
         "pace": "normal",
