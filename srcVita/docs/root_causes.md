@@ -280,6 +280,24 @@ Guard: the read-ahead step writes bundles as `GPK1`, the unpacked size and raw d
 
 Run 22 measured it on the Vita: unpacking took 8 to 34 ms, and the slowest script changes fell from 257, 315 and 325 ms to 136, 248 and 210 ms. What remains of each read is per-file latency behind the texture reads (a 10-byte empty bundle took 18 to 84 ms), so the player now skips the bundle for any script with no motion rows instead of opening an empty file.
 
+### 39. A scene the route could not leave
+
+Past the routed chapters, run 23 sat for hours on the Chapter 3 junkyard with two detectives talking. The junkyard leaves only through `phone.xml`, which picks the next place from the phone book (register 0x1a); with no route step picking one, the place stayed 15 from Chapter 2 and the phone sent the game back through stage 6 and route.xml to the same junkyard. The stuck detector reset with every reload of the same script, so the loop never counted as stuck, and its fallback exit search walked ops in a line and stopped at the inline data after a jump (op 0x22) in 53 of the 163 baked scripts.
+
+Guard: a scene timeout in the shared machine. `scene_most_ticks` in the route (51600 ticks: the longest stretch between screen transitions in the footage, 684.5 s, times 1.25; measured with a dark-screen split that put all 12 Chapter 1-2 route scripts in one stretch each) counts ticks since the game last began a script it had not begun before, so a loop through seen scripts keeps counting. When it runs out under auto-play, the game moves to the scene after the furthest one reached in `scenes.txt` (every script's first visit in story order, written by the read-ahead replay, cut scenes included), or back to the furthest one if a loop has carried it behind; with no known next scene it takes the scene's own exit. The exit search now finds any `0x24` whose operand names an `.xml` script in the string table, so data between ops cannot hide it, and a finished machine keeps counting ticks so the timeout still fires after `stuck_with_nowhere_left_to_go`. Every forced move logs `scene_timeout_left` and `scene_timeout_moved_to`.
+
+### 40. What a scene change has to leave behind
+
+Native's teardown on every script change (`func_0200fe74`, run from the `0x24` chain through `pGameRestartDirect`) kills scripts, UI clips (`uSwfPlayGame`), custom effects, past-death sprites, soul background gimmicks, spot and point lights, phone-book objects, mask fades and soul tentacles, and kills the countdown (`uCountdown`) unless flag 0x1008 is set, clearing that flag every time (`func_02027518` reads it, `func_02027538` clears it). It leaves music alone. The port kept playing UI clips across a change and always dropped the countdown.
+
+Guard: the stage clear stops every playing UI clip, the machine keeps the countdown across a change only while flag 0x1008 is set and clears the flag at each teardown, and each new script checks that no talk, narration or press is still pending from the earlier one (`scene_leftover_cleared` names what it cleared). Music follows native and carries over, except on a forced move from the scene timeout, which stops it so the earlier scene's music cannot play over a scene native never reached that way. The movie and its waiting sound are left alone, because the phone ride's movie plays across the change.
+
+### 41. A run log with no ceiling
+
+Run 23's log reached 2.5 GB in five hours of the junkyard loop, almost all of it per-frame animation lines, and the Vita's FTP server cannot seek past 2 GB, so the tools could not read it at all.
+
+Guard: the Vita log sink moves `run.log` aside to `run.log.earlier` when it passes 128 MB and starts a fresh file with `log continued_after_bytes=`, so the newest part always stays small enough to pull; a launch removes a stale earlier part.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
@@ -289,6 +307,7 @@ Run 22 measured it on the Vita: unpacking took 8 to 34 ms, and the slowest scrip
 - Plain effect kinds with no row in any remaster effect list: kind 3 (id 6, the ripple, 50 sites in nine stages), 0x83 (id 207, the dog's bark) and 0x84 (id 209). Where the remaster draws them from is not found.
 - Telephone lines: op 0x82 makes a `uTelephoneLine` free unit and op 0x84 kills every task of a class (always a telephone line class). Neither is ported, so no line is drawn and 0x84 has nothing to remove.
 - Op 0x9f (case at `0x020253bc`): on a `uGimmick`, writes `words[2]` into the top half of core `words[1]`'s `+0x14` word (`func_02026700`); the enable bit 0 of that word is ops 0x9d and 0x9e. What reads the top half is not found, so it is not ported (state nothing reads).
-- Op 0x48 (case at `0x02024ae2`): writes `words[1] << 12` to `+0x124` of the balloon in slot 0 (`game+0xdfc`, `func_020106ec`). Its meaning is not traced; it is only seen after the routed chapters.
+- Op 0x48 (case at `0x02024ae2`): writes `words[1] << 12` to `+0x124` of the balloon in slot 0 (`game+0xdfc`, `func_020106ec`). Its meaning is not traced; it is only seen after the routed chapters (st01_game020).
+- Ops 0x49 (st02_game000, object kaba), 0xfd (st01_game012) and gameapp `DeadTalk|Finish` (st06_game004) are hit by the whole-game replay and not ported.
 - The stage 6 dog in room 65 (st06 game001, around route steps 144 to 160): run 19 drew its bark lines with no dog, while the footage shows the dog by the TV stand inside the same lines. Its two heights (y 264 and y 296) are the same ground point (200) under two table origins (point 0 at y -64 or -96), so it is not drawn low. More likely it is drawn behind the TV stand while the bark lines, an effect, draw on top: native draws each sprite on list `level + signed byte at actor+0x4f` (`func_0200bd94`), the port ignores that byte, and nothing found so far writes it with a plain `strb` (a wider store or computed address may). Present before the counted-loop port.
 - The Minutes Before Death card's middle line (the time and place on the black band) is not drawn. Traced so far: the card is class `uBeforeDeathEffect` (effect ids 51 and 52, constructor `func_02048100`); its init `func_02048188` reads a four-digit time string from `game+0xd84` (`func_0203cbe4`) and passes it to a child `uBeforeDeathEffect::uSwfPlayWatch` (`func_0204821c`). Script op 0x7c writes that string (case at `0x0202475c`, `func_0202663c`, only when it is four characters); the port files 0x7c as stores-only. Where the place name comes from is not traced. Porting needs the time store, the place source and the drawn line together.

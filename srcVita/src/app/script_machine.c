@@ -14,6 +14,7 @@
 #define NARRATION_OVERHEAD_TICKS 3
 #define MOVIE_SOUND_KIND 82
 #define NEVER -1
+#define SCRIPT_CHANGE_OP 0x24u
 #define PAUSE_CLASS_NORMAL 0
 #define PAUSE_CLASS_ONE 1
 #define PAUSE_CLASS_TALK 2
@@ -67,6 +68,7 @@ void script_machine_init(struct script_machine *machine, const struct script_out
     machine->stop_act = stop_act;
     machine->teardown_at = NEVER;
     machine->load_at = NEVER;
+    machine->furthest_scene = -1;
     machine->game_start_at = NEVER;
     machine->camera_follow_object = SCRIPT_NO_SELECTION;
     machine->pause_clear_at = NEVER;
@@ -117,8 +119,13 @@ static void begin_vm(struct script_vm *vm, enum script_vm_kind kind, const struc
     vm->selected_object = SCRIPT_NO_SELECTION;
 }
 
+static void clear_what_the_earlier_scene_left(struct script_machine *machine);
+static void note_scene_began(struct script_machine *machine, const char *name);
+
 static void begin_script(struct script_machine *machine, const struct script_source *source)
 {
+    clear_what_the_earlier_scene_left(machine);
+    note_scene_began(machine, source->name);
     begin_vm(&machine->runner, SCRIPT_VM_RUNNER, source, NULL, 0);
     machine->has_runner = 1;
     memset(machine->visited_sites, 0, sizeof(machine->visited_sites));
@@ -159,6 +166,64 @@ static unsigned int hash_text(unsigned int hash, const char *text)
         text = text + 1;
     }
     return hash;
+}
+
+static int scene_was_seen(const struct script_machine *machine, unsigned int hash)
+{
+    int index;
+
+    for (index = 0; index < machine->scenes_seen; index++) {
+        if (machine->scene_hashes_seen[index] == hash) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void note_scene_began(struct script_machine *machine, const char *name)
+{
+    unsigned int hash;
+    int scene;
+
+    machine->scene_name = name;
+    hash = hash_text(2166136261u, name);
+    if (!scene_was_seen(machine, hash)) {
+        if (machine->scenes_seen < SCRIPT_SCENES_SEEN_MAX) {
+            machine->scene_hashes_seen[machine->scenes_seen] = hash;
+            machine->scenes_seen = machine->scenes_seen + 1;
+        }
+        machine->last_new_scene_tick = machine->tick;
+    }
+    scene = machine->route != NULL ? script_route_scene_index(machine->route, name) : -1;
+    if (scene > machine->furthest_scene) {
+        machine->furthest_scene = scene;
+    }
+}
+
+static void note_leftover(struct script_machine *machine, const char *what)
+{
+    if (machine->outputs != NULL && machine->outputs->marked != NULL) {
+        machine->outputs->marked("scene_leftover_cleared", what);
+    }
+}
+
+static void clear_what_the_earlier_scene_left(struct script_machine *machine)
+{
+    if (machine->press_is_pending) {
+        machine->press_is_pending = 0;
+        note_leftover(machine, "press");
+    }
+    if (machine->talk_is_open || machine->talk.phase != SCRIPT_TALK_CLOSED || machine->talk.message != NULL || machine->talk_close_at != NEVER) {
+        memset(&machine->talk, 0, sizeof(machine->talk));
+        machine->talk_is_open = 0;
+        machine->talk_close_at = NEVER;
+        note_leftover(machine, "talk");
+    }
+    if (machine->narration.is_running || machine->narration.press_is_pending) {
+        machine->narration.is_running = 0;
+        machine->narration.press_is_pending = 0;
+        note_leftover(machine, "narration");
+    }
 }
 
 void script_machine_note(struct script_machine *machine, const struct script_vm *vm, const char *reason, const char *detail)
@@ -1449,6 +1514,12 @@ static void tear_down_script(struct script_machine *machine)
     unsigned int pills_registered;
     int rollback_is_on;
     int trick_is_on;
+    int countdown_is_kept;
+    int countdown_flag;
+    int countdown_is_running;
+    int countdown_step;
+    int countdown_ticks;
+    int countdown_interval;
 
     machine->phone_view_is_on = 0;
     memset(machine->anchored_effects, 0, sizeof(machine->anchored_effects));
@@ -1469,10 +1540,22 @@ static void tear_down_script(struct script_machine *machine)
     pills_registered = machine->soul.pills_registered;
     rollback_is_on = machine->soul.rollback_is_on;
     trick_is_on = machine->soul.trick_is_on;
+    countdown_is_kept = script_flags_read_known(&machine->flags, COUNTDOWN_KEPT_ACROSS_A_SCRIPT_CHANGE_FLAG, &countdown_flag) && countdown_flag != 0;
+    countdown_is_running = machine->soul.countdown_is_running;
+    countdown_step = machine->soul.countdown_step;
+    countdown_ticks = machine->soul.countdown_ticks;
+    countdown_interval = machine->countdown_interval;
+    script_flags_write_known(&machine->flags, COUNTDOWN_KEPT_ACROSS_A_SCRIPT_CHANGE_FLAG, 0);
     script_soul_reset(machine);
     machine->soul.pills_registered = pills_registered;
     machine->soul.rollback_is_on = rollback_is_on;
     machine->soul.trick_is_on = trick_is_on;
+    if (countdown_is_kept) {
+        machine->soul.countdown_is_running = countdown_is_running;
+        machine->soul.countdown_step = countdown_step;
+        machine->soul.countdown_ticks = countdown_ticks;
+        machine->countdown_interval = countdown_interval;
+    }
     script_fades_end_mask(machine);
     machine->soul_state_keeps_pause = 0;
     machine->soul_vision_message_at = NEVER;
@@ -1734,23 +1817,31 @@ static int move_to_next_act(struct script_machine *machine)
     return 0;
 }
 
+static int names_a_script(const char *path)
+{
+    unsigned int length;
+
+    if (path == NULL) {
+        return 0;
+    }
+    length = (unsigned int)strlen(path);
+    return length > strlen(XML_SUFFIX) && strcmp(&path[length - strlen(XML_SUFFIX)], XML_SUFFIX) == 0;
+}
+
 static const char *first_script_change_of(const struct script_source *source)
 {
     unsigned int pc;
     unsigned int op;
+    unsigned int string_word;
+    const char *path;
 
-    pc = 0;
-    while (script_file_read_word(&source->file, pc, &op) == SCRIPT_FILE_OK) {
-        if (op == 0x24) {
-            unsigned int string_word;
-
-            if (script_file_read_word(&source->file, pc + 1, &string_word) != SCRIPT_FILE_OK) {
-                return NULL;
-            }
-            return script_file_string(&source->file, string_word);
+    for (pc = 0; script_file_read_word(&source->file, pc, &op) == SCRIPT_FILE_OK; pc++) {
+        if (op != SCRIPT_CHANGE_OP || script_file_read_word(&source->file, pc + 1, &string_word) != SCRIPT_FILE_OK) {
+            continue;
         }
-        if (!word_after_op(source, pc, &pc)) {
-            return NULL;
+        path = script_file_string(&source->file, string_word);
+        if (names_a_script(path)) {
+            return path;
         }
     }
     return NULL;
@@ -1764,7 +1855,7 @@ static void begin_script_change(struct script_machine *machine, const char *path
     machine->load_at = machine->teardown_at + LOAD_AFTER_TEARDOWN_TICKS;
 }
 
-static void move_to_next_script(struct script_machine *machine)
+static const char *exit_of_this_scene(const struct script_machine *machine)
 {
     const char *path;
 
@@ -1772,6 +1863,14 @@ static void move_to_next_script(struct script_machine *machine)
     if (path == NULL && machine->object_count > 0) {
         path = first_script_change_of(machine->objects[0].main_vm.source);
     }
+    return path;
+}
+
+static void move_to_next_script(struct script_machine *machine)
+{
+    const char *path;
+
+    path = exit_of_this_scene(machine);
     if (path == NULL) {
         machine->is_finished = 1;
         script_machine_note(machine, NULL, "stuck_with_nowhere_left_to_go", "");
@@ -1849,6 +1948,58 @@ static void push_when_stuck(struct script_machine *machine)
     move_to_next_script(machine);
 }
 
+static const char *scene_where_the_story_should_be(const struct script_machine *machine)
+{
+    int scene;
+
+    scene = machine->scene_name != NULL ? script_route_scene_index(machine->route, machine->scene_name) : -1;
+    if (scene < machine->furthest_scene) {
+        return machine->route->scenes[machine->furthest_scene];
+    }
+    if (scene < 0 || scene + 1 >= machine->route->scene_count) {
+        return NULL;
+    }
+    return machine->route->scenes[scene + 1];
+}
+
+static int scene_has_run_too_long(const struct script_machine *machine)
+{
+    if (machine->route == NULL || machine->route->scene_most_ticks <= 0 || machine->auto_press == SCRIPT_AUTO_OFF) {
+        return 0;
+    }
+    if (machine->teardown_at != NEVER || machine->load_at != NEVER || machine->stop_is_requested) {
+        return 0;
+    }
+    return machine->tick - machine->last_new_scene_tick >= (unsigned int)machine->route->scene_most_ticks;
+}
+
+static void move_on_when_the_scene_runs_too_long(struct script_machine *machine)
+{
+    const char *next;
+
+    if (!scene_has_run_too_long(machine)) {
+        return;
+    }
+    machine->last_new_scene_tick = machine->tick;
+    next = scene_where_the_story_should_be(machine);
+    if (next == NULL || find_source(machine, next) == NULL) {
+        next = exit_of_this_scene(machine);
+    }
+    if (next == NULL) {
+        script_machine_note(machine, NULL, "scene_timeout_found_no_way_on", machine->scene_name != NULL ? machine->scene_name : "");
+        return;
+    }
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("scene_timeout_left", machine->scene_name != NULL ? machine->scene_name : "");
+        machine->outputs->marked("scene_timeout_moved_to", next);
+    }
+    machine->is_finished = 0;
+    if (machine->outputs->scene_change_was_forced != NULL) {
+        machine->outputs->scene_change_was_forced();
+    }
+    begin_script_change(machine, next);
+}
+
 void script_machine_tick(struct script_machine *machine)
 {
     int index;
@@ -1856,7 +2007,9 @@ void script_machine_tick(struct script_machine *machine)
     if (script_soul_step_eyecatch(machine)) {
         return;
     }
+    move_on_when_the_scene_runs_too_long(machine);
     if (machine->is_finished) {
+        machine->tick = machine->tick + 1;
         return;
     }
     run_native_steps_before_tasks(machine);

@@ -346,7 +346,7 @@ def movies_text(movies):
 
 
 def route_steps_text(route):
-    lines = []
+    lines = ["scene_most_ticks %d\n" % route["scene_most_ticks"]] if "scene_most_ticks" in route else []
     for step in route["steps"]:
         lines.append("step %s %s %s %d %d %s\n" % (step["script"], step["action"], step.get("object", "-"), step.get("place", step.get("slot", 0)), route["dwell_ticks"][step.get("pace", "normal")], step.get("wait", "-").replace(" & ", "&")))
     return "".join(lines)

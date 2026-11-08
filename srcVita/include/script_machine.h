@@ -335,6 +335,9 @@ struct script_soul {
     struct script_timed_event time_jump_event;
 };
 
+#define SCRIPT_SCENES_SEEN_MAX 512
+#define COUNTDOWN_KEPT_ACROSS_A_SCRIPT_CHANGE_FLAG 0x1008u
+
 struct script_machine {
     const struct script_outputs *outputs;
     enum script_timing timing;
@@ -437,6 +440,11 @@ struct script_machine {
     int eyecatch_ticks_left;
     int countdown_interval;
     const struct script_route *route;
+    const char *scene_name;
+    unsigned int scene_hashes_seen[SCRIPT_SCENES_SEEN_MAX];
+    int scenes_seen;
+    int furthest_scene;
+    unsigned int last_new_scene_tick;
     int demo_soul_is_on;
     unsigned int random_state;
 };

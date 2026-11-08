@@ -12,7 +12,7 @@ TICKS_PER_SECOND = 60
 PACING_FILE_NAME = "route_pacing.txt"
 READY_MARK = "route_step_ready"
 BEGAN_MARK = "route_step_began"
-MOST_PASSES = 4
+MOST_PASSES = 6
 MOST_EXTRA_TICKS = 300
 
 

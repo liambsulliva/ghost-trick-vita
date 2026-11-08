@@ -203,6 +203,15 @@ static void read_route(const char *folder)
             printf("route_pacing.txt is invalid\n");
         }
     }
+    snprintf(path, sizeof(path), "%s/scenes.txt", folder);
+    source = fopen(path, "r");
+    if (source != NULL) {
+        size = fread(text, 1, sizeof(text), source);
+        fclose(source);
+        if (!script_route_read_scenes(&replay_route, text, (unsigned int)size)) {
+            printf("scenes.txt is invalid\n");
+        }
+    }
     machine.route = &replay_route;
 }
 

@@ -261,6 +261,11 @@ void script_ui_view_clear(void)
     stream_phase = 0.0f;
 }
 
+void script_ui_view_stop_clips(void)
+{
+    memset(playing, 0, sizeof(playing));
+}
+
 void script_ui_view_start(const struct script_tables *new_tables)
 {
     tables = new_tables;

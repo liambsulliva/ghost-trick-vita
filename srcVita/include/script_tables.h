@@ -235,6 +235,7 @@ const struct script_movie *script_tables_find_movie(const struct script_tables *
 const struct script_flipbook *script_tables_find_flipbook(const struct script_tables *tables, const char *name);
 int script_tables_read_soul(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_route(struct script_tables *tables, const char *text, unsigned int text_size);
+int script_tables_read_scenes(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_route_pacing(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_ui_clips(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_core_labels(struct script_tables *tables, const char *text, unsigned int text_size);

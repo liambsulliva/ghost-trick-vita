@@ -6,6 +6,7 @@
 
 void script_ui_view_start(const struct script_tables *tables);
 void script_ui_view_clear(void);
+void script_ui_view_stop_clips(void);
 void script_ui_view_clip_started(const char *name, int level_from, int level_to);
 void script_ui_view_hud_changed(const struct script_hud_view *view);
 void script_ui_view_tap_balloon_opened(int slot, int kind, float anchor_x, float anchor_y);

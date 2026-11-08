@@ -77,6 +77,7 @@ struct script_hud_view {
 struct script_outputs {
     void (*fetched)(const struct script_fetch *fetch);
     void (*stage_cleared)(void);
+    void (*scene_change_was_forced)(void);
     void (*room_loaded)(int room, int camera_x, int camera_y);
     void (*camera_cut)(int x, int y);
     void (*camera_moved)(int x, int y);

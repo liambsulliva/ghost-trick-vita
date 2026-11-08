@@ -366,7 +366,7 @@ def outputs_of_the_read_ahead_step(output_folder):
     scripts_folder = os.path.join(output_folder, script_assets.SCRIPTS_FOLDER)
     if not os.path.isdir(scripts_folder):
         return set()
-    return set(script_assets.SCRIPTS_FOLDER + "/" + name for name in os.listdir(scripts_folder) if name.endswith((read_ahead.AHEAD_EXTENSION, read_ahead.BUNDLE_EXTENSION)) or name == route_pacing.PACING_FILE_NAME)
+    return set(script_assets.SCRIPTS_FOLDER + "/" + name for name in os.listdir(scripts_folder) if name.endswith((read_ahead.AHEAD_EXTENSION, read_ahead.BUNDLE_EXTENSION)) or name in (route_pacing.PACING_FILE_NAME, read_ahead.SCENES_FILE_NAME))
 
 
 def write_outputs(output_folder, record, texture_results, files, manifest, script_paths):

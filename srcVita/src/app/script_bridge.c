@@ -126,6 +126,14 @@ static void on_stage_cleared(void)
     mask_fade_is_alive = 0;
     mask_fade_is_white = 0;
     sound_request_stop_loop(ALL_SOUND_LOOPS);
+    script_ui_view_stop_clips();
+}
+
+static void on_scene_change_was_forced(void)
+{
+    write_cue("music_stop", "-");
+    current_music = NULL;
+    music_request_stop(0);
 }
 
 static void on_ui_clip_started(const char *name, int level_from, int level_to)
@@ -775,6 +783,7 @@ static void on_marked(const char *what, const char *name)
 
 static const struct script_outputs bridge_outputs = {
     .stage_cleared = on_stage_cleared,
+    .scene_change_was_forced = on_scene_change_was_forced,
     .room_loaded = on_room_loaded,
     .camera_cut = on_camera_cut,
     .camera_moved = on_camera_moved,
