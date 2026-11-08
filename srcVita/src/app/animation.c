@@ -6,11 +6,129 @@
 
 #define ANIMATION_LINE_MAX 256
 
+static const char *after_spaces(const char *text)
+{
+    while (*text == ' ' || *text == '\t') {
+        text = text + 1;
+    }
+    return text;
+}
+
+static int is_digit(char character)
+{
+    return character >= '0' && character <= '9';
+}
+
+static int ends_a_field(char character)
+{
+    return character == ' ' || character == '\t' || character == '\0' || character == '\r' || character == '\n';
+}
+
+static int read_word(const char **cursor, char *word, size_t word_size)
+{
+    const char *text;
+    size_t length;
+
+    text = after_spaces(*cursor);
+    length = 0;
+    while (!ends_a_field(text[length])) {
+        if (length + 1 >= word_size) {
+            return 0;
+        }
+        word[length] = text[length];
+        length = length + 1;
+    }
+    word[length] = '\0';
+    *cursor = text + length;
+    return length > 0;
+}
+
+static int read_count(const char **cursor, unsigned int *value)
+{
+    const char *text;
+    unsigned int count;
+
+    text = after_spaces(*cursor);
+    if (!is_digit(*text)) {
+        return 0;
+    }
+    count = 0;
+    while (is_digit(*text)) {
+        count = count * 10u + (unsigned int)(*text - '0');
+        text = text + 1;
+    }
+    *value = count;
+    *cursor = text;
+    return ends_a_field(*text);
+}
+
+static int read_plain_decimal(const char **cursor, float *value)
+{
+    const char *text;
+    double whole;
+    double fraction;
+    double fraction_scale;
+    int digits;
+    int is_negative;
+
+    text = after_spaces(*cursor);
+    is_negative = *text == '-';
+    if (*text == '-' || *text == '+') {
+        text = text + 1;
+    }
+    whole = 0.0;
+    fraction = 0.0;
+    fraction_scale = 1.0;
+    digits = 0;
+    while (is_digit(*text)) {
+        whole = whole * 10.0 + (double)(*text - '0');
+        text = text + 1;
+        digits = digits + 1;
+    }
+    if (*text == '.') {
+        text = text + 1;
+        while (is_digit(*text)) {
+            fraction = fraction * 10.0 + (double)(*text - '0');
+            fraction_scale = fraction_scale * 10.0;
+            text = text + 1;
+            digits = digits + 1;
+        }
+    }
+    if (digits == 0 || !ends_a_field(*text)) {
+        return 0;
+    }
+    whole = whole + fraction / fraction_scale;
+    *value = (float)(is_negative ? -whole : whole);
+    *cursor = text;
+    return 1;
+}
+
+static int read_frame_line_quickly(const char *line, struct animation_frame *frame)
+{
+    float *const numbers[] = { &frame->x, &frame->y, &frame->width, &frame->height, &frame->u, &frame->v, &frame->u_size, &frame->v_size };
+    const char *cursor;
+    size_t index;
+
+    cursor = line + strlen("frame ");
+    if (!read_word(&cursor, frame->texture_name, sizeof(frame->texture_name)) || !read_count(&cursor, &frame->ticks)) {
+        return 0;
+    }
+    for (index = 0; index < sizeof(numbers) / sizeof(numbers[0]); index++) {
+        if (!read_plain_decimal(&cursor, numbers[index])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static int read_frame_line(const char *line, struct animation_frame *frame)
 {
     int fields_read;
 
-    fields_read = sscanf(line, "frame " ASSET_NAME_SCAN " %u %f %f %f %f %f %f %f %f", frame->texture_name, &frame->ticks, &frame->x, &frame->y, &frame->width, &frame->height, &frame->u, &frame->v, &frame->u_size, &frame->v_size);
+    fields_read = 10;
+    if (!read_frame_line_quickly(line, frame)) {
+        fields_read = sscanf(line, "frame " ASSET_NAME_SCAN " %u %f %f %f %f %f %f %f %f", frame->texture_name, &frame->ticks, &frame->x, &frame->y, &frame->width, &frame->height, &frame->u, &frame->v, &frame->u_size, &frame->v_size);
+    }
     if (fields_read != 10) {
         return ANIMATION_ERR_BAD_LINE;
     }

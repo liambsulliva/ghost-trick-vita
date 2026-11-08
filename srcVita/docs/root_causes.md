@@ -208,6 +208,8 @@ Each script change loads that script's animation bundle on the main thread, and 
 
 Guard: the library finds names through a hash index, and a bundle first counts its new animations and makes room for all of them in one pass. Reading the next script's bundle before the change is still open: the new script's first acts need their animations in the same tick, so the read cannot simply move later.
 
+Run 13 showed the first bundle still taking 556 ms: a 258 ms read and about 3 ms of parsing per animation, because each frame line went through `sscanf` with eight `%f` fields, which is slow in the Vita's C library. Frame lines are now read by a direct decimal reader for the converter's `%.6f` format, with `sscanf` kept as the fallback; it matches `sscanf` on all 609,781 baked frame lines.
+
 ### 29. Effect art listed by hand, one id at a time
 
 Effect rows and effect movies were written by hand for the effects Chapter 1 used, so 152 of the 178 effect ids that the whole game's scripts spawn drew nothing. Stage 6 draws characters such as its sofa man and the dog's poses as effects, so whole scenes played empty.
