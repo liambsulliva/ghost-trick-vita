@@ -1007,6 +1007,13 @@ void script_player_notebook_button(void)
     }
 }
 
+void script_player_character_button(void)
+{
+    if (phase == PHASE_RUNNING && data != NULL) {
+        script_soul_note_character_button(&data->machine);
+    }
+}
+
 void script_player_tap_balloon(int is_right)
 {
     if (phase == PHASE_RUNNING && data != NULL) {

@@ -31,6 +31,10 @@
 #define SCRIPT_RECENT_FETCH_MAX 64
 #define SCRIPT_RUN_STEP_MAX 4096
 #define SCRIPT_ACTOR_POINT_MAX 4
+#define SCRIPT_GHOST_CICEL 0
+#define SCRIPT_GHOST_MISSILE 1
+#define SCRIPT_GHOST_BOSS 2
+#define SCRIPT_GHOST_COUNT 3
 #define SCRIPT_ACTOR_COUNTER_COUNT 5
 #define SCRIPT_NO_SELECTION -1
 #define SCRIPT_NOTED_OP_BYTES ((SCRIPT_OPCODE_COUNT / 8) + 1)
@@ -266,6 +270,10 @@ struct script_soul {
     int player_opened_soul_view;
     int active_object;
     int active_slot;
+    int active_ghost;
+    int ghost_core_objects[SCRIPT_GHOST_COUNT];
+    int ghost_core_slots[SCRIPT_GHOST_COUNT];
+    int character_button_is_pending;
     int trick_is_on;
     int input_is_off;
     int camera_is_locked;
@@ -542,6 +550,8 @@ void script_soul_drag_camera(struct script_machine *machine, float delta_x, floa
 void script_soul_note_ghost(struct script_machine *machine);
 void script_soul_note_pill(struct script_machine *machine, enum script_pill_id id);
 void script_soul_note_tap(struct script_machine *machine, int tap_group);
+void script_soul_note_character_button(struct script_machine *machine);
+void script_soul_make_ghost_active(struct script_machine *machine, int ghost);
 void script_soul_note_direction(struct script_machine *machine, int direction_x, int direction_y);
 void script_soul_set_held(struct script_machine *machine, float held_x, float held_y);
 void script_soul_reset(struct script_machine *machine);

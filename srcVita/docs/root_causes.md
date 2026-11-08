@@ -424,6 +424,12 @@ Native decides whether a script runs each frame in `func_02027db8`, the VM's is-
 
 Guard: `script_machine_vm_is_paused` runs class 1 while the view is open or leaving, and pauses it for a talk, a dead talk (pGameMainDeadTalk) or a choice panel. `tests/unit/test_pause_classes.c` checks every class. The route drops the three ghost-offs the scripts now do themselves (Chapter 2's telephone, Chapter 5's telephone, Chapter 6's caster); Chapter 6 plays all 42 steps without the breaker. Chapter 4's office and Chapter 7's dead talk were routed around the old freeze and need new routes.
 
+### 63. The other ghosts and Jowd had no controls
+
+Native keeps the active ghost in game+0xc bits 13-14 (`func_0201132c` reads 1 as Missile; `func_0201424c` sets Missile, `func_02014260` Sissel, `func_02014270` the boss). The `GameApp Exception` commands (`func_02013b18`) choose it: `Missile:On`, then `Missile:Off` or `Cicel:On` for Sissel, and `Boss:On`. The `GameApp Button` commands (`func_020135c8`) show HUD buttons by slot: Jawed 5, Missile 6, Cicel 7. In the ghost view the switch (`func_02035078`) toggles Sissel and Missile when both buttons are registered, and the HUD board (`func_0204f850`) sends `* JAWED CALL` when Jowd's button is pressed. Every core change also sends `SV_CHGCORE_MISSILE` or `SV_CHGCORE_CICEL` after `SV_CHGCORE` (`func_0206001c`). The port knew none of these, so the prison escape (st03_game012, 42 `JAWED CALL` handlers) could not call Jowd, and Missile's scenes in Chapters 14, 15, 17 and 18 had no switch.
+
+Guard: the soul keeps the active ghost and each ghost's last core; Jowd's pill and the Missile and Sissel switch pills sit at the bottom centre with the remaster's icons and TRIANGLE (when no balloon takes it), and the commands, the switch and the call follow the native functions above. `tests/unit/test_character_buttons.c` covers Jowd's call, the switch both ways, the exceptions and the per-ghost cores. Still open: Missile's green and the boss's blue ghost views, and Missile's exchange.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

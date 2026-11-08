@@ -134,6 +134,11 @@ static int current_core_is_busy(const struct script_machine *machine)
     return soul->active_object >= 0 && soul->active_object < machine->object_count && (machine->objects[soul->active_object].actor.busy_cores & (1 << soul->active_slot)) != 0;
 }
 
+static int both_ghosts_can_switch(const struct script_soul *soul)
+{
+    return (soul->pills_registered & BIT(SCRIPT_PILL_MISSILE)) != 0 && (soul->pills_registered & BIT(SCRIPT_PILL_CICEL)) != 0;
+}
+
 static int pill_is_wanted(const struct script_machine *machine, enum script_pill_id id, enum pill_group group)
 {
     const struct script_soul *soul;
@@ -155,6 +160,12 @@ static int pill_is_wanted(const struct script_machine *machine, enum script_pill
         return is_registered && group == GROUP_GHOST && !soul->view_demo_is_on;
     case SCRIPT_PILL_HOURGLASS:
         return soul->rollback_is_on && group != GROUP_NONE;
+    case SCRIPT_PILL_JOWD:
+        return is_registered && group == GROUP_NORMAL;
+    case SCRIPT_PILL_MISSILE:
+        return both_ghosts_can_switch(soul) && group == GROUP_GHOST && !soul->view_demo_is_on && soul->active_ghost != SCRIPT_GHOST_MISSILE;
+    case SCRIPT_PILL_CICEL:
+        return both_ghosts_can_switch(soul) && group == GROUP_GHOST && !soul->view_demo_is_on && soul->active_ghost == SCRIPT_GHOST_MISSILE;
     default:
         return 0;
     }

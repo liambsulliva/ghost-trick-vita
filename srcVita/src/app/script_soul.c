@@ -146,6 +146,8 @@ static int core_is_for_the_dead(const struct script_machine *machine, int object
     return machine->objects[object_index].is_dead || machine->objects[object_index].actor.class_id == DEAD_TALK_GIMMICK_CLASS_ID;
 }
 
+static void take_character_button(struct script_machine *machine);
+
 static void arrive_at_core(struct script_machine *machine, int object_index, int slot)
 {
     struct script_soul *soul;
@@ -160,8 +162,15 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
     if (machine->outputs->marked != NULL) {
         machine->outputs->marked("core", machine->objects[object_index].name);
     }
+    soul->ghost_core_objects[soul->active_ghost] = object_index;
+    soul->ghost_core_slots[soul->active_ghost] = slot;
     if (soul->is_on) {
-        script_machine_send(machine, "*", "SYSTEM", core_is_for_the_dead(machine, object_index) ? "SV_DEADCORE" : "SV_CHGCORE");
+        if (core_is_for_the_dead(machine, object_index)) {
+            script_machine_send(machine, "*", "SYSTEM", "SV_DEADCORE");
+        } else {
+            script_machine_send(machine, "*", "SYSTEM", "SV_CHGCORE");
+            script_machine_send(machine, "*", "SYSTEM", soul->active_ghost == SCRIPT_GHOST_MISSILE ? "SV_CHGCORE_MISSILE" : "SV_CHGCORE_CICEL");
+        }
     }
     player_moved_in_tutorial(machine);
 }
@@ -1062,6 +1071,12 @@ static void run_button_command(struct script_machine *machine, const char *arg)
         soul->camera_is_locked = 1;
     } else if (strcmp(arg, "Camera:On") == 0) {
         soul->camera_is_locked = 0;
+    } else if (strcmp(arg, "Jawed:On") == 0 || strcmp(arg, "Jawed:Off") == 0) {
+        script_pills_register(machine, SCRIPT_PILL_JOWD, strcmp(arg, "Jawed:On") == 0);
+    } else if (strcmp(arg, "Missile:On") == 0 || strcmp(arg, "Missile:Off") == 0) {
+        script_pills_register(machine, SCRIPT_PILL_MISSILE, strcmp(arg, "Missile:On") == 0);
+    } else if (strcmp(arg, "Cicel:On") == 0 || strcmp(arg, "Cicel:Off") == 0) {
+        script_pills_register(machine, SCRIPT_PILL_CICEL, strcmp(arg, "Cicel:On") == 0);
     }
 }
 
@@ -1076,6 +1091,12 @@ static void run_exception_command(struct script_machine *machine, const char *ar
         machine->soul_state_keeps_pause = 0;
     } else if (strcmp(arg, "ForceDemo") == 0) {
         machine->mode_byte = DEMO_MODE;
+    } else if (strcmp(arg, "Missile:On") == 0) {
+        script_soul_make_ghost_active(machine, SCRIPT_GHOST_MISSILE);
+    } else if (strcmp(arg, "Missile:Off") == 0 || strcmp(arg, "Cicel:On") == 0) {
+        script_soul_make_ghost_active(machine, SCRIPT_GHOST_CICEL);
+    } else if (strcmp(arg, "Boss:On") == 0) {
+        script_soul_make_ghost_active(machine, SCRIPT_GHOST_BOSS);
     }
 }
 
@@ -2219,6 +2240,10 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         soul->ghost_is_pending = 0;
         take_ghost_button(machine);
     }
+    if (soul->character_button_is_pending) {
+        soul->character_button_is_pending = 0;
+        take_character_button(machine);
+    }
     if (soul->tap_group_is_pending != 0) {
         if (!machine->pause_bit) {
             script_balloons_tap(machine, soul->tap_group_is_pending);
@@ -2285,6 +2310,46 @@ void script_soul_note_tap(struct script_machine *machine, int tap_group)
     machine->soul.tap_group_is_pending = tap_group;
 }
 
+void script_soul_note_character_button(struct script_machine *machine)
+{
+    machine->soul.character_button_is_pending = 1;
+}
+
+void script_soul_make_ghost_active(struct script_machine *machine, int ghost)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (ghost == soul->active_ghost) {
+        return;
+    }
+    soul->active_ghost = ghost;
+    if (soul->ghost_core_objects[ghost] != NO_CORE && soul->ghost_core_objects[ghost] < machine->object_count) {
+        soul->active_object = soul->ghost_core_objects[ghost];
+        soul->active_slot = soul->ghost_core_slots[ghost];
+        machine->active_core_name = machine->objects[soul->active_object].name;
+    }
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("ghost", ghost == SCRIPT_GHOST_MISSILE ? "missile" : ghost == SCRIPT_GHOST_BOSS ? "boss" : "cicel");
+    }
+}
+
+static void take_character_button(struct script_machine *machine)
+{
+    if (script_pills_is_up(machine, SCRIPT_PILL_JOWD) && script_soul_world_is_playable(machine)) {
+        script_pills_press(machine, SCRIPT_PILL_JOWD, 0);
+        script_machine_send(machine, "*", "JAWED", "CALL");
+        return;
+    }
+    if (script_pills_is_up(machine, SCRIPT_PILL_MISSILE)) {
+        script_pills_press(machine, SCRIPT_PILL_MISSILE, PILL_HOLD_AFTER_VIEW_CHANGE);
+        script_soul_make_ghost_active(machine, SCRIPT_GHOST_MISSILE);
+    } else if (script_pills_is_up(machine, SCRIPT_PILL_CICEL)) {
+        script_pills_press(machine, SCRIPT_PILL_CICEL, PILL_HOLD_AFTER_VIEW_CHANGE);
+        script_soul_make_ghost_active(machine, SCRIPT_GHOST_CICEL);
+    }
+}
+
 void script_soul_note_direction(struct script_machine *machine, int direction_x, int direction_y)
 {
     machine->soul.direction_x = direction_x;
@@ -2307,6 +2372,9 @@ void script_soul_reset(struct script_machine *machine)
     machine->soul.route_step = -1;
     machine->soul.route_acted_step = -1;
     machine->soul.active_object = NO_CORE;
+    machine->soul.ghost_core_objects[SCRIPT_GHOST_CICEL] = NO_CORE;
+    machine->soul.ghost_core_objects[SCRIPT_GHOST_MISSILE] = NO_CORE;
+    machine->soul.ghost_core_objects[SCRIPT_GHOST_BOSS] = NO_CORE;
     machine->soul.chain_needs_reset = 1;
     machine->soul.chain_pick_object = NO_CORE;
     machine->soul.start_message_at = -1;
@@ -2324,6 +2392,8 @@ void script_soul_set_first_core(struct script_machine *machine, int object_index
 {
     machine->soul.active_object = object_index;
     machine->soul.active_slot = slot;
+    machine->soul.ghost_core_objects[machine->soul.active_ghost] = object_index;
+    machine->soul.ghost_core_slots[machine->soul.active_ghost] = slot;
     machine->active_core_name = machine->objects[object_index].name;
 }
 

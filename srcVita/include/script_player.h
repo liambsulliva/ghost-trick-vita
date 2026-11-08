@@ -23,6 +23,7 @@ void script_player_back_button(void);
 void script_player_hourglass_button(void);
 void script_player_notebook_button(void);
 void script_player_tap_balloon(int is_right);
+void script_player_character_button(void);
 void script_player_direction(int direction_x, int direction_y);
 void script_player_held_direction(float held_x, float held_y);
 void script_player_set_auto_play(int is_on);
