@@ -2787,7 +2787,7 @@
       {
         "script": "st06-st06_game002_Expand",
         "action": "move",
-        "object": "dog",
+        "object": "deadtalk_test",
         "pace": "normal",
         "footage_s": 3605.5,
         "wait": "tutorial:touched"
