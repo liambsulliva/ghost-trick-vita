@@ -334,7 +334,7 @@ def ds_music_output_files(set_description, rom_path, music_results, record):
         return {}
     with ds_rom.DsRom(rom_path) as rom:
         sdat = rom.read_file(section["archive"])
-    return ds_music.music_files(section, sdat, music_results, record)
+    return ds_music.music_files(section, sdat, music_results, record, set_description.get("scripts", {}).get("music_ids", {}))
 
 
 def text_output_files(set_description, animation_texts, steps):

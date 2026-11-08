@@ -42,12 +42,18 @@ def bake_track(sdat, sequence, name, record, code):
     return ogg, loop_points
 
 
-def music_files(section, sdat, remaster_tracks, record):
+def sequence_of_music_id(sdat, music_ids):
+    by_index = {index: name for name, index in sseq_render.named_sequences(sseq_render.read_archive(sdat)).items()}
+    return {name: by_index[int(music_id)] for music_id, name in music_ids.items() if int(music_id) in by_index}
+
+
+def music_files(section, sdat, remaster_tracks, record, music_ids=None):
     code = bake_record.code_fingerprint(CODE_FILES, subprocess.run(["ffmpeg", "-version"], capture_output=True).stdout.decode("utf-8", "replace"))
     files = {}
+    derived = sequence_of_music_id(sdat, music_ids or {})
     for track in remaster_tracks:
         name = track["name"]
-        sequence = section["sequences"].get(name)
+        sequence = section.get("sequences", {}).get(name, derived.get(name))
         if sequence is None:
             files[track_path(name, ".ogg")] = track["ogg"]
             if track["loop_points"] is not None:
