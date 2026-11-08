@@ -1407,6 +1407,7 @@
   ],
   "ui_clips": true,
   "route": {
+    "scene_most_ticks": 51600,
     "dwell_ticks": {
       "normal": 90,
       "quick": 45,
@@ -2884,6 +2885,38 @@
         "object": "tree",
         "pace": "quick",
         "footage_s": 3785.5,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game004_Expand",
+        "action": "ghost_on",
+        "object": "tree",
+        "pace": "normal",
+        "footage_s": 3973.25,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game004_Expand",
+        "action": "move",
+        "object": "tree",
+        "pace": "normal",
+        "footage_s": 3974.0,
+        "wait": "view & usable:tree"
+      },
+      {
+        "script": "st06-st06_game004_Expand",
+        "action": "ghost_off",
+        "object": "tree",
+        "pace": "quick",
+        "footage_s": 3975.5,
+        "wait": "core:tree"
+      },
+      {
+        "script": "st06-st06_game004_Expand",
+        "action": "trick",
+        "object": "tree",
+        "pace": "quick",
+        "footage_s": 3976.0,
         "wait": "playable & no_talk"
       }
     ]
