@@ -66,6 +66,7 @@ void script_machine_init(struct script_machine *machine, const struct script_out
     machine->teardown_at = NEVER;
     machine->load_at = NEVER;
     machine->game_start_at = NEVER;
+    machine->camera_follow_object = SCRIPT_NO_SELECTION;
     machine->pause_clear_at = NEVER;
     machine->soul_vision_message_at = NEVER;
     machine->soul_sound_at = NEVER;
@@ -1462,6 +1463,7 @@ static void tear_down_script(struct script_machine *machine)
     machine->pause_clear_at = NEVER;
     machine->fade_count = 0;
     machine->pan_is_active = 0;
+    machine->camera_follow_object = SCRIPT_NO_SELECTION;
     pills_registered = machine->soul.pills_registered;
     rollback_is_on = machine->soul.rollback_is_on;
     trick_is_on = machine->soul.trick_is_on;

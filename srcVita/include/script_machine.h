@@ -382,6 +382,7 @@ struct script_machine {
     int camera_band_keys[SCRIPT_CAMERA_BAND_MAX];
     int camera_band_values[SCRIPT_CAMERA_BAND_MAX];
     int camera_snap_is_off;
+    int camera_follow_object;
     int world_origin_x;
     int world_origin_y;
     int room;

@@ -25,6 +25,7 @@
 #define DS_VIEW_WIDTH 256
 #define DS_VIEW_HEIGHT 192
 #define FIRST_CORE_NODE 10
+#define FRAMING_FARTHEST_FROM_CORE 120
 #define RADIANS_TO_DEGREES 57.29578f
 #define CAMERA_BAND_UNUSED 0xffff
 #define CAMERA_BAND_SNAP_MARGIN 16
@@ -509,6 +510,42 @@ static void pan_to_object(struct script_machine *machine, struct script_vm *vm, 
     begin_pan(machine, target_x, target_y, (int)script_machine_u32(words, 4), 1);
 }
 
+static void follow_the_current_actor(struct script_machine *machine, const struct script_vm *vm)
+{
+    const struct script_object *object;
+
+    object = vm->selected_object != SCRIPT_NO_SELECTION ? &machine->objects[vm->selected_object] : vm->owner;
+    if (object != NULL && object->actor.exists) {
+        machine->camera_follow_object = (int)(object - machine->objects);
+    }
+}
+
+static void frame_the_core_and_the_followed_actor(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+{
+    float core_x;
+    float core_y;
+    float followed_x;
+    float followed_y;
+    int middle_x;
+    int speed;
+
+    if (machine->soul.active_object < 0 || machine->camera_follow_object == SCRIPT_NO_SELECTION || !machine->objects[machine->camera_follow_object].actor.exists) {
+        return;
+    }
+    script_machine_node_position(&machine->objects[machine->soul.active_object], FIRST_CORE_NODE + machine->soul.active_slot, &core_x, &core_y);
+    script_machine_node_position(&machine->objects[machine->camera_follow_object], 0, &followed_x, &followed_y);
+    middle_x = (int)((core_x + followed_x) / 2.0f);
+    if ((float)middle_x - core_x > FRAMING_FARTHEST_FROM_CORE || core_x - (float)middle_x > FRAMING_FARTHEST_FROM_CORE) {
+        return;
+    }
+    speed = (int)script_machine_u32(words, 0);
+    if (speed < 0) {
+        script_machine_note(machine, vm, "framing_floor_not_ported", "");
+        speed = -speed;
+    }
+    begin_pan(machine, machine->world_origin_x + middle_x - DS_VIEW_WIDTH / 2, machine->camera_y, speed, 0);
+}
+
 void script_machine_set_world_origin(struct script_machine *machine, int x, int y)
 {
     machine->world_origin_x = x;
@@ -587,6 +624,13 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         break;
     case 0xcc:
         machine->camera_snap_is_off = 1;
+        machine->camera_follow_object = SCRIPT_NO_SELECTION;
+        break;
+    case 0xc9:
+        follow_the_current_actor(machine, vm);
+        break;
+    case 0xca:
+        frame_the_core_and_the_followed_actor(machine, vm, words);
         break;
     case 0xd5:
         set_camera_band(machine, signed_word(words[0]), signed_word(words[1]));
