@@ -11,6 +11,7 @@
 #include "music_engine.h"
 #include "run_log.h"
 #include "next_chapter_card.h"
+#include "packed_file.h"
 #include "scene_stage.h"
 #include "script_bridge.h"
 #include "script_machine.h"
@@ -106,6 +107,36 @@ static void note_failure(const char *reason, const char *name)
     run_log_write("script problem reason=%s name=%s", reason, name);
 }
 
+static int unpack_if_packed(const char *name, const char *extension, unsigned char **bytes, unsigned int *size)
+{
+    unsigned char *unpacked;
+    unsigned int unpacked_size;
+    unsigned long long started_us;
+
+    if (!packed_file_is_packed(*bytes, *size)) {
+        return FILE_OK;
+    }
+    started_us = clock_now_us();
+    unpacked_size = packed_file_unpacked_size(*bytes);
+    unpacked = mem_alloc(unpacked_size + 1u);
+    if (unpacked == NULL) {
+        mem_free(*bytes);
+        return FILE_ERR_MEMORY;
+    }
+    if (!packed_file_unpack(*bytes, *size, unpacked, unpacked_size)) {
+        run_log_write("script problem reason=unpack_failed name=%s%s", name, extension);
+        mem_free(unpacked);
+        mem_free(*bytes);
+        return FILE_ERR_READ;
+    }
+    unpacked[unpacked_size] = '\0';
+    mem_free(*bytes);
+    *bytes = unpacked;
+    *size = unpacked_size;
+    run_log_write("script unpacked name=%s%s bytes=%u us=%llu", name, extension, unpacked_size, clock_now_us() - started_us);
+    return FILE_OK;
+}
+
 static int read_named_file(const char *name, const char *extension, unsigned char **bytes, unsigned int *size)
 {
     char path[FILE_PATH_MAX];
@@ -117,10 +148,11 @@ static int read_named_file(const char *name, const char *extension, unsigned cha
     }
     started_us = clock_now_us();
     result = file_read_whole(path, bytes, size);
-    if (result == FILE_OK) {
-        run_log_write("script read name=%s%s bytes=%u us=%llu", name, extension, *size, clock_now_us() - started_us);
+    if (result != FILE_OK) {
+        return result;
     }
-    return result;
+    run_log_write("script read name=%s%s bytes=%u us=%llu", name, extension, *size, clock_now_us() - started_us);
+    return unpack_if_packed(name, extension, bytes, size);
 }
 
 typedef int (*text_table_reader)(struct script_tables *tables, const char *text, unsigned int text_size);

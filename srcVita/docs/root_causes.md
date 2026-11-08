@@ -272,6 +272,12 @@ Op 0xaa logged as not ported on the stage 6 dog. The port then advanced it by it
 
 Guard: 0xaa sets a counted loop on the actor and moves the pc itself (2 words with an actor, 3 and a yield without), the stepper stops at the loop word when the count runs out, the end test reads the done bit, and a new motion clears both. Before routing an op, check its native case for a pc step that differs from the length table.
 
+### 38. Script changes waiting on plain-text bundles
+
+After the parsing fixes (28), run 21's script changes still stalled 170 to 325 ms, and the bundle read was most of it: 175 to 210 ms for 0.7 to 1 MB of plain text, read on the main thread while textures streamed. The bundles are frame lines that repeat almost word for word, so they compress about 12.8 to 1 with deflate (994 KB to 81 KB for the largest).
+
+Guard: the read-ahead step writes bundles as `GPK1`, the unpacked size and raw deflate; the player's file reader unpacks any file carrying that header (`packed_file.c`, a table-driven inflate written for this port) and still reads plain files as before. The largest bundle unpacks in under 1 ms on the Mac. Any other large text table read on the main thread can use the same header without a loader change.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
