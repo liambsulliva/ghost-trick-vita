@@ -53,6 +53,8 @@ HEAD_FACE_SIZE = 256
 FACE_WIDTH = 360
 FACE_HEIGHT = 540
 MESSAGE_FOLDER = "natives/android/gamedesign/text/%s/%s_%04d.msg.22"
+PER_SCRIPT_TEXT_WORD = "{script}"
+EXPAND_SUFFIX = "_Expand"
 MESSAGE_FILE_NUMBER_LIMIT = 10000
 ENTRY_PAGE_PATTERN = re.compile(r"^(.*)_(\d\d)$")
 TABLE_VARIANT_PATTERN = re.compile(r"^(st\d\d_.+_\d{3})_(\d{2,3}[a-z]?)$")
@@ -353,17 +355,41 @@ def audio_rows(packs, scripts, arm9):
 
 
 def message_files_of(packs, chapter):
+    return numbered_message_files(packs, MESSAGE_FOLDER % (chapter, chapter, 0)[:-len("0000.msg.22")] + "%04d.msg.22")
+
+
+def numbered_message_files(packs, pattern):
     paths = []
     for number in range(MESSAGE_FILE_NUMBER_LIMIT):
-        path = MESSAGE_FOLDER % (chapter, chapter, number)
+        path = pattern % number
         if path_exists(packs, path):
             paths.append(path)
     return paths
 
 
-def entries_by_label(packs, chapter, text_key):
+def script_text_name(path):
+    name = os.path.basename(path)
+    if name.endswith(".xml"):
+        name = name[:-len(".xml")]
+    if name.endswith(EXPAND_SUFFIX):
+        name = name[:-len(EXPAND_SUFFIX)]
+    return name
+
+
+def message_files_for_script(packs, set_description, path, cache):
+    stage = path.split("/", 1)[0] if "/" in path else set_description["chapter"]
+    pattern = set_description.get("talk", {}).get("message_files", {}).get(stage, MESSAGE_FOLDER.replace("%s", stage, 2))
+    if PER_SCRIPT_TEXT_WORD in pattern:
+        own = pattern.replace(PER_SCRIPT_TEXT_WORD, script_text_name(path))
+        return (own,) if path_exists(packs, own) else ()
+    if pattern not in cache:
+        cache[pattern] = tuple(numbered_message_files(packs, pattern))
+    return cache[pattern]
+
+
+def entries_by_label(packs, chapter, text_key, paths=None):
     pages = collections.defaultdict(dict)
-    for path in message_files_of(packs, chapter):
+    for path in (paths if paths is not None else message_files_of(packs, chapter)):
         prefix = os.path.basename(path).split(".")[0] + "_"
         for name in message_file.read_entry_names(packs.read(path), text_key):
             if not name.startswith(prefix):
@@ -444,13 +470,27 @@ def expand_set(set_description, packs, rom_path, text_key):
     if unresolved:
         print("tables with no art: %d (%s)" % (len(unresolved), ", ".join(unresolved[:12])))
     expanded["music"], section["music_ids"], expanded["sounds"], section["sound_kinds"] = audio_rows(packs, scripts, arm9)
-    entries = entries_by_label(packs, chapter, text_key)
+    file_cache = {}
+    entries_cache = {}
+    first_source_of_label = {}
+    labels_meaning_two_things = set()
+
+    def entries_for(path):
+        files = message_files_for_script(packs, set_description, path, file_cache)
+        if files not in entries_cache:
+            entries_cache[files] = entries_by_label(packs, chapter, text_key, list(files))
+        return entries_cache[files]
+
     narration_rows = []
     talk_labels = collections.OrderedDict()
     bubble_rows = []
     balloon_rows = list(set_description.get("balloon_kinds", {}).get("no_label", []))
     balloon_style = set_description.get("balloon_kinds", {}).get("with_label")
     for path, script in scripts.items():
+        entries = entries_for(path)
+        for label in script.strings_of_ops((NARRATION_OP,) + tuple(TALK_OPS) + tuple(BALLOON_LABEL_OPS)):
+            if label in entries and first_source_of_label.setdefault(label, entries[label][0][0]) != entries[label][0][0]:
+                labels_meaning_two_things.add(label)
         for label in script.strings_of_ops((NARRATION_OP,)):
             if label in entries:
                 narration_rows.append({"name": label, "file": entries[label][0][0], "entry": entries[label][0][1], "later_entries": [entry for _, entry in entries[label][1:]]})
@@ -465,6 +505,8 @@ def expand_set(set_description, packs, rom_path, text_key):
                     if label in script.thorn_balloon_labels() and "thorn_sizes" in balloon_style:
                         art = dict(art, thorn_sizes=balloon_style["thorn_sizes"], texture=balloon_style["thorn_sizes"][0]["texture"])
                     balloon_rows.append({"label": label, "delay": balloon_style["delay"], "parts": [art, dict(balloon_style["text_part"], texture="bubble_" + label)]})
+    if labels_meaning_two_things:
+        print("text labels found in two message files, first kept: %d (%s)" % (len(labels_meaning_two_things), ", ".join(sorted(labels_meaning_two_things)[:12])))
     core_labels = set_description.get("core_labels")
     if core_labels is not None:
         for object_name, (name_id, action_id) in core_labels["objects"].items():
@@ -485,7 +527,7 @@ def expand_set(set_description, packs, rom_path, text_key):
     paths = face_paths(packs)
     face_rows = read_face_rows(arm9)
     talk = dict(set_description.get("talk", {}))
-    talk["entries"] = {label: entries[label] for label in talk_labels}
+    talk["entries"] = {label: entries_for(path)[label] for label, path in talk_labels.items()}
     talk["language_files"] = {label: languages.get(path) for label, path in talk_labels.items()}
     talk["system_line_texts"] = system_line_texts
     talk["face_rows"] = face_rows
