@@ -82,7 +82,7 @@ static void save_state_when_due(const char *what, const char *name)
     if (file == NULL) {
         return;
     }
-    fprintf(file, "chapter_mark %d\nphone_book_place %d\n", machine.chapter_mark, machine.phone_book_place);
+    fprintf(file, "chapter_mark %d\nphone_book_place %d\nfate_level %d\n", machine.chapter_mark, machine.phone_book_place, machine.fate_level);
     write_bytes(file, "game_flags", machine.flags.game, sizeof(machine.flags.game));
     write_bytes(file, "chapter_flags", machine.flags.chapter, sizeof(machine.flags.chapter));
     write_bytes(file, "game_bank_saved", machine.flags.game_bank_saved, sizeof(machine.flags.game_bank_saved));
@@ -126,6 +126,8 @@ static int load_state(const char *path)
             machine.chapter_mark = atoi(value);
         } else if (strcmp(line, "phone_book_place") == 0) {
             machine.phone_book_place = atoi(value);
+        } else if (strcmp(line, "fate_level") == 0) {
+            script_soul_set_fate_level(&machine, atoi(value));
         } else if (strcmp(line, "game_flags") == 0) {
             is_whole = is_whole && read_bytes(value, machine.flags.game, sizeof(machine.flags.game));
         } else if (strcmp(line, "chapter_flags") == 0) {
