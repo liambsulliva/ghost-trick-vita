@@ -228,6 +228,12 @@ When a script waits for a message only native code sends, the stuck detector pus
 
 Guard: while a route drives auto-play, the detector pushes after 1200 quiet ticks (the Santa wait drops to 35 s of game time, the whole-game replay still finishes all 180 steps with the same 11 pushes); manual play keeps 3000. This only shortens the wait. Each `stuck_pushed_handler` line still names a native sender to port: here, what sends the chair its action after the Santa trick.
 
+### 32. A bake that deleted the step after it
+
+The converter removes every file in its output folders that it did not write, and the read-ahead step (`make read-ahead`) writes `.ahead` lists, `.anims` bundles and `route_pacing.txt` into the same scripts folder afterwards. Re-baking the game set for new effects deleted all 261 of them. The device kept its old copies, so nothing broke on screen, but the next upload would have shipped a set with no bundles or read-ahead.
+
+Guard: the converter keeps the read-ahead step's outputs. After any bake of a set, run `make read-ahead PLAN_SET=<set>` before uploading, and check the scripts folder's `.anims` and `.ahead` counts before an upload.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
