@@ -182,7 +182,7 @@ struct pill_layout {
 static const struct pill_sheet_cell glyph_cross = { 0.0f, 0.0f, 40.0f, 40.0f };
 static const struct pill_sheet_cell glyph_l = { 160.0f, 0.0f, 40.0f, 40.0f };
 static const struct pill_sheet_cell glyph_r = { 200.0f, 0.0f, 40.0f, 40.0f };
-static const struct pill_sheet_cell glyph_start = { 240.0f, 0.0f, 72.0f, 40.0f };
+static const struct pill_sheet_cell glyph_select = { 312.0f, 0.0f, 84.0f, 40.0f };
 static const struct pill_sheet_cell label_ghost = { 0.0f, 48.0f, 160.0f, 64.0f };
 static const struct pill_sheet_cell label_trick = { 160.0f, 48.0f, 160.0f, 64.0f };
 static const struct pill_sheet_cell label_back = { 320.0f, 48.0f, 160.0f, 64.0f };
@@ -192,7 +192,7 @@ static const struct pill_layout pill_layouts[SCRIPT_PILL_COUNT] = {
     [SCRIPT_PILL_BACK] = { 9.75f, PILL_BOTTOM_Y, 139.5f, 1, 29.25f, 132.0f, 0.0f, 0.0f, -1.0f, 0.0f, &label_back, 80.25f, &glyph_l, 9.5f, PILL_GLYPH_SIZE },
     [SCRIPT_PILL_TRICK] = { 750.75f, PILL_BOTTOM_Y, 199.5f, 1, 33.75f, 169.5f, -2.25f, -1.5f, 80.0f, 101.0f, &label_trick, 103.1f, &glyph_cross, 170.0f, PILL_GLYPH_SIZE },
     [SCRIPT_PILL_HOURGLASS] = { 880.5f, PILL_TOP_Y, 69.75f, 0, 30.0f, 41.0f, 0.0f, -1.0f, 0.0f, 181.0f, NULL, 0.0f, &glyph_r, 40.5f, PILL_GLYPH_SIZE },
-    [SCRIPT_PILL_NOTEBOOK] = { 9.75f, PILL_TOP_Y, 86.0f, 0, 41.0f, 50.0f, 47.75f, -1.0f, 80.0f, 181.0f, NULL, 0.0f, &glyph_start, 7.0f, 36.0f },
+    [SCRIPT_PILL_NOTEBOOK] = { 9.75f, PILL_TOP_Y, 86.0f, 0, 41.0f, 50.0f, 47.75f, -1.0f, 80.0f, 181.0f, NULL, 0.0f, &glyph_select, 4.0f, 42.0f },
 };
 
 struct hourglass_cell {

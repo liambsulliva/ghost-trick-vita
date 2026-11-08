@@ -257,12 +257,13 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 | CIRCLE | Go back from the soul view |
 | TRIANGLE or SQUARE | Tap the left or right balloon, when a script opens one that can be tapped |
 | R | The hourglass pill |
-| START | The notebook pill |
+| SELECT | The notebook pill |
+| START | Nothing yet (the pause menu is not ported) |
 | L and R together | Skip ahead |
 
 ## Debug controls
 
-SELECT turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the opening. SELECT turns them off again, which resumes a paused scene and restarts the opening if you browsed away from it.
+Outside a chapter, SELECT turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the opening. SELECT turns them off again, which resumes a paused scene and restarts the opening if you browsed away from it.
 
 They stay off during normal play, so that no button can stall the scene. The log records every button press, pause and skipped hold, as `input pressed buttons=...`, `scene paused` and `scene hold_skipped`.
 

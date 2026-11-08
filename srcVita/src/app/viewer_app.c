@@ -514,7 +514,7 @@ static void update_player_controls(const struct input_state *input)
         if (input->pressed & INPUT_R) {
             script_player_hourglass_button();
         }
-        if (input->pressed & INPUT_START) {
+        if (input->pressed & INPUT_SELECT) {
             script_player_notebook_button();
         }
     }
@@ -571,7 +571,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
     if (input->pressed != 0) {
         run_log_write("input pressed buttons=0x%04x", input->pressed);
     }
-    if (input->pressed & INPUT_SELECT) {
+    if ((input->pressed & INPUT_SELECT) && !script_player_is_active()) {
         set_debug_controls(!debug_controls_are_on);
     }
     if (list_is_open) {

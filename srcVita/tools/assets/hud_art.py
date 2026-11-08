@@ -12,6 +12,7 @@ SHEET_HEIGHT = 192
 SUPERSAMPLE = 4
 GLYPH_CELL = 40
 START_WIDTH = 72
+SELECT_WIDTH = 84
 LABEL_ROW_Y = 48
 LABEL_WIDTH = 160
 LABEL_HEIGHT = 64
@@ -31,6 +32,7 @@ LABEL_OUTLINE = 8
 KEY_WORD_NUDGE_Y = 8
 LETTER_POINTS = 112
 START_POINTS = 64
+SELECT_POINTS = 64
 
 
 def scaled(value):
@@ -89,6 +91,7 @@ def sheet_arguments(label_font_path, key_font_path, output_path):
         arguments += word_button_arguments(key_font_path, letter, cell_x, GLYPH_CELL, LETTER_POINTS)
         cell_x += GLYPH_CELL
     arguments += word_button_arguments(key_font_path, "START", cell_x, START_WIDTH, START_POINTS)
+    arguments += word_button_arguments(key_font_path, "SELECT", cell_x + START_WIDTH, SELECT_WIDTH, SELECT_POINTS)
     for index, word in enumerate(LABELS):
         arguments += label_arguments(label_font_path, word, index * LABEL_WIDTH)
     arguments += wide_label_arguments(label_font_path)
