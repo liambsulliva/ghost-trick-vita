@@ -1049,6 +1049,12 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
     case 0xe6:
         machine->soul.ghost_pill_is_held_out = 1;
         return SCRIPT_STEP_NEXT;
+    case 0xe7:
+        machine->soul.trick_pill_is_held_out = 0;
+        return SCRIPT_STEP_NEXT;
+    case 0xe8:
+        machine->soul.trick_pill_is_held_out = 1;
+        return SCRIPT_STEP_NEXT;
     case 0xe9:
     case 0xea:
         if (vm->owner != NULL) {

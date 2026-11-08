@@ -258,6 +258,12 @@ The whole-game set drew the Chapter 2 card at the start of Chapter 1 and no card
 
 Guard: the set names the first chapter-start id and the card source pattern; the converter finds every spawned id whose kind uses the same class factory (`data_020ac194`) and bakes a card row and texture for it, numbered by kind. Each card row names its own texture, the bridge draws that texture, and the read-ahead plans schedule card art at the card's effect cue. The set-level card line is gone.
 
+### 36. A pill hold the port kept for one pill only
+
+Ops 0xe7 and 0xe8 logged as not ported in Chapter 2. Their native case clears or sets bit 11 of `game+8` (`func_020100a0`), and `func_020100bc` reads that bit, or the current core's busy bit, when `func_0204f850` decides whether the Trick pill stays out. The port had the busy-core half and the matching Ghost pill hold (ops 0xe5 and 0xe6, `game+0xc` bit 0), but not this bit.
+
+Guard: 0xe7 and 0xe8 clear and set a Trick pill hold beside the Ghost pill hold, reset with the pills. Before porting one of a pair of HUD ops, read the pill rule in `func_0204f850` for every pill, since each pill's wanted state combines several native bits.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
@@ -266,4 +272,3 @@ Guard: the set names the first chapter-start id and the card source pattern; the
 - Effect classes with no port yet, named from the class registry in the RAM dump: `uTimeOverChainEffect` (id 50, the time-over sequence; constructor `func_020473ec`, 0xd8 bytes), `uPhoneBorderEffect` (id 59), `uBlackDarkness` (ids 151, 228, 229), `uLanternLightBlackSt02_01` (id 119, 57 sites in stage 2), `uNightVisionGoggle` (57), `uElectricTorch` (56). Class ids group by factory in `data_020ac194`; key any port by factory, as the chapter cards are.
 - Plain effect kinds with no row in any remaster effect list: kind 3 (id 6, the ripple, 50 sites in nine stages), 0x83 (id 207, the dog's bark) and 0x84 (id 209). Where the remaster draws them from is not found.
 - Telephone lines: op 0x82 makes a `uTelephoneLine` free unit and op 0x84 kills every task of a class (always a telephone line class). Neither is ported, so no line is drawn and 0x84 has nothing to remove.
-- Ops 0xe7 and 0xe8 clear and set bit 11 of the game word at `game+8`; `func_020100bc` reads it, from `func_0204f850` (pill slides) and `func_0204ff00`. Not ported.

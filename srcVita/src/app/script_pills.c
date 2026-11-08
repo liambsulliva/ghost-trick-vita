@@ -37,6 +37,7 @@ void script_pills_reset(struct script_machine *machine)
     soul->pill_slide_in_wait = 0;
     soul->pill_pulse_ticks = 0;
     soul->ghost_pill_is_held_out = 0;
+    soul->trick_pill_is_held_out = 0;
     soul->rollback_is_on = 0;
 }
 
@@ -147,7 +148,7 @@ static int pill_is_wanted(const struct script_machine *machine, enum script_pill
     case SCRIPT_PILL_GHOST:
         return is_registered && group == GROUP_NORMAL && !soul->ghost_pill_is_held_out;
     case SCRIPT_PILL_TRICK:
-        return is_registered && group == GROUP_NORMAL && !current_core_is_busy(machine);
+        return is_registered && group == GROUP_NORMAL && !soul->trick_pill_is_held_out && !current_core_is_busy(machine);
     case SCRIPT_PILL_NOTEBOOK:
         return is_registered && group == GROUP_NORMAL;
     case SCRIPT_PILL_BACK:

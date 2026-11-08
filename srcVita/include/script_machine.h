@@ -239,6 +239,7 @@ struct script_soul {
     int pill_slide_in_wait;
     unsigned int pill_pulse_ticks;
     int ghost_pill_is_held_out;
+    int trick_pill_is_held_out;
     int touch_is_down;
     float touch_x;
     float touch_y;
