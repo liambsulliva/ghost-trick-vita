@@ -16,6 +16,14 @@
 #define BUDGET_MOST_BYTES (256u * 1024u * 1024u)
 #define RETRY_AFTER_FRAMES 15u
 #define LOAD_NOW_MOST_ROUNDS 64u
+#define READ_AHEAD_SPARES_FRAMES_DRAWN_WITHIN 60u
+#define READ_AHEAD_WANT_LASTS_FRAMES 2u
+#define READ_AHEAD_LEAST_ROOM_BYTES (4u * 1024u * 1024u)
+
+enum texture_wanter {
+    WANTED_BY_DRAWING,
+    WANTED_BY_READ_AHEAD
+};
 
 static struct cached_texture entries[TEXTURE_CACHE_ENTRY_MAX];
 static char folder[FILE_PATH_MAX];
@@ -26,6 +34,8 @@ static unsigned int next_request_id;
 static unsigned int reads_in_flight;
 static int cache_full_was_logged;
 static struct texture_cache_totals totals;
+
+static struct cached_texture *start_loading(const char *name, enum texture_wanter wanter);
 
 static struct cached_texture *find_entry_by_name(const char *name)
 {
@@ -62,24 +72,47 @@ static void release_entry(struct cached_texture *entry)
     entry->in_use = 0;
 }
 
-static struct cached_texture *find_least_recently_used(void)
+static int is_wanted_ahead(const struct cached_texture *entry)
 {
-    struct cached_texture *oldest;
+    return current_frame < entry->wanted_ahead_until_frame;
+}
+
+static int was_drawn_lately(const struct cached_texture *entry)
+{
+    return entry->was_drawn && current_frame - entry->last_used_frame < READ_AHEAD_SPARES_FRAMES_DRAWN_WITHIN;
+}
+
+static int may_evict(const struct cached_texture *entry, enum texture_wanter wanter)
+{
+    if (!entry->in_use || entry->state != CACHED_TEXTURE_READY || entry->last_used_frame == current_frame) {
+        return 0;
+    }
+    return wanter == WANTED_BY_DRAWING || (!is_wanted_ahead(entry) && !was_drawn_lately(entry));
+}
+
+static int is_evicted_before(const struct cached_texture *entry, const struct cached_texture *other)
+{
+    if (is_wanted_ahead(entry) != is_wanted_ahead(other)) {
+        return !is_wanted_ahead(entry);
+    }
+    return entry->last_used_frame < other->last_used_frame;
+}
+
+static struct cached_texture *find_entry_to_evict(enum texture_wanter wanter)
+{
+    struct cached_texture *first;
     int index;
 
-    oldest = NULL;
+    first = NULL;
     for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
-        if (!entries[index].in_use || entries[index].state != CACHED_TEXTURE_READY) {
+        if (!may_evict(&entries[index], wanter)) {
             continue;
         }
-        if (entries[index].last_used_frame == current_frame) {
-            continue;
-        }
-        if (oldest == NULL || entries[index].last_used_frame < oldest->last_used_frame) {
-            oldest = &entries[index];
+        if (first == NULL || is_evicted_before(&entries[index], first)) {
+            first = &entries[index];
         }
     }
-    return oldest;
+    return first;
 }
 
 static void evict_one(struct cached_texture *entry)
@@ -88,23 +121,26 @@ static void evict_one(struct cached_texture *entry)
     totals.evictions = totals.evictions + 1;
 }
 
-static void make_room_for(unsigned int bytes_needed)
+static int make_room_for(unsigned int bytes_needed, enum texture_wanter wanter)
 {
-    struct cached_texture *oldest;
+    struct cached_texture *first;
 
     while (totals.bytes_in_use + bytes_needed > budget) {
-        oldest = find_least_recently_used();
-        if (oldest == NULL) {
-            run_log_write("texture_cache over_budget bytes_in_use=%u needed=%u budget=%u", totals.bytes_in_use, bytes_needed, budget);
-            return;
+        first = find_entry_to_evict(wanter);
+        if (first == NULL) {
+            if (wanter == WANTED_BY_DRAWING) {
+                run_log_write("texture_cache over_budget bytes_in_use=%u needed=%u budget=%u", totals.bytes_in_use, bytes_needed, budget);
+            }
+            return 0;
         }
-        evict_one(oldest);
+        evict_one(first);
     }
+    return 1;
 }
 
-static struct cached_texture *claim_free_entry(void)
+static struct cached_texture *claim_free_entry(enum texture_wanter wanter)
 {
-    struct cached_texture *oldest;
+    struct cached_texture *first;
     int index;
 
     for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
@@ -112,11 +148,16 @@ static struct cached_texture *claim_free_entry(void)
             return &entries[index];
         }
     }
-    oldest = find_least_recently_used();
-    if (oldest != NULL) {
-        evict_one(oldest);
+    first = find_entry_to_evict(wanter);
+    if (first != NULL) {
+        evict_one(first);
     }
-    return oldest;
+    return first;
+}
+
+static int read_ahead_has_room(void)
+{
+    return totals.bytes_in_use + READ_AHEAD_LEAST_ROOM_BYTES <= budget || find_entry_to_evict(WANTED_BY_READ_AHEAD) != NULL;
 }
 
 static void mark_missing(struct cached_texture *entry, const char *reason, int code)
@@ -151,7 +192,7 @@ static void free_texture_memory_for_a_retry(void)
 {
     struct cached_texture *oldest;
 
-    oldest = find_least_recently_used();
+    oldest = find_entry_to_evict(WANTED_BY_DRAWING);
     if (oldest != NULL) {
         evict_one(oldest);
     }
@@ -287,7 +328,13 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     }
     memory_bytes = texture_file_memory_bytes(&header);
     upload_started_us = clock_now_us();
-    make_room_for(memory_bytes);
+    if (!make_room_for(memory_bytes, entry->was_drawn ? WANTED_BY_DRAWING : WANTED_BY_READ_AHEAD)) {
+        if (!entry->was_drawn) {
+            totals.read_ahead_dropped = totals.read_ahead_dropped + 1u;
+            entry->in_use = 0;
+            return;
+        }
+    }
     entry->texture = create_texture_from_file(&header, &finished->data[TEXTURE_FILE_HEADER_SIZE]);
     if (entry->texture == RENDERER_NO_TEXTURE) {
         free_texture_memory_for_a_retry();
@@ -370,18 +417,13 @@ void texture_cache_keep_or_start_reading_ahead(const char *name)
     }
     entry = find_entry_by_name(name);
     if (entry != NULL) {
-        if (entry->last_used_frame < current_frame - 1u) {
-            entry->last_used_frame = current_frame - 1u;
-        }
+        entry->wanted_ahead_until_frame = current_frame + READ_AHEAD_WANT_LASTS_FRAMES;
         return;
     }
-    if (waiting_read_count() >= READS_WAITING_MOST_WHEN_READING_AHEAD) {
+    if (waiting_read_count() >= READS_WAITING_MOST_WHEN_READING_AHEAD || !read_ahead_has_room()) {
         return;
     }
-    entry = (struct cached_texture *)texture_cache_use_or_start_loading(name);
-    if (entry != NULL) {
-        entry->last_used_frame = current_frame - 1u;
-    }
+    start_loading(name, WANTED_BY_READ_AHEAD);
 }
 
 unsigned int texture_cache_budget_for_free_memory(unsigned int free_bytes)
@@ -442,21 +484,11 @@ static const struct cached_texture *use_or_start_loading_tiles(struct page_tile_
     return &tiles->as_page;
 }
 
-const struct cached_texture *texture_cache_use_or_start_loading(const char *name)
+static struct cached_texture *start_loading(const char *name, enum texture_wanter wanter)
 {
     struct cached_texture *entry;
-    struct page_tile_set *tiles;
 
-    tiles = page_tiles_find(name);
-    if (tiles != NULL) {
-        return use_or_start_loading_tiles(tiles);
-    }
-    entry = find_entry_by_name(name);
-    if (entry != NULL) {
-        entry->last_used_frame = current_frame;
-        return entry;
-    }
-    entry = claim_free_entry();
+    entry = claim_free_entry(wanter);
     if (entry == NULL) {
         if (!cache_full_was_logged) {
             run_log_write("texture_cache full name=%s", name);
@@ -474,13 +506,33 @@ const struct cached_texture *texture_cache_use_or_start_loading(const char *name
     entry->memory_bytes = 0;
     entry->width = 0;
     entry->height = 0;
-    entry->last_used_frame = current_frame;
+    entry->was_drawn = wanter == WANTED_BY_DRAWING;
+    entry->last_used_frame = entry->was_drawn ? current_frame : 0u;
+    entry->wanted_ahead_until_frame = entry->was_drawn ? 0u : current_frame + READ_AHEAD_WANT_LASTS_FRAMES;
     entry->requested_at_us = clock_now_us();
     entry->retry_at_frame = current_frame;
     entry->retries = 0u;
     entry->in_use = 1;
     start_waiting_reads();
     return entry;
+}
+
+const struct cached_texture *texture_cache_use_or_start_loading(const char *name)
+{
+    struct cached_texture *entry;
+    struct page_tile_set *tiles;
+
+    tiles = page_tiles_find(name);
+    if (tiles != NULL) {
+        return use_or_start_loading_tiles(tiles);
+    }
+    entry = find_entry_by_name(name);
+    if (entry != NULL) {
+        entry->last_used_frame = current_frame;
+        entry->was_drawn = 1;
+        return entry;
+    }
+    return start_loading(name, WANTED_BY_DRAWING);
 }
 
 static void start_retries_now(void)

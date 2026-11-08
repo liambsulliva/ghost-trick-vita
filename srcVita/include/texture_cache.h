@@ -25,6 +25,8 @@ struct cached_texture {
     unsigned int height;
     unsigned int memory_bytes;
     unsigned int last_used_frame;
+    unsigned int wanted_ahead_until_frame;
+    int was_drawn;
     unsigned long long requested_at_us;
     int read_is_started;
     int in_use;
@@ -37,6 +39,7 @@ struct texture_cache_totals {
     unsigned int evictions;
     unsigned int missing;
     unsigned int retries;
+    unsigned int read_ahead_dropped;
     unsigned int bytes_in_use;
     unsigned long long longest_wait_us;
     unsigned long long longest_upload_us;
