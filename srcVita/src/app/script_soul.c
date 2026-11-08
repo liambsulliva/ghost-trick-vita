@@ -560,6 +560,11 @@ static int aim_the_chain_from_input(struct script_machine *machine)
     return 0;
 }
 
+static int talk_holds_the_soul(const struct script_machine *machine)
+{
+    return machine->talk_is_open || machine->talk.phase != SCRIPT_TALK_CLOSED;
+}
+
 static void move_soul_tip(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -591,6 +596,10 @@ static void move_soul_tip(struct script_machine *machine)
             soul_chain_retract(&soul->chain);
         }
         soul->chain_pick_object = NO_CORE;
+    } else if (talk_holds_the_soul(machine)) {
+        if (soul->chain.state == SOUL_CHAIN_AIMING) {
+            soul_chain_retract(&soul->chain);
+        }
     } else if (soul->chain_pick_object == NO_CORE && soul->chain.state != SOUL_CHAIN_JUMPING && soul->chain.state != SOUL_CHAIN_RETRACTING) {
         input_is_held = aim_the_chain_from_input(machine);
     }
@@ -1264,7 +1273,7 @@ static void move_free_camera(struct script_machine *machine)
     if (soul->held_x == 0.0f && soul->held_y == 0.0f) {
         return;
     }
-    if (!free_camera_is_allowed(machine)) {
+    if (!free_camera_is_allowed(machine) || talk_holds_the_soul(machine)) {
         return;
     }
     script_machine_scroll_camera(machine, (int)lroundf(soul->held_x * CAMERA_FREE_SPEED_PIXELS), (int)lroundf(soul->held_y * CAMERA_FREE_SPEED_PIXELS));
@@ -1812,11 +1821,11 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         }
         soul->tap_group_is_pending = 0;
     }
-    if (soul->direction_x != 0 || soul->direction_y != 0) {
+    if ((soul->direction_x != 0 || soul->direction_y != 0) && !talk_holds_the_soul(machine)) {
         take_direction(machine);
-        soul->direction_x = 0;
-        soul->direction_y = 0;
     }
+    soul->direction_x = 0;
+    soul->direction_y = 0;
     move_soul_tip(machine);
     move_free_camera(machine);
     follow_core_with_camera(machine);
