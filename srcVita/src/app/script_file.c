@@ -37,7 +37,7 @@ static int sizes_add_up(unsigned int size, unsigned int code_size, unsigned int 
     return label_size == remaining;
 }
 
-int script_file_open(struct script_file *file, const unsigned char *data, unsigned int size)
+int script_file_open(struct script_file *file, unsigned char *data, unsigned int size)
 {
     unsigned int code_size;
     unsigned int string_size;
@@ -79,6 +79,19 @@ int script_file_read_word(const struct script_file *file, unsigned int word_inde
         return SCRIPT_FILE_ERR_OUTSIDE;
     }
     *value = word_at(file, word_index);
+    return SCRIPT_FILE_OK;
+}
+
+int script_file_write_word(struct script_file *file, unsigned int word_index, unsigned int value)
+{
+    unsigned char *bytes;
+
+    if (word_index >= file->word_count) {
+        return SCRIPT_FILE_ERR_OUTSIDE;
+    }
+    bytes = &file->code[word_index * SCRIPT_FILE_BYTES_PER_WORD];
+    bytes[0] = (unsigned char)(value & 0xff);
+    bytes[1] = (unsigned char)((value >> 8) & 0xff);
     return SCRIPT_FILE_OK;
 }
 

@@ -419,6 +419,7 @@ static void create_actor(struct script_machine *machine, struct script_vm *vm, c
         return;
     }
     actor->exists = 1;
+    memset(actor->counters, 0, sizeof(actor->counters));
     actor->creation_index = machine->actor_count;
     machine->actor_count = machine->actor_count + 1;
     actor->x = UNPLACED_X;

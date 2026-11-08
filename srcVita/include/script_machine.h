@@ -23,6 +23,7 @@
 #define SCRIPT_RECENT_FETCH_MAX 64
 #define SCRIPT_RUN_STEP_MAX 4096
 #define SCRIPT_ACTOR_POINT_MAX 4
+#define SCRIPT_ACTOR_COUNTER_COUNT 5
 #define SCRIPT_NO_SELECTION -1
 #define SCRIPT_NOTED_OP_BYTES ((SCRIPT_OPCODE_COUNT / 8) + 1)
 #define SCRIPT_NOTED_EFFECT_BYTES 128
@@ -94,6 +95,7 @@ struct script_actor {
     int x;
     int y;
     int points[SCRIPT_ACTOR_POINT_MAX][2];
+    unsigned char counters[SCRIPT_ACTOR_COUNTER_COUNT];
     int level;
     int is_visible;
     int is_flipped;
@@ -423,7 +425,7 @@ struct script_machine {
 };
 
 void script_machine_init(struct script_machine *machine, const struct script_outputs *outputs, enum script_timing timing, const char *stop_act);
-int script_machine_add_source(struct script_machine *machine, const char *name, const unsigned char *data, unsigned int size, const struct script_cue_list *cues);
+int script_machine_add_source(struct script_machine *machine, const char *name, unsigned char *data, unsigned int size, const struct script_cue_list *cues);
 int script_machine_start(struct script_machine *machine, const char *name);
 void script_machine_tick(struct script_machine *machine);
 void script_machine_name_of_path(const char *path, char *name, unsigned int name_size);

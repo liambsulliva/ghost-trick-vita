@@ -200,8 +200,13 @@ static const unsigned char families[SCRIPT_OPCODE_COUNT] = {
     [0xea] = SCRIPT_OP_CONTROL,
     [0xfe] = SCRIPT_OP_CONTROL,
     [0xff] = SCRIPT_OP_CONTROL,
+    [0x127] = SCRIPT_OP_CONTROL,
+    [0x128] = SCRIPT_OP_CONTROL,
     [0x129] = SCRIPT_OP_CONTROL,
+    [0x12a] = SCRIPT_OP_CONTROL,
     [0x12b] = SCRIPT_OP_CONTROL,
+    [0x12c] = SCRIPT_OP_CONTROL,
+    [0x12d] = SCRIPT_OP_CONTROL,
 };
 
 unsigned int script_opcode_length(unsigned int op)

@@ -74,7 +74,7 @@ void script_machine_init(struct script_machine *machine, const struct script_out
     script_flags_clear_all(&machine->flags);
 }
 
-int script_machine_add_source(struct script_machine *machine, const char *name, const unsigned char *data, unsigned int size, const struct script_cue_list *cues)
+int script_machine_add_source(struct script_machine *machine, const char *name, unsigned char *data, unsigned int size, const struct script_cue_list *cues)
 {
     struct script_source *source;
 
@@ -612,6 +612,12 @@ static void set_object_asleep(struct script_machine *machine, struct script_vm *
 }
 
 #define ACTOR_REGISTER_FRAME 2u
+#define ACTOR_REGISTER_FLIP 3u
+#define COUNTER_REGISTER_FIRST 0x0cu
+#define COUNTER_REGISTER_LAST 0x10u
+#define REGISTER_A 0x1eu
+#define CODE_PATCH_HALF_WORD 1
+#define CODE_PATCH_FULL_WORD 2
 
 static int read_actor_register(const struct script_machine *machine, const struct script_vm *vm, unsigned int reg)
 {
@@ -632,11 +638,17 @@ static int read_actor_register(const struct script_machine *machine, const struc
     if (reg == ACTOR_REGISTER_FRAME) {
         return actor->frame_word_index;
     }
+    if (reg == ACTOR_REGISTER_FLIP) {
+        return actor->is_flipped ? 1 : 0;
+    }
     if (reg >= 4 && reg < 8) {
         return (actor->x + actor->points[reg - 4][0]) * 4096;
     }
     if (reg >= 8 && reg < 12) {
         return (actor->y + actor->points[reg - 8][1]) * 4096;
+    }
+    if (reg >= COUNTER_REGISTER_FIRST && reg <= COUNTER_REGISTER_LAST) {
+        return actor->counters[reg - COUNTER_REGISTER_FIRST];
     }
     return 0;
 }
@@ -688,10 +700,46 @@ static void compare_register(const struct script_machine *machine, struct script
     vm->condition = compare_values(read_register(machine, vm, words[0]), (int)script_machine_u32(words, 1), words[3]);
 }
 
-static void write_register(struct script_vm *vm, unsigned int reg, int value)
+static struct script_actor *current_actor(struct script_machine *machine, struct script_vm *vm)
 {
-    if (reg == 0x1e) {
+    struct script_object *object;
+
+    object = vm->selected_object != SCRIPT_NO_SELECTION ? &machine->objects[vm->selected_object] : vm->owner;
+    if (object == NULL || !object->actor.exists) {
+        return NULL;
+    }
+    return &object->actor;
+}
+
+static void store_register(struct script_machine *machine, struct script_vm *vm, unsigned int reg, int value, int is_relative)
+{
+    struct script_actor *actor;
+
+    actor = current_actor(machine, vm);
+    if (actor == NULL) {
+        return;
+    }
+    if (is_relative) {
+        value = value + read_register(machine, vm, reg);
+    }
+    if (reg >= COUNTER_REGISTER_FIRST && reg <= COUNTER_REGISTER_LAST) {
+        actor->counters[reg - COUNTER_REGISTER_FIRST] = (unsigned char)value;
+    } else if (reg == REGISTER_A) {
         vm->reg_a = value;
+    }
+}
+
+static void patch_own_code(struct script_machine *machine, struct script_vm *vm, unsigned int word_offset, unsigned int value, int word_count)
+{
+    struct script_source *source;
+    int index;
+
+    source = &machine->sources[vm->source - machine->sources];
+    for (index = 0; index < word_count; index++) {
+        if (script_file_write_word(&source->file, vm->pc + word_offset + (unsigned int)index, (value >> (16 * index)) & 0xffffu) != SCRIPT_FILE_OK) {
+            script_machine_note(machine, vm, "code_patch_outside", "");
+            return;
+        }
     }
 }
 
@@ -960,11 +1008,26 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0xef:
         return SCRIPT_STEP_NEXT_THEN_YIELD;
+    case 0x127:
+        vm->reg_a = read_register(machine, vm, words[0]);
+        return SCRIPT_STEP_NEXT;
+    case 0x128:
+        store_register(machine, vm, words[0], (int)script_machine_u32(words, 1), 0);
+        return SCRIPT_STEP_NEXT;
     case 0x129:
-        write_register(vm, words[0], read_register(machine, vm, words[0]) + 1);
+        store_register(machine, vm, words[0], 1, 1);
+        return SCRIPT_STEP_NEXT;
+    case 0x12a:
+        store_register(machine, vm, words[0], -1, 1);
         return SCRIPT_STEP_NEXT;
     case 0x12b:
-        write_register(vm, words[0], 0);
+        store_register(machine, vm, words[0], 0, 0);
+        return SCRIPT_STEP_NEXT;
+    case 0x12c:
+        patch_own_code(machine, vm, words[0], (unsigned int)vm->reg_a, CODE_PATCH_HALF_WORD);
+        return SCRIPT_STEP_NEXT;
+    case 0x12d:
+        patch_own_code(machine, vm, words[0], (unsigned int)vm->reg_a, CODE_PATCH_FULL_WORD);
         return SCRIPT_STEP_NEXT;
     case 0x2f:
         vm->wait_ticks = words[0];
