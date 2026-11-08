@@ -65,6 +65,7 @@ static int mask_is_on;
 static int is_quiet;
 #define NO_MOVIE_SOUND -1
 static int movie_sound_kind_waiting = NO_MOVIE_SOUND;
+static unsigned int movie_started_at_tick;
 static const char *current_music;
 static const struct script_balloon_row *open_balloon_rows[SCRIPT_BALLOON_MAX];
 static struct pending_overlay pending_overlays[PENDING_OVERLAY_MAX];
@@ -705,9 +706,14 @@ static void play_sound(int kind)
     }
 }
 
+static int sound_is_the_waiting_movie_sound(int kind)
+{
+    return kind == movie_sound_kind_waiting && tick == movie_started_at_tick;
+}
+
 static void on_sound_played(int kind)
 {
-    if (kind == movie_sound_kind_waiting) {
+    if (sound_is_the_waiting_movie_sound(kind)) {
         return;
     }
     play_sound(kind);
@@ -720,6 +726,7 @@ static void start_movie_with_its_sound(const char *name)
     script_view_movie_started(name);
     movie = script_tables_find_movie(tables, name);
     movie_sound_kind_waiting = movie != NULL ? movie->sound_kind : NO_MOVIE_SOUND;
+    movie_started_at_tick = tick;
 }
 
 static void play_the_movie_sound_once_its_frames_are_ready(void)

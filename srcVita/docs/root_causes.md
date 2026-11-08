@@ -244,7 +244,7 @@ Guard: the converter keeps the read-ahead step's outputs. After any bake of a se
 
 Run 14's rewind clock froze for over a second with the numerals half flown in, then jumped to the full dial. Full-screen movies are one texture per frame, and the art gate let game time run during a movie, so the movie's clock moved on while its frames sat in the read queue about a second behind; the screen kept the last frame that had arrived.
 
-Guard: while a movie covers the screen, the art gate holds game time until the frame it has reached is loaded, and before the first frame shows it waits for the first 12, the same "slow over skip" rule the rooms follow. The movie's sound now starts on the tick its first frames are ready, so holding does not leave the picture behind the sound, and it is played once even when the script also asks for it. A new script clears the playing movie.
+Guard: while a movie covers the screen, the art gate holds game time until the frame it has reached is loaded, and before the first frame shows it waits for the first 12, the same "slow over skip" rule the rooms follow. The movie's sound now starts on the tick its first frames are ready, so holding does not leave the picture behind the sound, and it is played once even when the script also asks for it in the same tick (a class movie's op does). A sound of that kind asked for in any later tick plays as usual; the first version dropped every one until the frames arrived. A new script clears the playing movie.
 
 ### 34. Effects spawned by motion tables, not by the script
 
