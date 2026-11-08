@@ -222,6 +222,12 @@ The whole-game set holds 14,169 motion rows, and every actor change looked its r
 
 Guard: motion rows are found through a hash index on script and table offset; the first row of a duplicate still wins. Any lookup that runs per tick or per actor over a table that grows with the set must be indexed. A Mac replay cannot show this (it runs the machine without the bridge), so measure per-tick cost on the device with `script fast_forward_speed`.
 
+### 31. Waiting a minute for a native message that never comes
+
+When a script waits for a message only native code sends, the stuck detector pushes the waiting handler after 3000 quiet ticks. In the house next door, the Santa trick leaves the lady at her typewriter looping until the chair's `core|action` arrives, so a routed run sat there 110 s of game time where the footage moves on in 5 s.
+
+Guard: while a route drives auto-play, the detector pushes after 1200 quiet ticks (the Santa wait drops to 35 s of game time, the whole-game replay still finishes all 180 steps with the same 11 pushes); manual play keeps 3000. This only shortens the wait. Each `stuck_pushed_handler` line still names a native sender to port: here, what sends the chair its action after the Santa trick.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

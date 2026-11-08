@@ -23,6 +23,7 @@
 #define STUCK_AFTER_QUIET_TICKS 240
 #define DEBUG_ARG_PREFIX "debug"
 #define STUCK_AFTER_ANY_TICKS 3000
+#define STUCK_AFTER_ANY_TICKS_WHEN_A_ROUTE_DRIVES 1200
 #define STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT 18000
 #define STUCK_AFTER_TICKS_WHEN_PLAYING_AT_A_HUMAN_PACE 3600
 #define STUCK_PUSHES_BEFORE_LEAVING_THE_SCRIPT 60
@@ -1807,6 +1808,11 @@ void script_machine_skip_ahead(struct script_machine *machine)
     }
 }
 
+static unsigned int stuck_after_any_ticks(const struct script_machine *machine)
+{
+    return machine->route != NULL && machine->auto_press == SCRIPT_AUTO_PACED ? STUCK_AFTER_ANY_TICKS_WHEN_A_ROUTE_DRIVES : STUCK_AFTER_ANY_TICKS;
+}
+
 static void push_when_stuck(struct script_machine *machine)
 {
     unsigned int quiet_ticks;
@@ -1822,7 +1828,7 @@ static void push_when_stuck(struct script_machine *machine)
             return;
         }
         machine->last_timer_tick = machine->tick;
-        if (quiet_ticks < STUCK_AFTER_ANY_TICKS) {
+        if (quiet_ticks < stuck_after_any_ticks(machine)) {
             return;
         }
     }
@@ -1832,7 +1838,7 @@ static void push_when_stuck(struct script_machine *machine)
     if (machine->auto_press != SCRIPT_AUTO_FAST && script_soul_world_is_playable(machine) && quiet_ticks < (machine->auto_press == SCRIPT_AUTO_PACED ? STUCK_AFTER_TICKS_WHEN_PLAYING_AT_A_HUMAN_PACE : STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT)) {
         return;
     }
-    if (quiet_ticks < STUCK_AFTER_ANY_TICKS && (quiet_ticks < STUCK_AFTER_QUIET_TICKS || machine->tick - machine->last_timer_tick < STUCK_AFTER_QUIET_TICKS)) {
+    if (quiet_ticks < stuck_after_any_ticks(machine) && (quiet_ticks < STUCK_AFTER_QUIET_TICKS || machine->tick - machine->last_timer_tick < STUCK_AFTER_QUIET_TICKS)) {
         return;
     }
     machine->last_new_site_tick = machine->tick;
