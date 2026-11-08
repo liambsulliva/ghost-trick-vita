@@ -28,12 +28,15 @@ struct cached_texture {
     unsigned long long requested_at_us;
     int read_is_started;
     int in_use;
+    unsigned int retry_at_frame;
+    unsigned int retries;
 };
 
 struct texture_cache_totals {
     unsigned int loads;
     unsigned int evictions;
     unsigned int missing;
+    unsigned int retries;
     unsigned int bytes_in_use;
     unsigned long long longest_wait_us;
     unsigned long long longest_upload_us;

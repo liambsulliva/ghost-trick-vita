@@ -74,6 +74,14 @@ void soul_transition_stop(void)
     tick = 0;
 }
 
+void soul_transition_release_textures(void)
+{
+    if (fine_lines_texture != RENDERER_NO_TEXTURE) {
+        renderer_texture_destroy(fine_lines_texture);
+    }
+    fine_lines_texture = RENDERER_NO_TEXTURE;
+}
+
 void soul_transition_restart_sweep(void)
 {
     sweep_native_y = SWEEP_NATIVE_Y_START;

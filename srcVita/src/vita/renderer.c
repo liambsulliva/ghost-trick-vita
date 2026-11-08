@@ -31,6 +31,7 @@ static renderer_texture white_texture;
 static int batch_is_flat;
 static renderer_texture snapshot_texture;
 static GLuint snapshot_framebuffer;
+static unsigned int live_texture_count;
 
 static void flush_batch(void)
 {
@@ -95,6 +96,7 @@ static renderer_texture finish_new_texture(GLuint texture)
         glDeleteTextures(1, &texture);
         return RENDERER_NO_TEXTURE;
     }
+    live_texture_count = live_texture_count + 1u;
     return texture;
 }
 
@@ -206,6 +208,14 @@ void renderer_texture_destroy(renderer_texture texture)
     flush_batch();
     gl_texture = texture;
     glDeleteTextures(1, &gl_texture);
+    if (live_texture_count > 0u) {
+        live_texture_count = live_texture_count - 1u;
+    }
+}
+
+unsigned int renderer_live_texture_count(void)
+{
+    return live_texture_count;
 }
 
 static void set_flat_drawing(int is_flat)

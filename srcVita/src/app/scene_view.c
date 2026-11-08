@@ -790,7 +790,7 @@ static int texture_is_still_loading(const char *texture_name)
     const struct cached_texture *texture;
 
     texture = texture_cache_use_or_start_loading(texture_name);
-    return texture != NULL && texture->state == CACHED_TEXTURE_LOADING;
+    return texture == NULL || texture->state == CACHED_TEXTURE_LOADING;
 }
 
 int scene_view_visible_art_is_loading(const struct scene_stage *stage)

@@ -31,8 +31,10 @@
 #define CHAIN_FILE_NAME "chain"
 #define FIXED_TABLE_COUNT 8
 #define FILES_PER_SCRIPT 3
-#define FAST_FORWARD_BUDGET_US 12000ULL
-#define ART_WAIT_MOST_US 4000000ULL
+#define FAST_FORWARD_BUDGET_US 8000ULL
+#define FAST_FORWARD_MOST_TICKS_PER_FRAME 8
+#define FAST_FORWARD_TICKS_WHILE_ART_LOADS 1
+#define ART_WAIT_MOST_US 30000000ULL
 #define LOG_FOR_TOOLS_SCRIPT_READY "script ready name=%s preload_us=%llu texture_bytes=%u missing=%u"
 
 enum script_player_phase {
@@ -72,6 +74,7 @@ static int auto_play_is_on;
 static float next_chapter_card_age_ticks;
 static int is_holding_for_art;
 static unsigned long long art_wait_us;
+static int art_wait_gave_up_was_logged;
 static int preload_row;
 static int preload_passes;
 static const char *preload_music_name;
@@ -463,13 +466,23 @@ static void stop_at_the_run_until_point(void)
     is_paused = 1;
 }
 
+static int fast_ticks_the_art_allows(void)
+{
+    if (texture_cache_loading_count() > 0) {
+        return FAST_FORWARD_TICKS_WHILE_ART_LOADS;
+    }
+    return ticks_per_frame_when_fast;
+}
+
 static void run_ticks_as_fast_as_the_frame_allows(void)
 {
     unsigned long long started_us;
     int ticks;
+    int ticks_allowed;
 
     started_us = clock_now_us();
-    for (ticks = 0; ticks < ticks_per_frame_when_fast; ticks++) {
+    ticks_allowed = fast_ticks_the_art_allows();
+    for (ticks = 0; ticks < ticks_allowed; ticks++) {
         if (!run_one_tick()) {
             return;
         }
@@ -573,13 +586,18 @@ void script_player_play(const char *entry_name)
 static int art_gate_holds(unsigned long long elapsed_us)
 {
     is_holding_for_art = 0;
-    if (ticks_per_frame_when_fast > 0 || data->machine.movie_ticks_left > 0 || !scene_view_visible_art_is_loading(scene_stage_view())) {
+    if (data->machine.movie_ticks_left > 0 || !scene_view_visible_art_is_loading(scene_stage_view())) {
         art_wait_us = 0;
         return 0;
     }
     if (art_wait_us >= ART_WAIT_MOST_US) {
+        if (!art_wait_gave_up_was_logged) {
+            run_log_write("script art_wait_gave_up us=%llu tick=%u", art_wait_us, data->machine.tick);
+            art_wait_gave_up_was_logged = 1;
+        }
         return 0;
     }
+    art_wait_gave_up_was_logged = 0;
     art_wait_us = art_wait_us + elapsed_us;
     is_holding_for_art = 1;
     return 1;
@@ -615,7 +633,7 @@ void script_player_update(unsigned long long elapsed_us)
         read_ahead_step(data->machine.tick);
         if (!art_gate_holds(elapsed_us)) {
             run_ticks(elapsed_us);
-            if (phase == PHASE_RUNNING && ticks_per_frame_when_fast == 0 && data->machine.movie_ticks_left == 0 && art_wait_us < ART_WAIT_MOST_US && scene_view_visible_art_is_loading(scene_stage_view())) {
+            if (phase == PHASE_RUNNING && data->machine.movie_ticks_left == 0 && art_wait_us < ART_WAIT_MOST_US && scene_view_visible_art_is_loading(scene_stage_view())) {
                 is_holding_for_art = 1;
             }
         }
@@ -843,6 +861,9 @@ void script_player_set_auto_play(int is_on)
 
 void script_player_set_fast_forward(int ticks_per_frame)
 {
+    if (ticks_per_frame > FAST_FORWARD_MOST_TICKS_PER_FRAME) {
+        ticks_per_frame = FAST_FORWARD_MOST_TICKS_PER_FRAME;
+    }
     ticks_per_frame_when_fast = ticks_per_frame;
     if (data != NULL) {
         data->machine.auto_press = wanted_auto_play();

@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "memory.h"
 
-unsigned int _newlib_heap_size_user = 48 * 1024 * 1024;
+unsigned int _newlib_heap_size_user = MEMORY_HEAP_BYTES;
 
 void *mem_alloc(unsigned int size)
 {

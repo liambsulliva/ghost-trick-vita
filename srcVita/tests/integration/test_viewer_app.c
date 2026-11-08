@@ -1679,21 +1679,21 @@ static void test_a_text_texture_still_loading_at_draw_time_draws_nothing_until_i
     viewer_app_stop();
 }
 
-static void test_a_text_texture_the_read_queue_refuses_at_draw_time_is_marked_visibly(void)
+static void test_a_text_texture_the_read_queue_refuses_at_draw_time_is_retried_until_it_draws(void)
 {
-    const struct fake_draw *draw;
+    const struct fake_draw *line;
 
     set_up_text_scene("scene opening\ntext_show 1 line_a 480 72 0\nwait 6000\n");
     texture_cache_clear();
     fake_reader_refuse_submits(1);
     draw_frame();
-    CHECK_HAS_TEXT(log_text(), "texture missing name=line_a reason=read_refused");
-    draw = fake_renderer_draw(fake_renderer_draw_count() - 1);
-    CHECK(draw->is_filled_rect);
-    CHECK(draw->color.red == 1.0f && draw->color.green == 0.0f && draw->color.blue == 1.0f);
-    CHECK(nearly_equal(draw->screen_area.y, 72.0f));
-    CHECK(nearly_equal(draw->screen_area.x + draw->screen_area.width / 2.0f, 480.0f));
+    CHECK_HAS_TEXT(log_text(), "texture retry name=line_a reason=read_queue_full retries=1");
+    CHECK(find_draw_with_texture_width(TEXT_LINE_WIDTH) == NULL);
     fake_reader_refuse_submits(0);
+    run_frames(20);
+    draw_frame();
+    line = find_draw_with_texture_width(TEXT_LINE_WIDTH);
+    CHECK(line != NULL);
     viewer_app_stop();
 }
 
@@ -2360,10 +2360,12 @@ static void test_running_out_of_memory_for_audio_leaves_the_scene_running(void)
     add_audio_files();
     start_and_play_scene();
     fake_memory_set_largest_block(64);
-    run_frames_and_workers_until_scene_runs();
+    pump_audio_workers(4);
+    run_frames(4);
     CHECK_HAS_TEXT(log_text(), "music out_of_memory name=song");
     CHECK_HAS_TEXT(log_text(), "sound out_of_memory name=ping");
     fake_memory_set_largest_block(0);
+    run_frames_and_workers_until_scene_runs();
     run_frames(10);
     CHECK_INT(scene_player_status(), SCENE_PLAYER_RUNNING);
     viewer_app_stop();
@@ -2505,7 +2507,7 @@ int main(void)
     test_a_missing_text_texture_is_marked_visibly();
     test_a_line_hidden_with_no_fade_is_gone_from_that_frame();
     test_a_text_texture_still_loading_at_draw_time_draws_nothing_until_it_arrives();
-    test_a_text_texture_the_read_queue_refuses_at_draw_time_is_marked_visibly();
+    test_a_text_texture_the_read_queue_refuses_at_draw_time_is_retried_until_it_draws();
     test_a_text_texture_the_full_cache_cannot_hold_is_marked_visibly();
     test_the_opening_bubble_and_its_text_land_on_whole_screen_pixels();
     test_an_overlay_goes_through_the_view_and_grows_about_its_centre();

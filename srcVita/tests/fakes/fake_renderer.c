@@ -151,6 +151,11 @@ void renderer_texture_destroy(renderer_texture texture)
     texture_is_alive[texture] = 0;
 }
 
+unsigned int renderer_live_texture_count(void)
+{
+    return (unsigned int)fake_renderer_textures_alive();
+}
+
 static struct fake_draw *next_free_draw(void)
 {
     if (snapshot_is_open) {

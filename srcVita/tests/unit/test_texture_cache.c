@@ -75,7 +75,16 @@ static void test_uploads_respect_the_limit_per_frame(void)
     CHECK_INT(fake_renderer_textures_created(), 2);
 }
 
-static void test_read_the_reader_refuses_is_marked_missing(void)
+static void pass_frames(int count)
+{
+    int frame;
+
+    for (frame = 0; frame < count; frame++) {
+        texture_cache_begin_frame();
+    }
+}
+
+static void test_read_the_reader_refuses_is_retried_until_it_loads(void)
 {
     const struct cached_texture *entry;
 
@@ -86,8 +95,12 @@ static void test_read_the_reader_refuses_is_marked_missing(void)
     texture_cache_init("tex", 1024);
     fake_reader_refuse_submits(1);
     entry = texture_cache_use_or_start_loading("a");
-    CHECK_INT(entry->state, CACHED_TEXTURE_MISSING);
-    CHECK_INT(texture_cache_loading_count(), 0);
+    CHECK_INT(entry->state, CACHED_TEXTURE_LOADING);
+    CHECK_INT(texture_cache_loading_count(), 1);
+    fake_reader_refuse_submits(0);
+    pass_frames(20);
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(entry->state, CACHED_TEXTURE_READY);
 }
 
 static void test_name_too_long_for_a_path_is_marked_missing(void)
@@ -254,12 +267,11 @@ static void test_waiting_reads_left_behind_are_dropped_only_under_their_prefix(v
     CHECK_INT(texture_cache_loading_count(), 3);
 }
 
-static void test_read_out_of_memory_is_tried_again_when_asked_for_again(void)
+static void test_read_out_of_memory_keeps_loading_and_retries_until_it_fits(void)
 {
     const struct cached_texture *entry;
     struct texture_cache_totals totals;
     const char *log_text;
-    const char *first_line;
     unsigned int size;
 
     fake_files_reset();
@@ -269,21 +281,55 @@ static void test_read_out_of_memory_is_tried_again_when_asked_for_again(void)
     run_log_open("run.log");
     texture_cache_init("tex", 1024);
     fake_reader_run_out_of_memory_on_reads(2);
-    texture_cache_use_or_start_loading("a");
-    texture_cache_upload_finished_reads(1);
-    CHECK_INT(texture_cache_loading_count(), 0);
-    texture_cache_use_or_start_loading("a");
-    texture_cache_upload_finished_reads(1);
     entry = texture_cache_use_or_start_loading("a");
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(entry->state, CACHED_TEXTURE_LOADING);
+    CHECK_INT(texture_cache_loading_count(), 1);
+    pass_frames(20);
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(entry->state, CACHED_TEXTURE_LOADING);
+    pass_frames(20);
     texture_cache_upload_finished_reads(1);
     CHECK_INT(entry->state, CACHED_TEXTURE_READY);
     texture_cache_read_totals(&totals);
     CHECK_INT(totals.missing, 0);
+    CHECK_INT(totals.retries, 2);
     run_log_flush();
     log_text = (const char *)fake_files_contents("run.log", &size);
-    first_line = strstr(log_text, "read_out_of_memory");
-    CHECK(first_line != NULL);
-    CHECK(strstr(first_line + 1, "read_out_of_memory") == NULL);
+    CHECK(strstr(log_text, "texture retry name=a reason=heap retries=1") != NULL);
+    CHECK(strstr(log_text, "texture retry name=a reason=heap retries=2") != NULL);
+}
+
+static void test_upload_without_gpu_memory_frees_an_old_texture_and_retries(void)
+{
+    const struct cached_texture *entry;
+    struct texture_cache_totals totals;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    fake_files_add_rgba_texture("tex/old.gtex", 2, 2);
+    fake_files_add_rgba_texture("tex/new.gtex", 2, 2);
+    texture_cache_init("tex", 1024);
+    texture_cache_use_or_start_loading("old");
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(fake_renderer_textures_alive(), 1);
+    pass_frames(1);
+    fake_renderer_fail_uploads(1);
+    entry = texture_cache_use_or_start_loading("new");
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(entry->state, CACHED_TEXTURE_LOADING);
+    CHECK_INT(fake_renderer_textures_alive(), 0);
+    fake_renderer_fail_uploads(0);
+    pass_frames(20);
+    texture_cache_use_or_start_loading("new");
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(entry->state, CACHED_TEXTURE_READY);
+    CHECK_INT(fake_renderer_textures_alive(), 1);
+    texture_cache_read_totals(&totals);
+    CHECK_INT(totals.missing, 0);
+    texture_cache_clear();
+    CHECK_INT(fake_renderer_textures_alive(), 0);
 }
 
 static void test_clear_waits_for_reads_in_flight(void)
@@ -539,7 +585,7 @@ int main(void)
     test_grayscale_name_reads_the_plain_file();
     test_requesting_twice_only_reads_once();
     test_uploads_respect_the_limit_per_frame();
-    test_read_the_reader_refuses_is_marked_missing();
+    test_read_the_reader_refuses_is_retried_until_it_loads();
     test_name_too_long_for_a_path_is_marked_missing();
     test_only_a_few_reads_run_at_once_and_the_rest_wait();
     test_page_used_this_frame_is_read_before_older_requests();
@@ -547,7 +593,8 @@ int main(void)
     test_dropping_waiting_reads_leaves_reads_in_flight_alone();
     test_textures_are_read_from_their_name_bucket_when_buckets_are_on();
     test_waiting_reads_left_behind_are_dropped_only_under_their_prefix();
-    test_read_out_of_memory_is_tried_again_when_asked_for_again();
+    test_read_out_of_memory_keeps_loading_and_retries_until_it_fits();
+    test_upload_without_gpu_memory_frees_an_old_texture_and_retries();
     test_clear_waits_for_reads_in_flight();
     test_clear_drops_waiting_reads_instead_of_reading_them();
     test_loading_textures_are_never_evicted();

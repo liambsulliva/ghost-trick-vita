@@ -14,6 +14,7 @@
 #include "run_log.h"
 #include "scene_player.h"
 #include "scene_stage.h"
+#include "soul_transition.h"
 #include "scene_view.h"
 #include "script_player.h"
 #include "script_view.h"
@@ -750,6 +751,7 @@ void viewer_app_stop(void)
     animation_library_clear();
     texture_cache_clear();
     debug_font_shutdown();
+    soul_transition_release_textures();
     if (placeholder_texture != RENDERER_NO_TEXTURE) {
         renderer_texture_destroy(placeholder_texture);
     }
