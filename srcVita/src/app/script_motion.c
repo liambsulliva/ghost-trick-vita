@@ -169,7 +169,7 @@ static void run_sound_word(struct script_machine *machine, struct script_object 
         stop_table_for(machine, object, "motion_word_past_code");
         return;
     }
-    if (machine->outputs->sound_played != NULL) {
+    if (!actor->is_hard_hidden && machine->outputs->sound_played != NULL) {
         machine->outputs->sound_played(kind);
     }
 }
@@ -571,7 +571,43 @@ static void compare_active_core(struct script_machine *machine, struct script_vm
     }
 }
 
-static void set_hold_on_targets(struct script_machine *machine, struct script_vm *vm, unsigned int name_word, int frozen_value, int hard_value, int shows)
+enum hold_change {
+    HOLD_FREEZE,
+    HOLD_UNFREEZE,
+    HOLD_HARD_HIDE,
+    HOLD_LIFT_HARD_HIDE
+};
+
+static void change_hold(struct script_actor *actor, enum hold_change change)
+{
+    switch (change) {
+    case HOLD_FREEZE:
+        if (!actor->is_frozen_and_hidden && !actor->is_hard_hidden) {
+            actor->is_frozen_and_hidden = 1;
+            actor->is_visible = 0;
+        }
+        break;
+    case HOLD_UNFREEZE:
+        if (actor->is_frozen_and_hidden) {
+            actor->is_frozen_and_hidden = 0;
+            actor->is_visible = actor->has_table;
+        }
+        break;
+    case HOLD_HARD_HIDE:
+        actor->is_hard_hidden = 1;
+        actor->is_frozen_and_hidden = 0;
+        actor->is_visible = 0;
+        break;
+    case HOLD_LIFT_HARD_HIDE:
+        if (actor->is_hard_hidden) {
+            actor->is_hard_hidden = 0;
+            actor->is_visible = actor->has_table;
+        }
+        break;
+    }
+}
+
+static void change_hold_on_targets(struct script_machine *machine, struct script_vm *vm, unsigned int name_word, enum hold_change change)
 {
     const char *target;
     int index;
@@ -584,16 +620,9 @@ static void set_hold_on_targets(struct script_machine *machine, struct script_vm
         struct script_actor *actor;
 
         actor = &machine->objects[index].actor;
-        if (!actor->exists || !script_machine_name_matches_target(machine->objects[index].name, target)) {
-            continue;
+        if (actor->exists && script_machine_name_matches_target(machine->objects[index].name, target)) {
+            change_hold(actor, change);
         }
-        if (frozen_value >= 0) {
-            actor->is_frozen_and_hidden = frozen_value;
-        }
-        if (hard_value >= 0) {
-            actor->is_hard_hidden = hard_value;
-        }
-        actor->is_visible = shows && actor->has_table;
     }
 }
 
@@ -703,16 +732,16 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
         }
         break;
     case 0x96:
-        set_hold_on_targets(machine, vm, words[0], 1, -1, 0);
+        change_hold_on_targets(machine, vm, words[0], HOLD_FREEZE);
         break;
     case 0x97:
-        set_hold_on_targets(machine, vm, words[0], 0, -1, 1);
+        change_hold_on_targets(machine, vm, words[0], HOLD_UNFREEZE);
         break;
     case 0x98:
-        set_hold_on_targets(machine, vm, words[0], 0, 1, 0);
+        change_hold_on_targets(machine, vm, words[0], HOLD_HARD_HIDE);
         break;
     case 0x99:
-        set_hold_on_targets(machine, vm, words[0], -1, 0, 1);
+        change_hold_on_targets(machine, vm, words[0], HOLD_LIFT_HARD_HIDE);
         break;
     case 0x9d:
         set_core_enabled(machine, vm, words, 0);
