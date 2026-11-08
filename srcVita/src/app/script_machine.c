@@ -705,9 +705,32 @@ static int read_actor_register(const struct script_machine *machine, const struc
     return 0;
 }
 
+#define TARGET_POSITION_WHEN_NONE (-0x400000)
+#define LANGUAGE_ENGLISH 1
+
+static int ghost_target_position(const struct script_machine *machine, int along_x)
+{
+    float core_x;
+    float core_y;
+
+    if (machine->soul.active_object < 0 || !machine->objects[machine->soul.active_object].actor.exists) {
+        return along_x ? TARGET_POSITION_WHEN_NONE : 0;
+    }
+    script_machine_node_position(&machine->objects[machine->soul.active_object], SCRIPT_FIRST_CORE_NODE + machine->soul.active_slot, &core_x, &core_y);
+    return (int)(along_x ? core_x : core_y) * 4096;
+}
+
 static int read_register(const struct script_machine *machine, const struct script_vm *vm, unsigned int reg)
 {
     switch (reg) {
+    case 0x12:
+        return ghost_target_position(machine, 1);
+    case 0x13:
+        return ghost_target_position(machine, 0);
+    case 0x16:
+        return machine->fate_level;
+    case 0x1d:
+        return LANGUAGE_ENGLISH;
     case 0x14:
         return machine->camera_x * 4096;
     case 0x15:

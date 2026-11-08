@@ -437,6 +437,8 @@ void script_machine_tick(struct script_machine *machine);
 void script_machine_name_of_path(const char *path, char *name, unsigned int name_size);
 
 void script_machine_pan_camera_back_to(struct script_machine *machine, int x, int y);
+#define SCRIPT_FIRST_CORE_NODE 10
+
 void script_machine_node_position(const struct script_object *object, int node, float *x, float *y);
 void script_machine_move_anchored_effects(struct script_machine *machine);
 void script_machine_spawn_table_effect(struct script_machine *machine, struct script_object *object, int effect_id, float offset_x, float offset_y, const char *name);

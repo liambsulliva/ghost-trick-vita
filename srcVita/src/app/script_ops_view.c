@@ -23,7 +23,6 @@
 #define CAMERA_CUT_SPEED 0x3e8000
 #define DS_VIEW_WIDTH 256
 #define DS_VIEW_HEIGHT 192
-#define FIRST_CORE_NODE 10
 #define FRAMING_FARTHEST_FROM_CORE 120
 #define SHAKE_DIRECTION_COUNT 8
 #define SHAKE_TICKS_PER_DIRECTION 4
@@ -60,9 +59,9 @@ void script_machine_node_position(const struct script_object *object, int node, 
 
     node_x = 0.0f;
     node_y = 0.0f;
-    if (node >= FIRST_CORE_NODE) {
-        node_x = (float)(node == FIRST_CORE_NODE + 1 && object->actor.has_second_core ? object->actor.second_core_x : object->actor.core_x);
-        node_y = (float)(node == FIRST_CORE_NODE + 1 && object->actor.has_second_core ? object->actor.second_core_y : object->actor.core_y);
+    if (node >= SCRIPT_FIRST_CORE_NODE) {
+        node_x = (float)(node == SCRIPT_FIRST_CORE_NODE + 1 && object->actor.has_second_core ? object->actor.second_core_x : object->actor.core_x);
+        node_y = (float)(node == SCRIPT_FIRST_CORE_NODE + 1 && object->actor.has_second_core ? object->actor.second_core_y : object->actor.core_y);
     } else if (node >= 0 && node < SCRIPT_ACTOR_POINT_MAX) {
         node_x = (float)object->actor.points[node][0];
         node_y = (float)object->actor.points[node][1];
@@ -507,7 +506,7 @@ static void pan_to_object(struct script_machine *machine, struct script_vm *vm, 
         return;
     }
     if (signed_word(words[1]) < 0 && machine->soul.active_object >= 0) {
-        script_machine_node_position(&machine->objects[machine->soul.active_object], FIRST_CORE_NODE + machine->soul.active_slot, &node_x, &node_y);
+        script_machine_node_position(&machine->objects[machine->soul.active_object], SCRIPT_FIRST_CORE_NODE + machine->soul.active_slot, &node_x, &node_y);
     } else {
         script_machine_node_position(object, signed_word(words[1]), &node_x, &node_y);
     }
@@ -538,7 +537,7 @@ static void frame_the_core_and_the_followed_actor(struct script_machine *machine
     if (machine->soul.active_object < 0 || machine->camera_follow_object == SCRIPT_NO_SELECTION || !machine->objects[machine->camera_follow_object].actor.exists) {
         return;
     }
-    script_machine_node_position(&machine->objects[machine->soul.active_object], FIRST_CORE_NODE + machine->soul.active_slot, &core_x, &core_y);
+    script_machine_node_position(&machine->objects[machine->soul.active_object], SCRIPT_FIRST_CORE_NODE + machine->soul.active_slot, &core_x, &core_y);
     script_machine_node_position(&machine->objects[machine->camera_follow_object], 0, &followed_x, &followed_y);
     middle_x = (int)((core_x + followed_x) / 2.0f);
     if ((float)middle_x - core_x > FRAMING_FARTHEST_FROM_CORE || core_x - (float)middle_x > FRAMING_FARTHEST_FROM_CORE) {
