@@ -407,6 +407,8 @@ Ops 0x9c, 0xa4 and 0xa7 all go through `func_020101c0` / `func_020101d0`, which 
 Guard: 0xa4 and 0xa7 share 0x9c's placement in `script_motion.c` and the op family table; `tests/unit/test_soul_placed_on_core.c` runs all three and checks their family. Still open: 0xa4's delayed move in soul state 5, and 0xa6 (`func_020610ac`, the soul travelling to a core), which stays unported.
 
 ## Still open
+- Pause class 1 (op 0x21, native stores 1 through the VM's virtual +0x44 setter; 0x1e stores 2, 0x20 stores 3). Treated like the normal class, three scenes deadlock: a controller sets class 1, opens a ghost view with its effect, and its own handler that would release the pause cannot run (Chapter 7's cock_talk act change, Chapter 14's denwa_act10, Chapter 15's sys_act100 SV_START with DemoModeOn). Letting class 1 run through every ghost-view pause clears those but breaks Chapter 2 steps 112 to 117, so native's rule is narrower. The native reader of the stored class is not found yet; find it before changing `vm_is_paused`.
+- Talk m02_2480 and m02_2540 (Chapter 5, st02_game023: op 0x37 at 0x2046) have no row in the baked talk table although the stage's message file holds them.
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
 - Telephone, Lynne and the dead core have no name entry in the tables read so far.
