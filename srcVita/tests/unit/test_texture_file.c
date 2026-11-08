@@ -150,7 +150,7 @@ static void test_grayscale_averages_rgba_and_keeps_alpha(void)
     CHECK_INT(pixel[3], 128);
 }
 
-static void test_grayscale_leaves_dxt5_alpha_and_indices_alone(void)
+static void test_grayscale_keeps_dxt5_alpha_and_the_four_color_order(void)
 {
     unsigned char block[16];
     struct texture_file_header header;
@@ -165,9 +165,23 @@ static void test_grayscale_leaves_dxt5_alpha_and_indices_alone(void)
     for (index = 0; index < 8; index++) {
         CHECK_INT(block[index], index + 1);
     }
-    CHECK_INT(u16_of(&block[8]), GRAY_6_AS_565);
-    CHECK_INT(u16_of(&block[10]), GRAY_22_AS_565);
-    CHECK_INT(block[12], 0xe4);
+    CHECK_INT(u16_of(&block[8]), GRAY_22_AS_565);
+    CHECK_INT(u16_of(&block[10]), GRAY_6_AS_565);
+    CHECK_INT(block[12], 0xe4 ^ 0x55);
+}
+
+static void test_grayscale_points_every_dxt5_index_at_one_gray_when_both_ends_match(void)
+{
+    unsigned char block[16];
+    struct texture_file_header header;
+
+    memset(block, 0xff, 8);
+    write_dxt1_block(&block[8], PURE_RED_565, PURE_RED_565, 0xffu);
+    header = header_of_one_block(TEXTURE_FILE_FORMAT_DXT5, 16);
+    texture_file_make_grayscale(&header, block);
+    CHECK(u16_of(&block[8]) == u16_of(&block[10]));
+    CHECK_INT(block[12], 0);
+    CHECK_INT(block[15], 0);
 }
 
 static void test_grayscale_keeps_a_four_color_dxt1_block_opaque(void)
@@ -349,7 +363,8 @@ int main(void)
     test_unpack_copies_a_distant_run_in_one_piece();
     test_unpack_rejects_broken_files();
     test_grayscale_averages_rgba_and_keeps_alpha();
-    test_grayscale_leaves_dxt5_alpha_and_indices_alone();
+    test_grayscale_keeps_dxt5_alpha_and_the_four_color_order();
+    test_grayscale_points_every_dxt5_index_at_one_gray_when_both_ends_match();
     test_grayscale_keeps_a_four_color_dxt1_block_opaque();
     test_grayscale_never_leaves_a_transparent_index_in_an_opaque_dxt1_block();
     test_grayscale_keeps_a_three_color_dxt1_block_transparent();

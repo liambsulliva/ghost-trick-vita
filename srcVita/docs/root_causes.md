@@ -376,6 +376,12 @@ Op 0xf7 (41 sites from Chapter 3 on) scales palette colours. Native (case at `0x
 
 Guard: the machine keeps a level for the background and for each actor, the bridge hands both to the stage, and the view multiplies the drawn colour by level/256 in normal view (ghost view keeps its own silhouette colours). Still open: levels above 256 draw at full brightness, because the sprite path only multiplies; native brightens and clamps.
 
+### 55. Black squares on characters in the grey world
+
+Rooms and characters drawn in the grey world (the `-mono` copies of textures, made on the Vita by graying each DXT block's two endpoint colours) showed scattered black 4x4 squares. A DXT5 colour block is meant to be decoded as four colours whatever its endpoint order, but the Vita decodes a block whose first endpoint is not the larger one with the DXT1 rule, where index 3 is black. Graying can reverse or equalise the endpoints (pure red and pure green gray to 6 and 22, so red-over-green blocks flip), so every block that flipped and used index 3 turned black. The DXT1 path already kept its order; the DXT5 path did not, and its unit test had pinned the flipped order.
+
+Guard: graying a DXT5 colour block keeps the first endpoint larger, swapping the endpoints and flipping each index's low bit when they cross, and points every index at the first colour when both ends gray to the same value. The baked colour textures were checked: none of the 3601 DXT5 textures has a block that uses index 3 with its endpoints in DXT1 order, so the fault was only in the runtime grey copies.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

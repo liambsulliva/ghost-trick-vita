@@ -98,8 +98,21 @@ static unsigned int gray_565_of(unsigned int color)
 
 static void make_color_block_gray(unsigned char *block)
 {
-    write_u16_little_endian(block, gray_565_of(read_u16_little_endian(block)));
-    write_u16_little_endian(&block[2], gray_565_of(read_u16_little_endian(&block[2])));
+    unsigned int gray_first;
+    unsigned int gray_second;
+
+    gray_first = gray_565_of(read_u16_little_endian(block));
+    gray_second = gray_565_of(read_u16_little_endian(&block[2]));
+    if (gray_first == gray_second) {
+        write_u32_little_endian(&block[4], 0);
+    } else if (gray_first < gray_second) {
+        write_u32_little_endian(&block[4], read_u32_little_endian(&block[4]) ^ DXT1_INDEX_LOW_BITS);
+        write_u16_little_endian(block, gray_second);
+        write_u16_little_endian(&block[2], gray_first);
+        return;
+    }
+    write_u16_little_endian(block, gray_first);
+    write_u16_little_endian(&block[2], gray_second);
 }
 
 static unsigned int swap_first_two_palette_entries(unsigned int indices)
