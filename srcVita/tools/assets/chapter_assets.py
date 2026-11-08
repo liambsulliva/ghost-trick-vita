@@ -68,6 +68,7 @@ TALK_OPS = (0x37, 0x5c, 0xdb)
 BALLOON_LABEL_OPS = (0x51, 0x45, 0x46, 0x4c, 0x4e)
 EFFECT_SPAWN_OP = 0xb0
 EFFECT_KIND_TABLE_ADDRESS = 0x02086624
+EFFECT_FACTORY_TABLE_ADDRESS = 0x020ac194
 FIRST_CLASS_EFFECT_KIND = 0x8000
 FIRST_EFFECT_KIND_LISTED_ONE_LATER = 0x86
 EFFECT_LIST_KIND = "effect"
@@ -368,6 +369,32 @@ def effect_kind_of(arm9, effect_id):
     return struct.unpack_from("<H", arm9, EFFECT_KIND_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + 2 * effect_id)[0]
 
 
+def effect_factory_of(arm9, kind):
+    return struct.unpack_from("<I", arm9, EFFECT_FACTORY_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + 4 * (kind - FIRST_CLASS_EFFECT_KIND))[0]
+
+
+def chapter_card_rows(packs, scripts, arm9, cards):
+    first_kind = effect_kind_of(arm9, cards["first_effect_id"])
+    factory = effect_factory_of(arm9, first_kind)
+    effect_ids = {cards["first_effect_id"]}
+    for script in scripts.values():
+        effect_ids.update(spawned_effect_ids(script))
+    textures = []
+    effects = []
+    for effect_id in sorted(effect_ids):
+        kind = effect_kind_of(arm9, effect_id)
+        if kind < FIRST_CLASS_EFFECT_KIND or effect_factory_of(arm9, kind) != factory:
+            continue
+        chapter_index = kind - first_kind
+        source = cards["source"] % chapter_index
+        if not path_exists(packs, source):
+            continue
+        name = cards["texture"] % chapter_index
+        textures.append({"name": name, "source": source, "width": cards["width"], "height": cards["height"], "list_as_background": True})
+        effects.append({"id": effect_id, "kind": "card", "texture": name, "ticks": 0, "end_zoom": 1, "width": 0, "height": 0})
+    return textures, effects
+
+
 def effect_list_row_of_kind(kind):
     return kind + 1 if kind >= FIRST_EFFECT_KIND_LISTED_ONE_LATER else kind
 
@@ -542,7 +569,11 @@ def expand_set(set_description, packs, rom_path, text_key):
     if unresolved:
         print("tables with no art: %d (%s)" % (len(unresolved), ", ".join(unresolved[:12])))
     expanded["music"], section["music_ids"], expanded["sounds"], section["sound_kinds"] = audio_rows(packs, scripts, arm9)
-    expanded["effect_movies"] = list(set_description.get("effect_movies", [])) + spawned_effect_movies(packs, scripts, arm9, effect_ids_with_rows(set_description))
+    if "chapter_cards" in set_description:
+        card_textures, card_effects = chapter_card_rows(packs, scripts, arm9, set_description["chapter_cards"])
+        expanded["screen_textures"] = list(set_description.get("screen_textures", [])) + card_textures
+        expanded["effects"] = list(set_description.get("effects", [])) + card_effects
+    expanded["effect_movies"] = list(set_description.get("effect_movies", [])) + spawned_effect_movies(packs, scripts, arm9, effect_ids_with_rows(expanded))
     file_cache = {}
     entries_cache = {}
     first_source_of_label = {}

@@ -38,9 +38,6 @@ static int read_chain_line(struct script_tables *tables, const char *line)
 {
     char word[ASSET_NAME_MAX];
 
-    if (sscanf(line, "card " NAME_SCAN, tables->card_texture) == 1) {
-        return 1;
-    }
     if (sscanf(line, "next_chapter_card " NAME_SCAN, tables->next_chapter_card_texture) == 1) {
         return 1;
     }

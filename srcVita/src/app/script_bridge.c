@@ -371,10 +371,10 @@ static void start_dissolve(const struct script_effect_row *row, const char *name
     run_log_write(LOG_FOR_TOOLS_DISSOLVE, row->ticks, row->end_zoom, has_snapshot, clock_now_us() - started_us);
 }
 
-static void start_card(const char *name)
+static void start_card(const char *name, const char *texture_name)
 {
     write_cue("card", name);
-    scene_stage_show_card(tables->card_texture);
+    scene_stage_show_card(texture_name);
     card_is_showing = 1;
     card_started_tick = tick;
 }
@@ -406,7 +406,7 @@ static void on_effect_spawned(int id, const char *name, float x, float y)
     }
     switch (row->kind) {
     case SCRIPT_EFFECT_CARD:
-        start_card(name);
+        start_card(name, row->texture_name);
         break;
     case SCRIPT_EFFECT_UI_CLIP:
         script_ui_view_clip_started(row->texture_name, 0, 0);

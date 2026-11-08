@@ -252,6 +252,12 @@ Run 15 logged a dozen stage 6 effects as not drawn (the dog's bark, the music bo
 
 Guard: the converter collects effect ids from spawn ops and from every motion table's effect commands through one helper, so a table-spawned effect gets its row and its read-ahead pages. The re-bake added 34 effect rows across the game. Ids whose kind is a native class still need code.
 
+### 35. One chapter card for every chapter
+
+The whole-game set drew the Chapter 2 card at the start of Chapter 1 and no card at all from Chapter 3 on. Effect ids 66 to 83 all map through the kind table to one native class, `uChapterStart`, one id per chapter, and the remaster has a card texture for each (`cmn_ch_00_00` to `cmn_ch_00_17`). The set listed ids 66 and 67 by hand with one texture, copied from the Chapter 2 set, and the bridge drew the set's single card texture for any card effect.
+
+Guard: the set names the first chapter-start id and the card source pattern; the converter finds every spawned id whose kind uses the same class factory (`data_020ac194`) and bakes a card row and texture for it, numbered by kind. Each card row names its own texture, the bridge draws that texture, and the read-ahead plans schedule card art at the card's effect cue. The set-level card line is gone.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

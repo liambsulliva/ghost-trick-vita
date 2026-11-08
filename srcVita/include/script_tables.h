@@ -175,7 +175,6 @@ struct script_preload_row {
 struct script_tables {
     struct script_route route;
     struct ui_clips ui_clips;
-    char card_texture[ASSET_NAME_MAX];
     char next_chapter_card_texture[ASSET_NAME_MAX];
     enum script_timing timing;
     char entry_name[SCRIPT_SOURCE_NAME_MAX];

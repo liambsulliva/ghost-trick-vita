@@ -45,8 +45,9 @@ def tiles_of_pages(tiles_path):
     return tiles
 
 
-def movie_effects(effects_path):
+def effect_textures(effects_path):
     movies = {}
+    cards = {}
     pages = {}
     current = None
     if not os.path.exists(effects_path):
@@ -55,10 +56,14 @@ def movie_effects(effects_path):
         fields = line.split()
         if len(fields) > 3 and fields[0] == "effect" and fields[2] == "movie":
             movies[fields[1]] = fields[3]
+        elif len(fields) > 3 and fields[0] == "effect" and fields[2] == "card":
+            cards[fields[1]] = [fields[3]]
         elif len(fields) > 6 and fields[0] == "fxmovie":
             current = fields[1]
             pages[current] = int(fields[6])
-    return {effect: ["fx_%s_%02d" % (movie, page) for page in range(pages.get(movie, 0))] for effect, movie in movies.items()}
+    textures = {effect: ["fx_%s_%02d" % (movie, page) for page in range(pages.get(movie, 0))] for effect, movie in movies.items()}
+    textures.update(cards)
+    return textures
 
 
 def grey_world_effect_ids(effects_path):
@@ -82,7 +87,7 @@ def motion_animations(scripts_folder, script_name, cache):
 
 def schedules_from_cues(cues_path, scripts_folder, animation_folder):
     tiles = tiles_of_pages(os.path.join(scripts_folder, "tiles.txt"))
-    movies = movie_effects(os.path.join(scripts_folder, "effects.txt"))
+    textures_of_effect = effect_textures(os.path.join(scripts_folder, "effects.txt"))
     grey_world_ids = grey_world_effect_ids(os.path.join(scripts_folder, "effects.txt"))
     grey_world_name = None
     motion_cache = {}
@@ -156,7 +161,7 @@ def schedules_from_cues(cues_path, scripts_folder, animation_folder):
                 wanted = animation_pages(animation_folder, animation, page_cache)
                 current_pages[fields[1]] = wanted
         elif fields[0] == "effect" and len(fields) > 1:
-            wanted = movies.get(fields[1], [])
+            wanted = textures_of_effect.get(fields[1], [])
         schedule(wanted, tick, suffix)
     return schedules
 

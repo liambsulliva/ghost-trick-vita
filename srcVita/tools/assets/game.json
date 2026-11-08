@@ -23,7 +23,7 @@
     ],
     "language": "en",
     "timing": "remaster",
-    "card_texture": "chapter_card",
+    "card_texture": "chapter_card_00",
     "next_chapter_card_texture": "next_chapter_card"
   },
   "narration_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
@@ -209,15 +209,6 @@
       "height": 0
     },
     {
-      "id": 67,
-      "kind": "card",
-      "texture": "chapter_card",
-      "ticks": 0,
-      "end_zoom": 1,
-      "width": 0,
-      "height": 0
-    },
-    {
       "id": 45,
       "kind": "rain",
       "texture": "-",
@@ -254,15 +245,6 @@
       "height": 0
     },
     {
-      "id": 66,
-      "kind": "card",
-      "texture": "chapter_card",
-      "ticks": 0,
-      "end_zoom": 1,
-      "width": 0,
-      "height": 0
-    },
-    {
       "id": 11,
       "kind": "ring",
       "texture": "soul_glow",
@@ -290,6 +272,13 @@
       "height": 110
     }
   ],
+  "chapter_cards": {
+    "first_effect_id": 66,
+    "texture": "chapter_card_%02d",
+    "source": "natives/android/charfiles/3d/06_id/12_chapter/cmn_ch_00_%02d_iml3.tex.691230823.en",
+    "width": 720,
+    "height": 540
+  },
   "hud": {
     "label_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
     "key_font": "natives/android/gui/font/outlinefont/helveticaneueltw1g-bd.oft.1"
@@ -366,13 +355,6 @@
       "source": "natives/android/charfiles/3d/05_effect/cmn_shig_00/23_cmn_shig_00_01_iml4.tex.691230823",
       "width": 512,
       "height": 512
-    },
-    {
-      "name": "chapter_card",
-      "source": "natives/android/charfiles/3d/06_id/12_chapter/cmn_ch_00_01_iml3.tex.691230823.en",
-      "width": 720,
-      "height": 540,
-      "list_as_background": true
     },
     {
       "name": "phone_cap",

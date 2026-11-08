@@ -310,8 +310,6 @@ def chain_text(section):
     lines.extend("start_command %s %s" % (verb, arg) for verb, arg in section.get("start_commands", []))
     if "stop_at_act" in section:
         lines.insert(0, "stop " + section["stop_at_act"])
-    if "card_texture" in section:
-        lines.append("card " + section["card_texture"])
     if "next_chapter_card_texture" in section:
         lines.append("next_chapter_card " + section["next_chapter_card_texture"])
     lines.extend("file " + script_name(path) for path in section["files"] if path != FLAGS_SCRIPT)
