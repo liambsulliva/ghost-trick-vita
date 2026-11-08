@@ -29,6 +29,7 @@ void script_view_draw_on_world(void);
 void script_view_draw_on_covers(void);
 int script_view_wants_snapshot(void);
 int script_view_movie_covers_the_screen(void);
+int script_view_movie_is_waiting_for_frames(void);
 void script_view_snapshot_taken(void);
 
 #endif

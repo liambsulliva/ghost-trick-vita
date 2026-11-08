@@ -137,6 +137,7 @@
 #define PHONE_CAP_TOP 25.1375f
 #define PHONE_CAP_HEIGHT 98.4375f
 #define MOVIE_FRAMES_LOADED_AHEAD 16
+#define MOVIE_FRAMES_BUFFERED_BEFORE_PLAYING 12
 #define MOVIE_TEXTURE_PREFIX "movie_"
 #define MOVIE_NAME_EXTRA 20
 #define SWIRL_TEXTURE "swirl_back"
@@ -232,6 +233,7 @@ void script_view_start(const struct script_tables *new_tables)
     film_scroll = 0.0f;
     still_is_wanted = 0;
     still_is_ready = 0;
+    playing_movie = NULL;
     tables = new_tables;
     talk_is_showing = 0;
     soul_is_on = 0;
@@ -1418,6 +1420,38 @@ static int movie_frame_is_ready(int frame, const struct cached_texture **texture
     return *texture != NULL && (*texture)->state == CACHED_TEXTURE_READY;
 }
 
+static int playing_movie_frame(void)
+{
+    return (int)((age_ticks - movie_started_at_tick) / (unsigned int)playing_movie->ticks_per_frame);
+}
+
+int script_view_movie_is_waiting_for_frames(void)
+{
+    const struct cached_texture *texture;
+    int frame;
+    int last_needed_frame;
+    int is_waiting;
+
+    if (playing_movie == NULL) {
+        return 0;
+    }
+    frame = playing_movie_frame();
+    if (frame >= playing_movie->frame_count) {
+        return 0;
+    }
+    last_needed_frame = frame == 0 ? MOVIE_FRAMES_BUFFERED_BEFORE_PLAYING - 1 : frame;
+    if (last_needed_frame >= playing_movie->frame_count) {
+        last_needed_frame = playing_movie->frame_count - 1;
+    }
+    is_waiting = 0;
+    for (; frame <= last_needed_frame; frame++) {
+        if (!movie_frame_is_ready(frame, &texture)) {
+            is_waiting = 1;
+        }
+    }
+    return is_waiting;
+}
+
 static void draw_movie(void)
 {
     const struct cached_texture *texture;
@@ -1430,7 +1464,7 @@ static void draw_movie(void)
     if (playing_movie == NULL) {
         return;
     }
-    frame = (int)((age_ticks - movie_started_at_tick) / (unsigned int)playing_movie->ticks_per_frame);
+    frame = playing_movie_frame();
     if (frame >= playing_movie->frame_count) {
         playing_movie = NULL;
         texture_cache_drop_waiting_reads_left_behind(MOVIE_TEXTURE_PREFIX);

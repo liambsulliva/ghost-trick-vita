@@ -18,6 +18,7 @@
 #include "read_ahead.h"
 #include "script_player.h"
 #include "script_ui_view.h"
+#include "script_view.h"
 #include "script_tables.h"
 #include "sound_engine.h"
 #include "texture_cache.h"
@@ -694,10 +695,18 @@ void script_player_play(const char *entry_name)
     phase = PHASE_READING;
 }
 
+static int shown_art_is_loading(void)
+{
+    if (script_view_movie_covers_the_screen()) {
+        return script_view_movie_is_waiting_for_frames();
+    }
+    return scene_view_visible_art_is_loading(scene_stage_view());
+}
+
 static int art_gate_holds(unsigned long long elapsed_us)
 {
     is_holding_for_art = 0;
-    if (data->machine.movie_ticks_left > 0 || !scene_view_visible_art_is_loading(scene_stage_view())) {
+    if (!shown_art_is_loading()) {
         art_wait_us = 0;
         return 0;
     }
@@ -744,7 +753,7 @@ void script_player_update(unsigned long long elapsed_us)
         read_ahead_step(data->machine.tick);
         if (!art_gate_holds(elapsed_us)) {
             run_ticks(elapsed_us);
-            if (phase == PHASE_RUNNING && data->machine.movie_ticks_left == 0 && art_wait_us < ART_WAIT_MOST_US && scene_view_visible_art_is_loading(scene_stage_view())) {
+            if (phase == PHASE_RUNNING && art_wait_us < ART_WAIT_MOST_US && shown_art_is_loading()) {
                 is_holding_for_art = 1;
             }
         }

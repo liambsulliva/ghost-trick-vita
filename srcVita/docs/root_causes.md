@@ -240,6 +240,12 @@ The converter removes every file in its output folders that it did not write, an
 
 Guard: the converter keeps the read-ahead step's outputs. After any bake of a set, run `make read-ahead PLAN_SET=<set>` before uploading, and check the scripts folder's `.anims` and `.ahead` counts before an upload.
 
+### 33. A movie that played on while its frames were still loading
+
+Run 14's rewind clock froze for over a second with the numerals half flown in, then jumped to the full dial. Full-screen movies are one texture per frame, and the art gate let game time run during a movie, so the movie's clock moved on while its frames sat in the read queue about a second behind; the screen kept the last frame that had arrived.
+
+Guard: while a movie covers the screen, the art gate holds game time until the frame it has reached is loaded, and before the first frame shows it waits for the first 12, the same "slow over skip" rule the rooms follow. The movie's sound now starts on the tick its first frames are ready, so holding does not leave the picture behind the sound, and it is played once even when the script also asks for it. A new script clears the playing movie.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

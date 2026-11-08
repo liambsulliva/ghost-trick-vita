@@ -63,6 +63,8 @@ static int zoom_ticks_left;
 static int soul_vision_is_on;
 static int mask_is_on;
 static int is_quiet;
+#define NO_MOVIE_SOUND -1
+static int movie_sound_kind_waiting = NO_MOVIE_SOUND;
 static const char *current_music;
 static const struct script_balloon_row *open_balloon_rows[SCRIPT_BALLOON_MAX];
 static struct pending_overlay pending_overlays[PENDING_OVERLAY_MAX];
@@ -686,7 +688,7 @@ static void on_music_stopped(int fade_ticks)
     music_request_stop(is_quiet ? 0 : fade_ticks);
 }
 
-static void on_sound_played(int kind)
+static void play_sound(int kind)
 {
     const char *name;
     char number[16];
@@ -703,15 +705,33 @@ static void on_sound_played(int kind)
     }
 }
 
+static void on_sound_played(int kind)
+{
+    if (kind == movie_sound_kind_waiting) {
+        return;
+    }
+    play_sound(kind);
+}
+
 static void start_movie_with_its_sound(const char *name)
 {
     const struct script_movie *movie;
 
     script_view_movie_started(name);
     movie = script_tables_find_movie(tables, name);
-    if (movie != NULL && movie->sound_kind >= 0) {
-        on_sound_played(movie->sound_kind);
+    movie_sound_kind_waiting = movie != NULL ? movie->sound_kind : NO_MOVIE_SOUND;
+}
+
+static void play_the_movie_sound_once_its_frames_are_ready(void)
+{
+    int kind;
+
+    if (movie_sound_kind_waiting == NO_MOVIE_SOUND || script_view_movie_is_waiting_for_frames()) {
+        return;
     }
+    kind = movie_sound_kind_waiting;
+    movie_sound_kind_waiting = NO_MOVIE_SOUND;
+    play_sound(kind);
 }
 
 static int on_movie_of_class_started(unsigned int class_id)
@@ -838,6 +858,7 @@ void script_bridge_start(const struct script_tables *new_tables)
     logged_once_count = 0;
     log_once_full_was_logged = 0;
     current_music = NULL;
+    movie_sound_kind_waiting = NO_MOVIE_SOUND;
     script_view_start(new_tables);
     script_ui_view_start(new_tables);
     memset(open_balloon_rows, 0, sizeof(open_balloon_rows));
@@ -920,6 +941,7 @@ void script_bridge_finish_tick(void)
     scene_effects_advance(scene_stage_effects(), MICROSECONDS_PER_TICK);
     scene_layers_advance(scene_stage_layers(), MICROSECONDS_PER_TICK);
     script_view_advance();
+    play_the_movie_sound_once_its_frames_are_ready();
     tick = tick + 1;
 }
 
