@@ -55,9 +55,12 @@ void script_machine_node_position(const struct script_object *object, int node, 
 
     node_x = 0.0f;
     node_y = 0.0f;
-    if (node >= SCRIPT_FIRST_CORE_NODE) {
-        node_x = (float)(node == SCRIPT_FIRST_CORE_NODE + 1 && object->actor.has_second_core ? object->actor.second_core_x : object->actor.core_x);
-        node_y = (float)(node == SCRIPT_FIRST_CORE_NODE + 1 && object->actor.has_second_core ? object->actor.second_core_y : object->actor.core_y);
+    if (node == SCRIPT_FIRST_CORE_NODE && object->actor.has_core) {
+        node_x = (float)object->actor.core_x;
+        node_y = (float)object->actor.core_y;
+    } else if (node == SCRIPT_FIRST_CORE_NODE + 1 && object->actor.has_second_core) {
+        node_x = (float)object->actor.second_core_x;
+        node_y = (float)object->actor.second_core_y;
     } else if (node >= 0 && node < SCRIPT_ACTOR_POINT_MAX) {
         node_x = (float)object->actor.points[node][0];
         node_y = (float)object->actor.points[node][1];

@@ -371,16 +371,22 @@ static void update_actor(struct script_machine *machine, struct script_object *o
     apply_place_and_shift(actor);
 }
 
-static void apply_dock(struct script_machine *machine, struct script_actor *actor)
+static void apply_dock(struct script_machine *machine, struct script_object *object)
 {
-    const struct script_actor *target;
+    struct script_actor *actor;
+    float target_x;
+    float target_y;
+    float own_x;
+    float own_y;
 
+    actor = &object->actor;
     if (!actor->is_visible || !actor->dock_is_pending) {
         return;
     }
-    target = &machine->objects[actor->dock_target].actor;
-    actor->x = target->x + target->points[actor->dock_target_point][0] - actor->points[actor->dock_own_point][0];
-    actor->y = target->y + target->points[actor->dock_target_point][1] - actor->points[actor->dock_own_point][1];
+    script_machine_node_position(&machine->objects[actor->dock_target], actor->dock_target_point, &target_x, &target_y);
+    script_machine_node_position(object, actor->dock_own_point, &own_x, &own_y);
+    actor->x = actor->x + (int)(target_x - own_x);
+    actor->y = actor->y + (int)(target_y - own_y);
     if (!actor->keeps_following) {
         actor->dock_is_pending = 0;
     }
@@ -429,7 +435,7 @@ void script_motion_update_all(struct script_machine *machine)
     }
     for (index = 0; index < machine->object_count; index++) {
         if (machine->objects[index].actor.exists) {
-            apply_dock(machine, &machine->objects[index].actor);
+            apply_dock(machine, &machine->objects[index]);
         }
     }
     for (index = 0; index < machine->object_count; index++) {
@@ -550,10 +556,6 @@ static void dock_actor(struct script_machine *machine, struct script_vm *vm, con
     }
     target = script_machine_find_object(machine, name);
     if (target == NULL || !target->actor.exists) {
-        return;
-    }
-    if (words[1] >= SCRIPT_ACTOR_POINT_MAX || words[2] >= SCRIPT_ACTOR_POINT_MAX) {
-        script_machine_note(machine, vm, "dock_point_out_of_range", object->name);
         return;
     }
     object->actor.dock_is_pending = 1;
