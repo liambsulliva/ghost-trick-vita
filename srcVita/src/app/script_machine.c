@@ -28,6 +28,9 @@
 #define STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT 18000
 #define STUCK_AFTER_TICKS_WHEN_PLAYING_AT_A_HUMAN_PACE 3600
 #define STUCK_PUSHES_BEFORE_LEAVING_THE_SCRIPT 60
+#define FNV_OFFSET_BASIS 2166136261u
+#define CHAPTER_MARK_OP 0x74u
+#define CHAPTER_MARK_SEARCH_WORDS 12u
 
 static const char *vm_kind_name(enum script_vm_kind kind)
 {
@@ -122,10 +125,41 @@ static void begin_vm(struct script_vm *vm, enum script_vm_kind kind, const struc
 
 static void clear_what_the_earlier_scene_left(struct script_machine *machine);
 static void note_scene_began(struct script_machine *machine, const char *name);
+static int scene_was_seen(const struct script_machine *machine, unsigned int hash);
+static unsigned int hash_text(unsigned int hash, const char *text);
+
+static int chapter_mark_of_source(const struct script_source *source)
+{
+    unsigned int index;
+    unsigned int op;
+    unsigned int mark;
+
+    for (index = 0; index + 1 < CHAPTER_MARK_SEARCH_WORDS; index++) {
+        if (script_file_read_word(&source->file, index, &op) != SCRIPT_FILE_OK || script_file_read_word(&source->file, index + 1, &mark) != SCRIPT_FILE_OK) {
+            return 0;
+        }
+        if (op == CHAPTER_MARK_OP) {
+            return (int)mark;
+        }
+    }
+    return 0;
+}
+
+static int scene_is_behind_the_story(const struct script_machine *machine, const struct script_source *source, int was_seen)
+{
+    int mark;
+
+    if (machine->route == NULL || machine->route->scene_count == 0 || machine->auto_press == SCRIPT_AUTO_OFF || !was_seen) {
+        return 0;
+    }
+    mark = chapter_mark_of_source(source);
+    return mark > 0 && mark < machine->chapter_mark;
+}
 
 static void begin_script(struct script_machine *machine, const struct script_source *source)
 {
     clear_what_the_earlier_scene_left(machine);
+    machine->scene_is_behind_the_story = scene_is_behind_the_story(machine, source, scene_was_seen(machine, hash_text(FNV_OFFSET_BASIS, source->name)));
     note_scene_began(machine, source->name);
     begin_vm(&machine->runner, SCRIPT_VM_RUNNER, source, NULL, 0);
     machine->has_runner = 1;
@@ -187,7 +221,7 @@ static void note_scene_began(struct script_machine *machine, const char *name)
     int scene;
 
     machine->scene_name = name;
-    hash = hash_text(2166136261u, name);
+    hash = hash_text(FNV_OFFSET_BASIS, name);
     if (!scene_was_seen(machine, hash)) {
         if (machine->scenes_seen < SCRIPT_SCENES_SEEN_MAX) {
             machine->scene_hashes_seen[machine->scenes_seen] = hash;
@@ -241,7 +275,7 @@ void script_machine_note(struct script_machine *machine, const struct script_vm 
     if (vm != NULL) {
         script_file_read_word(&vm->source->file, vm->pc, &op);
     }
-    hash = hash_text(hash_text(2166136261u + op, reason), detail);
+    hash = hash_text(hash_text(FNV_OFFSET_BASIS + op, reason), detail);
     hash = hash % (SCRIPT_NOTED_PROBLEM_BYTES * 8u);
     if (machine->noted_problems[hash / 8] & (1u << (hash % 8))) {
         return;
@@ -1988,6 +2022,27 @@ static int scene_has_run_too_long(const struct script_machine *machine)
     return machine->tick - machine->last_new_scene_tick >= (unsigned int)machine->route->scene_most_ticks;
 }
 
+static void move_on_when_the_story_went_back(struct script_machine *machine)
+{
+    const char *next;
+
+    if (!machine->scene_is_behind_the_story || machine->teardown_at != NEVER || machine->load_at != NEVER || machine->stop_is_requested) {
+        return;
+    }
+    machine->scene_is_behind_the_story = 0;
+    next = machine->furthest_scene + 1 < machine->route->scene_count ? machine->route->scenes[machine->furthest_scene + 1] : NULL;
+    if (next == NULL || find_source(machine, next) == NULL) {
+        script_machine_note(machine, NULL, "scene_behind_the_story_found_no_way_on", machine->scene_name != NULL ? machine->scene_name : "");
+        return;
+    }
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("scene_behind_the_story_left", machine->scene_name != NULL ? machine->scene_name : "");
+        machine->outputs->marked("scene_behind_the_story_moved_to", next);
+    }
+    machine->last_new_scene_tick = machine->tick;
+    force_script_change(machine, next);
+}
+
 static void move_on_when_the_scene_runs_too_long(struct script_machine *machine)
 {
     const char *next;
@@ -2018,6 +2073,7 @@ void script_machine_tick(struct script_machine *machine)
     if (script_soul_step_eyecatch(machine)) {
         return;
     }
+    move_on_when_the_story_went_back(machine);
     move_on_when_the_scene_runs_too_long(machine);
     if (machine->is_finished) {
         machine->tick = machine->tick + 1;

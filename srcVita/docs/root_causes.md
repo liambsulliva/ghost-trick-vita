@@ -328,6 +328,12 @@ Chapter 4's lab, and 40 scripts in all, offer a set of panels the player picks f
 
 Guard: `script_choice.c` holds the lists and the pick with the native rules, the machine clears them at every scene change, and play is held while a choice is open. A `choose` route step (wait `choice`) picks a panel by its event, talk label or caption label, or `cancel`; with no such step, auto-play picks the first panel whose flag is not set after a second and logs `choice_picked_without_route`, and a press does the same in manual play. Still open: the panels are not drawn, and the turned panel's flip (`game+0x120` of the control) is read as the turned panel showing at its index.
 
+### 47. Auto-play that went back to Chapter 1
+
+Run 28 played on past Chapter 12 and then started Chapter 1 again, twice. Stage roots pick their game script from flags (`st05_root` picks `st05_game000` to `st05_game003`), and the scene timeout carries the game on without setting the flags the story would have set, so `st05_root` picked Chapter 3's `st05_game000`. The route then found that script's steps by name and played Chapter 3's block again, whose last step is the phone ride to the junkyard (step 229, place 1), and the junkyard root started Chapter 1.
+
+Guard: two rules in the shared path. Under auto-play, a script that was already visited and whose chapter mark (its op 0x74, the first words of every chapter's scripts) is below the highest mark reached is behind the story: the machine moves on to the scene after the furthest one reached in story order and logs `scene_behind_the_story_left` and `scene_behind_the_story_moved_to`. A rewind inside a chapter keeps its mark and stays, and manual play may go anywhere. And the route never plays a block it has passed: a script's steps are looked up from the block of the furthest step acted on, so a revisit to an earlier block logs `route_block_already_played` and plays nothing. Chapters 1 to 3 replay unchanged (235 steps done), and the whole-game replay no longer returns to `st01_game000`.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
