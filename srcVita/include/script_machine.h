@@ -12,6 +12,7 @@
 #include "soul_chain.h"
 
 #define SCRIPT_NO_OBJECT (-1)
+#define SCRIPT_COLOR_LEVEL_NORMAL 256
 #define SCRIPT_NOTE_LIST_COUNT 3
 #define SCRIPT_NOTE_ID_COUNT 64
 #define SCRIPT_SOURCE_MAX 256
@@ -105,6 +106,7 @@ struct script_actor {
     unsigned char counters[SCRIPT_ACTOR_COUNTER_COUNT];
     int level;
     int is_visible;
+    int color_level;
     int is_flipped;
     int stepping_is_stopped;
     int is_frozen_and_hidden;
@@ -389,6 +391,7 @@ struct script_machine {
     struct script_fade fades[SCRIPT_FADE_MAX];
     int fade_count;
     int brightness;
+    int background_color_level;
     int reported_brightness;
     int mask_fade_is_alive;
     int mask_fade_alpha;

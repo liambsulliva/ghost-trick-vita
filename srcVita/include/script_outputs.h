@@ -34,6 +34,7 @@ struct script_actor_view {
     int has_core;
     int core_x;
     int core_y;
+    int color_level;
 };
 
 enum script_soul_motion {
@@ -88,6 +89,7 @@ struct script_outputs {
     void (*mask_fade_color_changed)(int is_white);
     void (*actor_changed)(const struct script_actor_view *actor);
     void (*brightness_changed)(int signed_level);
+    void (*background_color_level_changed)(int level);
     void (*mask_fade_changed)(int is_alive, int alpha);
     void (*beam_created)(const char *name, float apex_x, float apex_y, float base_x, float base_y, float half_width, float cover_alpha);
     void (*beam_width_ramped)(const char *name, float half_width, int ticks);

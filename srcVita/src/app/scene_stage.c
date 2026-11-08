@@ -63,6 +63,7 @@ static unsigned int frames_passed_over(unsigned int from, unsigned int to, unsig
 void scene_stage_reset(void)
 {
     memset(&stage, 0, sizeof(stage));
+    stage.background_color_level = SCENE_COLOR_LEVEL_NORMAL;
     scene_effects_reset(&stage.effects);
 }
 
@@ -111,6 +112,7 @@ static int set_object_without_reading_ahead(const char *object_name, const char 
             return 0;
         }
         object->has_soul_tint = 0;
+        object->color_level = SCENE_COLOR_LEVEL_NORMAL;
         object->hides_in_living_view = 0;
         object->hides_in_soul_view = 0;
     }
@@ -172,6 +174,21 @@ void scene_stage_set_object_flipped(const char *object_name, int is_flipped)
     if (object != NULL) {
         object->is_flipped = is_flipped;
     }
+}
+
+void scene_stage_set_object_color_level(const char *object_name, int level)
+{
+    struct scene_object *object;
+
+    object = find_object(object_name);
+    if (object != NULL) {
+        object->color_level = level;
+    }
+}
+
+void scene_stage_set_background_color_level(int level)
+{
+    stage.background_color_level = level;
 }
 
 void scene_stage_set_object_origin(float x, float y)
@@ -251,6 +268,7 @@ void scene_stage_clear_room(void)
     int index;
 
     stage.plate_count = 0;
+    stage.background_color_level = SCENE_COLOR_LEVEL_NORMAL;
     scene_layers_clear_overlays(&stage.layers);
     for (index = 0; index < SCENE_OBJECT_MAX; index++) {
         if (stage.objects[index].in_use) {

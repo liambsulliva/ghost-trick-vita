@@ -269,7 +269,13 @@ static void on_actor_changed(const struct script_actor_view *actor)
     }
     scene_stage_place_object(actor->name, row->animation_name, (float)actor->x, (float)actor->y, (LEVEL_COUNT - actor->level) * LAYER_PER_LEVEL + (CREATION_INDEX_TOP - actor->creation_index), record_of(actor, row->records_per_frame));
     scene_stage_set_object_flipped(actor->name, actor->is_flipped);
+    scene_stage_set_object_color_level(actor->name, actor->color_level);
     scene_stage_set_object_views(actor->name, script_class_draws_in_living_view(actor->class_id), script_class_draws_in_soul_view(actor->class_id));
+}
+
+static void on_background_color_level_changed(int level)
+{
+    scene_stage_set_background_color_level(level);
 }
 
 static void on_brightness_changed(int signed_level)
@@ -794,6 +800,7 @@ static const struct script_outputs bridge_outputs = {
     .mask_fade_color_changed = on_mask_fade_color_changed,
     .actor_changed = on_actor_changed,
     .brightness_changed = on_brightness_changed,
+    .background_color_level_changed = on_background_color_level_changed,
     .mask_fade_changed = on_mask_fade_changed,
     .beam_created = on_beam_created,
     .beam_cover_ramped = on_beam_cover_ramped,

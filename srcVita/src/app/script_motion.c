@@ -406,6 +406,7 @@ static void report_actor_if_changed(struct script_machine *machine, const struct
     view.is_visible = actor->is_visible;
     view.is_flipped = actor->is_flipped;
     view.class_id = actor->class_id;
+    view.color_level = actor->color_level;
     view.has_core = actor->has_core;
     view.core_x = actor->x + actor->core_x;
     view.core_y = actor->y + actor->core_y;
@@ -458,6 +459,7 @@ static void create_actor(struct script_machine *machine, struct script_vm *vm, c
     actor->y = UNPLACED_Y;
     actor->class_id = script_machine_u32(words, 0);
     actor->level = script_class_default_level(actor->class_id);
+    actor->color_level = SCRIPT_COLOR_LEVEL_NORMAL;
 }
 
 static void select_actor(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)

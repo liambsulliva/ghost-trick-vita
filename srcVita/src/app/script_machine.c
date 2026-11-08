@@ -74,6 +74,7 @@ void script_machine_init(struct script_machine *machine, const struct script_out
     machine->load_at = NEVER;
     machine->furthest_scene = -1;
     machine->route_furthest_acted_step = -1;
+    machine->background_color_level = SCRIPT_COLOR_LEVEL_NORMAL;
     machine->route_step_after_retry = -1;
     machine->game_over_retry_step = -1;
     machine->game_start_at = NEVER;
@@ -167,6 +168,7 @@ static void begin_script(struct script_machine *machine, const struct script_sou
     note_scene_began(machine, source->name);
     begin_vm(&machine->runner, SCRIPT_VM_RUNNER, source, NULL, 0);
     machine->has_runner = 1;
+    machine->background_color_level = SCRIPT_COLOR_LEVEL_NORMAL;
     memset(machine->visited_sites, 0, sizeof(machine->visited_sites));
     memset(machine->pushed_sites, 0, sizeof(machine->pushed_sites));
     machine->pushes_in_this_script = 0;

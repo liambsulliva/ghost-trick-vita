@@ -17,6 +17,8 @@
 #define LIGHT_ALPHA_FRACTION_BITS 12
 #define KEEP_CAMERA_AXIS 0xffffu
 #define CAMERA_CUT_SPEED 0x3e8000
+#define BACKGROUND_TARGET "BG"
+#define SELF_TARGET_MARK '?'
 #define FRAMING_FARTHEST_FROM_CORE 120
 #define SHAKE_DIRECTION_COUNT 8
 #define SHAKE_TICKS_PER_DIRECTION 4
@@ -629,12 +631,48 @@ void script_machine_update_camera(struct script_machine *machine)
     show_camera(machine);
 }
 
+static void set_color_level(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+{
+    const char *name;
+    struct script_object *object;
+    int level;
+    int index;
+
+    name = script_machine_string(machine, vm, words[0]);
+    level = (int)words[1];
+    if (name == NULL) {
+        return;
+    }
+    if (strcmp(name, BACKGROUND_TARGET) == 0) {
+        machine->background_color_level = level;
+        if (machine->outputs->background_color_level_changed != NULL) {
+            machine->outputs->background_color_level_changed(level);
+        }
+        return;
+    }
+    if (name[0] == SELF_TARGET_MARK) {
+        object = script_machine_current_object(machine, vm);
+        if (object != NULL) {
+            object->actor.color_level = level;
+        }
+        return;
+    }
+    for (index = 0; index < machine->object_count; index++) {
+        if (script_machine_name_matches_target(machine->objects[index].name, name)) {
+            machine->objects[index].actor.color_level = level;
+        }
+    }
+}
+
 enum script_step_result script_ops_view_run(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words)
 {
     unsigned int next_word;
     unsigned int length_with_force;
 
     switch (op) {
+    case 0xf7:
+        set_color_level(machine, vm, words);
+        break;
     case 0xa:
         if (machine->fade_count > 0) {
             return SCRIPT_STEP_MOVED_THEN_YIELD;
