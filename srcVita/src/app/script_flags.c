@@ -4,6 +4,7 @@
 #define CHAPTER_FLAG_BIT 0x8000u
 #define GAME_FLAG_BIT 0x1000u
 #define FLAG_THAT_ALWAYS_READS_ZERO 0x1000u
+#define FLAGS_IN_A_FLAG_BYTE 8u
 #define FLAG_INDEX_MASK (SCRIPT_FLAG_COUNT - 1u)
 
 static unsigned int index_of(unsigned int flag)
@@ -81,4 +82,49 @@ void script_flags_write(struct script_flags *flags, unsigned int flag, int value
     } else {
         store[index / 8] = (unsigned char)(store[index / 8] & ~(1u << (index % 8)));
     }
+}
+
+int script_flags_read_known(const struct script_flags *flags, unsigned int flag, int *value)
+{
+    if (!script_flags_is_known(flag)) {
+        return 0;
+    }
+    *value = script_flags_read(flags, flag);
+    return 1;
+}
+
+int script_flags_write_known(struct script_flags *flags, unsigned int flag, int value)
+{
+    if (!script_flags_is_known(flag)) {
+        return 0;
+    }
+    script_flags_write(flags, flag, value);
+    return 1;
+}
+
+int script_flags_write_byte(struct script_flags *flags, unsigned int first_flag, unsigned int bits)
+{
+    unsigned int index;
+
+    for (index = 0; index < FLAGS_IN_A_FLAG_BYTE; index++) {
+        if (!script_flags_write_known(flags, first_flag + index, (int)((bits >> index) & 1u))) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int script_flags_read_byte(const struct script_flags *flags, unsigned int first_flag)
+{
+    unsigned int index;
+    int mask;
+    int value;
+
+    mask = 0;
+    for (index = 0; index < FLAGS_IN_A_FLAG_BYTE; index++) {
+        if (script_flags_read_known(flags, first_flag + index, &value) && value) {
+            mask = mask | (1 << index);
+        }
+    }
+    return mask;
 }

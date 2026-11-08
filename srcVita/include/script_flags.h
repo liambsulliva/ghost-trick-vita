@@ -17,6 +17,10 @@ void script_flags_clear_local(struct script_flags *flags);
 int script_flags_is_known(unsigned int flag);
 int script_flags_read(const struct script_flags *flags, unsigned int flag);
 void script_flags_write(struct script_flags *flags, unsigned int flag, int value);
+int script_flags_read_known(const struct script_flags *flags, unsigned int flag, int *value);
+int script_flags_write_known(struct script_flags *flags, unsigned int flag, int value);
+int script_flags_write_byte(struct script_flags *flags, unsigned int first_flag, unsigned int bits);
+int script_flags_read_byte(const struct script_flags *flags, unsigned int first_flag);
 void script_flags_save_game_bank(struct script_flags *flags);
 void script_flags_restore_game_bank(struct script_flags *flags);
 

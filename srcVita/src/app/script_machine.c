@@ -494,61 +494,32 @@ static void request_script_change(struct script_machine *machine, struct script_
 
 static void read_flag_into_condition(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
-    unsigned int flag;
+    int value;
 
-    flag = script_machine_u32(words, 0);
-    if (!script_flags_is_known(flag)) {
+    if (!script_flags_read_known(&machine->flags, script_machine_u32(words, 0), &value)) {
         script_machine_note(machine, vm, "flag_out_of_range", "");
         return;
     }
-    vm->condition = script_flags_read(&machine->flags, flag) ? 1 : 0;
+    vm->condition = value ? 1 : 0;
 }
-
-#define FLAGS_IN_A_FLAG_BYTE 8u
 
 static void write_flag_byte(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
-    unsigned int first_flag;
-    unsigned int bits;
-    unsigned int index;
-
-    first_flag = script_machine_u32(words, 0);
-    bits = words[2] & 0xffu;
-    for (index = 0; index < FLAGS_IN_A_FLAG_BYTE; index++) {
-        if (!script_flags_is_known(first_flag + index)) {
-            script_machine_note(machine, vm, "flag_out_of_range", "");
-            return;
-        }
-        script_flags_write(&machine->flags, first_flag + index, (int)((bits >> index) & 1u));
+    if (!script_flags_write_byte(&machine->flags, script_machine_u32(words, 0), words[2] & 0xffu)) {
+        script_machine_note(machine, vm, "flag_out_of_range", "");
     }
 }
 
 static void read_flag_byte(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
-    unsigned int first_flag;
-    unsigned int index;
-    int mask;
-
-    first_flag = script_machine_u32(words, 0);
-    mask = 0;
-    for (index = 0; index < FLAGS_IN_A_FLAG_BYTE; index++) {
-        if (script_flags_is_known(first_flag + index) && script_flags_read(&machine->flags, first_flag + index)) {
-            mask = mask | (1 << index);
-        }
-    }
-    vm->reg_a = mask;
+    vm->reg_a = script_flags_read_byte(&machine->flags, script_machine_u32(words, 0));
 }
 
 static void write_flag(struct script_machine *machine, struct script_vm *vm, const unsigned int *words, int value)
 {
-    unsigned int flag;
-
-    flag = script_machine_u32(words, 0);
-    if (!script_flags_is_known(flag)) {
+    if (!script_flags_write_known(&machine->flags, script_machine_u32(words, 0), value)) {
         script_machine_note(machine, vm, "flag_out_of_range", "");
-        return;
     }
-    script_flags_write(&machine->flags, flag, value);
 }
 
 static void set_pause_class(struct script_vm *vm, int pause_class)
