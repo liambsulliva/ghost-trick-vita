@@ -84,18 +84,33 @@ static int get_ready(void)
     }
     file_make_folder(BURST_FOLDER_NAME);
     for (index = 0; index < BURST_QUEUE_LENGTH; index++) {
-        pictures[index] = mem_alloc(BURST_LARGEST_PICTURE);
         if (pictures[index] == NULL) {
+            pictures[index] = mem_alloc(BURST_LARGEST_PICTURE);
+        }
+        if (pictures[index] == NULL) {
+            run_log_write("burst not_ready reason=out_of_memory picture=%u bytes=%u", index, (unsigned int)BURST_LARGEST_PICTURE);
             return 0;
         }
     }
-    pictures_waiting = sceKernelCreateSema("burst_waiting", 0, 0, BURST_QUEUE_LENGTH + 1, NULL);
+    if (pictures_waiting <= 0) {
+        pictures_waiting = sceKernelCreateSema("burst_waiting", 0, 0, BURST_QUEUE_LENGTH + 1, NULL);
+    }
+    if (pictures_waiting < 0) {
+        run_log_write("burst not_ready reason=semaphore code=%d", pictures_waiting);
+        return 0;
+    }
     writer = sceKernelCreateThread("burst_writer", write_waiting_pictures, BURST_WRITER_PRIORITY, BURST_WRITER_STACK, 0, SCE_KERNEL_CPU_MASK_USER_1, NULL);
-    if (pictures_waiting < 0 || writer < 0 || sceKernelStartThread(writer, 0, NULL) < 0) {
+    if (writer < 0 || sceKernelStartThread(writer, 0, NULL) < 0) {
+        run_log_write("burst not_ready reason=writer code=%d", writer);
         return 0;
     }
     is_ready = 1;
     return 1;
+}
+
+void screen_burst_reserve_memory(void)
+{
+    run_log_write("burst reserved ok=%d", get_ready());
 }
 
 static void stop_burst(void)

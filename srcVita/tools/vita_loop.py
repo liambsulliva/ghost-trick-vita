@@ -507,6 +507,16 @@ def pull_burst_window():
     connection = open_ftp()
     try:
         return download_bytes(connection, BURST_WINDOW_PATH)
+    except ftplib.error_perm:
+        return b""
+    finally:
+        connection.close()
+
+
+def delete_burst_window():
+    connection = open_ftp()
+    try:
+        delete_if_present(connection, BURST_WINDOW_PATH)
     finally:
         connection.close()
 
@@ -516,12 +526,17 @@ def request_burst(seconds, rounds, output_folder, ms_between_pictures=0):
     rgb_of_color = every_565_color_as_rgb()
     next_slot = 0
     for round_number in range(1, rounds + 1):
+        delete_burst_window()
         write_app_commands("burst %d %d\nresume\n" % (seconds, ms_between_pictures))
         time.sleep(seconds + SECONDS_FOR_BURST_TO_FINISH_WRITING)
         started = time.time()
         data = pull_burst_window()
         pulled_seconds = time.time() - started
         pictures = split_burst_window(data)
+        if not pictures:
+            print("burst round", round_number, "got no pictures: the app refused or never started the burst; read its log for 'burst not_ready' or 'burst refused'", flush=True)
+            write_app_commands("resume\n")
+            return 1
         for picture in pictures:
             slot_name = BURST_PICTURE_NAME % (next_slot % BURST_SLOTS)
             save_burst_picture(picture, os.path.join(output_folder, slot_name + ".jpg"), rgb_of_color)

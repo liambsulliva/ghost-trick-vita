@@ -337,6 +337,9 @@ int main(void)
 
     full_resolution = renderer_init();
     run_log_write("renderer ready full_resolution=%d", full_resolution);
+#ifdef FAST_FORWARD_BUILD
+    screen_burst_reserve_memory();
+#endif
     viewer_app_start(ASSETS_FOLDER);
     use_the_memory_this_device_has();
     log_memory_and_textures();
