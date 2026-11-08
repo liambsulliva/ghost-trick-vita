@@ -9,6 +9,7 @@ enum script_op_family {
     SCRIPT_OP_ACTOR,
     SCRIPT_OP_VIEW,
     SCRIPT_OP_MEDIA,
+    SCRIPT_OP_CHOICE,
     SCRIPT_OP_STORES_ONLY
 };
 

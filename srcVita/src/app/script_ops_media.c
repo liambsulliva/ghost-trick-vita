@@ -410,7 +410,7 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         stop_named_sounds(machine, vm, words[1]);
         break;
     case 0x39:
-        if (machine->talk_is_open) {
+        if (machine->talk_is_open || script_choice_holds_the_script(machine)) {
             return SCRIPT_STEP_MOVED_THEN_YIELD;
         }
         break;

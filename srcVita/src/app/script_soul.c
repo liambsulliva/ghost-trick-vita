@@ -44,6 +44,7 @@
 #define CAMERA_VIEW_MARGIN 24
 #define TRICK_ACTION_AFTER_TICKS 8
 #define TIME_JUMP_AFTER_TICKS 30
+#define CHOICE_READING_TICKS 60
 #define TIME_JUMP_MOVIE "time_jump"
 #define COUNTDOWN_DEFAULT_INTERVAL 300
 #define COUNTDOWN_ZERO_STEP 3
@@ -1207,7 +1208,7 @@ static void player_moved_in_tutorial(struct script_machine *machine)
 
 int script_soul_world_is_playable(const struct script_machine *machine)
 {
-    return !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on;
+    return !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on && !machine->choice.is_open;
 }
 
 static int pill_answers_a_press(const struct script_machine *machine, enum script_pill_id id)
@@ -1234,6 +1235,10 @@ static void take_press(struct script_machine *machine)
     }
     if (script_narration_wants_a_press(&machine->narration)) {
         script_narration_note_press(&machine->narration);
+        return;
+    }
+    if (machine->choice.is_open) {
+        script_choice_pick(machine, script_choice_first_unseen(machine));
         return;
     }
     if (soul->rewind_select_ticks >= REWIND_SLIDE_TICKS) {
@@ -1538,6 +1543,8 @@ static int route_word_without_argument_holds(const struct script_machine *machin
         return soul->camera_tutorial_is_on;
     case SCRIPT_ROUTE_WAIT_TIMELEAP_ARMED:
         return soul->rewind_select_ticks >= REWIND_SLIDE_TICKS || soul->time_jump_event.target != NULL;
+    case SCRIPT_ROUTE_WAIT_CHOICE:
+        return machine->choice.is_open;
     default:
         return 0;
     }
@@ -1729,6 +1736,18 @@ static int run_route_move(struct script_machine *machine, const struct script_ro
     return 0;
 }
 
+static int choose_the_panel(struct script_machine *machine, const char *name)
+{
+    int index;
+
+    index = script_choice_find(machine, name);
+    if (!machine->choice.is_open || index == SCRIPT_CHOICE_NONE) {
+        return 0;
+    }
+    script_choice_pick(machine, index);
+    return 1;
+}
+
 static int run_route_action(struct script_machine *machine, const struct script_route_step *step)
 {
     struct script_soul *soul;
@@ -1776,6 +1795,8 @@ static int run_route_action(struct script_machine *machine, const struct script_
     case SCRIPT_ROUTE_DEAD_TALK:
         start_dead_talk(machine, step->object[0] != '\0' ? script_machine_index_of_object(machine, step->object) : NO_CORE);
         return 1;
+    case SCRIPT_ROUTE_CHOOSE:
+        return choose_the_panel(machine, step->object);
     default:
         return 1;
     }
@@ -1920,6 +1941,25 @@ void script_soul_act_began(struct script_machine *machine, const char *object_na
     }
 }
 
+static int route_step_chooses(const struct script_machine *machine)
+{
+    const struct script_route_step *step;
+
+    step = current_route_step(machine);
+    return step != NULL && step->action == SCRIPT_ROUTE_CHOOSE && script_choice_find(machine, step->object) != SCRIPT_CHOICE_NONE;
+}
+
+static void choose_without_a_route_step(struct script_machine *machine)
+{
+    if (machine->tick - machine->choice.opened_at < CHOICE_READING_TICKS) {
+        return;
+    }
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("choice_picked_without_route", machine->soul.route_script != NULL ? machine->soul.route_script : "-");
+    }
+    script_choice_pick(machine, script_choice_first_unseen(machine));
+}
+
 static void play_automatically(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -1933,6 +1973,10 @@ static void play_automatically(struct script_machine *machine)
         return;
     }
     soul->auto_reading_ticks = 0;
+    if (machine->choice.is_open && !route_step_chooses(machine)) {
+        choose_without_a_route_step(machine);
+        return;
+    }
     if (soul->route_camera_is_scrolling) {
         if (soul->camera_tutorial_is_on) {
             script_machine_scroll_camera(machine, CAMERA_FREE_SPEED_PIXELS, 0);

@@ -1,6 +1,7 @@
 #ifndef SCRIPT_MACHINE_H
 #define SCRIPT_MACHINE_H
 
+#include "script_choice.h"
 #include "script_file.h"
 #include "script_flags.h"
 #include "script_narration.h"
@@ -356,6 +357,7 @@ struct script_machine {
     int mode_byte;
     int film_frame_is_on;
     int talk_is_open;
+    struct script_choice choice;
     int has_runner;
     struct script_vm runner;
     struct script_object objects[SCRIPT_OBJECT_MAX];
@@ -482,6 +484,7 @@ unsigned int script_machine_u32(const unsigned int *words, int first);
 enum script_step_result script_ops_actor_run(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words);
 enum script_step_result script_ops_view_run(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words);
 enum script_step_result script_ops_media_run(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words);
+enum script_step_result script_choice_run_op(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words);
 
 void script_motion_update_all(struct script_machine *machine);
 void script_fades_update(struct script_machine *machine);

@@ -15,7 +15,7 @@ Chapter 1's route (steps 0 to 89 of `tools/assets/game.json`) is the model: it p
 5. **Read `footage_s` from the video, to half a second.** It is the moment the player pressed, read from frames. The pacing bake (`route_pacing.py`) stretches each step's dwell so the port never acts sooner after the previous step than the footage did; a guessed time makes the port wait too long or not at all.
 6. **Use `quick` for fast runs of tricks** (steps 43 to 71), `normal` elsewhere.
 7. **Gate exits on the story too.** A phone ride waits on the controller's act that offers it (`act:game:gameAct060`, step 89), never on an object act that already holds when the scene opens. Balloons are tapped when they are up (`act:game:gameAct020 & balloon:cicel_talk`, step 8; `tap_balloon` names the event the balloon sends).
-8. **Tutorials, the camera and rewinds are steps too**: `touch` on `tutorial:touch`, `camera` on `camera_tutorial` (7), `touch` on `timeleap_armed` for the rewind (20), and `dead_talk` (object `-`) for a talk with the dead.
+8. **Tutorials, the camera and rewinds are steps too**: `touch` on `tutorial:touch`, `camera` on `camera_tutorial` (7), `touch` on `timeleap_armed` for the rewind (20), `dead_talk` (object `-`) for a talk with the dead, and `choose` on `choice` for a choice panel (object: the event the panel sends, its talk label or its caption label, or `cancel`). A choice with no `choose` step picks the first panel not yet chosen and logs `choice_picked_without_route`.
 
 ## Finding the acts and flags
 

@@ -77,6 +77,7 @@ void script_machine_init(struct script_machine *machine, const struct script_out
     machine->talk_close_at = NEVER;
     script_soul_reset(machine);
     script_flags_clear_all(&machine->flags);
+    script_choice_clear_all(machine);
 }
 
 int script_machine_add_source(struct script_machine *machine, const char *name, unsigned char *data, unsigned int size, const struct script_cue_list *cues)
@@ -224,6 +225,10 @@ static void clear_what_the_earlier_scene_left(struct script_machine *machine)
         machine->narration.press_is_pending = 0;
         note_leftover(machine, "narration");
     }
+    if (machine->choice.control_is_up) {
+        note_leftover(machine, "choice");
+    }
+    script_choice_clear_all(machine);
 }
 
 void script_machine_note(struct script_machine *machine, const struct script_vm *vm, const char *reason, const char *detail)
@@ -1359,6 +1364,8 @@ static enum script_step_result run_op(struct script_machine *machine, struct scr
         return script_ops_view_run(machine, vm, op, words);
     case SCRIPT_OP_MEDIA:
         return script_ops_media_run(machine, vm, op, words);
+    case SCRIPT_OP_CHOICE:
+        return script_choice_run_op(machine, vm, op, words);
     case SCRIPT_OP_STORES_ONLY:
         note_stored_op_once(machine, op);
         return SCRIPT_STEP_NEXT;
