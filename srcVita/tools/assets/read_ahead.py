@@ -1,5 +1,6 @@
 import argparse
 import os
+import struct
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -11,6 +12,12 @@ AHEAD_EXTENSION = ".ahead"
 SCENES_FILE_NAME = "scenes.txt"
 DISPATCHER_SCRIPTS = ("route", "phone", "chapter", "flags")
 ROOT_SCRIPT_MARK = "_root"
+SCRIPT_EXTENSION = ".lmg"
+SCRIPT_HEADER_SIZE = 0x34
+SCRIPT_CODE_SIZE_OFFSET = 0x08
+CHAPTER_MARK_OP = 0x74
+CHAPTER_MARK_SEARCH_WORDS = 12
+CHAPTER_END_SCRIPT_MARK = "_chapter"
 BUNDLE_EXTENSION = ".anims"
 MOTIONS_EXTENSION = ".motions"
 ANCHOR_ACT_PREFIX = "game"
@@ -188,6 +195,36 @@ def bundle_text(scripts_folder, animation_folder, script_name):
     return "".join(parts)
 
 
+def chapter_mark_of_script(path):
+    with open(path, "rb") as source:
+        data = source.read(SCRIPT_HEADER_SIZE + 2 * CHAPTER_MARK_SEARCH_WORDS)
+    if len(data) < SCRIPT_HEADER_SIZE:
+        return None
+    code_size = struct.unpack_from("<I", data, SCRIPT_CODE_SIZE_OFFSET)[0]
+    word_count = min(code_size // 2, (len(data) - SCRIPT_HEADER_SIZE) // 2)
+    words = struct.unpack_from("<%dH" % word_count, data, SCRIPT_HEADER_SIZE)
+    for index in range(word_count - 1):
+        if words[index] == CHAPTER_MARK_OP:
+            return words[index + 1]
+    return None
+
+
+def chapter_marks(scripts_folder):
+    marks = {}
+    for file_name in os.listdir(scripts_folder):
+        if file_name.endswith(SCRIPT_EXTENSION):
+            mark = chapter_mark_of_script(os.path.join(scripts_folder, file_name))
+            if mark is not None:
+                marks[file_name[:-len(SCRIPT_EXTENSION)]] = mark
+    return marks
+
+
+def story_order(visited, marks):
+    frontier = max([marks[name] for name in visited if name in marks], default=0)
+    later = [name for name, mark in marks.items() if name not in visited and mark >= frontier]
+    return visited + sorted(later, key=lambda name: (marks[name], CHAPTER_END_SCRIPT_MARK in name, name))
+
+
 def scene_order_from_cues(cues_path):
     scenes = []
     for line in read_lines(cues_path):
@@ -220,7 +257,8 @@ def main():
     parser.add_argument("animation_folder", help="baked animations folder")
     arguments = parser.parse_args()
     schedules = schedules_from_cues(arguments.cues, arguments.scripts_folder, arguments.animation_folder)
-    bake_record.write_if_different(os.path.join(arguments.scripts_folder, SCENES_FILE_NAME), scenes_text(scene_order_from_cues(arguments.cues)).encode("ascii"))
+    scenes = story_order(scene_order_from_cues(arguments.cues), chapter_marks(arguments.scripts_folder))
+    bake_record.write_if_different(os.path.join(arguments.scripts_folder, SCENES_FILE_NAME), scenes_text(scenes).encode("ascii"))
     for path in os.listdir(arguments.scripts_folder):
         if path.endswith(MOTIONS_EXTENSION):
             schedules.setdefault(path[:-len(MOTIONS_EXTENSION)], [])

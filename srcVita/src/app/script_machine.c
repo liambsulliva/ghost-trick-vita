@@ -1965,7 +1965,7 @@ static const char *scene_where_the_story_should_be(const struct script_machine *
         return NULL;
     }
     if (scene < machine->furthest_scene) {
-        return machine->route->scenes[machine->furthest_scene];
+        scene = machine->furthest_scene + 1 < machine->route->scene_count ? machine->furthest_scene : machine->furthest_scene - 1;
     }
     return machine->route->scenes[scene + 1];
 }
