@@ -13,6 +13,7 @@
 #define SECOND_CORE_DISABLED_BIT 2
 #define ROUTE_ACTION_MOST_TICKS 1800u
 #define SOUL_REACH_DS_PIXELS 48.0f
+#define ROUTE_HOP_MOST_DS_PIXELS (SOUL_REACH_DS_PIXELS + SOUL_TIP_PICKUP_FAR)
 #define SOUL_TOUCH_GRAB_DS_PIXELS 16.0f
 #define SOUL_PEN_DEAD_ZONE_DS_PIXELS 3.0f
 #define SOUL_JUMP_SOUND_KIND 16
@@ -1439,6 +1440,7 @@ static void go_to_route_step(struct script_machine *machine, int step_index)
     soul->route_ready_at = 0;
     soul->route_action_has_begun = 0;
     soul->route_tricks_when_step_began = soul->tricks_fired;
+    soul->route_aimed_node = NO_CORE;
 }
 
 static void finish_route_step(struct script_machine *machine, const struct script_route_step *step)
@@ -1584,12 +1586,86 @@ static void aim_tip_at_core(struct script_machine *machine, int object_index, in
     soul->tip_aim_y = (target_y - from_y) / length;
 }
 
+static float core_distance(const struct script_machine *machine, int first_object, int first_slot, int second_object, int second_slot)
+{
+    float first_x;
+    float first_y;
+    float second_x;
+    float second_y;
+
+    core_position(machine, first_object, first_slot, &first_x, &first_y);
+    core_position(machine, second_object, second_slot, &second_x, &second_y);
+    return sqrtf((second_x - first_x) * (second_x - first_x) + (second_y - first_y) * (second_y - first_y));
+}
+
+static int first_hop_toward(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot)
+{
+    int came_from[SCRIPT_OBJECT_MAX * SCRIPT_CORE_SLOT_COUNT];
+    int queue[SCRIPT_OBJECT_MAX * SCRIPT_CORE_SLOT_COUNT];
+    int node_count;
+    int start;
+    int target;
+    int head;
+    int tail;
+    int node;
+
+    node_count = machine->object_count * SCRIPT_CORE_SLOT_COUNT;
+    start = machine->soul.active_object * SCRIPT_CORE_SLOT_COUNT + machine->soul.active_slot;
+    target = target_object * SCRIPT_CORE_SLOT_COUNT + target_slot;
+    for (node = 0; node < node_count; node++) {
+        came_from[node] = NO_CORE;
+    }
+    came_from[start] = start;
+    head = 0;
+    tail = 0;
+    queue[tail++] = start;
+    while (head < tail && came_from[target] == NO_CORE) {
+        int from;
+
+        from = queue[head++];
+        for (node = 0; node < node_count; node++) {
+            if (came_from[node] != NO_CORE || !object_can_be_a_core(&machine->objects[node / SCRIPT_CORE_SLOT_COUNT], node % SCRIPT_CORE_SLOT_COUNT)) {
+                continue;
+            }
+            if (core_distance(machine, from / SCRIPT_CORE_SLOT_COUNT, from % SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT, node % SCRIPT_CORE_SLOT_COUNT) <= ROUTE_HOP_MOST_DS_PIXELS) {
+                came_from[node] = from;
+                queue[tail++] = node;
+            }
+        }
+    }
+    if (came_from[target] == NO_CORE) {
+        return 0;
+    }
+    node = target;
+    while (came_from[node] != start) {
+        node = came_from[node];
+    }
+    *hop_object = node / SCRIPT_CORE_SLOT_COUNT;
+    *hop_slot = node % SCRIPT_CORE_SLOT_COUNT;
+    return 1;
+}
+
+static void mark_route_aim(struct script_machine *machine, int object_index, int slot)
+{
+    char detail[SCRIPT_ROUTE_NAME_MAX + 48];
+
+    if (machine->outputs->marked == NULL) {
+        return;
+    }
+    snprintf(detail, sizeof(detail), "%s:%d from=%s away=%.0f", machine->objects[object_index].name, slot, machine->objects[machine->soul.active_object].name, core_distance(machine, machine->soul.active_object, machine->soul.active_slot, object_index, slot));
+    machine->outputs->marked("route_aim", detail);
+}
+
 static int run_route_move(struct script_machine *machine, const struct script_route_step *step)
 {
     struct script_soul *soul;
     int object_index;
+    int hop_object;
+    int hop_slot;
 
     soul = &machine->soul;
+    hop_object = NO_CORE;
+    hop_slot = 0;
     object_index = object_named(machine, step->object);
     if (object_index == NO_CORE) {
         return 0;
@@ -1601,6 +1677,18 @@ static int run_route_move(struct script_machine *machine, const struct script_ro
         return 0;
     }
     if (!object_can_be_a_core(&machine->objects[object_index], step->slot)) {
+        return 0;
+    }
+    if (!first_hop_toward(machine, object_index, step->slot, &hop_object, &hop_slot)) {
+        hop_object = object_index;
+        hop_slot = step->slot;
+    }
+    if (soul->route_aimed_node != hop_object * SCRIPT_CORE_SLOT_COUNT + hop_slot) {
+        soul->route_aimed_node = hop_object * SCRIPT_CORE_SLOT_COUNT + hop_slot;
+        mark_route_aim(machine, hop_object, hop_slot);
+    }
+    if (hop_object != object_index || hop_slot != step->slot) {
+        aim_tip_at_core(machine, hop_object, hop_slot);
         return 0;
     }
     aim_tip_at_core(machine, object_index, step->slot);
@@ -1656,6 +1744,34 @@ static int run_route_action(struct script_machine *machine, const struct script_
     }
 }
 
+static void mark_hop_distances(struct script_machine *machine, int target_object, int target_slot)
+{
+    char detail[SCRIPT_ROUTE_NAME_MAX * 2 + 48];
+    float nearest;
+    int nearest_object;
+    int object_index;
+
+    if (machine->outputs->marked == NULL || machine->soul.active_object == NO_CORE) {
+        return;
+    }
+    nearest = 0.0f;
+    nearest_object = NO_CORE;
+    for (object_index = 0; object_index < machine->object_count; object_index++) {
+        float distance;
+
+        if (object_index == target_object || object_index == machine->soul.active_object || !object_can_be_a_core(&machine->objects[object_index], 0)) {
+            continue;
+        }
+        distance = core_distance(machine, object_index, 0, target_object, target_slot);
+        if (nearest_object == NO_CORE || distance < nearest) {
+            nearest = distance;
+            nearest_object = object_index;
+        }
+    }
+    snprintf(detail, sizeof(detail), "from=%s away=%.0f nearest_other=%s at=%.0f", machine->objects[machine->soul.active_object].name, core_distance(machine, machine->soul.active_object, machine->soul.active_slot, target_object, target_slot), nearest_object != NO_CORE ? machine->objects[nearest_object].name : "-", nearest);
+    machine->outputs->marked("route_hop_distances", detail);
+}
+
 static void give_up_on_route_step(struct script_machine *machine, const struct script_route_step *step)
 {
     struct script_soul *soul;
@@ -1667,6 +1783,7 @@ static void give_up_on_route_step(struct script_machine *machine, const struct s
         object_index = object_named(machine, step->object);
         if (object_index != NO_CORE && object_can_be_a_core(&machine->objects[object_index], step->slot)) {
             mark_route_step(machine, "route_hop_beyond_reach", step);
+            mark_hop_distances(machine, object_index, step->slot);
             arrive_at_core(machine, object_index, step->slot);
         }
     }

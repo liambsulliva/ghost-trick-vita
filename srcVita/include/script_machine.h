@@ -283,6 +283,7 @@ struct script_soul {
     int route_camera_is_scrolling;
     int tricks_fired;
     int route_tricks_when_step_began;
+    int route_aimed_node;
     int tip_is_aimed;
     struct soul_chain chain;
     int chain_needs_reset;
