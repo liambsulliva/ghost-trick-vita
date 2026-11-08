@@ -4,6 +4,7 @@
 #include <string.h>
 #include "script_machine.h"
 #include "script_tables.h"
+#include "script_flags.h"
 
 #define FILE_NAME_MAX 512
 #define TEXT_BYTES_MAX (1024 * 1024)
