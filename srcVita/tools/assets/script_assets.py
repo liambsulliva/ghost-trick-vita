@@ -257,6 +257,7 @@ def table_animations(set_description, output_folder, timelines, crops):
         return {}, {}
     animation_texts = {}
     motion_lines = {}
+    tables_without_records = set()
     for path in section["files"]:
         plain = read_baked_script(output_folder, path)
         if plain is None:
@@ -267,6 +268,9 @@ def table_animations(set_description, output_folder, timelines, crops):
             if table_name not in offsets:
                 continue
             timeline = timeline_of_hand_animation(set_description, timelines, animation_name)
+            if timeline["records_per_ds_frame"] == 0:
+                tables_without_records.add(table_name)
+                continue
             ds_frames = walk_table_frames(plain, offsets[table_name])
             if not ds_frames:
                 continue
@@ -278,6 +282,8 @@ def table_animations(set_description, output_folder, timelines, crops):
             lines.append("motion %x %s %d" % (offsets[table_name], name, records_per_frame))
         if lines:
             motion_lines[SCRIPTS_FOLDER + "/" + script_name(path) + MOTIONS_EXTENSION] = "\n".join(lines) + "\n"
+    if tables_without_records:
+        print("motion tables whose timeline has no records: %d (%s)" % (len(tables_without_records), ", ".join(sorted(tables_without_records)[:12])))
     return animation_texts, motion_lines
 
 
