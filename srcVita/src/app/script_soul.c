@@ -58,7 +58,8 @@
 #define EYECATCH_SOUND_TRICK 11
 #define EYECATCH_SOUND_UPDATE 12
 #define EYECATCH_SOUND_NUMBER 13
-#define PHONE_EFFECT_ID 49
+#define FIRST_PHONE_BORDER_EFFECT 48
+#define LAST_PHONE_BORDER_EFFECT 49
 #define PHONE_EFFECT_READY_AFTER_TICKS 50
 #define PHONE_EFFECT_END_AFTER_TICKS 18
 #define CAMERA_FREE_SPEED_PIXELS 4
@@ -830,10 +831,15 @@ static void schedule_native_event(struct script_machine *machine, struct script_
     event->at = (long long)machine->tick + ticks;
 }
 
+static int is_phone_border_effect(int effect_id)
+{
+    return effect_id >= FIRST_PHONE_BORDER_EFFECT && effect_id <= LAST_PHONE_BORDER_EFFECT;
+}
+
 void script_soul_effect_spawned(struct script_machine *machine, int effect_id, const char *name)
 {
     script_pills_effect_spawned(machine, effect_id, name);
-    if (effect_id == PHONE_EFFECT_ID) {
+    if (is_phone_border_effect(effect_id)) {
         schedule_native_event(machine, &machine->soul.phone_event, name, "ready", PHONE_EFFECT_READY_AFTER_TICKS);
         snprintf(machine->soul.phone_split_name, sizeof(machine->soul.phone_split_name), "%s", name);
     }
