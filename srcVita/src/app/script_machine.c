@@ -1918,6 +1918,13 @@ static void force_script_change(struct script_machine *machine, const char *path
     begin_script_change(machine, path);
 }
 
+void script_machine_reload_scene(struct script_machine *machine)
+{
+    if (machine->scene_name != NULL && find_source(machine, machine->scene_name) != NULL) {
+        force_script_change(machine, machine->scene_name);
+    }
+}
+
 static void move_to_next_script(struct script_machine *machine)
 {
     const char *path;

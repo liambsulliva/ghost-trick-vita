@@ -348,6 +348,8 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
     case 0xdb:
         if (op == 0xdb) {
             machine->soul.rollback_is_on = 0;
+            machine->game_over_is_pending = 1;
+            machine->game_over_talk_ended_at = 0;
         }
         label = script_machine_string(machine, vm, words[0]);
         if (label != NULL) {

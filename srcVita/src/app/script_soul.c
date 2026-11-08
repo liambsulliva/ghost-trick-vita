@@ -45,6 +45,7 @@
 #define TRICK_ACTION_AFTER_TICKS 8
 #define TIME_JUMP_AFTER_TICKS 30
 #define CHOICE_READING_TICKS 60
+#define GAME_OVER_MENU_TICKS 60
 #define TIME_JUMP_MOVIE "time_jump"
 #define COUNTDOWN_DEFAULT_INTERVAL 300
 #define COUNTDOWN_ZERO_STEP 3
@@ -1261,6 +1262,41 @@ static int core_is_busy(const struct script_machine *machine)
     return soul->active_object != NO_CORE && (machine->objects[soul->active_object].actor.busy_cores & (1 << soul->active_slot)) != 0;
 }
 
+static int game_over_waits_for_a_retry(const struct script_machine *machine)
+{
+    return machine->game_over_is_pending && machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->talk_is_open;
+}
+
+static void retry_after_the_game_over(struct script_machine *machine)
+{
+    int restarts_in_place;
+
+    machine->game_over_is_pending = 0;
+    restarts_in_place = script_machine_handles(machine, "SYSTEM", "RESTART");
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("game_over_retry", restarts_in_place ? "restart" : "reload");
+    }
+    if (restarts_in_place) {
+        script_machine_send(machine, "*", "SYSTEM", "RESTART");
+        return;
+    }
+    machine->soul.route_step_after_retry = machine->soul.route_step;
+    script_machine_reload_scene(machine);
+}
+
+static void step_the_game_over(struct script_machine *machine)
+{
+    if (!game_over_waits_for_a_retry(machine)) {
+        return;
+    }
+    if (machine->game_over_talk_ended_at == 0) {
+        machine->game_over_talk_ended_at = machine->tick;
+    }
+    if (machine->auto_press != SCRIPT_AUTO_OFF && machine->tick - machine->game_over_talk_ended_at >= GAME_OVER_MENU_TICKS) {
+        retry_after_the_game_over(machine);
+    }
+}
+
 static void take_press(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -1276,6 +1312,10 @@ static void take_press(struct script_machine *machine)
     }
     if (machine->choice.is_open) {
         script_choice_pick(machine, script_choice_first_unseen(machine));
+        return;
+    }
+    if (game_over_waits_for_a_retry(machine)) {
+        retry_after_the_game_over(machine);
         return;
     }
     if (soul->rewind_select_ticks >= REWIND_SLIDE_TICKS) {
@@ -1975,7 +2015,12 @@ void script_soul_script_began(struct script_machine *machine, const char *script
     }
     soul->route_script = script;
     soul->route_camera_is_scrolling = 0;
-    go_to_route_step(machine, first_step_not_yet_played(machine, script));
+    if (machine->route != NULL && soul->route_step_after_retry >= 0 && soul->route_step_after_retry < machine->route->step_count && strcmp(machine->route->steps[soul->route_step_after_retry].script, script) == 0) {
+        go_to_route_step(machine, soul->route_step_after_retry);
+    } else {
+        go_to_route_step(machine, first_step_not_yet_played(machine, script));
+    }
+    soul->route_step_after_retry = -1;
     soul->route_last_action_tick = machine->tick;
 }
 
@@ -2106,6 +2151,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     age_the_player_mark(machine);
     step_the_rewind_select(machine);
     step_the_time_leap(machine);
+    step_the_game_over(machine);
     finish_drag_when_due(machine);
     report_soul_view(machine);
     report_possession_effects(machine);
@@ -2176,6 +2222,7 @@ void script_soul_reset(struct script_machine *machine)
     machine->soul.route_step = -1;
     machine->soul.route_acted_step = -1;
     machine->soul.route_furthest_acted_step = -1;
+    machine->soul.route_step_after_retry = -1;
     machine->soul.active_object = NO_CORE;
     machine->soul.chain_needs_reset = 1;
     machine->soul.chain_pick_object = NO_CORE;
@@ -2199,5 +2246,5 @@ void script_soul_set_first_core(struct script_machine *machine, int object_index
 
 int script_soul_waits_on_the_player(const struct script_machine *machine)
 {
-    return machine->soul.tutorial_mode != TUTORIAL_NONE || machine->soul.camera_tutorial_is_on || machine->soul.player_opened_soul_view || script_narration_wants_a_press(&machine->narration);
+    return machine->soul.tutorial_mode != TUTORIAL_NONE || machine->soul.camera_tutorial_is_on || machine->soul.player_opened_soul_view || script_narration_wants_a_press(&machine->narration) || game_over_waits_for_a_retry(machine);
 }

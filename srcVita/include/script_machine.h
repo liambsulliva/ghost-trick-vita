@@ -295,6 +295,7 @@ struct script_soul {
     int route_action_has_begun;
     int route_acted_step;
     int route_furthest_acted_step;
+    int route_step_after_retry;
     unsigned int route_action_began_at;
     unsigned int route_last_action_tick;
     int route_camera_is_scrolling;
@@ -432,6 +433,8 @@ struct script_machine {
     int movie_ticks_left;
     int phone_view_is_on;
     int phone_book_place;
+    int game_over_is_pending;
+    unsigned int game_over_talk_ended_at;
     struct script_anchored_effect anchored_effects[SCRIPT_ANCHORED_EFFECT_MAX];
     unsigned char noted_ops[SCRIPT_NOTED_OP_BYTES];
     unsigned char noted_effects[SCRIPT_NOTED_EFFECT_BYTES];
@@ -501,6 +504,7 @@ void script_balloons_report_opened(struct script_machine *machine);
 void script_balloons_tap(struct script_machine *machine, int tap_group);
 int script_balloons_can_be_tapped(const struct script_machine *machine, int tap_group);
 void script_machine_note_press(struct script_machine *machine);
+void script_machine_reload_scene(struct script_machine *machine);
 void script_machine_scroll_camera(struct script_machine *machine, int delta_x, int delta_y);
 void script_machine_set_world_origin(struct script_machine *machine, int x, int y);
 void script_soul_run_command(struct script_machine *machine, const char *verb, const char *arg);
