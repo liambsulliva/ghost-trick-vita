@@ -5,6 +5,7 @@ import struct
 import sys
 
 import ds_rom
+import effect_movies
 import frame_layout
 import pack_files
 import resource_list
@@ -65,6 +66,13 @@ UNKNOWN_LABEL_ID = "?"
 THORN_BALLOON_KIND = 2
 TALK_OPS = (0x37, 0x5c, 0xdb)
 BALLOON_LABEL_OPS = (0x51, 0x45, 0x46, 0x4c, 0x4e)
+EFFECT_SPAWN_OP = 0xb0
+EFFECT_KIND_TABLE_ADDRESS = 0x02086624
+FIRST_CLASS_EFFECT_KIND = 0x8000
+FIRST_EFFECT_KIND_LISTED_ONE_LATER = 0x86
+EFFECT_LIST_KIND = "effect"
+COMMON_EFFECT_LIST = "cmn"
+EFFECT_MOVIE_FOLDER_PATTERN = re.compile(r"05_effect/([^/]+)/23_[^/]+\.user$")
 ROOM_OP = 0xc1
 MOTION_OP = 0x117
 SCRIPT_CHANGE_OP = 0x24
@@ -355,6 +363,54 @@ def audio_rows(packs, scripts, arm9):
     return list(music.values()), music_ids, list(sounds.values()), sound_kinds
 
 
+def effect_kind_of(arm9, effect_id):
+    return struct.unpack_from("<H", arm9, EFFECT_KIND_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + 2 * effect_id)[0]
+
+
+def effect_list_row_of_kind(kind):
+    return kind + 1 if kind >= FIRST_EFFECT_KIND_LISTED_ONE_LATER else kind
+
+
+def effect_movie_names_by_row(packs, list_name, lists_read):
+    if list_name not in lists_read:
+        rows = {}
+        if path_exists(packs, resource_list.LIST_FOLDER + EFFECT_LIST_KIND + "/" + list_name + ".user.2"):
+            for row, path in resource_list.read_list(packs, EFFECT_LIST_KIND, list_name):
+                found = EFFECT_MOVIE_FOLDER_PATTERN.search(path.lower())
+                if found:
+                    rows[row] = found.group(1)
+        lists_read[list_name] = rows
+    return lists_read[list_name]
+
+
+def effect_ids_with_rows(set_description):
+    return set(row["id"] for row in set_description.get("effects", [])) | set(row["id"] for row in set_description.get("effect_movies", []) if "id" in row)
+
+
+def spawned_effect_movies(packs, scripts, arm9, ids_with_rows):
+    movies = collections.OrderedDict()
+    differing = set()
+    lists_read = {}
+    for script in scripts.values():
+        for _, _, op, operands in script.operations:
+            if op != EFFECT_SPAWN_OP or not operands or operands[0] in ids_with_rows:
+                continue
+            kind = effect_kind_of(arm9, operands[0])
+            if kind >= FIRST_CLASS_EFFECT_KIND:
+                continue
+            row = effect_list_row_of_kind(kind)
+            name = effect_movie_names_by_row(packs, script.list_name(), lists_read).get(row) or effect_movie_names_by_row(packs, COMMON_EFFECT_LIST, lists_read).get(row)
+            if name is None or not path_exists(packs, effect_movies.USER_PATH % (name, name)):
+                continue
+            if operands[0] in movies and movies[operands[0]] != name:
+                differing.add(operands[0])
+                continue
+            movies[operands[0]] = name
+    if differing:
+        print("effect ids whose art differs by stage, first kept: %s" % ", ".join(str(effect_id) for effect_id in sorted(differing)))
+    return [{"id": effect_id, "effect": name, "found_in_scripts": True} for effect_id, name in movies.items()]
+
+
 def message_files_of(packs, chapter):
     return numbered_message_files(packs, MESSAGE_FOLDER % (chapter, chapter, 0)[:-len("0000.msg.22")] + "%04d.msg.22")
 
@@ -475,6 +531,7 @@ def expand_set(set_description, packs, rom_path, text_key):
     if unresolved:
         print("tables with no art: %d (%s)" % (len(unresolved), ", ".join(unresolved[:12])))
     expanded["music"], section["music_ids"], expanded["sounds"], section["sound_kinds"] = audio_rows(packs, scripts, arm9)
+    expanded["effect_movies"] = list(set_description.get("effect_movies", [])) + spawned_effect_movies(packs, scripts, arm9, effect_ids_with_rows(set_description))
     file_cache = {}
     entries_cache = {}
     first_source_of_label = {}

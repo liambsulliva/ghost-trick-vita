@@ -1,3 +1,5 @@
+import struct
+
 import asset_writers
 import effect_file
 
@@ -34,13 +36,22 @@ def add_to_set(set_description, packs):
     textures = list(expanded.get("screen_textures", []))
     effects = list(expanded.get("effects", []))
     lines = []
+    movies_read = set()
     for row in rows:
-        effect = effect_file.read_effect(packs.read(USER_PATH % (row["effect"], row["effect"])))
-        for page, path in enumerate(effect["page_paths"]):
-            textures.append({"name": page_texture_name(row["effect"], page), "source": path, "width": effect["page_size"][0], "height": effect["page_size"][1]})
+        if row["effect"] not in movies_read:
+            try:
+                effect = effect_file.read_effect(packs.read(USER_PATH % (row["effect"], row["effect"])))
+            except (ValueError, LookupError, StopIteration, struct.error) as error:
+                if not row.get("found_in_scripts"):
+                    raise
+                print("effect movie %s for effect %d could not be read, so it is not drawn: %s" % (row["effect"], row["id"], error))
+                continue
+            movies_read.add(row["effect"])
+            for page, path in enumerate(effect["page_paths"]):
+                textures.append({"name": page_texture_name(row["effect"], page), "source": path, "width": effect["page_size"][0], "height": effect["page_size"][1]})
+            lines.extend(movie_rows(row, effect))
         if "id" in row:
             effects.append({"id": row["id"], "kind": "movie", "texture": row["effect"], "ticks": 0, "end_zoom": 1, "width": 0, "height": 0, "only_in_soul_view": row.get("only_in_soul_view", 0)})
-        lines.extend(movie_rows(row, effect))
     expanded["screen_textures"] = textures
     expanded["effects"] = effects
     expanded["effect_movie_text"] = "\n".join(lines) + "\n"

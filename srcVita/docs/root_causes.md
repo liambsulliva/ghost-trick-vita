@@ -208,6 +208,14 @@ Each script change loads that script's animation bundle on the main thread, and 
 
 Guard: the library finds names through a hash index, and a bundle first counts its new animations and makes room for all of them in one pass. Reading the next script's bundle before the change is still open: the new script's first acts need their animations in the same tick, so the read cannot simply move later.
 
+### 29. Effect art listed by hand, one id at a time
+
+Effect rows and effect movies were written by hand for the effects Chapter 1 used, so 152 of the 178 effect ids that the whole game's scripts spawn drew nothing. Stage 6 draws characters such as its sofa man and the dog's poses as effects, so whole scenes played empty.
+
+Native maps an effect id to a kind (`data_02086624`); kinds below 0x8000 are sprites, and the remaster's effect list for the spawning script (`resourcelistuserdata/effect/<script>`, falling back to `cmn`) holds the movie at row kind, or kind + 1 from kind 0x86 up. That rule reproduces all 9 hand-mapped movies.
+
+Guard: the converter reads the kind table and every script from the ROM at bake time and adds a movie row for each spawned id that has none, so a new chapter's effects arrive without hand rows. Hand rows still win, so a hand row can still fix a wrong guess. The bake prints the ids whose art differs by stage (only id 60, two noise variants, keeps the first). Class kinds (0x8000 and up, 48 ids) still need class code. The device tables now hold 512 effect rows, 256 movies and 16384 movie frames.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
