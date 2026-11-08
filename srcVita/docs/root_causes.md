@@ -202,6 +202,12 @@ The Rewind Time screen asked for its three rock layers only when it opened, so i
 
 Guard: every fixed interface texture (hourglass, side label, Rewind Time rocks and button, tap balloon, narration arrow, pill art and sheet) is on one resident list that the UI view touches every tick, so it loads at the start and is never evicted. A new interface screen adds its textures to that list. They total about 680 KB.
 
+### 28. A script change that loaded its animations one search at a time
+
+Each script change loads that script's animation bundle on the main thread, and every frame stall over 150 ms in a whole-game run was one of these loads (190 ms to 540 ms). Reading the file took 50 to 130 ms. The rest came from searching: every bundled name was looked up by a linear search of the 500-animation library, and once the library was full every new animation ran its own eviction scan, which asked every scene object whether it plays each of the 500 animations.
+
+Guard: the library finds names through a hash index, and a bundle first counts its new animations and makes room for all of them in one pass. Reading the next script's bundle before the change is still open: the new script's first acts need their animations in the same tick, so the read cannot simply move later.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

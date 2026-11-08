@@ -1,16 +1,22 @@
 #include <stdio.h>
 #include <string.h>
 #include "animation_library.h"
+#include "crc32.h"
 #include "file.h"
 #include "file_path.h"
 #include "memory.h"
 #include "run_log.h"
 
 #define BUNDLE_ANIMATION_PREFIX "animation "
+#define NAME_BUCKET_COUNT 1024u
+#define NO_SLOT (-1)
 
 static char folder[FILE_PATH_MAX];
 static struct animation *loaded_animations[ANIMATION_LIBRARY_MAX];
 static unsigned long long last_used[ANIMATION_LIBRARY_MAX];
+static int first_slot_in_bucket[NAME_BUCKET_COUNT];
+static int next_slot_in_bucket[ANIMATION_LIBRARY_MAX];
+static int is_unused_now[ANIMATION_LIBRARY_MAX];
 static unsigned long long use_clock;
 static int loaded_count;
 static int evicted_count;
@@ -22,52 +28,138 @@ static void note_use(int index)
     last_used[index] = use_clock;
 }
 
+static unsigned int name_bucket(const char *name)
+{
+    return crc32_add(0u, (const unsigned char *)name, (unsigned int)strlen(name)) % NAME_BUCKET_COUNT;
+}
+
+static void forget_all_names(void)
+{
+    unsigned int bucket;
+
+    for (bucket = 0; bucket < NAME_BUCKET_COUNT; bucket++) {
+        first_slot_in_bucket[bucket] = NO_SLOT;
+    }
+}
+
+static void remember_name_of_slot(int slot)
+{
+    unsigned int bucket;
+
+    bucket = name_bucket(loaded_animations[slot]->name);
+    next_slot_in_bucket[slot] = first_slot_in_bucket[bucket];
+    first_slot_in_bucket[bucket] = slot;
+}
+
+static void forget_name_of_slot(int slot)
+{
+    int *link;
+
+    for (link = &first_slot_in_bucket[name_bucket(loaded_animations[slot]->name)]; *link != NO_SLOT; link = &next_slot_in_bucket[*link]) {
+        if (*link == slot) {
+            *link = next_slot_in_bucket[slot];
+            return;
+        }
+    }
+}
+
 static const struct animation *find_loaded(const char *name)
 {
-    int index;
+    int slot;
 
-    for (index = 0; index < loaded_count; index++) {
-        if (strcmp(loaded_animations[index]->name, name) == 0) {
-            note_use(index);
-            return loaded_animations[index];
+    for (slot = first_slot_in_bucket[name_bucket(name)]; slot != NO_SLOT; slot = next_slot_in_bucket[slot]) {
+        if (strcmp(loaded_animations[slot]->name, name) == 0) {
+            note_use(slot);
+            return loaded_animations[slot];
         }
     }
     return NULL;
 }
 
-static int evict_least_recent_unused(void)
+static void evict_slot(int slot)
 {
-    int index;
+    int last;
+
+    run_log_write("animation evicted name=%s", loaded_animations[slot]->name);
+    forget_name_of_slot(slot);
+    animation_free_frames(loaded_animations[slot]);
+    mem_free(loaded_animations[slot]);
+    last = loaded_count - 1;
+    if (slot != last) {
+        forget_name_of_slot(last);
+        loaded_animations[slot] = loaded_animations[last];
+        last_used[slot] = last_used[last];
+        is_unused_now[slot] = is_unused_now[last];
+        remember_name_of_slot(slot);
+    }
+    loaded_count = last;
+    evicted_count = evicted_count + 1;
+}
+
+static int mark_unused_slots(void)
+{
+    int slot;
+    int unused;
+
+    unused = 0;
+    for (slot = 0; slot < loaded_count; slot++) {
+        is_unused_now[slot] = in_use_check != NULL && !in_use_check(loaded_animations[slot]);
+        unused = unused + is_unused_now[slot];
+    }
+    return unused;
+}
+
+static int least_recent_unused_slot(void)
+{
+    int slot;
     int oldest;
 
-    if (in_use_check == NULL) {
-        return 0;
-    }
-    oldest = -1;
-    for (index = 0; index < loaded_count; index++) {
-        if (in_use_check(loaded_animations[index])) {
-            continue;
-        }
-        if (oldest < 0 || last_used[index] < last_used[oldest]) {
-            oldest = index;
+    oldest = NO_SLOT;
+    for (slot = 0; slot < loaded_count; slot++) {
+        if (is_unused_now[slot] && (oldest == NO_SLOT || last_used[slot] < last_used[oldest])) {
+            oldest = slot;
         }
     }
-    if (oldest < 0) {
+    return oldest;
+}
+
+static void evict_to_make_room_for(int animations_wanted)
+{
+    int to_evict;
+    int slot;
+
+    to_evict = loaded_count + animations_wanted - ANIMATION_LIBRARY_MAX;
+    if (to_evict <= 0 || mark_unused_slots() == 0) {
+        return;
+    }
+    for (; to_evict > 0; to_evict--) {
+        slot = least_recent_unused_slot();
+        if (slot == NO_SLOT) {
+            return;
+        }
+        evict_slot(slot);
+    }
+}
+
+static int evict_least_recent_unused(void)
+{
+    int slot;
+
+    if (mark_unused_slots() == 0) {
         return 0;
     }
-    run_log_write("animation evicted name=%s", loaded_animations[oldest]->name);
-    animation_free_frames(loaded_animations[oldest]);
-    mem_free(loaded_animations[oldest]);
-    loaded_count = loaded_count - 1;
-    loaded_animations[oldest] = loaded_animations[loaded_count];
-    last_used[oldest] = last_used[loaded_count];
-    evicted_count = evicted_count + 1;
+    slot = least_recent_unused_slot();
+    if (slot == NO_SLOT) {
+        return 0;
+    }
+    evict_slot(slot);
     return 1;
 }
 
 static void add_loaded(struct animation *animation)
 {
     loaded_animations[loaded_count] = animation;
+    remember_name_of_slot(loaded_count);
     note_use(loaded_count);
     loaded_count = loaded_count + 1;
 }
@@ -110,6 +202,7 @@ static struct animation *read_animation_file(const char *name)
 void animation_library_init(const char *animation_folder)
 {
     snprintf(folder, sizeof(folder), "%s", animation_folder);
+    forget_all_names();
     loaded_count = 0;
     evicted_count = 0;
     use_clock = 0;
@@ -191,6 +284,21 @@ static int add_bundled_animation(const char *start, const char *end)
     return 1;
 }
 
+static int bundled_animations_not_loaded(const char *text, const char *end)
+{
+    char name[ASSET_NAME_MAX];
+    const char *start;
+    int missing;
+
+    missing = 0;
+    for (start = next_animation_start(text, end); start < end; start = next_animation_start(start + sizeof(BUNDLE_ANIMATION_PREFIX) - 1u, end)) {
+        if (sscanf(start, BUNDLE_ANIMATION_PREFIX ASSET_NAME_SCAN, name) == 1 && find_loaded(name) == NULL) {
+            missing = missing + 1;
+        }
+    }
+    return missing;
+}
+
 int animation_library_add_bundle(const char *text, unsigned int text_size)
 {
     const char *end;
@@ -199,6 +307,7 @@ int animation_library_add_bundle(const char *text, unsigned int text_size)
 
     end = text + text_size;
     added = 0;
+    evict_to_make_room_for(bundled_animations_not_loaded(text, end));
     start = next_animation_start(text, end);
     while (start < end) {
         const char *next;
@@ -225,4 +334,5 @@ void animation_library_clear(void)
     }
     evicted_count = evicted_count + loaded_count;
     loaded_count = 0;
+    forget_all_names();
 }
