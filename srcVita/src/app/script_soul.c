@@ -1974,6 +1974,12 @@ static int run_route_action(struct script_machine *machine, const struct script_
         return 1;
     case SCRIPT_ROUTE_CHOOSE:
         return choose_the_panel(machine, step->object);
+    case SCRIPT_ROUTE_CHARACTER:
+        if (!script_pills_is_up(machine, SCRIPT_PILL_JOWD) && !script_pills_is_up(machine, SCRIPT_PILL_MISSILE) && !script_pills_is_up(machine, SCRIPT_PILL_CICEL)) {
+            return 0;
+        }
+        soul->character_button_is_pending = 1;
+        return 1;
     default:
         return 1;
     }

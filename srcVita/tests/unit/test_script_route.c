@@ -57,6 +57,9 @@ static void test_names_each_action(void)
 {
     CHECK_TEXT(script_route_action_name(SCRIPT_ROUTE_TRICK), "trick");
     CHECK_TEXT(script_route_action_name(SCRIPT_ROUTE_WAIT), "wait");
+    CHECK_TEXT(script_route_action_name(SCRIPT_ROUTE_CHARACTER), "character");
+    CHECK(read_text("step a character - 0 0 free\n"));
+    CHECK_INT(route.steps[0].action, SCRIPT_ROUTE_CHARACTER);
 }
 
 static void test_finds_whole_wait_tokens_only(void)

@@ -14,7 +14,7 @@
 #define WAIT_TOKEN_SEPARATOR '&'
 #define WAIT_ARGUMENT_SEPARATOR ':'
 
-static const char *const action_names[] = { "move", "trick", "ghost_on", "ghost_off", "touch", "tap_balloon", "camera", "phone_call", "wait", "dead_talk", "choose" };
+static const char *const action_names[] = { "move", "trick", "ghost_on", "ghost_off", "touch", "tap_balloon", "camera", "phone_call", "wait", "dead_talk", "choose", "character" };
 static const char *const wait_word_names[] = { "act", "tutorial", "playable", "free", "view", "no_talk", "flag", "noflag", "core", "usable", "balloon", "camera_tutorial", "timeleap_armed", "ticks", "choice" };
 
 static int read_action(const char *word, enum script_route_action *action)
