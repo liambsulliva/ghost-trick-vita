@@ -2040,6 +2040,15 @@ static int first_step_not_yet_played(const struct script_machine *machine, const
     if (floor >= route->step_count) {
         floor = route->step_count - 1;
     }
+    if (strcmp(route->steps[floor].script, script) == 0) {
+        if (floor + 1 < route->step_count && strcmp(route->steps[floor + 1].script, script) == 0) {
+            return floor + 1;
+        }
+        if (machine->outputs->marked != NULL) {
+            machine->outputs->marked("route_block_already_played", script);
+        }
+        return -1;
+    }
     while (floor > 0 && strcmp(route->steps[floor - 1].script, route->steps[floor].script) == 0) {
         floor = floor - 1;
     }
