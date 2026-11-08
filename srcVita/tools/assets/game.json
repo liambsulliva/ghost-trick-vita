@@ -2463,7 +2463,7 @@
         "object": "kasa",
         "pace": "normal",
         "footage_s": 3179.0,
-        "wait": "act:kasa:kasa_act02 & free & no_talk"
+        "wait": "act:kasa:kasa_act02 & free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2495,7 +2495,7 @@
         "object": "caster",
         "pace": "normal",
         "footage_s": 3198.25,
-        "wait": "free & no_talk"
+        "wait": "free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2535,7 +2535,7 @@
         "object": "santa",
         "pace": "normal",
         "footage_s": 3214.75,
-        "wait": "free & no_talk"
+        "wait": "free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2567,7 +2567,7 @@
         "object": "tendoor",
         "pace": "normal",
         "footage_s": 3230.5,
-        "wait": "free & no_talk"
+        "wait": "free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2599,7 +2599,7 @@
         "object": "santa",
         "pace": "normal",
         "footage_s": 3240.25,
-        "wait": "free & no_talk"
+        "wait": "free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2631,7 +2631,7 @@
         "object": "tree",
         "pace": "normal",
         "footage_s": 3257.5,
-        "wait": "free & no_talk"
+        "wait": "free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2663,7 +2663,7 @@
         "object": "okashi",
         "pace": "normal",
         "footage_s": 3275.5,
-        "wait": "free & no_talk"
+        "wait": "free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
