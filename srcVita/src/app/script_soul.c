@@ -1442,18 +1442,6 @@ static void press_when_the_page_has_been_read(struct script_machine *machine)
     }
 }
 
-static int object_named(const struct script_machine *machine, const char *name)
-{
-    int index;
-
-    for (index = 0; index < machine->object_count; index++) {
-        if (strcmp(machine->objects[index].name, name) == 0) {
-            return index;
-        }
-    }
-    return NO_CORE;
-}
-
 static const struct script_route_step *current_route_step(const struct script_machine *machine)
 {
     const struct script_soul *soul;
@@ -1550,8 +1538,8 @@ static int route_token_holds(const struct script_machine *machine, const struct 
     }
     switch (token->word) {
     case SCRIPT_ROUTE_WAIT_ACT:
-        object_index = object_named(machine, first);
-        return object_index != NO_CORE && second != NULL && machine->objects[object_index].current_act != NULL && strcmp(machine->objects[object_index].current_act, second) == 0;
+        object_index = script_machine_index_of_object(machine, first);
+        return object_index != SCRIPT_NO_OBJECT && second != NULL && machine->objects[object_index].current_act != NULL && strcmp(machine->objects[object_index].current_act, second) == 0;
     case SCRIPT_ROUTE_WAIT_TUTORIAL:
         if (strcmp(first, "touch") == 0) {
             return soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent;
@@ -1567,8 +1555,8 @@ static int route_token_holds(const struct script_machine *machine, const struct 
     case SCRIPT_ROUTE_WAIT_CORE:
         return machine->active_core_name != NULL && strcmp(machine->active_core_name, first) == 0 && (second == NULL || soul->active_slot == atoi(second));
     case SCRIPT_ROUTE_WAIT_USABLE:
-        object_index = object_named(machine, first);
-        return object_index != NO_CORE && object_can_be_a_core(&machine->objects[object_index], second != NULL ? atoi(second) : 0);
+        object_index = script_machine_index_of_object(machine, first);
+        return object_index != SCRIPT_NO_OBJECT && object_can_be_a_core(&machine->objects[object_index], second != NULL ? atoi(second) : 0);
     case SCRIPT_ROUTE_WAIT_BALLOON:
         return balloon_sending(machine, first) >= 0;
     case SCRIPT_ROUTE_WAIT_TICKS:
@@ -1692,8 +1680,8 @@ static int run_route_move(struct script_machine *machine, const struct script_ro
     soul = &machine->soul;
     hop_object = NO_CORE;
     hop_slot = 0;
-    object_index = object_named(machine, step->object);
-    if (object_index == NO_CORE) {
+    object_index = script_machine_index_of_object(machine, step->object);
+    if (object_index == SCRIPT_NO_OBJECT) {
         return 0;
     }
     if (soul->active_object == object_index && soul->active_slot == step->slot && soul->drag_ticks_left == 0) {
@@ -1806,8 +1794,8 @@ static void give_up_on_route_step(struct script_machine *machine, const struct s
     soul = &machine->soul;
     mark_route_step(machine, "route_step_failed", step);
     if (step->action == SCRIPT_ROUTE_MOVE && soul->is_on) {
-        object_index = object_named(machine, step->object);
-        if (object_index != NO_CORE && object_can_be_a_core(&machine->objects[object_index], step->slot)) {
+        object_index = script_machine_index_of_object(machine, step->object);
+        if (object_index != SCRIPT_NO_OBJECT && object_can_be_a_core(&machine->objects[object_index], step->slot)) {
             mark_route_step(machine, "route_hop_beyond_reach", step);
             mark_hop_distances(machine, object_index, step->slot);
             arrive_at_core(machine, object_index, step->slot);

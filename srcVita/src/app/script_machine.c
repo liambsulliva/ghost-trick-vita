@@ -205,16 +205,24 @@ const char *script_machine_string(struct script_machine *machine, const struct s
     return text;
 }
 
-struct script_object *script_machine_find_object(struct script_machine *machine, const char *name)
+int script_machine_index_of_object(const struct script_machine *machine, const char *name)
 {
     int index;
 
     for (index = 0; index < machine->object_count; index++) {
         if (strcmp(machine->objects[index].name, name) == 0) {
-            return &machine->objects[index];
+            return index;
         }
     }
-    return NULL;
+    return SCRIPT_NO_OBJECT;
+}
+
+struct script_object *script_machine_find_object(struct script_machine *machine, const char *name)
+{
+    int index;
+
+    index = script_machine_index_of_object(machine, name);
+    return index == SCRIPT_NO_OBJECT ? NULL : &machine->objects[index];
 }
 
 struct script_object *script_machine_current_object(struct script_machine *machine, const struct script_vm *vm)

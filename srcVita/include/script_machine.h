@@ -10,6 +10,7 @@
 #include "script_talk.h"
 #include "soul_chain.h"
 
+#define SCRIPT_NO_OBJECT (-1)
 #define SCRIPT_NOTE_LIST_COUNT 3
 #define SCRIPT_NOTE_ID_COUNT 64
 #define SCRIPT_SOURCE_MAX 256
@@ -458,6 +459,7 @@ void script_machine_end_block(struct script_machine *machine, struct script_vm *
 void script_machine_skip_ahead(struct script_machine *machine);
 void script_machine_update_camera(struct script_machine *machine);
 const char *script_machine_string(struct script_machine *machine, const struct script_vm *vm, unsigned int string_offset);
+int script_machine_index_of_object(const struct script_machine *machine, const char *name);
 struct script_object *script_machine_find_object(struct script_machine *machine, const char *name);
 struct script_object *script_machine_current_object(struct script_machine *machine, const struct script_vm *vm);
 void script_machine_send(struct script_machine *machine, const char *target, const char *verb, const char *arg);
