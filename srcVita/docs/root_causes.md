@@ -364,6 +364,12 @@ Native eyecatches (`func_02013a88`) switch the game mode with `func_0201192c` to
 
 Guard: an eyecatch remembers the mode it replaced and puts it back when it ends if nothing else changed the mode meanwhile; the back pill and the ghost button leave any ghost view that is not in demo mode and not in a tutorial. Chapters 1 to 4 replay unchanged (253 steps done).
 
+### 53. A death scene that looped under auto-play
+
+Run 30 replayed Chapter 4's office (st02_game004) and later st02_game022 again and again: with no route steps there, every attempt ran the scene's own timeline into its game over, the retry of root cause 51 reloaded the scene, and the scene timeout, which counts ticks since the last new scene, took minutes of reloads to fire on the device.
+
+Guard: under auto-play a game over moves on in story order, like the scene timeout (`game_over_left`, `game_over_moved_to`; one shared `script_machine_move_on_in_story_order`), when the route has no step waiting in the scene or after three retries at the same step; otherwise it retries as native does. A routed failure, such as the footage's first attempt in the office, still retries once its next steps are written.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

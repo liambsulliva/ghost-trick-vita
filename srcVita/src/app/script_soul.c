@@ -46,6 +46,7 @@
 #define TIME_JUMP_AFTER_TICKS 30
 #define CHOICE_READING_TICKS 60
 #define GAME_OVER_MENU_TICKS 60
+#define GAME_OVER_RETRIES_AT_ONE_STEP_MOST 3
 #define TIME_JUMP_MOVIE "time_jump"
 #define COUNTDOWN_DEFAULT_INTERVAL 300
 #define COUNTDOWN_ZERO_STEP 3
@@ -1282,11 +1283,26 @@ static int game_over_waits_for_a_retry(const struct script_machine *machine)
     return machine->game_over_is_pending && machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->talk_is_open;
 }
 
+static const struct script_route_step *current_route_step(const struct script_machine *machine);
+
+static int retries_are_going_nowhere(struct script_machine *machine)
+{
+    if (machine->soul.route_step != machine->game_over_retry_step) {
+        machine->game_over_retry_step = machine->soul.route_step;
+        machine->game_over_retries_at_that_step = 0;
+    }
+    machine->game_over_retries_at_that_step = machine->game_over_retries_at_that_step + 1;
+    return current_route_step(machine) == NULL || machine->game_over_retries_at_that_step > GAME_OVER_RETRIES_AT_ONE_STEP_MOST;
+}
+
 static void retry_after_the_game_over(struct script_machine *machine)
 {
     int restarts_in_place;
 
     machine->game_over_is_pending = 0;
+    if (machine->auto_press != SCRIPT_AUTO_OFF && machine->route != NULL && retries_are_going_nowhere(machine) && script_machine_move_on_in_story_order(machine, "game_over")) {
+        return;
+    }
     restarts_in_place = script_machine_handles(machine, "SYSTEM", "RESTART");
     if (machine->outputs->marked != NULL) {
         machine->outputs->marked("game_over_retry", restarts_in_place ? "restart" : "reload");

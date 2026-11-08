@@ -31,6 +31,7 @@
 #define FNV_OFFSET_BASIS 2166136261u
 #define CHAPTER_MARK_OP 0x74u
 #define CHAPTER_MARK_SEARCH_WORDS 12u
+#define SCRIPT_MOVE_ON_MARK_MAX 64
 
 static const char *vm_kind_name(enum script_vm_kind kind)
 {
@@ -74,6 +75,7 @@ void script_machine_init(struct script_machine *machine, const struct script_out
     machine->furthest_scene = -1;
     machine->route_furthest_acted_step = -1;
     machine->route_step_after_retry = -1;
+    machine->game_over_retry_step = -1;
     machine->game_start_at = NEVER;
     machine->camera_follow_object = SCRIPT_NO_SELECTION;
     machine->pause_clear_at = NEVER;
@@ -2055,27 +2057,36 @@ static void move_on_when_the_story_went_back(struct script_machine *machine)
     force_script_change(machine, next);
 }
 
-static void move_on_when_the_scene_runs_too_long(struct script_machine *machine)
+int script_machine_move_on_in_story_order(struct script_machine *machine, const char *why)
 {
+    char mark[SCRIPT_MOVE_ON_MARK_MAX];
     const char *next;
 
-    if (!scene_has_run_too_long(machine)) {
-        return;
-    }
     machine->last_new_scene_tick = machine->tick;
-    next = scene_where_the_story_should_be(machine);
+    next = machine->route != NULL && machine->route->scene_count > 0 ? scene_where_the_story_should_be(machine) : NULL;
     if (next == NULL || find_source(machine, next) == NULL) {
         next = exit_of_this_scene(machine);
     }
     if (next == NULL) {
-        script_machine_note(machine, NULL, "scene_timeout_found_no_way_on", machine->scene_name != NULL ? machine->scene_name : "");
-        return;
+        snprintf(mark, sizeof(mark), "%s_found_no_way_on", why);
+        script_machine_note(machine, NULL, mark, machine->scene_name != NULL ? machine->scene_name : "");
+        return 0;
     }
     if (machine->outputs->marked != NULL) {
-        machine->outputs->marked("scene_timeout_left", machine->scene_name != NULL ? machine->scene_name : "");
-        machine->outputs->marked("scene_timeout_moved_to", next);
+        snprintf(mark, sizeof(mark), "%s_left", why);
+        machine->outputs->marked(mark, machine->scene_name != NULL ? machine->scene_name : "");
+        snprintf(mark, sizeof(mark), "%s_moved_to", why);
+        machine->outputs->marked(mark, next);
     }
     force_script_change(machine, next);
+    return 1;
+}
+
+static void move_on_when_the_scene_runs_too_long(struct script_machine *machine)
+{
+    if (scene_has_run_too_long(machine)) {
+        script_machine_move_on_in_story_order(machine, "scene_timeout");
+    }
 }
 
 void script_machine_tick(struct script_machine *machine)

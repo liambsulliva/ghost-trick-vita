@@ -456,6 +456,8 @@ struct script_machine {
     int furthest_scene;
     int route_furthest_acted_step;
     int route_step_after_retry;
+    int game_over_retry_step;
+    int game_over_retries_at_that_step;
     int scene_is_behind_the_story;
     unsigned int last_new_scene_tick;
     int demo_soul_is_on;
@@ -506,6 +508,7 @@ void script_balloons_tap(struct script_machine *machine, int tap_group);
 int script_balloons_can_be_tapped(const struct script_machine *machine, int tap_group);
 void script_machine_note_press(struct script_machine *machine);
 void script_machine_reload_scene(struct script_machine *machine);
+int script_machine_move_on_in_story_order(struct script_machine *machine, const char *why);
 void script_machine_scroll_camera(struct script_machine *machine, int delta_x, int delta_y);
 void script_machine_set_world_origin(struct script_machine *machine, int x, int y);
 void script_soul_run_command(struct script_machine *machine, const char *verb, const char *arg);
