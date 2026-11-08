@@ -909,6 +909,16 @@ unsigned int script_player_tick(void)
     return data != NULL ? data->machine.tick : 0;
 }
 
+int script_player_route_step(void)
+{
+    return data != NULL ? data->machine.soul.route_step : -1;
+}
+
+unsigned int script_player_route_step_began_at(void)
+{
+    return data != NULL ? data->machine.soul.route_step_began_at : 0;
+}
+
 void script_player_shutdown(void)
 {
     free_data();

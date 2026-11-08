@@ -29,8 +29,9 @@ COMMANDS_PATH = DATA_FOLDER + "/commands.txt"
 CAPTURE_FOLDER = DATA_FOLDER + "/captures"
 BURST_WINDOW_PATH = CAPTURE_FOLDER + "/burst/window.bin"
 BURST_SLOTS = 1000
-BURST_MAGIC = b"GTB1"
-BURST_HEADER_SIZE = 20
+BURST_MAGIC = b"GTB2"
+BURST_HEADER_SIZE = 32
+BURST_NO_ROUTE_STEP = 0xffffffff
 BURST_BYTES_PER_PIXEL = 2
 SECONDS_FOR_BURST_TO_FINISH_WRITING = 3
 JPEG_QUALITY = "70"
@@ -480,13 +481,13 @@ def split_burst_window(data):
     pictures = []
     offset = 0
     while offset + BURST_HEADER_SIZE <= len(data) and data[offset:offset + len(BURST_MAGIC)] == BURST_MAGIC:
-        _, sequence, elapsed_ms, size = struct.unpack_from("<IIII", data, offset + len(BURST_MAGIC))
+        _, sequence, elapsed_ms, size, tick, route_step, ticks_into_step = struct.unpack_from("<IIIIIII", data, offset + len(BURST_MAGIC))
         width = size & 0xffff
         height = size >> 16
         pixel_bytes = width * height * BURST_BYTES_PER_PIXEL
         if offset + BURST_HEADER_SIZE + pixel_bytes > len(data):
             break
-        pictures.append({"sequence": sequence, "elapsed_ms": elapsed_ms, "width": width, "height": height, "pixels": data[offset + BURST_HEADER_SIZE:offset + BURST_HEADER_SIZE + pixel_bytes]})
+        pictures.append({"sequence": sequence, "elapsed_ms": elapsed_ms, "width": width, "height": height, "tick": tick, "route_step": -1 if route_step == BURST_NO_ROUTE_STEP else route_step, "ticks_into_step": ticks_into_step, "pixels": data[offset + BURST_HEADER_SIZE:offset + BURST_HEADER_SIZE + pixel_bytes]})
         offset = offset + BURST_HEADER_SIZE + pixel_bytes
     return pictures
 
@@ -540,7 +541,7 @@ def request_burst(seconds, rounds, output_folder, ms_between_pictures=0):
         for picture in pictures:
             slot_name = BURST_PICTURE_NAME % (next_slot % BURST_SLOTS)
             save_burst_picture(picture, os.path.join(output_folder, slot_name + ".jpg"), rgb_of_color)
-            note_picture_time(output_folder, "%s round=%d sequence=%d device_ms=%d" % (slot_name, round_number, picture["sequence"], picture["elapsed_ms"]))
+            note_picture_time(output_folder, "%s round=%d sequence=%d device_ms=%d tick=%d route_step=%d ticks_into_step=%d" % (slot_name, round_number, picture["sequence"], picture["elapsed_ms"], picture["tick"], picture["route_step"], picture["ticks_into_step"]))
             next_slot = next_slot + 1
         print("burst round", round_number, "pictures", len(pictures), "bytes", len(data), "pulled in %.1f s," % pulled_seconds, "saved by %.1f s" % (time.time() - started), flush=True)
     write_app_commands("resume\n")
