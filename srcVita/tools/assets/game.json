@@ -3327,6 +3327,160 @@
         "footage_s": 5115.0,
         "wait": "act:dn_telephone:telephoneAct000",
         "place": 2
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "ghost_on",
+        "object": "stand",
+        "pace": "normal",
+        "footage_s": 5244.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "move",
+        "object": "stand",
+        "pace": "normal",
+        "footage_s": 5244.75,
+        "wait": "view & usable:stand"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "ghost_off",
+        "object": "stand",
+        "pace": "quick",
+        "footage_s": 5245.5,
+        "wait": "core:stand"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "trick",
+        "object": "stand",
+        "pace": "quick",
+        "footage_s": 5246.0,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "ghost_on",
+        "object": "stand",
+        "slot": 1,
+        "pace": "normal",
+        "footage_s": 5250.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "move",
+        "object": "stand",
+        "slot": 1,
+        "pace": "normal",
+        "footage_s": 5250.75,
+        "wait": "view & usable:stand:1"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "ghost_off",
+        "object": "stand",
+        "slot": 1,
+        "pace": "quick",
+        "footage_s": 5251.5,
+        "wait": "core:stand:1"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "trick",
+        "object": "stand",
+        "slot": 1,
+        "pace": "quick",
+        "footage_s": 5252.0,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "ghost_on",
+        "object": "book",
+        "pace": "normal",
+        "footage_s": 5336.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "move",
+        "object": "book",
+        "pace": "normal",
+        "footage_s": 5336.75,
+        "wait": "view & usable:book"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "ghost_off",
+        "object": "book",
+        "pace": "quick",
+        "footage_s": 5337.5,
+        "wait": "core:book"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "trick",
+        "object": "book",
+        "pace": "quick",
+        "footage_s": 5338.0,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "ghost_on",
+        "object": "linne",
+        "pace": "normal",
+        "footage_s": 5340.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "move",
+        "object": "linne",
+        "pace": "normal",
+        "footage_s": 5341.0,
+        "wait": "view & usable:linne"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "wait",
+        "pace": "normal",
+        "footage_s": 5343.0,
+        "wait": "core:linne"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "choose",
+        "object": "panel1_1",
+        "pace": "normal",
+        "footage_s": 5490.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "choose",
+        "object": "panel2_1",
+        "pace": "normal",
+        "footage_s": 5600.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "choose",
+        "object": "m02_0310",
+        "pace": "normal",
+        "footage_s": 5612.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "touch",
+        "pace": "normal",
+        "footage_s": 5772.0,
+        "wait": "timeleap_armed"
       }
     ]
   }
