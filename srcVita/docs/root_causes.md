@@ -196,6 +196,12 @@ Guard: fast forward slows to one tick a frame only while a texture that is being
 
 At 22 times speed the next limit was the cache's own bookkeeping: read-ahead looked up every texture name in its window each frame by a linear search of all 2048 cache entries, and names it could not load yet ran two more full scans, so update took 27 to 46 ms with two ticks to run. The cache now finds names through a hash index and checks read-ahead room once a frame. When a per-frame loop calls into a cache, count the work per call, not per frame.
 
+### 27. Interface art that loads when its screen opens
+
+The Rewind Time screen asked for its three rock layers only when it opened, so its first pictures were white with a faded label while the rocks loaded. The pill and tap balloon art did not show this because the UI view touched them every tick.
+
+Guard: every fixed interface texture (hourglass, side label, Rewind Time rocks and button, tap balloon, narration arrow, pill art and sheet) is on one resident list that the UI view touches every tick, so it loads at the start and is never evicted. A new interface screen adds its textures to that list. They total about 680 KB.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

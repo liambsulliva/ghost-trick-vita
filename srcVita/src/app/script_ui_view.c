@@ -47,6 +47,9 @@
 #define REWIND_MID_SPEED 1.25f
 #define REWIND_NEAR_SPEED 1.875f
 #define REWIND_BUTTON_TEXTURE "ui_select_button"
+#define REWIND_FAR_ROCKS_TEXTURE "rewind_rocks_far"
+#define REWIND_MID_ROCKS_TEXTURE "rewind_rocks_mid"
+#define REWIND_NEAR_ROCKS_TEXTURE "rewind_rocks_near"
 #define REWIND_BUTTON_X 331.0f
 #define REWIND_BUTTON_Y 238.75f
 #define REWIND_BUTTON_WIDTH 298.0f
@@ -289,14 +292,23 @@ void script_ui_view_hud_changed(const struct script_hud_view *view)
     hud = *view;
 }
 
+static void keep_the_interface_art_resident(void)
+{
+    static const char *const resident_textures[] = { HOURGLASS_TEXTURE, SIDE_LABEL_TEXTURE, REWIND_BUTTON_TEXTURE, REWIND_FAR_ROCKS_TEXTURE, REWIND_MID_ROCKS_TEXTURE, REWIND_NEAR_ROCKS_TEXTURE, TAP_ART_TEXTURE, NARRATION_ARROW_TEXTURE, PILL_ART_TEXTURE, PILL_SHEET_TEXTURE };
+    size_t index;
+
+    for (index = 0; index < sizeof(resident_textures) / sizeof(resident_textures[0]); index++) {
+        (void)texture_cache_use_or_start_loading(resident_textures[index]);
+    }
+}
+
 void script_ui_view_advance(void)
 {
     int index;
 
     arrow_age_ticks = arrow_age_ticks + 1;
+    keep_the_interface_art_resident();
     advance_tap_balloons();
-    (void)texture_cache_use_or_start_loading(PILL_ART_TEXTURE);
-    (void)texture_cache_use_or_start_loading(PILL_SHEET_TEXTURE);
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
         if (playing[index].clip != NULL) {
             playing[index].age_ticks = playing[index].age_ticks + 1;
@@ -723,9 +735,9 @@ static void draw_rewind_select(void)
             alpha = 0.0f;
         }
     }
-    draw_rock_layer("rewind_rocks_far", REWIND_FAR_SPEED, alpha);
-    draw_rock_layer("rewind_rocks_mid", REWIND_MID_SPEED, alpha);
-    draw_rock_layer("rewind_rocks_near", REWIND_NEAR_SPEED, alpha);
+    draw_rock_layer(REWIND_FAR_ROCKS_TEXTURE, REWIND_FAR_SPEED, alpha);
+    draw_rock_layer(REWIND_MID_ROCKS_TEXTURE, REWIND_MID_SPEED, alpha);
+    draw_rock_layer(REWIND_NEAR_ROCKS_TEXTURE, REWIND_NEAR_SPEED, alpha);
     slide = 1.0f - (float)hud.rewind_select_ticks / (float)REWIND_SLIDE_TICKS;
     if (slide < 0.0f) {
         slide = 0.0f;
@@ -931,7 +943,6 @@ static void advance_tap_balloons(void)
 {
     int index;
 
-    (void)texture_cache_use_or_start_loading(TAP_ART_TEXTURE);
     for (index = 0; index < TAP_BALLOON_MAX; index++) {
         struct tap_balloon *balloon;
 
