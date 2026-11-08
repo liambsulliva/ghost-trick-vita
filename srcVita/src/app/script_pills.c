@@ -152,7 +152,7 @@ static int pill_is_wanted(const struct script_machine *machine, enum script_pill
     case SCRIPT_PILL_NOTEBOOK:
         return is_registered && group == GROUP_NORMAL;
     case SCRIPT_PILL_BACK:
-        return is_registered && group == GROUP_GHOST && (soul->player_opened_soul_view || soul->view_back_is_offered) && !soul->view_demo_is_on;
+        return is_registered && group == GROUP_GHOST && !soul->view_demo_is_on;
     case SCRIPT_PILL_HOURGLASS:
         return soul->rollback_is_on && group != GROUP_NONE;
     default:

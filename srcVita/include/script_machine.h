@@ -447,6 +447,7 @@ struct script_machine {
     int fate_level;
     int fate_previous_level;
     int eyecatch_ticks_left;
+    int mode_before_eyecatch;
     int countdown_interval;
     const struct script_route *route;
     const char *scene_name;

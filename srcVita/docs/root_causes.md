@@ -358,6 +358,12 @@ Op 0xdb (99 sites in 28 scripts) is the game over: native starts a `uKaiwaGameOv
 
 Guard: after an 0xdb talk closes, auto-play retries after a second and a press retries in manual play (`game_over_retry restart` or `reload`). A reload starts the scene again and the route resumes at the step it was on, so the second attempt plays the steps after the failure instead of the whole block again. The resume step and the route's furthest acted step live on the machine, not the soul: every script change resets the soul (`tear_down_script` calls `script_soul_reset`), which at first wiped both, so neither the resume nor root cause 47's block rule ever acted until audit 30 caught it. Still open: the rollback menu itself (its choices and art), so the retry is always the native default.
 
+### 52. An eyecatch that left the game in demo mode, and ghost views the player could not leave
+
+Native eyecatches (`func_02013a88`) switch the game mode with `func_0201192c` to an eyecatch mode (9 to 0xd), which keeps the mode it replaced at +0xb; ReturnGame (3), ReturnDemo (2) and the game over (0xe) go through the same switch. The port set demo mode for the eyecatch and only a later op 0x68 or 0xe3 gave play back, so where a script set normal play before the eyecatch (Chapter 7's cock balloon in st04_game000) the game stayed in demo mode for good. Separately, the port let the player leave only a ghost view the player had opened: script-opened views (Chapters 6 and 7 open them after a talk and wait for `SYSTEM|SV_END`) could never be left, so those scenes waited for the stuck detector.
+
+Guard: an eyecatch remembers the mode it replaced and puts it back when it ends if nothing else changed the mode meanwhile; the back pill and the ghost button leave any ghost view that is not in demo mode and not in a tutorial. Chapters 1 to 4 replay unchanged (253 steps done).
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

@@ -797,6 +797,9 @@ static void start_eye_catch(struct script_machine *machine, const char *kind)
     if (machine->outputs->sound_played != NULL) {
         machine->outputs->sound_played(strcmp(kind, "DestinyUpdate") == 0 ? EYECATCH_SOUND_UPDATE : (strcmp(clip, "BANGO") == 0 ? EYECATCH_SOUND_NUMBER : EYECATCH_SOUND_TRICK));
     }
+    if (machine->eyecatch_ticks_left == 0) {
+        machine->mode_before_eyecatch = machine->mode_byte;
+    }
     machine->mode_byte = DEMO_MODE;
     machine->eyecatch_marks_the_core = strcmp(kind, "Trick") == 0;
     machine->eyecatch_ticks_left = machine->auto_press == SCRIPT_AUTO_FAST ? 0 : frames + EYECATCH_RELEASE_TICKS;
@@ -808,6 +811,9 @@ int script_soul_step_eyecatch(struct script_machine *machine)
         return 0;
     }
     machine->eyecatch_ticks_left = machine->eyecatch_ticks_left - 1;
+    if (machine->eyecatch_ticks_left == 0 && machine->mode_byte == DEMO_MODE) {
+        machine->mode_byte = machine->mode_before_eyecatch;
+    }
     if (machine->eyecatch_ticks_left == 0 && machine->eyecatch_marks_the_core) {
         machine->eyecatch_marks_the_core = 0;
         script_soul_start_player_mark(machine);
@@ -1375,7 +1381,7 @@ static void take_ghost_button(struct script_machine *machine)
     if (soul->view_change_ticks_left > 0) {
         return;
     }
-    if (soul->is_on && (soul->player_opened_soul_view || soul->view_back_is_offered) && !soul->view_demo_is_on) {
+    if (soul->is_on && !soul->view_demo_is_on && soul->tutorial_mode == TUTORIAL_NONE) {
         if (pill_answers_a_press(machine, SCRIPT_PILL_BACK)) {
             script_pills_press(machine, SCRIPT_PILL_BACK, PILL_HOLD_AFTER_VIEW_CHANGE);
             set_soul_view(machine, 0);
