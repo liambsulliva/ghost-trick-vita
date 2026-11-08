@@ -26,6 +26,13 @@
 #define DS_VIEW_HEIGHT 192
 #define FIRST_CORE_NODE 10
 #define FRAMING_FARTHEST_FROM_CORE 120
+#define SHAKE_DIRECTION_COUNT 8
+#define SHAKE_TICKS_PER_DIRECTION 4
+#define SHAKE_LEVEL_SCALED_MOST 3
+
+static const signed char shake_directions[SHAKE_DIRECTION_COUNT][2] = {
+    { 1, 0 }, { 0, 1 }, { 1, 1 }, { -1, 0 }, { 0, -1 }, { -1, -1 }, { -1, 1 }, { 1, -1 }
+};
 #define RADIANS_TO_DEGREES 57.29578f
 #define CAMERA_BAND_UNUSED 0xffff
 #define CAMERA_BAND_SNAP_MARGIN 16
@@ -574,12 +581,58 @@ void script_machine_scroll_camera(struct script_machine *machine, int delta_x, i
     }
 }
 
+static unsigned int next_shake_direction(struct script_machine *machine)
+{
+    machine->shake_random = machine->shake_random * 1103515245u + 12345u;
+    return (machine->shake_random >> 16) % SHAKE_DIRECTION_COUNT;
+}
+
+static int shake_scale(int level)
+{
+    return level >= 1 && level <= SHAKE_LEVEL_SCALED_MOST ? level + 1 : 1;
+}
+
+static int step_shake(struct script_machine *machine)
+{
+    int old_x;
+    int old_y;
+    unsigned int direction;
+
+    old_x = machine->shake_offset_x;
+    old_y = machine->shake_offset_y;
+    if (machine->shake_ticks_left <= 0) {
+        machine->shake_offset_x = 0;
+        machine->shake_offset_y = 0;
+    } else {
+        machine->shake_ticks_left = machine->shake_ticks_left - 1;
+        if (machine->shake_ticks_left == 0) {
+            machine->shake_offset_x = 0;
+            machine->shake_offset_y = 0;
+        } else if (machine->shake_ticks_left % SHAKE_TICKS_PER_DIRECTION == 0) {
+            direction = next_shake_direction(machine);
+            machine->shake_offset_x = shake_directions[direction][0] * shake_scale(machine->shake_level);
+            machine->shake_offset_y = shake_directions[direction][1] * shake_scale(machine->shake_level);
+        }
+    }
+    return machine->shake_offset_x != old_x || machine->shake_offset_y != old_y;
+}
+
+static void show_camera(struct script_machine *machine)
+{
+    if (machine->outputs->camera_moved != NULL) {
+        machine->outputs->camera_moved(machine->camera_x + machine->shake_offset_x, machine->camera_y + machine->shake_offset_y);
+    }
+}
+
 void script_machine_update_camera(struct script_machine *machine)
 {
-    if (machine->shake_ticks_left > 0) {
-        machine->shake_ticks_left = machine->shake_ticks_left - 1;
-    }
+    int shake_moved;
+
+    shake_moved = step_shake(machine);
     if (!machine->pan_is_active || (machine->pause_bit && !machine->soul.is_on)) {
+        if (shake_moved) {
+            show_camera(machine);
+        }
         return;
     }
     machine->pan_ticks_left = machine->pan_ticks_left - 1;
@@ -596,9 +649,7 @@ void script_machine_update_camera(struct script_machine *machine)
             script_machine_send(machine, "*", "SYSTEM", "hosei end");
         }
     }
-    if (machine->outputs->camera_moved != NULL) {
-        machine->outputs->camera_moved(machine->camera_x, machine->camera_y);
-    }
+    show_camera(machine);
 }
 
 enum script_step_result script_ops_view_run(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words)
@@ -646,9 +697,6 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
     case 0x2a:
         machine->shake_level = (int)words[0];
         machine->shake_ticks_left = (int)words[1];
-        if (machine->outputs->shake_changed != NULL) {
-            machine->outputs->shake_changed((int)words[0], (int)words[1]);
-        }
         break;
     case 0x2b:
         script_fades_add(machine, vm, 2, 4);

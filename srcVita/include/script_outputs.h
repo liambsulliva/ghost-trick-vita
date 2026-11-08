@@ -83,7 +83,6 @@ struct script_outputs {
     void (*world_origin_changed)(int x, int y);
     void (*ui_clip_started)(const char *name, int level_from, int level_to);
     void (*hud_changed)(const struct script_hud_view *view);
-    void (*shake_changed)(int level, int ticks);
     void (*screen_filter_changed)(int mode);
     void (*mask_fade_color_changed)(int is_white);
     void (*actor_changed)(const struct script_actor_view *actor);

@@ -398,6 +398,9 @@ struct script_machine {
     int pan_sends_hosei_end;
     int shake_level;
     int shake_ticks_left;
+    int shake_offset_x;
+    int shake_offset_y;
+    unsigned int shake_random;
     int chapter_mark;
     unsigned char note_levels[SCRIPT_NOTE_LIST_COUNT][SCRIPT_NOTE_ID_COUNT];
     int note_was_added;

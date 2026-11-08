@@ -63,8 +63,6 @@ static int zoom_ticks_left;
 
 static int soul_vision_is_on;
 static int mask_is_on;
-static int shake_level;
-static int shake_ticks_left;
 static int is_quiet;
 static const char *current_music;
 static const struct script_balloon_row *open_balloon_rows[SCRIPT_BALLOON_MAX];
@@ -136,12 +134,6 @@ static void on_world_origin_changed(int x, int y)
 static void on_camera_moved(int x, int y)
 {
     scene_stage_set_camera((float)x, (float)y);
-}
-
-static void on_shake_changed(int level, int ticks)
-{
-    shake_level = level;
-    shake_ticks_left = ticks;
 }
 
 static void on_screen_filter_changed(int mode)
@@ -750,7 +742,6 @@ static const struct script_outputs bridge_outputs = {
     .world_origin_changed = on_world_origin_changed,
     .ui_clip_started = on_ui_clip_started,
     .hud_changed = script_ui_view_hud_changed,
-    .shake_changed = on_shake_changed,
     .screen_filter_changed = on_screen_filter_changed,
     .mask_fade_color_changed = on_mask_fade_color_changed,
     .actor_changed = on_actor_changed,
@@ -833,8 +824,6 @@ void script_bridge_start(const struct script_tables *new_tables)
     mask_is_on = 0;
     logged_once_count = 0;
     current_music = NULL;
-    shake_level = 0;
-    shake_ticks_left = 0;
     script_view_start(new_tables);
     script_ui_view_start(new_tables);
     memset(open_balloon_rows, 0, sizeof(open_balloon_rows));
@@ -917,9 +906,6 @@ void script_bridge_finish_tick(void)
     scene_effects_advance(scene_stage_effects(), MICROSECONDS_PER_TICK);
     scene_layers_advance(scene_stage_layers(), MICROSECONDS_PER_TICK);
     script_view_advance();
-    if (shake_ticks_left > 0) {
-        shake_ticks_left = shake_ticks_left - 1;
-    }
     tick = tick + 1;
 }
 
