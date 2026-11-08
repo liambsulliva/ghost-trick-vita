@@ -1717,6 +1717,9 @@ static int something_is_running_to_a_known_end(const struct script_machine *mach
     if (machine->narration.is_running || machine->fade_count > 0 || machine->pan_is_active) {
         return 1;
     }
+    if (machine->movie_ticks_left > 0 || machine->eyecatch_ticks_left > 0 || machine->soul.view_change_ticks_left > 0 || machine->soul.phone_event.target != NULL || machine->soul.time_jump_event.target != NULL) {
+        return 1;
+    }
     if (machine->talk.phase != SCRIPT_TALK_CLOSED && machine->talk.phase != SCRIPT_TALK_WAITING) {
         return 1;
     }

@@ -346,6 +346,12 @@ Chapter 4's lab ends its talk with `GameApp Timeleap RESTART` and no `SELECT`; t
 
 Guard: `RESTART` and `RESTART FINAL` arm the rewind as `SELECT` does when no time leap is up. The lab now clears: its three panel picks, then the rewind, then st02_demo003 and st02_game004.
 
+### 50. Stuck pushes while a native timer was still running
+
+On the device the memo's `core|ready` handler in st01_game014 was pushed 242 ticks after the phone ride began, every run, though the replay never pushed it. The stuck detector pushes a waiting handler after a quiet stretch unless something is "running to a known end", and that list held narration, fades, pans, talk, load steps and object timers but not the port's own native timers: a movie, an eyecatch, a ghost-view change, and the scheduled phone-ride and time-jump events. The device's phone effect waits on its art, so its event comes later than the replay's and the detector took the wait for a stall.
+
+Guard: `something_is_running_to_a_known_end` counts those five timers too, so a push only happens when the game is idle. Whole-game replay unchanged (235 steps done).
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
