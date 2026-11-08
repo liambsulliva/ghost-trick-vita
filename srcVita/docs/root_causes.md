@@ -388,6 +388,12 @@ Op 0x6b (two sites, Chapter 7's st04_game001 `click linne_balloon1` among them) 
 
 Guard: op 0x6b is a control op whose condition is the port's pending script change (teardown or load scheduled); `tests/unit/test_script_change_pending.c` runs it with and without an op 0x24 first. When porting an op, add it to the family table as well as the switch, or the case is never reached.
 
+### 57. Talks a choice panel opens that were never baked
+
+A picked panel from op 0x3c (talk label in word 2) or op 0x3d (word 3) opens that talk (`script_choice_pick`), but the converter collected talk labels only from operand 0 of ops 0x37, 0x5c and 0xdb, so those talks had no row in `talk.txt` and the replay logged `no_talk_row`. Eleven such talks were missing across the game set.
+
+Guard: `Script.talk_labels_of_choice_panels` adds the panel talks to the baked talk labels; `tests/tools/test_choice_talk_labels.py` covers both panel ops and an event panel that names no talk. Any op that opens a talk by label must feed the same list.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
