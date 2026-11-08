@@ -45,6 +45,8 @@ LIVEAREA_STYLE := $(if $(and $(filter-out 1,$(RELEASE)),$(LIVEAREA_ASSETS_PRESEN
 LIVEAREA_SOURCE := build/livearea_$(LIVEAREA_STYLE)
 LIVEAREA_IMAGE_NAMES := icon0.png livearea/contents/bg.png livearea/contents/startup.png
 
+PLAN_SET ?= chapter1
+PLAN_STOP_TICK ?= 200000
 HOST_CC     := clang
 HOST_CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -g -O1 -Iinclude -Itests -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
 APP_SRCS    := $(wildcard src/app/*.c)
@@ -156,8 +158,8 @@ coverage: route-check
 
 read-ahead: build/tests/golden/script_replay
 	@mkdir -p build/golden
-	python3 -I tools/assets/route_pacing.py build/tests/golden/script_replay tools/assets/chapter1.json ../extracted/vita_assets/chapter1/scripts build/golden/cues_paced.tsv
-	python3 -I tools/assets/read_ahead.py build/golden/cues_paced.tsv ../extracted/vita_assets/chapter1/scripts ../extracted/vita_assets/chapter1/animations
+	python3 -I tools/assets/route_pacing.py build/tests/golden/script_replay tools/assets/$(PLAN_SET).json ../extracted/vita_assets/$(PLAN_SET)/scripts build/golden/cues_paced_$(PLAN_SET).tsv --stop-tick $(PLAN_STOP_TICK)
+	python3 -I tools/assets/read_ahead.py build/golden/cues_paced_$(PLAN_SET).tsv ../extracted/vita_assets/$(PLAN_SET)/scripts ../extracted/vita_assets/$(PLAN_SET)/animations
 
 route-check: build/tests/golden/script_replay
 	@mkdir -p build/golden
