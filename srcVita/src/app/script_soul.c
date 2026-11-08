@@ -133,6 +133,13 @@ static void core_position(const struct script_machine *machine, int object_index
     }
 }
 
+#define DEAD_TALK_GIMMICK_CLASS_ID 0x2981d97eu
+
+static int core_is_for_the_dead(const struct script_machine *machine, int object_index)
+{
+    return machine->objects[object_index].is_dead || machine->objects[object_index].actor.class_id == DEAD_TALK_GIMMICK_CLASS_ID;
+}
+
 static void arrive_at_core(struct script_machine *machine, int object_index, int slot)
 {
     struct script_soul *soul;
@@ -148,7 +155,7 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
         machine->outputs->marked("core", machine->objects[object_index].name);
     }
     if (soul->is_on) {
-        script_machine_send(machine, "*", "SYSTEM", machine->objects[object_index].is_dead ? "SV_DEADCORE" : "SV_CHGCORE");
+        script_machine_send(machine, "*", "SYSTEM", core_is_for_the_dead(machine, object_index) ? "SV_DEADCORE" : "SV_CHGCORE");
     }
     player_moved_in_tutorial(machine);
 }
