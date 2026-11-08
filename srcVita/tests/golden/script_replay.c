@@ -477,6 +477,7 @@ int main(int argument_count, char **arguments)
     int index;
     int press;
     int auto_press;
+    int stall_breaker_is_off = 0;
     const char *state_load_path;
     const char *start_override;
     int chapter_mark_override;
@@ -512,6 +513,8 @@ int main(int argument_count, char **arguments)
             auto_press = SCRIPT_AUTO_FAST;
         } else if (strcmp(arguments[index], "--auto-paced") == 0) {
             auto_press = SCRIPT_AUTO_PACED;
+        } else if (strcmp(arguments[index], "--no-stall-breaker") == 0) {
+            stall_breaker_is_off = 1;
         } else if (strcmp(arguments[index], "--marks") == 0) {
             marks_to_stdout = 1;
         } else if (strcmp(arguments[index], "--rows") == 0) {
@@ -541,6 +544,7 @@ int main(int argument_count, char **arguments)
     }
     script_machine_init(&machine, &recording_outputs, timing, NULL);
     machine.auto_press = auto_press;
+    machine.stall_breaker_is_off = stall_breaker_is_off;
     add_every_script_of_the_chain(folder);
     read_room_bounds(folder);
     read_talk_book(folder);

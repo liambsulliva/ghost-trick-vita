@@ -1974,6 +1974,9 @@ static void push_when_stuck(struct script_machine *machine)
 {
     unsigned int quiet_ticks;
 
+    if (machine->stall_breaker_is_off) {
+        return;
+    }
     quiet_ticks = machine->tick - machine->last_new_site_tick;
     if (script_change_is_pending(machine)) {
         return;
@@ -2037,7 +2040,7 @@ static const char *scene_where_the_story_should_be(const struct script_machine *
 
 static int scene_has_run_too_long(const struct script_machine *machine)
 {
-    if (machine->route == NULL || machine->route->scene_most_ticks <= 0 || machine->auto_press == SCRIPT_AUTO_OFF) {
+    if (machine->stall_breaker_is_off || machine->route == NULL || machine->route->scene_most_ticks <= 0 || machine->auto_press == SCRIPT_AUTO_OFF) {
         return 0;
     }
     if (script_change_is_pending(machine) || machine->stop_is_requested) {
@@ -2050,7 +2053,7 @@ static void move_on_when_the_story_went_back(struct script_machine *machine)
 {
     const char *next;
 
-    if (!machine->scene_is_behind_the_story || script_change_is_pending(machine) || machine->stop_is_requested) {
+    if (machine->stall_breaker_is_off || !machine->scene_is_behind_the_story || script_change_is_pending(machine) || machine->stop_is_requested) {
         return;
     }
     machine->scene_is_behind_the_story = 0;

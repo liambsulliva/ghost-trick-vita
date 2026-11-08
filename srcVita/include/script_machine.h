@@ -448,6 +448,7 @@ struct script_machine {
     unsigned int last_timer_tick;
     unsigned int push_count;
     int auto_press;
+    int stall_breaker_is_off;
     int fate_level;
     int fate_previous_level;
     int eyecatch_ticks_left;

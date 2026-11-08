@@ -1305,7 +1305,7 @@ static void retry_after_the_game_over(struct script_machine *machine)
     int restarts_in_place;
 
     machine->game_over_is_pending = 0;
-    if (machine->auto_press != SCRIPT_AUTO_OFF && machine->route != NULL && retries_are_going_nowhere(machine) && script_machine_move_on_in_story_order(machine, "game_over")) {
+    if (!machine->stall_breaker_is_off && machine->auto_press != SCRIPT_AUTO_OFF && machine->route != NULL && retries_are_going_nowhere(machine) && script_machine_move_on_in_story_order(machine, "game_over")) {
         return;
     }
     restarts_in_place = script_machine_handles(machine, "SYSTEM", "RESTART");

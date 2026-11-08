@@ -44,6 +44,18 @@ static int was_marked(const char *text)
     return 0;
 }
 
+static int was_marked_starting_with(const char *prefix)
+{
+    int index;
+
+    for (index = 0; index < mark_count; index++) {
+        if (strncmp(marks[index], prefix, strlen(prefix)) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void put_u16(unsigned char *at, unsigned int value)
 {
     at[0] = (unsigned char)(value & 0xffu);
@@ -126,6 +138,16 @@ static void test_without_auto_play_the_scene_never_times_out(void)
     run_ticks(TICKS_TO_RUN);
     CHECK(!was_marked("scene_timeout_left a"));
     CHECK(!was_marked("script_begun b"));
+}
+
+static void test_with_the_stall_breaker_off_nothing_moves_the_scene_on(void)
+{
+    start_in("a", SCRIPT_AUTO_PACED, 1);
+    machine.stall_breaker_is_off = 1;
+    run_ticks(TICKS_TO_RUN);
+    CHECK(!was_marked("scene_timeout_left a"));
+    CHECK(!was_marked("script_begun b"));
+    CHECK(!was_marked_starting_with("stuck_"));
 }
 
 static void test_the_scene_exit_is_found_past_data_after_a_jump(void)
@@ -300,6 +322,7 @@ int main(void)
     test_manual_play_may_go_back();
     test_a_scene_past_its_timeout_moves_to_the_next_scene_in_story_order();
     test_without_auto_play_the_scene_never_times_out();
+    test_with_the_stall_breaker_off_nothing_moves_the_scene_on();
     test_the_scene_exit_is_found_past_data_after_a_jump();
     test_a_press_left_from_the_earlier_scene_is_cleared();
     test_a_loop_back_returns_to_the_furthest_scene_reached();
