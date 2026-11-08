@@ -246,6 +246,12 @@ Run 14's rewind clock froze for over a second with the numerals half flown in, t
 
 Guard: while a movie covers the screen, the art gate holds game time until the frame it has reached is loaded, and before the first frame shows it waits for the first 12, the same "slow over skip" rule the rooms follow. The movie's sound now starts on the tick its first frames are ready, so holding does not leave the picture behind the sound, and it is played once even when the script also asks for it. A new script clears the playing movie.
 
+### 34. Effects spawned by motion tables, not by the script
+
+Run 15 logged a dozen stage 6 effects as not drawn (the dog's bark, the music box, the stand, a muzzle flash and others) although the remaster has art for all of them in that script's effect list. The bake found effect ids only in the script's spawn op (0xb0), and these come from the effect command inside motion tables (tag -8), which the port already runs. Sounds were collected from both places; effects were not.
+
+Guard: the converter collects effect ids from spawn ops and from every motion table's effect commands through one helper, so a table-spawned effect gets its row and its read-ahead pages. The re-bake added 34 effect rows across the game. Ids whose kind is a native class still need code.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

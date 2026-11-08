@@ -80,6 +80,7 @@ SOUND_OPS = (0x10b, 0x10c, 0x10d)
 MUSIC_OPS = (0x106, 0x107, 0x10a)
 TAG_BEGIN = -3
 TAG_SOUND = -9
+TAG_EFFECT = -8
 PRELOADED_TABLES_PER_SCRIPT = 32
 
 
@@ -387,25 +388,35 @@ def effect_ids_with_rows(set_description):
     return set(row["id"] for row in set_description.get("effects", [])) | set(row["id"] for row in set_description.get("effect_movies", []) if "id" in row)
 
 
+def spawned_effect_ids(script):
+    for _, _, op, operands in script.operations:
+        if op == EFFECT_SPAWN_OP and operands:
+            yield operands[0]
+    for _, _, records in script.tables:
+        for _, tag, arguments in records:
+            if tag == TAG_EFFECT and arguments:
+                yield arguments[0]
+
+
 def spawned_effect_movies(packs, scripts, arm9, ids_with_rows):
     movies = collections.OrderedDict()
     differing = set()
     lists_read = {}
     for script in scripts.values():
-        for _, _, op, operands in script.operations:
-            if op != EFFECT_SPAWN_OP or not operands or operands[0] in ids_with_rows:
+        for effect_id in spawned_effect_ids(script):
+            if effect_id in ids_with_rows:
                 continue
-            kind = effect_kind_of(arm9, operands[0])
+            kind = effect_kind_of(arm9, effect_id)
             if kind >= FIRST_CLASS_EFFECT_KIND:
                 continue
             row = effect_list_row_of_kind(kind)
             name = effect_movie_names_by_row(packs, script.list_name(), lists_read).get(row) or effect_movie_names_by_row(packs, COMMON_EFFECT_LIST, lists_read).get(row)
             if name is None or not path_exists(packs, effect_movies.USER_PATH % (name, name)):
                 continue
-            if operands[0] in movies and movies[operands[0]] != name:
-                differing.add(operands[0])
+            if effect_id in movies and movies[effect_id] != name:
+                differing.add(effect_id)
                 continue
-            movies[operands[0]] = name
+            movies[effect_id] = name
     if differing:
         print("effect ids whose art differs by stage, first kept: %s" % ", ".join(str(effect_id) for effect_id in sorted(differing)))
     return [{"id": effect_id, "effect": name, "found_in_scripts": True} for effect_id, name in movies.items()]
