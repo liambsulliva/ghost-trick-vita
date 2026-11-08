@@ -74,11 +74,11 @@ def load_timelines(packs, animations):
     return timelines
 
 
-def add_atlas_page_jobs(jobs, animations, timelines):
+def add_atlas_page_jobs(jobs, animations, timelines, played_by_tables=()):
     crops = {}
     for animation in animations:
         timeline = timelines[animation["timeline"]]
-        ds_frames = animation.get("ds_frames")
+        ds_frames = None if animation["name"] in played_by_tables else animation.get("ds_frames")
         frame_layout.add_used_cells_to_crops(crops, timeline, ds_frames)
         for record in frame_layout.select_records(timeline, ds_frames):
             if frame_layout.record_draws_art(timeline, record):
@@ -439,7 +439,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
     plates = set_description.get("plates", [])
     timelines = load_timelines(packs, animations)
     jobs = {}
-    crops = add_atlas_page_jobs(jobs, animations, timelines)
+    crops = add_atlas_page_jobs(jobs, animations, timelines, set(set_description.get("scripts", {}).get("motion_tables", {}).values()))
     atlas_page_names = list(jobs)
     add_plate_jobs(jobs, plates, set_description.get("soul_view", {}).get("ramp"))
     used_faces = talk_assets.faces_the_set_will_use(packs, set_description, text_key)
