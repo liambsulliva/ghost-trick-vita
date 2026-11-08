@@ -9,9 +9,10 @@
 #define ROUTE_ACTION_WORD_MAX 16
 #define ROUTE_EMPTY_WORD "-"
 #define WAIT_TOKEN_SEPARATOR '&'
+#define WAIT_ARGUMENT_SEPARATOR ':'
 
 static const char *const action_names[] = { "move", "trick", "ghost_on", "ghost_off", "touch", "tap_balloon", "camera", "phone_call", "wait" };
-static const char *const known_wait_words[] = { "act", "tutorial", "playable", "free", "view", "no_talk", "flag", "noflag", "core", "usable", "balloon", "camera_tutorial", "timeleap_armed", "ticks" };
+static const char *const wait_word_names[] = { "act", "tutorial", "playable", "free", "view", "no_talk", "flag", "noflag", "core", "usable", "balloon", "camera_tutorial", "timeleap_armed", "ticks" };
 
 static int read_action(const char *word, enum script_route_action *action)
 {
@@ -26,34 +27,61 @@ static int read_action(const char *word, enum script_route_action *action)
     return 0;
 }
 
-static int wait_word_is_known(const char *token, size_t token_length)
+static enum script_route_wait_word wait_word_named(const char *name)
 {
     unsigned int index;
 
-    for (index = 0; index < sizeof(known_wait_words) / sizeof(known_wait_words[0]); index++) {
-        size_t word_length;
-
-        word_length = strlen(known_wait_words[index]);
-        if (token_length >= word_length && strncmp(token, known_wait_words[index], word_length) == 0 && (token_length == word_length || token[word_length] == ':')) {
-            return 1;
+    for (index = 0; index < sizeof(wait_word_names) / sizeof(wait_word_names[0]); index++) {
+        if (strcmp(name, wait_word_names[index]) == 0) {
+            return (enum script_route_wait_word)index;
         }
     }
-    return 0;
+    return SCRIPT_ROUTE_WAIT_UNKNOWN;
+}
+
+static char *split_off_argument(char *text)
+{
+    char *separator;
+
+    separator = strchr(text, WAIT_ARGUMENT_SEPARATOR);
+    if (separator == NULL) {
+        return NULL;
+    }
+    *separator = '\0';
+    return separator + 1;
+}
+
+const char *script_route_read_wait_token(const char *wait, struct script_route_wait_token *token)
+{
+    const char *end;
+    size_t length;
+    char *first;
+    char *second;
+
+    end = strchr(wait, WAIT_TOKEN_SEPARATOR);
+    length = end != NULL ? (size_t)(end - wait) : strlen(wait);
+    if (length >= sizeof(token->text)) {
+        length = sizeof(token->text) - 1u;
+    }
+    memcpy(token->text, wait, length);
+    token->text[length] = '\0';
+    first = split_off_argument(token->text);
+    second = first != NULL ? split_off_argument(first) : NULL;
+    token->first = first;
+    token->second = second;
+    token->word = wait_word_named(token->text);
+    return end != NULL ? end + 1 : NULL;
 }
 
 static int wait_is_valid(const char *wait)
 {
-    while (*wait != '\0') {
-        const char *end;
+    struct script_route_wait_token token;
 
-        end = strchr(wait, WAIT_TOKEN_SEPARATOR);
-        if (end == NULL) {
-            end = wait + strlen(wait);
-        }
-        if (!wait_word_is_known(wait, (size_t)(end - wait))) {
+    while (wait != NULL && *wait != '\0') {
+        wait = script_route_read_wait_token(wait, &token);
+        if (token.word == SCRIPT_ROUTE_WAIT_UNKNOWN) {
             return 0;
         }
-        wait = *end == '\0' ? end : end + 1;
     }
     return 1;
 }

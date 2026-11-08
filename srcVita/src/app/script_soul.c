@@ -1512,51 +1512,47 @@ static int balloon_sending(const struct script_machine *machine, const char *eve
     return -1;
 }
 
-static int route_token_holds(const struct script_machine *machine, char *token)
+static int route_word_without_argument_holds(const struct script_machine *machine, enum script_route_wait_word word)
 {
     const struct script_soul *soul;
-    char *first;
-    char *second;
+
+    soul = &machine->soul;
+    switch (word) {
+    case SCRIPT_ROUTE_WAIT_PLAYABLE:
+        return script_soul_world_is_playable(machine) && soul->trick_is_on;
+    case SCRIPT_ROUTE_WAIT_FREE:
+        return script_soul_world_is_playable(machine);
+    case SCRIPT_ROUTE_WAIT_VIEW:
+        return soul->is_on;
+    case SCRIPT_ROUTE_WAIT_NO_TALK:
+        return machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->talk_is_open;
+    case SCRIPT_ROUTE_WAIT_CAMERA_TUTORIAL:
+        return soul->camera_tutorial_is_on;
+    case SCRIPT_ROUTE_WAIT_TIMELEAP_ARMED:
+        return soul->rewind_select_ticks >= REWIND_SLIDE_TICKS || soul->time_jump_event.target != NULL;
+    default:
+        return 0;
+    }
+}
+
+static int route_token_holds(const struct script_machine *machine, const struct script_route_wait_token *token)
+{
+    const struct script_soul *soul;
+    const char *first;
+    const char *second;
     int object_index;
 
     soul = &machine->soul;
-    first = strchr(token, ':');
-    second = NULL;
-    if (first != NULL) {
-        *first = '\0';
-        first = first + 1;
-        second = strchr(first, ':');
-        if (second != NULL) {
-            *second = '\0';
-            second = second + 1;
-        }
-    }
-    if (strcmp(token, "playable") == 0) {
-        return script_soul_world_is_playable(machine) && soul->trick_is_on;
-    }
-    if (strcmp(token, "free") == 0) {
-        return script_soul_world_is_playable(machine);
-    }
-    if (strcmp(token, "view") == 0) {
-        return soul->is_on;
-    }
-    if (strcmp(token, "no_talk") == 0) {
-        return machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->talk_is_open;
-    }
-    if (strcmp(token, "camera_tutorial") == 0) {
-        return soul->camera_tutorial_is_on;
-    }
-    if (strcmp(token, "timeleap_armed") == 0) {
-        return soul->rewind_select_ticks >= REWIND_SLIDE_TICKS || soul->time_jump_event.target != NULL;
-    }
+    first = token->first;
+    second = token->second;
     if (first == NULL) {
-        return 0;
+        return route_word_without_argument_holds(machine, token->word);
     }
-    if (strcmp(token, "act") == 0) {
+    switch (token->word) {
+    case SCRIPT_ROUTE_WAIT_ACT:
         object_index = object_named(machine, first);
         return object_index != NO_CORE && second != NULL && machine->objects[object_index].current_act != NULL && strcmp(machine->objects[object_index].current_act, second) == 0;
-    }
-    if (strcmp(token, "tutorial") == 0) {
+    case SCRIPT_ROUTE_WAIT_TUTORIAL:
         if (strcmp(first, "touch") == 0) {
             return soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent;
         }
@@ -1564,52 +1560,33 @@ static int route_token_holds(const struct script_machine *machine, char *token)
             return soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && soul->tutorial_click_was_sent;
         }
         return strcmp(first, "move") == 0 && soul->tutorial_mode == TUTORIAL_MOVE;
-    }
-    if (strcmp(token, "flag") == 0) {
+    case SCRIPT_ROUTE_WAIT_FLAG:
         return script_flags_read(&machine->flags, (unsigned int)strtoul(first, NULL, 16));
-    }
-    if (strcmp(token, "noflag") == 0) {
+    case SCRIPT_ROUTE_WAIT_NOFLAG:
         return !script_flags_read(&machine->flags, (unsigned int)strtoul(first, NULL, 16));
-    }
-    if (strcmp(token, "core") == 0) {
+    case SCRIPT_ROUTE_WAIT_CORE:
         return machine->active_core_name != NULL && strcmp(machine->active_core_name, first) == 0 && (second == NULL || soul->active_slot == atoi(second));
-    }
-    if (strcmp(token, "usable") == 0) {
+    case SCRIPT_ROUTE_WAIT_USABLE:
         object_index = object_named(machine, first);
         return object_index != NO_CORE && object_can_be_a_core(&machine->objects[object_index], second != NULL ? atoi(second) : 0);
-    }
-    if (strcmp(token, "balloon") == 0) {
+    case SCRIPT_ROUTE_WAIT_BALLOON:
         return balloon_sending(machine, first) >= 0;
-    }
-    if (strcmp(token, "ticks") == 0) {
+    case SCRIPT_ROUTE_WAIT_TICKS:
         return machine->tick - soul->route_last_action_tick >= (unsigned int)atoi(first);
+    default:
+        return route_word_without_argument_holds(machine, token->word);
     }
-    return 0;
 }
 
 static int route_wait_holds(const struct script_machine *machine, const char *wait)
 {
-    char copy[SCRIPT_ROUTE_WAIT_MAX];
-    char *token;
+    struct script_route_wait_token token;
 
-    snprintf(copy, sizeof(copy), "%s", wait);
-    token = copy;
-    while (*token != '\0') {
-        char *end;
-        int is_last;
-
-        end = strchr(token, '&');
-        is_last = end == NULL;
-        if (!is_last) {
-            *end = '\0';
-        }
-        if (!route_token_holds(machine, token)) {
+    while (wait != NULL && *wait != '\0') {
+        wait = script_route_read_wait_token(wait, &token);
+        if (!route_token_holds(machine, &token)) {
             return 0;
         }
-        if (is_last) {
-            break;
-        }
-        token = end + 1;
     }
     return 1;
 }

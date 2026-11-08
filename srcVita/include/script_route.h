@@ -18,6 +18,31 @@ enum script_route_action {
     SCRIPT_ROUTE_WAIT
 };
 
+enum script_route_wait_word {
+    SCRIPT_ROUTE_WAIT_ACT,
+    SCRIPT_ROUTE_WAIT_TUTORIAL,
+    SCRIPT_ROUTE_WAIT_PLAYABLE,
+    SCRIPT_ROUTE_WAIT_FREE,
+    SCRIPT_ROUTE_WAIT_VIEW,
+    SCRIPT_ROUTE_WAIT_NO_TALK,
+    SCRIPT_ROUTE_WAIT_FLAG,
+    SCRIPT_ROUTE_WAIT_NOFLAG,
+    SCRIPT_ROUTE_WAIT_CORE,
+    SCRIPT_ROUTE_WAIT_USABLE,
+    SCRIPT_ROUTE_WAIT_BALLOON,
+    SCRIPT_ROUTE_WAIT_CAMERA_TUTORIAL,
+    SCRIPT_ROUTE_WAIT_TIMELEAP_ARMED,
+    SCRIPT_ROUTE_WAIT_TICKS,
+    SCRIPT_ROUTE_WAIT_UNKNOWN
+};
+
+struct script_route_wait_token {
+    enum script_route_wait_word word;
+    char text[SCRIPT_ROUTE_WAIT_MAX];
+    const char *first;
+    const char *second;
+};
+
 struct script_route_step {
     char script[SCRIPT_ROUTE_SCRIPT_NAME_MAX];
     enum script_route_action action;
@@ -37,5 +62,6 @@ int script_route_read_pacing(struct script_route *route, const char *text, unsig
 int script_route_first_step_of_script(const struct script_route *route, const char *script);
 const char *script_route_action_name(enum script_route_action action);
 int script_route_wait_has_token(const char *wait, const char *token);
+const char *script_route_read_wait_token(const char *wait, struct script_route_wait_token *token);
 
 #endif
