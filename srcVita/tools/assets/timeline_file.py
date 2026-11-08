@@ -141,11 +141,11 @@ def page_starts(cells_per_page):
     return starts
 
 
-def find_page(starts, cell_index):
+def page_holding(starts, page_count, cell_index):
     for page_index, (first_cell, cell_count) in enumerate(starts):
         if first_cell <= cell_index < first_cell + cell_count:
-            return page_index, cell_index - first_cell
-    raise TimelineError("cell " + str(cell_index) + " is on no page")
+            return (page_index, cell_index - first_cell) if page_index < page_count else None
+    return None
 
 
 def build_timeline(objects):
@@ -159,14 +159,20 @@ def build_timeline(objects):
         raise TimelineError("record count is not a multiple of the DS frame count")
     starts = page_starts(sheet["cells_per_page"])
     records = []
+    records_without_art = 0
     for record_index in record_indices:
         source = objects[record_index]
         shorts = source["shorts"]
-        is_blank = not starts or (shorts[SHORT_BLANK_MARKER] == 0 and source["position"] == (0.0, 0.0))
+        is_blank = shorts[SHORT_BLANK_MARKER] == 0 and source["position"] == (0.0, 0.0)
         page = None
         cell_in_page = None
         if not is_blank:
-            page, cell_in_page = find_page(starts, source["cell_index"])
+            holding = page_holding(starts, len(sheet["pages"]), source["cell_index"])
+            if holding is None:
+                is_blank = True
+                records_without_art = records_without_art + 1
+            else:
+                page, cell_in_page = holding
         records.append({
             "page": page,
             "cell_in_page": cell_in_page,
@@ -183,6 +189,7 @@ def build_timeline(objects):
         "records_per_ds_frame": len(record_indices) // ds_frame_count,
         "placement_shift": root["placement_shift"],
         "records": records,
+        "records_without_art": records_without_art,
     }
 
 

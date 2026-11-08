@@ -68,6 +68,9 @@ def load_timelines(packs, animations):
         path = animation["timeline"]
         if path not in timelines:
             timelines[path] = timeline_file.decode_timeline(packs.read(path))
+    without_art = sorted(os.path.basename(path).split(".")[0] for path, timeline in timelines.items() if timeline["records_without_art"])
+    if without_art:
+        print("timelines with records on no art page: %d (%s)" % (len(without_art), ", ".join(without_art)))
     return timelines
 
 
