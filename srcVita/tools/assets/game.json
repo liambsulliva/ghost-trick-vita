@@ -2991,6 +2991,30 @@
         "wait": "playable & no_talk"
       },
       {
+        "script": "st06-st06_game004_Expand",
+        "action": "ghost_on",
+        "object": "wine",
+        "pace": "normal",
+        "footage_s": 4115.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st06-st06_game004_Expand",
+        "action": "move",
+        "object": "wine",
+        "pace": "normal",
+        "footage_s": 4116.0,
+        "wait": "view & usable:wine"
+      },
+      {
+        "script": "st06-st06_game004_Expand",
+        "action": "ghost_off",
+        "object": "wine",
+        "pace": "quick",
+        "footage_s": 4117.0,
+        "wait": "core:wine"
+      },
+      {
         "script": "st05-st05_game000_Expand",
         "action": "tap_balloon",
         "object": "talkopen",
