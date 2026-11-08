@@ -178,10 +178,20 @@ static void read_script_motions(const char *name)
         read_ahead_add_text(name, (const char *)bytes, size);
         mem_free(bytes);
     }
-    if (read_named_file(name, ".anims", &bytes, &size) == FILE_OK) {
-        run_log_write("script animations name=%s added=%d", name, animation_library_add_bundle((const char *)bytes, size));
-        mem_free(bytes);
+}
+
+static void load_script_animations(const char *name)
+{
+    unsigned char *bytes;
+    unsigned int size;
+    unsigned long long started_us;
+
+    started_us = clock_now_us();
+    if (read_named_file(name, ".anims", &bytes, &size) != FILE_OK) {
+        return;
     }
+    run_log_write("script animations name=%s added=%d us=%llu", name, animation_library_add_bundle((const char *)bytes, size), clock_now_us() - started_us);
+    mem_free(bytes);
 }
 
 static void begin_loading_animations(void);
@@ -898,6 +908,9 @@ void script_player_note_mark(const char *what, const char *name)
 {
     if (data != NULL) {
         read_ahead_note_mark(what, name, data->machine.tick);
+    }
+    if (strcmp(what, "script_begun") == 0) {
+        load_script_animations(name);
     }
     if (strcmp(run_until_kind, "step") == 0 && strcmp(what, "route_step_done") == 0 && route_step_number_is(name, run_until_name)) {
         snprintf(run_until_kind, sizeof(run_until_kind), "reached");

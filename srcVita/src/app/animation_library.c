@@ -171,7 +171,10 @@ static int add_bundled_animation(const char *start, const char *end)
     char name[ASSET_NAME_MAX];
     struct animation *animation;
 
-    if (sscanf(start, BUNDLE_ANIMATION_PREFIX ASSET_NAME_SCAN, name) != 1 || find_loaded(name) != NULL || loaded_count >= ANIMATION_LIBRARY_MAX) {
+    if (sscanf(start, BUNDLE_ANIMATION_PREFIX ASSET_NAME_SCAN, name) != 1 || find_loaded(name) != NULL) {
+        return 0;
+    }
+    if (loaded_count >= ANIMATION_LIBRARY_MAX && !evict_least_recent_unused()) {
         return 0;
     }
     animation = mem_alloc(sizeof(struct animation));
