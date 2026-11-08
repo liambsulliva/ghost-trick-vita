@@ -806,6 +806,8 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
         }
         break;
     case 0x9c:
+    case 0xa4:
+    case 0xa7:
         object = script_machine_current_object(machine, vm);
         if (object != NULL) {
             script_soul_set_first_core(machine, (int)(object - machine->objects), (int)words[0]);

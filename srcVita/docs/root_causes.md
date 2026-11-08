@@ -400,6 +400,12 @@ Root causes 52 and the quiet-view rule (only a ghost view entered with its effec
 
 Guard: the soul remembers whether the open view was entered with its effect, and `DemoModeOff` pauses only then. `tests/unit/test_quiet_view_pause.c` covers both the quiet and the effect view. The whole-game replay plays 401 route steps (393 before), Chapters 1 to 4 unchanged.
 
+### 59. Scripts that put the soul on a core were skipped
+
+Ops 0x9c, 0xa4 and 0xa7 all go through `func_020101c0` / `func_020101d0`, which stores a core number and a mode (0, 1, 2) on the current object (+0xbf, +0xde bits 6-7). 0xa4 then moves an existing soul onto that core through `func_020611b4` (immediately, unless the soul is in state 5, when the move waits), and 0xa7 through `func_0206115c` (immediately). The port handled 0x9c only, so 0xa4 (244 sites) and 0xa7 (13) were logged as unported and the soul stayed where it was, which left later chapters' scenes (15, 17, 18) waiting on a soul that never arrived.
+
+Guard: 0xa4 and 0xa7 share 0x9c's placement in `script_motion.c` and the op family table; `tests/unit/test_soul_placed_on_core.c` runs all three and checks their family. Still open: 0xa4's delayed move in soul state 5, and 0xa6 (`func_020610ac`, the soul travelling to a core), which stays unported.
+
 ## Still open
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
