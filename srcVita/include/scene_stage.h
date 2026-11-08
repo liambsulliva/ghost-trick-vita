@@ -7,7 +7,7 @@
 #include "scene_layers.h"
 
 #define SCENE_PLATE_MAX 16
-#define SCENE_OBJECT_MAX 64
+#define SCENE_OBJECT_MAX 128
 
 struct scene_plate {
     char texture_name[ASSET_NAME_MAX];

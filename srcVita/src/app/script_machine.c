@@ -1953,11 +1953,11 @@ static const char *scene_where_the_story_should_be(const struct script_machine *
     int scene;
 
     scene = machine->scene_name != NULL ? script_route_scene_index(machine->route, machine->scene_name) : -1;
-    if (scene < machine->furthest_scene) {
-        return machine->route->scenes[machine->furthest_scene];
-    }
     if (scene < 0 || scene + 1 >= machine->route->scene_count) {
         return NULL;
+    }
+    if (scene < machine->furthest_scene) {
+        return machine->route->scenes[machine->furthest_scene];
     }
     return machine->route->scenes[scene + 1];
 }

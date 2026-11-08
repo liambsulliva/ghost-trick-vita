@@ -292,6 +292,12 @@ Native's teardown on every script change (`func_0200fe74`, run from the `0x24` c
 
 Guard: the stage clear stops every playing UI clip, the machine keeps the countdown across a change only while flag 0x1008 is set and clears the flag at each teardown, and each new script checks that no talk, narration or press is still pending from the earlier one (`scene_leftover_cleared` names what it cleared). Music follows native and carries over, except on a forced move from the scene timeout, which stops it so the earlier scene's music cannot play over a scene native never reached that way. The movie and its waiting sound are left alone, because the phone ride's movie plays across the change.
 
+### 42. Fixed caps below what the scripts declare
+
+The Chapter 3 junkyard (st01_game020) logged `too_many_objects`: it declares 69 objects and the port held 64, so the last objects never existed. Across the game, 19 of 176 scripts declare more than 64 objects (105 at most, st03_game011), and one act declares 88 handlers (st02_game036) against a cap of 64. Native creates objects and handlers as heap tasks with no fixed count.
+
+Guard: `SCRIPT_OBJECT_MAX` and the view's `SCENE_OBJECT_MAX` are 128 and `SCRIPT_HANDLER_MAX` is 96, above the largest counts in the decoded dumps (objects per script, handlers per act, since starting an act clears and re-registers its object's handlers). The machine grows to 1.4 MB on the heap. Before raising a limit again, count the worst case across every script, not the chapter at hand.
+
 ### 41. A run log with no ceiling
 
 Run 23's log reached 2.5 GB in five hours of the junkyard loop, almost all of it per-frame animation lines, and the Vita's FTP server cannot seek past 2 GB, so the tools could not read it at all.
