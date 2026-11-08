@@ -408,6 +408,8 @@ static void load_room(struct script_machine *machine, const unsigned int *words)
     if (words[2] != KEEP_CAMERA_AXIS) {
         machine->camera_y = machine->world_origin_y + signed_word(words[2]);
     }
+    machine->camera_x = clamped_x(machine, machine->camera_x);
+    machine->camera_y = clamped_y(machine, machine->camera_y);
     if (machine->outputs->room_loaded != NULL) {
         machine->outputs->room_loaded((int)words[0], machine->camera_x, machine->camera_y);
     }
