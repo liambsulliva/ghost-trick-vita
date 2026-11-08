@@ -30,7 +30,7 @@
 #define LEVEL_COUNT 15
 #define CREATION_INDEX_TOP 255
 #define DS_TICKS_PER_FRAME 4
-#define LOGGED_ONCE_MAX 32
+#define LOGGED_ONCE_MAX 256
 #define LOG_FOR_TOOLS_DISSOLVE "scene dissolve ticks=%d end_zoom=%.3f snapshot=%d snapshot_us=%llu"
 
 struct pending_overlay {
@@ -69,6 +69,7 @@ static const struct script_balloon_row *open_balloon_rows[SCRIPT_BALLOON_MAX];
 static struct pending_overlay pending_overlays[PENDING_OVERLAY_MAX];
 static char logged_once[LOGGED_ONCE_MAX][ASSET_NAME_MAX];
 static int logged_once_count;
+static int log_once_full_was_logged;
 
 static void write_cue(const char *kind, const char *name)
 {
@@ -86,10 +87,15 @@ static void log_once(const char *what, const char *name)
             return;
         }
     }
-    if (logged_once_count < LOGGED_ONCE_MAX) {
-        snprintf(logged_once[logged_once_count], sizeof(logged_once[logged_once_count]), "%s", key);
-        logged_once_count = logged_once_count + 1;
+    if (logged_once_count >= LOGGED_ONCE_MAX) {
+        if (!log_once_full_was_logged) {
+            run_log_write("script log_once_full kept=%d", LOGGED_ONCE_MAX);
+            log_once_full_was_logged = 1;
+        }
+        return;
     }
+    snprintf(logged_once[logged_once_count], sizeof(logged_once[logged_once_count]), "%s", key);
+    logged_once_count = logged_once_count + 1;
     run_log_write("script %s name=%s", what, name);
 }
 
@@ -823,6 +829,7 @@ void script_bridge_start(const struct script_tables *new_tables)
     soul_vision_is_on = 0;
     mask_is_on = 0;
     logged_once_count = 0;
+    log_once_full_was_logged = 0;
     current_music = NULL;
     script_view_start(new_tables);
     script_ui_view_start(new_tables);
