@@ -406,9 +406,15 @@ Ops 0x9c, 0xa4 and 0xa7 all go through `func_020101c0` / `func_020101d0`, which 
 
 Guard: 0xa4 and 0xa7 share 0x9c's placement in `script_motion.c` and the op family table; `tests/unit/test_soul_placed_on_core.c` runs all three and checks their family. Still open: 0xa4's delayed move in soul state 5, and 0xa6 (`func_020610ac`, the soul travelling to a core), which stays unported.
 
+### 60. Talks named from another stage were never baked
+
+Scripts often open talks numbered for another stage: st04_game101 opens `m02_12xx`, st13_demo001 `m04_11xx`, st14_game020 `m03_8112`, st15_demo070 `m14_0280`, and st06_game004 the `tel_info` of st06_game003. The converter looked a label up only in its own script's message files, so these 13 talks and balloons had no row and the scene skipped them (`no_talk_row`, `no_balloon_row`).
+
+Guard: `entries_for` in `chapter_assets.py` looks in the script's own files first and then in every message file of the set. The bake prints `talk and balloon labels with no text` with the count, which is 49 now: labels the remaster's text does not have at all (Chapter 2's `st06_m00xx`, Chapter 5's `m02_2480`, and talks in Chapters 5, 9, 13, 14 and 16). Their text is only in the DS ROM's language file for the script.
+
 ## Still open
 - Pause class 1 (op 0x21, native stores 1 through the VM's virtual +0x44 setter; 0x1e stores 2, 0x20 stores 3). Treated like the normal class, three scenes deadlock: a controller sets class 1, opens a ghost view with its effect, and its own handler that would release the pause cannot run (Chapter 7's cock_talk act change, Chapter 14's denwa_act10, Chapter 15's sys_act100 SV_START with DemoModeOn). Letting class 1 run through every ghost-view pause clears those but breaks Chapter 2 steps 112 to 117, so native's rule is narrower. The native reader of the stored class is not found yet; find it before changing `vm_is_paused`.
-- Talk m02_2480 and m02_2540 (Chapter 5, st02_game023: op 0x37 at 0x2046) have no row in the baked talk table although the stage's message file holds them.
+- Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.
 - Telephone, Lynne and the dead core have no name entry in the tables read so far.

@@ -55,6 +55,7 @@ FACE_WIDTH = 360
 FACE_HEIGHT = 540
 MESSAGE_FOLDER = "natives/android/gamedesign/text/%s/%s_%04d.msg.22"
 PER_SCRIPT_TEXT_WORD = "{script}"
+SET_WIDE_ENTRIES = "set"
 EXPAND_SUFFIX = "_Expand"
 MESSAGE_FILE_NUMBER_LIMIT = 10000
 ENTRY_PAGE_PATTERN = re.compile(r"^(.*)_(\d\d)$")
@@ -491,6 +492,15 @@ def message_files_for_script(packs, set_description, path, cache):
     return cache[pattern]
 
 
+def message_files_of_the_set(packs, set_description, script_paths, cache):
+    files = []
+    for path in script_paths:
+        for file_path in message_files_for_script(packs, set_description, path, cache):
+            if file_path not in files:
+                files.append(file_path)
+    return files
+
+
 def entries_by_label(packs, chapter, text_key, paths=None):
     pages_by_file = collections.defaultdict(lambda: collections.defaultdict(dict))
     for path in (paths if paths is not None else message_files_of(packs, chapter)):
@@ -587,11 +597,17 @@ def expand_set(set_description, packs, rom_path, text_key):
     entries_cache = {}
     first_source_of_label = {}
     labels_meaning_two_things = set()
+    labels_with_no_text = set()
+
+    def entries_of_the_set():
+        if SET_WIDE_ENTRIES not in entries_cache:
+            entries_cache[SET_WIDE_ENTRIES] = entries_by_label(packs, chapter, text_key, message_files_of_the_set(packs, set_description, scripts, file_cache))
+        return entries_cache[SET_WIDE_ENTRIES]
 
     def entries_for(path):
         files = message_files_for_script(packs, set_description, path, file_cache)
         if files not in entries_cache:
-            entries_cache[files] = entries_by_label(packs, chapter, text_key, list(files))
+            entries_cache[files] = collections.ChainMap(entries_by_label(packs, chapter, text_key, list(files)), entries_of_the_set())
         return entries_cache[files]
 
     narration_rows = []
@@ -610,14 +626,20 @@ def expand_set(set_description, packs, rom_path, text_key):
         for label in script.strings_of_ops(TALK_OPS) + script.talk_labels_of_choice_panels():
             if label in entries:
                 talk_labels[label] = path
+            else:
+                labels_with_no_text.add(label)
         if balloon_style is not None:
             for label in script.strings_of_ops(BALLOON_LABEL_OPS):
+                if label not in entries:
+                    labels_with_no_text.add(label)
                 if label in entries and all(row["name"] != "bubble_" + label for row in bubble_rows):
                     bubble_rows.append(dict(balloon_style["text"], joins_lines=True, name="bubble_" + label, file=entries[label][0][0], entry=entries[label][0][1]))
                     art = dict(balloon_style["art"], fits="bubble_" + label, room_per_text=balloon_style.get("room_pixels_per_em", balloon_style["text"]["pixels_per_em"]) / balloon_style["text"]["pixels_per_em"])
                     if label in script.thorn_balloon_labels() and "thorn_sizes" in balloon_style:
                         art = dict(art, thorn_sizes=balloon_style["thorn_sizes"], texture=balloon_style["thorn_sizes"][0]["texture"])
                     balloon_rows.append({"label": label, "delay": balloon_style["delay"], "parts": [art, dict(balloon_style["text_part"], texture="bubble_" + label)]})
+    if labels_with_no_text:
+        print("talk and balloon labels with no text: %d (%s)" % (len(labels_with_no_text), ", ".join(sorted(labels_with_no_text)[:12])))
     if labels_meaning_two_things:
         print("text labels found in two message files, first kept: %d (%s)" % (len(labels_meaning_two_things), ", ".join(sorted(labels_meaning_two_things)[:12])))
     core_labels = set_description.get("core_labels")
