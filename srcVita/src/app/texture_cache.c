@@ -14,6 +14,8 @@
 #define READS_WAITING_MOST_WHEN_READING_AHEAD 2
 #define MEMORY_KEPT_FREE_BYTES (92u * 1024u * 1024u)
 #define BUDGET_MOST_BYTES (256u * 1024u * 1024u)
+#define BUDGET_FLOOR_BYTES (32u * 1024u * 1024u)
+#define BUDGET_SHRINK_DIVISOR 8u
 
 static struct cached_texture entries[TEXTURE_CACHE_ENTRY_MAX];
 static char folder[FILE_PATH_MAX];
@@ -129,6 +131,21 @@ static void mark_missing(struct cached_texture *entry, const char *reason, int c
     totals.missing = totals.missing + 1;
 }
 
+static void shrink_budget_to_what_memory_allows(void)
+{
+    unsigned int lowered;
+
+    lowered = (unsigned int)(totals.bytes_in_use - totals.bytes_in_use / BUDGET_SHRINK_DIVISOR);
+    if (lowered < BUDGET_FLOOR_BYTES) {
+        lowered = BUDGET_FLOOR_BYTES;
+    }
+    if (lowered < budget) {
+        budget = lowered;
+        run_log_write("texture_cache budget_lowered=%u", budget);
+    }
+    make_room_for(0);
+}
+
 static void forget_until_asked_again(struct cached_texture *entry)
 {
     if (!out_of_memory_was_logged) {
@@ -137,6 +154,7 @@ static void forget_until_asked_again(struct cached_texture *entry)
     }
     entry->state = CACHED_TEXTURE_MISSING;
     entry->in_use = 0;
+    shrink_budget_to_what_memory_allows();
 }
 
 static int is_wanted_sooner(const struct cached_texture *entry, const struct cached_texture *other)
