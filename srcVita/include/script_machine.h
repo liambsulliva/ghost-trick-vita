@@ -448,7 +448,6 @@ void script_machine_pan_camera_back_to(struct script_machine *machine, int x, in
 void script_machine_node_position(const struct script_object *object, int node, float *x, float *y);
 void script_machine_move_anchored_effects(struct script_machine *machine);
 void script_machine_spawn_table_effect(struct script_machine *machine, struct script_object *object, int effect_id, float offset_x, float offset_y, const char *name);
-int script_machine_camera_top_for(const struct script_machine *machine, int object_y);
 int script_machine_camera_band_snap(const struct script_machine *machine, int object_y);
 void script_machine_note(struct script_machine *machine, const struct script_vm *vm, const char *reason, const char *detail);
 void script_machine_end_block(struct script_machine *machine, struct script_vm *vm, const char *reason);

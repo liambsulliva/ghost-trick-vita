@@ -164,6 +164,7 @@ struct view_effect {
     int in_use;
     char name[VIEW_EFFECT_NAME_MAX];
     const struct script_effect_row *row;
+    const struct script_fx_movie *fx_movie;
     float x;
     float y;
     int age_ticks;
@@ -216,6 +217,7 @@ static int phone_split_belts_were_on;
 static int phone_split_capture_is_ready;
 static float phone_split_slide_px;
 static const struct script_movie *playing_movie;
+static const struct script_fx_movie *sparks_movie;
 static unsigned int movie_started_at_tick;
 static int movie_last_ready_frame;
 static int sparks_elapsed_ticks;
@@ -235,6 +237,7 @@ void script_view_start(const struct script_tables *new_tables)
     still_is_ready = 0;
     playing_movie = NULL;
     tables = new_tables;
+    sparks_movie = script_tables_find_fx_movie(tables, SOUL_SPARKS_MOVIE);
     talk_is_showing = 0;
     soul_is_on = 0;
     cursor_is_shown = 0;
@@ -407,6 +410,7 @@ void script_view_effect_spawned(const struct script_effect_row *row, const char 
     effect->in_use = 1;
     snprintf(effect->name, sizeof(effect->name), "%s", name);
     effect->row = row;
+    effect->fx_movie = row->kind == SCRIPT_EFFECT_MOVIE ? script_tables_find_fx_movie(tables, row->texture_name) : NULL;
     effect->x = x;
     effect->y = y;
     effect->age_ticks = 0;
@@ -460,13 +464,11 @@ static void fx_page_name(const struct script_fx_movie *movie, int page, char *na
     snprintf(name, ASSET_NAME_MAX, "fx_%s_%02d", movie->name, page);
 }
 
-static void keep_movie_pages_loaded(const char *movie_name)
+static void keep_movie_pages_loaded(const struct script_fx_movie *movie)
 {
-    const struct script_fx_movie *movie;
     char name[ASSET_NAME_MAX];
     int page;
 
-    movie = script_tables_find_fx_movie(tables, movie_name);
     if (movie == NULL) {
         return;
     }
@@ -642,12 +644,10 @@ static void draw_fx_frame(const struct script_fx_movie *movie, const struct scri
     renderer_draw_triangles(texture->texture, corners, 2, white);
 }
 
-static void draw_fx_movie_named(struct view_effect *effect, const char *movie_name)
+static void draw_fx_movie_of(struct view_effect *effect, const struct script_fx_movie *movie)
 {
-    const struct script_fx_movie *movie;
     int frame;
 
-    movie = script_tables_find_fx_movie(tables, movie_name);
     if (movie == NULL || movie->frame_count == 0 || movie->ticks_per_frame <= 0.0f) {
         return;
     }
@@ -670,7 +670,7 @@ static void draw_fx_movie_named(struct view_effect *effect, const char *movie_na
 
 static void draw_fx_movie(struct view_effect *effect)
 {
-    draw_fx_movie_named(effect, effect->row->texture_name);
+    draw_fx_movie_of(effect, effect->fx_movie);
 }
 
 static void draw_effect(const struct view_effect *effect)
@@ -885,7 +885,7 @@ static void draw_core_marks(void)
         draw_centered(SOUL_GLOW_TEXTURE, screen_x, screen_y, CORE_GLOW_SIZE, core_marks[index].is_dead ? dead_glow : glow);
         draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, CORE_ORB_SIZE, core_marks[index].is_dead ? dead_orb : orb);
         if (core_marks[index].is_dead) {
-            keep_movie_pages_loaded(SOUL_SPARKS_MOVIE);
+            keep_movie_pages_loaded(sparks_movie);
         }
     }
 }
@@ -1267,7 +1267,7 @@ static void draw_possession_sparks(void)
     struct view_effect sparks;
     static const struct script_effect_row sparks_row = { 0 };
 
-    if (sparks_elapsed_ticks <= 0 || script_tables_find_fx_movie(tables, SOUL_SPARKS_MOVIE) == NULL) {
+    if (sparks_elapsed_ticks <= 0 || sparks_movie == NULL) {
         return;
     }
     memset(&sparks, 0, sizeof(sparks));
@@ -1276,7 +1276,7 @@ static void draw_possession_sparks(void)
     sparks.x = sparks_x;
     sparks.y = sparks_y;
     sparks.age_ticks = sparks_elapsed_ticks - 1;
-    draw_fx_movie_named(&sparks, SOUL_SPARKS_MOVIE);
+    draw_fx_movie_of(&sparks, sparks_movie);
 }
 
 static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y)

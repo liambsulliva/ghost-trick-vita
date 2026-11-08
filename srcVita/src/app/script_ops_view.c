@@ -355,16 +355,6 @@ static int band_holding(const struct script_machine *machine, int object_y)
     return -1;
 }
 
-int script_machine_camera_top_for(const struct script_machine *machine, int object_y)
-{
-    int band;
-    int top;
-
-    band = band_holding(machine, object_y);
-    top = band >= 0 ? machine->camera_band_keys[band] - DS_VIEW_HEIGHT : object_y - DS_VIEW_HEIGHT / 2;
-    return machine->world_origin_y + (top < 0 ? 0 : top);
-}
-
 int script_machine_camera_band_snap(const struct script_machine *machine, int object_y)
 {
     int band;
