@@ -859,6 +859,13 @@ void script_soul_effect_signalled(struct script_machine *machine, const char *na
     schedule_native_event(machine, &machine->soul.phone_event, name, "end", PHONE_EFFECT_END_AFTER_TICKS);
 }
 
+static void close_the_view_task(struct script_soul *soul)
+{
+    soul->view_demo_is_on = 0;
+    soul->view_follow_is_off = 0;
+    soul->view_back_is_offered = 0;
+}
+
 static void set_soul_view_with_effect(struct script_machine *machine, int is_on, int with_effect)
 {
     struct script_soul *soul;
@@ -866,13 +873,14 @@ static void set_soul_view_with_effect(struct script_machine *machine, int is_on,
 
     soul = &machine->soul;
     if (is_on && !soul->is_on) {
-        soul->view_demo_is_on = 0;
-        soul->view_follow_is_off = 0;
-        soul->view_back_is_offered = 0;
+        close_the_view_task(soul);
     }
     soul->is_on = is_on;
     holds_the_world = with_effect && machine->auto_press != SCRIPT_AUTO_FAST;
     soul->is_leaving_view = 0;
+    if (!is_on && !holds_the_world) {
+        close_the_view_task(soul);
+    }
     if (!is_on) {
         soul->player_opened_soul_view = 0;
         soul->mark_age_ticks = MARK_IS_OFF;
@@ -972,6 +980,7 @@ static void finish_leaving_view_when_due(struct script_machine *machine)
     }
     if (soul->view_change_ticks_left == 0 && soul->is_leaving_view) {
         soul->is_leaving_view = 0;
+        close_the_view_task(soul);
         machine->pause_bit = 0;
         script_machine_send(machine, "*", "SYSTEM", "SV_END");
     }
