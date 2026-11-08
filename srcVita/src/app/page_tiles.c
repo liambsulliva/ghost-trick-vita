@@ -9,10 +9,24 @@
 static struct page_tile_set sets[PAGE_TILE_SET_MOST];
 static int set_count;
 static int dropped_count;
+static int index_slots[PAGE_TILE_INDEX_SLOTS];
+
+static unsigned int name_hash(const char *name)
+{
+    unsigned int hash;
+
+    hash = 2166136261u;
+    while (*name != '\0') {
+        hash = (hash ^ (unsigned char)*name) * 16777619u;
+        name = name + 1;
+    }
+    return hash;
+}
 
 void page_tiles_clear(void)
 {
     memset(sets, 0, sizeof(sets));
+    memset(index_slots, 0, sizeof(index_slots));
     set_count = 0;
     dropped_count = 0;
 }
@@ -24,14 +38,27 @@ int page_tiles_dropped_count(void)
 
 struct page_tile_set *page_tiles_find(const char *page_name)
 {
-    int index;
+    unsigned int slot;
 
-    for (index = 0; index < set_count; index++) {
-        if (strcmp(sets[index].page_name, page_name) == 0) {
-            return &sets[index];
+    slot = name_hash(page_name) % PAGE_TILE_INDEX_SLOTS;
+    while (index_slots[slot] != 0) {
+        if (strcmp(sets[index_slots[slot] - 1].page_name, page_name) == 0) {
+            return &sets[index_slots[slot] - 1];
         }
+        slot = (slot + 1) % PAGE_TILE_INDEX_SLOTS;
     }
     return NULL;
+}
+
+static void index_new_set(int set_index)
+{
+    unsigned int slot;
+
+    slot = name_hash(sets[set_index].page_name) % PAGE_TILE_INDEX_SLOTS;
+    while (index_slots[slot] != 0) {
+        slot = (slot + 1) % PAGE_TILE_INDEX_SLOTS;
+    }
+    index_slots[slot] = set_index + 1;
 }
 
 static struct page_tile_set *set_for_page(const char *page_name, float page_width, float page_height)
@@ -49,6 +76,7 @@ static struct page_tile_set *set_for_page(const char *page_name, float page_widt
     set_count = set_count + 1;
     memset(set, 0, sizeof(*set));
     snprintf(set->page_name, sizeof(set->page_name), "%s", page_name);
+    index_new_set(set_count - 1);
     snprintf(set->as_page.name, sizeof(set->as_page.name), "%s", page_name);
     set->page_width = page_width;
     set->page_height = page_height;

@@ -5,7 +5,8 @@
 #include "texture_cache.h"
 
 #define PAGE_TILE_MOST 4
-#define PAGE_TILE_SET_MOST 1536
+#define PAGE_TILE_SET_MOST 6144
+#define PAGE_TILE_INDEX_SLOTS 16384
 
 struct page_tile {
     char name[ASSET_NAME_MAX];
