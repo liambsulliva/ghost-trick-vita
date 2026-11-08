@@ -204,6 +204,8 @@ The Rewind Time screen asked for its three rock layers only when it opened, so i
 
 Guard: every fixed interface texture (hourglass, side label, Rewind Time rocks and button, tap balloon, narration arrow, pill art and sheet) is on one resident list that the UI view touches every tick, so it loads at the start and is never evicted. A new interface screen adds its textures to that list. They total about 680 KB.
 
+Run 20 showed the Minutes Before Death card without its clock and disc for its first quarter second in stage 6: the UI clips (cards, banners, time wipes, death-count digits) were never on the list, so their art was evicted after Chapter 1 and read again when the card opened. The UI view now also keeps every texture any loaded clip names resident, read from the clip table itself, so a new clip needs no list entry. Clip art adds about 1.3 MB.
+
 ### 28. A script change that loaded its animations one search at a time
 
 Each script change loads that script's animation bundle on the main thread, and every frame stall over 150 ms in a whole-game run was one of these loads (190 ms to 540 ms). Reading the file took 50 to 130 ms. The rest came from searching: every bundled name was looked up by a linear search of the 500-animation library, and once the library was full every new animation ran its own eviction scan, which asked every scene object whether it plays each of the 500 animations.
@@ -281,3 +283,4 @@ Guard: 0xaa sets a counted loop on the actor and moves the pc itself (2 words wi
 - Op 0x9f (case at `0x020253bc`): on a `uGimmick`, writes `words[2]` into the top half of core `words[1]`'s `+0x14` word (`func_02026700`); the enable bit 0 of that word is ops 0x9d and 0x9e. What reads the top half is not found, so it is not ported (state nothing reads).
 - Op 0x48 (case at `0x02024ae2`): writes `words[1] << 12` to `+0x124` of the balloon in slot 0 (`game+0xdfc`, `func_020106ec`). Its meaning is not traced; it is only seen after the routed chapters.
 - The stage 6 dog in room 65 (st06 game001, around route steps 144 to 160): run 19 drew its bark lines at the floor with no dog, while the footage shows the dog by the TV stand inside the same lines. The dog's tables put it at y 264 or y 296, 32 DS pixels apart, and the lines sit about that much lower than the footage's, so the dog is likely at the lower height when native has it at the upper one, and hidden there. Present before the counted-loop port (the replay is identical there). Which table switch native handles differently is not found.
+- The Minutes Before Death card's middle line (the time and place on the black band) is not drawn: the port's card clip has no element for it, and where the remaster takes that text from is not traced.

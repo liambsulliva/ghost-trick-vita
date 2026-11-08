@@ -46,6 +46,8 @@ struct ui_element {
     struct ui_track tracks[UI_PROP_COUNT];
 };
 
+#define UI_CLIP_NO_TEXTURE "-"
+
 struct ui_clip {
     char name[UI_CLIP_NAME_MAX];
     int frame_count;

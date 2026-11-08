@@ -292,6 +292,25 @@ void script_ui_view_hud_changed(const struct script_hud_view *view)
     hud = *view;
 }
 
+static int element_has_a_texture(const struct ui_element *element)
+{
+    return element->texture_name[0] != '\0' && strcmp(element->texture_name, UI_CLIP_NO_TEXTURE) != 0;
+}
+
+static void keep_every_clip_texture_resident(void)
+{
+    int index;
+
+    if (tables == NULL) {
+        return;
+    }
+    for (index = 0; index < tables->ui_clips.element_count; index++) {
+        if (element_has_a_texture(&tables->ui_clips.elements[index])) {
+            (void)texture_cache_use_or_start_loading(tables->ui_clips.elements[index].texture_name);
+        }
+    }
+}
+
 static void keep_the_interface_art_resident(void)
 {
     static const char *const resident_textures[] = { HOURGLASS_TEXTURE, SIDE_LABEL_TEXTURE, REWIND_BUTTON_TEXTURE, REWIND_FAR_ROCKS_TEXTURE, REWIND_MID_ROCKS_TEXTURE, REWIND_NEAR_ROCKS_TEXTURE, TAP_ART_TEXTURE, NARRATION_ARROW_TEXTURE, PILL_ART_TEXTURE, PILL_SHEET_TEXTURE };
@@ -300,6 +319,7 @@ static void keep_the_interface_art_resident(void)
     for (index = 0; index < sizeof(resident_textures) / sizeof(resident_textures[0]); index++) {
         (void)texture_cache_use_or_start_loading(resident_textures[index]);
     }
+    keep_every_clip_texture_resident();
 }
 
 void script_ui_view_advance(void)
