@@ -2114,6 +2114,7 @@ void script_machine_tick(struct script_machine *machine)
     for (index = 0; index < machine->object_count; index++) {
         update_object(machine, &machine->objects[index]);
     }
+    script_ghost_copies_update(machine);
     script_motion_update_all(machine);
     script_fades_update(machine);
     script_machine_move_anchored_effects(machine);

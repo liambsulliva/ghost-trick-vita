@@ -43,6 +43,7 @@ static struct renderer_color turned_for_the_ghost(struct renderer_color color, i
 static const struct renderer_color missile_sweep_color = { 0.2f, 1.0f, 0.2f, 0.55f };
 static const struct renderer_color boss_sweep_color = { 0.15f, 0.35f, 1.0f, 0.55f };
 static const struct renderer_color missing_texture_color = { 1.0f, 0.0f, 1.0f, 0.6f };
+static const struct renderer_color ghost_copy_lavender = { 16.0f / 31.0f, 16.0f / 31.0f, 1.0f, 1.0f };
 
 static renderer_texture iris_texture;
 static int largest_logged_mask_rect_count;
@@ -285,7 +286,7 @@ static struct renderer_color color_at_level(int level)
     return color;
 }
 
-static int draw_when_ready(const char *texture_name, struct renderer_rect screen_area, struct renderer_rect texture_area, const struct scene_object *tinted_object, int color_level)
+static int draw_when_ready(const char *texture_name, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color, int is_flat)
 {
     const struct cached_texture *texture;
 
@@ -300,21 +301,46 @@ static int draw_when_ready(const char *texture_name, struct renderer_rect screen
     if (texture->state != CACHED_TEXTURE_READY) {
         return 0;
     }
-    if (tinted_object != NULL) {
-        struct renderer_color color;
+    draw_page_area(texture_name, texture, screen_area, texture_area, color, is_flat);
+    return 1;
+}
 
-        color.red = tinted_object->soul_red;
-        color.green = tinted_object->soul_green;
-        color.blue = tinted_object->soul_blue;
-        color.alpha = tinted_object->soul_alpha;
-        if (tinted_object->soul_turns_with_ghost) {
+static int ghost_copy_alpha_level(const struct scene_stage *stage, int level)
+{
+    return stage->soul_mode_is_on ? level >> 1 : (level * 3) >> 2;
+}
+
+static int object_is_hidden(const struct scene_stage *stage, const struct scene_object *object)
+{
+    if (object->ghost_copy_level != SCENE_NO_GHOST_COPY) {
+        return ghost_copy_alpha_level(stage, object->ghost_copy_level) <= 0;
+    }
+    return stage->soul_mode_is_on ? object->hides_in_soul_view : object->hides_in_living_view;
+}
+
+static struct renderer_color object_paint(const struct scene_stage *stage, const struct scene_object *object, int *is_flat)
+{
+    struct renderer_color color;
+
+    *is_flat = 0;
+    if (object->ghost_copy_level != SCENE_NO_GHOST_COPY) {
+        color = ghost_copy_lavender;
+        color.alpha = (float)ghost_copy_alpha_level(stage, object->ghost_copy_level) / (float)SCENE_GHOST_COPY_LEVEL_FULL;
+        *is_flat = 1;
+        return color;
+    }
+    if (stage->soul_mode_is_on && object->has_soul_tint) {
+        color.red = object->soul_red;
+        color.green = object->soul_green;
+        color.blue = object->soul_blue;
+        color.alpha = object->soul_alpha;
+        if (object->soul_turns_with_ghost) {
             color = turned_for_the_ghost(color, scene_stage_soul_ghost());
         }
-        draw_page_area(texture_name, texture, screen_area, texture_area, color, tinted_object->soul_is_flat);
-    } else {
-        draw_page_area(texture_name, texture, screen_area, texture_area, color_at_level(color_level), 0);
+        *is_flat = object->soul_is_flat;
+        return color;
     }
-    return 1;
+    return color_at_level(stage->soul_mode_is_on ? SCENE_COLOR_LEVEL_NORMAL : object->color_level);
 }
 
 static const char *art_under_the_screen_filter(const struct scene_stage *stage, const char *texture_name, char *grayscale_name)
@@ -365,10 +391,10 @@ static void draw_plates(const struct scene_stage *stage, const struct screen_vie
         if (other[0] != '\0') {
             texture_cache_use_or_start_loading(other);
         }
-        if (draw_when_ready(wanted, screen_area, texture_area, NULL, stage->soul_mode_is_on ? SCENE_COLOR_LEVEL_NORMAL : stage->background_color_level) || other[0] == '\0') {
+        if (draw_when_ready(wanted, screen_area, texture_area, color_at_level(stage->soul_mode_is_on ? SCENE_COLOR_LEVEL_NORMAL : stage->background_color_level), 0) || other[0] == '\0') {
             continue;
         }
-        draw_when_ready(other, screen_area, texture_area, NULL, stage->soul_mode_is_on ? SCENE_COLOR_LEVEL_NORMAL : stage->background_color_level);
+        draw_when_ready(other, screen_area, texture_area, color_at_level(stage->soul_mode_is_on ? SCENE_COLOR_LEVEL_NORMAL : stage->background_color_level), 0);
     }
 }
 
@@ -404,13 +430,14 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
 {
     const struct animation_frame *frame;
     struct held_pose *held;
-    const struct scene_object *tinted_object;
+    struct renderer_color paint;
+    int paint_is_flat;
     struct renderer_rect texture_area;
     char grayscale_name[ASSET_NAME_MAX];
     const char *wanted;
     float left;
 
-    if (stage->soul_mode_is_on ? object->hides_in_soul_view : object->hides_in_living_view) {
+    if (object_is_hidden(stage, object)) {
         return;
     }
     frame = animation_player_current_frame(&object->player);
@@ -418,7 +445,7 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
         return;
     }
     held = &held_poses[object - stage->objects];
-    tinted_object = stage->soul_mode_is_on && object->has_soul_tint ? object : NULL;
+    paint = object_paint(stage, object, &paint_is_flat);
     texture_area.x = frame->u;
     texture_area.y = frame->v;
     texture_area.width = frame->u_size;
@@ -434,7 +461,7 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
     }
     read_art_ahead(stage, object);
     wanted = art_under_the_screen_filter(stage, frame->texture_name, grayscale_name);
-    if (draw_when_ready(wanted, world_area_to_screen(view, left, object->y + frame->y, frame->width, frame->height), texture_area, tinted_object, stage->soul_mode_is_on ? SCENE_COLOR_LEVEL_NORMAL : object->color_level)) {
+    if (draw_when_ready(wanted, world_area_to_screen(view, left, object->y + frame->y, frame->width, frame->height), texture_area, paint, paint_is_flat)) {
         if (held->frames_waiting >= POSE_WAIT_FRAMES_WORTH_LOGGING && strcmp(held->object_name, object->name) == 0) {
             run_log_write("pose held object=%s frames=%d waited_for=%s", object->name, held->frames_waiting, wanted);
         }
@@ -450,7 +477,7 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
     }
     if (strcmp(held->object_name, object->name) == 0) {
         held->frames_waiting = held->frames_waiting + 1;
-        draw_when_ready(held->texture_name, world_area_to_screen(view, held->world_left, held->world_top, held->width, held->height), held->texture_area, tinted_object, stage->soul_mode_is_on ? SCENE_COLOR_LEVEL_NORMAL : object->color_level);
+        draw_when_ready(held->texture_name, world_area_to_screen(view, held->world_left, held->world_top, held->width, held->height), held->texture_area, paint, paint_is_flat);
     }
 }
 
@@ -855,7 +882,7 @@ int scene_view_visible_art_is_loading(const struct scene_stage *stage)
         if (frame == NULL || animation_frame_is_blank(frame)) {
             continue;
         }
-        if (stage->soul_mode_is_on ? object->hides_in_soul_view : object->hides_in_living_view) {
+        if (object_is_hidden(stage, object)) {
             continue;
         }
         if (area_is_on_screen(world_area_to_screen(&objects_view, object->is_flipped ? object->x - frame->x - frame->width : object->x + frame->x, object->y + frame->y, frame->width, frame->height)) && texture_is_still_loading(art_under_the_screen_filter(stage, frame->texture_name, grayscale_name))) {

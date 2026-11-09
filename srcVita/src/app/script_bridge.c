@@ -263,6 +263,7 @@ static void on_actor_changed(const struct script_actor_view *actor)
     scene_stage_set_object_flipped(actor->name, actor->is_flipped);
     scene_stage_set_object_color_level(actor->name, actor->color_level);
     scene_stage_set_object_views(actor->name, script_class_draws_in_living_view(actor->class_id), script_class_draws_in_soul_view(actor->class_id));
+    scene_stage_set_object_ghost_copy(actor->name, actor->ghost_copy_level);
 }
 
 static void on_background_color_level_changed(int level)

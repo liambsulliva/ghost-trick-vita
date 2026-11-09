@@ -221,7 +221,7 @@ static unsigned char second_core_was_marked[SCRIPT_OBJECT_MAX];
 static int pills_on_screen_before = -1;
 static void on_film_frame(int is_on) { CUE("film_frame %d", is_on); }
 static void on_hud(const struct script_hud_view *view) { int mask = 0; int index; for (index = 0; index < SCRIPT_PILL_COUNT; index++) { if (view->pills[index].is_on_screen) { mask |= 1 << index; } } if (mask != pills_on_screen_before) { pills_on_screen_before = mask; CUE("pills_on_screen %d", mask); } }
-static void on_core_marked(int object_index, int slot, float x, float y, int is_dead) { (void)x; (void)y; (void)is_dead; if (slot == 1 && object_index >= 0 && object_index < SCRIPT_OBJECT_MAX && !second_core_was_marked[object_index]) { second_core_was_marked[object_index] = 1; CUE("second_core_marked %s", machine.objects[object_index].name); } }
+static void on_core_marked(int object_index, int slot, float x, float y, int is_dead, float opacity) { (void)x; (void)y; (void)is_dead; (void)opacity; if (slot == 1 && object_index >= 0 && object_index < SCRIPT_OBJECT_MAX && !second_core_was_marked[object_index]) { second_core_was_marked[object_index] = 1; CUE("second_core_marked %s", machine.objects[object_index].name); } }
 
 static const struct script_outputs recording_outputs = {
     .fetched = print_fetch,

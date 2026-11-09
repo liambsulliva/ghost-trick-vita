@@ -176,6 +176,7 @@ struct view_core_mark {
     unsigned int marked_at_tick;
     int is_set;
     int is_dead;
+    float opacity;
 };
 
 static const struct renderer_color movie_black = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -356,13 +357,14 @@ void script_view_soul_sparks_changed(int elapsed_ticks, float x, float y)
     sparks_y = y;
 }
 
-void script_view_core_marked(int object_index, int slot, float x, float y, int is_dead)
+void script_view_core_marked(int object_index, int slot, float x, float y, int is_dead, float opacity)
 {
     int mark;
 
     mark = object_index * VIEW_CORE_SLOTS_PER_OBJECT + slot;
     if (object_index >= 0 && slot >= 0 && slot < VIEW_CORE_SLOTS_PER_OBJECT && mark < VIEW_CORE_MARK_MAX) {
         core_marks[mark].is_dead = is_dead;
+        core_marks[mark].opacity = opacity;
         core_marks[mark].x = x;
         core_marks[mark].y = y;
         core_marks[mark].marked_at_tick = age_ticks;
@@ -875,15 +877,21 @@ static void draw_core_marks(void)
     int index;
 
     for (index = 0; index < VIEW_CORE_MARK_MAX; index++) {
+        struct renderer_color glow_tint;
+        struct renderer_color orb_tint;
         float screen_x;
         float screen_y;
 
-        if (!core_marks[index].is_set || age_ticks - core_marks[index].marked_at_tick > 1u) {
+        if (!core_marks[index].is_set || age_ticks - core_marks[index].marked_at_tick > 1u || core_marks[index].opacity <= 0.0f) {
             continue;
         }
+        glow_tint = core_marks[index].is_dead ? dead_glow : glow;
+        orb_tint = core_marks[index].is_dead ? dead_orb : orb;
+        glow_tint.alpha = glow_tint.alpha * core_marks[index].opacity;
+        orb_tint.alpha = orb_tint.alpha * core_marks[index].opacity;
         scene_view_world_to_screen(scene_stage_view(), core_marks[index].x, core_marks[index].y, &screen_x, &screen_y);
-        draw_centered(SOUL_GLOW_TEXTURE, screen_x, screen_y, CORE_GLOW_SIZE, core_marks[index].is_dead ? dead_glow : glow);
-        draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, CORE_ORB_SIZE, core_marks[index].is_dead ? dead_orb : orb);
+        draw_centered(SOUL_GLOW_TEXTURE, screen_x, screen_y, CORE_GLOW_SIZE, glow_tint);
+        draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, CORE_ORB_SIZE, orb_tint);
         if (core_marks[index].is_dead) {
             keep_movie_pages_loaded(sparks_movie);
         }

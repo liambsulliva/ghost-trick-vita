@@ -108,6 +108,22 @@ struct script_message {
     const char *arg;
 };
 
+#define SCRIPT_GHOST_COPY_LEVEL_FULL 31
+
+struct script_ghost_copy {
+    int exists;
+    int is_gone;
+    int level;
+    int was_visible;
+    int is_fading_in;
+    int fade_in_ticks;
+    int hold_ticks;
+    int fall_ticks;
+    int vanishes;
+    int vanish_ticks;
+    int held_the_soul;
+};
+
 struct script_actor {
     int exists;
     int creation_index;
@@ -168,6 +184,7 @@ struct script_actor {
     int dock_target_point;
     int dock_own_point;
     int keeps_following;
+    struct script_ghost_copy ghost_copy;
     struct script_actor_view last_view;
     int has_last_view;
 };
@@ -545,6 +562,9 @@ enum script_step_result script_choice_run_op(struct script_machine *machine, str
 
 void script_motion_update_all(struct script_machine *machine);
 void script_fades_update(struct script_machine *machine);
+void script_ghost_copies_update(struct script_machine *machine);
+void script_ghost_copy_fade_out(struct script_ghost_copy *copy);
+int script_ghost_copy_shown_level(const struct script_ghost_copy *copy);
 void script_fades_add(struct script_machine *machine, const struct script_vm *vm, int kind, int frames);
 void script_fades_set_mask(struct script_machine *machine, int target_alpha, int frames);
 void script_fades_end_mask(struct script_machine *machine);

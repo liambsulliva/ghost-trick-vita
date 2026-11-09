@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "script_classes.h"
 #include "script_machine.h"
 #include "ds_units.h"
 
@@ -229,6 +230,17 @@ static void drag_soul_to(struct script_machine *machine, int object_index, int s
     soul->drag_ticks_left = SOUL_BEAM_TICKS + soul->drag_stream_ticks;
 }
 
+static float core_mark_opacity(const struct script_actor *actor)
+{
+    int shown_level;
+
+    if (!script_class_is_soul_start(actor->class_id)) {
+        return 1.0f;
+    }
+    shown_level = script_ghost_copy_shown_level(&actor->ghost_copy);
+    return shown_level < 0 ? 1.0f : (float)shown_level / (float)SCRIPT_GHOST_COPY_LEVEL_FULL;
+}
+
 static void report_soul_view(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -303,7 +315,7 @@ static void report_soul_view(struct script_machine *machine)
                 continue;
             }
             core_position(machine, index, slot, &x, &y);
-            machine->outputs->soul_core_marked(index, slot, x, y, machine->objects[index].is_dead);
+            machine->outputs->soul_core_marked(index, slot, x, y, machine->objects[index].is_dead, core_mark_opacity(&machine->objects[index].actor));
         }
     }
 }

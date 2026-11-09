@@ -503,6 +503,7 @@ static void report_actor_if_changed(struct script_machine *machine, const struct
     view.has_core = actor->has_core;
     view.core_x = actor->x + actor->core_x;
     view.core_y = actor->y + actor->core_y;
+    view.ghost_copy_level = script_class_is_past_dead(actor->class_id) ? script_ghost_copy_shown_level(&actor->ghost_copy) : -1;
     if (actor->has_last_view && memcmp(&view, &actor->last_view, sizeof(view)) == 0) {
         return;
     }
