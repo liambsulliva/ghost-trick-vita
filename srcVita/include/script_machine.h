@@ -231,6 +231,7 @@ struct script_balloon {
     const char *tap_target;
     const char *tap_verb;
     const char *tap_arg;
+    int is_hidden;
 };
 
 struct script_room_bounds {
@@ -456,6 +457,7 @@ struct script_machine {
     int reported_mask_fade_is_alive;
     int reported_mask_fade_alpha;
     struct script_balloon balloons[SCRIPT_BALLOON_MAX];
+    int balloons_stay_hidden;
     int music_id;
     int camera_x;
     int camera_y;

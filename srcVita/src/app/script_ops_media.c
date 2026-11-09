@@ -129,7 +129,7 @@ void script_balloons_tap(struct script_machine *machine, int tap_group)
         struct script_balloon *balloon;
 
         balloon = &machine->balloons[index];
-        if (!balloon->in_use || balloon->tap_group != tap_group) {
+        if (!balloon->in_use || balloon->is_hidden || balloon->tap_group != tap_group) {
             continue;
         }
         if (balloon->tap_target != NULL && balloon->tap_verb != NULL && balloon->tap_arg != NULL) {
@@ -183,7 +183,7 @@ void script_balloons_count_down(struct script_machine *machine)
         struct script_balloon *balloon;
 
         balloon = &machine->balloons[index];
-        if (!balloon->in_use || balloon->timer <= 0) {
+        if (!balloon->in_use || balloon->is_hidden || balloon->timer <= 0) {
             continue;
         }
         balloon->timer = balloon->timer - 1;
@@ -220,6 +220,59 @@ void script_balloons_report_opened(struct script_machine *machine)
         } else {
             machine->outputs->balloon_opened(index, balloon->label, balloon->kind, (float)(actor->x + actor->points[0][0]) + balloon->offset_x, (float)(actor->y + actor->points[0][1]) + balloon->offset_y);
         }
+    }
+}
+
+static void hide_balloon(struct script_machine *machine, int slot)
+{
+    struct script_balloon *balloon;
+
+    balloon = &machine->balloons[slot];
+    if (!balloon->in_use || balloon->is_hidden) {
+        return;
+    }
+    balloon->is_hidden = 1;
+    balloon->open_is_pending = 0;
+    if (machine->outputs->balloon_closed != NULL) {
+        machine->outputs->balloon_closed(slot);
+    }
+}
+
+static void show_balloon(struct script_machine *machine, int slot)
+{
+    struct script_balloon *balloon;
+
+    balloon = &machine->balloons[slot];
+    if (!balloon->in_use || !balloon->is_hidden) {
+        return;
+    }
+    balloon->is_hidden = 0;
+    balloon->open_is_pending = 1;
+}
+
+static void show_or_hide_every_balloon(struct script_machine *machine, int shown)
+{
+    int slot;
+
+    for (slot = 0; slot < SCRIPT_BALLOON_MAX; slot++) {
+        if (shown) {
+            show_balloon(machine, slot);
+        } else {
+            hide_balloon(machine, slot);
+        }
+    }
+}
+
+static void keep_balloons_hidden(struct script_machine *machine, int stay_hidden)
+{
+    int slot;
+
+    machine->balloons_stay_hidden = stay_hidden;
+    if (!stay_hidden) {
+        return;
+    }
+    for (slot = 0; slot < SCRIPT_TAP_BALLOON_SLOTS; slot++) {
+        hide_balloon(machine, slot);
     }
 }
 
@@ -388,6 +441,17 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
     case 0x57:
     case 0x5b:
         close_balloons(machine, ANY_TAP_GROUP);
+        break;
+    case 0x58:
+        if (!machine->balloons_stay_hidden) {
+            show_or_hide_every_balloon(machine, 1);
+        }
+        break;
+    case 0x59:
+        show_or_hide_every_balloon(machine, 0);
+        break;
+    case 0x4a:
+        keep_balloons_hidden(machine, words[0] != 0);
         break;
     case 0x54:
         place_balloon(machine, vm, words, SCRIPT_BALLOON_AT_WORLD_POINT);

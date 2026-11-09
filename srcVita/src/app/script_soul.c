@@ -1808,7 +1808,7 @@ static int balloon_sending(const struct script_machine *machine, const char *kin
         const struct script_balloon *balloon;
 
         balloon = &machine->balloons[index];
-        if (!balloon->in_use || balloon->tap_arg == NULL || strcmp(balloon->tap_arg, event) != 0) {
+        if (!balloon->in_use || balloon->is_hidden || balloon->tap_arg == NULL || strcmp(balloon->tap_arg, event) != 0) {
             continue;
         }
         if (kind == NULL || (balloon->tap_verb != NULL && strcmp(balloon->tap_verb, kind) == 0)) {
@@ -1823,7 +1823,7 @@ static int balloon_labelled(const struct script_machine *machine, const char *la
     int index;
 
     for (index = 0; index < SCRIPT_BALLOON_MAX; index++) {
-        if (machine->balloons[index].in_use && machine->balloons[index].label != NULL && strcmp(machine->balloons[index].label, label) == 0) {
+        if (machine->balloons[index].in_use && !machine->balloons[index].is_hidden && machine->balloons[index].label != NULL && strcmp(machine->balloons[index].label, label) == 0) {
             return index;
         }
     }
