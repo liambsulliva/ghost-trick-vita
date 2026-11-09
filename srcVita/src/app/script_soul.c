@@ -576,6 +576,14 @@ static int talk_holds_the_soul(const struct script_machine *machine)
     return machine->pause_bit && machine->soul.tutorial_mode == TUTORIAL_NONE && (machine->talk_is_open || machine->talk.phase != SCRIPT_TALK_CLOSED);
 }
 
+static int a_scripted_event_holds_the_soul(const struct script_machine *machine)
+{
+    const struct script_soul *soul;
+
+    soul = &machine->soul;
+    return soul->view_change_ticks_left > 0 || soul->view_demo_is_on || machine->demo_soul_is_on || soul->tutorial_holds_input || soul->input_is_off || soul->dead_talk_is_on || machine->narration.is_running || machine->movie_ticks_left > 0 || machine->choice.is_open || talk_holds_the_soul(machine);
+}
+
 static void move_soul_tip(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -607,7 +615,7 @@ static void move_soul_tip(struct script_machine *machine)
             soul_chain_retract(&soul->chain);
         }
         soul->chain_pick_object = NO_CORE;
-    } else if (talk_holds_the_soul(machine) || machine->choice.is_open) {
+    } else if (a_scripted_event_holds_the_soul(machine)) {
         if (soul->chain.state == SOUL_CHAIN_AIMING) {
             soul_chain_retract(&soul->chain);
         }
@@ -895,6 +903,7 @@ static void set_soul_view_with_effect(struct script_machine *machine, int is_on,
         close_the_view_task(soul);
     }
     if (!is_on) {
+        soul->tutorial_holds_input = 0;
         soul->player_opened_soul_view = 0;
         soul->mark_age_ticks = MARK_IS_OFF;
         soul->is_leaving_view = holds_the_world;
@@ -1002,6 +1011,7 @@ static void finish_leaving_view_when_due(struct script_machine *machine)
 static void enter_scripted_soul_view(struct script_machine *machine, const char *arg)
 {
     set_soul_view_with_effect(machine, 1, strcmp(arg, "NoEffectStart") != 0);
+    machine->soul.tutorial_holds_input = 1;
     machine->soul_vision_message_at = (long long)machine->tick + SOUL_VISION_MESSAGE_AFTER_TICKS;
 }
 
@@ -1020,8 +1030,10 @@ static void run_tutorial_command(struct script_machine *machine, const char *arg
     if (strcmp(arg, "TouchCheck") == 0) {
         soul->tutorial_mode = TUTORIAL_TOUCH_CHECK;
         soul->tutorial_click_was_sent = 0;
+        soul->tutorial_holds_input = 0;
     } else if (strcmp(arg, "MoveStart") == 0) {
         soul->tutorial_mode = TUTORIAL_MOVE;
+        soul->tutorial_holds_input = 0;
     } else if (strcmp(arg, "TouchCheckEnd") == 0 || strcmp(arg, "MoveEnd") == 0) {
         soul->tutorial_mode = TUTORIAL_NONE;
     } else if (strcmp(arg, "ReturnGame") == 0) {
@@ -1489,7 +1501,7 @@ static void take_ghost_button(struct script_machine *machine)
     struct script_soul *soul;
 
     soul = &machine->soul;
-    if (soul->view_change_ticks_left > 0) {
+    if (soul->view_change_ticks_left > 0 || soul->tutorial_holds_input) {
         return;
     }
     if (soul->is_on && !soul->view_demo_is_on && soul->tutorial_mode == TUTORIAL_NONE) {

@@ -294,6 +294,7 @@ struct script_soul {
     int camera_tutorial_is_on;
     int tutorial_mode;
     int tutorial_click_was_sent;
+    int tutorial_holds_input;
     int ghost_is_pending;
     int tap_group_is_pending;
     int direction_x;

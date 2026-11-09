@@ -182,6 +182,52 @@ static void test_the_move_tutorial_hears_move_while_the_direction_is_held(void)
     CHECK_INT(moves, 3);
 }
 
+static void test_the_tutorial_view_holds_the_soul_until_its_check_begins(void)
+{
+    start_in_the_ghost_view_with_three_cores_in_a_row();
+    script_soul_run_command(&machine, "SoulVision", "On");
+    step_ticks(TICKS_TO_SETTLE);
+    drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
+    CHECK_INT(machine.soul.active_object, 0);
+    script_soul_set_held(&machine, 1.0f, 0.0f);
+    step_ticks(TICKS_FOR_A_DRAG);
+    script_soul_set_held(&machine, 0.0f, 0.0f);
+    CHECK_INT(machine.soul.active_object, 0);
+    script_soul_set_touch(&machine, 0, 0.0f, 0.0f);
+    step_ticks(TICKS_TO_SETTLE);
+    script_soul_run_command(&machine, "SVTUTO", "TouchCheck");
+    drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
+    CHECK_INT(machine.soul.active_object, 1);
+}
+
+static void check_the_soul_stays_put_until_the_event_ends(const char *verb, const char *hold, const char *release)
+{
+    start_in_the_ghost_view_with_three_cores_in_a_row();
+    script_soul_run_command(&machine, verb, hold);
+    drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
+    CHECK_INT(machine.soul.active_object, 0);
+    script_soul_set_touch(&machine, 0, 0.0f, 0.0f);
+    step_ticks(TICKS_TO_SETTLE);
+    script_soul_run_command(&machine, verb, release);
+    step_ticks(TICKS_TO_SETTLE);
+    drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
+    CHECK_INT(machine.soul.active_object, 1);
+}
+
+static void test_scripted_events_in_the_ghost_view_hold_the_soul(void)
+{
+    check_the_soul_stays_put_until_the_event_ends("CustomSoulVision", "DemoModeOn", "DemoModeOff");
+    check_the_soul_stays_put_until_the_event_ends("Button", "Input:Off", "Input:On");
+    start_in_the_ghost_view_with_three_cores_in_a_row();
+    machine.demo_soul_is_on = 1;
+    drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
+    CHECK_INT(machine.soul.active_object, 0);
+    start_in_the_ghost_view_with_three_cores_in_a_row();
+    machine.movie_ticks_left = TICKS_FOR_A_DRAG * 4;
+    drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
+    CHECK_INT(machine.soul.active_object, 0);
+}
+
 int main(void)
 {
     test_each_ghost_has_its_native_reach();
@@ -190,5 +236,7 @@ int main(void)
     test_a_touch_away_from_the_tip_does_not_drag();
     test_the_touch_check_tutorial_hears_click_touch_and_release();
     test_the_move_tutorial_hears_move_while_the_direction_is_held();
+    test_the_tutorial_view_holds_the_soul_until_its_check_begins();
+    test_scripted_events_in_the_ghost_view_hold_the_soul();
     return test_finish("unit/soul_touch_rules");
 }

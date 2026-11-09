@@ -543,6 +543,18 @@ The breaker's search for the next scene in route order started at the furthest s
 
 Guard: the search starts after the furthest acted step (or at the current route step, if that is later), as `first_step_not_yet_played` does. `tests/unit/test_stall_skip.c` starts in an unrouted scene after a finished block and checks that the breaker moves on to the next block, never back.
 
+### 81. The soul jumped between cores while a scripted event held the ghost view
+
+Native gives the player the chain only from the ghost view's own state. Scripted beats inside a ghost view leave the player without it:
+- The tutorial view that `GameApp SoulVision On` opens (`func_0203de90`, pGameMainSVTutorial) does nothing in its idle state 99. It reads the chain only after `SVTUTO TouchCheck` (state 1) or `MoveStart` (states 20 to 22). All four `SoulVision On` sites, in Chapters 1 and 2, are followed by one of them.
+- `CustomSoulVision DemoModeOn` (343 sites) runs a scripted beat inside the view.
+- Op 0xe2 opens the view for a demo (`pGameMainSVforDemo`).
+- `Button Input:Off`, a dead talk, narration, a movie, a choice and an open talk all hold it too.
+
+The port held the chain only for an open talk or a choice. On the Vita, the player moved between cores between Chapter 1's ghost view introduction and its first talk.
+
+Guard: one check, `a_scripted_event_holds_the_soul`, gates every chain input (touch, stick and d-pad): the view entering or leaving, view demo mode, the demo soul view, the tutorial hold until its check begins, Input:Off, a dead talk, narration, a movie, a choice, and a talk. The Back button is held during the tutorial hold as well. `tests/unit/test_soul_touch_rules.c` drags and holds the stick during the tutorial hold, DemoModeOn, Input:Off, the demo soul view and a movie, then checks that the soul stays put and moves again once the event ends.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
