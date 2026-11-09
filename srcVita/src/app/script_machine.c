@@ -341,6 +341,18 @@ struct script_object *script_machine_current_object(struct script_machine *machi
     return vm->owner;
 }
 
+static void set_core_busy(struct script_object *object, int core, int is_busy)
+{
+    if (object == NULL || core < 0 || core >= SCRIPT_CORE_SLOT_COUNT) {
+        return;
+    }
+    if (is_busy) {
+        object->actor.busy_cores = object->actor.busy_cores | (1 << core);
+    } else {
+        object->actor.busy_cores = object->actor.busy_cores & ~(1 << core);
+    }
+}
+
 static int free_unit_in_hand(const struct script_machine *machine, const struct script_vm *vm)
 {
     if (vm->free_unit < 0 || vm->free_unit >= SCRIPT_FREE_UNIT_MAX || !machine->free_units[vm->free_unit].in_use) {
@@ -1213,13 +1225,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0xe9:
     case 0xea:
-        if (vm->owner != NULL) {
-            if (op == 0xea) {
-                vm->owner->actor.busy_cores = vm->owner->actor.busy_cores | (1 << words[0]);
-            } else {
-                vm->owner->actor.busy_cores = vm->owner->actor.busy_cores & ~(1 << words[0]);
-            }
-        }
+        set_core_busy(script_machine_current_object(machine, vm), (int)words[0], op == 0xea);
         return SCRIPT_STEP_NEXT;
     case 0xfe:
         machine->soul.rollback_is_on = 1;

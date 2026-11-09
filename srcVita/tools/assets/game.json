@@ -3995,11 +3995,11 @@
       },
       {
         "script": "st01-st01_game021_Expand",
-        "action": "trick",
+        "action": "wait",
         "object": "md_flag",
         "pace": "normal",
         "footage_s": 6388.0,
-        "wait": "core:md_flag & playable"
+        "wait": "core:md_flag & act:md_flag:flagAct020"
       },
       {
         "script": "st01-st01_game021_Expand",
