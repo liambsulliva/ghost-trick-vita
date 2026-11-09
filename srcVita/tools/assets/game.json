@@ -1450,8 +1450,7 @@
     "dwell_ticks": {
       "normal": 90,
       "quick": 45,
-      "instant": 0,
-      "short": 24
+      "instant": 0
     },
     "steps": [
       {
@@ -2474,11 +2473,19 @@
       },
       {
         "script": "st06-st06_game001_Expand",
+        "action": "trick",
+        "object": "kasa",
+        "pace": "quick",
+        "footage_s": 3169.5,
+        "wait": "act:kasa:kasa_act02 & core:kasa & playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game001_Expand",
         "action": "ghost_on",
         "object": "kasa",
         "pace": "normal",
         "footage_s": 3179.0,
-        "wait": "act:kasa:kasa_act02 & free & no_talk & ticks:30"
+        "wait": "flag:13 & free & no_talk"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2508,9 +2515,9 @@
         "script": "st06-st06_game001_Expand",
         "action": "ghost_on",
         "object": "caster",
-        "pace": "normal",
+        "pace": "instant",
         "footage_s": 3198.25,
-        "wait": "free & no_talk & ticks:30"
+        "wait": "reach:santa & free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2548,9 +2555,9 @@
         "script": "st06-st06_game001_Expand",
         "action": "ghost_on",
         "object": "santa",
-        "pace": "normal",
+        "pace": "instant",
         "footage_s": 3214.75,
-        "wait": "free & no_talk & ticks:30"
+        "wait": "reach:tendoor & free & no_talk"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2580,9 +2587,9 @@
         "script": "st06-st06_game001_Expand",
         "action": "ghost_on",
         "object": "tendoor",
-        "pace": "normal",
+        "pace": "instant",
         "footage_s": 3230.5,
-        "wait": "free & no_talk & ticks:30"
+        "wait": "reach:santa & free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2612,9 +2619,9 @@
         "script": "st06-st06_game001_Expand",
         "action": "ghost_on",
         "object": "santa",
-        "pace": "normal",
+        "pace": "instant",
         "footage_s": 3240.25,
-        "wait": "free & no_talk & ticks:30"
+        "wait": "reach:tree & free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2644,9 +2651,9 @@
         "script": "st06-st06_game001_Expand",
         "action": "ghost_on",
         "object": "tree",
-        "pace": "normal",
+        "pace": "instant",
         "footage_s": 3257.5,
-        "wait": "free & no_talk & ticks:30"
+        "wait": "reach:okashi & free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2676,9 +2683,9 @@
         "script": "st06-st06_game001_Expand",
         "action": "ghost_on",
         "object": "okashi",
-        "pace": "normal",
+        "pace": "instant",
         "footage_s": 3275.5,
-        "wait": "free & no_talk & ticks:30"
+        "wait": "reach:santa & free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2708,9 +2715,9 @@
         "script": "st06-st06_game001_Expand",
         "action": "ghost_on",
         "object": "santa",
-        "pace": "normal",
+        "pace": "instant",
         "footage_s": 3283.75,
-        "wait": "free & no_talk"
+        "wait": "reach:gaku & reach:tv & free & no_talk & ticks:30"
       },
       {
         "script": "st06-st06_game001_Expand",
@@ -2756,9 +2763,9 @@
         "script": "st06-st06_game002_Expand",
         "action": "ghost_on",
         "object": "tv",
-        "pace": "normal",
+        "pace": "instant",
         "footage_s": 3564.0,
-        "wait": "free & no_talk"
+        "wait": "reach:santa & free & no_talk"
       },
       {
         "script": "st06-st06_game002_Expand",
@@ -2775,6 +2782,30 @@
         "pace": "normal",
         "footage_s": 3569.5,
         "wait": "view & usable:santa"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "ghost_off",
+        "object": "santa",
+        "pace": "quick",
+        "footage_s": 3567.5,
+        "wait": "view & core:santa"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "trick",
+        "object": "santa",
+        "pace": "quick",
+        "footage_s": 3568.5,
+        "wait": "core:santa & playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "ghost_on",
+        "object": "santa",
+        "pace": "instant",
+        "footage_s": 3569.5,
+        "wait": "reach:caster & free & no_talk"
       },
       {
         "script": "st06-st06_game002_Expand",
@@ -3140,15 +3171,15 @@
         "action": "ghost_on",
         "object": "bird",
         "pace": "normal",
-        "footage_s": 4293.0,
-        "wait": "free & no_talk"
+        "footage_s": 4286.0,
+        "wait": "act:madam:madam_act01 & free & no_talk"
       },
       {
         "script": "st05-st05_game000_Expand",
         "action": "move",
         "object": "bird",
         "pace": "normal",
-        "footage_s": 4293.75,
+        "footage_s": 4286.75,
         "wait": "view & usable:bird"
       },
       {
@@ -3156,7 +3187,7 @@
         "action": "ghost_off",
         "object": "bird",
         "pace": "quick",
-        "footage_s": 4294.5,
+        "footage_s": 4287.5,
         "wait": "core:bird"
       },
       {
@@ -3164,23 +3195,23 @@
         "action": "trick",
         "object": "bird",
         "pace": "quick",
-        "footage_s": 4295.0,
-        "wait": "playable & no_talk"
+        "footage_s": 4290.5,
+        "wait": "act:madam:madam_act01 & playable & no_talk"
       },
       {
         "script": "st05-st05_game000_Expand",
         "action": "ghost_on",
         "object": "fuusya",
         "pace": "normal",
-        "footage_s": 4307.0,
-        "wait": "free & no_talk"
+        "footage_s": 4292.0,
+        "wait": "act:madam:madam_act01 & free & no_talk"
       },
       {
         "script": "st05-st05_game000_Expand",
         "action": "move",
         "object": "fuusya",
         "pace": "normal",
-        "footage_s": 4307.75,
+        "footage_s": 4299.0,
         "wait": "view & usable:fuusya"
       },
       {
@@ -3188,7 +3219,7 @@
         "action": "ghost_off",
         "object": "fuusya",
         "pace": "quick",
-        "footage_s": 4308.5,
+        "footage_s": 4299.5,
         "wait": "core:fuusya"
       },
       {
@@ -3196,15 +3227,15 @@
         "action": "trick",
         "object": "fuusya",
         "pace": "quick",
-        "footage_s": 4309.0,
-        "wait": "playable & no_talk"
+        "footage_s": 4304.0,
+        "wait": "act:madam:madam_act01 & playable & no_talk"
       },
       {
         "script": "st05-st05_game000_Expand",
         "action": "ghost_on",
         "object": "dic",
         "pace": "normal",
-        "footage_s": 4444.25,
+        "footage_s": 4306.5,
         "wait": "free & no_talk"
       },
       {
@@ -3212,7 +3243,7 @@
         "action": "move",
         "object": "dic",
         "pace": "normal",
-        "footage_s": 4444.75,
+        "footage_s": 4307.5,
         "wait": "view & usable:dic"
       },
       {
@@ -3220,7 +3251,7 @@
         "action": "ghost_off",
         "object": "dic",
         "pace": "quick",
-        "footage_s": 4446.5,
+        "footage_s": 4308.5,
         "wait": "view & core:dic"
       },
       {
@@ -3228,14 +3259,14 @@
         "action": "trick",
         "object": "dic",
         "pace": "quick",
-        "footage_s": 4447.0,
+        "footage_s": 4312.0,
         "wait": "core:dic & playable"
       },
       {
         "script": "st05-st05_game000_Expand",
         "action": "tap_balloon",
         "object": "op_keydemo",
-        "footage_s": 4379.0,
+        "footage_s": 4350.0,
         "wait": "balloon:op_keydemo"
       },
       {
@@ -3275,7 +3306,8 @@
         "action": "ghost_on",
         "object": "genkou",
         "footage_s": 4457.0,
-        "wait": "usable:genkou & free"
+        "wait": "reach:genkou & free",
+        "pace": "quick"
       },
       {
         "script": "st05-st05_game000_Expand",
@@ -3323,9 +3355,9 @@
         "script": "st05-st05_game000_Expand",
         "action": "ghost_on",
         "object": "dust",
-        "pace": "short",
+        "pace": "instant",
         "footage_s": 4469.5,
-        "wait": "act:dust:dust_act02 & free"
+        "wait": "reach:tel & free"
       },
       {
         "script": "st05-st05_game000_Expand",
