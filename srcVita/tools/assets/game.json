@@ -3033,10 +3033,10 @@
       {
         "script": "st06-st06_game004_Expand",
         "action": "dead_talk",
+        "object": "deadtalk_test",
         "pace": "normal",
         "footage_s": 4103.0,
-        "wait": "view & core:deadtalk_test & no_talk",
-        "object": "deadtalk_test"
+        "wait": "view & core:deadtalk_test & no_talk"
       },
       {
         "script": "st06-st06_game004_Expand",
@@ -3049,25 +3049,49 @@
       {
         "script": "st06-st06_game004_Expand",
         "action": "ghost_on",
-        "object": "wine",
+        "object": "deadtalk_test",
         "pace": "normal",
-        "footage_s": 4115.0,
-        "wait": "free & no_talk"
+        "footage_s": 4093.0,
+        "wait": "flag:10ec & free & no_talk"
       },
       {
         "script": "st06-st06_game004_Expand",
         "action": "move",
         "object": "wine",
         "pace": "normal",
-        "footage_s": 4116.0,
+        "footage_s": 4103.0,
         "wait": "view & usable:wine"
       },
       {
         "script": "st06-st06_game004_Expand",
         "action": "ghost_off",
         "object": "wine",
+        "pace": "normal",
+        "footage_s": 4103.5,
+        "wait": "view & core:wine"
+      },
+      {
+        "script": "st05-st05_game000_Expand",
+        "action": "ghost_on",
+        "object": "wine",
+        "pace": "normal",
+        "footage_s": 4216.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st05-st05_game000_Expand",
+        "action": "move",
+        "object": "wine",
+        "pace": "normal",
+        "footage_s": 4217.0,
+        "wait": "view & usable:wine"
+      },
+      {
+        "script": "st05-st05_game000_Expand",
+        "action": "ghost_off",
+        "object": "wine",
         "pace": "quick",
-        "footage_s": 4117.0,
+        "footage_s": 4218.0,
         "wait": "view & core:wine"
       },
       {
@@ -3208,18 +3232,25 @@
       },
       {
         "script": "st05-st05_game000_Expand",
+        "action": "tap_balloon",
+        "object": "op_keydemo",
+        "footage_s": 4379.0,
+        "wait": "balloon:op_keydemo"
+      },
+      {
+        "script": "st05-st05_game000_Expand",
         "action": "ghost_on",
         "object": "stand",
         "pace": "normal",
-        "footage_s": 4457.0,
-        "wait": "free & no_talk"
+        "footage_s": 4443.5,
+        "wait": "act:madam:madam_act04 & free & no_talk"
       },
       {
         "script": "st05-st05_game000_Expand",
         "action": "move",
         "object": "stand",
         "pace": "normal",
-        "footage_s": 4457.75,
+        "footage_s": 4445.5,
         "wait": "view & usable:stand"
       },
       {
@@ -3227,7 +3258,7 @@
         "action": "ghost_off",
         "object": "stand",
         "pace": "quick",
-        "footage_s": 4458.0,
+        "footage_s": 4446.5,
         "wait": "view & core:stand"
       },
       {
@@ -3235,22 +3266,41 @@
         "action": "trick",
         "object": "stand",
         "pace": "quick",
-        "footage_s": 4458.5,
+        "footage_s": 4448.5,
         "wait": "core:stand & playable"
       },
       {
         "script": "st05-st05_game000_Expand",
         "action": "ghost_on",
+        "object": "genkou",
+        "footage_s": 4457.0,
+        "wait": "usable:genkou & free"
+      },
+      {
+        "script": "st05-st05_game000_Expand",
+        "action": "move",
+        "object": "genkou",
+        "footage_s": 4459.0,
+        "wait": "view & usable:genkou"
+      },
+      {
+        "script": "st05-st05_game000_Expand",
+        "action": "ghost_off",
+        "object": "genkou",
+        "footage_s": 4461.0,
+        "wait": "view & core:genkou"
+      },
+      {
+        "script": "st05-st05_game000_Expand",
+        "action": "ghost_on",
         "object": "dustbox",
-        "pace": "normal",
         "footage_s": 4466.0,
-        "wait": "act:stand:stand_act01 & free & no_talk"
+        "wait": "core:dust & free & no_talk"
       },
       {
         "script": "st05-st05_game000_Expand",
         "action": "move",
         "object": "dustbox",
-        "pace": "normal",
         "footage_s": 4466.75,
         "wait": "view & usable:dustbox"
       },
@@ -3258,7 +3308,6 @@
         "script": "st05-st05_game000_Expand",
         "action": "ghost_off",
         "object": "dustbox",
-        "pace": "quick",
         "footage_s": 4467.5,
         "wait": "view & core:dustbox"
       },
@@ -3266,7 +3315,6 @@
         "script": "st05-st05_game000_Expand",
         "action": "trick",
         "object": "dustbox",
-        "pace": "quick",
         "footage_s": 4468.5,
         "wait": "core:dustbox & playable"
       },
@@ -3308,7 +3356,7 @@
         "object": "tel",
         "pace": "normal",
         "footage_s": 4557.0,
-        "wait": "act:tel:tel_act01 & playable",
+        "wait": "core:tel & playable",
         "place": 1
       },
       {
