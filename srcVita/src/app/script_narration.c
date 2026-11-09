@@ -244,7 +244,7 @@ static int step_hold(struct script_narration *narration, script_narration_report
                 group_is_done = 1;
             }
         }
-        if (narration->limit == 0 && narration->press_is_pending) {
+        if (narration->press_is_pending) {
             group_is_done = 1;
         }
     } else if (narration->counter >= narration->wait[narration->group]) {
@@ -297,6 +297,41 @@ static void step_text_out(struct script_narration *narration, script_narration_r
     narration->group_was_reported = 0;
 }
 
+static void show_the_whole_page(struct script_narration *narration, script_narration_report report, void *listener)
+{
+    int first;
+    int index;
+
+    if (narration->state == STATE_DIM_IN) {
+        tell(narration, report, listener, SCRIPT_NARRATION_DIM_FULL, 0);
+    }
+    first = narration->group;
+    if (narration->state == STATE_HOLD || (narration->state == STATE_GROUP_IN && narration->group_was_reported)) {
+        first = narration->group + 1;
+    }
+    for (index = first; index < narration->group_count; index++) {
+        tell(narration, report, listener, SCRIPT_NARRATION_GROUP_IN, index);
+    }
+    narration->state = STATE_HOLD;
+    narration->group = narration->group_count;
+    narration->group_was_reported = 1;
+    narration->level = LEVEL_FULL;
+    narration->speed = 0;
+    narration->timer = 0;
+    narration->counter = 0;
+    narration->count_to_limit = 0;
+}
+
+static int page_is_still_showing(const struct script_narration *narration)
+{
+    return narration->state == STATE_DIM_IN || narration->state == STATE_GROUP_IN || (narration->state == STATE_HOLD && narration->group < narration->group_count);
+}
+
+int script_narration_takes_a_skip(const struct script_narration *narration)
+{
+    return narration->is_running && (page_is_still_showing(narration) || narration->state == STATE_HOLD);
+}
+
 int script_narration_wants_a_press(const struct script_narration *narration)
 {
     return narration->is_running && narration->state == STATE_HOLD && narration->group >= narration->group_count && narration->limit == 0;
@@ -326,6 +361,11 @@ int script_narration_step(struct script_narration *narration, script_narration_r
     }
     if (narration->state == STATE_DIM_IN && narration->level == 0 && !(narration->options & SHOW_AT_ONCE_OPTION)) {
         tell(narration, report, listener, SCRIPT_NARRATION_DIM_IN, 0);
+    }
+    if (narration->press_is_pending && page_is_still_showing(narration)) {
+        narration->press_is_pending = 0;
+        show_the_whole_page(narration, report, listener);
+        return 0;
     }
     if (narration->state != STATE_HOLD) {
         narration->level = narration->level + narration->speed;

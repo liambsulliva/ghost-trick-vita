@@ -1467,7 +1467,7 @@ static void take_press(struct script_machine *machine)
         machine->last_new_site_tick = machine->tick;
         return;
     }
-    if (script_narration_wants_a_press(&machine->narration)) {
+    if (script_narration_takes_a_skip(&machine->narration)) {
         script_narration_note_press(&machine->narration);
         machine->last_new_site_tick = machine->tick;
         return;
@@ -1650,6 +1650,25 @@ static void follow_core_in_normal_play(struct script_machine *machine, float cor
     }
 }
 
+static void pan_the_ghost_view(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (!soul->is_on) {
+        soul->view_was_panned = 0;
+        return;
+    }
+    if (soul->tip_input_is_held) {
+        soul->view_was_panned = 0;
+    }
+    if ((soul->view_pan_x == 0.0f && soul->view_pan_y == 0.0f) || soul->camera_is_locked || a_scripted_event_holds_the_soul(machine)) {
+        return;
+    }
+    script_machine_scroll_camera(machine, (int)lroundf(soul->view_pan_x * CAMERA_FREE_SPEED_PIXELS), (int)lroundf(soul->view_pan_y * CAMERA_FREE_SPEED_PIXELS));
+    soul->view_was_panned = 1;
+}
+
 static void follow_core_with_camera(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -1663,9 +1682,9 @@ static void follow_core_with_camera(struct script_machine *machine)
     core_position(machine, soul->active_object, soul->active_slot, &core_x, &core_y);
     if (soul->is_on && soul->tip_input_is_held && soul->tip_is_out) {
         follow_point_in_ghost_view(machine, soul->tip_x, soul->tip_y, GHOST_TIP_FOLLOW_LEFT, GHOST_TIP_FOLLOW_RIGHT, GHOST_TIP_FOLLOW_TOP, GHOST_TIP_FOLLOW_BOTTOM);
-    } else if (soul->is_on) {
+    } else if (soul->is_on && !soul->view_was_panned) {
         follow_core_in_ghost_view(machine, core_x, core_y);
-    } else {
+    } else if (!soul->is_on) {
         follow_core_in_normal_play(machine, core_x, core_y);
     }
 }
@@ -2222,6 +2241,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     move_soul_tip(machine);
     send_tutorial_input(machine);
     move_free_camera(machine);
+    pan_the_ghost_view(machine);
     follow_core_with_camera(machine);
     age_the_player_mark(machine);
     step_the_rewind_select(machine);
@@ -2325,6 +2345,12 @@ void script_soul_set_held(struct script_machine *machine, float held_x, float he
 {
     machine->soul.held_x = held_x;
     machine->soul.held_y = held_y;
+}
+
+void script_soul_set_view_pan(struct script_machine *machine, float pan_x, float pan_y)
+{
+    machine->soul.view_pan_x = pan_x;
+    machine->soul.view_pan_y = pan_y;
 }
 
 void script_soul_reset(struct script_machine *machine)
