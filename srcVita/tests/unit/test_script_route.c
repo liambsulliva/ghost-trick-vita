@@ -1,4 +1,6 @@
+#include <stdio.h>
 #include <string.h>
+#include "crc32.h"
 #include "script_route.h"
 #include "test_support.h"
 
@@ -97,6 +99,24 @@ static void test_pacing_rejects_steps_outside_the_route(void)
     CHECK_INT(route.steps[0].dwell_ticks, 90);
 }
 
+static void test_pacing_baked_for_another_route_is_ignored(void)
+{
+    const char *steps;
+    char pacing[64];
+
+    steps = "step a move x 0 90 -\nstep a trick x 0 90 -\n";
+    CHECK(read_text(steps));
+    snprintf(pacing, sizeof(pacing), "route %08x\ndwell 1 250\n", crc32_add(0u, (const unsigned char *)steps, (unsigned int)strlen(steps)));
+    CHECK(script_route_read_pacing(&route, pacing, (unsigned int)strlen(pacing)));
+    CHECK(!route.pacing_is_stale);
+    CHECK_INT(route.steps[1].dwell_ticks, 250);
+    CHECK(read_text(steps));
+    snprintf(pacing, sizeof(pacing), "route %08x\ndwell 1 250\n", crc32_add(0u, (const unsigned char *)steps, (unsigned int)strlen(steps)) ^ 1u);
+    CHECK(script_route_read_pacing(&route, pacing, (unsigned int)strlen(pacing)));
+    CHECK(route.pacing_is_stale);
+    CHECK_INT(route.steps[1].dwell_ticks, 90);
+}
+
 int main(void)
 {
     test_reads_every_field_of_a_step();
@@ -108,5 +128,6 @@ int main(void)
     test_finds_whole_wait_tokens_only();
     test_pacing_overrides_the_dwell_of_named_steps();
     test_pacing_rejects_steps_outside_the_route();
+    test_pacing_baked_for_another_route_is_ignored();
     return test_finish("unit/script_route");
 }

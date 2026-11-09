@@ -17,6 +17,7 @@
 #define TICKS_FOR_THE_REWIND 200
 #define TICKS_FOR_A_DEAD_TALK_TO_START 5
 #define OPEN_CHOICE_OP 0x3b
+#define GATE_OUT_OF_REACH 300
 
 static struct script_machine machine;
 static struct script_route_pad route_pad;
@@ -190,6 +191,18 @@ static void test_a_dead_talk_from_a_dead_core_talks_to_the_dead(void)
     CHECK(!gate_got("SYSTEM", "CORETALK"));
 }
 
+static void test_the_pad_opens_the_ghost_view_once_the_next_core_comes_within_reach(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_GHOST_ON, "body", "reach:gate&playable");
+    machine.objects[1].actor.x = BODY_X + GATE_OUT_OF_REACH;
+    script_soul_run_command(&machine, "Button", "Trick:On");
+    run_ticks(TICKS_FOR_A_PILL_TO_SLIDE_IN);
+    CHECK(!machine.soul.is_on);
+    machine.objects[1].actor.x = GATE_X;
+    run_ticks(TICKS_FOR_A_PILL_TO_SLIDE_IN);
+    CHECK(machine.soul.is_on);
+}
+
 static void test_the_pad_does_not_push_toward_a_core_out_of_reach(void)
 {
     start_with_one_step(SCRIPT_ROUTE_MOVE, "gate", "view");
@@ -204,6 +217,7 @@ static void test_the_pad_does_not_push_toward_a_core_out_of_reach(void)
 int main(void)
 {
     test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up();
+    test_the_pad_opens_the_ghost_view_once_the_next_core_comes_within_reach();
     test_the_pad_moves_the_soul_with_the_stick();
     test_the_pad_does_not_push_toward_a_core_out_of_reach();
     test_the_pad_picks_the_route_panel_only_once_the_step_has_begun();

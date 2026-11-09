@@ -1,11 +1,14 @@
 #include <stdio.h>
 #include <string.h>
+#include "crc32.h"
 #include "script_route.h"
 #include "text_lines.h"
 
 #define ROUTE_LINE_MAX 384
 #define ROUTE_LINE_SCAN "step %95s %15s %47s %d %d %159s"
 #define PACING_LINE_SCAN "dwell %d %d"
+#define PACING_ROUTE_WORD "route "
+#define PACING_ROUTE_SCAN "route %x"
 #define SCENE_TIMEOUT_LINE_SCAN "scene_most_ticks %d"
 #define SCENE_TIMEOUT_WORD "scene_most_ticks "
 #define SCENE_LINE_SCAN "scene %95s"
@@ -15,7 +18,7 @@
 #define WAIT_ARGUMENT_SEPARATOR ':'
 
 static const char *const action_names[] = { "move", "trick", "ghost_on", "ghost_off", "touch", "tap_balloon", "camera", "phone_call", "wait", "dead_talk", "choose", "character" };
-static const char *const wait_word_names[] = { "act", "tutorial", "playable", "free", "view", "no_talk", "flag", "noflag", "core", "usable", "balloon", "camera_tutorial", "timeleap_armed", "ticks", "choice" };
+static const char *const wait_word_names[] = { "act", "tutorial", "playable", "free", "view", "no_talk", "flag", "noflag", "core", "usable", "balloon", "camera_tutorial", "timeleap_armed", "ticks", "choice", "reach" };
 
 static int read_action(const char *word, enum script_route_action *action)
 {
@@ -125,6 +128,8 @@ int script_route_read(struct script_route *route, const char *text, unsigned int
     offset = 0;
     route->step_count = 0;
     route->scene_most_ticks = 0;
+    route->steps_text_crc = crc32_add(0u, (const unsigned char *)text, text_size);
+    route->pacing_is_stale = 0;
     while (offset < text_size) {
         offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
         if (strncmp(line, SCENE_TIMEOUT_WORD, strlen(SCENE_TIMEOUT_WORD)) == 0) {
@@ -172,6 +177,22 @@ int script_route_scene_index(const struct script_route *route, const char *scrip
     return -1;
 }
 
+static int pacing_names_another_route(const struct script_route *route, const char *text, unsigned int text_size)
+{
+    char line[ROUTE_LINE_MAX];
+    unsigned int offset;
+    unsigned int baked_crc;
+
+    offset = 0;
+    while (offset < text_size) {
+        offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
+        if (strncmp(line, PACING_ROUTE_WORD, strlen(PACING_ROUTE_WORD)) == 0) {
+            return sscanf(line, PACING_ROUTE_SCAN, &baked_crc) != 1 || baked_crc != route->steps_text_crc;
+        }
+    }
+    return 0;
+}
+
 int script_route_read_pacing(struct script_route *route, const char *text, unsigned int text_size)
 {
     char line[ROUTE_LINE_MAX];
@@ -179,10 +200,14 @@ int script_route_read_pacing(struct script_route *route, const char *text, unsig
     int step_index;
     int dwell_ticks;
 
+    if (pacing_names_another_route(route, text, text_size)) {
+        route->pacing_is_stale = 1;
+        return 1;
+    }
     offset = 0;
     while (offset < text_size) {
         offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
-        if (line[0] == '\0') {
+        if (line[0] == '\0' || strncmp(line, PACING_ROUTE_WORD, strlen(PACING_ROUTE_WORD)) == 0) {
             continue;
         }
         if (sscanf(line, PACING_LINE_SCAN, &step_index, &dwell_ticks) != 2 || step_index < 0 || step_index >= route->step_count || dwell_ticks < 0) {

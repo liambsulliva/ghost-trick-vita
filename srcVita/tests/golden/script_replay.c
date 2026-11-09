@@ -367,6 +367,8 @@ static void read_route(const char *folder)
         fclose(source);
         if (!script_route_read_pacing(&replay_route, text, (unsigned int)size)) {
             printf("route_pacing.txt is invalid\n");
+        } else if (replay_route.pacing_is_stale) {
+            printf("route_pacing.txt was baked for another route; using each step's pace\n");
         }
     }
     snprintf(path, sizeof(path), "%s/scenes.txt", folder);

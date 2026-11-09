@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import sys
+import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -10,10 +11,12 @@ import bake_record
 
 TICKS_PER_SECOND = 60
 PACING_FILE_NAME = "route_pacing.txt"
+ROUTE_STEPS_FILE_NAME = "route_steps.txt"
 READY_MARK = "route_step_ready"
 BEGAN_MARK = "route_step_began"
 MOST_PASSES = 6
 MOST_EXTRA_TICKS = 300
+GAME_SYNC_WAIT_PREFIXES = ("reach:", "act:")
 
 
 def step_times(cue_lines):
@@ -38,6 +41,10 @@ def step_times(cue_lines):
     return ready_before_began, began
 
 
+def waits_on_the_game(step):
+    return any(token.strip().startswith(GAME_SYNC_WAIT_PREFIXES) for token in step.get("wait", "").split("&"))
+
+
 def base_dwell(route, step):
     return route["dwell_ticks"][step.get("pace", "normal")]
 
@@ -48,7 +55,7 @@ def paced_dwells(route, ready, began, windows_too_short, drift):
     for index in range(1, len(steps)):
         step = steps[index]
         previous = steps[index - 1]
-        if "footage_s" not in step or "footage_s" not in previous or index in windows_too_short:
+        if "footage_s" not in step or "footage_s" not in previous or index in windows_too_short or waits_on_the_game(step):
             continue
         if index not in ready or index - 1 not in began:
             continue
@@ -60,6 +67,10 @@ def paced_dwells(route, ready, began, windows_too_short, drift):
             if wanted > dwells[index]:
                 drift[index] = wanted - dwells[index]
     return dwells
+
+
+def pacing_file_text(route_steps_bytes, dwells):
+    return "route %08x\n" % (zlib.crc32(route_steps_bytes) & 0xffffffff) + pacing_text(dwells)
 
 
 def pacing_text(dwells):
@@ -101,7 +112,9 @@ def main():
         windows_too_short.update(index for index in stretched if index not in began)
         drift = {}
         dwells = paced_dwells(route, ready, began, windows_too_short, drift)
-        changed = bake_record.write_if_different(pacing_path, pacing_text(dwells).encode("ascii"))
+        with open(os.path.join(arguments.scripts, ROUTE_STEPS_FILE_NAME), "rb") as source:
+            route_steps_bytes = source.read()
+        changed = bake_record.write_if_different(pacing_path, pacing_file_text(route_steps_bytes, dwells).encode("ascii"))
         print("route pacing pass %d: %d steps stretched, %d extra ticks, %d kept short%s" % (pass_number, len(dwells), sum(dwells[index] - base_dwell(route, route["steps"][index]) for index in dwells), len(windows_too_short), "" if changed else ", settled"))
         if not changed:
             for index in sorted(drift):

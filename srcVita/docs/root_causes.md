@@ -608,6 +608,18 @@ Native holds the Ghost pill with ops 0xe6 and 0xe5 (game+0xc bit 0, the port's `
 
 Guard: the Ghost pill, the Ghost button and the chain hold follow `ghost_pill_is_held_out`, and the busy bit stays on the Trick pill and the Trick button only. Chapter 1's blender is still held, through its op 0xe6. `tests/unit/test_soul_touch_rules.c` holds the chain and the Ghost button for the Ghost hold, and opens the ghost view for a core left busy without it. From the same st03_game011 entry, the honest replay now plays steps 400 to 411, where it stopped at step 410, and the breaker replay plays st05_game000's step 224 again, the last of the four steps root cause 84 cost.
 
+### 89. The route hopped to moving cores on a timer
+
+Some hops only open while a core moves: Chapter 2's santa ornament swings around its wreath, and Chapter 3's paper bounces up out of the opened wastebasket. A player watches the core and opens the ghost view when the path is open, which freezes it there. The route opened the view after a fixed dwell, so the hop worked or failed with the timing of the run. Native time stops the tick the Ghost button opens the view (the port pauses on the same tick), but the route checked its waits before the tick's motion update and the pad's press landed one update later, so a core about to change frame was already out of reach when the view froze.
+
+Guard: the wait word `reach:<object>[:slot]` holds while the soul can reach that core through any chain of cores within reach, and the pad presses Ghost only while every reach in the step's wait still holds after the tick's motion, which is the picture the press freezes. A ghost_on whose moves end on a moving core waits on it, and when the path opens only at the far end of a swing the route closes the view and opens it again later, as the footage does. `tests/unit/test_route_pad.c` holds the press while the gate is out of reach and opens the view once it comes within reach. With it, Chapter 2 plays steps 90 to 167 and Chapter 3 its whole block with no stall breaker.
+
+### 90. Route pacing kept the dwells of another route
+
+`route_pacing.txt` stretches each step's dwell so auto-play never acts sooner after the previous step than the footage did, and it names steps by index. It was baked once and not again after the day's splices, so from Chapter 3 on every step carried the dwell of the step that used to have its index (one ghost_on waited 390 ticks for a paper that falls in 60). Rebaking exposed a second fault: the footage gap includes talk the player read at their own pace, which auto-play turns faster, so stretching the step after a talk makes it act later than the game state it was written for (Chapter 3's windmill and dictionary tricks fell after the madam left the shelf). Chapter 3's bird, windmill, dictionary and balloon steps also carried guessed footage times that the footage contradicts.
+
+Guard: the pacing bake writes `route <crc32>` of the route_steps.txt it paced, and the player and the replay ignore a pacing file baked for another route (the replay prints it and the player logs `route_pacing_stale`), so a splice without a rebake falls back to each step's pace instead of misplacing every dwell. The bake never stretches a step that waits on the game (`reach:` or `act:`), and Chapter 3's footage times were read again from the footage. `tests/unit/test_script_route.c` reads a matching and a mismatched stamp; `tests/tools/test_route_pacing.py` checks the stamp and both exemptions. Rebake pacing and read-ahead (`make read-ahead PLAN_SET=game PLAN_STOP_TICK=4200000`) after every route change.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

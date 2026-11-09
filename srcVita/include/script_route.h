@@ -38,6 +38,7 @@ enum script_route_wait_word {
     SCRIPT_ROUTE_WAIT_TIMELEAP_ARMED,
     SCRIPT_ROUTE_WAIT_TICKS,
     SCRIPT_ROUTE_WAIT_CHOICE,
+    SCRIPT_ROUTE_WAIT_REACH,
     SCRIPT_ROUTE_WAIT_UNKNOWN
 };
 
@@ -63,6 +64,8 @@ struct script_route {
     int scene_most_ticks;
     char scenes[SCRIPT_ROUTE_SCENE_MAX][SCRIPT_ROUTE_SCRIPT_NAME_MAX];
     int scene_count;
+    unsigned int steps_text_crc;
+    int pacing_is_stale;
 };
 
 int script_route_read(struct script_route *route, const char *text, unsigned int text_size);

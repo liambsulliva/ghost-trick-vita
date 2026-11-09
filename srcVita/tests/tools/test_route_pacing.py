@@ -59,12 +59,27 @@ class PacedDwellsTest(unittest.TestCase):
         del route["steps"][0]["footage_s"]
         self.assertEqual(route_pacing.paced_dwells(route, {1: 1100}, {0: 1000}, set(), {}), {})
 
+    def test_never_stretches_a_step_that_waits_for_a_moving_core(self):
+        route = route_with([10.0, 15.0])
+        route["steps"][1]["wait"] = "reach:tel & free"
+        self.assertEqual(route_pacing.paced_dwells(route, {1: 1100}, {0: 1000}, set(), {}), {})
+
+    def test_never_stretches_a_step_that_waits_on_an_act(self):
+        route = route_with([10.0, 15.0])
+        route["steps"][1]["wait"] = "act:madam:madam_act01 & free"
+        self.assertEqual(route_pacing.paced_dwells(route, {1: 1100}, {0: 1000}, set(), {}), {})
+
     def test_uses_the_pace_of_the_step_as_the_floor(self):
         route = route_with([10.0, 12.0], pace="quick")
         self.assertEqual(route_pacing.paced_dwells(route, {1: 1050}, {0: 1000}, set(), {}), {1: 70})
 
 
 class PacingFileTest(unittest.TestCase):
+    def test_names_the_route_it_was_baked_for(self):
+        text = route_pacing.pacing_file_text(b"step a ghost_on b 0 90 free\n", {3: 120})
+        self.assertEqual(text.splitlines()[0], "route 201922e6")
+        self.assertEqual(text.splitlines()[1], "dwell 3 120")
+
     def test_round_trips_the_stretched_steps(self):
         with tempfile.TemporaryDirectory() as folder:
             path = os.path.join(folder, route_pacing.PACING_FILE_NAME)

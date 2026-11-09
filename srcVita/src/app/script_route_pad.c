@@ -196,7 +196,7 @@ static void play_the_route_step(struct script_route_pad *pad, const struct scrip
         }
         break;
     case SCRIPT_ROUTE_GHOST_ON:
-        if (script_pills_is_up(machine, SCRIPT_PILL_GHOST) && pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
+        if (script_pills_is_up(machine, SCRIPT_PILL_GHOST) && script_soul_route_wait_reaches(machine, step->wait) && pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
             press(pad, machine, frame, INPUT_L);
         }
         break;

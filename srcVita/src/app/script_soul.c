@@ -1823,6 +1823,22 @@ static int route_word_without_argument_holds(const struct script_machine *machin
     }
 }
 
+static int first_hop_toward(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot);
+
+static int soul_can_reach_core(const struct script_machine *machine, int object_index, int slot)
+{
+    int hop_object;
+    int hop_slot;
+
+    if (machine->soul.active_object == NO_CORE || !object_can_be_a_core(&machine->objects[object_index], slot)) {
+        return 0;
+    }
+    if (machine->soul.active_object == object_index && machine->soul.active_slot == slot) {
+        return 1;
+    }
+    return first_hop_toward(machine, object_index, slot, &hop_object, &hop_slot);
+}
+
 static int route_token_holds(const struct script_machine *machine, const struct script_route_wait_token *token)
 {
     const struct script_soul *soul;
@@ -1864,6 +1880,9 @@ static int route_token_holds(const struct script_machine *machine, const struct 
         return (second != NULL ? balloon_sending(machine, first, second) : balloon_sending(machine, NULL, first)) >= 0;
     case SCRIPT_ROUTE_WAIT_TICKS:
         return machine->tick - soul->route_last_action_tick >= (unsigned int)atoi(first);
+    case SCRIPT_ROUTE_WAIT_REACH:
+        object_index = script_machine_index_of_object(machine, first);
+        return object_index != SCRIPT_NO_OBJECT && soul_can_reach_core(machine, object_index, second != NULL ? atoi(second) : 0);
     default:
         return route_word_without_argument_holds(machine, token->word);
     }
@@ -2413,6 +2432,19 @@ const struct script_route_step *script_soul_route_step(const struct script_machi
 int script_soul_route_step_has_begun(const struct script_machine *machine)
 {
     return machine->soul.route_action_has_begun;
+}
+
+int script_soul_route_wait_reaches(const struct script_machine *machine, const char *wait)
+{
+    struct script_route_wait_token token;
+
+    while (wait != NULL && *wait != '\0') {
+        wait = script_route_read_wait_token(wait, &token);
+        if (token.word == SCRIPT_ROUTE_WAIT_REACH && !route_token_holds(machine, &token)) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 int script_soul_route_hop(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot)
