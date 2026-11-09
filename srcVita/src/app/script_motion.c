@@ -683,6 +683,13 @@ static void dock_actor(struct script_machine *machine, struct script_vm *vm, con
     if (object == NULL || !object->actor.exists || name == NULL) {
         return;
     }
+    if (name[0] == '*') {
+        if (keeps_following) {
+            object->actor.dock_is_pending = 0;
+            object->actor.keeps_following = 0;
+        }
+        return;
+    }
     target = script_machine_find_object(machine, name);
     if (target == NULL || !target->actor.exists) {
         return;
