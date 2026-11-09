@@ -12,6 +12,7 @@ static struct script_machine machine;
 static struct script_route route;
 static unsigned char scene_a[SCRIPT_FILE_HEADER_SIZE + 16];
 static unsigned char scene_b[SCRIPT_FILE_HEADER_SIZE + 16];
+static unsigned char scene_c[SCRIPT_FILE_HEADER_SIZE + 16];
 static char marks[MARK_MAX][96];
 static int mark_count;
 
@@ -100,9 +101,32 @@ static void test_a_player_without_auto_play_is_never_skipped(void)
     CHECK(!was_marked("script_begun b"));
 }
 
+static void test_a_stuck_scene_with_no_steps_never_jumps_back_to_the_start_of_the_route(void)
+{
+    int tick;
+
+    memset(&route, 0, sizeof(route));
+    add_step("a", SCRIPT_ROUTE_WAIT);
+    add_step("b", SCRIPT_ROUTE_WAIT);
+    mark_count = 0;
+    script_machine_init(&machine, &outputs, SCRIPT_TIMING_REMASTER, NULL);
+    machine.route = &route;
+    machine.route_is_driving = 1;
+    CHECK(script_machine_add_source(&machine, "a", scene_a, idle_scene(scene_a), NULL));
+    CHECK(script_machine_add_source(&machine, "b", scene_b, idle_scene(scene_b), NULL));
+    CHECK(script_machine_add_source(&machine, "c", scene_c, idle_scene(scene_c), NULL));
+    CHECK(script_machine_start(&machine, "c"));
+    for (tick = 0; tick < TICKS_PAST_A_STUCK_PLAYABLE_SCENE; tick++) {
+        script_machine_tick(&machine);
+    }
+    CHECK(!was_marked("stall_moved_to a"));
+    CHECK(!was_marked("script_begun a"));
+}
+
 int main(void)
 {
     test_a_stuck_routed_scene_is_skipped_to_the_next_routed_scene();
     test_a_player_without_auto_play_is_never_skipped();
+    test_a_stuck_scene_with_no_steps_never_jumps_back_to_the_start_of_the_route();
     return test_finish("unit/stall_skip");
 }

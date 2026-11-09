@@ -1968,7 +1968,10 @@ static const char *next_scene_in_route_order(const struct script_machine *machin
         from = machine->soul.route_step;
     }
     if (from < 0) {
-        from = 0;
+        from = script_route_first_step_of_script(route, machine->scene_name);
+    }
+    if (from < 0) {
+        return NULL;
     }
     for (index = from; index < route->step_count; index++) {
         if (strcmp(route->steps[index].script, machine->scene_name) != 0 && find_source(machine, route->steps[index].script) != NULL) {
