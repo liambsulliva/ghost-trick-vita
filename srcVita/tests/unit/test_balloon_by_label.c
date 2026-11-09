@@ -3,6 +3,8 @@
 #include "script_file.h"
 #include "script_machine.h"
 #include "script_route.h"
+#include "script_input.h"
+#include "script_route_pad.h"
 #include "test_support.h"
 
 #define MARK_MAX 64
@@ -10,6 +12,20 @@
 #define TICKS_FOR_THE_SCENE_TO_START 60
 
 static struct script_machine machine;
+static struct script_route_pad route_pad;
+static struct script_input route_input;
+
+static void drive_one_tick(void)
+{
+    struct input_state frame;
+
+    if (!machine.route_is_driving) {
+        return;
+    }
+    script_route_pad_frame(&route_pad, &machine, &frame);
+    script_input_frame(&route_input, &machine, &frame);
+}
+
 static struct script_route route;
 static char marks[MARK_MAX][96];
 static int mark_count;
@@ -62,7 +78,9 @@ static void start_with_a_route_step(const char *balloon_name)
     route.step_count = 1;
     script_machine_init(&machine, &outputs, SCRIPT_TIMING_REMASTER, NULL);
     machine.route = &route;
-    machine.auto_press = SCRIPT_AUTO_PACED;
+    machine.route_is_driving = SCRIPT_AUTO_PACED != SCRIPT_AUTO_OFF;
+    script_route_pad_reset(&route_pad);
+    script_input_reset(&route_input);
     machine.stall_breaker_is_off = 1;
     CHECK(script_machine_add_source(&machine, "a", scene, SCRIPT_FILE_HEADER_SIZE + sizeof(words) / sizeof(words[0]) * 2, NULL));
     mark_count = 0;
@@ -81,6 +99,7 @@ static void run_ticks(int ticks)
     int tick;
 
     for (tick = 0; tick < ticks; tick++) {
+        drive_one_tick();
         script_machine_tick(&machine);
     }
 }

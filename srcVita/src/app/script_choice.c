@@ -299,6 +299,7 @@ void script_choice_pick(struct script_machine *machine, int index)
     if (choice->is_open && index == SCRIPT_CHOICE_CANCEL && choice->cancel_is_offered) {
         choice->is_open = 0;
         choice->control_is_up = 0;
+        choice->picks = choice->picks + 1;
         mark(machine, "choice_picked", SCRIPT_CHOICE_CANCEL_NAME);
         script_machine_send(machine, "*", "select", SCRIPT_CHOICE_CANCEL_NAME);
         return;
@@ -309,6 +310,7 @@ void script_choice_pick(struct script_machine *machine, int index)
     }
     panel = *shown;
     choice->chosen = index;
+    choice->picks = choice->picks + 1;
     choice->is_open = 0;
     choice->control_is_up = 0;
     script_flags_write_known(&machine->flags, panel.flag, 1);

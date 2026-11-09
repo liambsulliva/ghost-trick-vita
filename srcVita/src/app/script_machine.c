@@ -150,7 +150,7 @@ static int scene_is_behind_the_story(const struct script_machine *machine, const
 {
     int mark;
 
-    if (machine->route == NULL || machine->route->scene_count == 0 || machine->auto_press == SCRIPT_AUTO_OFF || !was_seen) {
+    if (machine->route == NULL || machine->route->scene_count == 0 || !machine->route_is_driving || !was_seen) {
         return 0;
     }
     mark = chapter_mark_of_source(source);
@@ -1971,7 +1971,7 @@ void script_machine_skip_ahead(struct script_machine *machine)
 
 static unsigned int stuck_after_any_ticks(const struct script_machine *machine)
 {
-    return machine->route != NULL && machine->auto_press == SCRIPT_AUTO_PACED ? STUCK_AFTER_ANY_TICKS_WHEN_A_ROUTE_DRIVES : STUCK_AFTER_ANY_TICKS;
+    return machine->route != NULL && machine->route_is_driving ? STUCK_AFTER_ANY_TICKS_WHEN_A_ROUTE_DRIVES : STUCK_AFTER_ANY_TICKS;
 }
 
 static void push_when_stuck(struct script_machine *machine)
@@ -1986,7 +1986,7 @@ static void push_when_stuck(struct script_machine *machine)
         return;
     }
     if (game_waits_on_a_press_that_works(machine)) {
-        if (machine->auto_press == SCRIPT_AUTO_OFF) {
+        if (!machine->route_is_driving) {
             machine->last_new_site_tick = machine->tick;
             machine->last_timer_tick = machine->tick;
             return;
@@ -1999,7 +1999,7 @@ static void push_when_stuck(struct script_machine *machine)
     if (something_is_running_to_a_known_end(machine)) {
         machine->last_timer_tick = machine->tick;
     }
-    if (machine->auto_press != SCRIPT_AUTO_FAST && script_soul_world_is_playable(machine) && quiet_ticks < (machine->auto_press == SCRIPT_AUTO_PACED ? STUCK_AFTER_TICKS_WHEN_PLAYING_AT_A_HUMAN_PACE : STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT)) {
+    if (script_soul_world_is_playable(machine) && quiet_ticks < (machine->route_is_driving ? STUCK_AFTER_TICKS_WHEN_PLAYING_AT_A_HUMAN_PACE : STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT)) {
         return;
     }
     if (quiet_ticks < stuck_after_any_ticks(machine) && (quiet_ticks < STUCK_AFTER_QUIET_TICKS || machine->tick - machine->last_timer_tick < STUCK_AFTER_QUIET_TICKS)) {
@@ -2044,7 +2044,7 @@ static const char *scene_where_the_story_should_be(const struct script_machine *
 
 static int scene_has_run_too_long(const struct script_machine *machine)
 {
-    if (machine->stall_breaker_is_off || machine->route == NULL || machine->route->scene_most_ticks <= 0 || machine->auto_press == SCRIPT_AUTO_OFF) {
+    if (machine->stall_breaker_is_off || machine->route == NULL || machine->route->scene_most_ticks <= 0 || !machine->route_is_driving) {
         return 0;
     }
     if (script_change_is_pending(machine) || machine->stop_is_requested) {

@@ -113,7 +113,7 @@ static void touch_dragged(struct script_input *input, struct script_machine *mac
 
 static void send_touch(struct script_input *input, struct script_machine *machine, const struct input_state *frame)
 {
-    if (machine->auto_press != SCRIPT_AUTO_OFF) {
+    if (machine->auto_press != SCRIPT_AUTO_OFF || machine->route_is_driving) {
         input->touch_was_down = 0;
         return;
     }

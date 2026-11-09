@@ -6,6 +6,19 @@ Chapter 1's route (steps 0 to 89 of `tools/assets/game.json`) is the model: it p
 
 `{script, action, object, pace, footage_s, wait}`, plus `slot` (an object's second core is slot 1) or `place` (a phone ride's destination). The player runs a script's steps from that script's first step, in order, and stops at the first step that belongs to another script. Each script's steps are therefore one block, in footage order, and the blocks follow the order the scripts are visited.
 
+## How a step is played
+
+Auto-play plays a step only through the inputs a player has (`src/app/script_route_pad.c`). Each tick the pad builds a Vita pad frame that goes through the same code as the real pad (`src/app/script_input.c`), with the game in player mode:
+- `move`: pushes the analog stick from the soul's tip toward the next core of a chain whose hops fit the active ghost's reach.
+- `trick`: CROSS once the Trick pill is up. `ghost_on`: L once the Ghost pill is up. `ghost_off`: CIRCLE once the Back pill is up.
+- `touch`: CROSS. `tap_balloon`: SQUARE or TRIANGLE by the balloon's side. `character`: TRIANGLE once a character pill is up.
+- `camera`: holds the d-pad right while the camera tutorial is on.
+- `choose`: moves the choice marker with the d-pad, then presses CROSS.
+- Talk and narration pages get CROSS after 120 ticks of reading, and the game-over menu after 60.
+- `phone_call` and `dead_talk` still act inside the game and log `route_no_player_input` until their player inputs are ported.
+
+A step that a player could not do fails after 1800 ticks; nothing teleports. The honest count is a replay with `--no-stall-breaker`.
+
 ## The rules Chapter 1 follows
 
 1. **Gate each beat on the story, not on idleness.** The first step of every puzzle beat waits on the act that opens that beat: the game controller's act (`act:game:gameAct030 & flag:3 & playable`, step 2) or the act an object enters after the previous trick (`act:tire:tireAct010 & usable:tire & free`, step 28; `act:bed:bedAct000`, step 15). `free & no_talk` alone holds in short gaps before a cut scene starts and fires the step too early.

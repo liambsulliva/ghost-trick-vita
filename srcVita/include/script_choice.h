@@ -33,6 +33,7 @@ struct script_choice {
     int chosen;
     int cursor;
     int cancel_is_pending;
+    int picks;
     unsigned int opened_at;
 };
 

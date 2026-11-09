@@ -2,13 +2,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "script_input.h"
 #include "script_machine.h"
+#include "script_route_pad.h"
 #include "script_tables.h"
 #include "script_flags.h"
 
 #define FILE_NAME_MAX 512
 #define TEXT_BYTES_MAX (1024 * 1024)
 
+static struct script_route_pad route_pad;
+static struct script_input route_input;
 static FILE *rows_output;
 static FILE *cues_output;
 static struct script_machine machine;
@@ -543,8 +547,11 @@ int main(int argument_count, char **arguments)
         return 1;
     }
     script_machine_init(&machine, &recording_outputs, timing, NULL);
-    machine.auto_press = auto_press;
+    machine.auto_press = SCRIPT_AUTO_OFF;
+    machine.route_is_driving = auto_press != SCRIPT_AUTO_OFF;
     machine.stall_breaker_is_off = stall_breaker_is_off;
+    script_route_pad_reset(&route_pad);
+    script_input_reset(&route_input);
     add_every_script_of_the_chain(folder);
     read_room_bounds(folder);
     read_talk_book(folder);
@@ -581,6 +588,12 @@ int main(int argument_count, char **arguments)
             if (talk_close_ticks[press] == machine.tick) {
                 script_talk_close_now(&machine);
             }
+        }
+        if (machine.route_is_driving) {
+            struct input_state frame;
+
+            script_route_pad_frame(&route_pad, &machine, &frame);
+            script_input_frame(&route_input, &machine, &frame);
         }
         script_machine_tick(&machine);
     }

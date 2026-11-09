@@ -16,6 +16,7 @@
 #include "scene_stage.h"
 #include "script_bridge.h"
 #include "script_input.h"
+#include "script_route_pad.h"
 #include "script_machine.h"
 #include "scene_view.h"
 #include "read_ahead.h"
@@ -73,6 +74,8 @@ struct script_data {
 };
 
 static struct script_input pad_input;
+static struct script_input route_input;
+static struct script_route_pad route_pad;
 static char folder[FILE_PATH_MAX];
 static char entry[ASSET_NAME_MAX];
 static struct script_data *data;
@@ -393,12 +396,10 @@ static void request_audio(void)
     }
 }
 
-static enum script_auto_play wanted_auto_play(void)
+static void apply_auto_play(void)
 {
-    if (auto_play_is_on) {
-        return SCRIPT_AUTO_PACED;
-    }
-    return ticks_per_frame_when_fast > 0 ? SCRIPT_AUTO_FAST : SCRIPT_AUTO_OFF;
+    data->machine.auto_press = SCRIPT_AUTO_OFF;
+    data->machine.route_is_driving = auto_play_is_on;
 }
 
 static void begin_loading_animations(void)
@@ -411,7 +412,7 @@ static void begin_loading_animations(void)
     if (data->tables.entry_name[0] != '\0') {
         snprintf(entry, sizeof(entry), "%s", data->tables.entry_name);
     }
-    data->machine.auto_press = wanted_auto_play();
+    apply_auto_play();
     data->machine.route = data->tables.route.step_count > 0 ? &data->tables.route : NULL;
     memcpy(data->machine.room_bounds, data->tables.room_bounds, sizeof(data->machine.room_bounds));
     time_jump = script_tables_find_movie(&data->tables, "time_jump");
@@ -544,6 +545,12 @@ static int run_one_tick(void)
     unsigned long long tick_us;
 
     started_us = clock_now_us();
+    if (data->machine.route_is_driving) {
+        struct input_state frame;
+
+        script_route_pad_frame(&route_pad, &data->machine, &frame);
+        script_input_frame(&route_input, &data->machine, &frame);
+    }
     script_machine_tick(&data->machine);
     tick_us = clock_now_us() - started_us;
     if (tick_us > longest_tick_us) {
@@ -574,7 +581,7 @@ static void stop_at_the_run_until_point(void)
     texture_cache_drop_waiting_reads();
     run_until_kind[0] = '\0';
     ticks_per_frame_when_fast = 0;
-    data->machine.auto_press = wanted_auto_play();
+    apply_auto_play();
     audio_speed_out_of_256 = PLAYBACK_SPEED_NORMAL;
     playback_speed_set(PLAYBACK_SPEED_NORMAL);
     is_paused = 1;
@@ -899,7 +906,7 @@ void script_player_set_auto_play(int is_on)
 {
     auto_play_is_on = is_on;
     if (data != NULL) {
-        data->machine.auto_press = wanted_auto_play();
+        apply_auto_play();
     }
     run_log_write("script auto_play on=%d", is_on);
 }
@@ -911,7 +918,7 @@ void script_player_set_fast_forward(int ticks_per_frame)
     }
     ticks_per_frame_when_fast = ticks_per_frame;
     if (data != NULL) {
-        data->machine.auto_press = wanted_auto_play();
+        apply_auto_play();
     }
     audio_speed_out_of_256 = PLAYBACK_SPEED_NORMAL;
     playback_speed_set(PLAYBACK_SPEED_NORMAL);

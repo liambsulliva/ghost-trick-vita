@@ -124,10 +124,34 @@ static void test_a_touch_drag_on_the_screen_moves_the_soul(void)
     CHECK_INT(machine.soul.active_object, 1);
 }
 
+static void test_the_d_pad_scrolls_the_camera_tutorial_while_its_talk_is_open(void)
+{
+    struct input_state frame;
+    int camera_before;
+    int tick;
+
+    start();
+    machine.object_count = 1;
+    place_core(0, "body", BODY_X);
+    script_soul_set_first_core(&machine, 0, 0);
+    script_soul_run_command(&machine, "FreeCamera", "TutorialStart");
+    machine.pause_bit = 1;
+    machine.talk_is_open = 1;
+    camera_before = machine.camera_x;
+    memset(&frame, 0, sizeof(frame));
+    frame.held = INPUT_RIGHT;
+    for (tick = 0; tick < 10; tick++) {
+        script_input_frame(&pad, &machine, &frame);
+        script_soul_step_before_tasks(&machine);
+    }
+    CHECK(machine.camera_x > camera_before);
+}
+
 int main(void)
 {
     test_the_d_pad_and_cross_choose_a_panel();
     test_circle_cancels_an_open_choice();
     test_a_touch_drag_on_the_screen_moves_the_soul();
+    test_the_d_pad_scrolls_the_camera_tutorial_while_its_talk_is_open();
     return test_finish("unit/script_input");
 }

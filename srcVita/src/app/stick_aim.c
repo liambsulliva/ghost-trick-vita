@@ -4,7 +4,6 @@
 #define STICK_CENTRE 128.0f
 #define STICK_HALF_RANGE 127.0f
 #define STICK_DEAD_ZONE 0.25f
-#define STICK_AXIS_FOR_FULL_SPEED 0.75f
 
 void stick_aim_from_raw(int raw_x, int raw_y, float *stick_x, float *stick_y)
 {
