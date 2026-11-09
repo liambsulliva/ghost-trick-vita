@@ -3981,6 +3981,14 @@
       },
       {
         "script": "st03-st03_game000_Expand",
+        "action": "tap_balloon",
+        "object": "memocatch3",
+        "pace": "normal",
+        "footage_s": 7516.0,
+        "wait": "free & balloon:memocatch3"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
         "action": "ghost_on",
         "object": "tel",
         "pace": "normal",
@@ -4026,14 +4034,6 @@
         "pace": "normal",
         "footage_s": 7636.5,
         "wait": "view & usable:tel"
-      },
-      {
-        "script": "st03-st03_game000_Expand",
-        "action": "ghost_off",
-        "object": "tel",
-        "pace": "quick",
-        "footage_s": 7638.0,
-        "wait": "view & core:tel"
       },
       {
         "script": "st03-st03_game000_Expand",
