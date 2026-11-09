@@ -4554,6 +4554,143 @@
         "wait": "core:up_hook & playable & no_talk"
       },
       {
+        "script": "st01-st01_game022_Expand",
+        "action": "ghost_on",
+        "object": "up_hook",
+        "pace": "normal",
+        "footage_s": 6840.75,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "move",
+        "object": "up_container",
+        "pace": "normal",
+        "footage_s": 6841.75,
+        "wait": "view & usable:up_container"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "move",
+        "object": "md_kabakasa",
+        "pace": "normal",
+        "footage_s": 6843.0,
+        "wait": "view & usable:md_kabakasa"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "ghost_off",
+        "object": "md_kabakasa",
+        "pace": "quick",
+        "footage_s": 6843.75,
+        "wait": "view & core:md_kabakasa"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "trick",
+        "object": "md_kabakasa",
+        "pace": "normal",
+        "footage_s": 6844.75,
+        "wait": "core:md_kabakasa & playable & no_talk"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "ghost_on",
+        "object": "md_kabakasa",
+        "pace": "normal",
+        "footage_s": 6852.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "move",
+        "object": "dn_mannequin",
+        "pace": "normal",
+        "footage_s": 6854.75,
+        "wait": "view & usable:dn_mannequin"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "move",
+        "object": "dn_tire",
+        "pace": "normal",
+        "footage_s": 6855.75,
+        "wait": "view & usable:dn_tire"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "move",
+        "object": "dn_mixer",
+        "pace": "normal",
+        "footage_s": 6857.25,
+        "wait": "view & usable:dn_mixer"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "move",
+        "object": "md_flag",
+        "pace": "normal",
+        "footage_s": 6858.5,
+        "wait": "view & usable:md_flag"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "move",
+        "object": "dn_bed",
+        "pace": "normal",
+        "footage_s": 6860.25,
+        "wait": "view & usable:dn_bed"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "move",
+        "object": "dn_hyousiki",
+        "pace": "normal",
+        "footage_s": 6861.25,
+        "wait": "view & usable:dn_hyousiki"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "move",
+        "object": "dn_corn",
+        "pace": "normal",
+        "footage_s": 6862.25,
+        "wait": "view & usable:dn_corn"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "move",
+        "object": "dn_kasa",
+        "pace": "normal",
+        "footage_s": 6863.0,
+        "wait": "view & usable:dn_kasa"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "move",
+        "object": "dn_telephone",
+        "pace": "normal",
+        "footage_s": 6863.75,
+        "wait": "view & usable:dn_telephone"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "trick",
+        "object": "dn_telephone",
+        "pace": "normal",
+        "footage_s": 6900.5,
+        "wait": "core:dn_telephone & playable & no_talk"
+      },
+      {
+        "script": "st01-st01_game022_Expand",
+        "action": "phone_call",
+        "object": "dn_telephone",
+        "pace": "normal",
+        "footage_s": 6906.0,
+        "wait": "core:dn_telephone",
+        "place": 2
+      },
+      {
         "script": "st02-st02_game010_Expand",
         "action": "ghost_on",
         "object": "ltecho_sv",
