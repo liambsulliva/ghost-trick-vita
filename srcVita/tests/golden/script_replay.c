@@ -198,7 +198,22 @@ static void note_flag_changes(void)
         }
     }
 }
-static void on_marked(const char *what, const char *name) { CUE("mark %s %s", what, name); if (marks_to_stdout) { printf("mark %s %s\n", what, name); } save_state_when_due(what, name); if (strcmp(what, "route_step_done") == 0) { note_flag_changes(); } }
+static void print_cores(void)
+{
+    int index;
+
+    for (index = 0; index < machine.object_count; index++) {
+        const struct script_actor *actor;
+
+        actor = &machine.objects[index].actor;
+        if (!actor->has_core && !actor->has_second_core) {
+            continue;
+        }
+        printf("core %s at %d,%d second %d,%d usable %d%d visible %d hidden %d%d dead %d\n", machine.objects[index].name, actor->x + actor->core_x, actor->y + actor->core_y, actor->has_second_core ? actor->x + actor->second_core_x : 0, actor->has_second_core ? actor->y + actor->second_core_y : 0, actor->has_core && !(actor->disabled_cores & 1), actor->has_second_core && !(actor->disabled_cores & 2), actor->is_visible, actor->is_hard_hidden, actor->is_frozen_and_hidden, machine.objects[index].is_dead);
+    }
+}
+
+static void on_marked(const char *what, const char *name) { CUE("mark %s %s", what, name); if (marks_to_stdout) { printf("mark %s %s\n", what, name); if (strcmp(what, "route_hop_beyond_reach") == 0) { print_cores(); } } save_state_when_due(what, name); if (strcmp(what, "route_step_done") == 0) { note_flag_changes(); } }
 static void on_talk(const struct script_talk_view *view) { CUE("talk slide=%.2f alpha=%.2f glyphs=%d cursor=%d open=%d", view->slide, view->text_alpha, view->glyphs_shown, view->cursor_is_on, view->page != NULL); }
 static void on_effect_deleted(const char *name) { CUE("effect_deleted %s", name); }
 static void on_screen_filter(int mode) { CUE("screen_filter %d", mode); }
@@ -631,6 +646,9 @@ int main(int argument_count, char **arguments)
             script_input_frame(&route_input, &machine, &frame);
         }
         script_machine_tick(&machine);
+    }
+    if (marks_to_stdout) {
+        print_cores();
     }
     printf("ended tick=%u finished=%d fetches=%u pushes=%u\n", machine.tick, machine.is_finished, machine.fetch_total, machine.push_count);
     printf("state talk=%d open=%d pause=%d mode=%d tutorial=%d soul_keeps=%d objects=%d quiet=%u\n", (int)machine.talk.phase, machine.talk_is_open, machine.pause_bit, machine.mode_byte, machine.soul.tutorial_mode, machine.soul_state_keeps_pause, machine.object_count, machine.tick - machine.last_new_site_tick);

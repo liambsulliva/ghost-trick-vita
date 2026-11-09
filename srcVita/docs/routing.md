@@ -17,7 +17,7 @@ Auto-play plays a step only through the inputs a player has (`src/app/script_rou
 - Talk and narration pages get CROSS after 120 ticks of reading, and the game-over menu after 60.
 - `phone_call` and `dead_talk` still act inside the game and log `route_no_player_input` until their player inputs are ported.
 
-A step that a player could not do fails after 1800 ticks; nothing teleports. The honest count is a replay with `--no-stall-breaker`.
+A step that a player could not do fails after 1800 ticks; nothing teleports. The honest count is a replay with `--no-stall-breaker`. With `--marks` the replay prints every object's core position and whether it can be used, at each `route_hop_beyond_reach` and at the end of the run, so a chain of cores within the ghost's reach can be read off directly.
 
 ## The rules Chapter 1 follows
 
