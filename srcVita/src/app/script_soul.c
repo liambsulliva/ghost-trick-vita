@@ -1571,6 +1571,7 @@ static void take_ghost_button(struct script_machine *machine)
     if (soul->is_on && !soul->view_demo_is_on && soul->tutorial_mode == TUTORIAL_NONE) {
         if (pill_answers_a_press(machine, SCRIPT_PILL_BACK)) {
             script_pills_press(machine, SCRIPT_PILL_BACK, PILL_HOLD_AFTER_VIEW_CHANGE);
+            machine->mode_byte = NORMAL_PLAY_MODE;
             set_soul_view(machine, 0);
         }
         return;

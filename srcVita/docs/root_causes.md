@@ -686,6 +686,12 @@ Op 0x17 deletes objects, and scripts use it 860 times in 50 scripts, mostly to c
 
 Guard: op 0x17 marks its targets deleted: they lose their actor (no drawing, no core), their queued messages and their updates, and name lookups and sends pass them over. `tests/unit/test_object_delete.c` checks the partial and exact names and the lookup. From st14_game050's entry the Control Panel, arm and telephone beats now play; the honest whole replay plays the same 387 steps.
 
+### 102. A ghost view left with Back kept demo mode, so the Trick pill never came back
+
+Native leaves the ghost view with Back in the view's update (`func_02032914`): when the Back pill is pressed (pad bits 0xa000, pill 2 enabled) it switches the main state to `pGameMainReturnNormal` (`data_020cd7d0`) and sets the mode byte to 3 with `func_0201192c`, whatever mode opened the view. Normal play's update (`func_0203696c`, the `pGameMainNormalMode` state) then offers the Trick pill. The port's Back press only closed the view, so a view a script opened after op 0x68 (demo mode) left the game in mode 2, where the pill board shows only the Ghost pill. In Chapter 6's floor lift (st02_game024) motorAct010 asks for demo mode, opens the view, and the player hops from the Step Ladder through the Kettle to the Telephone and presses Back; the footage then shows the Ghost and Trick pills and the Dial at 2:25:52, but the port never offered the Trick pill.
+
+Guard: the Back press sets the mode byte to normal play before it closes the view. `tests/unit/test_back_pill.c` leaves a view opened in demo mode with Back and checks the game is back in mode 3. From st02_game024's entry the lift block now plays the Dial and the phone call and rides on to st03_root.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
