@@ -4076,6 +4076,30 @@
         "wait": "timeleap_armed"
       },
       {
+        "script": "st02-st02_game022_Expand",
+        "action": "tap_balloon",
+        "object": "balloon:click",
+        "pace": "normal",
+        "footage_s": 7823.5,
+        "wait": "balloon:balloon:click"
+      },
+      {
+        "script": "st02-st02_game022_Expand",
+        "action": "ghost_on",
+        "object": "lamp",
+        "pace": "normal",
+        "footage_s": 7826.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game022_Expand",
+        "action": "ghost_off",
+        "object": "lamp",
+        "pace": "quick",
+        "footage_s": 7829.5,
+        "wait": "view"
+      },
+      {
         "script": "st02-st02_game023_Expand",
         "action": "ghost_on",
         "object": "linne_s",
