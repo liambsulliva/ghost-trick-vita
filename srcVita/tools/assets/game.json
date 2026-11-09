@@ -6913,7 +6913,7 @@
         "action": "choose",
         "object": "inochi",
         "pace": "normal",
-        "footage_s": 28500.0,
+        "footage_s": 28652.0,
         "wait": "choice"
       },
       {
@@ -6921,15 +6921,7 @@
         "action": "choose",
         "object": "jikan",
         "pace": "normal",
-        "footage_s": 28560.0,
-        "wait": "choice"
-      },
-      {
-        "script": "st14-st14_game050_Expand",
-        "action": "choose",
-        "object": "torihiki",
-        "pace": "normal",
-        "footage_s": 28620.0,
+        "footage_s": 28772.0,
         "wait": "choice"
       },
       {
@@ -6937,7 +6929,15 @@
         "action": "choose",
         "object": "mujun",
         "pace": "normal",
-        "footage_s": 28900.0,
+        "footage_s": 28818.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st14-st14_game050_Expand",
+        "action": "choose",
+        "object": "torihiki",
+        "pace": "normal",
+        "footage_s": 28836.0,
         "wait": "choice"
       },
       {
@@ -6945,7 +6945,7 @@
         "action": "choose",
         "object": "target",
         "pace": "normal",
-        "footage_s": 28980.0,
+        "footage_s": 28975.0,
         "wait": "choice"
       },
       {
@@ -6953,23 +6953,87 @@
         "action": "choose",
         "object": "cancel",
         "pace": "normal",
-        "footage_s": 28990.0,
+        "footage_s": 29146.5,
         "wait": "choice"
+      },
+      {
+        "script": "st14-st14_game050_Expand",
+        "action": "ghost_on",
+        "object": "hatchi_d",
+        "pace": "normal",
+        "footage_s": 29336.0,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st14-st14_game050_Expand",
+        "action": "move",
+        "object": "lamp",
+        "pace": "normal",
+        "footage_s": 29338.25,
+        "wait": "view & usable:lamp"
+      },
+      {
+        "script": "st14-st14_game050_Expand",
+        "action": "move",
+        "object": "switch",
+        "pace": "normal",
+        "footage_s": 29339.25,
+        "wait": "view & usable:switch"
+      },
+      {
+        "script": "st14-st14_game050_Expand",
+        "action": "ghost_off",
+        "object": "switch",
+        "pace": "quick",
+        "footage_s": 29339.75,
+        "wait": "view & core:switch"
+      },
+      {
+        "script": "st14-st14_game050_Expand",
+        "action": "trick",
+        "object": "switch",
+        "pace": "quick",
+        "footage_s": 29340.75,
+        "wait": "core:switch & playable"
+      },
+      {
+        "script": "st14-st14_game050_Expand",
+        "action": "ghost_on",
+        "object": "switch",
+        "pace": "normal",
+        "footage_s": 29348.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st14-st14_game050_Expand",
+        "action": "move",
+        "object": "hand",
+        "pace": "normal",
+        "footage_s": 29352.5,
+        "wait": "view & usable:hand"
       },
       {
         "script": "st14-st14_game050_Expand",
         "action": "move",
         "object": "lan",
         "pace": "normal",
-        "footage_s": 28991.0,
-        "wait": "playable & usable:lan"
+        "footage_s": 29353.5,
+        "wait": "view & usable:lan"
+      },
+      {
+        "script": "st14-st14_game050_Expand",
+        "action": "ghost_off",
+        "object": "lan",
+        "pace": "quick",
+        "footage_s": 29355.0,
+        "wait": "view & core:lan"
       },
       {
         "script": "st14-st14_game050_Expand",
         "action": "trick",
         "object": "lan",
         "pace": "quick",
-        "footage_s": 28992.0,
+        "footage_s": 29356.0,
         "wait": "core:lan & playable"
       },
       {
@@ -6977,7 +7041,7 @@
         "action": "choose",
         "object": "move",
         "pace": "normal",
-        "footage_s": 28993.0,
+        "footage_s": 29360.5,
         "wait": "choice"
       },
       {
