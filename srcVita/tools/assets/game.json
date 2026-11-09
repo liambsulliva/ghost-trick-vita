@@ -3929,93 +3929,116 @@
         "pace": "normal",
         "footage_s": 7298.5,
         "wait": "playable",
-        "place": 2
+        "place": 4
       },
       {
-        "script": "st02-st02_game100_Expand",
-        "action": "ghost_on",
-        "object": "book",
+        "script": "st03-st03_game000_Expand",
+        "action": "trick",
+        "object": "tel",
         "pace": "normal",
-        "footage_s": 7518.5,
+        "footage_s": 7411.0,
+        "wait": "core:tel & playable"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "ghost_on",
+        "object": "tel",
+        "pace": "normal",
+        "footage_s": 7417.0,
         "wait": "free & no_talk"
       },
       {
-        "script": "st02-st02_game100_Expand",
+        "script": "st03-st03_game000_Expand",
         "action": "move",
-        "object": "book",
+        "object": "memo1",
+        "pace": "normal",
+        "footage_s": 7419.0,
+        "wait": "view & usable:memo1"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "ghost_off",
+        "object": "memo1",
+        "pace": "quick",
+        "footage_s": 7420.0,
+        "wait": "view & core:memo1"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "trick",
+        "object": "memo1",
+        "pace": "quick",
+        "footage_s": 7421.0,
+        "wait": "core:memo1 & playable"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "trick",
+        "object": "memo1",
+        "pace": "normal",
+        "footage_s": 7514.0,
+        "wait": "core:memo1 & playable"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "ghost_on",
+        "object": "tel",
+        "pace": "normal",
+        "footage_s": 7517.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
+        "action": "move",
+        "object": "memo1",
         "pace": "normal",
         "footage_s": 7519.5,
-        "wait": "view & usable:book"
+        "wait": "view & usable:memo1"
       },
       {
-        "script": "st02-st02_game100_Expand",
+        "script": "st03-st03_game000_Expand",
         "action": "ghost_off",
-        "object": "book",
+        "object": "memo1",
         "pace": "quick",
         "footage_s": 7523.0,
-        "wait": "view & core:book"
+        "wait": "view & core:memo1"
       },
       {
-        "script": "st02-st02_game100_Expand",
+        "script": "st03-st03_game000_Expand",
+        "action": "trick",
+        "object": "memo1",
+        "pace": "normal",
+        "footage_s": 7634.0,
+        "wait": "core:memo1 & playable"
+      },
+      {
+        "script": "st03-st03_game000_Expand",
         "action": "ghost_on",
-        "object": "telephone",
-        "pace": "normal",
-        "footage_s": 7578.75,
-        "wait": "free & no_talk"
-      },
-      {
-        "script": "st02-st02_game100_Expand",
-        "action": "move",
-        "object": "telephone",
-        "pace": "normal",
-        "footage_s": 7579.5,
-        "wait": "view & usable:telephone"
-      },
-      {
-        "script": "st02-st02_game100_Expand",
-        "action": "ghost_off",
-        "object": "telephone",
-        "pace": "quick",
-        "footage_s": 7580.5,
-        "wait": "view & core:telephone"
-      },
-      {
-        "script": "st02-st02_game100_Expand",
-        "action": "phone_call",
-        "object": "telephone",
-        "pace": "normal",
-        "footage_s": 7582.0,
-        "wait": "playable",
-        "place": 2
-      },
-      {
-        "script": "st02-st02_game100_Expand",
-        "action": "ghost_on",
-        "object": "telephone",
+        "object": "memo1",
         "pace": "normal",
         "footage_s": 7636.0,
         "wait": "free & no_talk"
       },
       {
-        "script": "st02-st02_game100_Expand",
+        "script": "st03-st03_game000_Expand",
         "action": "move",
-        "object": "telephone",
+        "object": "tel",
         "pace": "normal",
         "footage_s": 7636.5,
-        "wait": "view & usable:telephone"
+        "wait": "view & usable:tel"
       },
       {
-        "script": "st02-st02_game100_Expand",
+        "script": "st03-st03_game000_Expand",
         "action": "ghost_off",
-        "object": "telephone",
+        "object": "tel",
         "pace": "quick",
         "footage_s": 7638.0,
-        "wait": "view & core:telephone"
+        "wait": "view & core:tel"
       },
       {
-        "script": "st02-st02_game100_Expand",
+        "script": "st03-st03_game000_Expand",
         "action": "phone_call",
-        "object": "telephone",
+        "object": "tel",
         "pace": "normal",
         "footage_s": 7639.5,
         "wait": "playable",
