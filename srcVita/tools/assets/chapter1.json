@@ -1101,7 +1101,7 @@
     "steps": [
       {
         "script": "st01-st01_game000_Expand",
-        "action": "touch",
+        "action": "wait",
         "object": "cicel",
         "pace": "normal",
         "footage_s": 139.5,
@@ -1113,7 +1113,7 @@
         "object": "shadanki",
         "pace": "normal",
         "footage_s": 142.5,
-        "wait": "tutorial:touched"
+        "wait": "tutorial:touch"
       },
       {
         "script": "st01-st01_game000_Expand",

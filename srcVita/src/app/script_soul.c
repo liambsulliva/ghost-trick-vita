@@ -13,8 +13,6 @@
 #define FIRST_CORE_DISABLED_BIT 1
 #define SECOND_CORE_DISABLED_BIT 2
 #define ROUTE_ACTION_MOST_TICKS 1800u
-#define SOUL_REACH_DS_PIXELS 112.0f
-#define ROUTE_HOP_MOST_DS_PIXELS (SOUL_REACH_DS_PIXELS + SOUL_TIP_PICKUP_NEAR)
 #define SOUL_TOUCH_GRAB_DS_PIXELS 16.0f
 #define SOUL_PEN_DEAD_ZONE_DS_PIXELS 3.0f
 #define SOUL_JUMP_SOUND_KIND 16
@@ -123,8 +121,6 @@ static int object_can_be_a_core(const struct script_object *object, int slot)
     return actor->has_core && !(actor->disabled_cores & FIRST_CORE_DISABLED_BIT);
 }
 
-static void player_moved_in_tutorial(struct script_machine *machine);
-
 static void core_position(const struct script_machine *machine, int object_index, int slot, float *x, float *y)
 {
     const struct script_actor *actor;
@@ -172,7 +168,7 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
             script_machine_send(machine, "*", "SYSTEM", soul->active_ghost == SCRIPT_GHOST_MISSILE ? "SV_CHGCORE_MISSILE" : "SV_CHGCORE_CICEL");
         }
     }
-    player_moved_in_tutorial(machine);
+    soul->touch_drags_the_tip = 0;
 }
 
 static int stream_ticks_for_distance(float distance)
@@ -550,7 +546,9 @@ static int aim_the_chain_from_input(struct script_machine *machine)
 
     soul = &machine->soul;
     chain = &soul->chain;
-    if (soul->touch_is_down && !soul->touch_was_down) {
+    if (!soul->touch_is_down) {
+        soul->touch_drags_the_tip = 0;
+    } else if (!soul->touch_drags_the_tip) {
         float grab_x;
         float grab_y;
 
@@ -560,21 +558,20 @@ static int aim_the_chain_from_input(struct script_machine *machine)
         soul->pen_x = soul->touch_x;
         soul->pen_y = soul->touch_y;
     }
-    soul->touch_was_down = soul->touch_is_down;
     if (soul->touch_is_down && soul->touch_drags_the_tip) {
         if (fabsf(soul->touch_x - soul->pen_x) >= SOUL_PEN_DEAD_ZONE_DS_PIXELS || fabsf(soul->touch_y - soul->pen_y) >= SOUL_PEN_DEAD_ZONE_DS_PIXELS) {
             soul->pen_x = soul->touch_x;
             soul->pen_y = soul->touch_y;
         }
-        soul_chain_aim(chain, soul->pen_x, soul->pen_y, SOUL_REACH_DS_PIXELS);
+        soul_chain_aim(chain, soul->pen_x, soul->pen_y, script_soul_reach(machine));
         return 1;
     }
     if (soul->tip_is_aimed) {
-        soul_chain_aim(chain, chain->x[SOUL_CHAIN_TIP] + soul->tip_aim_x * SOUL_TIP_DS_PIXELS_PER_TICK, chain->y[SOUL_CHAIN_TIP] + soul->tip_aim_y * SOUL_TIP_DS_PIXELS_PER_TICK, SOUL_REACH_DS_PIXELS);
+        soul_chain_aim(chain, chain->x[SOUL_CHAIN_TIP] + soul->tip_aim_x * SOUL_TIP_DS_PIXELS_PER_TICK, chain->y[SOUL_CHAIN_TIP] + soul->tip_aim_y * SOUL_TIP_DS_PIXELS_PER_TICK, script_soul_reach(machine));
         return 1;
     }
     if (soul->held_x != 0.0f || soul->held_y != 0.0f) {
-        soul_chain_aim(chain, chain->x[SOUL_CHAIN_TIP] + soul->held_x * SOUL_TIP_DS_PIXELS_PER_TICK, chain->y[SOUL_CHAIN_TIP] + soul->held_y * SOUL_TIP_DS_PIXELS_PER_TICK, SOUL_REACH_DS_PIXELS);
+        soul_chain_aim(chain, chain->x[SOUL_CHAIN_TIP] + soul->held_x * SOUL_TIP_DS_PIXELS_PER_TICK, chain->y[SOUL_CHAIN_TIP] + soul->held_y * SOUL_TIP_DS_PIXELS_PER_TICK, script_soul_reach(machine));
         return 1;
     }
     return 0;
@@ -611,7 +608,7 @@ static void move_soul_tip(struct script_machine *machine)
         soul_chain_hold_root(&soul->chain, root_x, root_y);
     }
     input_is_held = 0;
-    if (soul->drag_ticks_left > 0 || (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent)) {
+    if (soul->drag_ticks_left > 0) {
         if (soul->chain.state == SOUL_CHAIN_AIMING) {
             soul_chain_retract(&soul->chain);
         }
@@ -1081,8 +1078,53 @@ static void run_button_command(struct script_machine *machine, const char *arg)
     }
 }
 
+float script_soul_reach(const struct script_machine *machine)
+{
+    int ghost;
+
+    ghost = machine->soul.active_ghost;
+    if (ghost >= 0 && ghost < SCRIPT_GHOST_COUNT && machine->soul.ghost_hand_is_long[ghost]) {
+        return SCRIPT_LONG_HAND_REACH_DS_PIXELS;
+    }
+    if (ghost == SCRIPT_GHOST_MISSILE) {
+        return SCRIPT_MISSILE_REACH_DS_PIXELS;
+    }
+    if (ghost == SCRIPT_GHOST_BOSS) {
+        return SCRIPT_BOSS_REACH_DS_PIXELS;
+    }
+    return SCRIPT_CICEL_REACH_DS_PIXELS;
+}
+
+static int set_long_hand(struct script_machine *machine, const char *arg)
+{
+    static const struct {
+        const char *command;
+        int ghost;
+        int is_long;
+    } long_hand_commands[] = {
+        { "MissileHandLong:On", SCRIPT_GHOST_MISSILE, 1 },
+        { "MissileHandLong:Off", SCRIPT_GHOST_MISSILE, 0 },
+        { "CicelHandLong:On", SCRIPT_GHOST_CICEL, 1 },
+        { "CicelHandLong:Off", SCRIPT_GHOST_CICEL, 0 },
+        { "BossHandLong:On", SCRIPT_GHOST_BOSS, 1 },
+        { "BossHandLong:Off", SCRIPT_GHOST_BOSS, 0 },
+    };
+    unsigned int index;
+
+    for (index = 0; index < sizeof(long_hand_commands) / sizeof(long_hand_commands[0]); index++) {
+        if (strcmp(arg, long_hand_commands[index].command) == 0) {
+            machine->soul.ghost_hand_is_long[long_hand_commands[index].ghost] = long_hand_commands[index].is_long;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void run_exception_command(struct script_machine *machine, const char *arg)
 {
+    if (set_long_hand(machine, arg)) {
+        return;
+    }
     if (strcmp(arg, "CoreHoseiOff") == 0) {
         machine->soul.camera_follow_is_off = 1;
     } else if (strcmp(arg, "CoreHoseiOn") == 0) {
@@ -1272,19 +1314,34 @@ void script_soul_run_command(struct script_machine *machine, const char *verb, c
     }
 }
 
-static void player_moved_in_tutorial(struct script_machine *machine)
+static int tutorial_input_is_held(const struct script_machine *machine)
 {
-    struct script_soul *soul;
+    const struct script_soul *soul;
 
     soul = &machine->soul;
+    return soul->tip_is_out || soul->held_x != 0.0f || soul->held_y != 0.0f;
+}
+
+static void send_tutorial_input(struct script_machine *machine)
+{
+    struct script_soul *soul;
+    int is_held;
+
+    soul = &machine->soul;
+    is_held = tutorial_input_is_held(machine);
     if (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK) {
         if (!soul->tutorial_click_was_sent) {
-            soul->tutorial_click_was_sent = 1;
-            script_machine_send(machine, "*", "SVTUTO", "onClick");
-            return;
+            if (is_held) {
+                soul->tutorial_click_was_sent = 1;
+                script_machine_send(machine, "*", "SVTUTO", "onClick");
+            }
+        } else if (is_held) {
+            script_machine_send(machine, "*", "SVTUTO", "onTouch");
+        } else {
+            soul->tutorial_click_was_sent = 0;
+            script_machine_send(machine, "*", "SVTUTO", "onRelease");
         }
-        script_machine_send(machine, "*", "SVTUTO", "onTouch");
-    } else if (soul->tutorial_mode == TUTORIAL_MOVE) {
+    } else if (soul->tutorial_mode == TUTORIAL_MOVE && is_held) {
         script_machine_send(machine, "*", "SVTUTO", "move");
     }
 }
@@ -1385,9 +1442,6 @@ static void take_press(struct script_machine *machine)
         return;
     }
     if (soul->tutorial_mode != TUTORIAL_NONE) {
-        if (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent) {
-            player_moved_in_tutorial(machine);
-        }
         return;
     }
     if (soul->is_on) {
@@ -1406,10 +1460,6 @@ static void take_direction(struct script_machine *machine)
 
     soul = &machine->soul;
     if (soul->is_on && soul->view_demo_is_on) {
-        return;
-    }
-    if (soul->tutorial_mode == TUTORIAL_TOUCH_CHECK && !soul->tutorial_click_was_sent) {
-        player_moved_in_tutorial(machine);
         return;
     }
     if (soul->tutorial_mode == TUTORIAL_NONE && !soul->is_on && script_soul_world_is_playable(machine)) {
@@ -1846,7 +1896,7 @@ static int first_hop_toward(const struct script_machine *machine, int target_obj
             if (came_from[node] != NO_CORE || !object_can_be_a_core(&machine->objects[node / SCRIPT_CORE_SLOT_COUNT], node % SCRIPT_CORE_SLOT_COUNT)) {
                 continue;
             }
-            if (core_distance(machine, from / SCRIPT_CORE_SLOT_COUNT, from % SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT, node % SCRIPT_CORE_SLOT_COUNT) <= ROUTE_HOP_MOST_DS_PIXELS) {
+            if (core_distance(machine, from / SCRIPT_CORE_SLOT_COUNT, from % SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT, node % SCRIPT_CORE_SLOT_COUNT) <= script_soul_reach(machine) + SOUL_TIP_PICKUP_NEAR) {
                 came_from[node] = from;
                 queue[tail++] = node;
             }
@@ -2263,6 +2313,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     soul->direction_x = 0;
     soul->direction_y = 0;
     move_soul_tip(machine);
+    send_tutorial_input(machine);
     move_free_camera(machine);
     follow_core_with_camera(machine);
     age_the_player_mark(machine);
@@ -2285,10 +2336,7 @@ int script_soul_wants_a_tap(const struct script_machine *machine)
     if (machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine)) {
         return 1;
     }
-    if (script_narration_wants_a_press(&machine->narration)) {
-        return 1;
-    }
-    return machine->soul.tutorial_mode == TUTORIAL_TOUCH_CHECK && !machine->soul.tutorial_click_was_sent;
+    return script_narration_wants_a_press(&machine->narration);
 }
 
 void script_soul_set_touch(struct script_machine *machine, int is_down, float x, float y)

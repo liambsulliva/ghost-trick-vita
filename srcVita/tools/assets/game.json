@@ -1441,7 +1441,7 @@
     "steps": [
       {
         "script": "st01-st01_game000_Expand",
-        "action": "touch",
+        "action": "wait",
         "object": "cicel",
         "pace": "normal",
         "footage_s": 139.5,
@@ -1453,7 +1453,7 @@
         "object": "shadanki",
         "pace": "normal",
         "footage_s": 142.5,
-        "wait": "tutorial:touched"
+        "wait": "tutorial:touch"
       },
       {
         "script": "st01-st01_game000_Expand",
@@ -2779,7 +2779,7 @@
       },
       {
         "script": "st06-st06_game002_Expand",
-        "action": "touch",
+        "action": "wait",
         "pace": "normal",
         "footage_s": 3604.5,
         "wait": "tutorial:touch"
@@ -2790,7 +2790,7 @@
         "object": "deadtalk_test",
         "pace": "normal",
         "footage_s": 3605.5,
-        "wait": "tutorial:touched"
+        "wait": "tutorial:touch"
       },
       {
         "script": "st06-st06_game002_Expand",

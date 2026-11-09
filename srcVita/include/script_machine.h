@@ -35,6 +35,10 @@
 #define SCRIPT_GHOST_MISSILE 1
 #define SCRIPT_GHOST_BOSS 2
 #define SCRIPT_GHOST_COUNT 3
+#define SCRIPT_CICEL_REACH_DS_PIXELS 48.0f
+#define SCRIPT_MISSILE_REACH_DS_PIXELS 112.0f
+#define SCRIPT_BOSS_REACH_DS_PIXELS 48.0f
+#define SCRIPT_LONG_HAND_REACH_DS_PIXELS 168.0f
 #define SCRIPT_ACTOR_COUNTER_COUNT 5
 #define SCRIPT_NO_SELECTION -1
 #define SCRIPT_NOTED_OP_BYTES ((SCRIPT_OPCODE_COUNT / 8) + 1)
@@ -274,6 +278,7 @@ struct script_soul {
     int active_ghost;
     int ghost_core_objects[SCRIPT_GHOST_COUNT];
     int ghost_core_slots[SCRIPT_GHOST_COUNT];
+    int ghost_hand_is_long[SCRIPT_GHOST_COUNT];
     int character_button_is_pending;
     int trick_is_on;
     int input_is_off;
@@ -316,7 +321,6 @@ struct script_soul {
     int chain_needs_reset;
     int chain_pick_object;
     int chain_pick_slot;
-    int touch_was_down;
     int touch_drags_the_tip;
     float pen_x;
     float pen_y;
@@ -553,6 +557,7 @@ void script_soul_note_pill(struct script_machine *machine, enum script_pill_id i
 void script_soul_note_tap(struct script_machine *machine, int tap_group);
 void script_soul_note_character_button(struct script_machine *machine);
 void script_soul_make_ghost_active(struct script_machine *machine, int ghost);
+float script_soul_reach(const struct script_machine *machine);
 void script_soul_note_direction(struct script_machine *machine, int direction_x, int direction_y);
 void script_soul_set_held(struct script_machine *machine, float held_x, float held_y);
 void script_soul_reset(struct script_machine *machine);
