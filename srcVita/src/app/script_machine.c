@@ -315,7 +315,7 @@ int script_machine_index_of_object(const struct script_machine *machine, const c
     int index;
 
     for (index = 0; index < machine->object_count; index++) {
-        if (strcmp(machine->objects[index].name, name) == 0) {
+        if (!machine->objects[index].is_deleted && strcmp(machine->objects[index].name, name) == 0) {
             return index;
         }
     }
@@ -396,6 +396,9 @@ void script_machine_send(struct script_machine *machine, const char *target, con
         arg = "*";
     }
     for (index = 0; index < machine->object_count; index++) {
+        if (machine->objects[index].is_deleted) {
+            continue;
+        }
         if (text_is_all_objects(target) || strcmp(machine->objects[index].name, target) == 0) {
             queue_message(&machine->objects[index], verb, arg);
         }
@@ -505,6 +508,40 @@ static void run_send(struct script_machine *machine, struct script_vm *vm, const
         }
     } else if (vm->kind == SCRIPT_VM_RUNNER) {
         send_from_vm(machine, vm, target, verb, arg);
+    }
+}
+
+static void delete_object(struct script_object *object)
+{
+    object->is_deleted = 1;
+    object->actor.exists = 0;
+    object->message_count = 0;
+}
+
+static void delete_objects_named(struct script_machine *machine, struct script_vm *vm, const char *pattern)
+{
+    int index;
+
+    if (pattern == NULL) {
+        return;
+    }
+    if (pattern[0] == '?') {
+        if (vm->owner != NULL) {
+            delete_object(vm->owner);
+        }
+        return;
+    }
+    if (pattern[0] == '*' || pattern[0] == '@') {
+        for (index = 0; index < machine->object_count; index++) {
+            if (!machine->objects[index].is_deleted && (pattern[0] == '*' || strstr(machine->objects[index].name, pattern + 1) != NULL)) {
+                delete_object(&machine->objects[index]);
+            }
+        }
+        return;
+    }
+    index = script_machine_index_of_object(machine, pattern);
+    if (index != SCRIPT_NO_OBJECT) {
+        delete_object(&machine->objects[index]);
     }
 }
 
@@ -1029,6 +1066,9 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         create_object(machine, vm, words);
         vm->pc = vm->pc + 1;
         return SCRIPT_STEP_MOVED;
+    case 0x17:
+        delete_objects_named(machine, vm, script_machine_string(machine, vm, words[0]));
+        return SCRIPT_STEP_NEXT;
     case 0x1c:
         if (vm->kind == SCRIPT_VM_HANDLER) {
             vm->pc = vm->start_pc;
@@ -1552,6 +1592,9 @@ static void update_object(struct script_machine *machine, struct script_object *
     int count_at_start;
     int index;
 
+    if (object->is_deleted) {
+        return;
+    }
     if (object->is_sleeping) {
         int message;
         int kept;

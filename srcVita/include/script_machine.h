@@ -203,6 +203,7 @@ struct script_object {
     int message_count;
     int is_sleeping;
     int is_dead;
+    int is_deleted;
     struct script_actor actor;
 };
 

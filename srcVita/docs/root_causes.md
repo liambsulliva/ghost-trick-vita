@@ -680,6 +680,12 @@ Native op 0x39 (`func_02023fdc`, case 0x39) waits while the message object at `g
 
 Guard: `script_talk_holds_the_script` holds the script only until a page that ends the message on a forward is fully shown; op 0x39 and `script_machine_vm_is_paused` use it, and that page lets the world run while it stays on screen until the next talk or a Forward. `tests/unit/test_talk_wait.c` checks both endings. In the scene-skip replay Chapter 12 goes from 7 to 14 of 18 steps; the honest replay plays the same 387 steps.
 
+### 101. Objects a script deleted lived on and answered later events
+
+Op 0x17 deletes objects, and scripts use it 860 times in 50 scripts, mostly to clear a flashback's or a demo's objects when it ends. Native (`func_02023fdc` case 0x17) runs a by-name command (`func_02026968`, whose target loop `func_02026c1c` takes `?` for the caller, `*` for every script object, `@part` for every object whose name holds the part, or one exact name) and calls each target's virtual slot 8 (`func_020270b0`). The port had no op 0x17, so the objects stayed. In Chapter 17's submarine (st14_game050) `demo_121_end` deletes `st13_121_game` and the flashback's actors, but in the port `st13_121_game` lived on, answered the player's next ghost view with its SV_START handler (DemoModeOn, then ReturnDemo), and the soul could not move off the Door.
+
+Guard: op 0x17 marks its targets deleted: they lose their actor (no drawing, no core), their queued messages and their updates, and name lookups and sends pass them over. `tests/unit/test_object_delete.c` checks the partial and exact names and the lookup. From st14_game050's entry the Control Panel, arm and telephone beats now play; the honest whole replay plays the same 387 steps.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
