@@ -23,6 +23,7 @@
 #define LOOP_BACK_WORDS 3
 #define OFF_WORLD_LIMIT 10000
 #define TABLE_STEP_MAX 4096
+#define BEGIN_AND_BOX_WORDS 8
 #define COUNTED_LOOP_WORDS 2
 #define COUNTED_LOOP_WORDS_WITHOUT_AN_ACTOR 3
 
@@ -251,7 +252,16 @@ static void run_table(struct script_machine *machine, struct script_object *obje
         case WORD_BOX:
             run_box_word(machine, object, keeps_point_zero);
             keeps_point_zero = 0;
-            actor->table_word = actor->table_word + 5;
+            if (actor->resumes_after_box) {
+                actor->resumes_after_box = 0;
+                actor->table_word = actor->resume_word;
+                if (actor->point_zero_waits_for_box) {
+                    actor->point_zero_waits_for_box = 0;
+                    run_point_word(machine, object, 0, actor->waiting_point_zero_word + 1);
+                }
+            } else {
+                actor->table_word = actor->table_word + 5;
+            }
             break;
         case WORD_POINT_ZERO:
             run_point_word(machine, object, 0, actor->table_word + 1);
@@ -299,6 +309,47 @@ static void run_table(struct script_machine *machine, struct script_object *obje
     stop_table_for(machine, object, "motion_table_runaway");
 }
 
+static void find_the_start_frame(struct script_machine *machine, struct script_object *object, int keeps_point_zero)
+{
+    struct script_actor *actor;
+    unsigned int word;
+    int point;
+    int steps;
+
+    actor = &object->actor;
+    actor->resume_word = actor->table_start_word + BEGIN_AND_BOX_WORDS;
+    actor->point_zero_waits_for_box = 0;
+    for (steps = 0; steps < TABLE_STEP_MAX; steps++) {
+        if (script_file_read_word(&actor->table_source->file, actor->table_word, &word) != SCRIPT_FILE_OK || word == WORD_END || word == WORD_LOOP) {
+            break;
+        }
+        if (word == WORD_POINT_ZERO) {
+            if (keeps_point_zero) {
+                actor->point_zero_waits_for_box = 1;
+                actor->waiting_point_zero_word = actor->table_word;
+            } else {
+                run_point_word(machine, object, 0, actor->table_word + 1);
+            }
+        } else if (word == WORD_POINT_N) {
+            if (read_signed_word(actor->table_source, actor->table_word + 1, &point)) {
+                run_point_word(machine, object, point, actor->table_word + 2);
+            }
+        } else if (word == WORD_CORE_PLACE) {
+            run_core_word(machine, object);
+        } else if (table_word_length(word) == 0 || word == WORD_FRAME_WITH_TICKS) {
+            if ((int)(word & ((1u << FRAME_NUMBER_BITS) - 1u)) == actor->start_frame) {
+                break;
+            }
+            actor->table_word = actor->table_word + 1;
+            actor->resume_word = actor->table_word;
+            continue;
+        }
+        actor->table_word = actor->table_word + table_word_length(word);
+    }
+    actor->table_word = actor->table_start_word;
+    actor->resumes_after_box = 1;
+}
+
 static void start_queued_table(struct script_machine *machine, struct script_object *object)
 {
     struct script_actor *actor;
@@ -317,6 +368,11 @@ static void start_queued_table(struct script_machine *machine, struct script_obj
     actor->counts_loops = 0;
     actor->loops_left = 0;
     actor->motion_is_done = 0;
+    actor->resumes_after_box = 0;
+    if (actor->starts_at_frame) {
+        actor->starts_at_frame = 0;
+        find_the_start_frame(machine, object, actor->queued_keeps_point_zero);
+    }
     run_table(machine, object, actor->queued_keeps_point_zero);
     actor->queued_keeps_point_zero = 0;
     actor->is_visible = !actor->is_hard_hidden;
@@ -786,6 +842,13 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
         break;
     case 0x84:
         end_free_units_of_class(machine, words);
+        break;
+    case 0x118:
+        object = script_machine_current_object(machine, vm);
+        if (object != NULL && object->actor.exists) {
+            object->actor.starts_at_frame = 1;
+            object->actor.start_frame = (int)words[0];
+        }
         break;
     case 0x85:
         dock_actor(machine, vm, words, 1);

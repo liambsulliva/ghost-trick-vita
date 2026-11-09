@@ -143,6 +143,12 @@ struct script_actor {
     int counts_loops;
     int loops_left;
     int motion_is_done;
+    int starts_at_frame;
+    int start_frame;
+    int resumes_after_box;
+    unsigned int resume_word;
+    int point_zero_waits_for_box;
+    unsigned int waiting_point_zero_word;
     unsigned int class_id;
     int has_core;
     int core_x;
