@@ -478,17 +478,17 @@ The route ran inside the machine and acted through internal flags. A press or a 
 
 Guard: the route only decides which step is current and when it is done. `script_route_pad` builds a pad frame each tick from what a player sees, and it goes through `script_input`, the same code as the Vita pad, with the game in player mode. The pad looks for the pills, balloons, pages waiting for a press, and the choice marker. A move pushes the analog stick toward the next core on a chain within the native reach, and nothing teleports. `phone_call` and `dead_talk` still act inside the game and log `route_no_player_input` until their player inputs are ported. The Mac replay and the Vita run the same pad each tick; fast forward only runs more ticks per frame. Honest counts with no stall breaker: Chapter 1 plays steps 0 to 20 and stops at 21. With the breaker the whole replay reaches 66 steps, against 397 with the shortcuts. `tests/unit/test_route_pad.c` covers a press held back until its pill is up and a move made with the stick.
 
-### 73. The d-pad could not scroll the camera tutorial
-
-The camera tutorial (`FreeCamera TutorialStart`) keeps a talk open while it waits for the player to scroll. `free_camera_is_allowed` already let a touch drag scroll during it. But `move_free_camera` refused the d-pad and stick while any talk held the soul, so a player using buttons was stuck at Chapter 1's step 7. Native's free-camera input is not traced yet.
-
-Guard: the d-pad follows the same tutorial exception as the touch drag. `tests/unit/test_script_input.c` holds right during the tutorial's talk.
-
 ### 72. The ghost view hid its Back pill
 
 Native's Trick button (HUD slot 0, `Button Trick:On` in `func_020135c8`) is also the ghost view's way back: the footage shows a Back pill in Chapter 1's ghost view (frame 659.7 s, the step where the soul has reached the bed), although st01_game001 never sends `BackToMain:On` (slot 2). The port showed Back only after `BackToMain:On`, so a player could not leave that ghost view with CIRCLE, L or a tap. Old auto-play pressed past it, which the run 39 watcher reported as a press before its pill.
 
 Guard: in the ghost view the Back pill shows while the Trick button or BackToMain is registered, and not in demo mode. `tests/unit/test_back_pill.c` checks both a view the player can leave and one the scene holds. With it, Chapter 1's player-input run plays steps 13 to 20.
+
+### 73. The d-pad could not scroll the camera tutorial
+
+The camera tutorial (`FreeCamera TutorialStart`) keeps a talk open while it waits for the player to scroll. `free_camera_is_allowed` already let a touch drag scroll during it. But `move_free_camera` refused the d-pad and stick while any talk held the soul, so a player using buttons was stuck at Chapter 1's step 7. Native's free-camera input is not traced yet.
+
+Guard: the d-pad follows the same tutorial exception as the touch drag. `tests/unit/test_script_input.c` holds right during the tutorial's talk.
 
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
