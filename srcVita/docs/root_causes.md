@@ -472,6 +472,12 @@ Native's choice control (`func_0205a9e8`, state 9) keeps a marker on one panel: 
 
 Guard: the choice keeps a cursor that starts on the first panel; d-pad up and down move it with native's wrap, CROSS confirms it, and CIRCLE cancels when offered. `tests/unit/test_choice_input.c` picks the first panel, moves down past the last, moves up from the first, and cancels with and without the offer. Still open: the panels and the marker are not drawn, and a tap on a panel is not tested, because the port has no choice view yet.
 
+### 72. The ghost view hid its Back pill
+
+Native's Trick button (HUD slot 0, `Button Trick:On` in `func_020135c8`) is also the ghost view's way back: the footage shows a Back pill in Chapter 1's ghost view (frame 659.7 s, the step where the soul has reached the bed), although st01_game001 never sends `BackToMain:On` (slot 2). The port showed Back only after `BackToMain:On`, so a player could not leave that ghost view with CIRCLE, L or a tap. Old auto-play pressed past it, which the run 39 watcher reported as a press before its pill.
+
+Guard: in the ghost view the Back pill shows while the Trick button or BackToMain is registered, and not in demo mode. `tests/unit/test_back_pill.c` checks both a view the player can leave and one the scene holds. With it, Chapter 1's player-input run plays steps 13 to 20.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
