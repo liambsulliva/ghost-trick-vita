@@ -674,6 +674,12 @@ Topic panels turn over to a new topic once the old one is cleared: Chapter 17's 
 
 Guard: a panel in the turned list shows over the panel at its index (`panel_at` in `script_choice.c`). `tests/unit/test_choice_panels.c` checks that a turned panel replaces the panel at its index. From st14_game050's entry the five topics and Back now play in footage order and the scene goes on to the telephone.
 
+### 100. A finished message that stays on screen froze the scripts behind it
+
+Native op 0x39 (`func_02023fdc`, case 0x39) waits while the message object at `game+0xf08` exists (`func_02011244`, made by `func_02014a8c`) or the select control does, and native's pause check (`func_02027db8`) uses the same test for classes 1 and 2. A message whose last page ends with the `auto_end` tag needs no Forward: in Chapter 12's talk with the dead (st09_game010 `deadtalkJodoAct021`, ACT_JUMP at 0x3f7c) the short line that closes the first topic stays on screen while op 0x39 lets the script go on to the flashback (footage 5:17:14). The port held op 0x39 and the class 1 and 2 scripts while any talk box was up, and kept the world halted, so the scene froze on that line until the replay's limit. What releases native's message object at that point is not traced; the footage fixes when.
+
+Guard: `script_talk_holds_the_script` holds the script only until a page that ends the message on a forward is fully shown; op 0x39 and `script_machine_vm_is_paused` use it, and that page lets the world run while it stays on screen until the next talk or a Forward. `tests/unit/test_talk_wait.c` checks both endings. In the scene-skip replay Chapter 12 goes from 7 to 14 of 18 steps; the honest replay plays the same 387 steps.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

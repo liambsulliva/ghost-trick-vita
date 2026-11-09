@@ -1348,10 +1348,10 @@ int script_machine_vm_is_paused(const struct script_machine *machine, const stru
         return 0;
     }
     if (pause_class == PAUSE_CLASS_TALK) {
-        return machine->talk_is_open;
+        return script_talk_holds_the_script(machine);
     }
     if (pause_class == PAUSE_CLASS_ONE) {
-        if (machine->talk_is_open || machine->soul.dead_talk_is_on || machine->choice.is_open) {
+        if (script_talk_holds_the_script(machine) || machine->soul.dead_talk_is_on || machine->choice.is_open) {
             return 1;
         }
         if (machine->soul.is_on || machine->soul.is_leaving_view) {

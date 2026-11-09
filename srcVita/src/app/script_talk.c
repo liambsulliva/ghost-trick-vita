@@ -326,6 +326,9 @@ static void finish_reveal(struct script_machine *machine)
         machine->talk.timer = 0;
         return;
     }
+    if (page != NULL && page->ending == SCRIPT_TALK_ENDS_ON_FORWARD_THEN_CLOSE && !machine->soul_state_keeps_pause) {
+        machine->pause_bit = 0;
+    }
     if (page != NULL && page->ending != SCRIPT_TALK_ENDS_ON_PRESS) {
         script_machine_send(machine, "*", "message", "pause in");
     }
@@ -481,6 +484,17 @@ int script_talk_wants_a_press(const struct script_machine *machine)
 
     page = current_page(machine);
     return page == NULL || page->ending == SCRIPT_TALK_ENDS_ON_PRESS || machine->talk.phase != SCRIPT_TALK_WAITING;
+}
+
+int script_talk_holds_the_script(const struct script_machine *machine)
+{
+    const struct script_talk_page *page;
+
+    if (!machine->talk_is_open) {
+        return 0;
+    }
+    page = current_page(machine);
+    return machine->talk.phase != SCRIPT_TALK_WAITING || page == NULL || page->ending != SCRIPT_TALK_ENDS_ON_FORWARD_THEN_CLOSE;
 }
 
 void script_talk_close_now(struct script_machine *machine)

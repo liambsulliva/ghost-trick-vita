@@ -645,6 +645,7 @@ void script_talk_note_press(struct script_machine *machine);
 void script_talk_note_forward(struct script_machine *machine);
 void script_talk_close_when_due(struct script_machine *machine);
 int script_talk_wants_a_press(const struct script_machine *machine);
+int script_talk_holds_the_script(const struct script_machine *machine);
 void script_talk_close_now(struct script_machine *machine);
 void script_narration_report_to_outputs(void *listener, const char *label, enum script_narration_event event, int group);
 
