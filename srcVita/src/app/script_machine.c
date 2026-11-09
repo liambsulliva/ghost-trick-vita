@@ -1304,6 +1304,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0x2f:
         vm->wait_ticks = words[0];
+        vm->wait_began_on_a_new_site = machine->fetched_site_is_new;
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x30:
         machine->has_runner = 0;
@@ -1392,9 +1393,11 @@ static void note_visited_site(struct script_machine *machine, const struct scrip
 
     site = ((unsigned int)(vm->source - machine->sources) * 2654435761u + vm->pc * 40503u) % (SCRIPT_VISITED_SITE_BYTES * 8u);
     if (machine->visited_sites[site / 8] & (1u << (site % 8))) {
+        machine->fetched_site_is_new = 0;
         return;
     }
     machine->visited_sites[site / 8] = (unsigned char)(machine->visited_sites[site / 8] | (1u << (site % 8)));
+    machine->fetched_site_is_new = 1;
     machine->last_new_site_tick = machine->tick;
 }
 
@@ -1754,6 +1757,9 @@ static int object_has_a_running_timer(const struct script_object *object)
         if (index != object->idle_handler && object->handlers[index].is_busy && vm_has_a_running_timer(&object->handlers[index].vm)) {
             return 1;
         }
+    }
+    if (object->idle_handler != SCRIPT_NO_SELECTION && object->idle_handler < object->handler_count) {
+        return vm_has_a_running_timer(&object->handlers[object->idle_handler].vm) && object->handlers[object->idle_handler].vm.wait_began_on_a_new_site;
     }
     return 0;
 }

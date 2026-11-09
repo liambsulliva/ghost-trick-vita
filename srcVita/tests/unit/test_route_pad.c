@@ -8,6 +8,7 @@
 #include "test_support.h"
 
 #define NORMAL_PLAY_MODE 3
+#define DEMO_MODE 2
 #define ROW_Y 100
 #define BODY_X 100
 #define GATE_X 140
@@ -97,6 +98,26 @@ static void test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up(void)
     script_soul_run_command(&machine, "Button", "Trick:On");
     run_ticks(TICKS_FOR_A_PILL_TO_SLIDE_IN);
     CHECK(machine.soul.is_on);
+}
+
+static void test_the_pad_offers_the_ghost_view_in_demo_mode(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_GHOST_ON, "body", "no_talk");
+    machine.mode_byte = DEMO_MODE;
+    script_soul_run_command(&machine, "Button", "Trick:On");
+    run_ticks(TICKS_FOR_A_PILL_TO_SLIDE_IN * 2);
+    CHECK(machine.soul.is_on);
+}
+
+static void test_demo_mode_keeps_the_ghost_view_shut_while_input_is_off(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_GHOST_ON, "body", "no_talk");
+    machine.mode_byte = DEMO_MODE;
+    machine.soul.input_is_off = 1;
+    script_soul_run_command(&machine, "Button", "Trick:On");
+    run_ticks(TICKS_FOR_A_PILL_TO_SLIDE_IN * 2);
+    CHECK(!machine.soul.is_on);
+    CHECK(!script_pills_is_up(&machine, SCRIPT_PILL_GHOST));
 }
 
 static void test_the_pad_moves_the_soul_with_the_stick(void)
@@ -191,6 +212,39 @@ static void test_a_dead_talk_from_a_dead_core_talks_to_the_dead(void)
     CHECK(!gate_got("SYSTEM", "CORETALK"));
 }
 
+static void walk_onto_a_dead_gate_while_the_body_handles(int handler_count)
+{
+    static const char *const verbs[2] = { "SYSTEM", "SVTUTO" };
+    static const char *const args[2] = { "SV_DEADCORE", "onClick" };
+    int index;
+
+    start_with_one_step(SCRIPT_ROUTE_MOVE, "gate", "view");
+    machine.objects[1].is_dead = 1;
+    machine.objects[0].handler_count = handler_count;
+    for (index = 0; index < handler_count; index++) {
+        machine.objects[0].handlers[index].verb = verbs[index];
+        machine.objects[0].handlers[index].arg = args[index];
+    }
+    run_ticks(1);
+    machine.soul.is_on = 1;
+    run_ticks(TICKS_FOR_A_MOVE);
+    CHECK_INT(machine.soul.active_object, 1);
+}
+
+static void test_a_scene_waiting_on_the_dead_core_starts_the_dead_talk_on_arrival(void)
+{
+    walk_onto_a_dead_gate_while_the_body_handles(2);
+    CHECK(machine.soul.dead_talk_is_on);
+    CHECK(gate_got("SYSTEM", "DEADTALK"));
+}
+
+static void test_a_dead_core_alone_does_not_start_the_dead_talk(void)
+{
+    walk_onto_a_dead_gate_while_the_body_handles(1);
+    CHECK(!machine.soul.dead_talk_is_on);
+    CHECK(!gate_got("SYSTEM", "DEADTALK"));
+}
+
 static void test_the_pad_opens_the_ghost_view_once_the_next_core_comes_within_reach(void)
 {
     start_with_one_step(SCRIPT_ROUTE_GHOST_ON, "body", "reach:gate&playable");
@@ -224,5 +278,9 @@ int main(void)
     test_the_pad_presses_the_rewind_button_once_it_is_up();
     test_a_dead_talk_from_a_living_core_is_a_core_talk();
     test_a_dead_talk_from_a_dead_core_talks_to_the_dead();
+    test_a_scene_waiting_on_the_dead_core_starts_the_dead_talk_on_arrival();
+    test_a_dead_core_alone_does_not_start_the_dead_talk();
+    test_the_pad_offers_the_ghost_view_in_demo_mode();
+    test_demo_mode_keeps_the_ghost_view_shut_while_input_is_off();
     return test_finish("unit/route_pad");
 }

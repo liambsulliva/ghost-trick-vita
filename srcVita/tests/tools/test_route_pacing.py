@@ -74,6 +74,17 @@ class PacedDwellsTest(unittest.TestCase):
         self.assertEqual(route_pacing.paced_dwells(route, {1: 1050}, {0: 1000}, set(), {}), {1: 70})
 
 
+class SettlingTest(unittest.TestCase):
+    def test_a_pass_never_shortens_a_dwell_the_last_pass_baked(self):
+        self.assertEqual(route_pacing.never_shorter_than_before({3: 120}, {3: 270, 5: 150}, set()), {3: 270, 5: 150})
+
+    def test_a_longer_dwell_from_this_pass_wins(self):
+        self.assertEqual(route_pacing.never_shorter_than_before({3: 300}, {3: 270}, set()), {3: 300})
+
+    def test_a_step_whose_window_was_too_short_drops_its_old_dwell(self):
+        self.assertEqual(route_pacing.never_shorter_than_before({}, {5: 150}, {5}), {})
+
+
 class PacingFileTest(unittest.TestCase):
     def test_names_the_route_it_was_baked_for(self):
         text = route_pacing.pacing_file_text(b"step a ghost_on b 0 90 free\n", {3: 120})
@@ -88,6 +99,15 @@ class PacingFileTest(unittest.TestCase):
             with open(path) as source:
                 self.assertEqual(source.read(), "dwell 2 120\ndwell 7 300\n")
             self.assertEqual(route_pacing.read_pacing(path), {2, 7})
+
+    def test_reads_back_the_dwells_baked_for_the_same_route(self):
+        route_steps = b"step a ghost_on b 0 90 free\n"
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, route_pacing.PACING_FILE_NAME)
+            with open(path, "w") as output:
+                output.write(route_pacing.pacing_file_text(route_steps, {4: 150}))
+            self.assertEqual(route_pacing.dwells_baked_for(path, route_steps), {4: 150})
+            self.assertEqual(route_pacing.dwells_baked_for(path, b"step c move d 0 90 view\n"), {})
 
     def test_reads_a_missing_file_as_nothing_stretched(self):
         self.assertEqual(route_pacing.read_pacing("/nonexistent/route_pacing.txt"), set())

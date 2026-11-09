@@ -20,7 +20,8 @@ enum pill_group {
     GROUP_NONE,
     GROUP_NORMAL,
     GROUP_GHOST,
-    GROUP_DEMO
+    GROUP_DEMO,
+    GROUP_DEMO_MODE_PLAY
 };
 
 static const enum script_pill_id pills_of_effects[PILL_EFFECT_COUNT] = { SCRIPT_PILL_GHOST, SCRIPT_PILL_BACK, SCRIPT_PILL_HOURGLASS, SCRIPT_PILL_NOTEBOOK };
@@ -123,6 +124,9 @@ static enum pill_group current_group(const struct script_machine *machine)
     if (!machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE) {
         return GROUP_NORMAL;
     }
+    if (script_soul_demo_mode_offers_the_ghost_view(machine)) {
+        return GROUP_DEMO_MODE_PLAY;
+    }
     return GROUP_DEMO;
 }
 
@@ -151,7 +155,7 @@ static int pill_is_wanted(const struct script_machine *machine, enum script_pill
     is_registered = (soul->pills_registered & BIT(id)) != 0;
     switch (id) {
     case SCRIPT_PILL_GHOST:
-        return is_registered && group == GROUP_NORMAL && !soul->ghost_pill_is_held_out;
+        return is_registered && (group == GROUP_NORMAL || group == GROUP_DEMO_MODE_PLAY) && !soul->ghost_pill_is_held_out;
     case SCRIPT_PILL_TRICK:
         return is_registered && group == GROUP_NORMAL && !soul->trick_pill_is_held_out && !current_core_is_busy(machine);
     case SCRIPT_PILL_NOTEBOOK:

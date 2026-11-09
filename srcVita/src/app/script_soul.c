@@ -162,6 +162,7 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
     if (soul->is_on) {
         if (core_is_for_the_dead(machine, object_index)) {
             script_machine_send(machine, "*", "SYSTEM", "SV_DEADCORE");
+            soul->dead_core_was_just_reached = 1;
         } else {
             script_machine_send(machine, "*", "SYSTEM", "SV_CHGCORE");
             script_machine_send(machine, "*", "SYSTEM", soul->active_ghost == SCRIPT_GHOST_MISSILE ? "SV_CHGCORE_MISSILE" : "SV_CHGCORE_CICEL");
@@ -1229,6 +1230,23 @@ static void start_dead_talk(struct script_machine *machine, int object_index)
     script_machine_send(machine, object_index != NO_CORE ? machine->objects[object_index].name : "*", "SYSTEM", "DEADTALK");
 }
 
+static void start_the_dead_talk_a_tutorial_scene_waits_for(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (!soul->dead_core_was_just_reached) {
+        return;
+    }
+    soul->dead_core_was_just_reached = 0;
+    if (!soul->is_on || soul->is_leaving_view || soul->dead_talk_is_on || soul->active_object == NO_CORE || !core_is_for_the_dead(machine, soul->active_object)) {
+        return;
+    }
+    if (script_machine_handles(machine, "SYSTEM", "SV_DEADCORE") && script_machine_handles(machine, "SVTUTO", "onClick")) {
+        start_dead_talk(machine, soul->active_object);
+    }
+}
+
 static void run_dead_talk_command(struct script_machine *machine, const char *arg)
 {
     if (strcmp(arg, "Finish") == 0) {
@@ -1387,6 +1405,16 @@ int script_soul_world_is_playable(const struct script_machine *machine)
     return !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on && !machine->choice.is_open;
 }
 
+int script_soul_demo_mode_offers_the_ghost_view(const struct script_machine *machine)
+{
+    return !machine->pause_bit && machine->mode_byte == DEMO_MODE && machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on && !machine->choice.is_open && !machine->narration.is_running && machine->movie_ticks_left == 0;
+}
+
+static int ghost_view_may_open(const struct script_machine *machine)
+{
+    return script_soul_world_is_playable(machine) || script_soul_demo_mode_offers_the_ghost_view(machine);
+}
+
 static const char *pill_word(enum script_pill_id id)
 {
     switch (id) {
@@ -1526,7 +1554,7 @@ static void take_ghost_button(struct script_machine *machine)
         }
         return;
     }
-    if (!soul->is_on && script_soul_world_is_playable(machine) && !soul->ghost_pill_is_held_out && pill_answers_a_press(machine, SCRIPT_PILL_GHOST)) {
+    if (!soul->is_on && ghost_view_may_open(machine) && !soul->ghost_pill_is_held_out && pill_answers_a_press(machine, SCRIPT_PILL_GHOST)) {
         script_pills_press(machine, SCRIPT_PILL_GHOST, PILL_HOLD_AFTER_VIEW_CHANGE);
         soul->player_opened_soul_view = 1;
         set_soul_view(machine, 1);
@@ -2270,6 +2298,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     soul->direction_x = 0;
     soul->direction_y = 0;
     move_soul_tip(machine);
+    start_the_dead_talk_a_tutorial_scene_waits_for(machine);
     send_tutorial_input(machine);
     move_free_camera(machine);
     pan_the_ghost_view(machine);

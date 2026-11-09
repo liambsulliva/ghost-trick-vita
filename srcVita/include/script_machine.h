@@ -83,6 +83,7 @@ struct script_vm {
     unsigned int pc;
     unsigned int start_pc;
     unsigned int wait_ticks;
+    int wait_began_on_a_new_site;
     int condition;
     int pause_class;
     int selected_object;
@@ -389,6 +390,7 @@ struct script_soul {
     int countdown_ticks;
     int dead_talk_is_on;
     int dead_talk_object;
+    int dead_core_was_just_reached;
     struct script_timed_event phone_event;
     char phone_split_name[SCRIPT_SOURCE_NAME_MAX];
     struct script_timed_event time_jump_event;
@@ -496,6 +498,7 @@ struct script_machine {
     unsigned char pushed_sites[SCRIPT_PUSHED_SITE_BYTES];
     int pushes_in_this_script;
     unsigned int last_new_site_tick;
+    int fetched_site_is_new;
     unsigned int last_timer_tick;
     unsigned int push_count;
     int auto_press;
@@ -627,6 +630,7 @@ void script_soul_effect_deleted(struct script_machine *machine, const char *name
 void script_soul_effect_signalled(struct script_machine *machine, const char *name);
 int script_soul_waits_on_the_player(const struct script_machine *machine);
 int script_soul_world_is_playable(const struct script_machine *machine);
+int script_soul_demo_mode_offers_the_ghost_view(const struct script_machine *machine);
 void script_talk_open(struct script_machine *machine, const char *label);
 void script_talk_step(struct script_machine *machine);
 void script_talk_note_press(struct script_machine *machine);

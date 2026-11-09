@@ -69,8 +69,35 @@ def paced_dwells(route, ready, began, windows_too_short, drift):
     return dwells
 
 
+def route_stamp(route_steps_bytes):
+    return "route %08x" % (zlib.crc32(route_steps_bytes) & 0xffffffff)
+
+
 def pacing_file_text(route_steps_bytes, dwells):
-    return "route %08x\n" % (zlib.crc32(route_steps_bytes) & 0xffffffff) + pacing_text(dwells)
+    return route_stamp(route_steps_bytes) + "\n" + pacing_text(dwells)
+
+
+def dwells_baked_for(path, route_steps_bytes):
+    dwells = {}
+    if not os.path.exists(path):
+        return dwells
+    with open(path, encoding="ascii") as source:
+        lines = source.read().splitlines()
+    if not lines or lines[0] != route_stamp(route_steps_bytes):
+        return dwells
+    for line in lines[1:]:
+        words = line.split()
+        if len(words) == 3 and words[0] == "dwell":
+            dwells[int(words[1])] = int(words[2])
+    return dwells
+
+
+def never_shorter_than_before(dwells, earlier_dwells, windows_too_short):
+    kept = dict(dwells)
+    for index, dwell in earlier_dwells.items():
+        if index not in windows_too_short and dwell > kept.get(index, 0):
+            kept[index] = dwell
+    return kept
 
 
 def pacing_text(dwells):
@@ -104,16 +131,17 @@ def main():
         route = json.load(source)["route"]
     pacing_path = os.path.join(arguments.scripts, PACING_FILE_NAME)
     windows_too_short = set()
+    with open(os.path.join(arguments.scripts, ROUTE_STEPS_FILE_NAME), "rb") as source:
+        route_steps_bytes = source.read()
     for pass_number in range(1, MOST_PASSES + 1):
         stretched = read_pacing(pacing_path)
+        earlier_dwells = dwells_baked_for(pacing_path, route_steps_bytes)
         replay(arguments.replay, arguments.scripts, arguments.cues, arguments.stop_tick)
         with open(arguments.cues, encoding="utf-8", errors="replace") as source:
             ready, began = step_times(source)
         windows_too_short.update(index for index in stretched if index not in began)
         drift = {}
-        dwells = paced_dwells(route, ready, began, windows_too_short, drift)
-        with open(os.path.join(arguments.scripts, ROUTE_STEPS_FILE_NAME), "rb") as source:
-            route_steps_bytes = source.read()
+        dwells = never_shorter_than_before(paced_dwells(route, ready, began, windows_too_short, drift), earlier_dwells, windows_too_short)
         changed = bake_record.write_if_different(pacing_path, pacing_file_text(route_steps_bytes, dwells).encode("ascii"))
         print("route pacing pass %d: %d steps stretched, %d extra ticks, %d kept short%s" % (pass_number, len(dwells), sum(dwells[index] - base_dwell(route, route["steps"][index]) for index in dwells), len(windows_too_short), "" if changed else ", settled"))
         if not changed:

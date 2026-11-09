@@ -7,6 +7,10 @@
 
 #define MARK_MAX 64
 #define TICKS_PAST_A_STUCK_PLAYABLE_SCENE 20000
+#define IDLE_WAIT_TICKS 400
+#define IDLE_CODE_PC 3
+#define TICKS_INTO_THE_FIRST_IDLE_WAIT 380
+#define TICKS_FOR_THE_IDLE_LOOP_TO_REPEAT_AND_GO_QUIET 1200
 
 static struct script_machine machine;
 static struct script_route route;
@@ -47,6 +51,20 @@ static void put_u16(unsigned char *at, unsigned int value)
 static unsigned int idle_scene(unsigned char *into)
 {
     static const unsigned int words[] = { 0x2f, 60000, 0x0 };
+    unsigned int index;
+
+    memset(into, 0, SCRIPT_FILE_HEADER_SIZE + 16);
+    memcpy(into, "1LMG", 4);
+    put_u16(&into[0x08], sizeof(words) / sizeof(words[0]) * 2);
+    for (index = 0; index < sizeof(words) / sizeof(words[0]); index++) {
+        put_u16(&into[SCRIPT_FILE_HEADER_SIZE + 2 * index], words[index]);
+    }
+    return SCRIPT_FILE_HEADER_SIZE + sizeof(words) / sizeof(words[0]) * 2;
+}
+
+static unsigned int scene_whose_object_waits_while_idle(unsigned char *into)
+{
+    static const unsigned int words[] = { 0x2f, 60000, 0x0, 0x2f, IDLE_WAIT_TICKS, 0x113 };
     unsigned int index;
 
     memset(into, 0, SCRIPT_FILE_HEADER_SIZE + 16);
@@ -148,11 +166,74 @@ static void test_a_stuck_scene_after_a_finished_block_moves_on_rather_than_back(
     CHECK(!was_marked("stall_moved_to a"));
 }
 
+static void start_a_scene_whose_object_waits_while_idle(void)
+{
+    struct script_object *object;
+    struct script_vm *idle;
+
+    memset(&route, 0, sizeof(route));
+    add_step("a", SCRIPT_ROUTE_WAIT);
+    add_step("b", SCRIPT_ROUTE_WAIT);
+    mark_count = 0;
+    script_machine_init(&machine, &outputs, SCRIPT_TIMING_REMASTER, NULL);
+    machine.route = &route;
+    machine.route_is_driving = 1;
+    CHECK(script_machine_add_source(&machine, "a", scene_a, scene_whose_object_waits_while_idle(scene_a), NULL));
+    CHECK(script_machine_add_source(&machine, "b", scene_b, idle_scene(scene_b), NULL));
+    CHECK(script_machine_start(&machine, "a"));
+    object = &machine.objects[0];
+    memset(object, 0, sizeof(*object));
+    object->name = "madam";
+    object->main_vm.source = machine.runner.source;
+    object->main_vm.has_ended = 1;
+    object->handler_count = 1;
+    object->idle_handler = 0;
+    object->handlers[0].verb = "idle";
+    object->handlers[0].arg = "*";
+    object->handlers[0].first_pc = IDLE_CODE_PC;
+    idle = &object->handlers[0].vm;
+    idle->kind = SCRIPT_VM_HANDLER;
+    idle->source = machine.runner.source;
+    idle->owner = object;
+    idle->selected_object = SCRIPT_NO_SELECTION;
+    idle->pc = IDLE_CODE_PC;
+    idle->start_pc = IDLE_CODE_PC;
+    machine.object_count = 1;
+    machine.mode_byte = 3;
+    machine.pause_bit = 0;
+    machine.soul.input_is_off = 1;
+}
+
+static void run_ticks(int ticks)
+{
+    int tick;
+
+    for (tick = 0; tick < ticks; tick++) {
+        script_machine_tick(&machine);
+    }
+}
+
+static void test_a_one_pass_wait_in_an_idle_handler_holds_the_breaker(void)
+{
+    start_a_scene_whose_object_waits_while_idle();
+    run_ticks(TICKS_INTO_THE_FIRST_IDLE_WAIT);
+    CHECK(!was_marked("stall_left a"));
+}
+
+static void test_an_idle_loop_that_repeats_its_wait_still_counts_as_quiet(void)
+{
+    start_a_scene_whose_object_waits_while_idle();
+    run_ticks(TICKS_FOR_THE_IDLE_LOOP_TO_REPEAT_AND_GO_QUIET);
+    CHECK(was_marked("stall_left a"));
+}
+
 int main(void)
 {
     test_a_stuck_routed_scene_is_skipped_to_the_next_routed_scene();
     test_a_player_without_auto_play_is_never_skipped();
     test_a_stuck_scene_with_no_steps_never_jumps_back_to_the_start_of_the_route();
     test_a_stuck_scene_after_a_finished_block_moves_on_rather_than_back();
+    test_a_one_pass_wait_in_an_idle_handler_holds_the_breaker();
+    test_an_idle_loop_that_repeats_its_wait_still_counts_as_quiet();
     return test_finish("unit/stall_skip");
 }
