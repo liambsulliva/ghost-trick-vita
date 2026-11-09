@@ -6238,7 +6238,7 @@
         "action": "tap_balloon",
         "object": "Talk00",
         "pace": "normal",
-        "footage_s": 18800.0,
+        "footage_s": 18788.0,
         "wait": "act:game_master:game_master_act02 & balloon:Talk00"
       },
       {
@@ -6246,7 +6246,7 @@
         "action": "dead_talk",
         "object": "deadtalkJodo",
         "pace": "normal",
-        "footage_s": 18900.0,
+        "footage_s": 18920.0,
         "wait": "playable & no_talk"
       },
       {
@@ -6254,7 +6254,7 @@
         "action": "choose",
         "object": "panel_1",
         "pace": "normal",
-        "footage_s": 18950.0,
+        "footage_s": 19027.0,
         "wait": "choice"
       },
       {
@@ -6262,7 +6262,7 @@
         "action": "choose",
         "object": "panel_2",
         "pace": "normal",
-        "footage_s": 18950.0,
+        "footage_s": 19088.0,
         "wait": "choice"
       },
       {
@@ -6270,15 +6270,7 @@
         "action": "choose",
         "object": "panel_3",
         "pace": "normal",
-        "footage_s": 18950.0,
-        "wait": "choice"
-      },
-      {
-        "script": "st09-st09_game010_Expand",
-        "action": "choose",
-        "object": "panel_1",
-        "pace": "normal",
-        "footage_s": 18950.0,
+        "footage_s": 19156.0,
         "wait": "choice"
       },
       {
@@ -6286,39 +6278,7 @@
         "action": "choose",
         "object": "panel_4",
         "pace": "normal",
-        "footage_s": 18950.0,
-        "wait": "choice"
-      },
-      {
-        "script": "st09-st09_game010_Expand",
-        "action": "choose",
-        "object": "panel_1",
-        "pace": "normal",
-        "footage_s": 18950.0,
-        "wait": "choice"
-      },
-      {
-        "script": "st09-st09_game010_Expand",
-        "action": "choose",
-        "object": "panel_2",
-        "pace": "normal",
-        "footage_s": 18950.0,
-        "wait": "choice"
-      },
-      {
-        "script": "st09-st09_game010_Expand",
-        "action": "choose",
-        "object": "panel_1",
-        "pace": "normal",
-        "footage_s": 18950.0,
-        "wait": "choice"
-      },
-      {
-        "script": "st09-st09_game010_Expand",
-        "action": "choose",
-        "object": "panel_4",
-        "pace": "normal",
-        "footage_s": 18950.0,
+        "footage_s": 19230.0,
         "wait": "choice"
       },
       {
@@ -6326,7 +6286,7 @@
         "action": "choose",
         "object": "cancel",
         "pace": "normal",
-        "footage_s": 18950.0,
+        "footage_s": 19300.5,
         "wait": "choice"
       },
       {
@@ -6334,7 +6294,7 @@
         "action": "tap_balloon",
         "object": "Talk01",
         "pace": "normal",
-        "footage_s": 19000.0,
+        "footage_s": 19340.0,
         "wait": "act:game_master:game_master_act04 & balloon:Talk01"
       },
       {
@@ -6342,7 +6302,7 @@
         "action": "phone_call",
         "object": "denwa",
         "pace": "normal",
-        "footage_s": 19300.0,
+        "footage_s": 19470.0,
         "wait": "act:game_master:game_master_act05 & playable",
         "place": 14
       },
