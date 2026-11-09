@@ -13,6 +13,8 @@
 #define GATE_X 140
 #define TICKS_FOR_A_PILL_TO_SLIDE_IN 40
 #define TICKS_FOR_A_MOVE 120
+#define CHOOSE_DWELL_TICKS 200
+#define OPEN_CHOICE_OP 0x3b
 
 static struct script_machine machine;
 static struct script_route_pad route_pad;
@@ -103,9 +105,41 @@ static void test_the_pad_moves_the_soul_with_the_stick(void)
     CHECK_INT(machine.soul.active_object, 1);
 }
 
+static void open_a_choice_of_two(void)
+{
+    static const unsigned int no_words[8];
+    static const char *const events[2] = { "first", "second" };
+    int index;
+
+    for (index = 0; index < 2; index++) {
+        machine.choice.panels[index].action = SCRIPT_CHOICE_SENDS_EVENT;
+        machine.choice.panels[index].target = "body";
+        machine.choice.panels[index].kind = "select";
+        machine.choice.panels[index].event = events[index];
+    }
+    machine.choice.panel_count = 2;
+    machine.choice.panel_limit = 2;
+    machine.choice.control_is_up = 1;
+    script_choice_run_op(&machine, NULL, OPEN_CHOICE_OP, no_words);
+}
+
+static void test_the_pad_picks_the_route_panel_only_once_the_step_has_begun(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_CHOOSE, "second", "choice");
+    route.steps[0].dwell_ticks = CHOOSE_DWELL_TICKS;
+    open_a_choice_of_two();
+    run_ticks(CHOOSE_DWELL_TICKS / 2);
+    CHECK(machine.choice.is_open);
+    run_ticks(CHOOSE_DWELL_TICKS * 2);
+    CHECK(!machine.choice.is_open);
+    CHECK_INT(machine.choice.chosen, 1);
+    CHECK(script_soul_route_step(&machine) == NULL);
+}
+
 int main(void)
 {
     test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up();
     test_the_pad_moves_the_soul_with_the_stick();
+    test_the_pad_picks_the_route_panel_only_once_the_step_has_begun();
     return test_finish("unit/route_pad");
 }

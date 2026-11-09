@@ -72,15 +72,16 @@ static int retry_the_game_over(struct script_route_pad *pad, const struct script
     return 1;
 }
 
-static int panel_the_route_wants(const struct script_machine *machine)
+static int route_step_chooses(const struct script_machine *machine, int *panel)
 {
     const struct script_route_step *step;
 
     step = script_soul_route_step(machine);
-    if (step != NULL && step->action == SCRIPT_ROUTE_CHOOSE) {
-        return script_choice_find(machine, step->object);
+    if (step == NULL || step->action != SCRIPT_ROUTE_CHOOSE) {
+        return 0;
     }
-    return SCRIPT_CHOICE_NONE;
+    *panel = script_choice_find(machine, step->object);
+    return *panel != SCRIPT_CHOICE_NONE;
 }
 
 static int choose_a_panel(struct script_route_pad *pad, const struct script_machine *machine, struct input_state *frame)
@@ -98,8 +99,11 @@ static int choose_a_panel(struct script_route_pad *pad, const struct script_mach
     if (machine->tick - pad->choice_seen_at < TICKS_TO_READ_A_CHOICE) {
         return 1;
     }
-    wanted = panel_the_route_wants(machine);
-    if (wanted == SCRIPT_CHOICE_NONE) {
+    if (route_step_chooses(machine, &wanted)) {
+        if (!script_soul_route_step_has_begun(machine)) {
+            return 1;
+        }
+    } else {
         wanted = script_choice_first_unseen(machine);
     }
     if (wanted == SCRIPT_CHOICE_CANCEL) {

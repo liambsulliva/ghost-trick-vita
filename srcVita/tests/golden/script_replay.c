@@ -19,9 +19,16 @@ static struct script_machine machine;
 static struct script_cue_list cue_lists[SCRIPT_SOURCE_MAX];
 static int cue_list_count;
 static int marks_to_stdout;
-static const char *state_save_script;
-static const char *state_save_path;
-static int state_was_saved;
+#define STATE_SAVE_MAX 24
+
+static const char *state_save_scripts[STATE_SAVE_MAX];
+static const char *state_save_paths[STATE_SAVE_MAX];
+static int state_was_saved[STATE_SAVE_MAX];
+static int state_save_count;
+static int soul_state_was_loaded;
+static unsigned int loaded_pills_registered;
+static int loaded_trick_is_on;
+static int loaded_rollback_is_on;
 
 static void print_fetch(const struct script_fetch *fetch)
 {
@@ -74,23 +81,35 @@ static void write_bytes(FILE *file, const char *name, const unsigned char *bytes
     fprintf(file, "\n");
 }
 
-static void save_state_when_due(const char *what, const char *name)
+static void write_state(const char *path)
 {
     FILE *file;
 
-    if (state_was_saved || state_save_script == NULL || strcmp(what, "script_begun") != 0 || strcmp(name, state_save_script) != 0) {
-        return;
-    }
-    state_was_saved = 1;
-    file = fopen(state_save_path, "w");
+    file = fopen(path, "w");
     if (file == NULL) {
         return;
     }
     fprintf(file, "chapter_mark %d\nphone_book_place %d\nfate_level %d\n", machine.chapter_mark, machine.phone_book_place, machine.fate_level);
+    fprintf(file, "pills_registered %u\ntrick_is_on %d\nrollback_is_on %d\n", machine.soul.pills_registered, machine.soul.trick_is_on, machine.soul.rollback_is_on);
     write_bytes(file, "game_flags", machine.flags.game, sizeof(machine.flags.game));
     write_bytes(file, "chapter_flags", machine.flags.chapter, sizeof(machine.flags.chapter));
     write_bytes(file, "game_bank_saved", machine.flags.game_bank_saved, sizeof(machine.flags.game_bank_saved));
     fclose(file);
+}
+
+static void save_state_when_due(const char *what, const char *name)
+{
+    int index;
+
+    if (strcmp(what, "script_begun") != 0) {
+        return;
+    }
+    for (index = 0; index < state_save_count; index++) {
+        if (!state_was_saved[index] && strcmp(name, state_save_scripts[index]) == 0) {
+            state_was_saved[index] = 1;
+            write_state(state_save_paths[index]);
+        }
+    }
 }
 
 static int read_bytes(const char *hex, unsigned char *bytes, unsigned int count)
@@ -132,6 +151,13 @@ static int load_state(const char *path)
             machine.phone_book_place = atoi(value);
         } else if (strcmp(line, "fate_level") == 0) {
             script_soul_set_fate_level(&machine, atoi(value));
+        } else if (strcmp(line, "pills_registered") == 0) {
+            loaded_pills_registered = (unsigned int)strtoul(value, NULL, 10);
+            soul_state_was_loaded = 1;
+        } else if (strcmp(line, "trick_is_on") == 0) {
+            loaded_trick_is_on = atoi(value);
+        } else if (strcmp(line, "rollback_is_on") == 0) {
+            loaded_rollback_is_on = atoi(value);
         } else if (strcmp(line, "game_flags") == 0) {
             is_whole = is_whole && read_bytes(value, machine.flags.game, sizeof(machine.flags.game));
         } else if (strcmp(line, "chapter_flags") == 0) {
@@ -526,8 +552,12 @@ int main(int argument_count, char **arguments)
         } else if (strcmp(arguments[index], "--cues") == 0) {
             cues_output = fopen(arguments[++index], "w");
         } else if (strcmp(arguments[index], "--save-state-at") == 0 && index + 2 < argument_count) {
-            state_save_script = arguments[++index];
-            state_save_path = arguments[++index];
+            if (state_save_count < STATE_SAVE_MAX) {
+                state_save_scripts[state_save_count] = arguments[index + 1];
+                state_save_paths[state_save_count] = arguments[index + 2];
+                state_save_count = state_save_count + 1;
+            }
+            index = index + 2;
         } else if (strcmp(arguments[index], "--load-state") == 0) {
             state_load_path = arguments[++index];
         } else if (strcmp(arguments[index], "--start") == 0) {
@@ -574,6 +604,11 @@ int main(int argument_count, char **arguments)
     if (!script_machine_start(&machine, chain_entry)) {
         printf("cannot start %s\n", chain_entry);
         return 1;
+    }
+    if (soul_state_was_loaded) {
+        machine.soul.pills_registered = loaded_pills_registered;
+        machine.soul.trick_is_on = loaded_trick_is_on;
+        machine.soul.rollback_is_on = loaded_rollback_is_on;
     }
     for (index = 0; index < start_count; index++) {
         script_soul_run_command(&machine, start_verbs[index], start_args[index]);
