@@ -309,7 +309,7 @@ static int count_marks(const char *text)
     return count;
 }
 
-static void test_a_retry_after_a_game_over_resumes_the_route_at_its_step(void)
+static void start_a_scene_that_fails(void)
 {
     static const unsigned int failing_words[] = { 0x2f, 50, 0xdb, 2, 0, 0, 0x2f, LONG_WAIT_TICKS, 0x0 };
     unsigned int size;
@@ -330,16 +330,84 @@ static void test_a_retry_after_a_game_over_resumes_the_route_at_its_step(void)
     script_input_reset(&route_input);
     size = make_script(failing_scene, sizeof(failing_scene), failing_words, sizeof(failing_words) / sizeof(failing_words[0]), "\0\0ab\0", 5);
     CHECK(script_machine_add_source(&machine, "fail", failing_scene, size, NULL));
+    size = make_script(next_scene, sizeof(next_scene), failing_words + 6, 3, "\0\0", 2);
+    CHECK(script_machine_add_source(&machine, "elsewhere", next_scene, size, NULL));
     CHECK(script_machine_start(&machine, "fail"));
+}
+
+static void test_a_retry_after_a_game_over_resumes_the_route_at_its_step(void)
+{
+    start_a_scene_that_fails();
     run_ticks(1000);
     CHECK(count_marks("route_step_done 0:wait:-:0") == 1);
     CHECK(was_marked("game_over_retry reload"));
     CHECK(count_marks("script_begun fail") >= 2);
 }
 
+static void place_core(int index, const char *name, int x)
+{
+    machine.objects[index].name = name;
+    machine.objects[index].actor.exists = 1;
+    machine.objects[index].actor.is_visible = 1;
+    machine.objects[index].actor.has_core = 1;
+    machine.objects[index].actor.x = x;
+    machine.objects[index].actor.y = 100;
+    machine.objects[index].main_vm.source = machine.runner.source;
+    machine.objects[index].main_vm.has_ended = 1;
+    machine.objects[index].idle_handler = SCRIPT_NO_SELECTION;
+}
+
+static void place_a_body_whose_scene_starts_the_soul_on_it_and_a_ladder(void)
+{
+    machine.object_count = 2;
+    place_core(0, "body", 100);
+    place_core(1, "ladder", 140);
+    script_soul_set_first_core(&machine, 0, 0);
+}
+
+static void fail_while_the_soul_is_on_the_ladder(void)
+{
+    start_a_scene_that_fails();
+    place_a_body_whose_scene_starts_the_soul_on_it_and_a_ladder();
+    script_soul_set_first_core(&machine, 1, 0);
+    while (count_marks("script_begun fail") < 2 && machine.tick < 1000) {
+        run_ticks(1);
+    }
+    CHECK(was_marked("game_over_retry reload"));
+}
+
+static void test_a_retry_starts_the_soul_on_the_core_it_failed_on(void)
+{
+    fail_while_the_soul_is_on_the_ladder();
+    place_a_body_whose_scene_starts_the_soul_on_it_and_a_ladder();
+    CHECK_INT(machine.soul.active_object, 1);
+    script_soul_set_first_core(&machine, 0, 0);
+    CHECK_INT(machine.soul.active_object, 0);
+}
+
+static void test_a_fresh_start_of_the_scene_starts_the_soul_on_its_own_first_core(void)
+{
+    fail_while_the_soul_is_on_the_ladder();
+    place_a_body_whose_scene_starts_the_soul_on_it_and_a_ladder();
+    CHECK(script_machine_start(&machine, "fail"));
+    place_a_body_whose_scene_starts_the_soul_on_it_and_a_ladder();
+    CHECK_INT(machine.soul.active_object, 0);
+}
+
+static void test_another_scene_forgets_the_core_kept_for_the_retry(void)
+{
+    fail_while_the_soul_is_on_the_ladder();
+    CHECK(script_machine_start(&machine, "elsewhere"));
+    place_a_body_whose_scene_starts_the_soul_on_it_and_a_ladder();
+    CHECK_INT(machine.soul.active_object, 0);
+}
+
 int main(void)
 {
     test_a_retry_after_a_game_over_resumes_the_route_at_its_step();
+    test_a_retry_starts_the_soul_on_the_core_it_failed_on();
+    test_a_fresh_start_of_the_scene_starts_the_soul_on_its_own_first_core();
+    test_another_scene_forgets_the_core_kept_for_the_retry();
     test_auto_play_never_goes_back_to_an_earlier_chapter();
     test_a_rewind_inside_a_chapter_stays();
     test_manual_play_may_go_back();

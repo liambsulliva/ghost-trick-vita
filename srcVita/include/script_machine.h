@@ -516,6 +516,9 @@ struct script_machine {
     int furthest_scene;
     int route_furthest_acted_step;
     int route_step_after_retry;
+    char soul_core_kept_for_the_retry[SCRIPT_SOURCE_NAME_MAX];
+    char scene_kept_for_the_retry[SCRIPT_SOURCE_NAME_MAX];
+    int soul_slot_kept_for_the_retry;
     int game_over_retry_step;
     int game_over_retries_at_that_step;
     int scene_is_behind_the_story;

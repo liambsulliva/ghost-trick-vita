@@ -638,6 +638,12 @@ The breaker counts the game as quiet when no new script site has run for 240 tic
 
 Guard: op 0x2f records whether it ran from a site visited for the first time (`wait_began_on_a_new_site`), and an idle handler's wait counts as running to a known end only then. A repeating loop's wait never counts. The 3000-tick limit still applies. `tests/unit/test_stall_skip.c` checks that a one-pass idle wait holds the breaker and a repeating one does not.
 
+### 94. A retry put the soul back on the scene's first core
+
+A failed rescue's retry reloads the scene when no script handles `SYSTEM|RESTART` (root cause 51), and the reloaded scene's GAME START names its first core again (op 0x9c). The port put the soul there. The reference footage starts the second attempt with the soul on the core it held when the attempt failed: Chapter 4's office (st02_game004) restarts with the soul on the step ladder, where the first attempt left it, and the ladder, notebook and desk lamp chain plays from there. Native's rollback (`func_0203b72c`, retry state 0x84) turns the hourglass off and sets the reload bit (`func_0202682c`) without touching the soul's core slots at game+0xe40 to +0xe48; only the quit path (`func_0200fe74`) clears them. Op 0x9c only stages a core on its object (+0xbf, +0xde, through `func_020101c0`). The port, with no native core slots, rebuilt the soul from the first core it was given, so the second attempt began 145 px from the ladder and every hop after it failed.
+
+Guard: a retry that reloads keeps the soul's core (object name and slot) and the scene it belongs to on the machine, because every script change resets the soul. The first core the reloaded scene names is replaced by the kept one when that object exists, once. A different scene beginning drops it, so a fresh entry starts on its own first core. `tests/unit/test_scene_timeout.c` fails a scene with the soul on a second core and checks the retry starts there, that a later fresh start uses the scene's first core, and that another scene forgets the kept core. Still open: native also resumes the retried scene's timeline much later than its start (the footage's second attempt gets control 8 s after the retry, the port's about 130 s); the reload bit's reader is not found.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

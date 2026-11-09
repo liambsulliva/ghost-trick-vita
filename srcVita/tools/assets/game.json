@@ -3638,23 +3638,23 @@
       {
         "script": "st02-st02_game004_Expand",
         "action": "move",
-        "object": "stand",
+        "object": "caster",
         "pace": "normal",
         "footage_s": 6049.5,
-        "wait": "view & usable:stand"
+        "wait": "view & usable:caster"
       },
       {
         "script": "st02-st02_game004_Expand",
         "action": "ghost_off",
-        "object": "stand",
+        "object": "caster",
         "pace": "quick",
         "footage_s": 6052.0,
-        "wait": "core:stand"
+        "wait": "core:caster"
       },
       {
         "script": "st02-st02_game004_Expand",
         "action": "trick",
-        "object": "stand",
+        "object": "caster",
         "pace": "quick",
         "footage_s": 6063.0,
         "wait": "playable & no_talk"
@@ -3677,19 +3677,19 @@
       },
       {
         "script": "st02-st02_game004_Expand",
-        "action": "ghost_on",
-        "object": "linne_s",
+        "action": "wait",
+        "object": "-",
         "pace": "normal",
-        "footage_s": 6086.0,
-        "wait": "free & no_talk"
+        "footage_s": 6081.0,
+        "wait": "act:keikan:keikan_act060"
       },
       {
         "script": "st02-st02_game004_Expand",
-        "action": "move",
-        "object": "stand",
+        "action": "ghost_on",
+        "object": "caster",
         "pace": "normal",
-        "footage_s": 6088.0,
-        "wait": "view & usable:stand"
+        "footage_s": 6086.0,
+        "wait": "free & no_talk"
       },
       {
         "script": "st02-st02_game004_Expand",
@@ -3702,23 +3702,26 @@
       {
         "script": "st02-st02_game004_Expand",
         "action": "move",
-        "object": "lampK",
+        "object": "stand",
+        "slot": 1,
         "pace": "normal",
         "footage_s": 6091.0,
-        "wait": "view & usable:lampK"
+        "wait": "view & usable:stand:1"
       },
       {
         "script": "st02-st02_game004_Expand",
         "action": "ghost_off",
-        "object": "lampK",
+        "object": "stand",
+        "slot": 1,
         "pace": "quick",
         "footage_s": 6093.0,
-        "wait": "core:lampK"
+        "wait": "core:stand:1"
       },
       {
         "script": "st02-st02_game004_Expand",
         "action": "trick",
-        "object": "lampK",
+        "object": "stand",
+        "slot": 1,
         "pace": "quick",
         "footage_s": 6093.5,
         "wait": "playable & no_talk"

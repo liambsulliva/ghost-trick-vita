@@ -1463,6 +1463,24 @@ static int retries_are_going_nowhere(struct script_machine *machine)
     return current_route_step(machine) == NULL || machine->game_over_retries_at_that_step > GAME_OVER_RETRIES_AT_ONE_STEP_MOST;
 }
 
+static void forget_the_core_kept_for_the_retry(struct script_machine *machine)
+{
+    machine->soul_core_kept_for_the_retry[0] = '\0';
+    machine->scene_kept_for_the_retry[0] = '\0';
+    machine->soul_slot_kept_for_the_retry = 0;
+}
+
+static void keep_the_core_the_soul_failed_on(struct script_machine *machine)
+{
+    forget_the_core_kept_for_the_retry(machine);
+    if (machine->soul.active_object == NO_CORE || machine->scene_name == NULL) {
+        return;
+    }
+    snprintf(machine->soul_core_kept_for_the_retry, sizeof(machine->soul_core_kept_for_the_retry), "%s", machine->objects[machine->soul.active_object].name);
+    snprintf(machine->scene_kept_for_the_retry, sizeof(machine->scene_kept_for_the_retry), "%s", machine->scene_name);
+    machine->soul_slot_kept_for_the_retry = machine->soul.active_slot;
+}
+
 static void retry_after_the_game_over(struct script_machine *machine)
 {
     int restarts_in_place;
@@ -1480,6 +1498,7 @@ static void retry_after_the_game_over(struct script_machine *machine)
         return;
     }
     machine->route_step_after_retry = machine->soul.route_step;
+    keep_the_core_the_soul_failed_on(machine);
     script_machine_reload_scene(machine);
 }
 
@@ -2207,6 +2226,9 @@ void script_soul_script_began(struct script_machine *machine, const char *script
         mark_route_step(machine, "route_step_failed", unfinished);
     }
     soul->route_script = script;
+    if (strcmp(machine->scene_kept_for_the_retry, script) != 0) {
+        forget_the_core_kept_for_the_retry(machine);
+    }
     if (machine->route != NULL && machine->route_step_after_retry >= 0 && machine->route_step_after_retry < machine->route->step_count && strcmp(machine->route->steps[machine->route_step_after_retry].script, script) == 0) {
         go_to_route_step(machine, machine->route_step_after_retry);
     } else {
@@ -2441,6 +2463,16 @@ void script_soul_reset(struct script_machine *machine)
 
 void script_soul_set_first_core(struct script_machine *machine, int object_index, int slot)
 {
+    if (machine->soul_core_kept_for_the_retry[0] != '\0') {
+        int kept_object;
+
+        kept_object = script_machine_index_of_object(machine, machine->soul_core_kept_for_the_retry);
+        if (kept_object >= 0) {
+            object_index = kept_object;
+            slot = machine->soul_slot_kept_for_the_retry;
+        }
+        forget_the_core_kept_for_the_retry(machine);
+    }
     machine->soul.active_object = object_index;
     machine->soul.active_slot = slot;
     machine->soul.ghost_core_objects[machine->soul.active_ghost] = object_index;
