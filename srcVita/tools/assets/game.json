@@ -2804,8 +2804,8 @@
         "action": "ghost_on",
         "object": "santa",
         "pace": "instant",
-        "footage_s": 3569.5,
-        "wait": "reach:caster & free & no_talk"
+        "footage_s": 3571.0,
+        "wait": "reach:caster & no_talk"
       },
       {
         "script": "st06-st06_game002_Expand",
@@ -2835,24 +2835,8 @@
         "action": "move",
         "object": "deadtalk_test",
         "pace": "normal",
-        "footage_s": 3605.5,
+        "footage_s": 3607.0,
         "wait": "tutorial:touch"
-      },
-      {
-        "script": "st06-st06_game002_Expand",
-        "action": "move",
-        "object": "phone",
-        "pace": "normal",
-        "footage_s": 3611.5,
-        "wait": "view & usable:phone"
-      },
-      {
-        "script": "st06-st06_game002_Expand",
-        "action": "ghost_on",
-        "object": "caster",
-        "pace": "normal",
-        "footage_s": 3653.75,
-        "wait": "free & no_talk"
       },
       {
         "script": "st06-st06_game002_Expand",
@@ -2877,6 +2861,22 @@
         "pace": "quick",
         "footage_s": 3657.25,
         "wait": "playable & no_talk"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "ghost_on",
+        "object": "caster",
+        "pace": "instant",
+        "footage_s": 3661.3,
+        "wait": "reach:phone & no_talk"
+      },
+      {
+        "script": "st06-st06_game002_Expand",
+        "action": "move",
+        "object": "phone",
+        "pace": "normal",
+        "footage_s": 3662.7,
+        "wait": "view & usable:phone"
       },
       {
         "script": "st06-st06_game003_Expand",
@@ -3093,14 +3093,6 @@
         "pace": "normal",
         "footage_s": 4103.0,
         "wait": "view & usable:wine"
-      },
-      {
-        "script": "st06-st06_game004_Expand",
-        "action": "ghost_off",
-        "object": "wine",
-        "pace": "normal",
-        "footage_s": 4103.5,
-        "wait": "view & core:wine"
       },
       {
         "script": "st05-st05_game000_Expand",
