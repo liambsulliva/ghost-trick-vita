@@ -218,7 +218,7 @@ void scene_stage_set_mono_mode(int is_on)
     stage.mono_mode_is_on = is_on;
 }
 
-void scene_stage_set_object_soul_tint(const char *object_name, float red, float green, float blue, float alpha, int is_flat)
+void scene_stage_set_object_soul_tint(const char *object_name, float red, float green, float blue, float alpha, int is_flat, int turns_with_ghost)
 {
     struct scene_object *object;
 
@@ -230,6 +230,7 @@ void scene_stage_set_object_soul_tint(const char *object_name, float red, float 
         object->soul_blue = blue;
         object->soul_alpha = alpha;
         object->soul_is_flat = is_flat;
+        object->soul_turns_with_ghost = turns_with_ghost;
     }
 }
 
@@ -248,6 +249,11 @@ void scene_stage_set_last_plate_ghost_textures(const char *missile_texture_name,
 void scene_stage_set_soul_ghost(int ghost)
 {
     stage.soul_ghost = ghost;
+}
+
+int scene_stage_soul_ghost(void)
+{
+    return stage.soul_ghost;
 }
 
 void scene_stage_set_last_plate_soul_texture(const char *texture_name)

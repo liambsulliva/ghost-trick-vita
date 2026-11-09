@@ -460,6 +460,7 @@
     },
     {
       "name": "soul_beam",
+      "ghost_variants": true,
       "source": "natives/android/charfiles/3d/04_item/soultentacle_iml4.tex.691230823",
       "width": 256,
       "height": 64

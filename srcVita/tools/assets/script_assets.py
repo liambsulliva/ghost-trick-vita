@@ -338,11 +338,19 @@ def rooms_text(section, plate_sizes, soul_plates, ghost_plates=None):
     return "\n".join(lines) + "\n"
 
 
+SOUL_RED_DOMINANCE = 2.0
+
+
+def is_soul_red(style):
+    red, green, blue = style[0], style[1], style[2]
+    return red >= SOUL_RED_DOMINANCE * max(green, blue)
+
+
 def soul_text(soul_view):
     lines = ["owner " + soul_view["owner"], "ring " + soul_view["ring"]]
     lines.extend("core " + name for name in soul_view.get("cores", []))
     for class_id, style in soul_view.get("classes", {}).items():
-        lines.append("class %s %s" % (class_id, " ".join(asset_writers.format_number(value) for value in style)))
+        lines.append("class %s %s %d" % (class_id, " ".join(asset_writers.format_number(value) for value in style), 1 if is_soul_red(style) else 0))
     for object_name, style in soul_view.get("objects", {}).items():
         lines.append("object %s %s" % (object_name, " ".join(asset_writers.format_number(value) for value in style)))
     return "\n".join(lines) + "\n"

@@ -448,6 +448,12 @@ Motion word 0xfff9 sends a message: `func_02007cd4` passes its three strings (ta
 
 Guard: `send_table_message` in `script_motion.c` sends it through `script_machine_send`. `tests/unit/test_motion_message.c` plays a table whose record sends a message to another object.
 
+### 67. Missile's and the boss's views drew Sissel's red
+
+Native gives each ghost its own art for the soul line and the silhouettes: `func_02059cac` and `func_02052a7c` choose one of three classes by the active ghost (`func_0201132c` for Missile, `func_020328e4` for the boss). The port drew Sissel's red soul beam and red object tints in every ghost's view.
+
+Guard: the converter bakes a hue-turned copy of every screen texture marked `ghost_variants` (`soul_beam-missile` turned 120 degrees, `soul_beam-boss` 240) and flags every soul-view class whose tint is soul red (red at least twice green and blue); the view picks the beam by the active ghost and turns flagged tints to green for Missile and blue for the boss. `tests/tools/test_ghost_plates.py` checks the flag rule over every class in game.json and the per-ghost jobs, `tests/tools/test_texture_encoder.py` the hue turn, and `tests/unit/test_soul_ghost_turn.c` the table flag.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

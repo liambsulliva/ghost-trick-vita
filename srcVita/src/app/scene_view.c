@@ -33,6 +33,7 @@ struct screen_view {
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color black = { 0.0f, 0.0f, 0.0f, 1.0f };
+static struct renderer_color turned_for_the_ghost(struct renderer_color color, int ghost);
 #define GHOST_SCANLINE_PITCH 3.0f
 #define GHOST_SCANLINE_HEIGHT 1.0f
 #define GHOST_SCANLINE_ALPHA 0.28f
@@ -306,6 +307,9 @@ static int draw_when_ready(const char *texture_name, struct renderer_rect screen
         color.green = tinted_object->soul_green;
         color.blue = tinted_object->soul_blue;
         color.alpha = tinted_object->soul_alpha;
+        if (tinted_object->soul_turns_with_ghost) {
+            color = turned_for_the_ghost(color, scene_stage_soul_ghost());
+        }
         draw_page_area(texture_name, texture, screen_area, texture_area, color, tinted_object->soul_is_flat);
     } else {
         draw_page_area(texture_name, texture, screen_area, texture_area, color_at_level(color_level), 0);
@@ -889,6 +893,23 @@ void scene_view_forget_held_poses(void)
 void scene_view_draw_world(const struct scene_stage *stage)
 {
     draw_world_layers(stage);
+}
+
+static struct renderer_color turned_for_the_ghost(struct renderer_color color, int ghost)
+{
+    struct renderer_color turned;
+
+    turned = color;
+    if (ghost == SCENE_GHOST_MISSILE) {
+        turned.red = color.blue;
+        turned.green = color.red;
+        turned.blue = color.green;
+    } else if (ghost == SCENE_GHOST_BOSS) {
+        turned.red = color.green;
+        turned.green = color.blue;
+        turned.blue = color.red;
+    }
+    return turned;
 }
 
 static void draw_ghost_scanlines(const struct scene_stage *stage)

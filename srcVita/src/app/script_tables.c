@@ -391,7 +391,8 @@ static int read_soul_line(struct script_tables *tables, const char *line)
     }
     style = &tables->soul_styles[tables->soul_style_count];
     memset(style, 0, sizeof(*style));
-    if (sscanf(line, "class %x %f %f %f %f %d", &style->class_id, &style->red, &style->green, &style->blue, &style->alpha, &style->is_flat) == 6 || sscanf(line, "object " NAME_SCAN " %f %f %f %f %d", style->object_name, &style->red, &style->green, &style->blue, &style->alpha, &style->is_flat) == 6) {
+    style->turns_with_ghost = 0;
+    if (sscanf(line, "class %x %f %f %f %f %d %d", &style->class_id, &style->red, &style->green, &style->blue, &style->alpha, &style->is_flat, &style->turns_with_ghost) >= 6 || sscanf(line, "object " NAME_SCAN " %f %f %f %f %d %d", style->object_name, &style->red, &style->green, &style->blue, &style->alpha, &style->is_flat, &style->turns_with_ghost) >= 6) {
         tables->soul_style_count = tables->soul_style_count + 1;
     }
     return 1;

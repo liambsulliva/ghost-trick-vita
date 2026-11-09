@@ -242,7 +242,7 @@ static void on_soul_object_styled(const char *object_name, unsigned int class_id
         style = script_tables_soul_style(tables, script_class_of_soul_style(class_id), script_class_is_human(class_id), has_core, is_active, is_dead);
     }
     if (style != NULL) {
-        scene_stage_set_object_soul_tint(object_name, style->red, style->green, style->blue, style->alpha, style->is_flat);
+        scene_stage_set_object_soul_tint(object_name, style->red, style->green, style->blue, style->alpha, style->is_flat, style->turns_with_ghost);
     }
 }
 

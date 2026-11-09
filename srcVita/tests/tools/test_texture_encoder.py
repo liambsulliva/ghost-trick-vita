@@ -145,6 +145,17 @@ class TexToGtexTests(unittest.TestCase):
         decoded = decode_dxt_image(data[20:], 8, 8, 16)
         assert_close(self, decoded[0], (200, 100, 50, 128))
 
+    def test_a_hue_turn_makes_soul_red_green_for_missile_and_blue_for_the_boss(self):
+        block = synthetic_files.astc_constant_block(220, 30, 20, 128)
+        tex = synthetic_files.tex_file(6, 6, synthetic_files.FORMAT_ASTC_6X6, block, 16)
+        greens = texture_encoder.convert_tex_to_gtex(TOOL_PATH, self.folder.name, "red_m", tex, 8, 8, hue_turn=120)[0]
+        blues = texture_encoder.convert_tex_to_gtex(TOOL_PATH, self.folder.name, "red_b", tex, 8, 8, hue_turn=240)[0]
+        green = decode_dxt_image(greens[20:], 8, 8, 16)[0]
+        blue = decode_dxt_image(blues[20:], 8, 8, 16)[0]
+        self.assertGreater(green[1], 2 * max(green[0], green[2]))
+        self.assertGreater(blue[2], 2 * max(blue[0], blue[1]))
+        self.assertEqual(green[3], blue[3])
+
     def test_tex_size_reader(self):
         tex = synthetic_files.tex_file(4, 8, synthetic_files.FORMAT_RGBA8, bytes(128), 16)
         self.assertEqual(texture_encoder.read_tex_size(tex), (4, 8))

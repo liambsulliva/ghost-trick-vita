@@ -98,6 +98,7 @@ struct script_soul_style {
     float blue;
     float alpha;
     int is_flat;
+    int turns_with_ghost;
 };
 
 struct script_movie {

@@ -102,9 +102,17 @@ def add_plate_jobs(jobs, plates, soul_ramp, ghost_ramps=None):
             jobs[name] = {"name": name, "source": plate["source"], "soul_ramp": ramp}
 
 
+GHOST_HUE_TURNS = {"missile": 120, "boss": 240}
+
+
 def add_screen_texture_jobs(jobs, screen_textures):
     for texture in screen_textures:
-        jobs[texture["name"]] = dict(texture)
+        job = {key: value for key, value in texture.items() if key != "ghost_variants"}
+        jobs[texture["name"]] = job
+        if texture.get("ghost_variants"):
+            for ghost, degrees in GHOST_HUE_TURNS.items():
+                name = texture["name"] + "-" + ghost
+                jobs[name] = dict(job, name=name, hue_turn=degrees)
 
 
 def bake_movie_frames(packs, record, movie):
@@ -174,12 +182,14 @@ def convert_one_texture(packs, work_folder, job, record, code):
         settings["soul_ramp"] = job["soul_ramp"]
     if "flat_color" in job:
         settings["flat_color"] = job["flat_color"]
+    if "hue_turn" in job:
+        settings["hue_turn"] = job["hue_turn"]
     key = record.key_for(code, settings, tex_bytes)
     if job.get("may_tile") and page_tiles.needs_tiles(width, height):
         return convert_tiled_page(work_folder, job, record, key, tex_bytes, source_size, width, height)
     gtex_bytes = record.read_if_current(relative_path, key)
     if gtex_bytes is None:
-        gtex_bytes, _ = texture_encoder.convert_tex_to_gtex(TEXTURE_TOOL_PATH, work_folder, job["name"], tex_bytes, width, height, job.get("crop"), job.get("soul_ramp"), flat_color=job.get("flat_color"))
+        gtex_bytes, _ = texture_encoder.convert_tex_to_gtex(TEXTURE_TOOL_PATH, work_folder, job["name"], tex_bytes, width, height, job.get("crop"), job.get("soul_ramp"), flat_color=job.get("flat_color"), hue_turn=job.get("hue_turn"))
         record.store(relative_path, key, gtex_bytes)
     return [bake_record.texture_result(job["name"], source_size, gtex_bytes)]
 

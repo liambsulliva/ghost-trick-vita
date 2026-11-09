@@ -961,6 +961,18 @@ static void draw_lightning(float from_x, float from_y, float to_x, float to_y);
 static void draw_lightning_stream(float from_x, float from_y, float to_x, float to_y);
 static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y);
 
+static const char *soul_beam_texture(void)
+{
+    switch (scene_stage_soul_ghost()) {
+    case SCENE_GHOST_MISSILE:
+        return SOUL_BEAM_TEXTURE "-missile";
+    case SCENE_GHOST_BOSS:
+        return SOUL_BEAM_TEXTURE "-boss";
+    default:
+        return SOUL_BEAM_TEXTURE;
+    }
+}
+
 static void draw_chain_beam(void)
 {
     static const float texture_s_of_joint[SOUL_CHAIN_POINTS] = { 8.0f, 15.0f, 22.0f, 29.0f, 35.0f, 42.0f, 49.0f, 56.0f };
@@ -971,7 +983,7 @@ static void draw_chain_beam(void)
     int triangle_count;
     int index;
 
-    texture = texture_cache_use_or_start_loading(SOUL_BEAM_TEXTURE);
+    texture = texture_cache_use_or_start_loading(soul_beam_texture());
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
         return;
     }
@@ -1283,7 +1295,7 @@ static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y)
 {
     const struct cached_texture *texture;
 
-    texture = texture_cache_use_or_start_loading(SOUL_BEAM_TEXTURE);
+    texture = texture_cache_use_or_start_loading(soul_beam_texture());
     if (texture != NULL && texture->state == CACHED_TEXTURE_READY) {
         renderer_draw_beam(texture->texture, from_x, from_y, to_x, to_y, SOUL_BEAM_HALF_WIDTH, white);
     }

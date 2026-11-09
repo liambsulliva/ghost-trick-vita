@@ -65,6 +65,12 @@ def encode_rgba(work_folder, name, width, height, rgba_pixels, compression):
     return block_data_from_dds(dds_bytes, width, height, compression)
 
 
+def apply_hue_turn(rgba_path, width, height, degrees):
+    turned_path = rgba_path + ".turned"
+    subprocess.run(["magick", "-size", "%dx%d" % (width, height), "-depth", "8", "rgba:" + rgba_path, "-modulate", "100,100,%s" % format(100 + degrees / 1.8, ".4f"), "-depth", "8", "rgba:" + turned_path], check=True)
+    os.replace(turned_path, rgba_path)
+
+
 def apply_soul_ramp(rgba_path, width, height, ramp):
     ramped_path = rgba_path + ".ramped"
     subprocess.run(["magick", "-size", "%dx%d" % (width, height), "-depth", "8", "rgba:" + rgba_path, "-alpha", "off", "-colorspace", "gray", "-level", "0%%,%d%%" % ramp["white_percent"], "+level-colors", ramp["dark"] + "," + ramp["bright"], "-alpha", "opaque", "-depth", "8", "rgba:" + ramped_path], check=True)
@@ -81,7 +87,7 @@ def apply_flat_color(rgba_path, color):
         output.write(pixels)
 
 
-def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, crop=None, soul_ramp=None, flat_color=None):
+def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, crop=None, soul_ramp=None, flat_color=None, hue_turn=None):
     tex_path = os.path.join(work_folder, name + ".tex")
     rgba_path = os.path.join(work_folder, name + ".rgba")
     dds_path = os.path.join(work_folder, name + ".dds")
@@ -92,6 +98,8 @@ def convert_tex_to_gtex(tool_path, work_folder, name, tex_bytes, width, height, 
         apply_soul_ramp(rgba_path, width, height, soul_ramp)
     if flat_color is not None:
         apply_flat_color(rgba_path, flat_color)
+    if hue_turn is not None:
+        apply_hue_turn(rgba_path, width, height, hue_turn)
     with open(rgba_path, "rb") as source:
         rgba_pixels = source.read()
     if is_opaque:
