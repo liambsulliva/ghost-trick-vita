@@ -69,6 +69,17 @@ class PacedDwellsTest(unittest.TestCase):
         route["steps"][1]["wait"] = "act:madam:madam_act01 & free"
         self.assertEqual(route_pacing.paced_dwells(route, {1: 1100}, {0: 1000}, set(), {}), {})
 
+    def test_never_stretches_the_step_after_a_ride(self):
+        route = route_with([10.0, 30.0])
+        route["steps"][0]["action"] = "phone_call"
+        self.assertEqual(route_pacing.paced_dwells(route, {1: 1100}, {0: 1000}, set(), {}), {})
+
+    def test_never_stretches_the_first_step_of_another_scene(self):
+        route = route_with([10.0, 30.0])
+        route["steps"][0]["script"] = "first"
+        route["steps"][1]["script"] = "second"
+        self.assertEqual(route_pacing.paced_dwells(route, {1: 1100}, {0: 1000}, set(), {}), {})
+
     def test_uses_the_pace_of_the_step_as_the_floor(self):
         route = route_with([10.0, 12.0], pace="quick")
         self.assertEqual(route_pacing.paced_dwells(route, {1: 1050}, {0: 1000}, set(), {}), {1: 70})

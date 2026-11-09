@@ -662,6 +662,12 @@ Ops 0x58, 0x59 and 0x4a were not ported, so they logged `op_not_ported` and chan
 
 Guard: each balloon has `is_hidden`, and the machine keeps `balloons_stay_hidden`. Op 0x59 hides every open balloon and closes its drawing, op 0x58 shows them again (they redraw through `open_is_pending`) unless op 0x4a has set the hold, and op 0x4a hides the two tap slots when it sets it. Hidden balloons are skipped by taps, timers and the route's balloon waits; ops 0x4b and 0x50 still see them as open, as native's slot words do. `tests/unit/test_balloon_show_hide.c` checks a hidden balloon is neither tapped nor timed out, that showing restores both, that hiding twice closes the drawing once, and that op 0x4a's hold refuses op 0x58 until it is cleared.
 
+### 98. Route pacing stretched steps across gaps the game sets
+
+`route_pacing.py` stretches each step so auto-play never acts sooner after the step before than the footage did. Across a ride or a scene change that gap is not the player's: the game plays the line effect, the arrival or a whole scene's opening, and the port's length differs from the footage's. In Chapter 5 the Go There ride upstairs (st02_game022, `phone_call` at footage 8062) runs about 320 ticks shorter in the port than in the footage, so the next step, the ghost view on the upstairs telephone, was stretched by 390 ticks and the kettle trick landed after keikan_act010's intro had set scene flag 0xa (tick 15032); sys_act040's `f1_yakan` `core_action` handler (0x325a) skips its jump to sys_act050 once 0xa is set, so the party room never began. The footage has the trick about 11 s after arrival, inside the intro.
+
+Guard: the pacing tool never stretches a step that follows a `phone_call` or whose script differs from the step before; such a step still waits for the game as its `wait` says. `tests/tools/test_route_pacing.py` checks both. Eleven dwells dropped from the bake; the honest and scene-skip whole replays play the same steps as before, and from st02_game022's entry the kettle trick now starts sys_act050 and the soul hops down to the basement ball.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

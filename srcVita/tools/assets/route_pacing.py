@@ -17,6 +17,7 @@ BEGAN_MARK = "route_step_began"
 MOST_PASSES = 6
 MOST_EXTRA_TICKS = 300
 GAME_SYNC_WAIT_PREFIXES = ("reach:", "act:")
+GAME_DRIVEN_GAP_ACTIONS = ("phone_call",)
 
 
 def step_times(cue_lines):
@@ -45,6 +46,10 @@ def waits_on_the_game(step):
     return any(token.strip().startswith(GAME_SYNC_WAIT_PREFIXES) for token in step.get("wait", "").split("&"))
 
 
+def follows_a_ride_or_a_scene_change(previous, step):
+    return previous.get("action") in GAME_DRIVEN_GAP_ACTIONS or previous.get("script") != step.get("script")
+
+
 def base_dwell(route, step):
     return route["dwell_ticks"][step.get("pace", "normal")]
 
@@ -55,7 +60,7 @@ def paced_dwells(route, ready, began, windows_too_short, drift):
     for index in range(1, len(steps)):
         step = steps[index]
         previous = steps[index - 1]
-        if "footage_s" not in step or "footage_s" not in previous or index in windows_too_short or waits_on_the_game(step):
+        if "footage_s" not in step or "footage_s" not in previous or index in windows_too_short or waits_on_the_game(step) or follows_a_ride_or_a_scene_change(previous, step):
             continue
         if index not in ready or index - 1 not in began:
             continue
