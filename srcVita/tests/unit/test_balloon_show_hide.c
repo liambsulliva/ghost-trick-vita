@@ -97,11 +97,22 @@ static void test_keeping_balloons_hidden_hides_the_two_tap_slots_and_refuses_sho
     CHECK(!machine.balloons[1].is_hidden);
 }
 
+static void test_closing_the_right_balloon_lifts_the_hold(void)
+{
+    open_balloons_in_three_slots();
+    run_op(0x4a, 1);
+    run_op(0x4d, 0);
+    CHECK_INT(machine.balloons_stay_hidden, 0);
+    run_op(0x58, 0);
+    CHECK(!machine.balloons[0].is_hidden);
+}
+
 int main(void)
 {
     test_hidden_balloons_stay_open_but_cannot_be_tapped_or_run_out();
     test_showing_reopens_hidden_balloons_and_their_timers_run();
     test_hiding_twice_closes_the_drawing_once();
     test_keeping_balloons_hidden_hides_the_two_tap_slots_and_refuses_showing();
+    test_closing_the_right_balloon_lifts_the_hold();
     return test_finish("unit/balloon_show_hide");
 }

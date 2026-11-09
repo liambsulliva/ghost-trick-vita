@@ -431,6 +431,7 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         break;
     case 0x4d:
         close_balloons(machine, SCRIPT_TAP_GROUP_RIGHT);
+        keep_balloons_hidden(machine, 0);
         break;
     case 0x4b:
         vm->condition = script_balloons_can_be_tapped(machine, SCRIPT_TAP_GROUP_LEFT);
