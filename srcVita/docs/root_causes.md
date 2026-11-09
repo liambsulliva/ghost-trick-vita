@@ -668,6 +668,12 @@ Guard: each balloon has `is_hidden`, and the machine keeps `balloons_stay_hidden
 
 Guard: the pacing tool never stretches a step that follows a `phone_call` or whose script differs from the step before; such a step still waits for the game as its `wait` says. `tests/tools/test_route_pacing.py` checks both. Eleven dwells dropped from the bake; the honest and scene-skip whole replays play the same steps as before, and from st02_game022's entry the kettle trick now starts sys_act050 and the soul hops down to the basement ball.
 
+### 99. A turned topic panel stayed under the panel it replaced
+
+Topic panels turn over to a new topic once the old one is cleared: Chapter 17's submarine talk (st14_game050 `stage_01`, idle handler at 0x44e) rebuilds its list with ops 0x3e and 0x40 each time, then op 0x41 puts `mujun` at index 1 once the time topic's flag 0x11f1 is set, and `target` at index 2 once 0x11f2 is set. Native's op 0x41 (`func_02011fac`) puts the new panel into the turned list at `game+0xfa4` when that slot is empty, and the footage (8:00:15 and 8:05:45) shows the turned topics in those slots, with the old ones gone. The port kept both lists but showed the panel in the main list first, so the time topic came back in slot 1, the contradictory-existence topic never appeared, and auto-play picked another panel. Once all three topics are cleared, op 0x42 adds Back, which leads on to `stage_04`.
+
+Guard: a panel in the turned list shows over the panel at its index (`panel_at` in `script_choice.c`). `tests/unit/test_choice_panels.c` checks that a turned panel replaces the panel at its index. From st14_game050's entry the five topics and Back now play in footage order and the scene goes on to the telephone.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

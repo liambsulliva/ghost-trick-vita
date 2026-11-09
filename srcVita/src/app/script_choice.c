@@ -17,11 +17,11 @@ static const struct script_choice_panel *panel_at(const struct script_choice *ch
     if (index < 0 || index >= SCRIPT_CHOICE_PANEL_MAX) {
         return NULL;
     }
-    if (choice->panels[index].action != SCRIPT_CHOICE_EMPTY) {
-        return &choice->panels[index];
-    }
     if (choice->turned_panels[index].action != SCRIPT_CHOICE_EMPTY) {
         return &choice->turned_panels[index];
+    }
+    if (choice->panels[index].action != SCRIPT_CHOICE_EMPTY) {
+        return &choice->panels[index];
     }
     return NULL;
 }

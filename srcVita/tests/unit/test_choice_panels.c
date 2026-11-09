@@ -116,7 +116,9 @@ static unsigned int add_turned_talk_panel(unsigned int *words, unsigned int at, 
     return at + 8;
 }
 
-static void start_scene(int auto_press, int with_turned_panel, int with_cancel, const char *route_choice)
+#define NO_TURNED_PANEL -1
+
+static void start_scene(int auto_press, int turned_panel_index, int with_cancel, const char *route_choice)
 {
     unsigned int words[WORD_MAX];
     unsigned int count;
@@ -126,8 +128,8 @@ static void start_scene(int auto_press, int with_turned_panel, int with_cancel, 
     words[count++] = 0x3e;
     count = add_event_panel(words, count, "cap_one", 2, "panel1_1");
     count = add_event_panel(words, count, "cap_two", 3, "panel2_1");
-    if (with_turned_panel) {
-        count = add_turned_talk_panel(words, count, 2, 5);
+    if (turned_panel_index != NO_TURNED_PANEL) {
+        count = add_turned_talk_panel(words, count, (unsigned int)turned_panel_index, 5);
     }
     if (with_cancel) {
         words[count++] = 0x42;
@@ -175,7 +177,7 @@ static int flag_is_set(unsigned int flag)
 
 static void test_auto_play_picks_the_first_unseen_panel_and_sets_its_flag(void)
 {
-    start_scene(SCRIPT_AUTO_PACED, 0, 0, NULL);
+    start_scene(SCRIPT_AUTO_PACED, NO_TURNED_PANEL, 0, NULL);
     run_ticks(TICKS_TO_RUN);
     CHECK(was_marked("choice_opened panel1_1,panel2_1"));
     CHECK(was_marked("choice_picked panel1_1"));
@@ -186,7 +188,7 @@ static void test_auto_play_picks_the_first_unseen_panel_and_sets_its_flag(void)
 
 static void test_a_panel_already_seen_is_passed_over(void)
 {
-    start_scene(SCRIPT_AUTO_PACED, 0, 0, NULL);
+    start_scene(SCRIPT_AUTO_PACED, NO_TURNED_PANEL, 0, NULL);
     script_flags_write_known(&machine.flags, 2, 1);
     run_ticks(TICKS_TO_RUN);
     CHECK(was_marked("choice_picked panel2_1"));
@@ -195,7 +197,7 @@ static void test_a_panel_already_seen_is_passed_over(void)
 
 static void test_a_route_step_chooses_by_event_name(void)
 {
-    start_scene(SCRIPT_AUTO_PACED, 0, 0, "panel2_1");
+    start_scene(SCRIPT_AUTO_PACED, NO_TURNED_PANEL, 0, "panel2_1");
     run_ticks(TICKS_TO_RUN);
     CHECK(was_marked("choice_picked panel2_1"));
     CHECK(!was_marked("choice_picked_without_route a"));
@@ -204,7 +206,7 @@ static void test_a_route_step_chooses_by_event_name(void)
 
 static void test_the_choice_holds_the_script_until_a_panel_is_picked(void)
 {
-    start_scene(SCRIPT_AUTO_OFF, 0, 0, NULL);
+    start_scene(SCRIPT_AUTO_OFF, NO_TURNED_PANEL, 0, NULL);
     run_ticks(TICKS_TO_RUN);
     CHECK_INT(machine.choice.is_open, 1);
     CHECK(!script_soul_world_is_playable(&machine));
@@ -216,7 +218,7 @@ static void test_the_choice_holds_the_script_until_a_panel_is_picked(void)
 
 static void test_a_turned_panel_shows_at_its_index(void)
 {
-    start_scene(SCRIPT_AUTO_PACED, 1, 0, "cap_three");
+    start_scene(SCRIPT_AUTO_PACED, 2, 0, "cap_three");
     run_ticks(3);
     CHECK_INT(script_choice_panels_shown(&machine), 3);
     CHECK_INT(script_choice_find(&machine, "talk_three"), 2);
@@ -225,12 +227,24 @@ static void test_a_turned_panel_shows_at_its_index(void)
     CHECK(flag_is_set(5));
 }
 
+static void test_a_turned_panel_shows_over_the_panel_at_its_index(void)
+{
+    start_scene(SCRIPT_AUTO_PACED, 1, 0, "cap_three");
+    run_ticks(3);
+    CHECK_INT(script_choice_panels_shown(&machine), 2);
+    CHECK_INT(script_choice_find(&machine, "talk_three"), 1);
+    CHECK_INT(script_choice_find(&machine, "panel2_1"), SCRIPT_CHOICE_NONE);
+    run_ticks(TICKS_TO_RUN);
+    CHECK(was_marked("choice_picked talk_three"));
+    CHECK(flag_is_set(5));
+}
+
 static void test_cancel_needs_the_cancel_panel(void)
 {
-    start_scene(SCRIPT_AUTO_PACED, 0, 0, NULL);
+    start_scene(SCRIPT_AUTO_PACED, NO_TURNED_PANEL, 0, NULL);
     run_ticks(3);
     CHECK_INT(script_choice_find(&machine, "cancel"), SCRIPT_CHOICE_NONE);
-    start_scene(SCRIPT_AUTO_PACED, 0, 1, "cancel");
+    start_scene(SCRIPT_AUTO_PACED, NO_TURNED_PANEL, 1, "cancel");
     run_ticks(TICKS_TO_RUN);
     CHECK(was_marked("choice_picked cancel"));
     CHECK(!flag_is_set(2));
@@ -238,7 +252,7 @@ static void test_cancel_needs_the_cancel_panel(void)
 
 static void test_a_scene_change_clears_the_panels(void)
 {
-    start_scene(SCRIPT_AUTO_OFF, 0, 0, NULL);
+    start_scene(SCRIPT_AUTO_OFF, NO_TURNED_PANEL, 0, NULL);
     run_ticks(3);
     CHECK_INT(machine.choice.is_open, 1);
     CHECK(script_machine_start(&machine, "a"));
@@ -253,6 +267,7 @@ int main(void)
     test_a_route_step_chooses_by_event_name();
     test_the_choice_holds_the_script_until_a_panel_is_picked();
     test_a_turned_panel_shows_at_its_index();
+    test_a_turned_panel_shows_over_the_panel_at_its_index();
     test_cancel_needs_the_cancel_panel();
     test_a_scene_change_clears_the_panels();
     return test_finish("unit/choice_panels");
