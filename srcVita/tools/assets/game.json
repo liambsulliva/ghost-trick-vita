@@ -4299,11 +4299,75 @@
       },
       {
         "script": "st02-st02_game022_Expand",
+        "action": "ghost_on",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 8082.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game022_Expand",
+        "action": "move",
+        "object": "f1_yakan",
+        "pace": "normal",
+        "footage_s": 8084.0,
+        "wait": "view & usable:f1_yakan"
+      },
+      {
+        "script": "st02-st02_game022_Expand",
+        "action": "ghost_off",
+        "object": "f1_yakan",
+        "pace": "quick",
+        "footage_s": 8085.0,
+        "wait": "view & core:f1_yakan"
+      },
+      {
+        "script": "st02-st02_game022_Expand",
+        "action": "trick",
+        "object": "f1_yakan",
+        "pace": "quick",
+        "footage_s": 8086.0,
+        "wait": "core:f1_yakan & playable"
+      },
+      {
+        "script": "st02-st02_game022_Expand",
         "action": "wait",
         "object": "-",
         "pace": "normal",
-        "footage_s": 8019.5,
-        "wait": "no_talk & ticks:600"
+        "footage_s": 8088.0,
+        "wait": "no_talk"
+      },
+      {
+        "script": "st02-st02_game022_Expand",
+        "action": "ghost_on",
+        "object": "f1_yakan",
+        "pace": "normal",
+        "footage_s": 8124.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game022_Expand",
+        "action": "move",
+        "object": "motor",
+        "pace": "quick",
+        "footage_s": 8128.5,
+        "wait": "view & usable:motor"
+      },
+      {
+        "script": "st02-st02_game022_Expand",
+        "action": "move",
+        "object": "ball",
+        "pace": "quick",
+        "footage_s": 8130.5,
+        "wait": "view & usable:ball"
+      },
+      {
+        "script": "st02-st02_game022_Expand",
+        "action": "ghost_off",
+        "object": "ball",
+        "pace": "quick",
+        "footage_s": 8132.0,
+        "wait": "view & core:ball"
       },
       {
         "script": "st02-st02_game024_Expand",
