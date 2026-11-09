@@ -239,13 +239,13 @@ void script_route_pad_frame(struct script_route_pad *pad, const struct script_ma
     if (scroll_for_the_camera_tutorial(machine, frame)) {
         return;
     }
+    if (press_the_rewind_button(pad, machine, frame)) {
+        return;
+    }
     if (read_the_page(pad, machine, frame)) {
         return;
     }
     if (retry_the_game_over(pad, machine, frame)) {
-        return;
-    }
-    if (press_the_rewind_button(pad, machine, frame)) {
         return;
     }
     if (choose_a_panel(pad, machine, frame)) {

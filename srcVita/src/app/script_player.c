@@ -84,6 +84,7 @@ static int is_available;
 static int is_active;
 static int is_paused;
 static int read_step;
+static int stall_breaker_is_on = 1;
 static int auto_play_is_on;
 static float next_chapter_card_age_ticks;
 static int is_holding_for_art;
@@ -400,6 +401,7 @@ static void apply_auto_play(void)
 {
     data->machine.auto_press = SCRIPT_AUTO_OFF;
     data->machine.route_is_driving = auto_play_is_on;
+    data->machine.stall_breaker_is_off = !stall_breaker_is_on;
 }
 
 static void begin_loading_animations(void)
@@ -900,6 +902,15 @@ void script_player_input_frame(const struct input_state *frame)
     if (phase == PHASE_RUNNING && data != NULL) {
         script_input_frame(&pad_input, &data->machine, frame);
     }
+}
+
+void script_player_set_stall_breaker(int is_on)
+{
+    stall_breaker_is_on = is_on;
+    if (data != NULL) {
+        apply_auto_play();
+    }
+    run_log_write("script stall_breaker on=%d", is_on);
 }
 
 void script_player_set_auto_play(int is_on)

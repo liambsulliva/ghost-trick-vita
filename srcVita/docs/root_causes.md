@@ -508,6 +508,21 @@ Native game start (`func_02032328`) sends `* SYSTEM GAME START`. It then sends `
 
 Guard: game start sends the carry-over whenever the countdown survived the change, and logs `countdown_carried_over`. `tests/unit/test_countdown_carry_over.c` starts a scene with and without a running countdown.
 
+### 77. The stall breaker derailed the stories it was meant to carry
+
+The breaker was built for the old instant auto-play. It pushed after 1200 quiet ticks (about 20 s) while a route drove, then closed talks, pushed waiting handlers, forced acts and scripts, and finally moved to the next scene on a list built from an old replay. At a player's pace that fired where nothing was stuck. A long conversation counted as quiet because the script just waits on the talk. On the Vita, run 40's pushes skipped Chapter 1's steps 73 to 89. Its scene timeouts then jumped from st01_game016 to st14_game040 (a Chapter 16/17 scene), so the device played chapters out of order. With the breaker on, the Mac replay played 67 steps, against 160 without it.
+
+Guard:
+- The breaker acts only while auto-play drives; a person playing is never pushed.
+- It waits the player's limits: 3000 quiet ticks, or 18000 while the player can act.
+- A talk or narration page turned by a press counts as progress.
+- When a scene is stuck it skips the whole scene to the next scene in route order, logging `stall_left` and `stall_moved_to`. There are no pushes inside a scene, and scene timeouts and game-over move-ons use the same route order.
+- The route pad never pushes the stick toward a core no chain reaches, so a failed move cannot grab a core by accident.
+- It presses Rewind Time before reading pages.
+- The app command `stall_breaker on|off` switches the breaker on the device.
+
+With the breaker on, the Mac replay plays 284 steps in story order. The first skip is at Chapter 2's restaurant, where a route beat is missing. `tests/unit/test_stall_skip.c` covers a stuck routed scene being skipped to the next routed scene and a player without auto-play never being skipped. `tests/unit/test_route_pad.c` covers a move with no chain pushing nothing.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

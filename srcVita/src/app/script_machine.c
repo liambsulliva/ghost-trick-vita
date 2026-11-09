@@ -20,9 +20,7 @@
 #define STUCK_AFTER_QUIET_TICKS 240
 #define DEBUG_ARG_PREFIX "debug"
 #define STUCK_AFTER_ANY_TICKS 3000
-#define STUCK_AFTER_ANY_TICKS_WHEN_A_ROUTE_DRIVES 1200
 #define STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT 18000
-#define STUCK_AFTER_TICKS_WHEN_PLAYING_AT_A_HUMAN_PACE 3600
 #define STUCK_PUSHES_BEFORE_LEAVING_THE_SCRIPT 60
 #define FNV_OFFSET_BASIS 2166136261u
 #define CHAPTER_MARK_OP 0x74u
@@ -1769,65 +1767,6 @@ static int game_waits_on_a_press_that_works(const struct script_machine *machine
     return machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine);
 }
 
-static int bit_is_set_and_then_set(unsigned char *bits, unsigned int bytes, unsigned int value)
-{
-    unsigned int bit;
-    int was_set;
-
-    bit = value % (bytes * 8u);
-    was_set = (bits[bit / 8u] >> (bit % 8u)) & 1;
-    bits[bit / 8u] = (unsigned char)(bits[bit / 8u] | (1u << (bit % 8u)));
-    return was_set;
-}
-
-static int verb_is_for_native_senders(const char *verb)
-{
-    return strcmp(verb, "EVENT") != 0;
-}
-
-static int handler_can_be_pushed(const struct script_object *object, int index, int native_only)
-{
-    const struct script_handler *handler;
-
-    handler = &object->handlers[index];
-    if (index == object->idle_handler || handler->is_busy || strcmp(handler->arg, "GAME START") == 0 || strcmp(handler->arg, "ACT_JUMP") == 0 || strncmp(handler->arg, DEBUG_ARG_PREFIX, sizeof(DEBUG_ARG_PREFIX) - 1) == 0) {
-        return 0;
-    }
-    return !native_only || verb_is_for_native_senders(handler->verb);
-}
-
-static int push_first_handler_of_kind(struct script_machine *machine, int native_only)
-{
-    int object_index;
-    int index;
-
-    for (object_index = 0; object_index < machine->object_count; object_index++) {
-        struct script_object *object;
-
-        object = &machine->objects[object_index];
-        for (index = 0; index < object->handler_count; index++) {
-            char key[SCRIPT_SOURCE_NAME_MAX];
-
-            if (!handler_can_be_pushed(object, index, native_only) || bit_is_set_and_then_set(machine->pushed_sites, sizeof(machine->pushed_sites), object->handlers[index].first_pc)) {
-                continue;
-            }
-            object->handlers[index].is_busy = 1;
-            snprintf(key, sizeof(key), "%s|%s", object->handlers[index].verb, object->handlers[index].arg);
-            script_machine_note(machine, &object->main_vm, "stuck_pushed_handler", key);
-            return 1;
-        }
-    }
-    return 0;
-}
-
-static int push_a_waiting_handler(struct script_machine *machine)
-{
-    if (push_first_handler_of_kind(machine, 1)) {
-        return 1;
-    }
-    return push_first_handler_of_kind(machine, 0);
-}
-
 static int word_after_op(const struct script_source *source, unsigned int pc, unsigned int *next)
 {
     unsigned int op;
@@ -1975,16 +1914,11 @@ void script_machine_skip_ahead(struct script_machine *machine)
     }
 }
 
-static unsigned int stuck_after_any_ticks(const struct script_machine *machine)
-{
-    return machine->route != NULL && machine->route_is_driving ? STUCK_AFTER_ANY_TICKS_WHEN_A_ROUTE_DRIVES : STUCK_AFTER_ANY_TICKS;
-}
-
 static void push_when_stuck(struct script_machine *machine)
 {
     unsigned int quiet_ticks;
 
-    if (machine->stall_breaker_is_off) {
+    if (machine->stall_breaker_is_off || !machine->route_is_driving) {
         return;
     }
     quiet_ticks = machine->tick - machine->last_new_site_tick;
@@ -1998,45 +1932,61 @@ static void push_when_stuck(struct script_machine *machine)
             return;
         }
         machine->last_timer_tick = machine->tick;
-        if (quiet_ticks < stuck_after_any_ticks(machine)) {
+        if (quiet_ticks < STUCK_AFTER_ANY_TICKS) {
             return;
         }
     }
     if (something_is_running_to_a_known_end(machine)) {
         machine->last_timer_tick = machine->tick;
     }
-    if (script_soul_world_is_playable(machine) && quiet_ticks < (machine->route_is_driving ? STUCK_AFTER_TICKS_WHEN_PLAYING_AT_A_HUMAN_PACE : STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT)) {
+    if (script_soul_world_is_playable(machine) && quiet_ticks < STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT) {
         return;
     }
-    if (quiet_ticks < stuck_after_any_ticks(machine) && (quiet_ticks < STUCK_AFTER_QUIET_TICKS || machine->tick - machine->last_timer_tick < STUCK_AFTER_QUIET_TICKS)) {
+    if (quiet_ticks < STUCK_AFTER_ANY_TICKS && (quiet_ticks < STUCK_AFTER_QUIET_TICKS || machine->tick - machine->last_timer_tick < STUCK_AFTER_QUIET_TICKS)) {
         return;
     }
     machine->last_new_site_tick = machine->tick;
     machine->last_timer_tick = machine->tick;
     machine->push_count = machine->push_count + 1;
-    machine->pushes_in_this_script = machine->pushes_in_this_script + 1;
-    if (machine->narration.is_running) {
-        script_narration_finish_soon(&machine->narration);
-        script_machine_note(machine, NULL, "stuck_ended_narration", "");
-        return;
+    if (!script_machine_move_on_in_story_order(machine, "stall")) {
+        move_to_next_script(machine);
     }
-    if (machine->talk.phase != SCRIPT_TALK_CLOSED) {
-        script_talk_close_now(machine);
-        script_machine_note(machine, NULL, "stuck_closed_talk", "");
-        return;
+}
+
+static const char *next_scene_in_route_order(const struct script_machine *machine)
+{
+    const struct script_route *route;
+    int from;
+    int index;
+
+    route = machine->route;
+    if (route == NULL || route->step_count == 0 || machine->scene_name == NULL) {
+        return NULL;
     }
-    if (machine->pushes_in_this_script <= STUCK_PUSHES_BEFORE_LEAVING_THE_SCRIPT && push_a_waiting_handler(machine)) {
-        return;
+    from = machine->route_furthest_acted_step;
+    if (machine->soul.route_step > from) {
+        from = machine->soul.route_step;
     }
-    if (machine->pushes_in_this_script <= STUCK_PUSHES_BEFORE_LEAVING_THE_SCRIPT && move_to_next_act(machine)) {
-        return;
+    if (from < 0) {
+        from = 0;
     }
-    move_to_next_script(machine);
+    for (index = from; index < route->step_count; index++) {
+        if (strcmp(route->steps[index].script, machine->scene_name) != 0 && find_source(machine, route->steps[index].script) != NULL) {
+            return route->steps[index].script;
+        }
+    }
+    return NULL;
 }
 
 static const char *scene_where_the_story_should_be(const struct script_machine *machine)
 {
     int scene;
+    const char *routed;
+
+    routed = next_scene_in_route_order(machine);
+    if (routed != NULL || machine->route->scene_count == 0) {
+        return routed;
+    }
 
     scene = machine->scene_name != NULL ? script_route_scene_index(machine->route, machine->scene_name) : -1;
     if (scene < 0 || scene + 1 >= machine->route->scene_count) {
@@ -2086,7 +2036,7 @@ int script_machine_move_on_in_story_order(struct script_machine *machine, const 
     const char *next;
 
     machine->last_new_scene_tick = machine->tick;
-    next = machine->route != NULL && machine->route->scene_count > 0 ? scene_where_the_story_should_be(machine) : NULL;
+    next = machine->route != NULL ? scene_where_the_story_should_be(machine) : NULL;
     if (next == NULL || find_source(machine, next) == NULL) {
         next = exit_of_this_scene(machine);
     }

@@ -79,6 +79,11 @@ static int read_fast_forward_command(const char *line, struct command *command)
         command->number = strcmp(line, "auto_play") == 0;
         return 1;
     }
+    if (strcmp(line, "stall_breaker on") == 0 || strcmp(line, "stall_breaker off") == 0) {
+        command->kind = COMMAND_STALL_BREAKER;
+        command->number = strcmp(line, "stall_breaker on") == 0;
+        return 1;
+    }
     if (sscanf(line, "ff %d", &command->number) == 1) {
         command->kind = COMMAND_FAST_FORWARD;
         return 1;

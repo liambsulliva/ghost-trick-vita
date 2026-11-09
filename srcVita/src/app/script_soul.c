@@ -1449,10 +1449,12 @@ static void take_press(struct script_machine *machine)
     soul->presses_taken = soul->presses_taken + 1;
     if (machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine)) {
         script_talk_note_press(machine);
+        machine->last_new_site_tick = machine->tick;
         return;
     }
     if (script_narration_wants_a_press(&machine->narration)) {
         script_narration_note_press(&machine->narration);
+        machine->last_new_site_tick = machine->tick;
         return;
     }
     if (machine->choice.is_open) {
@@ -2378,11 +2380,7 @@ int script_soul_route_hop(const struct script_machine *machine, int target_objec
     if (machine->soul.active_object == NO_CORE) {
         return 0;
     }
-    if (!first_hop_toward(machine, target_object, target_slot, hop_object, hop_slot)) {
-        *hop_object = target_object;
-        *hop_slot = target_slot;
-    }
-    return 1;
+    return first_hop_toward(machine, target_object, target_slot, hop_object, hop_slot);
 }
 
 void script_soul_core_position(const struct script_machine *machine, int object_index, int slot, float *x, float *y)

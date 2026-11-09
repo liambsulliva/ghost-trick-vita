@@ -121,6 +121,8 @@ static int run_one_command(const struct command *command)
 #ifdef FAST_FORWARD_BUILD
     } else if (command->kind == COMMAND_AUTO_PLAY) {
         script_player_set_auto_play(command->number);
+    } else if (command->kind == COMMAND_STALL_BREAKER) {
+        script_player_set_stall_breaker(command->number);
     } else if (command->kind == COMMAND_FAST_FORWARD) {
         script_player_set_fast_forward(command->number);
     } else if (command->kind == COMMAND_FAST_FORWARD_UNTIL) {

@@ -190,10 +190,22 @@ static void test_a_dead_talk_from_a_dead_core_talks_to_the_dead(void)
     CHECK(!gate_got("SYSTEM", "CORETALK"));
 }
 
+static void test_the_pad_does_not_push_toward_a_core_out_of_reach(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_MOVE, "gate", "view");
+    machine.objects[1].actor.x = BODY_X + 300;
+    run_ticks(1);
+    machine.soul.is_on = 1;
+    run_ticks(TICKS_FOR_A_MOVE);
+    CHECK_INT(machine.soul.active_object, 0);
+    CHECK(!machine.soul.tip_is_out);
+}
+
 int main(void)
 {
     test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up();
     test_the_pad_moves_the_soul_with_the_stick();
+    test_the_pad_does_not_push_toward_a_core_out_of_reach();
     test_the_pad_picks_the_route_panel_only_once_the_step_has_begun();
     test_the_pad_presses_the_rewind_button_once_it_is_up();
     test_a_dead_talk_from_a_living_core_is_a_core_talk();
