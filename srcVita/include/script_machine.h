@@ -307,6 +307,9 @@ struct script_soul {
     int direction_y;
     float held_x;
     float held_y;
+    float view_pan_x;
+    float view_pan_y;
+    int view_was_panned;
     long long start_message_at;
     long long final_message_at;
     long long leap_spokes_at;
@@ -589,6 +592,7 @@ int script_soul_game_over_waits(const struct script_machine *machine);
 int script_soul_rewind_button_waits(const struct script_machine *machine);
 void script_soul_note_direction(struct script_machine *machine, int direction_x, int direction_y);
 void script_soul_set_held(struct script_machine *machine, float held_x, float held_y);
+void script_soul_set_view_pan(struct script_machine *machine, float pan_x, float pan_y);
 void script_soul_reset(struct script_machine *machine);
 void script_soul_script_began(struct script_machine *machine, const char *script);
 void script_soul_act_began(struct script_machine *machine, const char *object_name, const char *act_name);

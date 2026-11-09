@@ -48,6 +48,11 @@ static void send_directions(struct script_input *input, struct script_machine *m
     script_soul_set_held(machine, stick_aim_axis_speed(frame->stick_x), stick_aim_axis_speed(frame->stick_y));
 }
 
+static void send_view_pan(struct script_machine *machine, const struct input_state *frame)
+{
+    script_soul_set_view_pan(machine, stick_aim_axis_speed(frame->right_stick_x), stick_aim_axis_speed(frame->right_stick_y));
+}
+
 static void press_the_pill(struct script_machine *machine, int pill)
 {
     switch (pill) {
@@ -163,6 +168,7 @@ static void send_buttons(struct script_machine *machine, unsigned int pressed)
 void script_input_frame(struct script_input *input, struct script_machine *machine, const struct input_state *frame)
 {
     send_directions(input, machine, frame);
+    send_view_pan(machine, frame);
     send_touch(input, machine, frame);
     send_buttons(machine, frame->pressed);
 }

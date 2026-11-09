@@ -213,6 +213,38 @@ static void test_the_camera_stays_put_while_a_scripted_event_holds_the_player(vo
     CHECK_INT(machine.camera_x, camera_before);
 }
 
+static int camera_x_after_holding_the_right_stick(int ticks)
+{
+    struct input_state frame;
+    int tick;
+
+    for (tick = 0; tick < ticks; tick++) {
+        memset(&frame, 0, sizeof(frame));
+        frame.right_stick_x = 1.0f;
+        script_input_frame(&pad, &machine, &frame);
+        script_soul_step_before_tasks(&machine);
+    }
+    return machine.camera_x;
+}
+
+static void test_the_right_stick_pans_the_ghost_view_only_while_the_player_holds_the_chain(void)
+{
+    int camera_before;
+
+    start();
+    machine.object_count = 1;
+    place_core(0, "body", BODY_X);
+    script_soul_set_first_core(&machine, 0, 0);
+    script_soul_step_before_tasks(&machine);
+    machine.soul.is_on = 1;
+    camera_before = machine.camera_x;
+    CHECK(camera_x_after_holding_the_right_stick(TICKS_FOR_A_DRAG) > camera_before);
+    CHECK_INT(machine.soul.active_object, 0);
+    script_soul_run_command(&machine, "CustomSoulVision", "DemoModeOn");
+    camera_before = machine.camera_x;
+    CHECK_INT(camera_x_after_holding_the_right_stick(TICKS_FOR_A_DRAG), camera_before);
+}
+
 int main(void)
 {
     test_the_d_pad_and_cross_choose_a_panel();
@@ -221,5 +253,6 @@ int main(void)
     test_the_d_pad_scrolls_the_camera_tutorial_while_its_talk_is_open();
     test_a_direction_in_the_living_world_pans_the_camera_and_leaves_the_ghost_view_shut();
     test_the_camera_stays_put_while_a_scripted_event_holds_the_player();
+    test_the_right_stick_pans_the_ghost_view_only_while_the_player_holds_the_chain();
     return test_finish("unit/script_input");
 }

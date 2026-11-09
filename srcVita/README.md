@@ -250,9 +250,10 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 | Input | What it does in a chapter |
 |---|---|
 | Touch | Drag the soul from its flame to aim it at a core, and tap pills and balloons |
-| Left stick | Aim the soul in the soul view, more slowly with a smaller push. Pushing it in the living world opens the soul view |
-| D-pad | The same as the left stick, at full speed |
-| CROSS | Advance dialogue, or do the trick of the core you are in |
+| Left stick | Aim the soul in the soul view, more slowly with a smaller push. In the living world it pans the camera |
+| Right stick | Pan the camera in the soul view |
+| D-pad | The same as the left stick, at full speed. Neither moves anything while a cutscene, a trick or a talk has the controls |
+| CROSS | Finish or advance dialogue and narration, or do the trick of the core you are in |
 | L | Open the soul view, or go back from one you opened |
 | CIRCLE | Go back from the soul view |
 | TRIANGLE or SQUARE | Tap the left or right balloon, when a script opens one that can be tapped |

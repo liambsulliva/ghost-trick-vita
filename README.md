@@ -102,6 +102,14 @@ The log is `ux0:data/ghosttrick/run.log`. It keeps earlier launches, so read bel
 
 After updating this repository, run the setup script again and copy the files across again. The file formats can change, and older files do not always produce an error: some just play wrongly.
 
+## Changes from the original
+
+The port follows the DS game's own code wherever it can. The changes below are deliberate. They make it play better on the Vita, and they are not in the original:
+
+- **Narration can be hurried.** A CROSS press while Sissel's narration fades in shows the whole page at once, as it does for speech bubbles. The next press moves on, even on pages the original times by itself.
+- **The right stick pans the ghost view.** While the player holds the chain, the left stick moves the soul and the right stick pans the camera. The camera stays where it was panned until the soul is aimed again.
+- **Vita buttons instead of touch alone.** Every touch action also has a button, and the on-screen prompts show the Vita's buttons rather than the remaster's keyboard keys. [The app's README](srcVita/README.md#controls) lists them.
+
 ## Working on the port
 
 - [Handoff and local setup](HANDOFF.md)

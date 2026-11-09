@@ -67,6 +67,7 @@ void input_poll(struct input_state *state)
     }
     sceCtrlPeekBufferPositive(0, &pad, 1);
     stick_aim_from_raw(pad.lx, pad.ly, &state->stick_x, &state->stick_y);
+    stick_aim_from_raw(pad.rx, pad.ry, &state->right_stick_x, &state->right_stick_y);
     buttons = read_app_buttons(pad.buttons);
     state->pressed = buttons & ~previous_buttons;
     state->held = buttons;

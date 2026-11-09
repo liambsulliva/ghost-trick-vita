@@ -22,6 +22,8 @@ struct input_state {
     float touch_y;
     float stick_x;
     float stick_y;
+    float right_stick_x;
+    float right_stick_y;
 };
 
 void input_poll(struct input_state *state);
