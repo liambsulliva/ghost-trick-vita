@@ -4100,6 +4100,14 @@
         "wait": "view"
       },
       {
+        "script": "st02-st02_game022_Expand",
+        "action": "tap_balloon",
+        "object": "balloon:click",
+        "pace": "normal",
+        "footage_s": 7853.5,
+        "wait": "balloon:balloon:click"
+      },
+      {
         "script": "st02-st02_game023_Expand",
         "action": "ghost_on",
         "object": "linne_s",
