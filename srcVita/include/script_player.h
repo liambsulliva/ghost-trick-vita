@@ -1,6 +1,7 @@
 #ifndef SCRIPT_PLAYER_H
 #define SCRIPT_PLAYER_H
 
+#include "input.h"
 #include "scene_player.h"
 
 
@@ -16,16 +17,7 @@ int script_player_is_showing_next_chapter_card(void);
 enum scene_playback_state script_player_status(void);
 void script_player_skip_ahead(void);
 int script_player_is_holding_for_art(void);
-void script_player_press(void);
-void script_player_ghost_button(void);
-void script_player_touch(int is_down, float x, float y);
-void script_player_back_button(void);
-void script_player_hourglass_button(void);
-void script_player_notebook_button(void);
-void script_player_tap_balloon(int is_right);
-void script_player_character_button(void);
-void script_player_direction(int direction_x, int direction_y);
-void script_player_held_direction(float held_x, float held_y);
+void script_player_input_frame(const struct input_state *frame);
 void script_player_set_auto_play(int is_on);
 void script_player_set_fast_forward(int ticks_per_frame);
 void script_player_run_until(const char *kind, const char *name);
