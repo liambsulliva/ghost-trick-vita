@@ -430,6 +430,12 @@ Native keeps the active ghost in game+0xc bits 13-14 (`func_0201132c` reads 1 as
 
 Guard: the soul keeps the active ghost and each ghost's last core; Jowd's pill and the Missile and Sissel switch pills sit at the bottom centre with the remaster's icons and TRIANGLE (when no balloon takes it), and the commands, the switch and the call follow the native functions above. `tests/unit/test_character_buttons.c` covers Jowd's call, the switch both ways, the exceptions and the per-ghost cores. Missile's ghost view is green and the boss's dark blue, with scanlines and a sweeping line over both (measured from the footage: Missile dark #000d00 to bright #099c04, the boss #000317 to #136ae3, Sissel #0a0000 to #9b0e01). The converter bakes the green and blue room plates only for rooms of scripts that name `Missile:On` or `Boss:On`, the rooms file carries them after the red plate, and the stage picks the plate by the active ghost the HUD view reports (`tests/tools/test_ghost_plates.py`). Still open: Missile's exchange (pGameMainExchange, op 0xa5), the per-ghost object tints, and the route through Jowd's prison escape (st03_game012, flag 0x10a2 set by its own handler at 0xc74).
 
+### 64. A closed balloon left its parts on screen
+
+Native keeps each balloon in a slot (the eight words at `game+0xe1c`; `func_020109c8` closes them), and closing a slot ends the balloon with every part it has. The port draws a balloon's oval and tail as overlays that appear on scheduled ticks, and a close scheduled its hides beside the shows still waiting. A balloon closed before its last part appeared, which fast forward does within a few ticks, left that part on the screen: the stale bubbles over black screens and later scenes that the watchers kept reporting.
+
+Guard: scheduling an action for an overlay drops any action still pending for the same overlay, so the latest open or close wins (`forget_pending_overlay` in `script_bridge.c`). `tests/unit/test_balloon_close_race.c` closes a balloon before its parts appear, shows and hides one, and reopens one in its slot.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

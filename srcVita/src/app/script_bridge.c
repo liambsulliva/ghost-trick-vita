@@ -516,10 +516,22 @@ static void on_narration_changed(const char *label, enum script_narration_event 
     }
 }
 
+static void forget_pending_overlay(int overlay_id)
+{
+    int index;
+
+    for (index = 0; index < PENDING_OVERLAY_MAX; index++) {
+        if (pending_overlays[index].in_use && pending_overlays[index].overlay_id == overlay_id) {
+            pending_overlays[index].in_use = 0;
+        }
+    }
+}
+
 static void schedule_overlay(unsigned int due_tick, int is_hide, int overlay_id, const struct script_balloon_part *part, float center_x, float center_y)
 {
     int index;
 
+    forget_pending_overlay(overlay_id);
     for (index = 0; index < PENDING_OVERLAY_MAX; index++) {
         if (!pending_overlays[index].in_use) {
             pending_overlays[index].in_use = 1;
