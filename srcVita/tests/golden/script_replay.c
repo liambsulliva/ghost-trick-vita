@@ -213,6 +213,32 @@ static void print_cores(void)
     }
 }
 
+static const char *traced_core_name;
+static int traced_core_x = -100000;
+static int traced_core_y = -100000;
+static void note_traced_core(void)
+{
+    int index;
+
+    if (traced_core_name == NULL) {
+        return;
+    }
+    for (index = 0; index < machine.object_count; index++) {
+        const struct script_actor *actor;
+
+        actor = &machine.objects[index].actor;
+        if (strcmp(machine.objects[index].name, traced_core_name) != 0 || !actor->has_core) {
+            continue;
+        }
+        if (actor->x + actor->core_x != traced_core_x || actor->y + actor->core_y != traced_core_y) {
+            traced_core_x = actor->x + actor->core_x;
+            traced_core_y = actor->y + actor->core_y;
+            CUE("core_at %s %d,%d soul_view=%d", traced_core_name, traced_core_x, traced_core_y, machine.soul.is_on);
+        }
+        return;
+    }
+}
+
 static void on_marked(const char *what, const char *name) { CUE("mark %s %s", what, name); if (marks_to_stdout) { printf("mark %s %s\n", what, name); if (strcmp(what, "route_hop_beyond_reach") == 0) { print_cores(); } } save_state_when_due(what, name); if (strcmp(what, "route_step_done") == 0) { note_flag_changes(); } }
 static void on_talk(const struct script_talk_view *view) { CUE("talk slide=%.2f alpha=%.2f glyphs=%d cursor=%d open=%d", view->slide, view->text_alpha, view->glyphs_shown, view->cursor_is_on, view->page != NULL); }
 static void on_effect_deleted(const char *name) { CUE("effect_deleted %s", name); }
@@ -548,6 +574,8 @@ int main(int argument_count, char **arguments)
         } else if (strcmp(arguments[index], "--timing") == 0) {
             index = index + 1;
             timing = strcmp(arguments[index], "ds") == 0 ? SCRIPT_TIMING_DS : SCRIPT_TIMING_REMASTER;
+        } else if (strcmp(arguments[index], "--trace-core") == 0) {
+            traced_core_name = arguments[++index];
         } else if (strcmp(arguments[index], "--stop-tick") == 0) {
             stop_tick = (unsigned int)atoi(arguments[++index]);
         } else if (strcmp(arguments[index], "--press-at") == 0) {
@@ -648,6 +676,7 @@ int main(int argument_count, char **arguments)
             script_input_frame(&route_input, &machine, &frame);
         }
         script_machine_tick(&machine);
+        note_traced_core();
     }
     if (marks_to_stdout) {
         print_cores();
