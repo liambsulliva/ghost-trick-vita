@@ -3710,36 +3710,10 @@
       },
       {
         "script": "st02-st02_game004_Expand",
-        "action": "ghost_off",
-        "object": "stand",
-        "slot": 1,
-        "pace": "quick",
-        "footage_s": 6093.0,
-        "wait": "core:stand:1"
-      },
-      {
-        "script": "st02-st02_game004_Expand",
-        "action": "trick",
-        "object": "stand",
-        "slot": 1,
-        "pace": "quick",
-        "footage_s": 6093.5,
-        "wait": "playable & no_talk"
-      },
-      {
-        "script": "st02-st02_game004_Expand",
-        "action": "ghost_on",
-        "object": "telephone",
-        "pace": "normal",
-        "footage_s": 6112.5,
-        "wait": "free & no_talk"
-      },
-      {
-        "script": "st02-st02_game004_Expand",
         "action": "move",
         "object": "telephone",
         "pace": "normal",
-        "footage_s": 6112.75,
+        "footage_s": 6094.5,
         "wait": "view & usable:telephone"
       },
       {
@@ -3747,7 +3721,7 @@
         "action": "ghost_off",
         "object": "telephone",
         "pace": "quick",
-        "footage_s": 6113.0,
+        "footage_s": 6095.25,
         "wait": "core:telephone"
       },
       {
@@ -3755,7 +3729,7 @@
         "action": "phone_stay",
         "object": "telephone",
         "pace": "normal",
-        "footage_s": 6116.0,
+        "footage_s": 6114.0,
         "wait": "no_talk"
       },
       {
@@ -3824,6 +3798,40 @@
         "footage_s": 6141.0,
         "wait": "core:stand:1 & playable",
         "slot": 1
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "ghost_on",
+        "object": "stand",
+        "slot": 1,
+        "pace": "normal",
+        "footage_s": 6178.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "move",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 6180.0,
+        "wait": "view & usable:telephone"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "ghost_off",
+        "object": "telephone",
+        "pace": "quick",
+        "footage_s": 6180.5,
+        "wait": "core:telephone"
+      },
+      {
+        "script": "st02-st02_game004_Expand",
+        "action": "phone_call",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 6251.0,
+        "wait": "act:telephone_004:telephone_004_act060",
+        "place": 0
       },
       {
         "script": "st02-st02_game010_Expand",
