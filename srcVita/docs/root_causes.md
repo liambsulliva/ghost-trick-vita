@@ -555,6 +555,18 @@ The port held the chain only for an open talk or a choice. On the Vita, the play
 
 Guard: one check, `a_scripted_event_holds_the_soul`, gates every chain input (touch, stick and d-pad): the view entering or leaving, view demo mode, the demo soul view, the tutorial hold until its check begins, Input:Off, a dead talk, narration, a movie, a choice, and a talk. The Back button is held during the tutorial hold as well. `tests/unit/test_soul_touch_rules.c` drags and holds the stick during the tutorial hold, DemoModeOn, Input:Off, the demo soul view and a movie, then checks that the soul stays put and moves again once the event ends.
 
+### 82. Op 0x118 never set a table's start frame
+
+Op 0x118 (case in `func_02023fdc`) sets byte `+0x143` and bit 7 of `+0x142` on a uScript2d (`func_02026744`). Its 33 sites all follow an op 0x117 that queues a table. The next queued start in `func_0205964c` passes that frame to `func_02007c14`/`func_02007cd4`, which pre-walks the table from its start. On the way it applies the point words (0xfff4, held for the box when the table keeps point zero; 0xfff5) and the core place word (0xfff0), skips the other commands, and stops at the first frame word whose frame number matches. When the table's box word (0xfffc) runs, playback jumps to the record after the last frame passed. The port logged `op_not_ported`, so these motions started from their first frame. Chapter 16's gun in st14_game031 and Chapter 17's jairo in st14_game040 run it.
+
+Guard: 0x118 marks the current object's actor, and the queued start pre-walks the table the native way (`find_the_start_frame`); the box word resumes at the found word. `tests/unit/test_motion_start_frame.c` starts a table on its first frame by default, and on a later frame after 0x118 with the point word before it applied.
+
+### 83. The free camera panned while a scripted event held the player
+
+Directions in the living world pan the free camera (root cause 79). The port allowed it whenever the soul view was off and no talk paused the world, so a player could pan during demo-mode cutscenes, Input:Off stretches, narration and movies, where native takes the controls away.
+
+Guard: the free camera (stick, d-pad and touch drag) follows the same rule as the chain. It moves only in a playable world (`script_soul_world_is_playable`: normal play mode, no pause, input on, no dead talk or choice) with no scripted event holding the player (`a_scripted_event_holds_the_soul`). Camera:Off and op 0x6e still forbid it, and the camera tutorial still allows it. `tests/unit/test_script_input.c` holds the d-pad in demo mode and under Input:Off and checks that the camera stays put.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

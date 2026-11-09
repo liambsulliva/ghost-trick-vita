@@ -175,6 +175,35 @@ static void test_a_direction_in_the_living_world_pans_the_camera_and_leaves_the_
     CHECK(machine.camera_x > camera_before);
 }
 
+static void test_the_camera_stays_put_while_a_scripted_event_holds_the_player(void)
+{
+    struct input_state frame;
+    int camera_before;
+    int tick;
+
+    start();
+    machine.object_count = 1;
+    place_core(0, "shadanki", GATE_X);
+    machine.mode_byte = NORMAL_PLAY_MODE - 1;
+    camera_before = machine.camera_x;
+    for (tick = 0; tick < TICKS_FOR_A_DRAG; tick++) {
+        memset(&frame, 0, sizeof(frame));
+        frame.held = INPUT_RIGHT;
+        script_input_frame(&pad, &machine, &frame);
+        script_soul_step_before_tasks(&machine);
+    }
+    CHECK_INT(machine.camera_x, camera_before);
+    machine.mode_byte = NORMAL_PLAY_MODE;
+    script_soul_run_command(&machine, "Button", "Input:Off");
+    for (tick = 0; tick < TICKS_FOR_A_DRAG; tick++) {
+        memset(&frame, 0, sizeof(frame));
+        frame.held = INPUT_RIGHT;
+        script_input_frame(&pad, &machine, &frame);
+        script_soul_step_before_tasks(&machine);
+    }
+    CHECK_INT(machine.camera_x, camera_before);
+}
+
 int main(void)
 {
     test_the_d_pad_and_cross_choose_a_panel();
@@ -182,5 +211,6 @@ int main(void)
     test_a_touch_drag_on_the_screen_moves_the_soul();
     test_the_d_pad_scrolls_the_camera_tutorial_while_its_talk_is_open();
     test_a_direction_in_the_living_world_pans_the_camera_and_leaves_the_ghost_view_shut();
+    test_the_camera_stays_put_while_a_scripted_event_holds_the_player();
     return test_finish("unit/script_input");
 }

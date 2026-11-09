@@ -1531,10 +1531,13 @@ static int free_camera_is_allowed(const struct script_machine *machine)
     const struct script_soul *soul;
 
     soul = &machine->soul;
-    if (soul->is_on || soul->camera_is_locked || (machine->pause_bit && !soul->camera_tutorial_is_on)) {
+    if (soul->is_on || soul->camera_is_locked) {
         return 0;
     }
-    return !soul->free_camera_is_forbidden || soul->camera_tutorial_is_on;
+    if (soul->camera_tutorial_is_on) {
+        return 1;
+    }
+    return !soul->free_camera_is_forbidden && script_soul_world_is_playable(machine) && !a_scripted_event_holds_the_soul(machine);
 }
 
 void script_soul_drag_camera(struct script_machine *machine, float delta_x, float delta_y)
