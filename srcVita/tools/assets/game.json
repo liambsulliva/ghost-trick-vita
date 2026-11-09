@@ -3519,56 +3519,57 @@
       {
         "script": "st02-st02_game000_Expand",
         "action": "ghost_on",
-        "object": "book",
+        "object": "stand",
         "pace": "normal",
-        "footage_s": 5336.0,
+        "footage_s": 5336.5,
         "wait": "free & no_talk"
       },
       {
         "script": "st02-st02_game000_Expand",
         "action": "move",
-        "object": "book",
+        "object": "stand",
+        "slot": 1,
         "pace": "normal",
-        "footage_s": 5336.75,
-        "wait": "view & usable:book"
-      },
-      {
-        "script": "st02-st02_game000_Expand",
-        "action": "ghost_off",
-        "object": "book",
-        "pace": "quick",
-        "footage_s": 5337.5,
-        "wait": "core:book"
-      },
-      {
-        "script": "st02-st02_game000_Expand",
-        "action": "trick",
-        "object": "book",
-        "pace": "quick",
-        "footage_s": 5338.0,
-        "wait": "playable & no_talk"
-      },
-      {
-        "script": "st02-st02_game000_Expand",
-        "action": "ghost_on",
-        "object": "linne",
-        "pace": "normal",
-        "footage_s": 5340.0,
-        "wait": "free & no_talk"
+        "footage_s": 5338.5,
+        "wait": "view & usable:stand:1"
       },
       {
         "script": "st02-st02_game000_Expand",
         "action": "move",
-        "object": "linne",
+        "object": "ltecho_sv",
+        "pace": "normal",
+        "footage_s": 5340.2,
+        "wait": "view & usable:ltecho_sv"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "move",
+        "object": "kaban",
         "pace": "normal",
         "footage_s": 5341.0,
+        "wait": "view & usable:kaban"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "move",
+        "object": "motor",
+        "pace": "normal",
+        "footage_s": 5344.0,
+        "wait": "view & usable:motor"
+      },
+      {
+        "script": "st02-st02_game000_Expand",
+        "action": "move",
+        "object": "linne",
+        "pace": "normal",
+        "footage_s": 5345.0,
         "wait": "view & usable:linne"
       },
       {
         "script": "st02-st02_game000_Expand",
         "action": "wait",
         "pace": "normal",
-        "footage_s": 5343.0,
+        "footage_s": 5346.0,
         "wait": "core:linne"
       },
       {
