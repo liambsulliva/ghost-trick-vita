@@ -1484,20 +1484,6 @@ static void take_press(struct script_machine *machine)
     }
 }
 
-static void take_direction(struct script_machine *machine)
-{
-    struct script_soul *soul;
-
-    soul = &machine->soul;
-    if (soul->is_on && soul->view_demo_is_on) {
-        return;
-    }
-    if (soul->tutorial_mode == TUTORIAL_NONE && !soul->is_on && script_soul_world_is_playable(machine)) {
-        soul->player_opened_soul_view = 1;
-        set_soul_view(machine, 1);
-    }
-}
-
 static void take_ghost_button(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -2212,8 +2198,6 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     script_choice_take_cancel(machine);
     if (machine->choice.is_open) {
         script_choice_move_cursor(machine, soul->direction_y);
-    } else if ((soul->direction_x != 0 || soul->direction_y != 0) && !talk_holds_the_soul(machine)) {
-        take_direction(machine);
     }
     soul->direction_x = 0;
     soul->direction_y = 0;

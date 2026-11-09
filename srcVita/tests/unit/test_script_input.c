@@ -147,11 +147,40 @@ static void test_the_d_pad_scrolls_the_camera_tutorial_while_its_talk_is_open(vo
     CHECK(machine.camera_x > camera_before);
 }
 
+static void test_a_direction_in_the_living_world_pans_the_camera_and_leaves_the_ghost_view_shut(void)
+{
+    struct input_state frame;
+    int camera_before;
+    int tick;
+
+    start();
+    machine.object_count = 1;
+    place_core(0, "shadanki", GATE_X);
+    camera_before = machine.camera_x;
+    send(INPUT_UP, 0, 0.0f, 0.0f);
+    for (tick = 0; tick < TICKS_FOR_A_DRAG; tick++) {
+        memset(&frame, 0, sizeof(frame));
+        frame.pressed = tick == 0 ? INPUT_RIGHT : 0;
+        frame.held = INPUT_RIGHT;
+        script_input_frame(&pad, &machine, &frame);
+        script_soul_step_before_tasks(&machine);
+    }
+    for (tick = 0; tick < TICKS_FOR_A_DRAG; tick++) {
+        memset(&frame, 0, sizeof(frame));
+        frame.stick_x = tick % 2 == 0 ? 1.0f : 0.0f;
+        script_input_frame(&pad, &machine, &frame);
+        script_soul_step_before_tasks(&machine);
+    }
+    CHECK_INT(machine.soul.is_on, 0);
+    CHECK(machine.camera_x > camera_before);
+}
+
 int main(void)
 {
     test_the_d_pad_and_cross_choose_a_panel();
     test_circle_cancels_an_open_choice();
     test_a_touch_drag_on_the_screen_moves_the_soul();
     test_the_d_pad_scrolls_the_camera_tutorial_while_its_talk_is_open();
+    test_a_direction_in_the_living_world_pans_the_camera_and_leaves_the_ghost_view_shut();
     return test_finish("unit/script_input");
 }
