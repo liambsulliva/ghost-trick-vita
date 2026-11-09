@@ -5300,9 +5300,17 @@
       {
         "script": "st02-st02_game024_Expand",
         "action": "move",
+        "object": "f1_yakan",
+        "pace": "normal",
+        "footage_s": 8746.5,
+        "wait": "view & usable:f1_yakan"
+      },
+      {
+        "script": "st02-st02_game024_Expand",
+        "action": "move",
         "object": "telephone",
         "pace": "normal",
-        "footage_s": 8747.0,
+        "footage_s": 8747.75,
         "wait": "view & usable:telephone"
       },
       {
@@ -5310,7 +5318,7 @@
         "action": "ghost_off",
         "object": "telephone",
         "pace": "quick",
-        "footage_s": 8749.0,
+        "footage_s": 8749.75,
         "wait": "view & core:telephone"
       },
       {
@@ -5318,7 +5326,7 @@
         "action": "trick",
         "object": "telephone",
         "pace": "quick",
-        "footage_s": 8752.0,
+        "footage_s": 8752.75,
         "wait": "core:telephone & playable"
       },
       {
@@ -5326,8 +5334,8 @@
         "action": "phone_call",
         "object": "telephone",
         "pace": "normal",
-        "footage_s": 8757.0,
-        "wait": "view & core:telephone",
+        "footage_s": 8759.25,
+        "wait": "playable",
         "place": 4
       },
       {
