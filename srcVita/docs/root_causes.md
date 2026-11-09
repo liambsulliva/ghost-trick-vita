@@ -582,6 +582,12 @@ Guard: `a_scripted_event_holds_the_soul` also holds for the film frame and for a
 
 With this hold, the breaker replay's Chapter 3 mouse scene (st05_game000) loses steps 221 to 224. The old route reopened the ghost view during fuusya's trick animation, which a player cannot do.
 
+### 85. The "Minutes Before Death" side label stayed lit on a black screen
+
+The port draws the side HUD (the "Minutes Before Death" label and the hourglass) in the cover pass, after the screen fade. A fade to black left it bright on an empty screen. On the DS the whole screen fades through master brightness, so nothing stays lit.
+
+Guard: the side HUD takes the screen's fade amount: it fades with the screen and is not drawn once the screen is black. `tests/unit/test_script_ui_view.c` draws it with no fade and with a full fade.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

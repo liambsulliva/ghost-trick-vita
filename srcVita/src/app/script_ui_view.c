@@ -652,20 +652,20 @@ static void draw_element(const struct ui_element *element, const struct playing_
     }
 }
 
-static void draw_side_hud(void)
+static void draw_side_hud(float screen_fade)
 {
     const struct cached_texture *label;
     struct renderer_color tint;
     float dim;
 
-    if (!hud.side_is_on) {
+    if (!hud.side_is_on || screen_fade >= 1.0f) {
         return;
     }
     dim = hud.world_is_running ? 1.0f : SIDE_DIM;
     tint.red = dim;
     tint.green = dim;
     tint.blue = dim;
-    tint.alpha = 1.0f;
+    tint.alpha = screen_fade > 0.0f ? 1.0f - screen_fade : 1.0f;
     label = ready_texture(SIDE_LABEL_TEXTURE);
     if (label != NULL) {
         draw_turned_sprite(label->texture, SIDE_LABEL_X, SIDE_LABEL_Y, SIDE_LABEL_LENGTH, SIDE_LABEL_THICKNESS, SIDE_LABEL_ROTATION, tint);
@@ -1127,12 +1127,12 @@ static void draw_pills(void)
     }
 }
 
-void script_ui_view_draw_under_talk(void)
+void script_ui_view_draw_under_talk(float screen_fade)
 {
     if (tables == NULL || hud.is_hidden_for_movie) {
         return;
     }
-    draw_side_hud();
+    draw_side_hud(screen_fade);
 }
 
 void script_ui_view_draw(void)

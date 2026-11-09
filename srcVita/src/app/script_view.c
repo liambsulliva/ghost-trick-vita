@@ -1633,7 +1633,7 @@ void script_view_draw_on_covers(void)
         draw_film_belts();
     }
     soul_transition_draw();
-    script_ui_view_draw_under_talk();
+    script_ui_view_draw_under_talk(scene_stage_view()->fade_amount);
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {
         draw_talk();
     }

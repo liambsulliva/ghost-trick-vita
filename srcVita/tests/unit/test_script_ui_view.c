@@ -89,13 +89,16 @@ static void test_the_side_label_and_hourglass_draw_under_the_talk(void)
     script_ui_view_draw();
     main_draws = fake_renderer_draw_count();
     fake_renderer_clear_draws();
-    script_ui_view_draw_under_talk();
+    script_ui_view_draw_under_talk(0.0f);
     CHECK_INT(main_draws, 0);
     CHECK(fake_renderer_draw_count() > 0);
+    fake_renderer_clear_draws();
+    script_ui_view_draw_under_talk(1.0f);
+    CHECK_INT(fake_renderer_draw_count(), 0);
     view.is_hidden_for_movie = 1;
     script_ui_view_hud_changed(&view);
     fake_renderer_clear_draws();
-    script_ui_view_draw_under_talk();
+    script_ui_view_draw_under_talk(0.0f);
     CHECK_INT(fake_renderer_draw_count(), 0);
 }
 
