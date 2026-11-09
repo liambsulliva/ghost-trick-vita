@@ -698,6 +698,12 @@ Native's ops 0xe9 and 0xea (`func_02023fdc` case 0xe9/0xea) take their target fr
 
 Guard: both ops act on `script_machine_current_object`, the op 0x83 selection or the owner. `tests/unit/test_core_trick_toggle.c` selects another object, turns its trick off and on, and checks the script's own object keeps its state. The junkyard's flag step is now a `wait` on the flag's risen act (`core:md_flag & act:md_flag:flagAct020`). A route Trick step belongs only where the footage shows the Trick pill pressed and the object has a trick; the port does not yet read the trick info id, so it still accepts a press on a core with no trick, where native refuses it.
 
+### 104. Aborting a talk with the dead left the ghost view open, so the flashback it aborts for never ran
+
+A talk topic that plays a flashback sends `GameApp DeadTalk|Abort`, starts the flashback from handlers of pause class 0, and sends `DeadTalk|Restart` when it ends (12 scripts, from Chapter 5's st02_game023 to Chapter 16's st14_game060). Native's `cGameAppCmdDeadTalk` (`func_0203c03c`) does more on Abort than send `CustomSoulVision|NoEffectFinish`: it switches the main state to `pGameMainReturnNormal` (`data_020cd7d0`, `func_02022f2c`) and sets the mode byte to 2 with `func_0201192c`, so the view closes without its effect and the world runs in demo mode. Restart sets the view's quiet-entry bit (`func_020135b8`, the bit `CustomSoulVision|NoEffectStart` sets in `func_02033504`), pushes the dead-talk state again with mode 0x15 and sets the view bit (`func_02010384`). The port only marked the next leaving as quiet, so the view and its pause stayed and the class 0 flashback handlers never ran: the honest run sat in st02_game023 after the second topic.
+
+Guard: `DeadTalk|Abort` leaves the view for demo mode and `Restart` reopens it quietly; `tests/unit/test_quiet_view_pause.c` checks both. The fix is in the shared command, so the other 11 scripts inherit it.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

@@ -64,9 +64,27 @@ static void test_a_view_opened_with_its_effect_pauses_again_after_demo_mode(void
     CHECK_INT(machine.pause_bit, 1);
 }
 
+static void test_aborting_a_dead_talk_leaves_the_view_for_demo_mode_and_restarting_reopens_it(void)
+{
+    start_an_idle_scene();
+    script_soul_run_command(&machine, "CustomSoulVision", "Start");
+    machine.soul.dead_talk_is_on = 1;
+    CHECK_INT(machine.pause_bit, 1);
+    script_soul_run_command(&machine, "DeadTalk", "Abort");
+    CHECK_INT(machine.soul.dead_talk_is_on, 0);
+    CHECK_INT(machine.soul.is_on, 0);
+    CHECK_INT(machine.pause_bit, 0);
+    CHECK_INT(machine.mode_byte, 2);
+    script_soul_run_command(&machine, "DeadTalk", "Restart");
+    CHECK_INT(machine.soul.is_on, 1);
+    CHECK_INT(machine.soul.dead_talk_is_on, 1);
+    CHECK_INT(machine.pause_bit, 0);
+}
+
 int main(void)
 {
     test_a_view_opened_quietly_never_pauses_the_world();
     test_a_view_opened_with_its_effect_pauses_again_after_demo_mode();
+    test_aborting_a_dead_talk_leaves_the_view_for_demo_mode_and_restarting_reopens_it();
     return test_finish("unit/quiet_view_pause");
 }

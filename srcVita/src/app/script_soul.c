@@ -1254,7 +1254,11 @@ static void run_dead_talk_command(struct script_machine *machine, const char *ar
     } else if (strcmp(arg, "Abort") == 0) {
         machine->soul.dead_talk_is_on = 0;
         run_custom_soul_command(machine, "NoEffectFinish");
+        return_from_soul_view(machine, DEMO_MODE);
     } else if (strcmp(arg, "Restart") == 0) {
+        if (!machine->soul.is_on) {
+            set_soul_view_with_effect(machine, 1, 0);
+        }
         start_dead_talk(machine, machine->soul.dead_talk_is_on ? machine->soul.dead_talk_object : NO_CORE);
     }
 }

@@ -5339,6 +5339,54 @@
         "wait": "core:b1_tool & playable & flag:8 & noflag:6"
       },
       {
+        "script": "st02-st02_game023_Expand",
+        "action": "ghost_on",
+        "object": "b1_tool",
+        "pace": "normal",
+        "footage_s": 8284.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game023_Expand",
+        "action": "dead_talk",
+        "object": "linne_core",
+        "pace": "normal",
+        "footage_s": 8288.5,
+        "wait": "view & no_talk"
+      },
+      {
+        "script": "st02-st02_game023_Expand",
+        "action": "choose",
+        "object": "m02_2200",
+        "pace": "normal",
+        "footage_s": 8353.5,
+        "wait": "choice"
+      },
+      {
+        "script": "st02-st02_game023_Expand",
+        "action": "choose",
+        "object": "m02_2220",
+        "pace": "normal",
+        "footage_s": 8412.5,
+        "wait": "choice"
+      },
+      {
+        "script": "st02-st02_game023_Expand",
+        "action": "choose",
+        "object": "m02_2210",
+        "pace": "normal",
+        "footage_s": 8500.5,
+        "wait": "choice"
+      },
+      {
+        "script": "st02-st02_game023_Expand",
+        "action": "choose",
+        "object": "cancel",
+        "pace": "normal",
+        "footage_s": 8563.0,
+        "wait": "choice"
+      },
+      {
         "script": "st02-st02_game024_Expand",
         "action": "ghost_on",
         "object": "b1_tool",
