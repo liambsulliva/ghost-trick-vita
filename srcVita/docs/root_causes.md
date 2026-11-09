@@ -502,6 +502,12 @@ Native starts a dead talk in `func_0203bd84`. Its target is the core the soul la
 
 Guard: `start_dead_talk` takes the soul's current core when none is named. It sends CORETALK when that core is living, and DEADTALK to the core's object when it is dead. `tests/unit/test_route_pad.c` starts a dead talk from a living core and from a dead one.
 
+### 76. A carried-over countdown was never announced
+
+Native game start (`func_02032328`) sends `* SYSTEM GAME START`. It then sends `* SYSTEM COUNTDOWN CARRY OVER` when the countdown task (`uCountdown`) is still running from the scene before. It sends `LOAD START` or `CHAPTER SELECT START` only for a game loaded from a save (flag 0x1004) or a chapter select (0x1005), never in normal play. The port kept the countdown across a script change (flag 0x1008) but never sent the carry-over, so a scene that handles it never ran that handler. Chapter 8's hub st03_game033 is one.
+
+Guard: game start sends the carry-over whenever the countdown survived the change, and logs `countdown_carried_over`. `tests/unit/test_countdown_carry_over.c` starts a scene with and without a running countdown.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

@@ -1664,6 +1664,12 @@ static void run_native_steps_before_tasks(struct script_machine *machine)
     if (machine->game_start_at == (long long)machine->tick) {
         machine->game_start_at = NEVER;
         script_machine_send(machine, "*", "SYSTEM", "GAME START");
+        if (machine->soul.countdown_is_running) {
+            script_machine_send(machine, "*", "SYSTEM", "COUNTDOWN CARRY OVER");
+            if (machine->outputs->marked != NULL) {
+                machine->outputs->marked("countdown_carried_over", machine->runner.source != NULL ? machine->runner.source->name : "-");
+            }
+        }
         machine->mode_byte = MODE_BYTE_NORMAL;
         machine->pause_bit = 0;
     }
