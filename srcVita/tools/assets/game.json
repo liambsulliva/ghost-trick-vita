@@ -1450,7 +1450,8 @@
     "dwell_ticks": {
       "normal": 90,
       "quick": 45,
-      "instant": 0
+      "instant": 0,
+      "short": 24
     },
     "steps": [
       {
@@ -3321,34 +3322,25 @@
       {
         "script": "st05-st05_game000_Expand",
         "action": "ghost_on",
-        "object": "tel",
-        "pace": "normal",
-        "footage_s": 4543.0,
-        "wait": "free & no_talk"
+        "object": "dust",
+        "pace": "short",
+        "footage_s": 4469.5,
+        "wait": "act:dust:dust_act02 & free"
+      },
+      {
+        "script": "st05-st05_game000_Expand",
+        "action": "move",
+        "object": "dust",
+        "footage_s": 4470.0,
+        "wait": "view & usable:dust"
       },
       {
         "script": "st05-st05_game000_Expand",
         "action": "move",
         "object": "tel",
         "pace": "normal",
-        "footage_s": 4543.75,
+        "footage_s": 4470.6,
         "wait": "view & usable:tel"
-      },
-      {
-        "script": "st05-st05_game000_Expand",
-        "action": "ghost_off",
-        "object": "tel",
-        "pace": "quick",
-        "footage_s": 4544.5,
-        "wait": "core:tel"
-      },
-      {
-        "script": "st05-st05_game000_Expand",
-        "action": "trick",
-        "object": "tel",
-        "pace": "quick",
-        "footage_s": 4545.0,
-        "wait": "playable & no_talk"
       },
       {
         "script": "st05-st05_game000_Expand",
