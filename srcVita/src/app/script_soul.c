@@ -601,7 +601,7 @@ static int a_scripted_event_holds_the_soul(const struct script_machine *machine)
     const struct script_soul *soul;
 
     soul = &machine->soul;
-    return soul->view_change_ticks_left > 0 || soul->view_demo_is_on || machine->demo_soul_is_on || machine->film_frame_is_on || core_is_busy(machine) || soul->tutorial_holds_input || soul->input_is_off || soul->dead_talk_is_on || machine->narration.is_running || machine->movie_ticks_left > 0 || machine->choice.is_open || talk_holds_the_soul(machine);
+    return soul->view_change_ticks_left > 0 || soul->view_demo_is_on || machine->demo_soul_is_on || machine->film_frame_is_on || soul->ghost_pill_is_held_out || soul->tutorial_holds_input || soul->input_is_off || soul->dead_talk_is_on || machine->narration.is_running || machine->movie_ticks_left > 0 || machine->choice.is_open || talk_holds_the_soul(machine);
 }
 
 static void move_soul_tip(struct script_machine *machine)
@@ -1526,7 +1526,7 @@ static void take_ghost_button(struct script_machine *machine)
         }
         return;
     }
-    if (!soul->is_on && script_soul_world_is_playable(machine) && !core_is_busy(machine) && pill_answers_a_press(machine, SCRIPT_PILL_GHOST)) {
+    if (!soul->is_on && script_soul_world_is_playable(machine) && !soul->ghost_pill_is_held_out && pill_answers_a_press(machine, SCRIPT_PILL_GHOST)) {
         script_pills_press(machine, SCRIPT_PILL_GHOST, PILL_HOLD_AFTER_VIEW_CHANGE);
         soul->player_opened_soul_view = 1;
         set_soul_view(machine, 1);

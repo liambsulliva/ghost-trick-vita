@@ -151,7 +151,7 @@ static int pill_is_wanted(const struct script_machine *machine, enum script_pill
     is_registered = (soul->pills_registered & BIT(id)) != 0;
     switch (id) {
     case SCRIPT_PILL_GHOST:
-        return is_registered && group == GROUP_NORMAL && !soul->ghost_pill_is_held_out && !current_core_is_busy(machine);
+        return is_registered && group == GROUP_NORMAL && !soul->ghost_pill_is_held_out;
     case SCRIPT_PILL_TRICK:
         return is_registered && group == GROUP_NORMAL && !soul->trick_pill_is_held_out && !current_core_is_busy(machine);
     case SCRIPT_PILL_NOTEBOOK:
