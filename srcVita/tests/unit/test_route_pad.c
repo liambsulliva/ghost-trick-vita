@@ -15,6 +15,7 @@
 #define TICKS_FOR_A_MOVE 120
 #define CHOOSE_DWELL_TICKS 200
 #define TICKS_FOR_THE_REWIND 200
+#define TICKS_FOR_A_DEAD_TALK_TO_START 5
 #define OPEN_CHOICE_OP 0x3b
 
 static struct script_machine machine;
@@ -158,11 +159,44 @@ static void test_the_pad_presses_the_rewind_button_once_it_is_up(void)
     CHECK(body_got("timeleap", "jump"));
 }
 
+static int gate_got(const char *verb, const char *arg)
+{
+    int index;
+
+    for (index = 0; index < machine.objects[1].message_count; index++) {
+        if (strcmp(machine.objects[1].messages[index].verb, verb) == 0 && strcmp(machine.objects[1].messages[index].arg, arg) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void test_a_dead_talk_from_a_living_core_is_a_core_talk(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_DEAD_TALK, "-", "ticks:1");
+    run_ticks(TICKS_FOR_A_DEAD_TALK_TO_START);
+    CHECK(body_got("SYSTEM", "CORETALK"));
+    CHECK(!body_got("SYSTEM", "DEADTALK"));
+}
+
+static void test_a_dead_talk_from_a_dead_core_talks_to_the_dead(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_DEAD_TALK, "-", "ticks:1");
+    machine.objects[1].is_dead = 1;
+    script_soul_set_first_core(&machine, 1, 0);
+    run_ticks(TICKS_FOR_A_DEAD_TALK_TO_START);
+    CHECK(gate_got("SYSTEM", "DEADTALK"));
+    CHECK(!body_got("SYSTEM", "DEADTALK"));
+    CHECK(!gate_got("SYSTEM", "CORETALK"));
+}
+
 int main(void)
 {
     test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up();
     test_the_pad_moves_the_soul_with_the_stick();
     test_the_pad_picks_the_route_panel_only_once_the_step_has_begun();
     test_the_pad_presses_the_rewind_button_once_it_is_up();
+    test_a_dead_talk_from_a_living_core_is_a_core_talk();
+    test_a_dead_talk_from_a_dead_core_talks_to_the_dead();
     return test_finish("unit/route_pad");
 }

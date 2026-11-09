@@ -1182,8 +1182,15 @@ static void run_custom_soul_command(struct script_machine *machine, const char *
 
 static void start_dead_talk(struct script_machine *machine, int object_index)
 {
+    if (object_index == NO_CORE) {
+        object_index = machine->soul.active_object;
+    }
     machine->soul.dead_talk_is_on = 1;
     machine->soul.dead_talk_object = object_index;
+    if (object_index != NO_CORE && !core_is_for_the_dead(machine, object_index)) {
+        script_machine_send(machine, "*", "SYSTEM", "CORETALK");
+        return;
+    }
     script_machine_send(machine, object_index != NO_CORE ? machine->objects[object_index].name : "*", "SYSTEM", "DEADTALK");
 }
 

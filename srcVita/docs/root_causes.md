@@ -496,6 +496,12 @@ Chapter 1's rewind (`Timeleap SELECT`, st01_game001 0xca8) waits for a press on 
 
 Guard: the route pad presses CROSS whenever the Rewind Time button waits and no page is waiting, as it does for the game-over menu. `tests/unit/test_route_pad.c` arms the rewind and checks the time jump is sent. With it the player-input replay plays through Chapter 1 and Chapter 2 to step 161.
 
+### 75. Every dead talk was sent as DEADTALK
+
+Native starts a dead talk in `func_0203bd84`. Its target is the core the soul last connected to: `game+0xef8`, written by `func_020266e8` whenever the chain connects (`func_02061718`). If that core is a ghost's own core (`game+0xe40` for Sissel, `+0xe44` for Missile, the cores `func_02010194` reads, which a ghost holds only in living objects), `func_0203bfc8` sends `* SYSTEM CORETALK`. If it is a dead person, it sends `SYSTEM DEADTALK` to that person, and with no core it sends `* SYSTEM DEADTALK`. The port always sent DEADTALK, to the named object or to everyone, so scenes that wait on CORETALK never started their talk; Chapter 16's st14_game020 is one.
+
+Guard: `start_dead_talk` takes the soul's current core when none is named. It sends CORETALK when that core is living, and DEADTALK to the core's object when it is dead. `tests/unit/test_route_pad.c` starts a dead talk from a living core and from a dead one.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
