@@ -2048,6 +2048,22 @@ static void mark_no_player_input(struct script_machine *machine, const struct sc
     mark_route_step(machine, "route_no_player_input", step);
 }
 
+static int answer_the_phone_book(struct script_machine *machine, const struct script_route_step *step)
+{
+    if (!machine->phone_book_is_open) {
+        return 0;
+    }
+    mark_no_player_input(machine, step);
+    machine->phone_book_is_open = 0;
+    if (step->action == SCRIPT_ROUTE_PHONE_STAY) {
+        script_machine_send(machine, "*", "phone", "cancel");
+        return 1;
+    }
+    machine->phone_book_place = step->slot;
+    script_machine_send(machine, "*", "phone", "movie");
+    return 1;
+}
+
 static int route_step_is_done(struct script_machine *machine, const struct script_route_step *step)
 {
     struct script_soul *soul;
@@ -2069,10 +2085,8 @@ static int route_step_is_done(struct script_machine *machine, const struct scrip
     case SCRIPT_ROUTE_CAMERA:
         return !soul->camera_tutorial_is_on;
     case SCRIPT_ROUTE_PHONE_CALL:
-        mark_no_player_input(machine, step);
-        machine->phone_book_place = step->slot;
-        script_machine_send(machine, "*", "phone", "movie");
-        return 1;
+    case SCRIPT_ROUTE_PHONE_STAY:
+        return answer_the_phone_book(machine, step);
     case SCRIPT_ROUTE_DEAD_TALK:
         mark_no_player_input(machine, step);
         start_dead_talk(machine, step->object[0] != '\0' ? script_machine_index_of_object(machine, step->object) : NO_CORE);

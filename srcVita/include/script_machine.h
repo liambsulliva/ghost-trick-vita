@@ -488,6 +488,7 @@ struct script_machine {
     int movie_ticks_left;
     int phone_view_is_on;
     int phone_book_place;
+    int phone_book_is_open;
     int game_over_is_pending;
     unsigned int game_over_talk_ended_at;
     struct script_anchored_effect anchored_effects[SCRIPT_ANCHORED_EFFECT_MAX];

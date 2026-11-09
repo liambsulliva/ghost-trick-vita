@@ -16,6 +16,7 @@ Auto-play plays a step only through the inputs a player has (`src/app/script_rou
 - `choose`: moves the choice marker with the d-pad, then presses CROSS.
 - Talk and narration pages get CROSS after 120 ticks of reading, and the game-over menu after 60.
 - `phone_call` and `dead_talk` still act inside the game and log `route_no_player_input` until their player inputs are ported.
+- A telephone ride is three things the player does: trick the telephone (Dial) or leave the ghost view on it, as its scene's handler wants, then answer the phone book. `phone_call` (with `place`, the destination) is Go There and `phone_stay` is Stay Here; both wait until op 0x77 has opened the book (root cause 95), so a ride with no Dial step stalls.
 
 A step that a player could not do fails after 1800 ticks; nothing teleports. The honest count is a replay with `--no-stall-breaker`. With `--marks` the replay prints every object's core position and whether it can be used, at each `route_hop_beyond_reach` and at the end of the run, so a chain of cores within the ghost's reach can be read off directly.
 
