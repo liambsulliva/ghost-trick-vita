@@ -335,6 +335,33 @@ static void start_a_scene_that_fails(void)
     CHECK(script_machine_start(&machine, "fail"));
 }
 
+static void test_a_step_waiting_for_the_retry_holds_through_the_failed_attempt(void)
+{
+    start_a_scene_that_fails();
+    snprintf(route.steps[1].wait, sizeof(route.steps[1].wait), "retried");
+    while (!was_marked("game_over_retry reload") && machine.tick < 1000) {
+        run_ticks(1);
+        CHECK(!was_marked("route_step_done 1:wait:-:0"));
+    }
+    CHECK_INT(machine.retries_of_the_scene, 1);
+    run_ticks(30);
+    CHECK(was_marked("route_step_done 1:wait:-:0"));
+}
+
+static void test_a_fresh_start_or_another_scene_forgets_the_retries(void)
+{
+    start_a_scene_that_fails();
+    while (count_marks("script_begun fail") < 2 && machine.tick < 1000) {
+        run_ticks(1);
+    }
+    CHECK_INT(machine.retries_of_the_scene, 1);
+    CHECK(script_machine_start(&machine, "fail"));
+    CHECK_INT(machine.retries_of_the_scene, 0);
+    machine.retries_of_the_scene = 1;
+    CHECK(script_machine_start(&machine, "elsewhere"));
+    CHECK_INT(machine.retries_of_the_scene, 0);
+}
+
 static void test_a_retry_after_a_game_over_resumes_the_route_at_its_step(void)
 {
     start_a_scene_that_fails();
@@ -405,6 +432,8 @@ static void test_another_scene_forgets_the_core_kept_for_the_retry(void)
 int main(void)
 {
     test_a_retry_after_a_game_over_resumes_the_route_at_its_step();
+    test_a_step_waiting_for_the_retry_holds_through_the_failed_attempt();
+    test_a_fresh_start_or_another_scene_forgets_the_retries();
     test_a_retry_starts_the_soul_on_the_core_it_failed_on();
     test_a_fresh_start_of_the_scene_starts_the_soul_on_its_own_first_core();
     test_another_scene_forgets_the_core_kept_for_the_retry();

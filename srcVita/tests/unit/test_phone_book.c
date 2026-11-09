@@ -47,9 +47,13 @@ static void put_u16(unsigned char *at, unsigned int value)
     at[1] = (unsigned char)(value >> 8);
 }
 
+#define TICKS_UNTIL_A_LATE_BOOK 2500
+#define TICKS_AFTER_A_LATE_BOOK 2900
+
+static unsigned int words[] = { 0x2f, 100, 0x77, 0, 0, 0x2f, 6000, 0x0 };
+
 static void start_a_scene_that_opens_the_phone_book_later(const char *step_line)
 {
-    static const unsigned int words[] = { 0x2f, 100, 0x77, 0, 0, 0x2f, 6000, 0x0 };
     unsigned int index;
 
     memset(scene, 0, sizeof(scene));
@@ -108,9 +112,24 @@ static void test_stay_here_answers_the_phone_book_without_picking_a_place(void)
     CHECK_INT(machine.phone_book_place, 0);
 }
 
+static void test_a_book_opened_long_after_the_step_is_still_answered(void)
+{
+    words[1] = TICKS_UNTIL_A_LATE_BOOK;
+    start_a_scene_that_opens_the_phone_book_later("step a phone_call tel 4 0 -\n");
+    run_ticks(TICKS_UNTIL_A_LATE_BOOK - 10);
+    CHECK(!was_marked("route_step_ready 0:phone_call:tel:4"));
+    CHECK(!was_marked("route_step_failed 0:phone_call:tel:4"));
+    run_ticks(TICKS_AFTER_A_LATE_BOOK - TICKS_UNTIL_A_LATE_BOOK + 10);
+    CHECK(was_marked("route_step_done 0:phone_call:tel:4"));
+    CHECK(!was_marked("route_step_failed 0:phone_call:tel:4"));
+    CHECK_INT(machine.phone_book_place, 4);
+    words[1] = 100;
+}
+
 int main(void)
 {
     test_go_there_waits_for_the_phone_book_to_open();
     test_stay_here_answers_the_phone_book_without_picking_a_place();
+    test_a_book_opened_long_after_the_step_is_still_answered();
     return test_finish("unit/phone_book");
 }

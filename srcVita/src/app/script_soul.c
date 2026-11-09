@@ -1490,6 +1490,7 @@ static void retry_after_the_game_over(struct script_machine *machine)
         return;
     }
     restarts_in_place = script_machine_handles(machine, "SYSTEM", "RESTART");
+    machine->retries_of_the_scene = machine->retries_of_the_scene + 1;
     if (machine->outputs->marked != NULL) {
         machine->outputs->marked("game_over_retry", restarts_in_place ? "restart" : "reload");
     }
@@ -1499,6 +1500,7 @@ static void retry_after_the_game_over(struct script_machine *machine)
     }
     machine->route_step_after_retry = machine->soul.route_step;
     keep_the_core_the_soul_failed_on(machine);
+    machine->scene_is_being_retried = 1;
     script_machine_reload_scene(machine);
 }
 
@@ -1865,6 +1867,8 @@ static int route_word_without_argument_holds(const struct script_machine *machin
         return soul->rewind_select_ticks >= REWIND_SLIDE_TICKS || soul->time_jump_event.target != NULL;
     case SCRIPT_ROUTE_WAIT_CHOICE:
         return machine->choice.is_open;
+    case SCRIPT_ROUTE_WAIT_RETRIED:
+        return machine->retries_of_the_scene > 0;
     default:
         return 0;
     }
@@ -1927,6 +1931,8 @@ static int route_token_holds(const struct script_machine *machine, const struct 
         return (second != NULL ? balloon_sending(machine, first, second) : balloon_sending(machine, NULL, first)) >= 0;
     case SCRIPT_ROUTE_WAIT_TICKS:
         return machine->tick - soul->route_last_action_tick >= (unsigned int)atoi(first);
+    case SCRIPT_ROUTE_WAIT_RETRIED:
+        return machine->retries_of_the_scene >= atoi(first);
     case SCRIPT_ROUTE_WAIT_REACH:
         object_index = script_machine_index_of_object(machine, first);
         return object_index != SCRIPT_NO_OBJECT && soul_can_reach_core(machine, object_index, second != NULL ? atoi(second) : 0);
@@ -2145,6 +2151,14 @@ static void give_up_on_route_step(struct script_machine *machine, const struct s
     finish_route_step(machine, step);
 }
 
+static int the_game_waits_for_this_answer(const struct script_machine *machine, const struct script_route_step *step)
+{
+    if (step->action == SCRIPT_ROUTE_PHONE_CALL || step->action == SCRIPT_ROUTE_PHONE_STAY) {
+        return machine->phone_book_is_open;
+    }
+    return 1;
+}
+
 static void run_route(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -2159,7 +2173,7 @@ static void run_route(struct script_machine *machine)
         if (soul->drag_ticks_left > 0 || soul->action_is_due_in > 0) {
             return;
         }
-        if (!route_wait_holds(machine, step->wait)) {
+        if (!route_wait_holds(machine, step->wait) || !the_game_waits_for_this_answer(machine, step)) {
             soul->route_ready_at = 0;
             if (machine->tick - soul->route_step_began_at > ROUTE_WAIT_MOST_TICKS) {
                 give_up_on_route_step(machine, step);
@@ -2240,6 +2254,10 @@ void script_soul_script_began(struct script_machine *machine, const char *script
         mark_route_step(machine, "route_step_failed", unfinished);
     }
     soul->route_script = script;
+    if (!machine->scene_is_being_retried) {
+        machine->retries_of_the_scene = 0;
+    }
+    machine->scene_is_being_retried = 0;
     if (strcmp(machine->scene_kept_for_the_retry, script) != 0) {
         forget_the_core_kept_for_the_retry(machine);
     }
