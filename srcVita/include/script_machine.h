@@ -41,6 +41,7 @@
 #define SCRIPT_LONG_HAND_REACH_DS_PIXELS 168.0f
 #define SCRIPT_ACTOR_COUNTER_COUNT 5
 #define SCRIPT_NO_SELECTION -1
+#define SCRIPT_FREE_UNIT_MAX 16
 #define SCRIPT_NOTED_OP_BYTES ((SCRIPT_OPCODE_COUNT / 8) + 1)
 #define SCRIPT_NOTED_EFFECT_BYTES 128
 #define SCRIPT_NOTED_PROBLEM_BYTES 1024
@@ -85,6 +86,8 @@ struct script_vm {
     int condition;
     int pause_class;
     int selected_object;
+    int holds_free_unit;
+    int free_unit;
     int has_ended;
     int exit_is_requested;
     int reg_a;
@@ -176,6 +179,11 @@ struct script_object {
     int message_count;
     int is_sleeping;
     int is_dead;
+    struct script_actor actor;
+};
+
+struct script_free_unit {
+    int in_use;
     struct script_actor actor;
 };
 
@@ -383,6 +391,7 @@ struct script_machine {
     struct script_vm runner;
     struct script_object objects[SCRIPT_OBJECT_MAX];
     int object_count;
+    struct script_free_unit free_units[SCRIPT_FREE_UNIT_MAX];
     int actor_count;
     const char *gameapp_verbs[SCRIPT_GAMEAPP_MAX];
     const char *gameapp_args[SCRIPT_GAMEAPP_MAX];
@@ -512,6 +521,7 @@ int script_machine_index_of_object(const struct script_machine *machine, const c
 int script_machine_name_matches_target(const char *name, const char *target);
 struct script_object *script_machine_find_object(struct script_machine *machine, const char *name);
 struct script_object *script_machine_current_object(struct script_machine *machine, const struct script_vm *vm);
+struct script_actor *script_machine_current_actor(struct script_machine *machine, const struct script_vm *vm);
 void script_machine_send(struct script_machine *machine, const char *target, const char *verb, const char *arg);
 int script_machine_handles(const struct script_machine *machine, const char *verb, const char *arg);
 void script_machine_start_music(struct script_machine *machine, int id);

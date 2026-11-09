@@ -508,7 +508,7 @@ static void follow_the_current_actor(struct script_machine *machine, const struc
 {
     const struct script_object *object;
 
-    object = vm->selected_object != SCRIPT_NO_SELECTION ? &machine->objects[vm->selected_object] : vm->owner;
+    object = script_machine_current_object(machine, vm);
     if (object != NULL && object->actor.exists) {
         machine->camera_follow_object = (int)(object - machine->objects);
     }

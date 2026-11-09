@@ -523,6 +523,14 @@ Guard:
 
 With the breaker on, the Mac replay plays 284 steps in story order. The first skip is at Chapter 2's restaurant, where a route beat is missing. `tests/unit/test_stall_skip.c` covers a stuck routed scene being skipped to the next routed scene and a player without auto-play never being skipped. `tests/unit/test_route_pad.c` covers a move with no chain pushing nothing.
 
+### 78. A free unit's position landed on the script's own actor
+
+Op 0x82 (handler at `0x02024f0a`) makes a unit of any class from the factory registry (`func_0201ee6c` on `0x020bbbb4`), adds it at priority 6, parents it to the `uEvtScript`, and stores it in the VM's actor register `+0x14` (`mpFreeUnit`). Ops 0x83 and 0x116 overwrite and clear that same register. The scripts use it for seven classes: `uTelephoneLine` (152 sites), `uTelephoneCore` (56), `uTelephoneLineLeft`, `uTelephoneLineVertical`, `uTelephoneLineVerticalLeft` and the neon effects `uObjEffectNeonA` and `uObjEffectNeonB`. 209 of the 217 sites set a position with op 0x87 straight away. These units only draw. `uTelephoneCore`'s setup `func_02049df4` and update `func_02049f40` slide a line in, fade it and delete it; the line's update `func_0204a228` draws a glowing line from the phone to the screen edge. Op 0x84 (`0x02024f6c`, `func_0202fad4`) deletes every task of a class.
+
+The port ignored 0x82, so the actor register still held the script's owner, and 0x87 moved the owner's actor to the line's position. That harmed any owner with a visible actor or a core. Chapter 10's denwa_003 was moved, harmlessly, because its actor is hidden.
+
+Guard: the VM keeps a free unit in its actor register (`holds_free_unit`, `free_unit`). `script_machine_current_actor` returns the unit, and `script_machine_current_object` returns nothing, so no object op lands on the owner. 0x83 and 0x116 replace or clear the unit, 0x84 ends every unit of its class, and a new script clears them all. Each unit logs `free_unit_not_drawn` with its class until the lines and neon are drawn. `tests/unit/test_free_unit.c` places a unit and checks the owner stays put, covers 0x116, 0x83 and 0x84, and checks a full set of units still keeps the owner in place.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
@@ -531,7 +539,7 @@ With the breaker on, the Mac replay plays 284 steps in story order. The first sk
 - Action selection for player mark layouts: 14 shapes exist and the port uses 4 by a position rule.
 - Effect classes with no port yet, named from the class registry in the RAM dump: `uTimeOverChainEffect` (id 50, the time-over sequence; constructor `func_020473ec`, 0xd8 bytes), `uPhoneBorderEffect` (id 59), `uBlackDarkness` (ids 151, 228, 229), `uLanternLightBlackSt02_01` (id 119, 57 sites in stage 2), `uNightVisionGoggle` (57), `uElectricTorch` (56). Class ids group by factory in `data_020ac194`; key any port by factory, as the chapter cards are.
 - Plain effect kinds with no row in any remaster effect list: kind 3 (id 6, the ripple, 50 sites in nine stages), 0x83 (id 207, the dog's bark) and 0x84 (id 209). Where the remaster draws them from is not found.
-- Telephone lines: op 0x82 makes a `uTelephoneLine` free unit and op 0x84 kills every task of a class (always a telephone line class). Neither is ported, so no line is drawn and 0x84 has nothing to remove.
+- Telephone lines and neon (root cause 78): free units are tracked but not drawn. The line art comes from `func_0205693c` on the sprite set at `data_020cf724`, with `uTelephoneCore`'s icon at `data_020cfe2c`; neither set is mapped to a remaster texture yet.
 - Op 0x9f (case at `0x020253bc`): on a `uGimmick`, writes `words[2]` into the top half of core `words[1]`'s `+0x14` word (`func_02026700`); the enable bit 0 of that word is ops 0x9d and 0x9e. What reads the top half is not found, so it is not ported (state nothing reads).
 - Op 0x48 (case at `0x02024ae2`): writes `words[1] << 12` to `+0x124` of the balloon in slot 0 (`game+0xdfc`, `func_020106ec`). Its meaning is not traced; it is only seen after the routed chapters (st01_game020).
 - Op 0x5b (14 scripts, always after op 0x4d) is native `func_02010874`: it clears the eight balloon slot words at `game+0xe1c` and closes the balloons with the force bit set (`func_020109c8`); the port closes every balloon, as op 0x57 does. Whether a closing animation plays is not traced.

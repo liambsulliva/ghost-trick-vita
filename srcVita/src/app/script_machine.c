@@ -174,6 +174,7 @@ static void begin_script(struct script_machine *machine, const struct script_sou
     script_soul_script_began(machine, source->name);
     script_machine_set_world_origin(machine, 0, 0);
     machine->object_count = 0;
+    memset(machine->free_units, 0, sizeof(machine->free_units));
     machine->actor_count = 0;
     machine->gameapp_count = 0;
     machine->mode_byte = MODE_BYTE_LOADING;
@@ -331,10 +332,37 @@ struct script_object *script_machine_find_object(struct script_machine *machine,
 
 struct script_object *script_machine_current_object(struct script_machine *machine, const struct script_vm *vm)
 {
+    if (vm->holds_free_unit) {
+        return NULL;
+    }
     if (vm->selected_object != SCRIPT_NO_SELECTION) {
         return &machine->objects[vm->selected_object];
     }
     return vm->owner;
+}
+
+static int free_unit_in_hand(const struct script_machine *machine, const struct script_vm *vm)
+{
+    if (vm->free_unit < 0 || vm->free_unit >= SCRIPT_FREE_UNIT_MAX || !machine->free_units[vm->free_unit].in_use) {
+        return SCRIPT_NO_SELECTION;
+    }
+    return vm->free_unit;
+}
+
+struct script_actor *script_machine_current_actor(struct script_machine *machine, const struct script_vm *vm)
+{
+    struct script_object *object;
+    int unit;
+
+    if (vm->holds_free_unit) {
+        unit = free_unit_in_hand(machine, vm);
+        return unit == SCRIPT_NO_SELECTION ? NULL : &machine->free_units[unit].actor;
+    }
+    object = script_machine_current_object(machine, vm);
+    if (object == NULL || !object->actor.exists) {
+        return NULL;
+    }
+    return &object->actor;
 }
 
 unsigned int script_machine_u32(const unsigned int *words, int first)
@@ -751,9 +779,15 @@ static int read_actor_register(const struct script_machine *machine, const struc
 {
     const struct script_object *object;
     const struct script_actor *actor;
+    int unit;
 
-    object = vm->selected_object != SCRIPT_NO_SELECTION ? &machine->objects[vm->selected_object] : vm->owner;
-    actor = object != NULL ? &object->actor : NULL;
+    if (vm->holds_free_unit) {
+        unit = free_unit_in_hand(machine, vm);
+        actor = unit == SCRIPT_NO_SELECTION ? NULL : &machine->free_units[unit].actor;
+    } else {
+        object = vm->selected_object != SCRIPT_NO_SELECTION ? &machine->objects[vm->selected_object] : vm->owner;
+        actor = object != NULL ? &object->actor : NULL;
+    }
     if (actor == NULL || !actor->exists) {
         return 0;
     }
@@ -851,22 +885,13 @@ static void compare_register(const struct script_machine *machine, struct script
     vm->condition = compare_values(read_register(machine, vm, words[0]), (int)script_machine_u32(words, 1), words[3]);
 }
 
-static struct script_actor *current_actor(struct script_machine *machine, struct script_vm *vm)
-{
-    struct script_object *object;
 
-    object = vm->selected_object != SCRIPT_NO_SELECTION ? &machine->objects[vm->selected_object] : vm->owner;
-    if (object == NULL || !object->actor.exists) {
-        return NULL;
-    }
-    return &object->actor;
-}
 
 static void store_register(struct script_machine *machine, struct script_vm *vm, unsigned int reg, int value, int is_relative)
 {
     struct script_actor *actor;
 
-    actor = current_actor(machine, vm);
+    actor = script_machine_current_actor(machine, vm);
     if (actor == NULL) {
         return;
     }
@@ -894,7 +919,7 @@ static const struct script_actor *named_actor(struct script_machine *machine, st
         return NULL;
     }
     if (name[0] == NAME_OF_CURRENT_ACTOR) {
-        return current_actor(machine, vm);
+        return script_machine_current_actor(machine, vm);
     }
     object = script_machine_find_object(machine, name);
     return object != NULL && object->actor.exists ? &object->actor : NULL;
@@ -909,7 +934,7 @@ static int object_is_named_or_current(struct script_machine *machine, struct scr
         return 0;
     }
     if (name[0] == NAME_OF_CURRENT_ACTOR) {
-        return current_actor(machine, vm) != NULL;
+        return script_machine_current_actor(machine, vm) != NULL;
     }
     return script_machine_find_object(machine, name) != NULL;
 }
@@ -1581,6 +1606,7 @@ static void tear_down_script(struct script_machine *machine)
     memset(machine->anchored_effects, 0, sizeof(machine->anchored_effects));
     machine->has_runner = 0;
     machine->object_count = 0;
+    memset(machine->free_units, 0, sizeof(machine->free_units));
     machine->actor_count = 0;
     machine->gameapp_count = 0;
     machine->game_start_at = NEVER;

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include "script_machine.h"
 #include "script_classes.h"
@@ -475,6 +476,19 @@ void script_motion_update_all(struct script_machine *machine)
     }
 }
 
+static void begin_actor(struct script_machine *machine, struct script_actor *actor, unsigned int class_id)
+{
+    actor->exists = 1;
+    memset(actor->counters, 0, sizeof(actor->counters));
+    actor->creation_index = machine->actor_count;
+    machine->actor_count = machine->actor_count + 1;
+    actor->x = UNPLACED_X;
+    actor->y = UNPLACED_Y;
+    actor->class_id = class_id;
+    actor->level = script_class_default_level(actor->class_id);
+    actor->color_level = SCRIPT_COLOR_LEVEL_NORMAL;
+}
+
 static void create_actor(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
     struct script_actor *actor;
@@ -487,15 +501,42 @@ static void create_actor(struct script_machine *machine, struct script_vm *vm, c
     if (actor->exists) {
         return;
     }
-    actor->exists = 1;
-    memset(actor->counters, 0, sizeof(actor->counters));
-    actor->creation_index = machine->actor_count;
-    machine->actor_count = machine->actor_count + 1;
-    actor->x = UNPLACED_X;
-    actor->y = UNPLACED_Y;
-    actor->class_id = script_machine_u32(words, 0);
-    actor->level = script_class_default_level(actor->class_id);
-    actor->color_level = SCRIPT_COLOR_LEVEL_NORMAL;
+    begin_actor(machine, actor, script_machine_u32(words, 0));
+}
+
+static void make_free_unit(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+{
+    int unit;
+    char detail[32];
+
+    vm->holds_free_unit = 1;
+    vm->free_unit = SCRIPT_NO_SELECTION;
+    for (unit = 0; unit < SCRIPT_FREE_UNIT_MAX; unit++) {
+        if (!machine->free_units[unit].in_use) {
+            break;
+        }
+    }
+    snprintf(detail, sizeof(detail), "class=%08x", script_machine_u32(words, 0));
+    if (unit == SCRIPT_FREE_UNIT_MAX) {
+        script_machine_note(machine, vm, "free_unit_slots_full", detail);
+        return;
+    }
+    memset(&machine->free_units[unit], 0, sizeof(machine->free_units[unit]));
+    machine->free_units[unit].in_use = 1;
+    begin_actor(machine, &machine->free_units[unit].actor, script_machine_u32(words, 0));
+    vm->free_unit = unit;
+    script_machine_note(machine, vm, "free_unit_not_drawn", detail);
+}
+
+static void end_free_units_of_class(struct script_machine *machine, const unsigned int *words)
+{
+    int unit;
+
+    for (unit = 0; unit < SCRIPT_FREE_UNIT_MAX; unit++) {
+        if (machine->free_units[unit].in_use && machine->free_units[unit].actor.class_id == script_machine_u32(words, 0)) {
+            machine->free_units[unit].in_use = 0;
+        }
+    }
 }
 
 static void select_actor(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
@@ -510,6 +551,7 @@ static void select_actor(struct script_machine *machine, struct script_vm *vm, c
     object = script_machine_find_object(machine, name);
     if (object != NULL && object->actor.exists) {
         vm->selected_object = (int)(object - machine->objects);
+        vm->holds_free_unit = 0;
     }
 }
 
@@ -736,19 +778,23 @@ static void set_core_enabled(struct script_machine *machine, struct script_vm *v
 enum script_step_result script_ops_actor_run(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words)
 {
     struct script_object *object;
+    struct script_actor *actor;
 
     switch (op) {
     case 0x82:
-        script_machine_note(machine, vm, "free_unit_not_ported", "");
+        make_free_unit(machine, vm, words);
+        break;
+    case 0x84:
+        end_free_units_of_class(machine, words);
         break;
     case 0x85:
         dock_actor(machine, vm, words, 1);
         break;
     case 0x87:
-        object = script_machine_current_object(machine, vm);
-        if (object != NULL && object->actor.exists) {
-            object->actor.x = (int)script_machine_u32(words, 0) / NATIVE_FIXED_ONE;
-            object->actor.y = (int)script_machine_u32(words, 2) / NATIVE_FIXED_ONE;
+        actor = script_machine_current_actor(machine, vm);
+        if (actor != NULL) {
+            actor->x = (int)script_machine_u32(words, 0) / NATIVE_FIXED_ONE;
+            actor->y = (int)script_machine_u32(words, 2) / NATIVE_FIXED_ONE;
         }
         break;
     case 0x8f:
@@ -847,6 +893,7 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
         break;
     case 0x116:
         vm->selected_object = SCRIPT_NO_SELECTION;
+        vm->holds_free_unit = 0;
         break;
     case 0x117:
         queue_table(machine, vm, words);
