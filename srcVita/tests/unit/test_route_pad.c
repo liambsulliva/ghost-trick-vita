@@ -14,6 +14,7 @@
 #define TICKS_FOR_A_PILL_TO_SLIDE_IN 40
 #define TICKS_FOR_A_MOVE 120
 #define CHOOSE_DWELL_TICKS 200
+#define TICKS_FOR_THE_REWIND 200
 #define OPEN_CHOICE_OP 0x3b
 
 static struct script_machine machine;
@@ -136,10 +137,32 @@ static void test_the_pad_picks_the_route_panel_only_once_the_step_has_begun(void
     CHECK(script_soul_route_step(&machine) == NULL);
 }
 
+static int body_got(const char *verb, const char *arg)
+{
+    int index;
+
+    for (index = 0; index < machine.objects[0].message_count; index++) {
+        if (strcmp(machine.objects[0].messages[index].verb, verb) == 0 && strcmp(machine.objects[0].messages[index].arg, arg) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void test_the_pad_presses_the_rewind_button_once_it_is_up(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_WAIT, "-", "ticks:1");
+    script_soul_run_command(&machine, "Timeleap", "SELECT");
+    run_ticks(TICKS_FOR_THE_REWIND);
+    CHECK_INT(machine.soul.rewind_select_ticks, 0);
+    CHECK(body_got("timeleap", "jump"));
+}
+
 int main(void)
 {
     test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up();
     test_the_pad_moves_the_soul_with_the_stick();
     test_the_pad_picks_the_route_panel_only_once_the_step_has_begun();
+    test_the_pad_presses_the_rewind_button_once_it_is_up();
     return test_finish("unit/route_pad");
 }

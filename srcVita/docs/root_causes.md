@@ -490,6 +490,12 @@ The camera tutorial (`FreeCamera TutorialStart`) keeps a talk open while it wait
 
 Guard: the d-pad follows the same tutorial exception as the touch drag. `tests/unit/test_script_input.c` holds right during the tutorial's talk.
 
+### 74. The route pressed Rewind Time only once
+
+Chapter 1's rewind (`Timeleap SELECT`, st01_game001 0xca8) waits for a press on the Rewind Time button; the port starts the time jump 63 ticks after a press lands while the button is up. The route pressed once, as its `touch` step began, and that press could be taken by something earlier in the press order, so the button stayed up for good and the honest run stopped at step 20. A player who sees the button presses it until the clock turns.
+
+Guard: the route pad presses CROSS whenever the Rewind Time button waits and no page is waiting, as it does for the game-over menu. `tests/unit/test_route_pad.c` arms the rewind and checks the time jump is sent. With it the player-input replay plays through Chapter 1 and Chapter 2 to step 161.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

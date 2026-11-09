@@ -2400,3 +2400,8 @@ int script_soul_game_over_waits(const struct script_machine *machine)
 {
     return game_over_waits_for_a_retry(machine);
 }
+
+int script_soul_rewind_button_waits(const struct script_machine *machine)
+{
+    return machine->soul.rewind_select_ticks >= REWIND_SLIDE_TICKS && machine->soul.rewind_press_ticks == 0;
+}

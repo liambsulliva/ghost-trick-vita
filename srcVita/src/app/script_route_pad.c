@@ -72,6 +72,17 @@ static int retry_the_game_over(struct script_route_pad *pad, const struct script
     return 1;
 }
 
+static int press_the_rewind_button(struct script_route_pad *pad, const struct script_machine *machine, struct input_state *frame)
+{
+    if (!script_soul_rewind_button_waits(machine)) {
+        return 0;
+    }
+    if (pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
+        press(pad, machine, frame, INPUT_CROSS);
+    }
+    return 1;
+}
+
 static int route_step_chooses(const struct script_machine *machine, int *panel)
 {
     const struct script_route_step *step;
@@ -232,6 +243,9 @@ void script_route_pad_frame(struct script_route_pad *pad, const struct script_ma
         return;
     }
     if (retry_the_game_over(pad, machine, frame)) {
+        return;
+    }
+    if (press_the_rewind_button(pad, machine, frame)) {
         return;
     }
     if (choose_a_panel(pad, machine, frame)) {

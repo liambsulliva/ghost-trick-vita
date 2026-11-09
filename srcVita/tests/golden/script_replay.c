@@ -634,6 +634,7 @@ int main(int argument_count, char **arguments)
     }
     printf("ended tick=%u finished=%d fetches=%u pushes=%u\n", machine.tick, machine.is_finished, machine.fetch_total, machine.push_count);
     printf("state talk=%d open=%d pause=%d mode=%d tutorial=%d soul_keeps=%d objects=%d quiet=%u\n", (int)machine.talk.phase, machine.talk_is_open, machine.pause_bit, machine.mode_byte, machine.soul.tutorial_mode, machine.soul_state_keeps_pause, machine.object_count, machine.tick - machine.last_new_site_tick);
+    printf("soul view=%d pills=%u rewind_select=%u rewind_press=%u movie_left=%d time_jump_at=%lld time_jump=%s input_off=%d dead_talk=%d choice=%d narration=%d\n", machine.soul.is_on, machine.soul.pills_registered, (unsigned int)machine.soul.rewind_select_ticks, (unsigned int)machine.soul.rewind_press_ticks, (int)machine.movie_ticks_left, machine.soul.time_jump_event.target != NULL ? machine.soul.time_jump_event.at : -1LL, machine.soul.time_jump_event.target != NULL ? machine.soul.time_jump_event.target : "-", machine.soul.input_is_off, machine.soul.dead_talk_is_on, machine.choice.is_open, machine.narration.is_running);
     for (index = 0; index < machine.object_count; index++) {
         int handler;
         for (handler = 0; handler < machine.objects[index].handler_count; handler++) {
