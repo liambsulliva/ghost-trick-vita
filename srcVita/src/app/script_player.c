@@ -988,7 +988,12 @@ void script_player_touch(int is_down, float x, float y)
 
 void script_player_back_button(void)
 {
-    if (phase == PHASE_RUNNING && data != NULL && data->machine.soul.is_on) {
+    if (phase != PHASE_RUNNING || data == NULL) {
+        return;
+    }
+    if (data->machine.choice.is_open) {
+        script_choice_note_cancel(&data->machine);
+    } else if (data->machine.soul.is_on) {
         script_soul_note_ghost(&data->machine);
     }
 }

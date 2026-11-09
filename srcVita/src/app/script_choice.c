@@ -111,6 +111,8 @@ static void open_choice(struct script_machine *machine)
     }
     choice->is_open = 1;
     choice->opened_at = machine->tick;
+    choice->cursor = 0;
+    choice->cancel_is_pending = 0;
     names[0] = '\0';
     for (index = 0; index < script_choice_panels_shown(machine); index++) {
         const struct script_choice_panel *panel;
@@ -250,6 +252,41 @@ int script_choice_first_unseen(const struct script_machine *machine)
         }
     }
     return first;
+}
+
+void script_choice_move_cursor(struct script_machine *machine, int steps)
+{
+    struct script_choice *choice;
+    int count;
+    int tries;
+
+    choice = &machine->choice;
+    count = script_choice_panels_shown(machine);
+    if (!choice->is_open || count <= 1 || steps == 0) {
+        return;
+    }
+    for (tries = 0; tries < count; tries++) {
+        choice->cursor = ((choice->cursor + (steps > 0 ? 1 : -1)) % count + count) % count;
+        if (panel_at(choice, choice->cursor) != NULL) {
+            break;
+        }
+    }
+    mark(machine, "choice_cursor", name_of_panel(panel_at(choice, choice->cursor)));
+}
+
+void script_choice_note_cancel(struct script_machine *machine)
+{
+    if (machine->choice.is_open) {
+        machine->choice.cancel_is_pending = 1;
+    }
+}
+
+void script_choice_take_cancel(struct script_machine *machine)
+{
+    if (machine->choice.cancel_is_pending) {
+        machine->choice.cancel_is_pending = 0;
+        script_choice_pick(machine, SCRIPT_CHOICE_CANCEL);
+    }
 }
 
 void script_choice_pick(struct script_machine *machine, int index)

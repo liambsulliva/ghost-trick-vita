@@ -31,6 +31,8 @@ struct script_choice {
     int is_open;
     int cancel_is_offered;
     int chosen;
+    int cursor;
+    int cancel_is_pending;
     unsigned int opened_at;
 };
 
@@ -42,5 +44,8 @@ int script_choice_panels_shown(const struct script_machine *machine);
 int script_choice_find(const struct script_machine *machine, const char *name);
 int script_choice_first_unseen(const struct script_machine *machine);
 void script_choice_pick(struct script_machine *machine, int index);
+void script_choice_move_cursor(struct script_machine *machine, int steps);
+void script_choice_note_cancel(struct script_machine *machine);
+void script_choice_take_cancel(struct script_machine *machine);
 
 #endif

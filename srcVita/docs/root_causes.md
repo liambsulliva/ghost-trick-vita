@@ -466,6 +466,12 @@ Native drops the drag once a pick connects (`func_0205fa2c` clears its drag flag
 
 Guard: a held touch grabs the tip only within 16 pixels of it and an arrival ends the drag; the tutorial events follow `func_0203de90` every tick. The route waits on TouchCheck and drags, as a player does, in both touch tutorials (Chapter 1's st01_game000 and Chapter 6's st06_game002). `tests/unit/test_soul_touch_rules.c` drags past every core, drags on after a new touch, touches away from the tip, and checks each tutorial event. Without the end-of-drag rule the long drag reaches the third core.
 
+### 70. A player could not choose a panel
+
+Native's choice control (`func_0205a9e8`, state 9) keeps a marker on one panel: it starts on the first panel (`func_0205ad48`, unless a newly added panel is flagged), d-pad down moves it to the next and wraps to the first (`func_0205b0b8`), up moves it back and wraps to the last (`func_0205b110`), A confirms the marked panel, a tap on a panel picks it, and B cancels when the choice offers it, sending `select cancel` (state 12). The port had no marker: CROSS always took the first panel not yet chosen and the d-pad and CIRCLE did nothing, so a player could never pick a later panel first, and dead talks whose answer is not the first unseen panel could not be finished by hand. Only the route's `choose` step, which picks by name, got through.
+
+Guard: the choice keeps a cursor that starts on the first panel; d-pad up and down move it with native's wrap, CROSS confirms it, and CIRCLE cancels when offered. `tests/unit/test_choice_input.c` picks the first panel, moves down past the last, moves up from the first, and cancels with and without the offer. Still open: the panels and the marker are not drawn, and a tap on a panel is not tested, because the port has no choice view yet.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

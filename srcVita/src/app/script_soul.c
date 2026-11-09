@@ -613,7 +613,7 @@ static void move_soul_tip(struct script_machine *machine)
             soul_chain_retract(&soul->chain);
         }
         soul->chain_pick_object = NO_CORE;
-    } else if (talk_holds_the_soul(machine)) {
+    } else if (talk_holds_the_soul(machine) || machine->choice.is_open) {
         if (soul->chain.state == SOUL_CHAIN_AIMING) {
             soul_chain_retract(&soul->chain);
         }
@@ -1454,7 +1454,7 @@ static void take_press(struct script_machine *machine)
         return;
     }
     if (machine->choice.is_open) {
-        script_choice_pick(machine, script_choice_first_unseen(machine));
+        script_choice_pick(machine, machine->choice.cursor);
         return;
     }
     if (game_over_waits_for_a_retry(machine)) {
@@ -2333,7 +2333,10 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         }
         soul->tap_group_is_pending = 0;
     }
-    if ((soul->direction_x != 0 || soul->direction_y != 0) && !talk_holds_the_soul(machine)) {
+    script_choice_take_cancel(machine);
+    if (machine->choice.is_open) {
+        script_choice_move_cursor(machine, soul->direction_y);
+    } else if ((soul->direction_x != 0 || soul->direction_y != 0) && !talk_holds_the_soul(machine)) {
         take_direction(machine);
     }
     soul->direction_x = 0;
