@@ -576,12 +576,20 @@ static int talk_holds_the_soul(const struct script_machine *machine)
     return machine->pause_bit && machine->soul.tutorial_mode == TUTORIAL_NONE && (machine->talk_is_open || machine->talk.phase != SCRIPT_TALK_CLOSED);
 }
 
+static int core_is_busy(const struct script_machine *machine)
+{
+    const struct script_soul *soul;
+
+    soul = &machine->soul;
+    return soul->active_object != NO_CORE && (machine->objects[soul->active_object].actor.busy_cores & (1 << soul->active_slot)) != 0;
+}
+
 static int a_scripted_event_holds_the_soul(const struct script_machine *machine)
 {
     const struct script_soul *soul;
 
     soul = &machine->soul;
-    return soul->view_change_ticks_left > 0 || soul->view_demo_is_on || machine->demo_soul_is_on || soul->tutorial_holds_input || soul->input_is_off || soul->dead_talk_is_on || machine->narration.is_running || machine->movie_ticks_left > 0 || machine->choice.is_open || talk_holds_the_soul(machine);
+    return soul->view_change_ticks_left > 0 || soul->view_demo_is_on || machine->demo_soul_is_on || machine->film_frame_is_on || core_is_busy(machine) || soul->tutorial_holds_input || soul->input_is_off || soul->dead_talk_is_on || machine->narration.is_running || machine->movie_ticks_left > 0 || machine->choice.is_open || talk_holds_the_soul(machine);
 }
 
 static void move_soul_tip(struct script_machine *machine)
@@ -645,6 +653,9 @@ static void move_soul_tip(struct script_machine *machine)
                 soul_chain_pick(&soul->chain, core_x, core_y);
                 soul->chain_pick_object = found_object;
                 soul->chain_pick_slot = found_slot;
+                if (!script_pills_any_on_screen(machine) && machine->outputs->marked != NULL) {
+                    machine->outputs->marked("chain_moved_without_touch_targets", machine->objects[found_object].name);
+                }
             } else if (!input_is_held && soul_chain_tip_is_at_head(&soul->chain)) {
                 soul_chain_retract(&soul->chain);
             }
@@ -1395,14 +1406,6 @@ static int pill_answers_a_press(const struct script_machine *machine, enum scrip
     return 1;
 }
 
-static int core_is_busy(const struct script_machine *machine)
-{
-    const struct script_soul *soul;
-
-    soul = &machine->soul;
-    return soul->active_object != NO_CORE && (machine->objects[soul->active_object].actor.busy_cores & (1 << soul->active_slot)) != 0;
-}
-
 static int game_over_waits_for_a_retry(const struct script_machine *machine)
 {
     return machine->game_over_is_pending && machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->talk_is_open;
@@ -1511,7 +1514,7 @@ static void take_ghost_button(struct script_machine *machine)
         }
         return;
     }
-    if (!soul->is_on && script_soul_world_is_playable(machine) && pill_answers_a_press(machine, SCRIPT_PILL_GHOST)) {
+    if (!soul->is_on && script_soul_world_is_playable(machine) && !core_is_busy(machine) && pill_answers_a_press(machine, SCRIPT_PILL_GHOST)) {
         script_pills_press(machine, SCRIPT_PILL_GHOST, PILL_HOLD_AFTER_VIEW_CHANGE);
         soul->player_opened_soul_view = 1;
         set_soul_view(machine, 1);

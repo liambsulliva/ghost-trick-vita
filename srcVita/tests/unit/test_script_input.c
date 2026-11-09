@@ -202,6 +202,15 @@ static void test_the_camera_stays_put_while_a_scripted_event_holds_the_player(vo
         script_soul_step_before_tasks(&machine);
     }
     CHECK_INT(machine.camera_x, camera_before);
+    script_soul_run_command(&machine, "Button", "Input:On");
+    machine.film_frame_is_on = 1;
+    for (tick = 0; tick < TICKS_FOR_A_DRAG; tick++) {
+        memset(&frame, 0, sizeof(frame));
+        frame.held = INPUT_RIGHT;
+        script_input_frame(&pad, &machine, &frame);
+        script_soul_step_before_tasks(&machine);
+    }
+    CHECK_INT(machine.camera_x, camera_before);
 }
 
 int main(void)

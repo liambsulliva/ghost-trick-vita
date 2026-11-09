@@ -223,9 +223,40 @@ static void test_scripted_events_in_the_ghost_view_hold_the_soul(void)
     drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
     CHECK_INT(machine.soul.active_object, 0);
     start_in_the_ghost_view_with_three_cores_in_a_row();
+    machine.objects[0].actor.busy_cores = 1;
+    drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
+    CHECK_INT(machine.soul.active_object, 0);
+    start_in_the_ghost_view_with_three_cores_in_a_row();
+    machine.film_frame_is_on = 1;
+    drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
+    CHECK_INT(machine.soul.active_object, 0);
+    start_in_the_ghost_view_with_three_cores_in_a_row();
     machine.movie_ticks_left = TICKS_FOR_A_DRAG * 4;
     drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
     CHECK_INT(machine.soul.active_object, 0);
+}
+
+static void test_the_ghost_button_waits_for_a_trick_to_finish(void)
+{
+    script_machine_init(&machine, &no_outputs, SCRIPT_TIMING_REMASTER, NULL);
+    machine.object_count = 1;
+    place_core(0, "body", BODY_X);
+    machine.mode_byte = NORMAL_PLAY_MODE;
+    machine.pause_bit = 0;
+    script_soul_set_first_core(&machine, 0, 0);
+    script_soul_run_command(&machine, "Button", "Trick:On");
+    machine.objects[0].actor.busy_cores = 1;
+    step_ticks(TICKS_TO_SETTLE);
+    CHECK(!script_pills_is_up(&machine, SCRIPT_PILL_GHOST));
+    script_soul_note_ghost(&machine);
+    step_ticks(TICKS_TO_SETTLE);
+    CHECK_INT(machine.soul.is_on, 0);
+    machine.objects[0].actor.busy_cores = 0;
+    step_ticks(TICKS_TO_SETTLE);
+    CHECK(script_pills_is_up(&machine, SCRIPT_PILL_GHOST));
+    script_soul_note_ghost(&machine);
+    script_soul_step_before_tasks(&machine);
+    CHECK_INT(machine.soul.is_on, 1);
 }
 
 int main(void)
@@ -238,5 +269,6 @@ int main(void)
     test_the_move_tutorial_hears_move_while_the_direction_is_held();
     test_the_tutorial_view_holds_the_soul_until_its_check_begins();
     test_scripted_events_in_the_ghost_view_hold_the_soul();
+    test_the_ghost_button_waits_for_a_trick_to_finish();
     return test_finish("unit/soul_touch_rules");
 }

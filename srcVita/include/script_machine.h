@@ -561,6 +561,7 @@ void script_pills_reset(struct script_machine *machine);
 void script_pills_step(struct script_machine *machine);
 void script_pills_press(struct script_machine *machine, enum script_pill_id id, int ticks_after_press);
 int script_pills_is_up(const struct script_machine *machine, enum script_pill_id id);
+int script_pills_any_on_screen(const struct script_machine *machine);
 void script_pills_register(struct script_machine *machine, enum script_pill_id id, int is_on);
 void script_pills_register_all(struct script_machine *machine);
 void script_pills_unregister_all(struct script_machine *machine);

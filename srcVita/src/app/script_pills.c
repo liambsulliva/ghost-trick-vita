@@ -151,7 +151,7 @@ static int pill_is_wanted(const struct script_machine *machine, enum script_pill
     is_registered = (soul->pills_registered & BIT(id)) != 0;
     switch (id) {
     case SCRIPT_PILL_GHOST:
-        return is_registered && group == GROUP_NORMAL && !soul->ghost_pill_is_held_out;
+        return is_registered && group == GROUP_NORMAL && !soul->ghost_pill_is_held_out && !current_core_is_busy(machine);
     case SCRIPT_PILL_TRICK:
         return is_registered && group == GROUP_NORMAL && !soul->trick_pill_is_held_out && !current_core_is_busy(machine);
     case SCRIPT_PILL_NOTEBOOK:
@@ -279,6 +279,18 @@ void script_pills_press(struct script_machine *machine, enum script_pill_id id, 
 int script_pills_is_up(const struct script_machine *machine, enum script_pill_id id)
 {
     return machine->soul.pills[id].state == PILL_SHOWN;
+}
+
+int script_pills_any_on_screen(const struct script_machine *machine)
+{
+    int index;
+
+    for (index = 0; index < SCRIPT_PILL_COUNT; index++) {
+        if (machine->soul.pills[index].state != PILL_HIDDEN) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 void script_pills_fill_view(const struct script_machine *machine, struct script_hud_view *view)

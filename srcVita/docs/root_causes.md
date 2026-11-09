@@ -567,6 +567,21 @@ Directions in the living world pan the free camera (root cause 79). The port all
 
 Guard: the free camera (stick, d-pad and touch drag) follows the same rule as the chain. It moves only in a playable world (`script_soul_world_is_playable`: normal play mode, no pause, input on, no dead talk or choice) with no scripted event holding the player (`a_scripted_event_holds_the_soul`). Camera:Off and op 0x6e still forbid it, and the camera tutorial still allows it. `tests/unit/test_script_input.c` holds the d-pad in demo mode and under Input:Off and checks that the camera stays put.
 
+### 84. The player kept the chain through film-strip cutscenes and trick animations
+
+Two more scripted stretches take control away natively, and the port missed both:
+- The film-strip cutscenes (op 0x6f film frame on, op 0x70 off), such as the "4 Minutes Before Death" leap.
+- A trick's own animation. Scripts mark their core busy with op 0xea at the start of the core-action handler and clear it with op 0xe9 at the end. The port already hid the Trick pill for a busy core, but it let the player open the ghost view, move the chain and pan the camera. On the Vita, Chapter 1's player moved the chain while the blender rolled down the slope.
+
+The player's reading: the chain is usually held exactly when the touch targets (the pills) leave the screen.
+
+Guard: `a_scripted_event_holds_the_soul` also holds for the film frame and for a busy current core, which covers the chain and the free camera. The Ghost pill hides and the Ghost button (L) does nothing while the current core is busy. As a detector, any player move of the chain while no pill is on screen logs `chain_moved_without_touch_targets`; the whole-game replay logs it only at Chapter 1's three tutorial moves, where the tutorial grants the chain without pills. Tests:
+- `tests/unit/test_soul_touch_rules.c` holds the chain for a busy core and the film frame, and checks the Ghost button waits for the trick to finish.
+- `tests/unit/test_script_input.c` holds the camera in the film frame.
+- `tests/unit/test_chain_without_touch_targets.c` checks the detector.
+
+With this hold, the breaker replay's Chapter 3 mouse scene (st05_game000) loses steps 221 to 224. The old route reopened the ghost view during fuusya's trick animation, which a player cannot do.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
