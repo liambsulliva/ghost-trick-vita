@@ -1351,9 +1351,35 @@ int script_soul_world_is_playable(const struct script_machine *machine)
     return !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on && !machine->choice.is_open;
 }
 
+static const char *pill_word(enum script_pill_id id)
+{
+    switch (id) {
+    case SCRIPT_PILL_TRICK:
+        return "trick";
+    case SCRIPT_PILL_GHOST:
+        return "ghost";
+    case SCRIPT_PILL_BACK:
+        return "back";
+    default:
+        return "other";
+    }
+}
+
 static int pill_answers_a_press(const struct script_machine *machine, enum script_pill_id id)
 {
-    return machine->auto_press != SCRIPT_AUTO_OFF || script_pills_is_up(machine, id);
+    char detail[48];
+
+    if (script_pills_is_up(machine, id)) {
+        return 1;
+    }
+    if (machine->auto_press == SCRIPT_AUTO_OFF) {
+        return 0;
+    }
+    if (machine->outputs->marked != NULL) {
+        snprintf(detail, sizeof(detail), "pill=%s step=%d", pill_word(id), machine->soul.route_step);
+        machine->outputs->marked("acted_before_pill", detail);
+    }
+    return 1;
 }
 
 static int core_is_busy(const struct script_machine *machine)

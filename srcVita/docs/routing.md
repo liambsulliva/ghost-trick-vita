@@ -23,7 +23,7 @@ Read the decoded script (`../extracted/lmg/<stage>/<script>_Expand.xml.lz.txt`):
 
 ## Checking a chapter
 
-Replay the whole game from Chapter 1 with the scene timeout off (`scene_most_ticks` removed from the route copy) and `--marks`. A chapter is done when every step is done with no `route_step_failed` or `route_hop_beyond_reach`, no `stuck_pushed_handler` appears between its steps, and each script hands over to the next as the footage shows. Then run it on the Vita and compare bursts with the footage shot by shot.
+Replay the whole game from Chapter 1 with the scene timeout off (`scene_most_ticks` removed from the route copy) and `--marks`. A chapter is done when every step is done with no `route_step_failed`, `route_hop_beyond_reach` or `acted_before_pill` (a press auto-play made before the pill a player needs was on screen), no `stuck_pushed_handler` appears between its steps, and each script hands over to the next as the footage shows. Then run it on the Vita and compare bursts with the footage shot by shot.
 
 A route has to stand without the stall breaker. The breaker (stuck pushes, the scene timeout, the behind-the-story move and the game-over move-on) is a stopgap that leaves the final build once routes no longer need it, so check each chapter with `script_replay --no-stall-breaker` as well: the replay then stops where a step is missing instead of being pushed past it. On 2026-11-08 the whole game plays unaided to step 162 (Chapter 2, st06_game001).
 
