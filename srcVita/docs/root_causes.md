@@ -436,6 +436,12 @@ Native keeps each balloon in a slot (the eight words at `game+0xe1c`; `func_0201
 
 Guard: scheduling an action for an overlay drops any action still pending for the same overlay, so the latest open or close wins (`forget_pending_overlay` in `script_bridge.c`). `tests/unit/test_balloon_close_race.c` closes a balloon before its parts appear, shows and hides one, and reopens one in its slot.
 
+### 65. The frame register read the table position
+
+Native register 2 of an actor is its frame number: `func_0200853c` writes the frame of each frame record to owner+0x50. The port returned the index of the frame word in the motion table, so a script that waits for an actor to reach a frame (Chapter 2's loops among them) compared against a number the index never matched.
+
+Guard: frame records and word 0xfffb set the actor's `frame_number`, and register 2 reads it. `tests/unit/test_frame_number_register.c` loops frames 117 to 125 and reads the register on every loop.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

@@ -130,6 +130,7 @@ struct script_actor {
     unsigned int table_offset;
     const struct script_source *table_source;
     int frame_word_index;
+    int frame_number;
     int frame_hold_ticks;
     int ticks_left;
     int counts_loops;

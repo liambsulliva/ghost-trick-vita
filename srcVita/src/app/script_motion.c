@@ -190,6 +190,7 @@ static void run_table(struct script_machine *machine, struct script_object *obje
         if (word < WORD_FRAME_LIMIT) {
             int hold_ticks;
 
+            actor->frame_number = (int)(word & ((1u << FRAME_NUMBER_BITS) - 1u));
             hold_ticks = (int)(word >> FRAME_NUMBER_BITS);
             if (hold_ticks != 0) {
                 actor->frame_word_index = actor->frame_word_index + 1;
@@ -209,6 +210,9 @@ static void run_table(struct script_machine *machine, struct script_object *obje
             actor->frame_word_index = -1;
             break;
         case WORD_FRAME_WITH_TICKS:
+            if (read_signed_word(actor->table_source, actor->table_word + 1, &point)) {
+                actor->frame_number = point;
+            }
             if (read_signed_word(actor->table_source, actor->table_word + 2, &point) && point != 0) {
                 actor->frame_word_index = actor->frame_word_index + 1;
                 actor->frame_hold_ticks = point + 1;

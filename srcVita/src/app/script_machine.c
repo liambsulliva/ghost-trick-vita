@@ -766,7 +766,7 @@ static int read_actor_register(const struct script_machine *machine, const struc
         return (actor->y + actor->points[0][1]) * NATIVE_FIXED_ONE;
     }
     if (reg == ACTOR_REGISTER_FRAME) {
-        return actor->frame_word_index;
+        return actor->frame_number;
     }
     if (reg == ACTOR_REGISTER_FLIP) {
         return actor->is_flipped ? 1 : 0;
