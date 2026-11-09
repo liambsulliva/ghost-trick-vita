@@ -123,10 +123,36 @@ static void test_a_stuck_scene_with_no_steps_never_jumps_back_to_the_start_of_th
     CHECK(!was_marked("script_begun a"));
 }
 
+static void test_a_stuck_scene_after_a_finished_block_moves_on_rather_than_back(void)
+{
+    int tick;
+
+    memset(&route, 0, sizeof(route));
+    add_step("a", SCRIPT_ROUTE_WAIT);
+    add_step("b", SCRIPT_ROUTE_WAIT);
+    mark_count = 0;
+    script_machine_init(&machine, &outputs, SCRIPT_TIMING_REMASTER, NULL);
+    machine.route = &route;
+    machine.route_is_driving = 1;
+    CHECK(script_machine_add_source(&machine, "a", scene_a, idle_scene(scene_a), NULL));
+    CHECK(script_machine_add_source(&machine, "b", scene_b, idle_scene(scene_b), NULL));
+    CHECK(script_machine_add_source(&machine, "c", scene_c, idle_scene(scene_c), NULL));
+    CHECK(script_machine_start(&machine, "c"));
+    machine.route_furthest_acted_step = 0;
+    machine.soul.route_step = 0;
+    for (tick = 0; tick < TICKS_PAST_A_STUCK_PLAYABLE_SCENE; tick++) {
+        script_machine_tick(&machine);
+    }
+    CHECK(was_marked("stall_left c"));
+    CHECK(was_marked("stall_moved_to b"));
+    CHECK(!was_marked("stall_moved_to a"));
+}
+
 int main(void)
 {
     test_a_stuck_routed_scene_is_skipped_to_the_next_routed_scene();
     test_a_player_without_auto_play_is_never_skipped();
     test_a_stuck_scene_with_no_steps_never_jumps_back_to_the_start_of_the_route();
+    test_a_stuck_scene_after_a_finished_block_moves_on_rather_than_back();
     return test_finish("unit/stall_skip");
 }

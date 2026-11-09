@@ -1989,7 +1989,7 @@ static const char *next_scene_in_route_order(const struct script_machine *machin
     if (route == NULL || route->step_count == 0 || machine->scene_name == NULL) {
         return NULL;
     }
-    from = machine->route_furthest_acted_step;
+    from = machine->route_furthest_acted_step >= 0 ? machine->route_furthest_acted_step + 1 : -1;
     if (machine->soul.route_step > from) {
         from = machine->soul.route_step;
     }

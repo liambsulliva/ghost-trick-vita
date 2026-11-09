@@ -531,6 +531,18 @@ The port ignored 0x82, so the actor register still held the script's owner, and 
 
 Guard: the VM keeps a free unit in its actor register (`holds_free_unit`, `free_unit`). `script_machine_current_actor` returns the unit, and `script_machine_current_object` returns nothing, so no object op lands on the owner. 0x83 and 0x116 replace or clear the unit, 0x84 ends every unit of its class, and a new script clears them all. Each unit logs `free_unit_not_drawn` with its class until the lines and neon are drawn. `tests/unit/test_free_unit.c` places a unit and checks the owner stays put, covers 0x116, 0x83 and 0x84, and checks a full set of units still keeps the owner in place.
 
+### 79. A direction in the living world reopened the ghost view
+
+Native enters the ghost view from the living world only through a request code (code 12 in byte 2 of `game+8`, set by `func_02011080`), which `pGameMainNormal`'s update `func_02032488` reads. Every caller that sets a code takes it from a button object, never from the d-pad. The port added its own rule: the first push of the d-pad or stick opened the ghost view whenever the world was playable. On the Vita, Chapter 1's tutorial left the ghost view when the soul reached the shadanki (gameAct030). The player's next stick push opened it again, with no Trick or Back pill, so the trick could never be pressed: a softlock.
+
+Guard: directions in the living world only scroll the free camera (`move_free_camera`, unless a script forbids it with op 0x6e). The ghost view opens only through the Ghost pill or the L button. `tests/unit/test_script_input.c` holds the d-pad and pushes the stick in the living world, then checks that the camera panned and the ghost view stayed shut.
+
+### 80. The stall breaker went back to a finished scene
+
+The breaker's search for the next scene in route order started at the furthest step already acted on, inclusive. From a scene with no route steps (Chapter 6's st03_game000, after the phone call at step 348 in st02_game024), the first step it looked at was that finished step. Its scene differs from the stuck one, so the breaker returned to st02_game024.
+
+Guard: the search starts after the furthest acted step (or at the current route step, if that is later), as `first_step_not_yet_played` does. `tests/unit/test_stall_skip.c` starts in an unrouted scene after a finished block and checks that the breaker moves on to the next block, never back.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
