@@ -18,6 +18,7 @@
 #define WORD_EFFECT 0xfff8u
 #define WORD_LOOP 0xffffu
 #define WORD_FRAME_WITH_TICKS 0xfffbu
+#define WORD_MESSAGE 0xfff9u
 #define LOOP_BACK_WORDS 3
 #define OFF_WORLD_LIMIT 10000
 #define TABLE_STEP_MAX 4096
@@ -174,6 +175,27 @@ static void run_sound_word(struct script_machine *machine, struct script_object 
     }
 }
 
+static void send_table_message(struct script_machine *machine, const struct script_actor *actor)
+{
+    unsigned int words[3];
+    const char *target;
+    const char *verb;
+    const char *arg;
+    int index;
+
+    for (index = 0; index < 3; index++) {
+        if (script_file_read_word(&actor->table_source->file, actor->table_word + 1u + (unsigned int)index, &words[index]) != SCRIPT_FILE_OK) {
+            return;
+        }
+    }
+    target = script_file_string(&actor->table_source->file, words[0]);
+    verb = script_file_string(&actor->table_source->file, words[1]);
+    arg = script_file_string(&actor->table_source->file, words[2]);
+    if (target != NULL && verb != NULL && arg != NULL) {
+        script_machine_send(machine, target, verb, arg);
+    }
+}
+
 static void run_table(struct script_machine *machine, struct script_object *object, int keeps_point_zero)
 {
     struct script_actor *actor;
@@ -252,6 +274,10 @@ static void run_table(struct script_machine *machine, struct script_object *obje
         case WORD_SOUND:
             run_sound_word(machine, object);
             actor->table_word = actor->table_word + 3;
+            break;
+        case WORD_MESSAGE:
+            send_table_message(machine, actor);
+            actor->table_word = actor->table_word + table_word_length(word);
             break;
         case WORD_EFFECT:
             run_effect_word(machine, object);

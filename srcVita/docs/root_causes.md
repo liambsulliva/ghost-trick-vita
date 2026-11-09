@@ -442,6 +442,12 @@ Native register 2 of an actor is its frame number: `func_0200853c` writes the fr
 
 Guard: frame records and word 0xfffb set the actor's `frame_number`, and register 2 reads it. `tests/unit/test_frame_number_register.c` loops frames 117 to 125 and reads the register on every loop.
 
+### 66. Motion tables never sent their messages
+
+Motion word 0xfff9 sends a message: `func_02007cd4` passes its three strings (target, verb, argument) to `func_0200da04`. The port skipped the word, so a handler waiting for a message from an animation never ran.
+
+Guard: `send_table_message` in `script_motion.c` sends it through `script_machine_send`. `tests/unit/test_motion_message.c` plays a table whose record sends a message to another object.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
