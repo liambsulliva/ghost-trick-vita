@@ -206,7 +206,7 @@ static void print_cores(void)
         const struct script_actor *actor;
 
         actor = &machine.objects[index].actor;
-        if (!actor->has_core && !actor->has_second_core) {
+        if (!actor->exists || (!actor->has_core && !actor->has_second_core)) {
             continue;
         }
         printf("core %s at %d,%d second %d,%d usable %d%d visible %d hidden %d%d dead %d\n", machine.objects[index].name, actor->x + actor->core_x, actor->y + actor->core_y, actor->has_second_core ? actor->x + actor->second_core_x : 0, actor->has_second_core ? actor->y + actor->second_core_y : 0, actor->has_core && !(actor->disabled_cores & 1), actor->has_second_core && !(actor->disabled_cores & 2), actor->is_visible, actor->is_hard_hidden, actor->is_frozen_and_hidden, machine.objects[index].is_dead);

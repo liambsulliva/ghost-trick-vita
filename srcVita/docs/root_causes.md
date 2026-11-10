@@ -839,3 +839,18 @@ Native's cases 0x4c and 0x4e in `func_02023fdc` call `func_0201052c` and `func_0
 The port asked for an actor in both, so a balloon opened from an object with no sprite (`cicel_balloon`, `stage_master`, `sys`, `game_master`: 16 sites of 0x4e and 35 of 0x4c) never opened. It also drew 0x4c as a speech bubble holding the talk's text above the calling actor, and a tap opened nothing. st03_game032 could not be routed: its `CicelBalloon00` balloon holds off the guard's call while its talk plays.
 
 Guard: `open_soul_balloon` in `script_ops_media.c` serves both ops with no owner, and `script_balloons_tap` opens the talk of a 0x4c balloon. The baker lists 0x4c labels as talks (`SOUL_BALLOON_TALK_OP`) and no longer bakes bubbles for 0x4c, 0x46 or 0x4e, whose first words are not bubble labels; the game set gained 163 talks. `tests/unit/test_soul_balloon.c` and `tests/tools/test_choice_talk_labels.py` cover it. Open: `func_0201052c` skips a 0x4c with mode 1 while bits 13 and 14 of `game+0xc` are set, which the port does not model; op 0x45 stores its label at `game+0xf18` for the same talk-on-tap path (`func_02010394`) but is still drawn as a bubble; op 0x4f (`func_0201062c`) is not ported.
+
+### 121. Lessons from routing Chapter 8 so far (not yet in `game.json`)
+
+The steps found so far are in `docs/chapter8_route_in_progress.json`: 97 steps from `st03_game003_Expand` through `st03_game031_Expand`, the rewind, `st03_demo010_Expand`, `st03_game032_Expand` and into `st03_game011_Expand`, ending as Sissel waits in Jowd's wastebasket (footage 14689 s). They replace the old placeholder steps 739 to 756, whose path and times were guesses. They ran in a replay from a saved state at the chapter's start, not in a whole-game run with baked pacing, and the chapter is not finished, so they are not spliced into the route.
+
+- A core in reach for less than the dwell of a `normal` step needs pace `instant` and a `reach:<target>` wait. The grounding sphere swings with a period of 120 ticks and is in reach of the bucket or the pool for about 15.
+- A falling water drop is a core for a moment and bridges a hop longer than the reach (pool to bucket, wrench to helmet).
+- A trick that only counts while another character is in one act waits on that act (`act:repairman:repairman_act03` for the lever).
+- Arriving on a telephone can close the ghost view from the script, so the step after it is `ghost_on`, not `ghost_off`.
+- In the past a telephone works only during a call. st03_game032 offers the line twice: `phone_stay` on the first call, `phone_call` on the second.
+- A step that must beat a scripted timer is paced `quick`. In st03_game032 the guard's call starts about 124 ticks of play after the scene opens, and the balloon tap must come first.
+- After a rewind `st03_root` picks the scene from flags 0x1028 to 0x102c, so the order is demo010, game032, game011, game033, game035.
+- `script_replay`'s core list skipped nothing, so cores of deleted actors from an earlier stage looked usable; it now lists only actors that exist.
+
+Open in these scenes: `op_not_ported` for 0x9a and 0x49 (st03_game003), 0xcd (st03_game031), 0xb3 (st03_demo010) and 0xae, 0xc2, 0xc3, 0xfd (st03_game011).
