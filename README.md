@@ -2,9 +2,13 @@
 
 A PS Vita port using the original DS game logic with the 2023 remaster's art and a single-screen interface.
 
-The first target is **a playable Chapter 1 build for on-device feedback**. The remaining game is a stretch goal after that test. All prepared assets, logic and research are retained for later use. See the [Chapter 1 plan](docs/chapter1.md).
+## Where the port stands
 
-The current work is an autonomous function-matching campaign across the full prepared code inventory, with local checkpoint commits. Chapter 1 remains the first playable release target.
+The port is close to complete and now reaches well past Chapter 1. What is left is proving the game from start to finish.
+
+That proof is an automatic playthrough: a route of 851 button presses that follows a reference playthrough through Chapter 18, replayed on a computer through the same input code the Vita uses. Chapters 1 to 6 play through with every step passing and nothing skipped. Later chapters play when the replay is allowed to skip scenes it cannot yet get through, which takes it to 789 of the 851 steps. The remaining work is writing the route for the scenes it does not cover and fixing whatever stops it.
+
+On the Vita itself the app installs and runs from locally converted remaster art. The one-command setup below still prepares Chapter 1 only.
 
 ## Legal disclaimer
 
@@ -114,4 +118,4 @@ The port follows the DS game's own code wherever it can. The changes below are d
 - [Asset inventory and build baseline](docs/inventory.md)
 - [DS-to-remaster animation mapping](docs/frame_mapping.md)
 
-Build inputs come from the user's own copies. ROMs, extracted assets, proprietary tools and reference footage stay local and gitignored. The current remaster format research has not yet been checked against a Steam copy. The Vita app in [srcVita](srcVita/README.md) installs and runs on real hardware, where it plays the opening of Chapter 1 at 60 fps from locally converted remaster art. The DS scripts now run the whole chapter, with player input connected. Most effects are not drawn yet.
+Build inputs come from the user's own copies. ROMs, extracted assets, proprietary tools and reference footage stay local and gitignored. The current remaster format research has not yet been checked against a Steam copy.
