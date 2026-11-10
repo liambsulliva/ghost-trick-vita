@@ -764,6 +764,16 @@ Closing the view there exposed a second fault. A view the script reopens with `N
 
 Guard: ops 0x67 and 0x68 queue `System|ChangeMode`; a demo request closes an open view, quietly after `NoEffectFinish`. A view that is open with demo mode off and input on waits on the player. `tests/unit/test_quiet_view_pause.c` checks the close, that a view opened after the request stays open, and the wait. Open: native op 0x67 inside a view would replace the view state the same way; no routed scene does it, so the port leaves the view open there.
 
+### 118. Lessons from routing Chapter 7's kitchen and restaurant
+
+- A carried core changes height with its carrier's motion table. The chef's bowl (`cock_bow`) is within reach of the pedal only while the chef pours the wine (`cock_act02`); in the other acts it sits about 80 units from it. A hop that depends on such a core waits on `reach:<target>` from the step that opens the ghost view, since the view freezes the world.
+- A second core is named by `slot` in the route step. Without it `move pedal` aims at the first core, which is out of reach, and the step fails with `route_hop_beyond_reach`.
+- A trick that a watching character undoes is gated on that character's act. The pedal turns the table at any time, but the waitress turns it back unless she is at the fan switch (`act:waitress:wait_act09`).
+- A telephone's `op_077` word is its own place, not the destination. The destination is the route step's `place`, matched by `phone.xml` (12 is the restaurant, 13 the kitchen, 21 the van).
+- A scene's `sys` acts name the order the player must follow. st04_game010 ends only from `sys_act060`, reached through the bell rung three times, the pot ride, Rindge's talk and a hop to the sign.
+
+Guard: the Chapter 7 route steps carry these waits, and the whole-game replay fails the step if one is dropped.
+
 ### 119. A message pause before a page's text was dropped, so the handler it signals never ran
 
 A talk page can hold `<TRCK mes_pause />` before its first character. Jowd's dead talk (`m03_5630` page 16) has two: the first sends `message` `pause in` to `jodo_act00`, which fades the screen white and forwards; the second reaches `jodo_act01`, which forwards and arms the rewind with `GameApp` `Timeleap` `SELECT`. The baker kept only a pause at the end of a section, so the second `pause in` was never sent and the rewind button never came. Four pages in the game set have a pause before their text (`m02_3180`, `m03_5630`, `m13_2220`, `m13_3270`). The native message tag reader has not been found in `src/` yet; the behaviour here comes from those scripts' `pause in` handlers.
@@ -856,16 +866,6 @@ Guard: `step_the_white_wipe` in `script_soul.c` runs the effect for any script: 
 Native's cases 0x6f to 0x72 in `func_02023fdc` all set bit 2 of `game+0xc` (`func_0201354c`) and then ask for the film frame to open or close: 0x6f through `func_02010ca4` and 0x70 through `func_02010d18`, 0x71 through `func_02010cdc` and 0x72 through `func_02010d30`. The second pair also sets bit 9, which makes `func_0200fd14` call the panel's sliding open and close (`func_02046b1c`, `func_02046b68`) in place of the plain ones (`func_02046b10`, `func_02046b44`). The port knew only 0x6f and 0x70 and logged `op_not_ported` for the other two, which have 24 sites in 10 scripts from Chapter 7 on (st04_game010, st13_demo100, st13_game012 to 022, st14_game030, st07_game000, st03_demo010).
 
 Guard: all four ops share one case in `script_ops_view.c`. `tests/unit/test_film_frame_ops.c` runs each pair from a script and checks the machine's state and the view's output.
-
-### 118. Lessons from routing Chapter 7's kitchen and restaurant
-
-- A carried core changes height with its carrier's motion table. The chef's bowl (`cock_bow`) is within reach of the pedal only while the chef pours the wine (`cock_act02`); in the other acts it sits about 80 units from it. A hop that depends on such a core waits on `reach:<target>` from the step that opens the ghost view, since the view freezes the world.
-- A second core is named by `slot` in the route step. Without it `move pedal` aims at the first core, which is out of reach, and the step fails with `route_hop_beyond_reach`.
-- A trick that a watching character undoes is gated on that character's act. The pedal turns the table at any time, but the waitress turns it back unless she is at the fan switch (`act:waitress:wait_act09`).
-- A telephone's `op_077` word is its own place, not the destination. The destination is the route step's `place`, matched by `phone.xml` (12 is the restaurant, 13 the kitchen, 21 the van).
-- A scene's `sys` acts name the order the player must follow. st04_game010 ends only from `sys_act060`, reached through the bell rung three times, the pot ride, Rindge's talk and a hop to the sign.
-
-Guard: the Chapter 7 route steps carry these waits, and the whole-game replay fails the step if one is dropped.
 - Missile's exchange (the swap), needed by every Missile scene in st13 and st14 and by Chapter 18's st13_game021. Native, as read so far:
   - A shape is the byte at actor `+0xdf`, set by motion word 0xfffa (the port skips that word) and read by `func_02058ba4`.
   - The soul keeps the object holding the active ghost's core at `+0xf4` (`func_020612b8`) and the object of the core the drag found at `+0xf8` (`func_0205fa2c`). When the chain connects (`func_02061718`) with Missile active and both objects have the same shape, not 0, it sends `EXCHANGE` `CONNECTED` to both and enters soul state 5 instead of hopping.
