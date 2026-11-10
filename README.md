@@ -6,7 +6,7 @@ A PS Vita port using the original DS game logic with the 2023 remaster's art and
 
 The port is close to complete and now reaches well past Chapter 1. What is left is proving the game from start to finish.
 
-That proof is an automatic playthrough: a route of 851 button presses that follows a reference playthrough through Chapter 18, replayed on a computer through the same input code the Vita uses. Chapters 1 to 6 play through with every step passing and nothing skipped. Later chapters play when the replay is allowed to skip scenes it cannot yet get through, which takes it to 789 of the 851 steps. The remaining work is writing the route for the scenes it does not cover and fixing whatever stops it.
+That proof is an automatic playthrough: a route of 886 button presses that follows a reference playthrough through Chapter 18, replayed on a computer through the same input code the Vita uses. Chapters 1 to 6 and most of Chapter 7 play through with every step passing and nothing skipped. Later chapters play when the replay is allowed to skip scenes it cannot yet get through, which takes it to 821 of the 886 steps. The remaining work is writing the route for the scenes it does not cover and fixing whatever stops it.
 
 On the Vita itself the app installs and runs from locally converted remaster art. The one-command setup below still prepares Chapter 1 only.
 
@@ -108,7 +108,9 @@ The port follows the DS game's own code wherever it can. The changes below are d
 1. **Finish the remaining chapters**, on the same data-driven code. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
 2. **A DS-faithful look.** An option to simulate nearest-neighbor upscaling, so the picture looks as it did on the DS.
 3. **Spanish and French**, alongside English.
-4. **Make the APK optional.** A player with only the DS cartridge would get the whole port from the DS game's own art, text and sound, and the remaster's files would become an optional upgrade.
+4. **An animated 3D pause menu.** An all-new menu whose transitions are tied to character models.
+5. **Save anywhere.** Saving at any point in the game, not only between chapters, with the game remembering where you were.
+6. **Make the APK optional.** A player with only the DS cartridge would get the whole port from the DS game's own art, text and sound, and the remaster's files would become an optional upgrade.
 
 ## Working on the port
 
