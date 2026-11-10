@@ -1,3 +1,4 @@
+import re
 import struct
 
 import numpy as np
@@ -32,12 +33,29 @@ LAST_SHAPE_PIVOT = {"st01_onpu": (16.3, 28.8)}
 OP_END = 0x00
 OP_PLAY = 0x06
 OP_STOP = 0x07
+OP_NOT = 0x12
 OP_POP = 0x17
 OP_GET_VARIABLE = 0x1C
+OP_SET_VARIABLE = 0x1D
+OP_RANDOM = 0x30
 OP_CALL_FUNCTION = 0x3D
+OP_EQUALS = 0x49
 OP_CALL_METHOD = 0x52
 OP_GOTO_LABEL = 0x8C
 OP_PUSH = 0x96
+OP_JUMP = 0x99
+OP_IF = 0x9D
+ARG_KIND_NAME = 4
+STATUS_LABEL = re.compile(r"^status(\d+)$")
+JUMP_ALWAYS = "always"
+JUMP_WHEN_EQUAL = "equal"
+JUMP_ONE_TIME_IN = "one_time_in"
+OUTCOME_GOTO = "goto"
+OUTCOME_STOP = "stop"
+NO_JUMP = None
+UNRESOLVED = "unresolved"
+FALL_THROUGH = -1
+A_VALUE_NO_SCRIPT_COMPARES = object()
 
 
 class EffectFormatError(ValueError):
@@ -335,6 +353,122 @@ def run_script(records, do_action):
     return calls
 
 
+def skip_count_of(records, action):
+    return records[action["args"][0]]["value"] if action["args"] else 0
+
+
+BRANCH_OPS = {OP_IF, OP_JUMP}
+OPS_A_BRANCHING_SCRIPT_MAY_USE = {OP_END, OP_PLAY, OP_STOP, OP_NOT, OP_POP, OP_GET_VARIABLE, OP_SET_VARIABLE, OP_RANDOM, OP_EQUALS, OP_GOTO_LABEL, OP_PUSH, OP_JUMP, OP_IF}
+
+
+class OutsideVariable:
+
+    def __init__(self, name):
+        self.name = name
+
+
+class RandomRoll:
+    def __init__(self, sides):
+        self.sides = sides
+
+
+class ScriptFacts:
+    def __init__(self):
+        self.numbers = set()
+        self.compared_variables = set()
+        self.compared_roll_sides = set()
+
+
+def values_are_equal(first, second, outside_value, roll_value, facts):
+    for value, other in ((first, second), (second, first)):
+        if isinstance(value, OutsideVariable):
+            facts.compared_variables.add(value.name)
+            return outside_value == other
+        if isinstance(value, RandomRoll):
+            facts.compared_roll_sides.add(value.sides)
+            return roll_value == other
+    return first == second
+
+
+def frame_script_outcome(records, do_action, outside_value, roll_value, facts):
+    actions = do_action["actions"]
+    stack = []
+    set_here = {}
+    is_stopped = False
+    previous_text = ""
+    index = 0
+
+    def pop():
+        return stack.pop() if stack else None
+
+    while index < len(actions):
+        action = records[actions[index]]
+        index += 1
+        op = action["op"]
+        if op == OP_PUSH:
+            for arg_ref in action["args"]:
+                arg = records[arg_ref]
+                if arg["kind"] == ARG_KIND_NAME or (arg["text"] and arg["text"] != previous_text):
+                    stack.append(arg["text"])
+                    previous_text = arg["text"]
+                else:
+                    stack.append(arg["value"])
+                    facts.numbers.add(arg["value"])
+        elif op == OP_GET_VARIABLE:
+            name = pop()
+            stack.append(set_here[name] if name in set_here else OutsideVariable(name))
+        elif op == OP_SET_VARIABLE:
+            value = pop()
+            set_here[pop()] = value
+        elif op == OP_RANDOM:
+            stack.append(RandomRoll(pop()))
+        elif op == OP_EQUALS:
+            second = pop()
+            stack.append(values_are_equal(pop(), second, outside_value, roll_value, facts))
+        elif op == OP_NOT:
+            stack.append(not pop())
+        elif op == OP_IF:
+            if pop():
+                index += skip_count_of(records, action)
+        elif op == OP_JUMP:
+            index += skip_count_of(records, action)
+        elif op == OP_GOTO_LABEL:
+            if action["args"]:
+                return (OUTCOME_GOTO, records[action["args"][0]]["text"])
+        elif op == OP_STOP:
+            is_stopped = True
+        elif op == OP_PLAY:
+            is_stopped = False
+        elif op == OP_POP:
+            pop()
+    return (OUTCOME_STOP, None) if is_stopped else NO_JUMP
+
+
+def frame_script_rows(records, do_action):
+    ops = set(records[ref]["op"] for ref in do_action["actions"])
+    if ops & BRANCH_OPS and ops - OPS_A_BRANCHING_SCRIPT_MAY_USE:
+        return UNRESOLVED
+    facts = ScriptFacts()
+    otherwise = frame_script_outcome(records, do_action, A_VALUE_NO_SCRIPT_COMPARES, A_VALUE_NO_SCRIPT_COMPARES, facts)
+    if len(facts.compared_variables) > 1 or len(facts.compared_roll_sides) > 1 or (facts.compared_variables and facts.compared_roll_sides):
+        return UNRESOLVED
+    rows = []
+    for number in sorted(facts.numbers):
+        if facts.compared_variables:
+            outcome = frame_script_outcome(records, do_action, number, A_VALUE_NO_SCRIPT_COMPARES, facts)
+            if outcome != otherwise:
+                rows.append((JUMP_WHEN_EQUAL, number, outcome))
+        if facts.compared_roll_sides:
+            outcome = frame_script_outcome(records, do_action, A_VALUE_NO_SCRIPT_COMPARES, number, facts)
+            if outcome != otherwise:
+                rows.append((JUMP_ONE_TIME_IN, next(iter(facts.compared_roll_sides)), outcome))
+    if len([row for row in rows if row[0] == JUMP_ONE_TIME_IN]) > 1:
+        return UNRESOLVED
+    if otherwise is not NO_JUMP:
+        rows.append((JUMP_ALWAYS, 0, otherwise))
+    return rows
+
+
 def resolve_character(records, character, sprites_by_id, shapes_by_id):
     if character in sprites_by_id:
         return "sprite"
@@ -370,7 +504,7 @@ def read_timeline(user_bytes):
                     "rgba": records[snapshot["color_ref"]]["rgba"],
                 })
             frames.append({"label": frame["label"], "items": items})
-        scripts = [{"frame": records[ref]["frame"], "calls": run_script(records, records[ref])} for ref in sprite["do_actions"]]
+        scripts = [{"frame": records[ref]["frame"], "calls": run_script(records, records[ref]), "rows": frame_script_rows(records, records[ref])} for ref in sprite["do_actions"]]
         out_sprites.append({"sprite_id": sprite["sprite_id"], "fps": sprite["fps"], "frames": frames, "scripts": scripts})
     out_shapes = {}
     for shape_id, shape in shapes_by_id.items():
@@ -435,6 +569,32 @@ def last_shape_points(timeline, main_sprite, pivot):
     return points
 
 
+def movie_jumps(scripts, labels, baked_per_movie_frame, baked_frames):
+    rows = []
+    for script in scripts:
+        if script["rows"] is UNRESOLVED:
+            return []
+        last_baked_frame = int(round((script["frame"] + 1) * baked_per_movie_frame)) - 1
+        if last_baked_frame < 0:
+            continue
+        for condition, value, outcome in script["rows"]:
+            if outcome is NO_JUMP:
+                target = FALL_THROUGH
+            elif outcome[0] == OUTCOME_STOP:
+                target = last_baked_frame
+            elif outcome[1] in labels:
+                target = labels[outcome[1]]
+            else:
+                continue
+            rows.append({"frame": last_baked_frame, "condition": condition, "value": value, "target": target})
+    if all(row["condition"] == JUMP_ALWAYS for row in rows):
+        if len(rows) == 0:
+            return []
+        if len(rows) == 1 and (rows[0]["target"] != rows[0]["frame"] or rows[0]["frame"] >= baked_frames - 1):
+            return []
+    return rows
+
+
 def read_effect(user_bytes):
     records = read_records(user_bytes)
     sheet = first_of(records, "sheet")
@@ -449,6 +609,13 @@ def read_effect(user_bytes):
     for index, frame in enumerate(main["frames"]):
         if frame["label"]:
             labels[frame["label"]] = int(round(index * baked_per_movie_frame))
+
+    statuses = {}
+    for label, frame in labels.items():
+        found = STATUS_LABEL.match(label)
+        if found:
+            statuses[int(found.group(1))] = frame
+    jumps = movie_jumps(main["scripts"], labels, baked_per_movie_frame, baked_frames)
 
     vertices = {}
     sounds = []
@@ -522,7 +689,10 @@ def read_effect(user_bytes):
         after_last = "end"
 
     frame_count = baked_frames
-    if loop_jump_frame is not None:
+    if jumps:
+        after_last = "end" if removes_itself_at is not None else "loop"
+        loop_start = 0
+    elif loop_jump_frame is not None:
         frame_count = min(frame_count, loop_jump_frame + 1)
     if removes_itself_at is not None:
         frame_count = min(frame_count, removes_itself_at + 1)
@@ -547,6 +717,8 @@ def read_effect(user_bytes):
         "loop_start": loop_start,
         "after_last": after_last,
         "labels": labels,
+        "statuses": statuses,
+        "jumps": jumps,
         "sounds": sounds,
         "vertices": quad_vertices,
         "last_shape_pivot": pivot,

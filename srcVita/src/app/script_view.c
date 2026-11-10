@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "fx_playhead.h"
 #include "phone_split.h"
 #include "rain_field.h"
 #include "renderer.h"
@@ -155,6 +156,7 @@
 #define CHAIN_SEGMENT_SHORTEST 0.5f
 #define CHAIN_TEXTURE_S_SPAN 64.0f
 #define SOUL_SPARKS_MOVIE "deadtricklight"
+#define STAFF_SCREEN_TEXTURE "staff_%02d_%02d"
 #define SOUL_STREAM_LENGTH 0.7f
 #define SOUL_STREAM_RADIUS 18.0f
 #define SOUL_STREAM_RADIUS_LEAST 3.0f
@@ -168,6 +170,10 @@ struct view_effect {
     float x;
     float y;
     int age_ticks;
+    struct fx_playhead playhead;
+    int is_stopped;
+    int fade_ticks;
+    int fade_ticks_left;
 };
 
 struct view_core_mark {
@@ -179,6 +185,10 @@ struct view_core_mark {
     float opacity;
 };
 
+static int staff_roll_is_drawn;
+static int staff_roll_page;
+static int staff_roll_screen_count;
+static float staff_roll_scroll;
 static const struct renderer_color movie_black = { 0.0f, 0.0f, 0.0f, 1.0f };
 static int film_scroll_is_paused;
 static float film_scroll;
@@ -245,6 +255,7 @@ void script_view_start(const struct script_tables *new_tables)
     age_ticks = 0;
     memset(effects, 0, sizeof(effects));
     phone_split_index = -1;
+    staff_roll_is_drawn = 0;
     rain_field_seed(&rain);
     scene_stage_set_soul_mode(0);
 }
@@ -416,6 +427,10 @@ void script_view_effect_spawned(const struct script_effect_row *row, const char 
     effect->x = x;
     effect->y = y;
     effect->age_ticks = 0;
+    effect->is_stopped = 0;
+    effect->fade_ticks = 0;
+    effect->fade_ticks_left = 0;
+    fx_playhead_start(&effect->playhead);
     if (row->kind == SCRIPT_EFFECT_RAIN) {
         float center_x;
         float top_y;
@@ -493,17 +508,65 @@ void script_view_effect_moved(const char *name, float x, float y, float aim_degr
     }
 }
 
+static int effect_is_named(const struct view_effect *effect, const char *name)
+{
+    return effect->in_use && (name[0] == '*' || strcmp(effect->name, name) == 0);
+}
+
+static void delete_effect_at(int index)
+{
+    effects[index].in_use = 0;
+    if (index == phone_split_index) {
+        phone_split_index = -1;
+        film_frame_is_on = phone_split_belts_were_on;
+    }
+}
+
 void script_view_effect_deleted(const char *name)
 {
     int index;
 
     for (index = 0; index < VIEW_EFFECT_MAX; index++) {
-        if (effects[index].in_use && (name[0] == '*' || strcmp(effects[index].name, name) == 0)) {
-            effects[index].in_use = 0;
-            if (index == phone_split_index) {
-                phone_split_index = -1;
-                film_frame_is_on = phone_split_belts_were_on;
+        if (effect_is_named(&effects[index], name)) {
+            delete_effect_at(index);
+        }
+    }
+}
+
+void script_view_effect_status_set(const char *name, int status)
+{
+    int index;
+
+    for (index = 0; index < VIEW_EFFECT_MAX; index++) {
+        if (effect_is_named(&effects[index], name)) {
+            fx_playhead_set_status(&effects[index].playhead, effects[index].fx_movie, tables->fx_jumps, status);
+        }
+    }
+}
+
+void script_view_effect_fade_out_started(const char *name, int ticks)
+{
+    int index;
+
+    for (index = 0; index < VIEW_EFFECT_MAX; index++) {
+        if (effect_is_named(&effects[index], name)) {
+            if (ticks <= 0) {
+                delete_effect_at(index);
+            } else {
+                effects[index].fade_ticks = ticks;
+                effects[index].fade_ticks_left = ticks;
             }
+        }
+    }
+}
+
+void script_view_effect_stepping_changed(const char *name, int is_stopped)
+{
+    int index;
+
+    for (index = 0; index < VIEW_EFFECT_MAX; index++) {
+        if (effect_is_named(&effects[index], name)) {
+            effects[index].is_stopped = is_stopped;
         }
     }
 }
@@ -530,10 +593,17 @@ void script_view_advance(void)
         rain_field_advance(&rain, center_x, top_y);
     }
     for (index = 0; index < VIEW_EFFECT_MAX; index++) {
-        if (effects[index].in_use) {
+        if (effects[index].in_use && !effects[index].is_stopped) {
             effects[index].age_ticks = effects[index].age_ticks + 1;
+            fx_playhead_advance(&effects[index].playhead, effects[index].fx_movie, tables->fx_jumps);
             if (effects[index].row->ticks > 0 && effects[index].age_ticks >= effects[index].row->ticks) {
                 effects[index].in_use = 0;
+            }
+            if (effects[index].fade_ticks > 0) {
+                effects[index].fade_ticks_left = effects[index].fade_ticks_left - 1;
+                if (effects[index].fade_ticks_left <= 0) {
+                    delete_effect_at(index);
+                }
             }
         }
     }
@@ -606,6 +676,7 @@ static void draw_fx_frame(const struct script_fx_movie *movie, const struct scri
     char name[ASSET_NAME_MAX];
     const struct cached_texture *texture;
     struct renderer_vertex corners[6];
+    struct renderer_color tint;
     float screen_x;
     float screen_y;
     float sine;
@@ -643,36 +714,30 @@ static void draw_fx_frame(const struct script_fx_movie *movie, const struct scri
     corners[4] = corners[0];
     corners[5] = corners[3];
     corners[3] = corners[2];
-    renderer_draw_triangles(texture->texture, corners, 2, white);
+    tint = white;
+    if (effect->fade_ticks > 0) {
+        tint.alpha = (float)effect->fade_ticks_left / (float)effect->fade_ticks;
+    }
+    renderer_draw_triangles(texture->texture, corners, 2, tint);
 }
 
-static void draw_fx_movie_of(struct view_effect *effect, const struct script_fx_movie *movie)
+static void draw_fx_movie_frame(const struct view_effect *effect, const struct script_fx_movie *movie, int frame)
 {
-    int frame;
-
-    if (movie == NULL || movie->frame_count == 0 || movie->ticks_per_frame <= 0.0f) {
-        return;
-    }
-    frame = (int)((float)effect->age_ticks / movie->ticks_per_frame);
-    if (frame >= movie->frame_count) {
-        if (movie->after_last == SCRIPT_FX_AFTER_END) {
-            effect->in_use = 0;
-            return;
-        }
-        if (movie->after_last == SCRIPT_FX_AFTER_HOLD) {
-            frame = movie->frame_count - 1;
-        } else {
-            frame = movie->loop_start + (frame - movie->loop_start) % (movie->frame_count - movie->loop_start);
-        }
-    }
-    if (tables->fx_frames[movie->first_frame + frame].page >= 0) {
+    if (frame >= 0 && frame < movie->frame_count && tables->fx_frames[movie->first_frame + frame].page >= 0) {
         draw_fx_frame(movie, &tables->fx_frames[movie->first_frame + frame], effect);
     }
 }
 
 static void draw_fx_movie(struct view_effect *effect)
 {
-    draw_fx_movie_of(effect, effect->fx_movie);
+    if (effect->fx_movie == NULL || effect->fx_movie->frame_count == 0 || effect->fx_movie->ticks_per_frame <= 0.0f) {
+        return;
+    }
+    if (effect->playhead.is_over) {
+        effect->in_use = 0;
+        return;
+    }
+    draw_fx_movie_frame(effect, effect->fx_movie, effect->playhead.frame);
 }
 
 static void draw_effect(const struct view_effect *effect)
@@ -1286,6 +1351,8 @@ static void draw_possession_sparks(void)
 {
     struct view_effect sparks;
     static const struct script_effect_row sparks_row = { 0 };
+    int frame;
+    int is_over;
 
     if (sparks_elapsed_ticks <= 0 || sparks_movie == NULL) {
         return;
@@ -1295,8 +1362,10 @@ static void draw_possession_sparks(void)
     sparks.in_use = 1;
     sparks.x = sparks_x;
     sparks.y = sparks_y;
-    sparks.age_ticks = sparks_elapsed_ticks - 1;
-    draw_fx_movie_of(&sparks, sparks_movie);
+    frame = fx_playhead_frame_at_age(sparks_movie, tables->fx_jumps, sparks_elapsed_ticks - 1, &is_over);
+    if (!is_over) {
+        draw_fx_movie_frame(&sparks, sparks_movie, frame);
+    }
 }
 
 static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y)
@@ -1634,6 +1703,52 @@ static void draw_screen_still(void)
     renderer_draw_snapshot(whole_screen, 1.0f);
 }
 
+void script_view_staff_roll_changed(int is_drawn, int page, int screen_count, float scroll)
+{
+    staff_roll_is_drawn = is_drawn;
+    staff_roll_page = page;
+    staff_roll_screen_count = screen_count;
+    staff_roll_scroll = scroll;
+}
+
+static void draw_staff_roll(void)
+{
+    char name[ASSET_NAME_MAX];
+    float left;
+    float top;
+    int screen;
+
+    if (!staff_roll_is_drawn) {
+        return;
+    }
+    left = ((float)RENDERER_WIDTH - SCENE_VIEW_DS_SCREEN_WIDTH * VITA_PIXELS_PER_DS_PIXEL) / 2.0f;
+    top = ((float)RENDERER_HEIGHT - SCENE_VIEW_DS_SCREEN_HEIGHT * VITA_PIXELS_PER_DS_PIXEL) / 2.0f;
+    for (screen = 0; screen < staff_roll_screen_count; screen++) {
+        const struct cached_texture *texture;
+        struct script_staff_screen_span span;
+        struct renderer_rect area;
+        struct renderer_rect uv;
+
+        if (!script_staff_roll_screen_span(staff_roll_scroll, screen, &span)) {
+            continue;
+        }
+        snprintf(name, sizeof(name), STAFF_SCREEN_TEXTURE, staff_roll_page, screen + 1);
+        texture = texture_cache_use_or_start_loading(name);
+        if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
+            continue;
+        }
+        area.x = left;
+        area.y = top + span.top * VITA_PIXELS_PER_DS_PIXEL;
+        area.width = SCENE_VIEW_DS_SCREEN_WIDTH * VITA_PIXELS_PER_DS_PIXEL;
+        area.height = span.row_count * VITA_PIXELS_PER_DS_PIXEL;
+        uv.x = 0.0f;
+        uv.y = span.first_row / (float)SCRIPT_STAFF_SCREEN_HEIGHT;
+        uv.width = 1.0f;
+        uv.height = span.row_count / (float)SCRIPT_STAFF_SCREEN_HEIGHT;
+        renderer_draw_sprite(texture->texture, area, uv, white);
+    }
+}
+
 void script_view_draw_on_covers(void)
 {
     draw_screen_still();
@@ -1641,6 +1756,7 @@ void script_view_draw_on_covers(void)
         draw_film_belts();
     }
     soul_transition_draw();
+    draw_staff_roll();
     script_ui_view_draw_under_talk(scene_stage_view()->fade_amount);
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {
         draw_talk();

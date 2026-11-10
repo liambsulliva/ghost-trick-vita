@@ -552,7 +552,7 @@ def table_files(set_description, output_folder, motion_lines, narration_lines, t
         texts[ROUTE_FILE] = route_steps_text(set_description["route"])
     if set_description.get("ui_clips"):
         texts[UI_CLIPS_FILE] = ui_clips.clips_text()
-    texts[EFFECTS_FILE] = movies_text(set_description.get("movies", [])) + flipbooks_text(set_description.get("flipbooks", [])) + effects_text(set_description.get("effects", [])) + set_description.get("effect_movie_text", "")
+    texts[EFFECTS_FILE] = movies_text(set_description.get("movies", [])) + flipbooks_text(set_description.get("flipbooks", [])) + effects_text(set_description.get("effects", [])) + set_description.get("effect_movie_text", "") + set_description.get("staff_roll_text", "")
     if "chapter" in set_description:
         texts[PRELOAD_FILE] = chapter_preload_text(set_description, section, narration_lines, extra_textures)
     else:

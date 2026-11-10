@@ -8,6 +8,7 @@
 #include "script_opcodes.h"
 #include "script_outputs.h"
 #include "script_route.h"
+#include "script_staff_roll.h"
 #include "script_talk.h"
 #include "soul_chain.h"
 
@@ -520,6 +521,9 @@ struct script_machine {
     int note_was_added;
     int time_jump_movie_ticks;
     int movie_ticks_left;
+    struct script_staff_roll staff_roll;
+    int mode_byte_under_the_staff_roll;
+    int ending_mode_is_on;
     int phone_view_is_on;
     int phone_book_place;
     int phone_book_is_open;

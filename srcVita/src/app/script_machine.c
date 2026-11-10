@@ -8,6 +8,7 @@
 #define MODE_BYTE_LOADING 1
 #define MODE_BYTE_NORMAL 2
 #define MODE_BYTE_ALSO_RUNS_IDLE 3
+#define MODE_BYTE_STAFF_ROLL 0x17
 #define GAME_START_AFTER_LOAD_TICKS 3
 #define LOAD_AFTER_TEARDOWN_TICKS 4
 #define SOUL_SOUND_KIND 14
@@ -1063,6 +1064,55 @@ static void note_entry(struct script_machine *machine, unsigned int list, unsign
     }
 }
 
+static void mark_staff_roll(struct script_machine *machine, const char *what, const char *detail)
+{
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked(what, detail);
+    }
+}
+
+static void report_staff_roll(struct script_machine *machine)
+{
+    const struct script_staff_roll *roll;
+
+    roll = &machine->staff_roll;
+    if (machine->outputs->staff_roll_changed != NULL) {
+        machine->outputs->staff_roll_changed(script_staff_roll_is_drawn(roll), roll->page, roll->screen_count, script_staff_roll_scroll(roll));
+    }
+}
+
+static void start_staff_roll(struct script_machine *machine, int page)
+{
+    char text[32];
+
+    if (!machine->staff_roll.is_on) {
+        machine->mode_byte_under_the_staff_roll = machine->mode_byte;
+    }
+    machine->mode_byte = MODE_BYTE_STAFF_ROLL;
+    script_staff_roll_start(&machine->staff_roll, page);
+    snprintf(text, sizeof(text), "%d screens=%d", page, machine->staff_roll.screen_count);
+    mark_staff_roll(machine, "staff_roll_started", text);
+    report_staff_roll(machine);
+}
+
+static void step_staff_roll(struct script_machine *machine)
+{
+    int was_holding;
+
+    if (!machine->staff_roll.is_on) {
+        return;
+    }
+    was_holding = script_staff_roll_holds_the_script(&machine->staff_roll);
+    if (script_staff_roll_step(&machine->staff_roll)) {
+        machine->mode_byte = machine->mode_byte_under_the_staff_roll;
+        machine->ending_mode_is_on = 0;
+        mark_staff_roll(machine, "staff_roll_left", "-");
+    } else if (was_holding && !script_staff_roll_holds_the_script(&machine->staff_roll)) {
+        mark_staff_roll(machine, "staff_roll_page_over", "-");
+    }
+    report_staff_roll(machine);
+}
+
 static enum script_step_result run_control_op(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words)
 {
     switch (op) {
@@ -1306,6 +1356,20 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         }
         return SCRIPT_STEP_NEXT;
     case 0xef:
+        return SCRIPT_STEP_NEXT_THEN_YIELD;
+    case 0x6a:
+        machine->ending_mode_is_on = 1;
+        return SCRIPT_STEP_NEXT_THEN_YIELD;
+    case 0xf8:
+        start_staff_roll(machine, (int)words[0]);
+        return SCRIPT_STEP_NEXT_THEN_YIELD;
+    case 0xf9:
+        if (machine->mode_byte == MODE_BYTE_STAFF_ROLL && script_staff_roll_holds_the_script(&machine->staff_roll)) {
+            return SCRIPT_STEP_MOVED_THEN_YIELD;
+        }
+        return SCRIPT_STEP_NEXT;
+    case 0xfa:
+        script_staff_roll_end(&machine->staff_roll);
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x18:
         vm->condition = object_is_named_or_current(machine, vm, words[0]);
@@ -1769,6 +1833,7 @@ static void run_native_steps_before_tasks(struct script_machine *machine)
         machine->movie_ticks_left = machine->movie_ticks_left - 1;
     }
     script_talk_close_when_due(machine);
+    step_staff_roll(machine);
     script_soul_step_before_tasks(machine);
 }
 

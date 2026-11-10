@@ -5,6 +5,7 @@ import effect_file
 
 USER_PATH = "natives/android/charfiles/3d/05_effect/%s/23_%s.user.2"
 AFTER_LAST_CODES = {"end": 0, "loop": 1, "hold": 2}
+JUMP_CONDITION_CODES = {effect_file.JUMP_ALWAYS: 0, effect_file.JUMP_WHEN_EQUAL: 1, effect_file.JUMP_ONE_TIME_IN: 2}
 
 
 def page_texture_name(effect_name, page):
@@ -24,6 +25,8 @@ def frame_row(quads, page_size):
 
 def movie_rows(row, effect):
     lines = ["fxmovie %s %s %d %d %d %d" % (row["effect"], asset_writers.format_number(effect["ticks_per_frame"]), AFTER_LAST_CODES[effect["after_last"]], effect["loop_start"] or 0, row.get("sound", -1), len(effect["page_paths"]))]
+    lines.extend("fxjump %d %d %d %d" % (jump["frame"], jump["target"], JUMP_CONDITION_CODES[jump["condition"]], jump["value"]) for jump in effect["jumps"])
+    lines.extend("fxstatus %d %d" % (status, frame) for status, frame in sorted(effect["statuses"].items()))
     lines.extend(frame_row(frame["quads"], effect["page_size"]) for frame in effect["frames"])
     return lines
 

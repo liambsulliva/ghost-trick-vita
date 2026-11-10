@@ -142,6 +142,10 @@ struct script_outputs {
     void (*effect_deleted)(const char *name);
     void (*effect_signalled)(const char *name);
     void (*effect_moved)(const char *name, float x, float y, float aim_degrees);
+    void (*effect_status_set)(const char *name, int status);
+    void (*effect_fade_out_started)(const char *name, int ticks);
+    void (*effect_stepping_changed)(const char *name, int is_stopped);
+    void (*staff_roll_changed)(int is_drawn, int page, int screen_count, float scroll);
 };
 
 #endif

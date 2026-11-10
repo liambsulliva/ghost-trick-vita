@@ -755,6 +755,21 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
     case 0xb1:
         delete_effect(machine, vm, words);
         break;
+    case 0xb3:
+        if (script_machine_string(machine, vm, words[0]) != NULL && machine->outputs->effect_status_set != NULL) {
+            machine->outputs->effect_status_set(script_machine_string(machine, vm, words[0]), (int)words[1]);
+        }
+        break;
+    case 0xb9:
+        if (script_machine_string(machine, vm, words[0]) != NULL && machine->outputs->effect_fade_out_started != NULL) {
+            machine->outputs->effect_fade_out_started(script_machine_string(machine, vm, words[0]), signed_word(words[1]));
+        }
+        break;
+    case 0xba:
+        if (script_machine_string(machine, vm, words[0]) != NULL && machine->outputs->effect_stepping_changed != NULL) {
+            machine->outputs->effect_stepping_changed(script_machine_string(machine, vm, words[0]), words[1] != 0);
+        }
+        break;
     case 0x6f:
     case 0x70:
     case 0x71:

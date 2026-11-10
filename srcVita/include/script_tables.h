@@ -43,6 +43,12 @@ enum script_effect_kind {
 
 #define SCRIPT_FX_MOVIE_MAX 256
 #define SCRIPT_FX_FRAME_MAX 16384
+#define SCRIPT_FX_JUMP_MAX 64
+#define SCRIPT_FX_STATUS_MAX 4
+#define SCRIPT_FX_NO_FRAME (-1)
+#define SCRIPT_FX_JUMP_ALWAYS 0
+#define SCRIPT_FX_JUMP_WHEN_STATUS_IS 1
+#define SCRIPT_FX_JUMP_ONE_TIME_IN 2
 #define SCRIPT_FX_AFTER_END 0
 #define SCRIPT_FX_AFTER_LOOP 1
 #define SCRIPT_FX_AFTER_HOLD 2
@@ -56,6 +62,13 @@ struct script_fx_frame {
     float corners[8];
 };
 
+struct script_fx_jump {
+    int frame;
+    int target;
+    int condition;
+    int value;
+};
+
 struct script_fx_movie {
     char name[ASSET_NAME_MAX];
     float ticks_per_frame;
@@ -65,6 +78,9 @@ struct script_fx_movie {
     int page_count;
     int first_frame;
     int frame_count;
+    int first_jump;
+    int jump_count;
+    int status_frames[SCRIPT_FX_STATUS_MAX];
 };
 
 struct script_effect_row {
@@ -198,6 +214,9 @@ struct script_tables {
     struct script_fx_movie fx_movies[SCRIPT_FX_MOVIE_MAX];
     int fx_movie_count;
     struct script_fx_frame fx_frames[SCRIPT_FX_FRAME_MAX];
+    int staff_page_screens[SCRIPT_STAFF_PAGE_MAX];
+    struct script_fx_jump fx_jumps[SCRIPT_FX_JUMP_MAX];
+    int fx_jump_count;
     int fx_frame_count;
     struct script_movie movies[SCRIPT_MOVIE_MAX];
     int movie_count;

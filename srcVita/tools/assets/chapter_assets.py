@@ -71,6 +71,11 @@ CHOICE_TALK_LABEL_WORD = {0x3c: 2, 0x3d: 3}
 SOUL_BALLOON_TALK_OP = 0x4c
 BALLOON_LABEL_OPS = (0x51, 0x45)
 EFFECT_SPAWN_OP = 0xb0
+STAFF_ROLL_START_OP = 0xf8
+STAFF_SCREEN_SOURCE = "natives/android/charfiles/3d/06_id/13_ending/staff_%02d_%02d_iml4.tex.691230823"
+STAFF_SCREEN_TEXTURE = "staff_%02d_%02d"
+STAFF_SCREEN_WIDTH = 720
+STAFF_SCREEN_HEIGHT = 540
 EFFECT_KIND_TABLE_ADDRESS = 0x02086624
 EFFECT_FACTORY_TABLE_ADDRESS = 0x020ac194
 FIRST_CLASS_EFFECT_KIND = 0x8000
@@ -419,6 +424,25 @@ def chapter_card_rows(packs, scripts, arm9, cards):
     return textures, effects
 
 
+def staff_roll_rows(packs, scripts):
+    pages = set()
+    for script in scripts.values():
+        for _, _, op, operands in script.operations:
+            if op == STAFF_ROLL_START_OP and operands:
+                pages.add(operands[0])
+    textures = []
+    lines = []
+    for page in sorted(pages):
+        screen_count = 0
+        while path_exists(packs, STAFF_SCREEN_SOURCE % (page, screen_count + 1)):
+            screen_count += 1
+            textures.append({"name": STAFF_SCREEN_TEXTURE % (page, screen_count), "source": STAFF_SCREEN_SOURCE % (page, screen_count), "width": STAFF_SCREEN_WIDTH, "height": STAFF_SCREEN_HEIGHT})
+        if screen_count == 0:
+            raise ValueError("staff roll page %d is started by a script but has no screens in the packs" % page)
+        lines.append("staffpage %d %d" % (page, screen_count))
+    return textures, "".join(line + "\n" for line in lines)
+
+
 def effect_list_row_of_kind(kind):
     return kind + 1 if kind >= FIRST_EFFECT_KIND_LISTED_ONE_LATER else kind
 
@@ -613,6 +637,8 @@ def expand_set(set_description, packs, rom_path, text_key):
         card_textures, card_effects = chapter_card_rows(packs, scripts, arm9, set_description["chapter_cards"])
         expanded["screen_textures"] = list(set_description.get("screen_textures", [])) + card_textures
         expanded["effects"] = list(set_description.get("effects", [])) + card_effects
+    staff_textures, expanded["staff_roll_text"] = staff_roll_rows(packs, scripts)
+    expanded["screen_textures"] = list(expanded.get("screen_textures", [])) + staff_textures
     expanded["effect_movies"] = list(set_description.get("effect_movies", [])) + spawned_effect_movies(packs, scripts, arm9, effect_ids_with_rows(expanded))
     file_cache = {}
     entries_cache = {}

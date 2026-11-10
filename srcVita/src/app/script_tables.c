@@ -221,6 +221,7 @@ static int read_movie_line(struct script_tables *tables, const char *line)
 static int read_fx_movie_line(struct script_tables *tables, const char *line)
 {
     struct script_fx_movie *movie;
+    int status;
 
     if (tables->fx_movie_count >= SCRIPT_FX_MOVIE_MAX) {
         tables->rows_dropped = tables->rows_dropped + 1;
@@ -232,7 +233,64 @@ static int read_fx_movie_line(struct script_tables *tables, const char *line)
     }
     movie->first_frame = tables->fx_frame_count;
     movie->frame_count = 0;
+    movie->first_jump = tables->fx_jump_count;
+    movie->jump_count = 0;
+    for (status = 0; status < SCRIPT_FX_STATUS_MAX; status++) {
+        movie->status_frames[status] = SCRIPT_FX_NO_FRAME;
+    }
     tables->fx_movie_count = tables->fx_movie_count + 1;
+    return 1;
+}
+
+static int read_staff_page_line(struct script_tables *tables, const char *line)
+{
+    int page;
+    int screen_count;
+
+    if (sscanf(line, "staffpage %d %d", &page, &screen_count) != 2 || screen_count <= 0) {
+        return 0;
+    }
+    if (page < 0 || page >= SCRIPT_STAFF_PAGE_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
+        return 1;
+    }
+    tables->staff_page_screens[page] = screen_count;
+    return 1;
+}
+
+static int read_fx_jump_line(struct script_tables *tables, const char *line)
+{
+    struct script_fx_jump *jump;
+
+    if (tables->fx_movie_count == 0) {
+        return 0;
+    }
+    if (tables->fx_jump_count >= SCRIPT_FX_JUMP_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
+        return 1;
+    }
+    jump = &tables->fx_jumps[tables->fx_jump_count];
+    if (sscanf(line, "fxjump %d %d %d %d", &jump->frame, &jump->target, &jump->condition, &jump->value) != 4) {
+        return 0;
+    }
+    tables->fx_jump_count = tables->fx_jump_count + 1;
+    tables->fx_movies[tables->fx_movie_count - 1].jump_count = tables->fx_movies[tables->fx_movie_count - 1].jump_count + 1;
+    return 1;
+}
+
+static int read_fx_status_line(struct script_tables *tables, const char *line)
+{
+    int status;
+    int frame;
+
+    if (tables->fx_movie_count == 0 || sscanf(line, "fxstatus %d %d", &status, &frame) != 2 || frame < 0) {
+        return 0;
+    }
+    if (status < 0 || status >= SCRIPT_FX_STATUS_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
+        return 1;
+    }
+    tables->fx_movies[tables->fx_movie_count - 1].status_frames[status] = frame;
     return 1;
 }
 
@@ -294,6 +352,15 @@ static int read_effect_line(struct script_tables *tables, const char *line)
     }
     if (text_line_starts_with(line, "fxframe ")) {
         return read_fx_frame_line(tables, line);
+    }
+    if (text_line_starts_with(line, "staffpage ")) {
+        return read_staff_page_line(tables, line);
+    }
+    if (text_line_starts_with(line, "fxjump ")) {
+        return read_fx_jump_line(tables, line);
+    }
+    if (text_line_starts_with(line, "fxstatus ")) {
+        return read_fx_status_line(tables, line);
     }
 
     if (tables->effect_row_count >= SCRIPT_EFFECT_ROW_MAX) {

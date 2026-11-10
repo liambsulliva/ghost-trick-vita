@@ -492,6 +492,9 @@ static void start_running(void)
         phase = PHASE_FINISHED;
         return;
     }
+    for (command = 0; command < SCRIPT_STAFF_PAGE_MAX; command++) {
+        script_staff_roll_set_screens(&data->machine.staff_roll, command, data->tables.staff_page_screens[command]);
+    }
     for (command = 0; command < data->tables.start_command_count; command++) {
         script_soul_run_command(&data->machine, data->tables.start_command_verbs[command], data->tables.start_command_args[command]);
     }
