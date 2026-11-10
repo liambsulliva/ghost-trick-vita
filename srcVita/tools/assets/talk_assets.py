@@ -27,7 +27,11 @@ COLOR_BLACK = 0
 COLOR_OF_TAG = {"c1": 1, "c2": 2}
 COLOR_SYSTEM_GREEN = 3
 COLOR_SHIFT = 14
-IGNORED_VERBS = ("s0", "mes_se_play", "mesflash", "mesquake")
+IGNORED_VERBS = ("s0", "mes_se_play", "mesquake_win")
+QUAKE_LEVEL_OF_TYPE = {"iQuake::LEVEL_M": 1, "iQuake::LEVEL_L": 2}
+QUAKE_LEVEL_UNLESS_NAMED = 1
+QUAKE_FRAMES_UNLESS_NAMED = 40
+ATTRIBUTE_PATTERN = re.compile(r"(\w+)=\"([^\"]*)\"")
 NEW_PAGE_CODE = 0x02
 FACE_CODE = 0x08
 POSE_CODE = 0x19
@@ -59,7 +63,7 @@ SUPERSAMPLE = line_renderer.SUPERSAMPLE
 
 
 def new_section():
-    return {"reveal_is_fade": 0, "ending": ENDING_PRESS, "characters": []}
+    return {"reveal_is_fade": 0, "ending": ENDING_PRESS, "flashes": 0, "quake_level": 0, "quake_frames": 0, "characters": []}
 
 
 def add_plain_text(section, text, color):
@@ -67,7 +71,16 @@ def add_plain_text(section, text, color):
         section["characters"].append((character, color))
 
 
-def apply_verb(sections, verb, color):
+def set_quake(section, attribute_text):
+    attributes = dict(ATTRIBUTE_PATTERN.findall(attribute_text))
+    kind = attributes.get("type")
+    if kind is not None and kind not in QUAKE_LEVEL_OF_TYPE:
+        raise message_file.MessageFileError("a talk page shakes at a level this tool does not know: " + kind)
+    section["quake_level"] = QUAKE_LEVEL_OF_TYPE[kind] if kind is not None else QUAKE_LEVEL_UNLESS_NAMED
+    section["quake_frames"] = int(attributes.get("frame", QUAKE_FRAMES_UNLESS_NAMED))
+
+
+def apply_verb(sections, verb, color, attribute_text=""):
     section = sections[-1]
     if verb in COLOR_OF_TAG:
         return COLOR_OF_TAG[verb]
@@ -79,6 +92,10 @@ def apply_verb(sections, verb, color):
         sections.append(new_section())
     elif verb == "auto_end":
         section["ending"] = ENDING_PAUSE_THEN_CLOSE
+    elif verb == "mesflash":
+        section["flashes"] = 1
+    elif verb == "mesquake":
+        set_quake(section, attribute_text)
     return color
 
 
@@ -99,7 +116,7 @@ def parse_page(raw_text):
         if parts.group(1) == "TRCKEND":
             color = COLOR_BLACK
         else:
-            color = apply_verb(sections, parts.group(2), color)
+            color = apply_verb(sections, parts.group(2), color, parts.group(3))
     add_plain_text(sections[-1], raw_text[position:], color)
     return [section_lines(section) for section in sections]
 
@@ -374,7 +391,7 @@ def bake_talk(packs, set_description, text_key, work_folder, record, code):
                 box_top = TOP_BOX_TOP if box_kind != BOX_BOTTOM else BOTTOM_BOX_TOP
                 box_height = TOP_BOX_HEIGHT if box_kind != BOX_BOTTOM else BOTTOM_BOX_HEIGHT
                 text_left = {BOX_BOTTOM: BOTTOM_TEXT_LEFT, BOX_TOP_ALONE: TOP_TEXT_LEFT, BOX_TOP_WITH_HEAD: TOP_WITH_HEAD_TEXT_LEFT}[box_kind]
-                rows.append("page %s %d %d %d %d %d %d" % (face_name, flip, box_kind, one_section["reveal_is_fade"], one_section["ending"], len(one_section["lines"]), changes_instantly))
+                rows.append("page %s %d %d %d %d %d %d %d %d %d" % (face_name, flip, box_kind, one_section["reveal_is_fade"], one_section["ending"], len(one_section["lines"]), changes_instantly, one_section["flashes"], one_section["quake_level"], one_section["quake_frames"]))
                 tops = line_tops(len(one_section["lines"]), box_top, box_height)
                 for line, top in zip(one_section["lines"], tops):
                     codes = " ".join(str(glyph_of[character] | (color << COLOR_SHIFT)) for character, color in line)

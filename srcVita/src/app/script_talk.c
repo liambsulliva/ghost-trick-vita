@@ -9,6 +9,10 @@
 #define OPEN_DELAY_TICKS 5
 #define SLIDE_TICKS 9
 #define FADE_IN_TICKS 30
+#define PAGE_FIELDS_WITHOUT_EFFECTS 7
+#define PAGE_FIELDS_WITH_EFFECTS 10
+#define WHITE_IN_FADE_KIND 2
+#define FLASH_FRAMES 4
 #define LAST_PRESS_RELEASES_AFTER_TICKS 13
 #define SOUND_KIND_PAGE_PRESS 5
 #define SOUND_KIND_FACE_SLIDE 6
@@ -37,12 +41,17 @@ static int read_page_row(const char *line, struct script_talk_book *book)
     struct script_talk_page *page;
     int ending;
     int line_count;
+    int fields;
 
     if (book->message_count == 0 || book->page_count >= SCRIPT_TALK_PAGE_MAX) {
         return 0;
     }
     page = &book->pages[book->page_count];
-    if (sscanf(line, "page " ASSET_NAME_SCAN " %d %d %d %d %d %d", page->face_texture, &page->face_is_flipped, &page->is_top_box, &page->reveal_is_fade, &ending, &line_count, &page->changes_face_instantly) != 7) {
+    page->flashes = 0;
+    page->quake_level = 0;
+    page->quake_frames = 0;
+    fields = sscanf(line, "page " ASSET_NAME_SCAN " %d %d %d %d %d %d %d %d %d", page->face_texture, &page->face_is_flipped, &page->is_top_box, &page->reveal_is_fade, &ending, &line_count, &page->changes_face_instantly, &page->flashes, &page->quake_level, &page->quake_frames);
+    if (fields != PAGE_FIELDS_WITHOUT_EFFECTS && fields != PAGE_FIELDS_WITH_EFFECTS) {
         return 0;
     }
     page->has_face = strcmp(page->face_texture, NO_FACE) != 0;
@@ -249,12 +258,24 @@ static void report(struct script_machine *machine)
     machine->outputs->talk_changed(&view);
 }
 
-static void begin_reveal(struct script_talk *talk)
+static void begin_reveal(struct script_machine *machine)
 {
+    struct script_talk *talk;
+    const struct script_talk_page *page;
+
+    talk = &machine->talk;
     talk->phase = SCRIPT_TALK_REVEALING;
     talk->timer = 0;
     talk->glyphs_shown = 0;
     talk->fade_ticks = 0;
+    page = current_page(machine);
+    if (page != NULL && page->flashes) {
+        script_fades_add(machine, NULL, WHITE_IN_FADE_KIND, FLASH_FRAMES);
+    }
+    if (page != NULL && page->quake_frames > 0) {
+        machine->shake_level = page->quake_level;
+        machine->shake_ticks_left = page->quake_frames;
+    }
 }
 
 void script_talk_open(struct script_machine *machine, const char *label)
@@ -313,7 +334,7 @@ static void go_to_next_page_or_close(struct script_machine *machine)
         return;
     }
     talk->page_index = talk->page_index + 1;
-    begin_reveal(talk);
+    begin_reveal(machine);
 }
 
 static void finish_reveal(struct script_machine *machine)
@@ -420,7 +441,7 @@ void script_talk_step(struct script_machine *machine)
             play_sound(machine, SOUND_KIND_FACE_SLIDE);
         }
         if (talk->timer >= OPEN_DELAY_TICKS + SLIDE_TICKS) {
-            begin_reveal(talk);
+            begin_reveal(machine);
         }
         talk->press_is_pending = 0;
         break;

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "audio_port.h"
 #include "audio_thread.h"
 #include "clock.h"
@@ -233,9 +234,81 @@ static void test_two_sounds_at_once_add_together(void)
     finish();
 }
 
+static void add_loop_points(const char *name, const char *text)
+{
+    char path[FILE_PATH_MAX];
+
+    snprintf(path, sizeof(path), "sounds/%s.loop", name);
+    fake_files_add(path, (const unsigned char *)text, (unsigned int)strlen(text));
+}
+
+static void test_a_tagged_sound_whose_clip_has_no_loop_points_plays_once(void)
+{
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    sound_request_loop("ping", "se_squeak");
+    pump(GRAINS_LONGER_THAN_THE_CLIP);
+    CHECK_INT(count_in_log("sound started name=ping"), 1);
+    pump(WINDOW_GRAINS * 2);
+    CHECK_HAS_TEXT(log_text(), "voices_max=0 started=0 dropped=0 ");
+    finish();
+}
+
+static void test_a_tagged_sound_can_be_cut_short_by_its_tag_before_it_ends(void)
+{
+    set_up();
+    prepare_one_clip_and_open_the_port("ping");
+    sound_request_loop("ping", "se_squeak");
+    pump(2);
+    sound_request_stop_loop("se_squeak");
+    pump(2);
+    CHECK(grain_is_silent(played_grain(grains_played() - 1)));
+    finish();
+}
+
+static void test_a_loop_started_and_stopped_between_two_grains_does_not_play_on(void)
+{
+    set_up();
+    add_loop_points("ping", "0 11024\n");
+    prepare_one_clip_and_open_the_port("ping");
+    sound_request_loop("ping", "se_rain");
+    sound_request_stop_loop("se_rain");
+    pump(GRAINS_LONGER_THAN_THE_CLIP);
+    CHECK(grain_is_silent(played_grain(grains_played() - 1)));
+    finish();
+}
+
+static void test_a_loop_stopped_and_started_again_between_two_grains_plays_on(void)
+{
+    set_up();
+    add_loop_points("ping", "0 11024\n");
+    prepare_one_clip_and_open_the_port("ping");
+    sound_request_loop("ping", "se_rain");
+    pump(2);
+    sound_request_stop_loop("se_rain");
+    sound_request_loop("ping", "se_rain");
+    pump(WINDOW_GRAINS * 2);
+    CHECK(!grain_is_silent(played_grain(grains_played() - 1)));
+    CHECK_HAS_TEXT(log_text(), "voices_max=1 ");
+    finish();
+}
+
+static void test_a_loop_file_that_points_past_the_clip_is_logged_and_the_sound_plays_once(void)
+{
+    set_up();
+    add_loop_points("ping", "0 11025\n");
+    prepare_one_clip_and_open_the_port("ping");
+    CHECK_HAS_TEXT(log_text(), "sound bad_loop_file name=ping");
+    sound_request_loop("ping", "se_rain");
+    pump(GRAINS_LONGER_THAN_THE_CLIP + 2);
+    CHECK(grain_is_silent(played_grain(grains_played() - 1)));
+    finish();
+}
+
 static void test_a_loop_keeps_playing_until_it_is_stopped_by_its_tag(void)
 {
     set_up();
+    add_loop_points("ping", "0 11024\n");
     prepare_one_clip_and_open_the_port("ping");
     sound_request_loop("ping", "se_rain");
     pump(WINDOW_GRAINS);
@@ -858,6 +931,11 @@ int main(void)
     test_two_sounds_at_once_add_together();
     test_one_sound_past_the_voice_limit_is_dropped_and_logged();
     test_a_loop_keeps_playing_until_it_is_stopped_by_its_tag();
+    test_a_tagged_sound_whose_clip_has_no_loop_points_plays_once();
+    test_a_tagged_sound_can_be_cut_short_by_its_tag_before_it_ends();
+    test_a_loop_started_and_stopped_between_two_grains_does_not_play_on();
+    test_a_loop_stopped_and_started_again_between_two_grains_plays_on();
+    test_a_loop_file_that_points_past_the_clip_is_logged_and_the_sound_plays_once();
     test_a_finished_voice_is_free_again_and_plays_from_the_top();
     test_a_voice_that_played_a_long_clip_plays_a_shorter_one_from_its_start();
     test_more_starts_than_the_queue_holds_are_dropped_and_logged();

@@ -31,12 +31,14 @@
 #define LOG_FOR_TOOLS_SOUND_WINDOW "sound window index=%u at=%llu grains=%u wall_us=%llu late=%u voices_max=%d started=%u dropped=%u mix_us_max=%llu block_us_max=%llu gap_us_max=%llu period_us_max=%llu"
 #define LOG_FOR_TOOLS_SOUND_STOPPED "sound stopped reason=%s submitted=%llu grains=%u late=%u"
 
+#define LOOP_TEXT_MAX 64
 #define SOUND_PCM_BUDGET_BYTES (32ull * 1024ull * 1024ull)
 
 struct sound_start {
     char name[ASSET_NAME_MAX];
     char loop_tag[ASSET_NAME_MAX];
     unsigned long long requested_us;
+    int stops_asked_before;
 };
 
 struct sound_mailbox {
@@ -68,6 +70,9 @@ struct sound_clip {
     char name[ASSET_NAME_MAX];
     short *frames;
     unsigned int frame_count;
+    unsigned int loop_start;
+    unsigned int loop_last;
+    int has_loop_points;
     unsigned long long last_used_us;
 };
 
@@ -75,6 +80,7 @@ struct sound_voice {
     const struct sound_clip *clip;
     unsigned int next_frame;
     unsigned int end_frame;
+    int is_looping;
     char loop_tag[ASSET_NAME_MAX];
 };
 
@@ -189,6 +195,7 @@ static void request_start(const char *name, const char *loop_tag)
         snprintf(mailbox.starts[mailbox.start_count].name, ASSET_NAME_MAX, "%s", name);
         snprintf(mailbox.starts[mailbox.start_count].loop_tag, ASSET_NAME_MAX, "%s", loop_tag);
         mailbox.starts[mailbox.start_count].requested_us = clock_now_us();
+        mailbox.starts[mailbox.start_count].stops_asked_before = mailbox.loop_stop_count;
         mailbox.start_count = mailbox.start_count + 1;
     }
     mailbox.port_is_wanted = 1;
@@ -210,12 +217,18 @@ void sound_request_loop(const char *name, const char *loop_tag)
 
 void sound_request_stop_loop(const char *loop_tag)
 {
+    int is_full;
+
     audio_mailbox_lock();
-    if (mailbox.loop_stop_count < SOUND_START_QUEUE_MAX) {
+    is_full = mailbox.loop_stop_count >= SOUND_START_QUEUE_MAX;
+    if (!is_full) {
         snprintf(mailbox.loop_stops[mailbox.loop_stop_count], ASSET_NAME_MAX, "%s", loop_tag);
         mailbox.loop_stop_count = mailbox.loop_stop_count + 1;
     }
     audio_mailbox_unlock();
+    if (is_full) {
+        run_log_write(LOG_FOR_TOOLS_SOUND_DROPPED, loop_tag, "stop_queue_full");
+    }
 }
 
 void sound_request_stop(void)
@@ -250,11 +263,12 @@ static void take_requests(struct sound_requests *requests)
     if (requests->has_clip_to_load) {
         memcpy(requests->clip_to_load, mailbox.clip_names[mailbox.clips_handled], ASSET_NAME_MAX);
     }
-    requests->loop_stop_count = mailbox.loop_stop_count;
-    memcpy(requests->loop_stops, mailbox.loop_stops, (size_t)mailbox.loop_stop_count * sizeof(mailbox.loop_stops[0]));
-    mailbox.loop_stop_count = 0;
+    requests->loop_stop_count = 0;
     requests->start_count = 0;
     if (port_is_open || port_has_failed) {
+        requests->loop_stop_count = mailbox.loop_stop_count;
+        memcpy(requests->loop_stops, mailbox.loop_stops, (size_t)mailbox.loop_stop_count * sizeof(mailbox.loop_stops[0]));
+        mailbox.loop_stop_count = 0;
         requests->start_count = mailbox.start_count;
         memcpy(requests->starts, mailbox.starts, (size_t)mailbox.start_count * sizeof(mailbox.starts[0]));
         mailbox.start_count = 0;
@@ -285,6 +299,30 @@ static int read_clip_file(const char *name, unsigned char **data, unsigned int *
         run_log_write("sound file_missing name=%s code=%d", name, result);
     }
     return result == FILE_OK;
+}
+
+static void read_loop_points(struct sound_clip *clip)
+{
+    char path[FILE_PATH_MAX];
+    char text[LOOP_TEXT_MAX];
+    unsigned char *data;
+    unsigned int size;
+
+    clip->has_loop_points = 0;
+    if (!file_path_join(path, folder, clip->name, ".loop") || file_read_whole(path, &data, &size) != FILE_OK) {
+        return;
+    }
+    if (size >= sizeof(text)) {
+        size = sizeof(text) - 1;
+    }
+    memcpy(text, data, size);
+    text[size] = '\0';
+    mem_free(data);
+    if (sscanf(text, "%u %u", &clip->loop_start, &clip->loop_last) != 2 || clip->loop_start > clip->loop_last || clip->loop_last >= clip->frame_count) {
+        run_log_write("sound bad_loop_file name=%s", clip->name);
+        return;
+    }
+    clip->has_loop_points = 1;
 }
 
 static unsigned int decode_stream_into(short *frames, unsigned int frame_limit)
@@ -393,6 +431,7 @@ static void decode_clip(const char *name, unsigned int size, unsigned long long 
         return;
     }
     snprintf(clip->name, sizeof(clip->name), "%s", name);
+    read_loop_points(clip);
     clip->last_used_us = clock_now_us();
     clip_bytes_total = clip_bytes_total + (unsigned long long)clip->frame_count * BYTES_PER_FRAME;
     if (clip == &clips[clip_count]) {
@@ -477,7 +516,8 @@ static void start_voice(const struct sound_start *start)
     voices[voice].clip = clip;
     voices[voice].next_frame = 0;
     memcpy(voices[voice].loop_tag, start->loop_tag, ASSET_NAME_MAX);
-    voices[voice].end_frame = voices[voice].loop_tag[0] == '\0' ? playback_speed_frames_to_play(clip->frame_count, SOUND_LEAST_FRAMES_WHEN_SPED_UP, playback_speed_get()) : clip->frame_count;
+    voices[voice].is_looping = voices[voice].loop_tag[0] != '\0' && clip->has_loop_points;
+    voices[voice].end_frame = voices[voice].is_looping ? clip->loop_last + 1 : playback_speed_frames_to_play(clip->frame_count, SOUND_LEAST_FRAMES_WHEN_SPED_UP, playback_speed_get());
     window.started = window.started + 1;
     run_log_write(LOG_FOR_TOOLS_SOUND_STARTED, start->name, voice, totals.frames_submitted, clock_now_us() - start->requested_us);
 }
@@ -511,26 +551,40 @@ static void mix_voice_into_grain(struct sound_voice *voice)
         voice->next_frame = voice->next_frame + frames;
         frames_mixed = frames_mixed + frames;
         if (voice->next_frame >= voice->end_frame) {
-            if (voice->loop_tag[0] == '\0') {
-                voice->clip = NULL;
+            if (voice->is_looping) {
+                voice->next_frame = voice->clip->loop_start;
             } else {
-                voice->next_frame = 0;
+                voice->clip = NULL;
             }
         }
     }
 }
 
-static void stop_loops(const struct sound_requests *requests)
+static void stop_tagged_voices(const char *loop_tag)
 {
-    int stop;
     int index;
 
-    for (stop = 0; stop < requests->loop_stop_count; stop++) {
-        for (index = 0; index < SOUND_VOICE_MAX; index++) {
-            if (voices[index].clip != NULL && voices[index].loop_tag[0] != '\0' && (requests->loop_stops[stop][0] == '*' || strcmp(voices[index].loop_tag, requests->loop_stops[stop]) == 0)) {
-                voices[index].clip = NULL;
-            }
+    for (index = 0; index < SOUND_VOICE_MAX; index++) {
+        if (voices[index].clip != NULL && voices[index].loop_tag[0] != '\0' && (loop_tag[0] == '*' || strcmp(voices[index].loop_tag, loop_tag) == 0)) {
+            voices[index].clip = NULL;
         }
+    }
+}
+
+static void stop_and_start_in_the_order_asked(const struct sound_requests *requests)
+{
+    int stop;
+    int start;
+
+    stop = 0;
+    for (start = 0; start < requests->start_count; start++) {
+        for (; stop < requests->starts[start].stops_asked_before && stop < requests->loop_stop_count; stop++) {
+            stop_tagged_voices(requests->loop_stops[stop]);
+        }
+        start_voice(&requests->starts[start]);
+    }
+    for (; stop < requests->loop_stop_count; stop++) {
+        stop_tagged_voices(requests->loop_stops[stop]);
     }
 }
 
@@ -677,12 +731,8 @@ static void play_one_grain(const struct sound_requests *requests)
 {
     unsigned long long mix_started_us;
     int busy;
-    int index;
 
-    stop_loops(requests);
-    for (index = 0; index < requests->start_count; index++) {
-        start_voice(&requests->starts[index]);
-    }
+    stop_and_start_in_the_order_asked(requests);
     busy = count_busy_voices();
     if (busy > window.voices_max) {
         window.voices_max = busy;

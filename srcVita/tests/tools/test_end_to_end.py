@@ -536,6 +536,13 @@ class EndToEndTests(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.output_folder, "music", "song.loop")))
         self.assertFalse(os.path.exists(os.path.join(self.output_folder, "sounds", "ping.loop")))
 
+    def test_a_looped_sound_gets_a_loop_file_too(self):
+        set_description = tiny_set_description()
+        set_description["sounds"] = [{"name": "hum", "source": LOOPED_SONG_PATH}]
+        set_description["steps"] = [step for step in set_description["steps"] if step[0] != "sound"]
+        self.convert(set_description)
+        self.assertEqual(self.read_text("sounds", "hum.loop"), "4 9\n")
+
     def test_a_set_without_audio_still_converts(self):
         set_description = tiny_set_description()
         del set_description["music"]

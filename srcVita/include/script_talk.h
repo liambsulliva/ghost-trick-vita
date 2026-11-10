@@ -53,6 +53,9 @@ struct script_talk_page {
     int is_top_box;
     int changes_face_instantly;
     int reveal_is_fade;
+    int flashes;
+    int quake_level;
+    int quake_frames;
     enum script_talk_ending ending;
     int first_line;
     int line_count;
