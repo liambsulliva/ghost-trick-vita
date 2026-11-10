@@ -274,7 +274,13 @@ def move_earlier_copy(connection, relative_path, remote_path, local_size):
     return False
 
 
-def upload_assets(folder):
+def device_has_the_recorded_copy(connection, record, relative_path, digest, remote_path, local_size, checks_the_device):
+    if record.get(relative_path) != digest:
+        return False
+    return not checks_the_device or remote_size_or_none(connection, remote_path) == local_size
+
+
+def upload_assets(folder, checks_the_device=False):
     if not os.path.isfile(os.path.join(folder, "manifest.txt")):
         print("no manifest.txt in: " + folder)
         return 1
@@ -291,7 +297,7 @@ def upload_assets(folder):
         for local_path, relative_path in local_files:
             digest = sha256_of_file(local_path)
             remote_path = ASSETS_FOLDER + "/" + device_path_of_asset(relative_path)
-            if record.get(relative_path) == digest and remote_size_or_none(connection, remote_path) == os.path.getsize(local_path):
+            if device_has_the_recorded_copy(connection, record, relative_path, digest, remote_path, os.path.getsize(local_path), checks_the_device):
                 skipped = skipped + 1
                 continue
             remote_folder = os.path.dirname(remote_path)
@@ -311,6 +317,8 @@ def upload_assets(folder):
             uploaded = uploaded + 1
             uploaded_bytes = uploaded_bytes + os.path.getsize(local_path)
         for loop_path in loop_files_the_set_no_longer_has([relative_path for _, relative_path in local_files]):
+            if not checks_the_device and loop_path not in record:
+                continue
             delete_if_present(connection, ASSETS_FOLDER + "/" + loop_path)
             if record.pop(loop_path, None) is not None:
                 save_upload_record(record)
@@ -581,6 +589,7 @@ def build_parser():
     wait_action.add_argument("--seconds", type=int, default=30, help="how long to wait")
     upload_assets_action = actions.add_parser("upload-assets", help="upload a converted asset set, skipping files the device already has")
     upload_assets_action.add_argument("folder", help="local folder holding manifest.txt")
+    upload_assets_action.add_argument("--check-device", action="store_true", help="ask the device for the size of every file, not only the ones that changed since the last upload; slow, for a card that was restored or edited by hand")
     return parser
 
 
@@ -610,7 +619,7 @@ def main():
         print(send_device_command(arguments.text))
         return 0
     if arguments.action == "upload-assets":
-        return upload_assets(arguments.folder)
+        return upload_assets(arguments.folder, arguments.check_device)
     if arguments.action == "app-command":
         write_app_commands(arguments.text + "\n")
         return 0

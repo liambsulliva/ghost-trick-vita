@@ -243,16 +243,32 @@ class UploadAssetsTests(DeviceFreeTestCase):
         self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
         self.assertIn("uploaded 0 skipped 7", self.output.getvalue())
 
-    def test_a_file_missing_from_the_device_is_uploaded_again(self):
+    def test_unchanged_files_are_skipped_without_asking_the_device(self):
+        vita_loop.upload_assets(self.set_folder)
+        self.write_file("scenes/s.scene", b"changed scene")
+        with mock.patch.object(self.ftp, "size", wraps=self.ftp.size) as size:
+            self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
+        asked = [call.args[0] for call in size.call_args_list]
+        self.assertEqual([path for path in asked if not path.endswith("/scenes/s.scene")], [])
+        self.assertIn("uploaded 1 skipped 6", self.output.getvalue())
+        self.assertEqual(self.ftp.files[vita_loop.ASSETS_FOLDER + "/scenes/s.scene"], b"changed scene")
+
+    def test_a_file_missing_from_the_device_is_left_alone_unless_the_device_is_checked(self):
         vita_loop.upload_assets(self.set_folder)
         del self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/03/a.gtex"]
         self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
+        self.assertNotIn(vita_loop.ASSETS_FOLDER + "/textures/03/a.gtex", self.ftp.files)
+
+    def test_a_file_missing_from_the_device_is_uploaded_again(self):
+        vita_loop.upload_assets(self.set_folder)
+        del self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/03/a.gtex"]
+        self.assertEqual(vita_loop.upload_assets(self.set_folder, checks_the_device=True), 0)
         self.assertEqual(self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/03/a.gtex"], b"texture")
 
     def test_a_file_of_the_wrong_size_on_the_device_is_uploaded_again(self):
         vita_loop.upload_assets(self.set_folder)
         self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/03/a.gtex"] = b"cut"
-        vita_loop.upload_assets(self.set_folder)
+        vita_loop.upload_assets(self.set_folder, checks_the_device=True)
         self.assertEqual(self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/03/a.gtex"], b"texture")
 
     def test_an_upload_that_fails_is_not_remembered_as_uploaded(self):
