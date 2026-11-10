@@ -107,7 +107,7 @@ The port follows the DS game's own code wherever it can. The changes below are d
 
 1. **Finish the remaining chapters**, on the same data-driven code. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
 2. **A DS-faithful look.** An option to simulate nearest-neighbor upscaling, so the picture looks as it did on the DS.
-3. **Spanish and French**, alongside English.
+3. **Spanish, French and German**, alongside English.
 4. **An animated 3D pause menu.** An all-new menu whose transitions are tied to character models.
 5. **Save anywhere.** Saving at any point in the game, not only between chapters, with the game remembering where you were.
 6. **Make the APK optional.** A player with only the DS cartridge would get the whole port from the DS game's own art, text and sound, and the remaster's files would become an optional upgrade.
