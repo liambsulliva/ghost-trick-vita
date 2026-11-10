@@ -327,6 +327,11 @@ As of 2026-11-07. Items under "Built, not proven" are written but not checked on
 - **Some HUD pieces.** The countdown runs and sends its events but draws nothing, and the same goes for the `EyeCatch` banners.
 - **Touch.** The back touch pad is not read. The front screen works alongside the buttons: tap pills, balloons, Rewind Time and talk, drag the soul in Ghost view, and drag the camera where the game allows it.
 - **A second chapter.** `chapter.xml` is not baked, so Chapter 1's end goes to an end screen.
+- **Playing without the APK.** Planned, not started. The parts:
+  - Art: the DS sprites, rooms and effects, converted from the cartridge's own graphics and drawn at the DS's resolution, scaled up to the Vita's screen.
+  - Text: the DS text and font in place of the remaster's encrypted text, so no text key is needed.
+  - Sound: the DS soundtrack is already rendered from the cartridge; DS sound effects would replace the remaster's.
+  - The setup script would choose this path by itself when no APK is given, and the LiveArea would use the monogram.
 
 The VM's timing comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.
 
