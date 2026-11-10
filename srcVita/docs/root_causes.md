@@ -764,6 +764,47 @@ Closing the view there exposed a second fault. A view the script reopens with `N
 
 Guard: ops 0x67 and 0x68 queue `System|ChangeMode`; a demo request closes an open view, quietly after `NoEffectFinish`. A view that is open with demo mode off and input on waits on the player. `tests/unit/test_quiet_view_pause.c` checks the close, that a view opened after the request stays open, and the wait. Open: native op 0x67 inside a view would replace the view state the same way; no routed scene does it, so the port leaves the view open there.
 
+### 119. A message pause before a page's text was dropped, so the handler it signals never ran
+
+A talk page can hold `<TRCK mes_pause />` before its first character. Jowd's dead talk (`m03_5630` page 16) has two: the first sends `message` `pause in` to `jodo_act00`, which fades the screen white and forwards; the second reaches `jodo_act01`, which forwards and arms the rewind with `GameApp` `Timeleap` `SELECT`. The baker kept only a pause at the end of a section, so the second `pause in` was never sent and the rewind button never came. Four pages in the game set have a pause before their text (`m02_3180`, `m03_5630`, `m13_2220`, `m13_3270`). The native message tag reader has not been found in `src/` yet; the behaviour here comes from those scripts' `pause in` handlers.
+
+Guard: `talk_assets.py` counts the pauses before a section's text into an eleventh `page` field, and `script_talk.c` holds the page in `SCRIPT_TALK_PAUSED_BEFORE_TEXT`, sending `pause in` and waiting for a forward once per pause, before the box opens and the page's flash or quake runs. `tests/tools/test_talk_page_pauses.py` covers the baker and `tests/unit/test_talk_page_pauses.c` the engine. Open: the box is hidden during these pauses, which matches the `meswin disp="off"` around them on all four pages but is not read from native code.
+
+### 120. Sissel's own balloon (ops 0x4c and 0x4e) needed an actor and was baked as a speech bubble
+
+Native's cases 0x4c and 0x4e in `func_02023fdc` call `func_0201052c` and `func_020105d4` with the game object only: unlike 0x45, 0x46, 0x47, 0x51 and 0x52 they never ask for the script's actor (`func_02028148`). Both make the same balloon class (`data_020ce704`) in the right tap slot (`game+0xe00`, timer at `+0xe20`, read as a signed short, so -1 never runs out), after `func_020106a0` closes the one there. 0x4e stores a target, verb and argument (`func_0204649c`); 0x4c stores a talk label at `+0xd0` (`func_02046198`), and a 0x4c naming the label already open only renews the timer. On a tap `func_020463e4` opens that talk (`func_02010718`) or sends the message.
+
+The port asked for an actor in both, so a balloon opened from an object with no sprite (`cicel_balloon`, `stage_master`, `sys`, `game_master`: 16 sites of 0x4e and 35 of 0x4c) never opened. It also drew 0x4c as a speech bubble holding the talk's text above the calling actor, and a tap opened nothing. st03_game032 could not be routed: its `CicelBalloon00` balloon holds off the guard's call while its talk plays.
+
+Guard: `open_soul_balloon` in `script_ops_media.c` serves both ops with no owner, and `script_balloons_tap` opens the talk of a 0x4c balloon. The baker lists 0x4c labels as talks (`SOUL_BALLOON_TALK_OP`) and no longer bakes bubbles for 0x4c, 0x46 or 0x4e, whose first words are not bubble labels; the game set gained 163 talks. `tests/unit/test_soul_balloon.c` and `tests/tools/test_choice_talk_labels.py` cover it. Open: `func_0201052c` skips a 0x4c with mode 1 while bits 13 and 14 of `game+0xc` are set, which the port does not model; op 0x45 stores its label at `game+0xf18` for the same talk-on-tap path (`func_02010394`) but is still drawn as a bubble; op 0x4f (`func_0201062c`) is not ported.
+
+### 121. Lessons from routing Chapter 8 so far (not yet in `game.json`)
+
+The steps found so far are in `docs/chapter8_route_in_progress.json`: 97 steps from `st03_game003_Expand` through `st03_game031_Expand`, the rewind, `st03_demo010_Expand`, `st03_game032_Expand` and into `st03_game011_Expand`, ending as Sissel waits in Jowd's wastebasket (footage 14689 s). They replace the old placeholder steps 739 to 756, whose path and times were guesses. They ran in a replay from a saved state at the chapter's start, not in a whole-game run with baked pacing, and the chapter is not finished, so they are not spliced into the route.
+
+- A core in reach for less than the dwell of a `normal` step needs pace `instant` and a `reach:<target>` wait. The grounding sphere swings with a period of 120 ticks and is in reach of the bucket or the pool for about 15.
+- A falling water drop is a core for a moment and bridges a hop longer than the reach (pool to bucket, wrench to helmet).
+- A trick that only counts while another character is in one act waits on that act (`act:repairman:repairman_act03` for the lever).
+- Arriving on a telephone can close the ghost view from the script, so the step after it is `ghost_on`, not `ghost_off`.
+- In the past a telephone works only during a call. st03_game032 offers the line twice: `phone_stay` on the first call, `phone_call` on the second.
+- A step that must beat a scripted timer is paced `quick`. In st03_game032 the guard's call starts about 124 ticks of play after the scene opens, and the balloon tap must come first.
+- After a rewind `st03_root` picks the scene from flags 0x1028 to 0x102c, so the order is demo010, game032, game011, game033, game035.
+- `script_replay`'s core list skipped nothing, so cores of deleted actors from an earlier stage looked usable; it now lists only actors that exist.
+
+Open in these scenes: `op_not_ported` for 0x9a and 0x49 (st03_game003), 0xcd (st03_game031), 0xb3 (st03_demo010) and 0xc2, 0xc3, 0xfd (st03_game011). The steps were found before op 0xae was ported (cause 122), and st03_game011 uses it, so their waits need a rerun.
+
+### 122. Op 0xae was not ported, so sped-up motions played at normal speed
+
+Native's case 0xae in `func_02023fdc` calls `func_02059bd8` on the script's actor (`func_02028148`), which stores a speed shift in bits 6 and 7 of the motion controller's flags (`func_02059c0c`, actor `+0x126`): 0 for a word of 0 or 1, 1 for 2, 2 for anything above. The table runner `func_02007cd4` shifts the ticks of every frame word, and of every frame with its own ticks (`0xfffb`), right by that amount when they are above 1, and never below 1. So `0xae 2` plays a motion at twice the speed and `0xae 4` at four times, until `0xae 1` ends it; starting another table does not clear it. The game set uses the op 270 times (hurrying guards and prisoners, the ending's demos), and the port skipped it, so those motions ran slow and everything timed against them was late.
+
+Guard: `speed_shift` on the actor, set by op 0xae and applied in `run_table` to both kinds of frame. `tests/unit/test_motion_speed_shift.c` checks each speed, the floor of one tick, that the speed outlives a table, and the `0xfffb` frame. Route lesson: the curry carrier in st03_game010 now walks at the native speed, so the hop from the bell to his spoon waits on `reach:spoon` at pace `instant` instead of a dwell that only fitted the slow walk.
+
+### 123. Ops 0xa1 to 0xa3 were not ported, so a script could not ask which core Sissel or Missile holds
+
+Native's cases 0xa0 to 0xa3 in `func_02023fdc` all call `func_02027630` with the named object and a mode. The modes pick whose core is compared: 0xa1 reads `game+0xe40` (`func_02027684`, Sissel's core), 0xa2 reads `game+0xe44` (`func_0202768c`, Missile's), and 0xa0 and 0xa3 fall to `func_02010194`, the core of the active ghost (bits 13 and 14 of `game+0xc`). The result goes to the VM's condition, 0 when the object or the core is missing. The port had only 0xa0, so the 38 sites of 0xa1 and 0xa2 in the Missile chapters (st13, st14) left the condition from an earlier op and took the wrong branch.
+
+Guard: `compare_core_of_ghost` in `script_motion.c` reads the soul's per-ghost cores; 0xa3 shares 0xa0's case. `tests/unit/test_ghost_core_checks.c` asks about both ghosts' cores with each one active and with no core yet.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
@@ -825,44 +866,10 @@ Guard: all four ops share one case in `script_ops_view.c`. `tests/unit/test_film
 - A scene's `sys` acts name the order the player must follow. st04_game010 ends only from `sys_act060`, reached through the bell rung three times, the pot ride, Rindge's talk and a hop to the sign.
 
 Guard: the Chapter 7 route steps carry these waits, and the whole-game replay fails the step if one is dropped.
-
-### 119. A message pause before a page's text was dropped, so the handler it signals never ran
-
-A talk page can hold `<TRCK mes_pause />` before its first character. Jowd's dead talk (`m03_5630` page 16) has two: the first sends `message` `pause in` to `jodo_act00`, which fades the screen white and forwards; the second reaches `jodo_act01`, which forwards and arms the rewind with `GameApp` `Timeleap` `SELECT`. The baker kept only a pause at the end of a section, so the second `pause in` was never sent and the rewind button never came. Four pages in the game set have a pause before their text (`m02_3180`, `m03_5630`, `m13_2220`, `m13_3270`). The native message tag reader has not been found in `src/` yet; the behaviour here comes from those scripts' `pause in` handlers.
-
-Guard: `talk_assets.py` counts the pauses before a section's text into an eleventh `page` field, and `script_talk.c` holds the page in `SCRIPT_TALK_PAUSED_BEFORE_TEXT`, sending `pause in` and waiting for a forward once per pause, before the box opens and the page's flash or quake runs. `tests/tools/test_talk_page_pauses.py` covers the baker and `tests/unit/test_talk_page_pauses.c` the engine. Open: the box is hidden during these pauses, which matches the `meswin disp="off"` around them on all four pages but is not read from native code.
-
-### 120. Sissel's own balloon (ops 0x4c and 0x4e) needed an actor and was baked as a speech bubble
-
-Native's cases 0x4c and 0x4e in `func_02023fdc` call `func_0201052c` and `func_020105d4` with the game object only: unlike 0x45, 0x46, 0x47, 0x51 and 0x52 they never ask for the script's actor (`func_02028148`). Both make the same balloon class (`data_020ce704`) in the right tap slot (`game+0xe00`, timer at `+0xe20`, read as a signed short, so -1 never runs out), after `func_020106a0` closes the one there. 0x4e stores a target, verb and argument (`func_0204649c`); 0x4c stores a talk label at `+0xd0` (`func_02046198`), and a 0x4c naming the label already open only renews the timer. On a tap `func_020463e4` opens that talk (`func_02010718`) or sends the message.
-
-The port asked for an actor in both, so a balloon opened from an object with no sprite (`cicel_balloon`, `stage_master`, `sys`, `game_master`: 16 sites of 0x4e and 35 of 0x4c) never opened. It also drew 0x4c as a speech bubble holding the talk's text above the calling actor, and a tap opened nothing. st03_game032 could not be routed: its `CicelBalloon00` balloon holds off the guard's call while its talk plays.
-
-Guard: `open_soul_balloon` in `script_ops_media.c` serves both ops with no owner, and `script_balloons_tap` opens the talk of a 0x4c balloon. The baker lists 0x4c labels as talks (`SOUL_BALLOON_TALK_OP`) and no longer bakes bubbles for 0x4c, 0x46 or 0x4e, whose first words are not bubble labels; the game set gained 163 talks. `tests/unit/test_soul_balloon.c` and `tests/tools/test_choice_talk_labels.py` cover it. Open: `func_0201052c` skips a 0x4c with mode 1 while bits 13 and 14 of `game+0xc` are set, which the port does not model; op 0x45 stores its label at `game+0xf18` for the same talk-on-tap path (`func_02010394`) but is still drawn as a bubble; op 0x4f (`func_0201062c`) is not ported.
-
-### 121. Lessons from routing Chapter 8 so far (not yet in `game.json`)
-
-The steps found so far are in `docs/chapter8_route_in_progress.json`: 97 steps from `st03_game003_Expand` through `st03_game031_Expand`, the rewind, `st03_demo010_Expand`, `st03_game032_Expand` and into `st03_game011_Expand`, ending as Sissel waits in Jowd's wastebasket (footage 14689 s). They replace the old placeholder steps 739 to 756, whose path and times were guesses. They ran in a replay from a saved state at the chapter's start, not in a whole-game run with baked pacing, and the chapter is not finished, so they are not spliced into the route.
-
-- A core in reach for less than the dwell of a `normal` step needs pace `instant` and a `reach:<target>` wait. The grounding sphere swings with a period of 120 ticks and is in reach of the bucket or the pool for about 15.
-- A falling water drop is a core for a moment and bridges a hop longer than the reach (pool to bucket, wrench to helmet).
-- A trick that only counts while another character is in one act waits on that act (`act:repairman:repairman_act03` for the lever).
-- Arriving on a telephone can close the ghost view from the script, so the step after it is `ghost_on`, not `ghost_off`.
-- In the past a telephone works only during a call. st03_game032 offers the line twice: `phone_stay` on the first call, `phone_call` on the second.
-- A step that must beat a scripted timer is paced `quick`. In st03_game032 the guard's call starts about 124 ticks of play after the scene opens, and the balloon tap must come first.
-- After a rewind `st03_root` picks the scene from flags 0x1028 to 0x102c, so the order is demo010, game032, game011, game033, game035.
-- `script_replay`'s core list skipped nothing, so cores of deleted actors from an earlier stage looked usable; it now lists only actors that exist.
-
-Open in these scenes: `op_not_ported` for 0x9a and 0x49 (st03_game003), 0xcd (st03_game031), 0xb3 (st03_demo010) and 0xc2, 0xc3, 0xfd (st03_game011). The steps were found before op 0xae was ported (cause 122), and st03_game011 uses it, so their waits need a rerun.
-
-### 122. Op 0xae was not ported, so sped-up motions played at normal speed
-
-Native's case 0xae in `func_02023fdc` calls `func_02059bd8` on the script's actor (`func_02028148`), which stores a speed shift in bits 6 and 7 of the motion controller's flags (`func_02059c0c`, actor `+0x126`): 0 for a word of 0 or 1, 1 for 2, 2 for anything above. The table runner `func_02007cd4` shifts the ticks of every frame word, and of every frame with its own ticks (`0xfffb`), right by that amount when they are above 1, and never below 1. So `0xae 2` plays a motion at twice the speed and `0xae 4` at four times, until `0xae 1` ends it; starting another table does not clear it. The game set uses the op 270 times (hurrying guards and prisoners, the ending's demos), and the port skipped it, so those motions ran slow and everything timed against them was late.
-
-Guard: `speed_shift` on the actor, set by op 0xae and applied in `run_table` to both kinds of frame. `tests/unit/test_motion_speed_shift.c` checks each speed, the floor of one tick, that the speed outlives a table, and the `0xfffb` frame. Route lesson: the curry carrier in st03_game010 now walks at the native speed, so the hop from the bell to his spoon waits on `reach:spoon` at pace `instant` instead of a dwell that only fitted the slow walk.
-
-### 123. Ops 0xa1 to 0xa3 were not ported, so a script could not ask which core Sissel or Missile holds
-
-Native's cases 0xa0 to 0xa3 in `func_02023fdc` all call `func_02027630` with the named object and a mode. The modes pick whose core is compared: 0xa1 reads `game+0xe40` (`func_02027684`, Sissel's core), 0xa2 reads `game+0xe44` (`func_0202768c`, Missile's), and 0xa0 and 0xa3 fall to `func_02010194`, the core of the active ghost (bits 13 and 14 of `game+0xc`). The result goes to the VM's condition, 0 when the object or the core is missing. The port had only 0xa0, so the 38 sites of 0xa1 and 0xa2 in the Missile chapters (st13, st14) left the condition from an earlier op and took the wrong branch.
-
-Guard: `compare_core_of_ghost` in `script_motion.c` reads the soul's per-ghost cores; 0xa3 shares 0xa0's case. `tests/unit/test_ghost_core_checks.c` asks about both ghosts' cores with each one active and with no core yet.
+- Missile's exchange (the swap), needed by every Missile scene in st13 and st14 and by Chapter 18's st13_game021. Native, as read so far:
+  - A shape is the byte at actor `+0xdf`, set by motion word 0xfffa (the port skips that word) and read by `func_02058ba4`.
+  - The soul keeps the object holding the active ghost's core at `+0xf4` (`func_020612b8`) and the object of the core the drag found at `+0xf8` (`func_0205fa2c`). When the chain connects (`func_02061718`) with Missile active and both objects have the same shape, not 0, it sends `EXCHANGE` `CONNECTED` to both and enters soul state 5 instead of hopping.
+  - `pGameMainExchange` (`func_0203447c`) then outlines both cores over 0x18 ticks, scrolls the camera towards their midpoint and shows HUD button 8 (`Exchange`) and 9. The cancel keys send `EXCHANGE` `CANCEL` to both (`func_0206124c`). The swap sends `EXCHANGE` `ROOT` to the first object and `EXCHANGE` `TARGET` to the second (`func_02034a44`), waits for both, plays the swap effect (`func_0205e294`, `func_0205e2a4`), then makes the root core the active core (`func_020100f4`) and the target the last connected one (`func_020266e8`), and returns to the outlined state 0x20 ticks later.
+  - The scripts do the visible swap in those handlers and name the new pair with op 0xa4 (root: `func_020101c0` mode 1 and `func_020611b4` mode 0) and op 0xa5 (target: `game+0xef8` and `func_020611b4` mode 1). Op 0xa6 (`func_020610ac`) aims the chain at a core. The port runs 0xa4 as a plain first-core op and skips 0xa5 and 0xa6.
+- Ops 0xb3, 0xb9 and 0xba act on effects by name, like 0xb1 and 0xb2. 0xba stops (word not 0, `func_02008418`) or resumes (`func_02010dc4`) the effect's stepping, the same task bit as ops 0xac and 0xad. 0xb3 calls the effect's virtual slot 50 with a word and 0xb9 slot 56 with ticks (`func_02027184`, `func_0202737c`); both are empty in the base class, so each effect class that overrides them has to be read (fountain, lamps, kettle, fire, water for 0xb3; bonfire, `efc_cicel`, goggles, `red_efc` for 0xb9).
+- Chapter 18 (st13_game020 to 022, then st15) can be entered in `script_replay` with `--start chapter --chapter-mark 17 --set-flag 1232 --set-flag 11c0 --set-flag 1145 --set-flag 11c3 --set-flag 11ea`. That is a diagnostic entry, not a route. Its scripts still use these unported ops: 0xa5, 0xa6, 0xb3, 0xb9, 0xba, 0xee, 0xf6, 0xfd (st13), 0x6a, 0xf8, 0xf9, 0xfa (every st15 demo), 0xc5, 0xd4, 0x08, 0x09 (st15_demo110).
