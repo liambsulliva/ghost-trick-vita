@@ -427,6 +427,7 @@ struct script_machine {
     const char *gameapp_verbs[SCRIPT_GAMEAPP_MAX];
     const char *gameapp_args[SCRIPT_GAMEAPP_MAX];
     int gameapp_count;
+    int mode_a_script_asked_for;
     const char *pending_script;
     long long teardown_at;
     long long load_at;

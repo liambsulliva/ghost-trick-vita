@@ -301,12 +301,15 @@ static void report_soul_view(struct script_machine *machine)
             }
         }
     }
-    if (!soul->is_on || machine->outputs->soul_core_marked == NULL) {
+    if (!soul->is_on && !machine->demo_soul_is_on) {
         return;
     }
     for (index = 0; index < machine->object_count; index++) {
         if (machine->outputs->soul_object_styled != NULL && machine->objects[index].actor.exists) {
-            machine->outputs->soul_object_styled(machine->objects[index].name, machine->objects[index].actor.class_id, machine->objects[index].actor.has_core, index == soul->active_object, machine->objects[index].is_dead, machine->phone_view_is_on);
+            machine->outputs->soul_object_styled(machine->objects[index].name, machine->objects[index].actor.class_id, machine->objects[index].actor.has_core, soul->is_on && index == soul->active_object, machine->objects[index].is_dead, machine->phone_view_is_on);
+        }
+        if (!soul->is_on || machine->outputs->soul_core_marked == NULL) {
+            continue;
         }
         for (slot = 0; slot < SCRIPT_CORE_SLOT_COUNT; slot++) {
             float x;
@@ -1060,6 +1063,9 @@ static void run_tutorial_command(struct script_machine *machine, const char *arg
         soul->tutorial_holds_input = 0;
     } else if (strcmp(arg, "TouchCheckEnd") == 0 || strcmp(arg, "MoveEnd") == 0) {
         soul->tutorial_mode = TUTORIAL_NONE;
+        if (strcmp(arg, "MoveEnd") == 0) {
+            soul->tutorial_holds_input = soul->is_on;
+        }
     } else if (strcmp(arg, "ReturnGame") == 0) {
         soul->leaving_shows_the_mark = 1;
         leave_soul_view(machine);
@@ -1199,7 +1205,6 @@ static void run_custom_soul_command(struct script_machine *machine, const char *
     }
     if (strcmp(arg, "DemoModeOn") == 0) {
         soul->view_demo_is_on = 1;
-        machine->pause_bit = 0;
     } else if (strcmp(arg, "DemoModeOff") == 0 || strcmp(arg, "DemoModeOffButtonOff") == 0) {
         soul->view_demo_is_on = 0;
         machine->pause_bit = (soul->is_on && soul->view_was_entered_with_effect) || soul->is_leaving_view;

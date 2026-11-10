@@ -730,6 +730,30 @@ In Chapter 2's talk with the dog's soul (st06_game000) the swirl turned white an
 
 Guard: `talk_assets.py` bakes a flash flag and the shake's level and frames into each page row, and stops on a shake level it does not know. `begin_reveal` starts the page's flash through `script_fades_add` (white-in, 4 frames) and its shake through the machine's shake fields, the paths ops 0x2b and 0x2a use. `tests/unit/test_talk_page_effects.c` whites the screen out and checks that a flashing page brings it back, that a plain page does not, the shake's level and length, and that an old page row still reads; `tests/tools/test_talk_page_effects.py` checks the tags. Still open: the window shake (`mesquake_win`, 9 pages), a flash or shake in the middle of a page plays at the page's start (21 flashes), and the `mes_white_in` tag (DS code 0x24 with 60 or 120 frames, 310 pages) is baked as a text fade without its native handler having been read.
 
+### 109. Pills drawn over a chapter card and a black screen
+
+Between chapters (the interlude scripts and the `chapter` card script run op 0x68, demo mode) the Ghost pill sat in the corner of the black screen and of the chapter card, in every chapter. Root cause 91 offers the Ghost pill in demo mode while the world runs; native also asks for `game+8` bits 13 and 8 (`func_02034260` through `func_020322d4` and `func_02013a14`), whose setters are still unread, and on the DS the master brightness (`func_020521d4` on `data_02084fc4`) darkens the pills with the rest of the screen. The port drew pills after the fade and the card.
+
+Guard: `the_picture_is_covered` in `script_ui_view.c` (a card is up, or the fade is full) stops pills from drawing and from answering a tap, as the side label already did. `tests/unit/test_script_ui_view.c` checks a half fade, a full fade and a card. Open: the setters of bits 13 and 8.
+
+### 110. A scripted soul view left people in colour and props white
+
+Op 0xe2 opens the red world for a demo (`pGameMainSVforDemo`, `func_02023fdc` case 0xe2), the same view the player opens. The port styled objects for the view only while the player's own view was on (`soul->is_on`), so a scene that began with op 0xe2 (Chapter 4's junkyard, st01_game021) drew people in full colour and props as flat white shapes.
+
+Guard: `report_soul_view` styles every object while either view is on and marks cores only in the player's. `tests/unit/test_demo_soul_view_styles.c`.
+
+### 111. Demo mode in the ghost view unpaused the world, and a return to demo mode beat the script's own mode
+
+Chapter 4's junkyard went black from the first hop onto the searchlight to the end of the scene. `subsp`'s `SV_CHGCORE` handler runs `DemoModeOn`, waits, fades out (op 0xc 30) and sends `ReturnDemo`; only then should `game`'s polling `check_soul` handler (pause class 0) see the core, jump to `gameAct060` and reopen the view with `NoEffectStart`, whose `SV_START` handler fades in (op 0xb 30). The port cleared the pause bit on `DemoModeOn` (commit c78054c1, no native reading), so the poll ran at once, the fade-in came before the fade-out, and brightness stayed at -16. Native `func_02033504` sets the pause bit only on `Start` and `NoEffectStart` (`func_02010384(window, 1)`); `DemoModeOn` takes the soul's input and hides pills, nothing else, and the pause check (`func_02027db8`) holds class 0 on that bit alone (`func_0200f330`). With the order right, a second fault showed: `ReturnDemo; ...; op 0x67` in one tick ended in demo mode, because GameApp commands run after the scripts. Native op 0x67 and 0x68 write the request word (`game+0xe58`) that `func_02011110` applies later, after `ReturnDemo`'s direct switch (`func_0201192c(window, 2)`).
+
+Guard: `DemoModeOn` leaves the pause bit alone; the mode a script asked for this tick is applied again after the tick's GameApp commands (`mode_a_script_asked_for`). `tests/unit/test_quiet_view_pause.c` checks both. `tests/tools/check_no_step_in_the_dark.py` replays the whole game and fails when a route step begins on a fully black screen (it finds the old fault: 7 steps); `tests/tools/test_no_step_in_the_dark.py` tests its rule. The route step `ghost_off md_searchlightA` is now a no-op, since the script closes that view.
+
+### 112. The move tutorial let the soul hop on after its goal
+
+In Chapter 1's tutorial (st01_game000) the `SVTUTO|move` handler sends `MoveEnd` once the soul sits in the asked core, shows two messages and then sends `ReturnGame`. Native's tutorial view (`func_0203de90`, pGameMainSVTutorial) reads the chain only in the `TouchCheck` and `MoveStart` states and is idle (state 99) otherwise. The port's `MoveEnd` left input open, so during those messages the player could hop back to the crossing gate; the trick then ran on the gate and the scene could not go on.
+
+Guard: `MoveEnd` holds the soul's input again until the view closes (`tutorial_holds_input`). `TouchCheckEnd` does not, because Chapter 2 (st06_game002) sends `DemoModeOff` before it and plays on in the same view. `tests/unit/test_soul_touch_rules.c` drags and steers after `MoveEnd`.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

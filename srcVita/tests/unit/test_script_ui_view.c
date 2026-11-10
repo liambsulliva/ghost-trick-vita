@@ -4,6 +4,7 @@
 #include "fakes/fake_reader.h"
 #include "fakes/fake_texture_files.h"
 #include "texture_cache.h"
+#include "scene_stage.h"
 #include "script_ui_view.h"
 #include "test_support.h"
 
@@ -49,6 +50,48 @@ static void test_pills_stay_quiet_during_a_movie(void)
     view.is_hidden_for_movie = 1;
     script_ui_view_hud_changed(&view);
     CHECK_INT(script_ui_view_pill_at(100.0f, 510.0f), -1);
+}
+
+static int pill_draws_now(void)
+{
+    fake_renderer_clear_draws();
+    script_ui_view_draw();
+    return fake_renderer_draw_count();
+}
+
+static void test_pills_hide_under_a_card_or_a_full_fade(void)
+{
+    static struct script_tables tables;
+    struct script_hud_view view;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    fake_files_add_rgba_texture("assets/textures/hud_button_art.gtex", 8, 8);
+    fake_files_add_rgba_texture("assets/textures/hud_sheet.gtex", 8, 8);
+    texture_cache_init("assets/textures", TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
+    CHECK(texture_cache_load_now("hud_button_art")->state == CACHED_TEXTURE_READY);
+    CHECK(texture_cache_load_now("hud_sheet")->state == CACHED_TEXTURE_READY);
+    memset(&tables, 0, sizeof(tables));
+    script_ui_view_start(&tables);
+    memset(&view, 0, sizeof(view));
+    show_pill(&view, SCRIPT_PILL_GHOST, PILL_FULLY_SHOWN, 0);
+    script_ui_view_hud_changed(&view);
+    scene_stage_hide_card();
+    scene_stage_set_fade(0.0f);
+    CHECK(pill_draws_now() > 0);
+    CHECK_INT(script_ui_view_pill_at(100.0f, 510.0f), SCRIPT_PILL_GHOST);
+    scene_stage_set_fade(0.5f);
+    CHECK(pill_draws_now() > 0);
+    scene_stage_set_fade(1.0f);
+    CHECK_INT(pill_draws_now(), 0);
+    CHECK_INT(script_ui_view_pill_at(100.0f, 510.0f), -1);
+    scene_stage_set_fade(0.0f);
+    scene_stage_show_card("some_card");
+    CHECK_INT(pill_draws_now(), 0);
+    CHECK_INT(script_ui_view_pill_at(100.0f, 510.0f), -1);
+    scene_stage_hide_card();
+    CHECK(pill_draws_now() > 0);
 }
 
 static void test_the_rewind_button_answers_only_while_it_is_up(void)
@@ -108,6 +151,7 @@ int main(void)
     test_the_side_label_and_hourglass_draw_under_the_talk();
     test_a_sliding_or_pressed_pill_does_not_answer();
     test_pills_stay_quiet_during_a_movie();
+    test_pills_hide_under_a_card_or_a_full_fade();
     test_the_rewind_button_answers_only_while_it_is_up();
     return test_finish("unit/script_ui_view");
 }

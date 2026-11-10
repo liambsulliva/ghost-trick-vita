@@ -905,11 +905,19 @@ static int point_is_in_box(float x, float y, float left, float top, float width,
     return x >= left - TOUCH_SLOP_PIXELS && x <= left + width + TOUCH_SLOP_PIXELS && y >= top - TOUCH_SLOP_PIXELS && y <= top + height + TOUCH_SLOP_PIXELS;
 }
 
+static int the_picture_is_covered(void)
+{
+    const struct scene_stage *stage;
+
+    stage = scene_stage_view();
+    return stage->card_texture[0] != '\0' || stage->fade_amount >= 1.0f;
+}
+
 int script_ui_view_pill_at(float x, float y)
 {
     int index;
 
-    if (hud.is_hidden_for_movie) {
+    if (hud.is_hidden_for_movie || the_picture_is_covered()) {
         return -1;
     }
     for (index = 0; index < SCRIPT_PILL_COUNT; index++) {
@@ -1145,7 +1153,9 @@ void script_ui_view_draw(void)
     if (!hud.is_hidden_for_movie) {
         draw_tap_balloons();
         draw_rewind_select();
-        draw_pills();
+        if (!the_picture_is_covered()) {
+            draw_pills();
+        }
         draw_narration_arrow();
     }
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {

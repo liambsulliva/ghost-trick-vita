@@ -1160,12 +1160,14 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0x67:
         machine->mode_byte = MODE_BYTE_ALSO_RUNS_IDLE;
+        machine->mode_a_script_asked_for = MODE_BYTE_ALSO_RUNS_IDLE;
         if (machine->soul.mark_age_ticks < 0) {
             script_soul_start_player_mark(machine);
         }
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x68:
         machine->mode_byte = MODE_BYTE_NORMAL;
+        machine->mode_a_script_asked_for = MODE_BYTE_NORMAL;
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x69:
         vm->condition = machine->mode_byte == MODE_BYTE_NORMAL;
@@ -1782,6 +1784,8 @@ static void step_narration(struct script_machine *machine)
     }
 }
 
+#define NO_MODE_ASKED_FOR 0
+
 static void run_gameapp_queue(struct script_machine *machine)
 {
     int index;
@@ -1790,6 +1794,10 @@ static void run_gameapp_queue(struct script_machine *machine)
         script_soul_run_command(machine, machine->gameapp_verbs[index], machine->gameapp_args[index]);
     }
     machine->gameapp_count = 0;
+    if (machine->mode_a_script_asked_for != NO_MODE_ASKED_FOR) {
+        machine->mode_byte = machine->mode_a_script_asked_for;
+        machine->mode_a_script_asked_for = NO_MODE_ASKED_FOR;
+    }
 }
 
 static int vm_has_a_running_timer(const struct script_vm *vm)
