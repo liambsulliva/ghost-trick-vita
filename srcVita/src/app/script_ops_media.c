@@ -7,6 +7,7 @@
 #define SOUND_KIND_REFUSED 33
 #define PARAGRAPH_ARG_COUNT 8
 #define TAP_BALLOON_ICON_KIND 5
+#define SOUL_BALLOON_SLOT 1
 #define ANY_TAP_GROUP -1
 #define LABEL_THAT_CLOSES 0u
 
@@ -108,11 +109,65 @@ static void open_tap_balloon(struct script_machine *machine, struct script_vm *v
     open_balloon(machine, vm, label, label == NULL ? TAP_BALLOON_ICON_KIND : 0, ticks, tap_group);
 }
 
-static void open_tap_balloon_that_sends(struct script_machine *machine, struct script_vm *vm, const unsigned int *words, int tap_group)
+static void open_tap_balloon_that_sends(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
     struct script_balloon *balloon;
 
-    balloon = open_balloon(machine, vm, NULL, tap_group == SCRIPT_TAP_GROUP_LEFT ? SCRIPT_BALLOON_KIND_TAP_DOTS : SCRIPT_BALLOON_KIND_TAP_MARKS, (int)script_machine_u32(words, 0), tap_group);
+    balloon = open_balloon(machine, vm, NULL, SCRIPT_BALLOON_KIND_TAP_DOTS, (int)script_machine_u32(words, 0), SCRIPT_TAP_GROUP_LEFT);
+    if (balloon == NULL) {
+        return;
+    }
+    balloon->tap_target = script_machine_string(machine, vm, words[2]);
+    balloon->tap_verb = script_machine_string(machine, vm, words[3]);
+    balloon->tap_arg = script_machine_string(machine, vm, words[4]);
+}
+
+static void keep_balloons_hidden(struct script_machine *machine, int stay_hidden);
+
+static struct script_balloon *open_soul_balloon(struct script_machine *machine, int ticks)
+{
+    struct script_balloon *balloon;
+
+    close_slot(machine, SOUL_BALLOON_SLOT);
+    keep_balloons_hidden(machine, 0);
+    if (ticks == 0) {
+        return NULL;
+    }
+    balloon = &machine->balloons[SOUL_BALLOON_SLOT];
+    memset(balloon, 0, sizeof(*balloon));
+    balloon->in_use = 1;
+    balloon->tap_group = SCRIPT_TAP_GROUP_RIGHT;
+    balloon->owner_object = SCRIPT_NO_OBJECT;
+    balloon->kind = SCRIPT_BALLOON_KIND_TAP_MARKS;
+    balloon->timer = ticks;
+    balloon->open_is_pending = 1;
+    return balloon;
+}
+
+static void open_soul_balloon_that_talks(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+{
+    struct script_balloon *balloon;
+    const char *label;
+    int ticks;
+
+    label = script_machine_string(machine, vm, words[0]);
+    ticks = (short)words[2];
+    balloon = &machine->balloons[SOUL_BALLOON_SLOT];
+    if (label != NULL && balloon->in_use && balloon->label != NULL && strcmp(balloon->label, label) == 0) {
+        balloon->timer = ticks;
+        return;
+    }
+    balloon = open_soul_balloon(machine, ticks);
+    if (balloon != NULL) {
+        balloon->label = label;
+    }
+}
+
+static void open_soul_balloon_that_sends(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+{
+    struct script_balloon *balloon;
+
+    balloon = open_soul_balloon(machine, (short)words[0]);
     if (balloon == NULL) {
         return;
     }
@@ -132,7 +187,9 @@ void script_balloons_tap(struct script_machine *machine, int tap_group)
         if (!balloon->in_use || balloon->is_hidden || balloon->tap_group != tap_group) {
             continue;
         }
-        if (balloon->tap_target != NULL && balloon->tap_verb != NULL && balloon->tap_arg != NULL) {
+        if (balloon->kind == SCRIPT_BALLOON_KIND_TAP_MARKS && balloon->label != NULL) {
+            script_talk_open(machine, balloon->label);
+        } else if (balloon->tap_target != NULL && balloon->tap_verb != NULL && balloon->tap_arg != NULL) {
             script_machine_send(machine, balloon->tap_target, balloon->tap_verb, balloon->tap_arg);
         }
         balloon->in_use = 0;
@@ -209,10 +266,14 @@ void script_balloons_report_opened(struct script_machine *machine)
             continue;
         }
         balloon->open_is_pending = 0;
-        actor = &machine->objects[balloon->owner_object].actor;
         if (machine->outputs->balloon_opened == NULL) {
             continue;
         }
+        if (balloon->owner_object == SCRIPT_NO_OBJECT) {
+            machine->outputs->balloon_opened(index, NULL, balloon->kind, 0.0f, 0.0f);
+            continue;
+        }
+        actor = &machine->objects[balloon->owner_object].actor;
         if (balloon->placement == SCRIPT_BALLOON_AT_WORLD_POINT) {
             machine->outputs->balloon_opened(index, balloon->label, balloon->kind, balloon->offset_x, balloon->offset_y);
         } else if (balloon->placement == SCRIPT_BALLOON_AT_SCREEN_POINT) {
@@ -415,19 +476,23 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         }
         break;
     case 0x45:
-    case 0x4c:
-        if (op == 0x45 && words[0] == LABEL_THAT_CLOSES) {
+        if (words[0] == LABEL_THAT_CLOSES) {
             close_balloons(machine, SCRIPT_TAP_GROUP_LEFT);
             break;
         }
         label = script_machine_string(machine, vm, words[0]);
         if (label != NULL) {
-            open_tap_balloon(machine, vm, label, (int)script_machine_u32(words, 2), op == 0x45 ? SCRIPT_TAP_GROUP_LEFT : SCRIPT_TAP_GROUP_RIGHT);
+            open_tap_balloon(machine, vm, label, (int)script_machine_u32(words, 2), SCRIPT_TAP_GROUP_LEFT);
         }
         break;
+    case 0x4c:
+        open_soul_balloon_that_talks(machine, vm, words);
+        break;
     case 0x46:
+        open_tap_balloon_that_sends(machine, vm, words);
+        break;
     case 0x4e:
-        open_tap_balloon_that_sends(machine, vm, words, op == 0x46 ? SCRIPT_TAP_GROUP_LEFT : SCRIPT_TAP_GROUP_RIGHT);
+        open_soul_balloon_that_sends(machine, vm, words);
         break;
     case 0x4d:
         close_balloons(machine, SCRIPT_TAP_GROUP_RIGHT);

@@ -68,7 +68,8 @@ UNKNOWN_LABEL_ID = "?"
 THORN_BALLOON_KIND = 2
 TALK_OPS = (0x37, 0x5c, 0xdb)
 CHOICE_TALK_LABEL_WORD = {0x3c: 2, 0x3d: 3}
-BALLOON_LABEL_OPS = (0x51, 0x45, 0x46, 0x4c, 0x4e)
+SOUL_BALLOON_TALK_OP = 0x4c
+BALLOON_LABEL_OPS = (0x51, 0x45)
 EFFECT_SPAWN_OP = 0xb0
 EFFECT_KIND_TABLE_ADDRESS = 0x02086624
 EFFECT_FACTORY_TABLE_ADDRESS = 0x020ac194
@@ -637,13 +638,13 @@ def expand_set(set_description, packs, rom_path, text_key):
     balloon_style = set_description.get("balloon_kinds", {}).get("with_label")
     for path, script in scripts.items():
         entries = entries_for(path)
-        for label in script.strings_of_ops((NARRATION_OP,) + tuple(TALK_OPS) + tuple(BALLOON_LABEL_OPS)):
+        for label in script.strings_of_ops((NARRATION_OP, SOUL_BALLOON_TALK_OP) + tuple(TALK_OPS) + tuple(BALLOON_LABEL_OPS)):
             if label in entries and first_source_of_label.setdefault(label, entries[label][0][0]) != entries[label][0][0]:
                 labels_meaning_two_things.add(label)
         for label in script.strings_of_ops((NARRATION_OP,)):
             if label in entries and all(row["name"] != label for row in narration_rows):
                 narration_rows.append({"name": label, "file": entries[label][0][0], "entry": entries[label][0][1], "later_entries": [entry for _, entry in entries[label][1:]]})
-        for label in script.strings_of_ops(TALK_OPS) + script.talk_labels_of_choice_panels():
+        for label in script.strings_of_ops(TALK_OPS) + script.talk_labels_of_choice_panels() + script.strings_of_ops((SOUL_BALLOON_TALK_OP,)):
             if label in entries:
                 talk_labels[label] = path
             else:

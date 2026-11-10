@@ -28,5 +28,17 @@ class ChoicePanelTalkLabelsTest(unittest.TestCase):
         self.assertEqual(script.talk_labels_of_choice_panels(), [])
 
 
+class SoulBalloonTalkLabelsTest(unittest.TestCase):
+    def test_the_soul_s_talking_balloon_names_a_talk_and_no_bubble(self):
+        strings = {10: "talk_behind_the_balloon", 50: "game", 60: "EVENT", 70: "tapped"}
+        operations = [
+            (0, "op", 0x4c, [10, 0, 0xffff, 0, 5300, 0]),
+            (14, "op", 0x4e, [0xffff, 0, 50, 60, 70, 5299, 0]),
+        ]
+        script = ScriptWithStrings(operations, strings)
+        self.assertEqual(script.strings_of_ops((chapter_assets.SOUL_BALLOON_TALK_OP,)), ["talk_behind_the_balloon"])
+        self.assertEqual(script.strings_of_ops(chapter_assets.BALLOON_LABEL_OPS), [])
+
+
 if __name__ == "__main__":
     unittest.main()
