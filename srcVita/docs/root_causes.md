@@ -764,6 +764,30 @@ Closing the view there exposed a second fault. A view the script reopens with `N
 
 Guard: ops 0x67 and 0x68 queue `System|ChangeMode`; a demo request closes an open view, quietly after `NoEffectFinish`. A view that is open with demo mode off and input on waits on the player. `tests/unit/test_quiet_view_pause.c` checks the close, that a view opened after the request stays open, and the wait. Open: native op 0x67 inside a view would replace the view state the same way; no routed scene does it, so the port leaves the view open there.
 
+### 114. A script could not skip or zero the death countdown
+
+`GameApp` `Exception` commands are looked up by name in native's `func_02013b18`. `CountdownSkip` calls `func_02046ec0` on the countdown (count + 1, dirty) and `CountdownForceZero` calls `func_02046ed0` (count = 3, dirty). The port knew neither, so Chapter 7's kitchen (st04_game001) ran its clock on while the giant chicken fell, and the game ended before the fall did.
+
+Guard: `run_exception_command` moves `countdown_step` and fires the step at once. `tests/unit/test_countdown_exceptions.c` sends both commands from a script.
+
+### 115. Op 0xe1 marked the script's own object as the corpse, not the selected one
+
+Eighteen of the 19 sites of op 0xe1 sit in the corpse's own script. The 19th (st04_game001, `func_set_gameover_obj`) selects the driver with op 0x83 first and runs from `sys`, so the port marked `sys` dead and the soul could not enter the driver. This is the class of cause 103: an actor op acts on the op 0x83 selection, or on the owner when there is none (`func_02028148`). Native's case 0xe1 itself was not read (the body of `func_02023fdc` is not decompiled); the site only makes sense this way.
+
+Guard: op 0xe1 uses `script_machine_current_object`. `tests/unit/test_core_trick_toggle.c` selects another object, marks it, and checks the script's own object stays alive.
+
+### 116. The death replay's white wipe (effect 50) did not exist, so 16 scripts waited for ever
+
+Effect 50 (`iEffect::TIMELIMIT_FADEOUT`) is its own class in native (vtable `0x020a90d4`, set by `func_020473ec`; setup `func_0204748c`, update `func_02047574`). It plays a white wipe animation and reads that animation's frame events (`func_020662c4`): event 1 sends `SYSTEM` `TIMELIMIT W/I` to every object, event 2 lets the wipe leave. The script holds the wipe with `GameApp` `Exception` `GameOverWhiteWait` and frees it with `GameOverWhiteProceed` (both in `func_02013b18`), changing the scene under the white in between. When the animation ends native sends `SYSTEM` `TIMELIMIT W/O` and then turns the world grey with the same child as effect 53 (`func_02063b70`). The port drew nothing and sent nothing, so st13_demo000 (Chapter 7's replay of the driver's death) stopped at the crash; st03_demo010, which opens Chapter 8, waits on the same event, as do 14 more scripts.
+
+Guard: `step_the_white_wipe` in `script_soul.c` runs the effect for any script: white through the brightness output, both events, the hold, then effect 53 under the wipe's name so deleting the wipe ends the grey. `tests/unit/test_white_wipe.c` covers the fade, the hold and the delete. Open: the animation's event frames are not decoded, so the ticks (white in 48, `W/I` at 210, leave from 252 over 90, grey 42 later) are measured from the footage at 12270 s, and the ring drawn on the white is not ported.
+
+### 117. Ops 0x71 and 0x72 were not ported, so a flashback inside a talk kept or lost its film frame
+
+Native's cases 0x6f to 0x72 in `func_02023fdc` all set bit 2 of `game+0xc` (`func_0201354c`) and then ask for the film frame to open or close: 0x6f through `func_02010ca4` and 0x70 through `func_02010d18`, 0x71 through `func_02010cdc` and 0x72 through `func_02010d30`. The second pair also sets bit 9, which makes `func_0200fd14` call the panel's sliding open and close (`func_02046b1c`, `func_02046b68`) in place of the plain ones (`func_02046b10`, `func_02046b44`). The port knew only 0x6f and 0x70 and logged `op_not_ported` for the other two, which have 24 sites in 10 scripts from Chapter 7 on (st04_game010, st13_demo100, st13_game012 to 022, st14_game030, st07_game000, st03_demo010).
+
+Guard: all four ops share one case in `script_ops_view.c`. `tests/unit/test_film_frame_ops.c` runs each pair from a script and checks the machine's state and the view's output.
+
 ### 118. Lessons from routing Chapter 7's kitchen and restaurant
 
 - A carried core changes height with its carrier's motion table. The chef's bowl (`cock_bow`) is within reach of the pedal only while the chef pours the wine (`cock_act02`); in the other acts it sits about 80 units from it. A hop that depends on such a core waits on `reach:<target>` from the step that opens the ghost view, since the view freezes the world.
@@ -839,33 +863,8 @@ Guard: `compare_core_of_ghost` in `script_motion.c` reads the soul's per-ghost c
 
 - Ops 0xd1 and 0xd2 (9 and 8 sites, first met in st04_game001) save and restore the camera. Native 0xd1 writes the camera position (`func_0200f178`, `func_0200f190`) into two properties of the object found by `func_0202fb48(…, data_020cedc4, -1)`; 0xd2 reads them back, adds `func_0201230c`'s point and moves the camera there (`func_02026784`, then `func_0200f918(…, 1)`). Not ported; both log `op_not_ported`.
 - Op 0xd3 (52 sites in 14 scripts, first met in st13_game000) is native `func_0200fa64`: it stores a point at `game+0xdac` and sets bit 26 of `game+0x10`, or clears the bit when either word is 0xffff. What reads the point is not traced. Not ported.
-- Op 0xba (13 sites in 5 scripts, first met in st13_demo000) builds a command object (`func_02031254(4)`, `func_02026adc`) and hands it the string at `words[0]`. Not traced further, not ported.
 - The film frame's slide. Ops 0x71 and 0x72 (root cause 117) animate the frame in and out natively (states 2 and 3 of the panel at `game+0xfb4`); the port switches it at once, as it does for 0x6f and 0x70.
 - The route driver starts a dead talk from any distance. In st04_game010 a `dead_talk` step on `linne_core` ran with the soul on the telephone, six hops away, and skipped the bell, the pot ride and Rindge's talk. The route now walks there, but whether the pad path on the Vita enforces reach for a dead talk is not checked.
-
-### 114. A script could not skip or zero the death countdown
-
-`GameApp` `Exception` commands are looked up by name in native's `func_02013b18`. `CountdownSkip` calls `func_02046ec0` on the countdown (count + 1, dirty) and `CountdownForceZero` calls `func_02046ed0` (count = 3, dirty). The port knew neither, so Chapter 7's kitchen (st04_game001) ran its clock on while the giant chicken fell, and the game ended before the fall did.
-
-Guard: `run_exception_command` moves `countdown_step` and fires the step at once. `tests/unit/test_countdown_exceptions.c` sends both commands from a script.
-
-### 115. Op 0xe1 marked the script's own object as the corpse, not the selected one
-
-Eighteen of the 19 sites of op 0xe1 sit in the corpse's own script. The 19th (st04_game001, `func_set_gameover_obj`) selects the driver with op 0x83 first and runs from `sys`, so the port marked `sys` dead and the soul could not enter the driver. This is the class of cause 103: an actor op acts on the op 0x83 selection, or on the owner when there is none (`func_02028148`). Native's case 0xe1 itself was not read (the body of `func_02023fdc` is not decompiled); the site only makes sense this way.
-
-Guard: op 0xe1 uses `script_machine_current_object`. `tests/unit/test_core_trick_toggle.c` selects another object, marks it, and checks the script's own object stays alive.
-
-### 116. The death replay's white wipe (effect 50) did not exist, so 16 scripts waited for ever
-
-Effect 50 (`iEffect::TIMELIMIT_FADEOUT`) is its own class in native (vtable `0x020a90d4`, set by `func_020473ec`; setup `func_0204748c`, update `func_02047574`). It plays a white wipe animation and reads that animation's frame events (`func_020662c4`): event 1 sends `SYSTEM` `TIMELIMIT W/I` to every object, event 2 lets the wipe leave. The script holds the wipe with `GameApp` `Exception` `GameOverWhiteWait` and frees it with `GameOverWhiteProceed` (both in `func_02013b18`), changing the scene under the white in between. When the animation ends native sends `SYSTEM` `TIMELIMIT W/O` and then turns the world grey with the same child as effect 53 (`func_02063b70`). The port drew nothing and sent nothing, so st13_demo000 (Chapter 7's replay of the driver's death) stopped at the crash; st03_demo010, which opens Chapter 8, waits on the same event, as do 14 more scripts.
-
-Guard: `step_the_white_wipe` in `script_soul.c` runs the effect for any script: white through the brightness output, both events, the hold, then effect 53 under the wipe's name so deleting the wipe ends the grey. `tests/unit/test_white_wipe.c` covers the fade, the hold and the delete. Open: the animation's event frames are not decoded, so the ticks (white in 48, `W/I` at 210, leave from 252 over 90, grey 42 later) are measured from the footage at 12270 s, and the ring drawn on the white is not ported.
-
-### 117. Ops 0x71 and 0x72 were not ported, so a flashback inside a talk kept or lost its film frame
-
-Native's cases 0x6f to 0x72 in `func_02023fdc` all set bit 2 of `game+0xc` (`func_0201354c`) and then ask for the film frame to open or close: 0x6f through `func_02010ca4` and 0x70 through `func_02010d18`, 0x71 through `func_02010cdc` and 0x72 through `func_02010d30`. The second pair also sets bit 9, which makes `func_0200fd14` call the panel's sliding open and close (`func_02046b1c`, `func_02046b68`) in place of the plain ones (`func_02046b10`, `func_02046b44`). The port knew only 0x6f and 0x70 and logged `op_not_ported` for the other two, which have 24 sites in 10 scripts from Chapter 7 on (st04_game010, st13_demo100, st13_game012 to 022, st14_game030, st07_game000, st03_demo010).
-
-Guard: all four ops share one case in `script_ops_view.c`. `tests/unit/test_film_frame_ops.c` runs each pair from a script and checks the machine's state and the view's output.
 - Missile's exchange (the swap), needed by every Missile scene in st13 and st14 and by Chapter 18's st13_game021. Native, as read so far:
   - A shape is the byte at actor `+0xdf`, set by motion word 0xfffa (the port skips that word) and read by `func_02058ba4`.
   - The soul keeps the object holding the active ghost's core at `+0xf4` (`func_020612b8`) and the object of the core the drag found at `+0xf8` (`func_0205fa2c`). When the chain connects (`func_02061718`) with Missile active and both objects have the same shape, not 0, it sends `EXCHANGE` `CONNECTED` to both and enters soul state 5 instead of hopping.
