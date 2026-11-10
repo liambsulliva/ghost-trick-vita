@@ -1835,7 +1835,7 @@ static int something_is_running_to_a_known_end(const struct script_machine *mach
     if (machine->movie_ticks_left > 0 || machine->eyecatch_ticks_left > 0 || machine->soul.view_change_ticks_left > 0 || machine->soul.phone_event.target != NULL || machine->soul.time_jump_event.target != NULL) {
         return 1;
     }
-    if (machine->talk.phase != SCRIPT_TALK_CLOSED && machine->talk.phase != SCRIPT_TALK_WAITING) {
+    if (machine->talk.phase != SCRIPT_TALK_CLOSED && machine->talk.phase != SCRIPT_TALK_WAITING && machine->talk.phase != SCRIPT_TALK_PAUSED_BEFORE_TEXT) {
         return 1;
     }
     if (machine->teardown_at != NEVER || machine->load_at != NEVER || machine->game_start_at != NEVER || machine->pause_clear_at != NEVER || machine->soul_vision_message_at != NEVER || machine->talk_close_at != NEVER) {

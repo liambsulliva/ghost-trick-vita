@@ -825,3 +825,9 @@ Guard: all four ops share one case in `script_ops_view.c`. `tests/unit/test_film
 - A scene's `sys` acts name the order the player must follow. st04_game010 ends only from `sys_act060`, reached through the bell rung three times, the pot ride, Rindge's talk and a hop to the sign.
 
 Guard: the Chapter 7 route steps carry these waits, and the whole-game replay fails the step if one is dropped.
+
+### 119. A message pause before a page's text was dropped, so the handler it signals never ran
+
+A talk page can hold `<TRCK mes_pause />` before its first character. Jowd's dead talk (`m03_5630` page 16) has two: the first sends `message` `pause in` to `jodo_act00`, which fades the screen white and forwards; the second reaches `jodo_act01`, which forwards and arms the rewind with `GameApp` `Timeleap` `SELECT`. The baker kept only a pause at the end of a section, so the second `pause in` was never sent and the rewind button never came. Four pages in the game set have a pause before their text (`m02_3180`, `m03_5630`, `m13_2220`, `m13_3270`). The native message tag reader has not been found in `src/` yet; the behaviour here comes from those scripts' `pause in` handlers.
+
+Guard: `talk_assets.py` counts the pauses before a section's text into an eleventh `page` field, and `script_talk.c` holds the page in `SCRIPT_TALK_PAUSED_BEFORE_TEXT`, sending `pause in` and waiting for a forward once per pause, before the box opens and the page's flash or quake runs. `tests/tools/test_talk_page_pauses.py` covers the baker and `tests/unit/test_talk_page_pauses.c` the engine. Open: the box is hidden during these pauses, which matches the `meswin disp="off"` around them on all four pages but is not read from native code.

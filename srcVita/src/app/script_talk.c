@@ -11,6 +11,7 @@
 #define FADE_IN_TICKS 30
 #define PAGE_FIELDS_WITHOUT_EFFECTS 7
 #define PAGE_FIELDS_WITH_EFFECTS 10
+#define PAGE_FIELDS_WITH_PAUSES 11
 #define WHITE_IN_FADE_KIND 2
 #define FLASH_FRAMES 4
 #define LAST_PRESS_RELEASES_AFTER_TICKS 13
@@ -50,8 +51,9 @@ static int read_page_row(const char *line, struct script_talk_book *book)
     page->flashes = 0;
     page->quake_level = 0;
     page->quake_frames = 0;
-    fields = sscanf(line, "page " ASSET_NAME_SCAN " %d %d %d %d %d %d %d %d %d", page->face_texture, &page->face_is_flipped, &page->is_top_box, &page->reveal_is_fade, &ending, &line_count, &page->changes_face_instantly, &page->flashes, &page->quake_level, &page->quake_frames);
-    if (fields != PAGE_FIELDS_WITHOUT_EFFECTS && fields != PAGE_FIELDS_WITH_EFFECTS) {
+    page->pauses_before = 0;
+    fields = sscanf(line, "page " ASSET_NAME_SCAN " %d %d %d %d %d %d %d %d %d %d", page->face_texture, &page->face_is_flipped, &page->is_top_box, &page->reveal_is_fade, &ending, &line_count, &page->changes_face_instantly, &page->flashes, &page->quake_level, &page->quake_frames, &page->pauses_before);
+    if (fields != PAGE_FIELDS_WITHOUT_EFFECTS && fields != PAGE_FIELDS_WITH_EFFECTS && fields != PAGE_FIELDS_WITH_PAUSES) {
         return 0;
     }
     page->has_face = strcmp(page->face_texture, NO_FACE) != 0;
@@ -241,7 +243,7 @@ static void report(struct script_machine *machine)
     page = current_page(machine);
     memset(&view, 0, sizeof(view));
     view.book = machine->talk_book;
-    view.page = talk->phase == SCRIPT_TALK_CLOSED ? NULL : page;
+    view.page = talk->phase == SCRIPT_TALK_CLOSED || talk->phase == SCRIPT_TALK_PAUSED_BEFORE_TEXT ? NULL : page;
     view.slide = slide_of(talk);
     view.glyphs_shown = talk->glyphs_shown;
     view.cursor_is_on = talk->phase == SCRIPT_TALK_WAITING && page != NULL && page->ending == SCRIPT_TALK_ENDS_ON_PRESS;
@@ -276,6 +278,46 @@ static void begin_reveal(struct script_machine *machine)
         machine->shake_level = page->quake_level;
         machine->shake_ticks_left = page->quake_frames;
     }
+}
+
+static int a_pause_comes_before_the_text(const struct script_machine *machine)
+{
+    const struct script_talk_page *page;
+
+    page = current_page(machine);
+    return page != NULL && machine->talk.pauses_before_done < page->pauses_before;
+}
+
+static void pause_before_the_text(struct script_machine *machine)
+{
+    struct script_talk *talk;
+
+    talk = &machine->talk;
+    talk->phase = SCRIPT_TALK_PAUSED_BEFORE_TEXT;
+    talk->timer = 0;
+    talk->glyphs_shown = 0;
+    talk->fade_ticks = 0;
+    talk->forward_is_pending = 0;
+    script_machine_send(machine, "*", "message", "pause in");
+}
+
+static void step_paused_before_the_text(struct script_machine *machine)
+{
+    struct script_talk *talk;
+
+    talk = &machine->talk;
+    talk->press_is_pending = 0;
+    if (!talk->forward_is_pending) {
+        return;
+    }
+    talk->forward_is_pending = 0;
+    talk->pauses_before_done = talk->pauses_before_done + 1;
+    if (a_pause_comes_before_the_text(machine)) {
+        pause_before_the_text(machine);
+        return;
+    }
+    talk->phase = SCRIPT_TALK_OPENING;
+    talk->timer = 0;
 }
 
 void script_talk_open(struct script_machine *machine, const char *label)
@@ -334,6 +376,11 @@ static void go_to_next_page_or_close(struct script_machine *machine)
         return;
     }
     talk->page_index = talk->page_index + 1;
+    talk->pauses_before_done = 0;
+    if (a_pause_comes_before_the_text(machine)) {
+        pause_before_the_text(machine);
+        return;
+    }
     begin_reveal(machine);
 }
 
@@ -436,6 +483,10 @@ void script_talk_step(struct script_machine *machine)
     talk->timer = talk->timer + 1;
     switch (talk->phase) {
     case SCRIPT_TALK_OPENING:
+        if (a_pause_comes_before_the_text(machine)) {
+            pause_before_the_text(machine);
+            break;
+        }
         page = current_page(machine);
         if (page != NULL && page->has_face && talk->timer == FACE_SOUND_AFTER_TICKS) {
             play_sound(machine, SOUND_KIND_FACE_SLIDE);
@@ -451,10 +502,14 @@ void script_talk_step(struct script_machine *machine)
     case SCRIPT_TALK_WAITING:
         step_waiting(machine);
         break;
+    case SCRIPT_TALK_PAUSED_BEFORE_TEXT:
+        step_paused_before_the_text(machine);
+        break;
     case SCRIPT_TALK_SWITCHING_OUT:
         talk->press_is_pending = 0;
         if (talk->timer >= SLIDE_TICKS) {
             talk->page_index = talk->page_index + 1;
+            talk->pauses_before_done = 0;
             talk->phase = SCRIPT_TALK_OPENING;
             talk->timer = OPEN_DELAY_TICKS;
             talk->glyphs_shown = 0;

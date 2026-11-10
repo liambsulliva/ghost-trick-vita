@@ -63,10 +63,22 @@ SUPERSAMPLE = line_renderer.SUPERSAMPLE
 
 
 def new_section():
-    return {"reveal_is_fade": 0, "ending": ENDING_PRESS, "flashes": 0, "quake_level": 0, "quake_frames": 0, "characters": []}
+    return {"reveal_is_fade": 0, "ending": ENDING_PRESS, "flashes": 0, "quake_level": 0, "quake_frames": 0, "pauses_before": 0, "pauses_so_far": 0, "characters": []}
+
+
+def has_text(section):
+    return any(not character.isspace() for character, _ in section["characters"])
+
+
+def note_text_after_pauses(section):
+    if not has_text(section) and section["pauses_so_far"] > 0:
+        section["pauses_before"] = section["pauses_so_far"]
+        section["ending"] = ENDING_PRESS
 
 
 def add_plain_text(section, text, color):
+    if text.strip():
+        note_text_after_pauses(section)
     for character in text.replace("\r", ""):
         section["characters"].append((character, color))
 
@@ -88,6 +100,7 @@ def apply_verb(sections, verb, color, attribute_text=""):
         section["reveal_is_fade"] = 1
     elif verb == "mes_pause":
         section["ending"] = ENDING_PAUSE_THEN_NEXT
+        section["pauses_so_far"] += 1
     elif verb == "auto_pf":
         sections.append(new_section())
     elif verb == "auto_end":
@@ -108,6 +121,7 @@ def parse_page(raw_text):
         position = match.end()
         icon = ICON_TAG_PATTERN.fullmatch(match.group(0))
         if icon is not None and icon.group(1) in CHARACTER_OF_ICON:
+            note_text_after_pauses(sections[-1])
             sections[-1]["characters"].append((CHARACTER_OF_ICON[icon.group(1)], color))
             continue
         parts = TAG_PATTERN.fullmatch(match.group(0))
@@ -133,6 +147,7 @@ def section_lines(section):
     lines.append(current)
     section["lines"] = [line for line in lines if "".join(character for character, _ in line).strip()]
     del section["characters"]
+    del section["pauses_so_far"]
     return section
 
 
@@ -391,7 +406,7 @@ def bake_talk(packs, set_description, text_key, work_folder, record, code):
                 box_top = TOP_BOX_TOP if box_kind != BOX_BOTTOM else BOTTOM_BOX_TOP
                 box_height = TOP_BOX_HEIGHT if box_kind != BOX_BOTTOM else BOTTOM_BOX_HEIGHT
                 text_left = {BOX_BOTTOM: BOTTOM_TEXT_LEFT, BOX_TOP_ALONE: TOP_TEXT_LEFT, BOX_TOP_WITH_HEAD: TOP_WITH_HEAD_TEXT_LEFT}[box_kind]
-                rows.append("page %s %d %d %d %d %d %d %d %d %d" % (face_name, flip, box_kind, one_section["reveal_is_fade"], one_section["ending"], len(one_section["lines"]), changes_instantly, one_section["flashes"], one_section["quake_level"], one_section["quake_frames"]))
+                rows.append("page %s %d %d %d %d %d %d %d %d %d %d" % (face_name, flip, box_kind, one_section["reveal_is_fade"], one_section["ending"], len(one_section["lines"]), changes_instantly, one_section["flashes"], one_section["quake_level"], one_section["quake_frames"], one_section["pauses_before"]))
                 tops = line_tops(len(one_section["lines"]), box_top, box_height)
                 for line, top in zip(one_section["lines"], tops):
                     codes = " ".join(str(glyph_of[character] | (color << COLOR_SHIFT)) for character, color in line)

@@ -26,7 +26,8 @@ enum script_talk_phase {
     SCRIPT_TALK_REVEALING,
     SCRIPT_TALK_WAITING,
     SCRIPT_TALK_SWITCHING_OUT,
-    SCRIPT_TALK_CLOSING
+    SCRIPT_TALK_CLOSING,
+    SCRIPT_TALK_PAUSED_BEFORE_TEXT
 };
 
 struct script_talk_glyph {
@@ -56,6 +57,7 @@ struct script_talk_page {
     int flashes;
     int quake_level;
     int quake_frames;
+    int pauses_before;
     enum script_talk_ending ending;
     int first_line;
     int line_count;
@@ -92,6 +94,7 @@ struct script_talk {
     int press_is_pending;
     int forward_is_pending;
     int close_is_scheduled;
+    int pauses_before_done;
 };
 
 struct script_talk_view {
