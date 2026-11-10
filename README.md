@@ -113,7 +113,8 @@ The port follows the DS game's own code wherever it can. The changes below are d
 6. **A settings menu.** Resolution, a frame rate cap, starting from any chapter already unlocked, and the ghost world's background color for Sissel and, once unlocked, Missile.
 7. **Fast-forward through dialogue.** Holding B speeds through talk, extending today's narration skipping.
 8. **Upload to VitaDB.**
-9. **Make the APK optional.** A player with only the DS cartridge would get the whole port from the DS game's own art, text and sound, and the remaster's files would become an optional upgrade.
+9. **A high-contrast mode.** Makes cores easier to pick out in crowded rooms, for players with low vision.
+10. **Make the APK optional.** A player with only the DS cartridge would get the whole port from the DS game's own art, text and sound, and the remaster's files would become an optional upgrade.
 
 ## Working on the port
 
