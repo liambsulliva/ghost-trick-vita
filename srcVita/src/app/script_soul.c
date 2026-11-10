@@ -1221,6 +1221,21 @@ static void run_custom_soul_command(struct script_machine *machine, const char *
     }
 }
 
+static void run_system_command(struct script_machine *machine, const char *arg)
+{
+    int mode;
+
+    if (strcmp(arg, "ChangeMode") != 0 || machine->mode_a_script_asked_for == 0) {
+        return;
+    }
+    mode = machine->mode_a_script_asked_for;
+    machine->mode_a_script_asked_for = 0;
+    if (mode == DEMO_MODE && machine->soul.is_on) {
+        return_from_soul_view(machine, DEMO_MODE);
+    }
+    machine->mode_byte = mode;
+}
+
 static void start_dead_talk(struct script_machine *machine, int object_index)
 {
     if (object_index == NO_CORE) {
@@ -1348,6 +1363,7 @@ static const struct gameapp_command gameapp_commands[] = {
     { "FreeCamera", run_free_camera_command },
     { "Timeleap", run_timeleap_command },
     { "DeadTalk", run_dead_talk_command },
+    { "System", run_system_command },
 };
 
 static const struct gameapp_command *find_gameapp_command(const char *verb)
@@ -2522,9 +2538,17 @@ void script_soul_set_first_core(struct script_machine *machine, int object_index
     machine->active_core_name = machine->objects[object_index].name;
 }
 
+static int the_view_is_open_to_the_player(const struct script_machine *machine)
+{
+    const struct script_soul *soul;
+
+    soul = &machine->soul;
+    return soul->player_opened_soul_view || (soul->is_on && !soul->view_demo_is_on && !soul->tutorial_holds_input && !soul->input_is_off);
+}
+
 int script_soul_waits_on_the_player(const struct script_machine *machine)
 {
-    return machine->soul.tutorial_mode != TUTORIAL_NONE || machine->soul.camera_tutorial_is_on || machine->soul.player_opened_soul_view || script_narration_wants_a_press(&machine->narration) || game_over_waits_for_a_retry(machine);
+    return machine->soul.tutorial_mode != TUTORIAL_NONE || machine->soul.camera_tutorial_is_on || the_view_is_open_to_the_player(machine) || script_narration_wants_a_press(&machine->narration) || game_over_waits_for_a_retry(machine);
 }
 
 const struct script_route_step *script_soul_route_step(const struct script_machine *machine)

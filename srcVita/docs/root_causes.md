@@ -754,6 +754,16 @@ In Chapter 1's tutorial (st01_game000) the `SVTUTO|move` handler sends `MoveEnd`
 
 Guard: `MoveEnd` holds the soul's input again until the view closes (`tutorial_holds_input`). `TouchCheckEnd` does not, because Chapter 2 (st06_game002) sends `DemoModeOff` before it and plays on in the same view. `tests/unit/test_soul_touch_rules.c` drags and steers after `MoveEnd`.
 
+### 113. Asking for demo mode left an open ghost view open, and the world paused
+
+Chapter 6's cell block (st03_game010) hung after the hop into cell 3. A hop onto a core in another cell runs `tocell`, which fades out, sends `CustomSoulVision|NoEffectFinish`, runs op 0x68 and moves the camera. For most cells it then reopens the view with `NoEffectStart`; for cell 3's first visit it does not, and `stage_master` and `joedo` (both pause class 0) start the scene there. The port kept the view open through op 0x68, so the world stayed paused and those handlers never ran.
+
+Native ops 0x67 and 0x68 (`func_02011094`, `func_020110ec`) write the request word (`game+0xe58`) and queue `System|ChangeMode` with `func_02012400`, so the request is applied in order with the tick's other commands (`func_020134d4` calls `func_02011110`), not after them as root cause 111 assumed. For a demo request `func_02011110` does nothing when the mode byte is already 2; otherwise it sets it to 2 and switches the main state to `pGameMainDemoMode`. The ghost view's start (`func_020326a4`) sets the mode byte to 4, so a demo request inside a view replaces `pGameMainSV` (`func_020230dc` ends every state not shared with the new one), and the view's end (`func_02033140`) sends `SV_FINAL`, clears the view bit, and skips the leaving effect when `NoEffectFinish` set its byte +0x30. Not read: what releases class 0 scripts on this path (bit 0 of `game+8` is set each frame by `func_0200fd14` and cleared only by `func_02032488` and `func_02032018`); the scripts' own dependence on it decided that the world runs.
+
+Closing the view there exposed a second fault. A view the script reopens with `NoEffectStart` is the player's to use once `DemoModeOff` arrives, but only a view opened with the Ghost button counted as waiting on the player, so the stall breaker left Chapter 8's st03_game011 during a step's dwell.
+
+Guard: ops 0x67 and 0x68 queue `System|ChangeMode`; a demo request closes an open view, quietly after `NoEffectFinish`. A view that is open with demo mode off and input on waits on the player. `tests/unit/test_quiet_view_pause.c` checks the close, that a view opened after the request stays open, and the wait. Open: native op 0x67 inside a view would replace the view state the same way; no routed scene does it, so the port leaves the view open there.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

@@ -1161,6 +1161,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
     case 0x67:
         machine->mode_byte = MODE_BYTE_ALSO_RUNS_IDLE;
         machine->mode_a_script_asked_for = MODE_BYTE_ALSO_RUNS_IDLE;
+        queue_gameapp(machine, vm, "System", "ChangeMode");
         if (machine->soul.mark_age_ticks < 0) {
             script_soul_start_player_mark(machine);
         }
@@ -1168,6 +1169,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
     case 0x68:
         machine->mode_byte = MODE_BYTE_NORMAL;
         machine->mode_a_script_asked_for = MODE_BYTE_NORMAL;
+        queue_gameapp(machine, vm, "System", "ChangeMode");
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x69:
         vm->condition = machine->mode_byte == MODE_BYTE_NORMAL;
