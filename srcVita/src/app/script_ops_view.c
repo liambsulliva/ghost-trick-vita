@@ -757,12 +757,14 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         break;
     case 0x6f:
     case 0x70:
-        machine->film_frame_is_on = op == 0x6f;
+    case 0x71:
+    case 0x72:
+        machine->film_frame_is_on = op == 0x6f || op == 0x71;
         if (machine->film_frame_is_on) {
             script_pills_hide_at_once(machine);
         }
         if (machine->outputs->film_frame_changed != NULL) {
-            machine->outputs->film_frame_changed(op == 0x6f);
+            machine->outputs->film_frame_changed(machine->film_frame_is_on);
         }
         break;
     case 0xb2:

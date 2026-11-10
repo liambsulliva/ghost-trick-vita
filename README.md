@@ -6,7 +6,7 @@ A PS Vita port using the original DS game logic with the 2023 remaster's art and
 
 The port is close to complete and now reaches well past Chapter 1. What is left is proving the game from start to finish.
 
-That proof is an automatic playthrough: a route of 886 button presses that follows a reference playthrough through Chapter 18, replayed on a computer through the same input code the Vita uses. Chapters 1 to 6 and most of Chapter 7 play through with every step passing and nothing skipped. Later chapters play when the replay is allowed to skip scenes it cannot yet get through, which takes it to 821 of the 886 steps. The remaining work is writing the route for the scenes it does not cover and fixing whatever stops it.
+That proof is an automatic playthrough: a route of 982 button presses that follows a reference playthrough through Chapter 18, replayed on a computer through the same input code the Vita uses. Chapters 1 to 7 play through with every step passing and nothing skipped, which is the first 739 steps. The replay stops at the opening of Chapter 8, whose first scene has no route yet. The remaining work is writing the route for the scenes it does not cover and fixing whatever stops it.
 
 On the Vita itself the app installs and runs from locally converted remaster art. The one-command setup below still prepares Chapter 1 only.
 
