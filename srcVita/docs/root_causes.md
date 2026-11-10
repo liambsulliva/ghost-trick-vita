@@ -710,6 +710,12 @@ Chapter 5's party room (st02_game022) runs on fixed timelines of op 0x2f waits t
 
 Guard: the step before a view that follows a talk waits on the flag the talk's timeline sets (`flag:24 & playable & no_talk`, footage time of the pills' return), and `route_pacing.py` treats `flag:` and `noflag:` waits as synced to the game like `reach:` and `act:`, so they get no idle stretch; `tests/tools/test_route_pacing.py` checks it. When a hop onto a moving or rolling object is out of reach, compare the living ticks between the scene's last talk or view and the step against the footage before touching the engine. Still unported: op 0xfd and the Fate Changed banner (`GameApp EyeCatch|DestinyUpdate`), and the longer world hold after a view closes.
 
+### 106. The whole-game set still closed on Chapter 3's card, a leftover from the two-chapter set
+
+After the last script of the whole-game run (st15_demo120) the Vita showed the "Chapter 3" card for about 3 s. `game.json` was grown from the Chapter 2 set and kept its `next_chapter_card_texture`, the card a single-chapter set shows when its run finishes (`finish_run` in `script_player.c`) to stand in for the next chapter it does not hold. The whole-game set plays every card from the game's own data (`chapter_cards`, the CHAPTER_START effects native spawns), so a closing card there is always a stale one.
+
+Guard: `refuse_a_closing_card_beside_the_game_s_own_cards` in `chapter_assets.py` stops the bake of any set that has both, and `tests/tools/test_closing_card.py` runs it over every shipped set. When a set is grown from another, check each key it inherited for something that only made sense at the smaller scope.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

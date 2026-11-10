@@ -573,9 +573,16 @@ def language_path_of(path, language):
     return path[:-len(".xml")] + ".%s.xml.lz" % language
 
 
+def refuse_a_closing_card_beside_the_game_s_own_cards(set_description):
+    closing_card = set_description.get("scripts", {}).get("next_chapter_card_texture")
+    if closing_card and "chapter_cards" in set_description:
+        raise ChapterBakeError("the set plays the game's own chapter cards, so it cannot also close on " + closing_card)
+
+
 def expand_set(set_description, packs, rom_path, text_key):
     if "chapter" not in set_description:
         return set_description
+    refuse_a_closing_card_beside_the_game_s_own_cards(set_description)
     expanded = dict(set_description)
     section = dict(set_description["scripts"])
     chapter = set_description["chapter"]
