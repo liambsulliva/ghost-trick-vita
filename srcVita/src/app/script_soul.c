@@ -615,6 +615,31 @@ static int a_scripted_event_holds_the_soul(const struct script_machine *machine)
     return soul->view_change_ticks_left > 0 || soul->view_demo_is_on || machine->demo_soul_is_on || machine->film_frame_is_on || soul->ghost_pill_is_held_out || soul->tutorial_holds_input || soul->input_is_off || soul->dead_talk_is_on || machine->narration.is_running || machine->movie_ticks_left > 0 || machine->choice.is_open || talk_holds_the_soul(machine);
 }
 
+#define SWAP_LINK_REACH_DS_PIXELS 4096.0f
+
+static void keep_the_chain_on_the_swap(struct script_machine *machine, float root_x, float root_y)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    soul->chain_pick_object = NO_CORE;
+    soul->tip_input_is_held = 0;
+    soul->touch_drags_the_tip = 0;
+    if (script_exchange_holds_the_chain_out(machine)) {
+        float core_x;
+        float core_y;
+
+        core_position(machine, soul->exchange.target_object, soul->exchange.target_slot, &core_x, &core_y);
+        soul_chain_aim(&soul->chain, core_x, core_y, SWAP_LINK_REACH_DS_PIXELS);
+    } else {
+        soul_chain_rest_at(&soul->chain, root_x, root_y);
+    }
+    soul_chain_step(&soul->chain);
+    soul->tip_x = soul->chain.x[SOUL_CHAIN_TIP];
+    soul->tip_y = soul->chain.y[SOUL_CHAIN_TIP];
+    soul->tip_is_out = soul->chain.state != SOUL_CHAIN_RESTING;
+}
+
 static void move_soul_tip(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -639,6 +664,10 @@ static void move_soul_tip(struct script_machine *machine)
     }
     if (soul->chain.state != SOUL_CHAIN_JUMPING) {
         soul_chain_hold_root(&soul->chain, root_x, root_y);
+    }
+    if (script_exchange_is_on(machine)) {
+        keep_the_chain_on_the_swap(machine, root_x, root_y);
+        return;
     }
     input_is_held = 0;
     if (soul->drag_ticks_left > 0) {
@@ -665,7 +694,9 @@ static void move_soul_tip(struct script_machine *machine)
         } else {
             found_slot = 0;
             found_object = core_under_the_tip(machine, root_x, root_y, &found_slot);
-            if (found_object != NO_CORE && (machine->auto_press == SCRIPT_AUTO_FAST || machine->objects[found_object].is_dead)) {
+            if (found_object != NO_CORE && script_exchange_link(machine, found_object, found_slot)) {
+                soul->touch_drags_the_tip = 0;
+            } else if (found_object != NO_CORE && (machine->auto_press == SCRIPT_AUTO_FAST || machine->objects[found_object].is_dead)) {
                 soul_chain_rest_at(&soul->chain, root_x, root_y);
                 drag_soul_to(machine, found_object, found_slot);
             } else if (found_object != NO_CORE) {
@@ -1161,6 +1192,10 @@ static void run_button_command(struct script_machine *machine, const char *arg)
         script_pills_register(machine, SCRIPT_PILL_MISSILE, strcmp(arg, "Missile:On") == 0);
     } else if (strcmp(arg, "Cicel:On") == 0 || strcmp(arg, "Cicel:Off") == 0) {
         script_pills_register(machine, SCRIPT_PILL_CICEL, strcmp(arg, "Cicel:On") == 0);
+    } else if (strcmp(arg, "Exchange:On") == 0 || strcmp(arg, "Exchange:Off") == 0) {
+        script_pills_register(machine, SCRIPT_PILL_EXCHANGE, strcmp(arg, "Exchange:On") == 0);
+    } else if (strcmp(arg, "Unlock:On") == 0 || strcmp(arg, "Unlock:Off") == 0) {
+        script_pills_register(machine, SCRIPT_PILL_UNLOCK, strcmp(arg, "Unlock:On") == 0);
     }
 }
 
@@ -1428,6 +1463,7 @@ static const struct gameapp_command gameapp_commands[] = {
     { "Timeleap", run_timeleap_command },
     { "DeadTalk", run_dead_talk_command },
     { "System", run_system_command },
+    { "Exchange", script_exchange_run_command },
 };
 
 static const struct gameapp_command *find_gameapp_command(const char *verb)
@@ -1513,6 +1549,10 @@ static const char *pill_word(enum script_pill_id id)
         return "ghost";
     case SCRIPT_PILL_BACK:
         return "back";
+    case SCRIPT_PILL_EXCHANGE:
+        return "swap";
+    case SCRIPT_PILL_UNLOCK:
+        return "unlock";
     default:
         return "other";
     }
@@ -1639,6 +1679,13 @@ static void take_press(struct script_machine *machine)
     if (soul->tutorial_mode != TUTORIAL_NONE) {
         return;
     }
+    if (soul->exchange.phase == SCRIPT_EXCHANGE_LINKED) {
+        if (pill_answers_a_press(machine, SCRIPT_PILL_EXCHANGE)) {
+            script_pills_press(machine, SCRIPT_PILL_EXCHANGE, PILL_HOLD_AFTER_TRICK);
+            script_exchange_confirm(machine);
+        }
+        return;
+    }
     if (soul->is_on) {
         return;
     }
@@ -1655,6 +1702,14 @@ static void take_ghost_button(struct script_machine *machine)
 
     soul = &machine->soul;
     if (soul->view_change_ticks_left > 0 || soul->tutorial_holds_input) {
+        return;
+    }
+    if (script_exchange_is_on(machine)) {
+        if (soul->exchange.phase == SCRIPT_EXCHANGE_LINKED && pill_answers_a_press(machine, SCRIPT_PILL_UNLOCK)) {
+            script_pills_press(machine, SCRIPT_PILL_UNLOCK, PILL_HOLD_AFTER_TRICK);
+            script_exchange_cancel(machine);
+            soul_chain_retract(&soul->chain);
+        }
         return;
     }
     if (soul->is_on && !soul->view_demo_is_on && soul->tutorial_mode == TUTORIAL_NONE) {
@@ -1831,7 +1886,13 @@ static void follow_core_with_camera(struct script_machine *machine)
         return;
     }
     core_position(machine, soul->active_object, soul->active_slot, &core_x, &core_y);
-    if (soul->is_on && soul->tip_input_is_held && soul->tip_is_out) {
+    if (soul->is_on && script_exchange_holds_the_chain_out(machine)) {
+        float target_x;
+        float target_y;
+
+        core_position(machine, soul->exchange.target_object, soul->exchange.target_slot, &target_x, &target_y);
+        follow_core_in_ghost_view(machine, (core_x + target_x) / 2.0f, (core_y + target_y) / 2.0f);
+    } else if (soul->is_on && soul->tip_input_is_held && soul->tip_is_out) {
         follow_point_in_ghost_view(machine, soul->tip_x, soul->tip_y, GHOST_TIP_FOLLOW_LEFT, GHOST_TIP_FOLLOW_RIGHT, GHOST_TIP_FOLLOW_TOP, GHOST_TIP_FOLLOW_BOTTOM);
     } else if (soul->is_on && !soul->view_was_panned) {
         follow_core_in_ghost_view(machine, core_x, core_y);
@@ -1879,6 +1940,7 @@ static void go_to_route_step(struct script_machine *machine, int step_index)
     soul->route_taps_when_step_began = soul->taps_taken;
     soul->route_character_presses_when_step_began = soul->character_presses_taken;
     soul->route_picks_when_step_began = machine->choice.picks;
+    soul->exchange.route_swaps_when_step_began = soul->exchange.swaps_done;
     soul->route_aimed_node = NO_CORE;
 }
 
@@ -2191,6 +2253,8 @@ static int route_step_is_done(struct script_machine *machine, const struct scrip
         return machine->choice.picks != soul->route_picks_when_step_began;
     case SCRIPT_ROUTE_CHARACTER:
         return soul->character_presses_taken != soul->route_character_presses_when_step_began;
+    case SCRIPT_ROUTE_SWAP:
+        return soul->exchange.swaps_done != soul->exchange.route_swaps_when_step_began;
     default:
         return 1;
     }
@@ -2441,6 +2505,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     }
     soul->direction_x = 0;
     soul->direction_y = 0;
+    script_exchange_step(machine);
     move_soul_tip(machine);
     start_the_dead_talk_a_tutorial_scene_waits_for(machine);
     send_tutorial_input(machine);
@@ -2565,6 +2630,7 @@ void script_soul_reset(struct script_machine *machine)
     }
     memset(&machine->soul, 0, sizeof(machine->soul));
     script_pills_reset(machine);
+    script_exchange_reset(machine);
     machine->soul.route_step = -1;
     machine->soul.route_acted_step = -1;
     machine->soul.active_object = NO_CORE;

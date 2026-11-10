@@ -211,6 +211,13 @@ static void play_the_route_step(struct script_route_pad *pad, const struct scrip
             press(pad, machine, frame, group == SCRIPT_TAP_GROUP_RIGHT ? INPUT_SQUARE : INPUT_TRIANGLE);
         }
         break;
+    case SCRIPT_ROUTE_SWAP:
+        if (!script_exchange_is_on(machine)) {
+            push_the_stick_toward_the_next_core(machine, step, frame);
+        } else if (script_pills_is_up(machine, SCRIPT_PILL_EXCHANGE) && pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
+            press(pad, machine, frame, INPUT_CROSS);
+        }
+        break;
     case SCRIPT_ROUTE_CHARACTER:
         if (a_character_pill_is_up(machine) && pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
             press(pad, machine, frame, INPUT_TRIANGLE);

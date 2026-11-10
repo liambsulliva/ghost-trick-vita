@@ -20,7 +20,8 @@ enum script_route_action {
     SCRIPT_ROUTE_DEAD_TALK,
     SCRIPT_ROUTE_CHOOSE,
     SCRIPT_ROUTE_CHARACTER,
-    SCRIPT_ROUTE_PHONE_STAY
+    SCRIPT_ROUTE_PHONE_STAY,
+    SCRIPT_ROUTE_SWAP
 };
 
 enum script_route_wait_word {

@@ -20,6 +20,7 @@
 #define WORD_LOOP 0xffffu
 #define WORD_FRAME_WITH_TICKS 0xfffbu
 #define WORD_MESSAGE 0xfff9u
+#define WORD_SHAPE 0xfffau
 #define LOOP_BACK_WORDS 3
 #define OFF_WORLD_LIMIT 10000
 #define TABLE_STEP_MAX 4096
@@ -298,6 +299,12 @@ static void run_table(struct script_machine *machine, struct script_object *obje
             actor->table_word = actor->table_word + 4;
             break;
         case WORD_CORE_VALUE:
+            actor->table_word = actor->table_word + 2;
+            break;
+        case WORD_SHAPE:
+            if (read_signed_word(actor->table_source, actor->table_word + 1, &point)) {
+                actor->shape = point & 0xff;
+            }
             actor->table_word = actor->table_word + 2;
             break;
         case WORD_SOUND:
@@ -1001,7 +1008,18 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
         object = script_machine_current_object(machine, vm);
         if (object != NULL) {
             script_soul_set_first_core(machine, (int)(object - machine->objects), (int)words[0]);
+            if (op == 0xa4) {
+                script_exchange_note_core(machine, 0, (int)(object - machine->objects), (int)words[0]);
+            }
         }
+        break;
+    case 0xa5:
+        object = script_machine_current_object(machine, vm);
+        if (object != NULL) {
+            script_exchange_note_core(machine, 1, (int)(object - machine->objects), (int)words[0]);
+        }
+        break;
+    case 0xa6:
         break;
     case 0x116:
         vm->selected_object = SCRIPT_NO_SELECTION;

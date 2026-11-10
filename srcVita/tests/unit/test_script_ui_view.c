@@ -94,6 +94,39 @@ static void test_pills_hide_under_a_card_or_a_full_fade(void)
     CHECK(pill_draws_now() > 0);
 }
 
+static int a_tap_somewhere_finds(enum script_pill_id id)
+{
+    float x;
+    float y;
+
+    for (y = 10.0f; y < 544.0f; y = y + 10.0f) {
+        for (x = 5.0f; x < 960.0f; x = x + 10.0f) {
+            if (script_ui_view_pill_at(x, y) == (int)id) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+static void test_every_pill_has_a_place_and_draws(void)
+{
+    struct script_hud_view view;
+    int id;
+
+    scene_stage_hide_card();
+    scene_stage_set_fade(0.0f);
+    for (id = 0; id < SCRIPT_PILL_COUNT; id++) {
+        memset(&view, 0, sizeof(view));
+        show_pill(&view, (enum script_pill_id)id, PILL_FULLY_SHOWN, 0);
+        script_ui_view_hud_changed(&view);
+        CHECK(pill_draws_now() > 0);
+        CHECK(a_tap_somewhere_finds((enum script_pill_id)id));
+    }
+    memset(&view, 0, sizeof(view));
+    script_ui_view_hud_changed(&view);
+}
+
 static void test_the_rewind_button_answers_only_while_it_is_up(void)
 {
     struct script_hud_view view;
@@ -152,6 +185,7 @@ int main(void)
     test_a_sliding_or_pressed_pill_does_not_answer();
     test_pills_stay_quiet_during_a_movie();
     test_pills_hide_under_a_card_or_a_full_fade();
+    test_every_pill_has_a_place_and_draws();
     test_the_rewind_button_answers_only_while_it_is_up();
     return test_finish("unit/script_ui_view");
 }

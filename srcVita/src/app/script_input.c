@@ -58,10 +58,17 @@ static void press_the_pill(struct script_machine *machine, int pill)
     switch (pill) {
     case SCRIPT_PILL_GHOST:
     case SCRIPT_PILL_BACK:
+    case SCRIPT_PILL_UNLOCK:
         script_soul_note_ghost(machine);
         break;
     case SCRIPT_PILL_TRICK:
+    case SCRIPT_PILL_EXCHANGE:
         script_machine_note_press(machine);
+        break;
+    case SCRIPT_PILL_JOWD:
+    case SCRIPT_PILL_MISSILE:
+    case SCRIPT_PILL_CICEL:
+        script_soul_note_character_button(machine);
         break;
     default:
         script_soul_note_pill(machine, (enum script_pill_id)pill);

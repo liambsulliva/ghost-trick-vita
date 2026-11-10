@@ -62,6 +62,10 @@ static void test_names_each_action(void)
     CHECK_TEXT(script_route_action_name(SCRIPT_ROUTE_CHARACTER), "character");
     CHECK(read_text("step a character - 0 0 free\n"));
     CHECK_INT(route.steps[0].action, SCRIPT_ROUTE_CHARACTER);
+    CHECK_TEXT(script_route_action_name(SCRIPT_ROUTE_SWAP), "swap");
+    CHECK(read_text("step a swap barrel 0 0 view\n"));
+    CHECK_INT(route.steps[0].action, SCRIPT_ROUTE_SWAP);
+    CHECK_TEXT(route.steps[0].object, "barrel");
 }
 
 static void test_finds_whole_wait_tokens_only(void)

@@ -112,7 +112,8 @@
 #define PILL_SHEET_TEXTURE "hud_sheet"
 #define PILL_ART_SIZE 512.0f
 #define PILL_SHEET_WIDTH 512.0f
-#define PILL_SHEET_HEIGHT 192.0f
+#define PILL_SHEET_HEIGHT 256.0f
+#define PILL_LABEL_CELL_WIDTH 160.0f
 #define PILL_SLIDE_STEPS 8
 #define PILL_SLIDE_PIXELS_PER_STEP 11.25f
 #define PILL_PRESSED_DROP 3.75f
@@ -191,6 +192,8 @@ static const struct pill_sheet_cell glyph_select = { 312.0f, 0.0f, 84.0f, 40.0f 
 static const struct pill_sheet_cell label_ghost = { 0.0f, 48.0f, 160.0f, 64.0f };
 static const struct pill_sheet_cell label_trick = { 160.0f, 48.0f, 160.0f, 64.0f };
 static const struct pill_sheet_cell label_back = { 320.0f, 48.0f, 160.0f, 64.0f };
+static const struct pill_sheet_cell label_swap = { 0.0f, 192.0f, 224.0f, 64.0f };
+static const struct pill_sheet_cell label_unlock = { 224.0f, 192.0f, 224.0f, 64.0f };
 
 static const struct pill_layout pill_layouts[SCRIPT_PILL_COUNT] = {
     [SCRIPT_PILL_GHOST] = { 9.75f, PILL_BOTTOM_Y, 201.0f, 1, 29.25f, 165.0f, 163.5f, -2.25f, 0.0f, 101.0f, &label_ghost, 96.4f, &glyph_l, 9.5f, PILL_GLYPH_SIZE, 0.0f },
@@ -200,6 +203,8 @@ static const struct pill_layout pill_layouts[SCRIPT_PILL_COUNT] = {
     [SCRIPT_PILL_NOTEBOOK] = { 9.75f, PILL_TOP_Y, 86.0f, 0, 41.0f, 50.0f, 47.75f, -1.0f, 80.0f, 181.0f, NULL, 0.0f, &glyph_select, 4.0f, 42.0f, 0.0f },
     [SCRIPT_PILL_JOWD] = { CHARACTER_PILL_X, PILL_BOTTOM_Y, CHARACTER_PILL_WIDTH, 1, 30.0f, 41.0f, 0.0f, -1.0f, 0.0f, 261.0f, NULL, 0.0f, &glyph_triangle, 40.5f, PILL_GLYPH_SIZE, 0.0f },
     [SCRIPT_PILL_MISSILE] = { CHARACTER_PILL_X, PILL_BOTTOM_Y, CHARACTER_PILL_WIDTH, 1, 30.0f, 41.0f, 0.0f, -1.0f, 321.0f, 0.0f, NULL, 0.0f, &glyph_triangle, 40.5f, PILL_GLYPH_SIZE, LARGE_ICON_TEXELS },
+    [SCRIPT_PILL_EXCHANGE] = { 750.75f, PILL_BOTTOM_Y, 199.5f, 1, 33.75f, 169.5f, 0.0f, 0.0f, -1.0f, 0.0f, &label_swap, 103.1f, &glyph_cross, 170.0f, PILL_GLYPH_SIZE, 0.0f },
+    [SCRIPT_PILL_UNLOCK] = { 9.75f, PILL_BOTTOM_Y, 170.0f, 1, 29.25f, 162.5f, 0.0f, 0.0f, -1.0f, 0.0f, &label_unlock, 95.5f, &glyph_l, 9.5f, PILL_GLYPH_SIZE, 0.0f },
     [SCRIPT_PILL_CICEL] = { CHARACTER_PILL_X, PILL_BOTTOM_Y, CHARACTER_PILL_WIDTH, 1, 30.0f, 41.0f, 0.0f, -1.0f, 322.0f, 88.0f, NULL, 0.0f, &glyph_triangle, 40.5f, PILL_GLYPH_SIZE, LARGE_ICON_TEXELS },
 };
 
@@ -1112,7 +1117,10 @@ static void draw_pill(const struct pill_layout *layout, const struct script_pill
         draw_art_cell(art, x + layout->icon_x, y + layout->icon_y, PILL_ICON_SIZE, PILL_ICON_SIZE, layout->icon_cell_x, layout->icon_cell_y, layout->icon_texels > 0.0f ? layout->icon_texels : PILL_ICON_TEXELS, layout->icon_texels > 0.0f ? layout->icon_texels : PILL_ICON_TEXELS);
     }
     if (layout->label != NULL) {
-        draw_sheet_cell(sheet, layout->label, x + layout->label_center_x - PILL_LABEL_WIDTH / 2.0f, y + PILL_RING_HEIGHT / 2.0f - PILL_LABEL_HEIGHT / 2.0f + PILL_LABEL_NUDGE_Y, PILL_LABEL_WIDTH, PILL_LABEL_HEIGHT);
+        float label_width;
+
+        label_width = PILL_LABEL_WIDTH * layout->label->width / PILL_LABEL_CELL_WIDTH;
+        draw_sheet_cell(sheet, layout->label, x + layout->label_center_x - label_width / 2.0f, y + PILL_RING_HEIGHT / 2.0f - PILL_LABEL_HEIGHT / 2.0f + PILL_LABEL_NUDGE_Y, label_width, PILL_LABEL_HEIGHT);
     }
     draw_sheet_cell(sheet, layout->glyph, x + layout->glyph_x, y + PILL_RING_HEIGHT / 2.0f - PILL_GLYPH_SIZE / 2.0f + PILL_GLYPH_NUDGE_Y, layout->glyph_width, PILL_GLYPH_SIZE);
 }

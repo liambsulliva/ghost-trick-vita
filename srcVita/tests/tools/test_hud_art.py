@@ -8,7 +8,7 @@ class HudSheetTests(unittest.TestCase):
         arguments = hud_art.sheet_arguments("label.otf", "key.otf", "out.rgba")
         self.assertEqual(arguments[0], "magick")
         self.assertEqual(arguments[-1], "rgba:out.rgba")
-        for word in hud_art.LABELS + hud_art.LETTER_ORDER + ["START"]:
+        for word in hud_art.LABELS + hud_art.SWAP_LABELS + hud_art.LETTER_ORDER + ["START"]:
             self.assertIn(word, arguments)
 
     def test_face_buttons_fit_their_cells(self):
@@ -16,6 +16,11 @@ class HudSheetTests(unittest.TestCase):
         self.assertLessEqual(total, hud_art.SHEET_WIDTH)
         self.assertLessEqual(len(hud_art.LABELS) * hud_art.LABEL_WIDTH, hud_art.SHEET_WIDTH)
         self.assertLessEqual(hud_art.LABEL_ROW_Y + hud_art.LABEL_HEIGHT, hud_art.SHEET_HEIGHT)
+
+    def test_swap_words_have_a_row_below_the_wide_word(self):
+        self.assertGreaterEqual(hud_art.SWAP_LABEL_ROW_Y, hud_art.WIDE_LABEL_ROW_Y + hud_art.WIDE_LABEL_HEIGHT)
+        self.assertLessEqual(hud_art.SWAP_LABEL_ROW_Y + hud_art.LABEL_HEIGHT, hud_art.SHEET_HEIGHT)
+        self.assertLessEqual(len(hud_art.SWAP_LABELS) * hud_art.SWAP_LABEL_WIDTH, hud_art.SHEET_WIDTH)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ SHEET_NAME = "hud_sheet"
 DISC_NAME = "hud_disc"
 DISC_SIZE = 128
 SHEET_WIDTH = 512
-SHEET_HEIGHT = 192
+SHEET_HEIGHT = 256
 SUPERSAMPLE = 4
 GLYPH_CELL = 40
 START_WIDTH = 72
@@ -22,6 +22,9 @@ PAIRS = {"cross": "#8fb8ff", "circle": "#ff7a7a", "square": "#ff9ad5", "triangle
 FACE_ORDER = ["cross", "circle", "square", "triangle"]
 LETTER_ORDER = ["L", "R"]
 LABELS = ["Ghost", "Trick", "Back"]
+SWAP_LABELS = ["Swap", "Unlock"]
+SWAP_LABEL_ROW_Y = 192
+SWAP_LABEL_WIDTH = 224
 WIDE_LABEL = "Rewind Time"
 WIDE_LABEL_ROW_Y = 112
 WIDE_LABEL_WIDTH = 420
@@ -73,8 +76,8 @@ def word_button_arguments(key_font_path, word, cell_x, cell_width, points):
     return plate + word_image
 
 
-def label_arguments(label_font_path, word, cell_x):
-    return ["(", "-size", "%dx%d" % (scaled(LABEL_WIDTH), scaled(LABEL_HEIGHT)), "xc:none", "-font", label_font_path, "-pointsize", str(LABEL_POINTS), "-gravity", "center", "-fill", INK_NAVY, "-stroke", INK_NAVY, "-strokewidth", str(LABEL_OUTLINE), "-annotate", "+0+0", word, "-fill", WHITE, "-stroke", "none", "-annotate", "+0+0", word, ")", "-gravity", "NorthWest", "-geometry", "+%d+%d" % (scaled(cell_x), scaled(LABEL_ROW_Y)), "-composite"]
+def label_arguments(label_font_path, word, cell_x, row_y, cell_width=LABEL_WIDTH):
+    return ["(", "-size", "%dx%d" % (scaled(cell_width), scaled(LABEL_HEIGHT)), "xc:none", "-font", label_font_path, "-pointsize", str(LABEL_POINTS), "-gravity", "center", "-fill", INK_NAVY, "-stroke", INK_NAVY, "-strokewidth", str(LABEL_OUTLINE), "-annotate", "+0+0", word, "-fill", WHITE, "-stroke", "none", "-annotate", "+0+0", word, ")", "-gravity", "NorthWest", "-geometry", "+%d+%d" % (scaled(cell_x), scaled(row_y)), "-composite"]
 
 
 def wide_label_arguments(label_font_path):
@@ -93,7 +96,9 @@ def sheet_arguments(label_font_path, key_font_path, output_path):
     arguments += word_button_arguments(key_font_path, "START", cell_x, START_WIDTH, START_POINTS)
     arguments += word_button_arguments(key_font_path, "SELECT", cell_x + START_WIDTH, SELECT_WIDTH, SELECT_POINTS)
     for index, word in enumerate(LABELS):
-        arguments += label_arguments(label_font_path, word, index * LABEL_WIDTH)
+        arguments += label_arguments(label_font_path, word, index * LABEL_WIDTH, LABEL_ROW_Y)
+    for index, word in enumerate(SWAP_LABELS):
+        arguments += label_arguments(label_font_path, word, index * SWAP_LABEL_WIDTH, SWAP_LABEL_ROW_Y, SWAP_LABEL_WIDTH)
     arguments += wide_label_arguments(label_font_path)
     arguments += ["-filter", "Box", "-resize", "%dx%d!" % (SHEET_WIDTH, SHEET_HEIGHT), "-depth", "8", "rgba:" + output_path]
     return arguments

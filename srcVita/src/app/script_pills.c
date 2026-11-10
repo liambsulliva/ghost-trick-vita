@@ -14,7 +14,7 @@
 #define FIRST_PILL_EFFECT 99
 #define PILL_EFFECT_COUNT 4
 #define BIT(id) (1u << (unsigned int)(id))
-#define NON_NATIVE_ALL (BIT(SCRIPT_PILL_GHOST) | BIT(SCRIPT_PILL_BACK) | BIT(SCRIPT_PILL_NOTEBOOK) | BIT(SCRIPT_PILL_TRICK))
+#define NON_NATIVE_ALL (BIT(SCRIPT_PILL_GHOST) | BIT(SCRIPT_PILL_BACK) | BIT(SCRIPT_PILL_NOTEBOOK) | BIT(SCRIPT_PILL_TRICK) | BIT(SCRIPT_PILL_EXCHANGE) | BIT(SCRIPT_PILL_UNLOCK))
 
 enum pill_group {
     GROUP_NONE,
@@ -153,6 +153,9 @@ static int pill_is_wanted(const struct script_machine *machine, enum script_pill
         return 1;
     }
     is_registered = (soul->pills_registered & BIT(id)) != 0;
+    if (script_exchange_is_on(machine)) {
+        return (id == SCRIPT_PILL_EXCHANGE || id == SCRIPT_PILL_UNLOCK) && is_registered && group == GROUP_GHOST && script_exchange_offers_the_buttons(machine);
+    }
     switch (id) {
     case SCRIPT_PILL_GHOST:
         return is_registered && (group == GROUP_NORMAL || group == GROUP_DEMO_MODE_PLAY) && !soul->ghost_pill_is_held_out;

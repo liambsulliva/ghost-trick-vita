@@ -138,6 +138,7 @@ struct script_actor {
     int is_flipped;
     int stepping_is_stopped;
     int speed_shift;
+    int shape;
     int is_frozen_and_hidden;
     int is_hard_hidden;
     int disabled_cores;
@@ -282,6 +283,28 @@ struct script_pill {
     int hold_ticks;
 };
 
+enum script_exchange_phase {
+    SCRIPT_EXCHANGE_OFF,
+    SCRIPT_EXCHANGE_LINKED,
+    SCRIPT_EXCHANGE_PRESSED,
+    SCRIPT_EXCHANGE_ASKED,
+    SCRIPT_EXCHANGE_SETTLING
+};
+
+struct script_exchange {
+    enum script_exchange_phase phase;
+    int ticks;
+    int root_object;
+    int root_slot;
+    int target_object;
+    int target_slot;
+    int scripts_answered;
+    int swaps_done;
+    int route_swaps_when_step_began;
+    int tutorial_is_on;
+    int tutorial_click_is_sent;
+};
+
 struct script_soul {
     struct script_pill pills[SCRIPT_PILL_COUNT];
     unsigned int pills_registered;
@@ -402,6 +425,7 @@ struct script_soul {
     int white_wipe_out_ticks;
     int white_wipe_is_held;
     int white_wipe_level;
+    struct script_exchange exchange;
 };
 
 #define SCRIPT_SCENES_SEEN_MAX 512
@@ -647,6 +671,16 @@ void script_soul_effect_signalled(struct script_machine *machine, const char *na
 int script_soul_waits_on_the_player(const struct script_machine *machine);
 int script_soul_world_is_playable(const struct script_machine *machine);
 int script_soul_demo_mode_offers_the_ghost_view(const struct script_machine *machine);
+void script_exchange_reset(struct script_machine *machine);
+int script_exchange_is_on(const struct script_machine *machine);
+int script_exchange_holds_the_chain_out(const struct script_machine *machine);
+int script_exchange_offers_the_buttons(const struct script_machine *machine);
+int script_exchange_link(struct script_machine *machine, int object_index, int slot);
+void script_exchange_confirm(struct script_machine *machine);
+void script_exchange_cancel(struct script_machine *machine);
+void script_exchange_step(struct script_machine *machine);
+void script_exchange_note_core(struct script_machine *machine, int is_target, int object_index, int slot);
+void script_exchange_run_command(struct script_machine *machine, const char *arg);
 void script_talk_open(struct script_machine *machine, const char *label);
 void script_talk_step(struct script_machine *machine);
 void script_talk_note_press(struct script_machine *machine);

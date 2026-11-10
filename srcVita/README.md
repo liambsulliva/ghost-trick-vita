@@ -253,9 +253,9 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 | Left stick | Aim the soul in the soul view, more slowly with a smaller push. In the living world it pans the camera |
 | Right stick | Pan the camera in the soul view |
 | D-pad | The same as the left stick, at full speed. Neither moves anything while a cutscene, a trick or a talk has the controls |
-| CROSS | Finish or advance dialogue and narration, or do the trick of the core you are in |
+| CROSS | Finish or advance dialogue and narration, do the trick of the core you are in, or swap the two objects Missile has linked |
 | L | Open the soul view, or go back from one you opened |
-| CIRCLE | Go back from the soul view |
+| CIRCLE | Go back from the soul view, or unlock Missile's link |
 | TRIANGLE or SQUARE | Tap the left or right balloon, when a script opens one that can be tapped |
 | R | The hourglass pill |
 | SELECT | The notebook pill |
