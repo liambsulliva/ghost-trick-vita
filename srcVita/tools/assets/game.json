@@ -5638,49 +5638,25 @@
       {
         "script": "st03-st03_game001_Expand",
         "action": "ghost_on",
-        "object": "camera",
+        "object": "memo2",
         "pace": "normal",
-        "footage_s": 9380.0,
+        "footage_s": 9274.0,
         "wait": "free & no_talk"
       },
       {
         "script": "st03-st03_game001_Expand",
         "action": "move",
-        "object": "switch",
-        "pace": "normal",
-        "footage_s": 9386.0,
-        "wait": "view & usable:switch"
-      },
-      {
-        "script": "st03-st03_game001_Expand",
-        "action": "ghost_off",
-        "object": "switch",
-        "pace": "quick",
-        "footage_s": 9388.0,
-        "wait": "view & core:switch"
-      },
-      {
-        "script": "st03-st03_game001_Expand",
-        "action": "trick",
-        "object": "switch",
-        "pace": "quick",
-        "footage_s": 9390.0,
-        "wait": "core:switch & playable"
-      },
-      {
-        "script": "st03-st03_game001_Expand",
-        "action": "ghost_on",
         "object": "tel",
         "pace": "normal",
-        "footage_s": 9391.0,
-        "wait": "free & no_talk"
+        "footage_s": 9278.0,
+        "wait": "view & usable:tel"
       },
       {
         "script": "st03-st03_game001_Expand",
         "action": "move",
         "object": "memo3",
         "pace": "normal",
-        "footage_s": 9391.4,
+        "footage_s": 9279.75,
         "wait": "view & usable:memo3"
       },
       {
@@ -5688,7 +5664,7 @@
         "action": "ghost_off",
         "object": "memo3",
         "pace": "quick",
-        "footage_s": 9391.7,
+        "footage_s": 9280.5,
         "wait": "view & core:memo3"
       },
       {
@@ -5696,15 +5672,111 @@
         "action": "trick",
         "object": "memo3",
         "pace": "quick",
-        "footage_s": 9391.9,
+        "footage_s": 9281.25,
         "wait": "core:memo3 & playable"
       },
       {
         "script": "st03-st03_game001_Expand",
         "action": "ghost_on",
+        "object": "memo3",
+        "pace": "normal",
+        "footage_s": 9293.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "move",
+        "object": "lever",
+        "pace": "normal",
+        "footage_s": 9294.5,
+        "wait": "view & usable:lever"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "ghost_off",
+        "object": "lever",
+        "pace": "quick",
+        "footage_s": 9296.25,
+        "wait": "view & core:lever"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "trick",
+        "object": "lever",
+        "pace": "normal",
+        "footage_s": 9331.75,
+        "wait": "core:lever & playable & no_talk"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "ghost_on",
+        "object": "lever",
+        "pace": "normal",
+        "footage_s": 9381.25,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "move",
+        "object": "glass",
+        "pace": "normal",
+        "footage_s": 9383.0,
+        "wait": "view & usable:glass"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "move",
+        "object": "monitor3",
+        "pace": "normal",
+        "footage_s": 9383.75,
+        "wait": "view & usable:monitor3"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "move",
+        "object": "camera",
+        "pace": "normal",
+        "footage_s": 9385.1,
+        "wait": "view & usable:camera"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "move",
         "object": "door",
         "pace": "normal",
+        "footage_s": 9386.4,
+        "wait": "view & usable:door"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "move",
+        "object": "switch",
+        "pace": "normal",
         "footage_s": 9389.0,
+        "wait": "view & usable:switch"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "ghost_off",
+        "object": "switch",
+        "pace": "quick",
+        "footage_s": 9389.9,
+        "wait": "view & core:switch"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "trick",
+        "object": "switch",
+        "pace": "quick",
+        "footage_s": 9391.6,
+        "wait": "core:switch & playable"
+      },
+      {
+        "script": "st03-st03_game001_Expand",
+        "action": "ghost_on",
+        "object": "switch",
+        "pace": "instant",
+        "footage_s": 9392.25,
         "wait": "free & no_talk"
       },
       {
@@ -5712,7 +5784,7 @@
         "action": "move",
         "object": "door",
         "pace": "normal",
-        "footage_s": 9390.5,
+        "footage_s": 9393.25,
         "wait": "view & usable:door"
       },
       {
@@ -5720,23 +5792,15 @@
         "action": "ghost_off",
         "object": "door",
         "pace": "quick",
-        "footage_s": 9391.5,
+        "footage_s": 9396.25,
         "wait": "view & core:door"
       },
       {
         "script": "st03-st03_game001_Expand",
-        "action": "trick",
-        "object": "door",
-        "pace": "quick",
-        "footage_s": 9392.0,
-        "wait": "core:door & playable"
-      },
-      {
-        "script": "st03-st03_game001_Expand",
         "action": "ghost_on",
-        "object": "tel",
+        "object": "door",
         "pace": "normal",
-        "footage_s": 9430.0,
+        "footage_s": 9397.5,
         "wait": "free & no_talk"
       },
       {
@@ -5744,7 +5808,7 @@
         "action": "move",
         "object": "guitar",
         "pace": "normal",
-        "footage_s": 9440.0,
+        "footage_s": 9399.5,
         "wait": "view & usable:guitar"
       },
       {
@@ -5752,7 +5816,7 @@
         "action": "ghost_off",
         "object": "guitar",
         "pace": "quick",
-        "footage_s": 9443.0,
+        "footage_s": 9402.75,
         "wait": "view & core:guitar"
       },
       {
@@ -5760,7 +5824,7 @@
         "action": "trick",
         "object": "guitar",
         "pace": "quick",
-        "footage_s": 9446.0,
+        "footage_s": 9405.25,
         "wait": "core:guitar & playable"
       },
       {
