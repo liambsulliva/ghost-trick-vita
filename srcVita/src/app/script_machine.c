@@ -1211,8 +1211,8 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         }
         return op == 0xf3 ? SCRIPT_STEP_NEXT_THEN_YIELD : SCRIPT_STEP_NEXT;
     case 0xe1:
-        if (vm->owner != NULL) {
-            vm->owner->is_dead = 1;
+        if (script_machine_current_object(machine, vm) != NULL) {
+            script_machine_current_object(machine, vm)->is_dead = 1;
         }
         return SCRIPT_STEP_NEXT;
     case 0xe5:

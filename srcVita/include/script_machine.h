@@ -396,6 +396,11 @@ struct script_soul {
     struct script_timed_event phone_event;
     char phone_split_name[SCRIPT_SOURCE_NAME_MAX];
     struct script_timed_event time_jump_event;
+    char white_wipe_name[SCRIPT_SOURCE_NAME_MAX];
+    int white_wipe_ticks;
+    int white_wipe_out_ticks;
+    int white_wipe_is_held;
+    int white_wipe_level;
 };
 
 #define SCRIPT_SCENES_SEEN_MAX 512

@@ -62,6 +62,13 @@
 #define LAST_PHONE_BORDER_EFFECT 49
 #define PHONE_EFFECT_READY_AFTER_TICKS 50
 #define PHONE_EFFECT_END_AFTER_TICKS 18
+#define WHITE_WIPE_EFFECT 50
+#define GREY_WORLD_EFFECT 53
+#define WHITE_WIPE_IN_TICKS 48
+#define WHITE_WIPE_FULL_EVENT_TICK 210
+#define WHITE_WIPE_READY_TO_LEAVE_TICK 252
+#define WHITE_WIPE_OUT_TICKS 90
+#define WHITE_WIPE_GREY_AFTER_TICKS 42
 #define CAMERA_FREE_SPEED_PIXELS 4
 #define BALLOON_NAMED_BY_LABEL "label"
 
@@ -883,9 +890,49 @@ static int is_phone_border_effect(int effect_id)
     return effect_id >= FIRST_PHONE_BORDER_EFFECT && effect_id <= LAST_PHONE_BORDER_EFFECT;
 }
 
+static void step_the_white_wipe(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (soul->white_wipe_name[0] == '\0') {
+        soul->white_wipe_level = 0;
+        return;
+    }
+    if (soul->white_wipe_out_ticks == 0) {
+        soul->white_wipe_ticks = soul->white_wipe_ticks + 1;
+        soul->white_wipe_level = soul->white_wipe_ticks >= WHITE_WIPE_IN_TICKS ? NATIVE_BRIGHTNESS_SCALE : soul->white_wipe_ticks * NATIVE_BRIGHTNESS_SCALE / WHITE_WIPE_IN_TICKS;
+        if (soul->white_wipe_ticks == WHITE_WIPE_FULL_EVENT_TICK) {
+            script_machine_send(machine, "*", "SYSTEM", "TIMELIMIT W/I");
+        }
+        if (soul->white_wipe_ticks >= WHITE_WIPE_READY_TO_LEAVE_TICK && !soul->white_wipe_is_held) {
+            soul->white_wipe_out_ticks = 1;
+        }
+        return;
+    }
+    if (soul->white_wipe_out_ticks <= WHITE_WIPE_OUT_TICKS) {
+        soul->white_wipe_level = (WHITE_WIPE_OUT_TICKS - soul->white_wipe_out_ticks) * NATIVE_BRIGHTNESS_SCALE / WHITE_WIPE_OUT_TICKS;
+        if (soul->white_wipe_out_ticks == WHITE_WIPE_OUT_TICKS) {
+            script_machine_send(machine, "*", "SYSTEM", "TIMELIMIT W/O");
+        }
+    }
+    if (soul->white_wipe_out_ticks == WHITE_WIPE_OUT_TICKS + WHITE_WIPE_GREY_AFTER_TICKS && machine->outputs->effect_spawned != NULL) {
+        machine->outputs->effect_spawned(GREY_WORLD_EFFECT, soul->white_wipe_name, 0.0f, 0.0f);
+    }
+    if (soul->white_wipe_out_ticks <= WHITE_WIPE_OUT_TICKS + WHITE_WIPE_GREY_AFTER_TICKS) {
+        soul->white_wipe_out_ticks = soul->white_wipe_out_ticks + 1;
+    }
+}
+
 void script_soul_effect_spawned(struct script_machine *machine, int effect_id, const char *name)
 {
     script_pills_effect_spawned(machine, effect_id, name);
+    if (effect_id == WHITE_WIPE_EFFECT) {
+        snprintf(machine->soul.white_wipe_name, sizeof(machine->soul.white_wipe_name), "%s", name);
+        machine->soul.white_wipe_ticks = 0;
+        machine->soul.white_wipe_out_ticks = 0;
+        machine->soul.white_wipe_is_held = 0;
+    }
     if (is_phone_border_effect(effect_id)) {
         schedule_native_event(machine, &machine->soul.phone_event, name, "ready", PHONE_EFFECT_READY_AFTER_TICKS);
         snprintf(machine->soul.phone_split_name, sizeof(machine->soul.phone_split_name), "%s", name);
@@ -896,6 +943,9 @@ void script_soul_effect_deleted(struct script_machine *machine, const char *name
 {
     if (name[0] == '*' || strcmp(machine->soul.phone_split_name, name) == 0) {
         machine->soul.phone_split_name[0] = '\0';
+    }
+    if (name[0] == '*' || strcmp(machine->soul.white_wipe_name, name) == 0) {
+        machine->soul.white_wipe_name[0] = '\0';
     }
 }
 
@@ -1168,6 +1218,20 @@ static void run_exception_command(struct script_machine *machine, const char *ar
     } else if (strcmp(arg, "BreakTalk") == 0) {
         machine->pause_bit = 0;
         machine->soul_state_keeps_pause = 0;
+    } else if (strcmp(arg, "CountdownSkip") == 0) {
+        if (machine->soul.countdown_step < COUNTDOWN_ZERO_STEP) {
+            machine->soul.countdown_step = machine->soul.countdown_step + 1;
+            machine->soul.countdown_ticks = 1;
+        }
+    } else if (strcmp(arg, "CountdownForceZero") == 0) {
+        if (machine->soul.countdown_step < COUNTDOWN_ZERO_STEP) {
+            machine->soul.countdown_step = COUNTDOWN_ZERO_STEP;
+            machine->soul.countdown_ticks = 1;
+        }
+    } else if (strcmp(arg, "GameOverWhiteWait") == 0) {
+        machine->soul.white_wipe_is_held = 1;
+    } else if (strcmp(arg, "GameOverWhiteProceed") == 0) {
+        machine->soul.white_wipe_is_held = 0;
     } else if (strcmp(arg, "ForceDemo") == 0) {
         machine->mode_byte = DEMO_MODE;
     } else if (strcmp(arg, "Missile:On") == 0) {
@@ -2396,6 +2460,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     report_hud(machine);
     send_timed_native_event(machine, &soul->phone_event);
     send_timed_native_event(machine, &soul->time_jump_event);
+    step_the_white_wipe(machine);
 }
 
 int script_soul_wants_a_tap(const struct script_machine *machine)

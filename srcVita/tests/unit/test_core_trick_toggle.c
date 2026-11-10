@@ -79,6 +79,7 @@ static void run_a_script_that_hands_the_trick_back_to_another_object(void)
     words[count++] = 0;
     words[count++] = 0xea;
     words[count++] = 1;
+    words[count++] = 0xe1;
     words[count++] = 0x116;
     words[count++] = 0x2f;
     words[count++] = 6000;
@@ -112,10 +113,18 @@ static void test_the_object_running_the_script_keeps_its_own_tricks(void)
     CHECK_INT((int)machine.objects[0].actor.busy_cores, (int)FIRST_CORE_BIT);
 }
 
+static void test_marking_a_corpse_reaches_the_selected_object(void)
+{
+    run_a_script_that_hands_the_trick_back_to_another_object();
+    CHECK_INT(machine.objects[1].is_dead, 1);
+    CHECK_INT(machine.objects[0].is_dead, 0);
+}
+
 int main(void)
 {
     test_turning_a_trick_on_reaches_the_selected_object();
     test_turning_a_trick_off_reaches_the_selected_object();
     test_the_object_running_the_script_keeps_its_own_tricks();
+    test_marking_a_corpse_reaches_the_selected_object();
     return test_finish("unit/core_trick_toggle");
 }

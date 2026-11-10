@@ -129,12 +129,15 @@ static void update_brightness(struct script_machine *machine)
 
 void script_fades_update(struct script_machine *machine)
 {
+    int brightness;
+
     update_mask_fade(machine);
     update_brightness(machine);
-    if (machine->brightness != machine->reported_brightness) {
-        machine->reported_brightness = machine->brightness;
+    brightness = machine->soul.white_wipe_level > machine->brightness ? machine->soul.white_wipe_level : machine->brightness;
+    if (brightness != machine->reported_brightness) {
+        machine->reported_brightness = brightness;
         if (machine->outputs->brightness_changed != NULL) {
-            machine->outputs->brightness_changed(machine->brightness);
+            machine->outputs->brightness_changed(brightness);
         }
     }
     if (machine->mask_fade_is_alive != machine->reported_mask_fade_is_alive || machine->mask_fade_alpha != machine->reported_mask_fade_alpha) {
