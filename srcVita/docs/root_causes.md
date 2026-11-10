@@ -853,4 +853,10 @@ The steps found so far are in `docs/chapter8_route_in_progress.json`: 97 steps f
 - After a rewind `st03_root` picks the scene from flags 0x1028 to 0x102c, so the order is demo010, game032, game011, game033, game035.
 - `script_replay`'s core list skipped nothing, so cores of deleted actors from an earlier stage looked usable; it now lists only actors that exist.
 
-Open in these scenes: `op_not_ported` for 0x9a and 0x49 (st03_game003), 0xcd (st03_game031), 0xb3 (st03_demo010) and 0xae, 0xc2, 0xc3, 0xfd (st03_game011).
+Open in these scenes: `op_not_ported` for 0x9a and 0x49 (st03_game003), 0xcd (st03_game031), 0xb3 (st03_demo010) and 0xc2, 0xc3, 0xfd (st03_game011). The steps were found before op 0xae was ported (cause 122), and st03_game011 uses it, so their waits need a rerun.
+
+### 122. Op 0xae was not ported, so sped-up motions played at normal speed
+
+Native's case 0xae in `func_02023fdc` calls `func_02059bd8` on the script's actor (`func_02028148`), which stores a speed shift in bits 6 and 7 of the motion controller's flags (`func_02059c0c`, actor `+0x126`): 0 for a word of 0 or 1, 1 for 2, 2 for anything above. The table runner `func_02007cd4` shifts the ticks of every frame word, and of every frame with its own ticks (`0xfffb`), right by that amount when they are above 1, and never below 1. So `0xae 2` plays a motion at twice the speed and `0xae 4` at four times, until `0xae 1` ends it; starting another table does not clear it. The game set uses the op 270 times (hurrying guards and prisoners, the ending's demos), and the port skipped it, so those motions ran slow and everything timed against them was late.
+
+Guard: `speed_shift` on the actor, set by op 0xae and applied in `run_table` to both kinds of frame. `tests/unit/test_motion_speed_shift.c` checks each speed, the floor of one tick, that the speed outlives a table, and the `0xfffb` frame. Route lesson: the curry carrier in st03_game010 now walks at the native speed, so the hop from the bell to his spoon waits on `reach:spoon` at pace `instant` instead of a dwell that only fitted the slow walk.

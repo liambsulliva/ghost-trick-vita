@@ -198,6 +198,23 @@ static void send_table_message(struct script_machine *machine, const struct scri
     }
 }
 
+static int ticks_after_the_speed_shift(const struct script_actor *actor, int ticks)
+{
+    if (actor->speed_shift == 0 || ticks <= 1) {
+        return ticks;
+    }
+    ticks = ticks >> actor->speed_shift;
+    return ticks == 0 ? 1 : ticks;
+}
+
+static int speed_shift_of(unsigned int speed)
+{
+    if (speed > 2) {
+        return 2;
+    }
+    return speed <= 1 ? 0 : 1;
+}
+
 static void run_table(struct script_machine *machine, struct script_object *object, int keeps_point_zero)
 {
     struct script_actor *actor;
@@ -215,7 +232,7 @@ static void run_table(struct script_machine *machine, struct script_object *obje
             int hold_ticks;
 
             actor->frame_number = (int)(word & ((1u << FRAME_NUMBER_BITS) - 1u));
-            hold_ticks = (int)(word >> FRAME_NUMBER_BITS);
+            hold_ticks = ticks_after_the_speed_shift(actor, (int)(word >> FRAME_NUMBER_BITS));
             if (hold_ticks != 0) {
                 actor->frame_word_index = actor->frame_word_index + 1;
                 actor->frame_hold_ticks = hold_ticks;
@@ -238,6 +255,7 @@ static void run_table(struct script_machine *machine, struct script_object *obje
                 actor->frame_number = point;
             }
             if (read_signed_word(actor->table_source, actor->table_word + 2, &point) && point != 0) {
+                point = ticks_after_the_speed_shift(actor, point);
                 actor->frame_word_index = actor->frame_word_index + 1;
                 actor->frame_hold_ticks = point + 1;
                 actor->ticks_left = point;
@@ -919,6 +937,12 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
         object = script_machine_current_object(machine, vm);
         if (object != NULL) {
             object->actor.stepping_is_stopped = 0;
+        }
+        break;
+    case 0xae:
+        object = script_machine_current_object(machine, vm);
+        if (object != NULL && object->actor.exists) {
+            object->actor.speed_shift = speed_shift_of(words[0]);
         }
         break;
     case 0xa0:

@@ -5991,9 +5991,9 @@
         "script": "st03-st03_game010_Expand",
         "action": "ghost_on",
         "object": "bell",
-        "pace": "normal",
+        "pace": "instant",
         "footage_s": 9697.0,
-        "wait": "free & no_talk"
+        "wait": "free & no_talk & reach:spoon"
       },
       {
         "script": "st03-st03_game010_Expand",

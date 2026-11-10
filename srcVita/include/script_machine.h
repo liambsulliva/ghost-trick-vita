@@ -137,6 +137,7 @@ struct script_actor {
     int color_level;
     int is_flipped;
     int stepping_is_stopped;
+    int speed_shift;
     int is_frozen_and_hidden;
     int is_hard_hidden;
     int disabled_cores;
