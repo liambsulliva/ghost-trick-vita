@@ -69,6 +69,12 @@ class PacedDwellsTest(unittest.TestCase):
         route["steps"][1]["wait"] = "act:madam:madam_act01 & free"
         self.assertEqual(route_pacing.paced_dwells(route, {1: 1100}, {0: 1000}, set(), {}), {})
 
+    def test_never_stretches_a_step_that_waits_on_a_script_flag(self):
+        for wait in ("flag:24 & playable & no_talk", "free & noflag:6"):
+            route = route_with([10.0, 15.0])
+            route["steps"][1]["wait"] = wait
+            self.assertEqual(route_pacing.paced_dwells(route, {1: 1100}, {0: 1000}, set(), {}), {})
+
     def test_never_stretches_the_step_after_a_ride(self):
         route = route_with([10.0, 30.0])
         route["steps"][0]["action"] = "phone_call"

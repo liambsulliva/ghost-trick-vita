@@ -5199,8 +5199,8 @@
         "action": "wait",
         "object": "-",
         "pace": "normal",
-        "footage_s": 8088.0,
-        "wait": "no_talk"
+        "footage_s": 8123.5,
+        "wait": "flag:24 & playable & no_talk"
       },
       {
         "script": "st02-st02_game022_Expand",

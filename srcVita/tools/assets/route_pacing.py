@@ -16,7 +16,7 @@ READY_MARK = "route_step_ready"
 BEGAN_MARK = "route_step_began"
 MOST_PASSES = 6
 MOST_EXTRA_TICKS = 300
-GAME_SYNC_WAIT_PREFIXES = ("reach:", "act:")
+GAME_SYNC_WAIT_PREFIXES = ("reach:", "act:", "flag:", "noflag:")
 GAME_DRIVEN_GAP_ACTIONS = ("phone_call",)
 
 

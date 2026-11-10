@@ -704,6 +704,12 @@ A talk topic that plays a flashback sends `GameApp DeadTalk|Abort`, starts the f
 
 Guard: `DeadTalk|Abort` leaves the view for demo mode and `Restart` reopens it quietly; `tests/unit/test_quiet_view_pause.c` checks both. The fix is in the shared command, so the other 11 scripts inherit it.
 
+### 105. A step gated on a script flag still got an idle dwell, and a view that must open right after a talk opened seconds late
+
+Chapter 5's party room (st02_game022) runs on fixed timelines of op 0x2f waits that only count in living time. After the kettle trick the guard's talk (demo080) and Lynne's walk in (demo110: 323, 287 and 107 ticks, then `* linne on`) start together; native holds class 0 handlers while a talk is up, because opening a message sets game+8 bit 1 (`func_02014a8c` calls `func_02010384(game, 1)` and pushes `pGameMainTalk`) and the pause check reads that bit (`func_02027db8` through `func_0200f330`); the port holds them too (`pause_bit`). In the footage the player opens the ghost view 0.75 s after the talk and its Fate Changed banner end (8124.25), so demo110 has about 250 ticks left when the view closes at 8132 and the ball leaves the fan after 8145. The route's step before that view waited on `no_talk` alone, which already held before the talk opened, so the pacing pass measured the 36 s footage gap from the wrong moment and gave the view its longest dwell: the view opened 433 living ticks after the talk, Lynne was in and the ball fell 211 ticks after the next close, and by the hop at 8165 the ball had rolled 81 from the Toy Cake (61 in the footage).
+
+Guard: the step before a view that follows a talk waits on the flag the talk's timeline sets (`flag:24 & playable & no_talk`, footage time of the pills' return), and `route_pacing.py` treats `flag:` and `noflag:` waits as synced to the game like `reach:` and `act:`, so they get no idle stretch; `tests/tools/test_route_pacing.py` checks it. When a hop onto a moving or rolling object is out of reach, compare the living ticks between the scene's last talk or view and the step against the footage before touching the engine. Still unported: op 0xfd and the Fate Changed banner (`GameApp EyeCatch|DestinyUpdate`), and the longer world hold after a view closes.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
