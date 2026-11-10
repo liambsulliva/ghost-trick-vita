@@ -110,6 +110,13 @@ The port follows the DS game's own code wherever it can. The changes below are d
 - **The right stick pans the ghost view.** While the player holds the chain, the left stick moves the soul and the right stick pans the camera. The camera stays where it was panned until the soul is aimed again.
 - **Vita buttons instead of touch alone.** Every touch action also has a button, and the on-screen prompts show the Vita's buttons rather than the remaster's keyboard keys. [The app's README](srcVita/README.md#controls) lists them.
 
+## Roadmap
+
+Planned features, beyond finishing the chapters ([the app's roadmap](srcVita/README.md#roadmap) covers those):
+
+- **A DS-faithful look.** An option to simulate nearest-neighbor upscaling, so the picture looks as it did on the DS.
+- **Spanish and French.** Language support for both, alongside English.
+
 ## Working on the port
 
 - [Handoff and local setup](HANDOFF.md)
