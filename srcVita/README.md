@@ -331,24 +331,3 @@ As of 2026-11-07. Items under "Built, not proven" are written but not checked on
 The VM's timing comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.
 
 The converter was built and checked with the Android files only. The Steam copy has not been compared.
-
-## Roadmap
-
-1. Finish Chapter 1 to zero findings against the footage. Each pass uses full-chapter burst captures and reviews.
-2. Chapter 2, played by auto-play. The route has 93 steps and is listed in `extracted/audit_notes_2026-11-06/chapter2_route.md`. It starts at st01_game015, goes through `chapter.xml` to st14 (the parlor), then `phone.xml` with place 15, then st06 game000, demo000, game001, game002, game003 and game006, and back to `chapter.xml` for Chapter 3. The blockers are:
-   - Phone-book place selection (register 0x1a).
-   - The converter bakes one stage at a time, so `phone.xml` and st06 are dropped, and st06 text is baked per script.
-   - Op 0x69.
-   - Class-1 scripts are frozen in ghost view.
-   - Effect 48 events.
-   - SV_DEADCORE with DemoModeOn/Off, ReturnGame, OpenSubScreen and DeadTalk.
-   - Ops 0x127, 0x128 and 0x12d.
-   - About 20 missing effect rows, 67 and 52 among them.
-   - Core positions.
-   - DS music bgm 8, 21 and 43.
-3. Later chapters, on the same data-driven code.
-4. Make the APK completely optional. A future goal, not current work: a player who can supply only the DS cartridge gets the whole port from the DS game's own assets, and the remaster's files become an optional upgrade. Each part below serves that goal:
-   - Art: the DS sprites, rooms and effects, converted from the cartridge's own graphics and drawn at the DS's resolution, scaled up to the Vita's screen.
-   - Text: the DS text and font in place of the remaster's encrypted text, so no text key is needed.
-   - Sound: the DS soundtrack is already rendered from the cartridge; DS sound effects would replace the remaster's.
-   - The setup script would choose this path by itself when no APK is given, and the LiveArea would use the monogram.
