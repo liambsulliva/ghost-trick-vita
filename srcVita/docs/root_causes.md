@@ -812,9 +812,9 @@ The port asked for an actor in both, so a balloon opened from an object with no 
 
 Guard: `open_soul_balloon` in `script_ops_media.c` serves both ops with no owner, and `script_balloons_tap` opens the talk of a 0x4c balloon. The baker lists 0x4c labels as talks (`SOUL_BALLOON_TALK_OP`) and no longer bakes bubbles for 0x4c, 0x46 or 0x4e, whose first words are not bubble labels; the game set gained 163 talks. `tests/unit/test_soul_balloon.c` and `tests/tools/test_choice_talk_labels.py` cover it. Open: `func_0201052c` skips a 0x4c with mode 1 while bits 13 and 14 of `game+0xc` are set, which the port does not model; op 0x45 stores its label at `game+0xf18` for the same talk-on-tap path (`func_02010394`) but is still drawn as a bubble; op 0x4f (`func_0201062c`) is not ported.
 
-### 121. Lessons from routing Chapter 8 so far (not yet in `game.json`)
+### 121. Lessons from routing Chapter 8
 
-The steps found so far are in `docs/chapter8_route_in_progress.json`: 97 steps from `st03_game003_Expand` through `st03_game031_Expand`, the rewind, `st03_demo010_Expand`, `st03_game032_Expand` and into `st03_game011_Expand`, ending as Sissel waits in Jowd's wastebasket (footage 14689 s). They replace the old placeholder steps 739 to 756, whose path and times were guesses. They ran in a replay from a saved state at the chapter's start, not in a whole-game run with baked pacing, and the chapter is not finished, so they are not spliced into the route.
+Chapter 8 is 111 route steps in `game.json`: `st03_game003_Expand`, `st03_game031_Expand`, the rewind, `st03_demo010_Expand`, `st03_game032_Expand`, `st03_game011_Expand` and `st03_game033_Expand`, ending with the lever that blacks out the prison (footage 14792 s). They replace the old placeholder steps, whose path and times were guesses.
 
 - A core in reach for less than the dwell of a `normal` step needs pace `instant` and a `reach:<target>` wait. The grounding sphere swings with a period of 120 ticks and is in reach of the bucket or the pool for about 15.
 - A falling water drop is a core for a moment and bridges a hop longer than the reach (pool to bucket, wrench to helmet).
@@ -824,8 +824,14 @@ The steps found so far are in `docs/chapter8_route_in_progress.json`: 97 steps f
 - A step that must beat a scripted timer is paced `quick`. In st03_game032 the guard's call starts about 124 ticks of play after the scene opens, and the balloon tap must come first.
 - After a rewind `st03_root` picks the scene from flags 0x1028 to 0x102c, so the order is demo010, game032, game011, game033, game035.
 - `script_replay`'s core list skipped nothing, so cores of deleted actors from an earlier stage looked usable; it now lists only actors that exist.
+- A trick only counts in the act that handles it. Jowd's wastebasket sends `can_fly`, and the can handles it only in `kcan_00`, before Jowd sets the can down; the step waits on `act:joedo:joedo_02`. Tricked later, the can stays, flag 0xf stays clear, the prisoner reads a blank napkin (`muji_ring`) and the countdown runs out.
+- The route's act rule (`script_soul_act_began`) leaves a step that waits on one act of an object when that object begins an act a later step of the scene waits on. A character who loops through his acts (the repairman: 00, 01, then 02 or 03 at random) therefore cannot be waited on in one act and later in an earlier one. The step after the shock waits on the shock's flag (`flag:21`) instead of `act:repairman:repairman_act00`.
+- A press in the footage that changes nothing is left out when its outcome depends on a random loop. The player pulls the lever once before the repairman reaches for it (14006 s): sparks and no flag. The lever sends `shock` 32 ticks after the pull, and when the repairman's random act 03 comes up in that time the same pull lands the shock, which the footage's pull did not.
+- A scene that opens inside the ghost view (`st03_game033`, entered by the hop from the spoon to `s_core`) starts with `move` steps that wait on `view & core:<start>`; `free` never holds there.
 
-Open in these scenes: `op_not_ported` for 0x9a and 0x49 (st03_game003), 0xcd (st03_game031), 0xb3 (st03_demo010) and 0xc2, 0xc3, 0xfd (st03_game011). The steps were found before op 0xae was ported (cause 122), and st03_game011 uses it, so their waits need a rerun.
+Guard: the whole-game replay plays the chapter's steps with their waits and fails a step when one is dropped: 849 steps done and 0 failed without the stall breaker, up to the start of Chapter 9 (`st03_game034_Expand`).
+
+Open in these scenes: `op_not_ported` for 0x9a and 0x49 (st03_game003), 0xcd, 0xd3, 0x9f and 0x119 (st03_game031) and 0xc2, 0xc3, 0xfd (st03_game011), and the free units of classes `74c365b4` and `19062b66` that op 0x82 makes and nothing draws.
 
 ### 122. Op 0xae was not ported, so sped-up motions played at normal speed
 
