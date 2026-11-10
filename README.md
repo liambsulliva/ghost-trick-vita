@@ -107,7 +107,7 @@ The port follows the DS game's own code wherever it can. The changes below are d
 
 1. **Finish the remaining chapters**, on the same data-driven code. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
 2. **A DS-faithful look.** An option to simulate nearest-neighbor upscaling, so the picture looks as it did on the DS.
-3. **Spanish, French and German**, alongside English.
+3. **Every language the remaster has.** Spanish, French, German, Italian, Japanese, Korean, Simplified Chinese and Traditional Chinese, alongside English.
 4. **An animated 3D pause menu.** An all-new menu whose transitions are tied to character models.
 5. **Save anywhere.** Saving at any point in the game, not only between chapters, with the game remembering where you were.
 6. **A settings menu.** Resolution, a frame rate cap, starting from any chapter already unlocked, and the ghost world's background color for Sissel and, once unlocked, Missile.
