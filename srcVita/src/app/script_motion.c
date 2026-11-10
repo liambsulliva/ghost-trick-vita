@@ -729,6 +729,16 @@ static void compare_active_core(struct script_machine *machine, struct script_vm
     }
 }
 
+static void compare_core_of_ghost(struct script_machine *machine, struct script_vm *vm, const unsigned int *words, int ghost)
+{
+    const char *name;
+    int core_object;
+
+    name = script_machine_string(machine, vm, words[0]);
+    core_object = machine->soul.ghost_core_objects[ghost];
+    vm->condition = name != NULL && core_object >= 0 && core_object < machine->object_count && strcmp(machine->objects[core_object].name, name) == 0;
+}
+
 enum hold_change {
     HOLD_FREEZE,
     HOLD_UNFREEZE,
@@ -946,7 +956,14 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
         }
         break;
     case 0xa0:
+    case 0xa3:
         compare_active_core(machine, vm, words);
+        break;
+    case 0xa1:
+        compare_core_of_ghost(machine, vm, words, SCRIPT_GHOST_CICEL);
+        break;
+    case 0xa2:
+        compare_core_of_ghost(machine, vm, words, SCRIPT_GHOST_MISSILE);
         break;
     case 0x81:
         create_actor(machine, vm, words);
