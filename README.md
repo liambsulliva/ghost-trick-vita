@@ -12,7 +12,7 @@ On the Vita itself the app installs and runs from locally converted remaster art
 
 ## Legal disclaimer
 
-This is an unofficial fan project, not affiliated with or endorsed by Capcom, Nintendo or Sony. *Ghost Trick* belongs to Capcom, and all trademarks belong to their owners.
+This is an unofficial fan project, not affiliated with or endorsed by Capcom, Nintendo or Sony. _Ghost Trick_ belongs to Capcom, and all trademarks belong to their owners.
 
 This repository contains only original work. It contains **no ROM files and no extracted Nintendo or Capcom assets**: no game art, music, sound, text, fonts or script data. Two things in it are worth knowing about:
 
@@ -83,13 +83,13 @@ Launch the app. If it was already open, quit it with START first, because it rea
 
 If you see something else:
 
-| What you see | What is wrong | Look in the log for |
-|---|---|---|
-| Black or a crash before anything else appears | `ur0:data/libshacccg.suprx` is probably missing | |
-| A checker pattern and `no assets in ux0:data/ghosttrick/assets` | `manifest.txt` is missing, misplaced or out of date | `manifest missing`, `manifest invalid` |
-| The asset browser instead of the chapter | `scripts/` is missing, because the DS cartridge step did not run | `opening needs_scripts` |
-| Magenta blocks | `textures/` is missing or out of date | `texture missing` |
-| Rooms with nothing in them | `animations/` is missing or out of date | `animation missing`, `animation invalid` |
+| What you see                                                    | What is wrong                                                    | Look in the log for                      |
+| --------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------- |
+| Black or a crash before anything else appears                   | `ur0:data/libshacccg.suprx` is probably missing                  |                                          |
+| A checker pattern and `no assets in ux0:data/ghosttrick/assets` | `manifest.txt` is missing, misplaced or out of date              | `manifest missing`, `manifest invalid`   |
+| The asset browser instead of the chapter                        | `scripts/` is missing, because the DS cartridge step did not run | `opening needs_scripts`                  |
+| Magenta blocks                                                  | `textures/` is missing or out of date                            | `texture missing`                        |
+| Rooms with nothing in them                                      | `animations/` is missing or out of date                          | `animation missing`, `animation invalid` |
 
 The log is `ux0:data/ghosttrick/run.log`. It keeps earlier launches, so read below the last `--- launch` line.
 
@@ -111,7 +111,7 @@ The port follows the DS game's own code wherever it can. The changes below are d
 4. **An animated 3D pause menu.** An all-new menu whose transitions are tied to character models.
 5. **Save anywhere.** Saving at any point in the game, not only between chapters, with the game remembering where you were.
 6. **A settings menu.** Resolution, a frame rate cap, starting from any chapter already unlocked, and the ghost world's background color for Sissel and, once unlocked, Missile.
-7. **Fast-forward seen dialogue.** Holding B skips quickly through dialogue the player has already encountered.
+7. **Fast-forward through dialogue.** Holding B speeds through talk, extending today's narration skipping.
 8. **Upload to VitaDB.**
 9. **Make the APK optional.** A player with only the DS cartridge would get the whole port from the DS game's own art, text and sound, and the remaster's files would become an optional upgrade.
 
