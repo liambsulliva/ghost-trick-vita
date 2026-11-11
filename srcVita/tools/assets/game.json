@@ -9502,7 +9502,7 @@
       },
       {
         "script": "st14-st14_game020_Expand",
-        "action": "move",
+        "action": "swap",
         "object": "gim_pato2",
         "pace": "normal",
         "footage_s": 26722.0,
