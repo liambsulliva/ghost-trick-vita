@@ -216,6 +216,34 @@ static void print_cores(void)
 static const char *traced_core_name;
 static int traced_core_x = -100000;
 static int traced_core_y = -100000;
+#define WATCH_EVERY_TICKS 20
+
+static const char *watched_actor_names;
+
+static void note_watched_actors(void)
+{
+    int index;
+
+    if (watched_actor_names == NULL || machine.tick % WATCH_EVERY_TICKS != 0) {
+        return;
+    }
+    printf("watch %u", machine.tick);
+    for (index = 0; index < machine.object_count; index++) {
+        const struct script_actor *actor;
+        const char *found;
+        size_t length;
+
+        actor = &machine.objects[index].actor;
+        length = strlen(machine.objects[index].name);
+        found = strstr(watched_actor_names, machine.objects[index].name);
+        if (found == NULL || (found[length] != ',' && found[length] != '\0') || (found != watched_actor_names && found[-1] != ',') || machine.objects[index].is_deleted) {
+            continue;
+        }
+        printf(" %s %d,%d f%d r%d,%d", machine.objects[index].name, actor->x + actor->points[0][0], actor->y + actor->points[0][1], actor->is_flipped ? 1 : 0, actor->counters[0], actor->counters[4]);
+    }
+    printf("\n");
+}
+
 static void note_traced_core(void)
 {
     int index;
@@ -576,6 +604,8 @@ int main(int argument_count, char **arguments)
             timing = strcmp(arguments[index], "ds") == 0 ? SCRIPT_TIMING_DS : SCRIPT_TIMING_REMASTER;
         } else if (strcmp(arguments[index], "--trace-core") == 0) {
             traced_core_name = arguments[++index];
+        } else if (strcmp(arguments[index], "--watch") == 0) {
+            watched_actor_names = arguments[++index];
         } else if (strcmp(arguments[index], "--stop-tick") == 0) {
             stop_tick = (unsigned int)atoi(arguments[++index]);
         } else if (strcmp(arguments[index], "--press-at") == 0) {
@@ -677,6 +707,7 @@ int main(int argument_count, char **arguments)
         }
         script_machine_tick(&machine);
         note_traced_core();
+        note_watched_actors();
     }
     if (marks_to_stdout) {
         print_cores();
