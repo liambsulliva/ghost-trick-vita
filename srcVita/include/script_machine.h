@@ -658,6 +658,7 @@ float script_soul_reach(const struct script_machine *machine);
 const struct script_route_step *script_soul_route_step(const struct script_machine *machine);
 int script_soul_route_step_has_begun(const struct script_machine *machine);
 int script_soul_route_hop(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot);
+int script_soul_route_hop_aim(const struct script_machine *machine, int target_object, int target_slot, float *aim_x, float *aim_y);
 int script_soul_route_wait_reaches(const struct script_machine *machine, const char *wait);
 void script_soul_core_position(const struct script_machine *machine, int object_index, int slot, float *x, float *y);
 int script_soul_route_balloon_group(const struct script_machine *machine, const char *name);

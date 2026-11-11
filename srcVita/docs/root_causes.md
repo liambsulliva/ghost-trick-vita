@@ -893,6 +893,16 @@ Chapter 18's swaps name the new pair with ops 0xa4 and 0xa5, and ops 0x9c, 0xa4 
 
 Guard: `tests/unit/test_soul_placed_on_core.c` places each ghost and checks that placing another ghost leaves the one in play where it is.
 
+### 129. A Missile hop used another copy of the same shape as a stepping stone, and the hop plan ignored which core a push picks first
+
+When the chain finds a core (`func_02061718`) with Missile active and that core has the same shape as the one the chain leaves, not 0, native links the two (`EXCHANGE` `CONNECTED`, root cause 124) instead of hopping. The route's hop plan (`first_hop_toward`) still counted such a core as a stepping stone, so a `move` could aim at it, link, and never arrive. It also judged a hop by distance alone, while the chain takes the first core its tip picks on the way out: in the Chapter 16 submarine room (st14_game020) the lantern `gim_lan` sits about 3 pixels off the line from the valve to the lever, so a push toward the lever picks the lantern.
+
+A first fix made the tip pick only the core the route aimed at. That let auto-play skip a core a player's push cannot skip, and its aim started as object 0, so with no route (hand play on the Vita) the chain could lock onto nothing else; three unit suites failed from it.
+
+Now the plan compares shapes from the core each hop starts on, and accepts a hop only when a push of the stick lands on that core first. The check runs a copy of the real chain (`soul_chain_aim`, `soul_chain_step`) under the pad's own stick (`stick_aim_axis_speed` at full tilt) and asks the live pick (`core_picked_by_a_tip`, which `core_under_the_tip` also uses) at each tick. It tries the core itself, then aim points 8 and 12 pixels around it, as a thumb can tilt the stick, and the pad pushes toward the aim point that worked. A core that every such push picks first becomes part of the path instead.
+
+Guard: `tests/unit/test_route_pad.c`: a core on the line is the hop a push takes; a core a slanted push can miss is passed with an aim on the far side; a Missile hop never steps from a core to one of its shape, judged from the hop's own start. Route note: st14_game020 (steps 997 to 1012) is still a placeholder that does not follow the walkthrough (Missile swaps the baseball and the basketballs; Sissel crosses on the baseball to the valve and the phone), and the scene-skip replay fails there until Chapter 16 is routed.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

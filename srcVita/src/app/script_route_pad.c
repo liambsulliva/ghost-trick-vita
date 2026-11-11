@@ -141,8 +141,6 @@ static int choose_a_panel(struct script_route_pad *pad, const struct script_mach
 static void push_the_stick_toward_the_next_core(const struct script_machine *machine, const struct script_route_step *step, struct input_state *frame)
 {
     int target;
-    int hop_object;
-    int hop_slot;
     float core_x;
     float core_y;
     float along_x;
@@ -153,10 +151,9 @@ static void push_the_stick_toward_the_next_core(const struct script_machine *mac
         return;
     }
     target = script_machine_index_of_object(machine, step->object);
-    if (target == SCRIPT_NO_OBJECT || !script_soul_route_hop(machine, target, step->slot, &hop_object, &hop_slot)) {
+    if (target == SCRIPT_NO_OBJECT || !script_soul_route_hop_aim(machine, target, step->slot, &core_x, &core_y)) {
         return;
     }
-    script_soul_core_position(machine, hop_object, hop_slot, &core_x, &core_y);
     along_x = core_x - machine->soul.tip_x;
     along_y = core_y - machine->soul.tip_y;
     length = sqrtf(along_x * along_x + along_y * along_y);

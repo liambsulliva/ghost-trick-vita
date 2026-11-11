@@ -269,12 +269,85 @@ static void test_the_pad_does_not_push_toward_a_core_out_of_reach(void)
     CHECK(!machine.soul.tip_is_out);
 }
 
+static void start_a_move_with_missile_and_cores(int count)
+{
+    start_with_one_step(SCRIPT_ROUTE_MOVE, "gate", "view");
+    machine.object_count = count;
+    script_soul_make_ghost_active(&machine, SCRIPT_GHOST_MISSILE);
+}
+
+static int moved_to_the_gate_past(int stepping_stone)
+{
+    int tick;
+    int touched;
+
+    run_ticks(1);
+    machine.soul.is_on = 1;
+    touched = 0;
+    for (tick = 0; tick < TICKS_FOR_A_MOVE * 2 && machine.soul.active_object != 1; tick++) {
+        run_ticks(1);
+        touched = touched || machine.soul.active_object == stepping_stone;
+    }
+    return machine.soul.active_object == 1 && !touched;
+}
+
+static void test_a_core_on_the_line_is_the_hop_a_push_takes(void)
+{
+    int hop_object;
+    int hop_slot;
+
+    start_a_move_with_missile_and_cores(3);
+    machine.objects[1].actor.x = BODY_X + 90;
+    place_core(2, "lantern", BODY_X + 40);
+    machine.objects[2].actor.y = ROW_Y + 3;
+    CHECK(script_soul_route_hop(&machine, 1, 0, &hop_object, &hop_slot));
+    CHECK_INT(hop_object, 2);
+}
+
+static void test_the_pad_aims_past_a_core_a_slanted_push_can_miss(void)
+{
+    int hop_object;
+    int hop_slot;
+    float aim_x;
+    float aim_y;
+
+    start_a_move_with_missile_and_cores(3);
+    machine.objects[1].actor.x = BODY_X + 90;
+    place_core(2, "lantern", BODY_X + 50);
+    machine.objects[2].actor.y = ROW_Y + 13;
+    CHECK(script_soul_route_hop(&machine, 1, 0, &hop_object, &hop_slot));
+    CHECK_INT(hop_object, 1);
+    CHECK(script_soul_route_hop_aim(&machine, 1, 0, &aim_x, &aim_y));
+    CHECK(aim_y < (float)ROW_Y);
+    CHECK(moved_to_the_gate_past(2));
+}
+
+static void test_a_missile_hop_never_steps_from_a_core_to_one_of_its_shape(void)
+{
+    int hop_object;
+    int hop_slot;
+
+    start_a_move_with_missile_and_cores(4);
+    machine.objects[1].actor.x = BODY_X + 300;
+    place_core(2, "first_twin", BODY_X + 100);
+    place_core(3, "second_twin", BODY_X + 200);
+    machine.objects[2].actor.shape = 7;
+    machine.objects[3].actor.shape = 7;
+    CHECK(!script_soul_route_hop(&machine, 1, 0, &hop_object, &hop_slot));
+    machine.objects[3].actor.shape = 0;
+    CHECK(script_soul_route_hop(&machine, 1, 0, &hop_object, &hop_slot));
+    CHECK_INT(hop_object, 2);
+}
+
 int main(void)
 {
     test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up();
     test_the_pad_opens_the_ghost_view_once_the_next_core_comes_within_reach();
     test_the_pad_moves_the_soul_with_the_stick();
     test_the_pad_does_not_push_toward_a_core_out_of_reach();
+    test_a_core_on_the_line_is_the_hop_a_push_takes();
+    test_the_pad_aims_past_a_core_a_slanted_push_can_miss();
+    test_a_missile_hop_never_steps_from_a_core_to_one_of_its_shape();
     test_the_pad_picks_the_route_panel_only_once_the_step_has_begun();
     test_the_pad_presses_the_rewind_button_once_it_is_up();
     test_a_dead_talk_from_a_living_core_is_a_core_talk();

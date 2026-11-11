@@ -5,6 +5,8 @@
 #include "script_classes.h"
 #include "script_machine.h"
 #include "ds_units.h"
+#include "soul_chain.h"
+#include "stick_aim.h"
 
 #define SOUL_VISION_MESSAGE_AFTER_TICKS 90
 #define DEMO_MODE 2
@@ -499,16 +501,14 @@ static int short_tip_cannot_pick_up(float tip_length, float distance)
     return 0;
 }
 
-static int core_under_the_tip(const struct script_machine *machine, float root_x, float root_y, int *found_slot)
+static int core_picked_by_a_tip(const struct script_machine *machine, int from_object, int from_slot, float root_x, float root_y, float tip_x, float tip_y, int *found_slot)
 {
-    const struct script_soul *soul;
     float tip_length;
     float best;
     int best_object;
     int object_index;
 
-    soul = &machine->soul;
-    tip_length = sqrtf((soul->tip_x - root_x) * (soul->tip_x - root_x) + (soul->tip_y - root_y) * (soul->tip_y - root_y));
+    tip_length = sqrtf((tip_x - root_x) * (tip_x - root_x) + (tip_y - root_y) * (tip_y - root_y));
     best = 0.0f;
     best_object = NO_CORE;
     for (object_index = 0; object_index < machine->object_count; object_index++) {
@@ -519,14 +519,14 @@ static int core_under_the_tip(const struct script_machine *machine, float root_x
             float y;
             float distance;
 
-            if ((object_index == soul->active_object && slot == soul->active_slot) || !object_can_be_a_core(&machine->objects[object_index], slot)) {
+            if ((object_index == from_object && slot == from_slot) || !object_can_be_a_core(&machine->objects[object_index], slot)) {
                 continue;
             }
             core_position(machine, object_index, slot, &x, &y);
-            if (!core_is_within_tip_pickup(root_x, root_y, soul->tip_x, soul->tip_y, x, y)) {
+            if (!core_is_within_tip_pickup(root_x, root_y, tip_x, tip_y, x, y)) {
                 continue;
             }
-            distance = sqrtf((x - soul->tip_x) * (x - soul->tip_x) + (y - soul->tip_y) * (y - soul->tip_y));
+            distance = sqrtf((x - tip_x) * (x - tip_x) + (y - tip_y) * (y - tip_y));
             if (short_tip_cannot_pick_up(tip_length, distance)) {
                 continue;
             }
@@ -538,6 +538,11 @@ static int core_under_the_tip(const struct script_machine *machine, float root_x
         }
     }
     return best_object;
+}
+
+static int core_under_the_tip(const struct script_machine *machine, float root_x, float root_y, int *found_slot)
+{
+    return core_picked_by_a_tip(machine, machine->soul.active_object, machine->soul.active_slot, root_x, root_y, machine->soul.tip_x, machine->soul.tip_y, found_slot);
 }
 
 static void jump_to_picked_core(struct script_machine *machine)
@@ -2114,6 +2119,95 @@ static float core_distance(const struct script_machine *machine, int first_objec
     return sqrtf((second_x - first_x) * (second_x - first_x) + (second_y - first_y) * (second_y - first_y));
 }
 
+static int linking_that_core_would_swap(const struct script_machine *machine, int from_object, int object_index)
+{
+    int shape;
+
+    if (machine->soul.active_ghost != SCRIPT_GHOST_MISSILE) {
+        return 0;
+    }
+    shape = machine->objects[from_object].actor.shape;
+    return shape != 0 && machine->objects[object_index].actor.shape == shape;
+}
+
+#define PUSH_TICKS_MOST 90
+#define PUSH_TIP_ON_THE_AIM_DS_PIXELS 0.5f
+
+static int first_core_a_push_picks(const struct script_machine *machine, int from_node, float aim_x, float aim_y)
+{
+    struct soul_chain chain;
+    float root_x;
+    float root_y;
+    int tick;
+
+    core_position(machine, from_node / SCRIPT_CORE_SLOT_COUNT, from_node % SCRIPT_CORE_SLOT_COUNT, &root_x, &root_y);
+    memset(&chain, 0, sizeof(chain));
+    soul_chain_rest_at(&chain, root_x, root_y);
+    for (tick = 0; tick < PUSH_TICKS_MOST; tick++) {
+        float along_x;
+        float along_y;
+        float length;
+        int found_object;
+        int found_slot;
+
+        along_x = aim_x - chain.x[SOUL_CHAIN_TIP];
+        along_y = aim_y - chain.y[SOUL_CHAIN_TIP];
+        length = sqrtf(along_x * along_x + along_y * along_y);
+        if (length >= PUSH_TIP_ON_THE_AIM_DS_PIXELS) {
+            float held_x;
+            float held_y;
+
+            held_x = stick_aim_axis_speed(along_x / length * STICK_AXIS_FOR_FULL_SPEED);
+            held_y = stick_aim_axis_speed(along_y / length * STICK_AXIS_FOR_FULL_SPEED);
+            soul_chain_aim(&chain, chain.x[SOUL_CHAIN_TIP] + held_x * SOUL_TIP_DS_PIXELS_PER_TICK, chain.y[SOUL_CHAIN_TIP] + held_y * SOUL_TIP_DS_PIXELS_PER_TICK, script_soul_reach(machine));
+        } else if (chain.state == SOUL_CHAIN_RESTING || soul_chain_tip_is_at_head(&chain)) {
+            return NO_CORE;
+        }
+        soul_chain_step(&chain);
+        if (chain.state != SOUL_CHAIN_AIMING) {
+            continue;
+        }
+        found_slot = 0;
+        found_object = core_picked_by_a_tip(machine, from_node / SCRIPT_CORE_SLOT_COUNT, from_node % SCRIPT_CORE_SLOT_COUNT, root_x, root_y, chain.x[SOUL_CHAIN_TIP], chain.y[SOUL_CHAIN_TIP], &found_slot);
+        if (found_object != NO_CORE) {
+            return found_object * SCRIPT_CORE_SLOT_COUNT + found_slot;
+        }
+    }
+    return NO_CORE;
+}
+
+#define PUSH_AIM_RINGS 2
+#define PUSH_AIM_ANGLES 8
+
+static int a_push_lands_on(const struct script_machine *machine, int from_node, int to_node, float *aim_x, float *aim_y)
+{
+    static const float ring_radius[PUSH_AIM_RINGS] = { 8.0f, 12.0f };
+    float core_x;
+    float core_y;
+    int ring;
+    int angle;
+
+    core_position(machine, to_node / SCRIPT_CORE_SLOT_COUNT, to_node % SCRIPT_CORE_SLOT_COUNT, &core_x, &core_y);
+    *aim_x = core_x;
+    *aim_y = core_y;
+    if (first_core_a_push_picks(machine, from_node, core_x, core_y) == to_node) {
+        return 1;
+    }
+    for (ring = 0; ring < PUSH_AIM_RINGS; ring++) {
+        for (angle = 0; angle < PUSH_AIM_ANGLES; angle++) {
+            float turn;
+
+            turn = 6.2831853f * (float)angle / (float)PUSH_AIM_ANGLES;
+            *aim_x = core_x + ring_radius[ring] * cosf(turn);
+            *aim_y = core_y + ring_radius[ring] * sinf(turn);
+            if (first_core_a_push_picks(machine, from_node, *aim_x, *aim_y) == to_node) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 static int first_hop_toward(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot)
 {
     int came_from[SCRIPT_OBJECT_MAX * SCRIPT_CORE_SLOT_COUNT];
@@ -2124,6 +2218,8 @@ static int first_hop_toward(const struct script_machine *machine, int target_obj
     int head;
     int tail;
     int node;
+    float aim_x;
+    float aim_y;
 
     node_count = machine->object_count * SCRIPT_CORE_SLOT_COUNT;
     start = machine->soul.active_object * SCRIPT_CORE_SLOT_COUNT + machine->soul.active_slot;
@@ -2143,7 +2239,10 @@ static int first_hop_toward(const struct script_machine *machine, int target_obj
             if (came_from[node] != NO_CORE || !object_can_be_a_core(&machine->objects[node / SCRIPT_CORE_SLOT_COUNT], node % SCRIPT_CORE_SLOT_COUNT)) {
                 continue;
             }
-            if (core_distance(machine, from / SCRIPT_CORE_SLOT_COUNT, from % SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT, node % SCRIPT_CORE_SLOT_COUNT) <= script_soul_reach(machine) + SOUL_TIP_PICKUP_NEAR) {
+            if (node / SCRIPT_CORE_SLOT_COUNT != target_object && linking_that_core_would_swap(machine, from / SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT)) {
+                continue;
+            }
+            if (core_distance(machine, from / SCRIPT_CORE_SLOT_COUNT, from % SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT, node % SCRIPT_CORE_SLOT_COUNT) <= script_soul_reach(machine) + SOUL_TIP_PICKUP_NEAR && a_push_lands_on(machine, from, node, &aim_x, &aim_y)) {
                 came_from[node] = from;
                 queue[tail++] = node;
             }
@@ -2630,6 +2729,7 @@ void script_soul_reset(struct script_machine *machine)
     machine->soul.route_step = -1;
     machine->soul.route_acted_step = -1;
     machine->soul.active_object = NO_CORE;
+    machine->soul.route_aimed_node = NO_CORE;
     machine->soul.ghost_core_objects[SCRIPT_GHOST_CICEL] = NO_CORE;
     machine->soul.ghost_core_objects[SCRIPT_GHOST_MISSILE] = NO_CORE;
     machine->soul.ghost_core_objects[SCRIPT_GHOST_BOSS] = NO_CORE;
@@ -2720,6 +2820,17 @@ int script_soul_route_hop(const struct script_machine *machine, int target_objec
         return 0;
     }
     return first_hop_toward(machine, target_object, target_slot, hop_object, hop_slot);
+}
+
+int script_soul_route_hop_aim(const struct script_machine *machine, int target_object, int target_slot, float *aim_x, float *aim_y)
+{
+    int hop_object;
+    int hop_slot;
+
+    if (!script_soul_route_hop(machine, target_object, target_slot, &hop_object, &hop_slot)) {
+        return 0;
+    }
+    return a_push_lands_on(machine, machine->soul.active_object * SCRIPT_CORE_SLOT_COUNT + machine->soul.active_slot, hop_object * SCRIPT_CORE_SLOT_COUNT + hop_slot, aim_x, aim_y);
 }
 
 void script_soul_core_position(const struct script_machine *machine, int object_index, int slot, float *x, float *y)
