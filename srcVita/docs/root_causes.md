@@ -893,6 +893,12 @@ Chapter 18's swaps name the new pair with ops 0xa4 and 0xa5, and ops 0x9c, 0xa4 
 
 Guard: `tests/unit/test_soul_placed_on_core.c` places each ghost and checks that placing another ghost leaves the one in play where it is.
 
+### 129. A Missile hop used another copy of the same shape as a stepping stone, and the chain then grabbed whatever core the line crossed
+
+In the pigeon room (st14_game020) the two birds share a shape, so touching one while exchange is available links them (`script_exchange_link`) instead of hopping. The route's move from `gim_pato1` to `gim_pato2` is that link: it is a swap. After the swap, the hop search still treated the other bird as the next step toward the valve, the chain linked again, and the move never arrived. With the bird out of the search, the valve is reached by the balls. The lever is one hop from the valve (95 pixels, inside Missile's 112 plus the 16-pixel pickup), but `gim_lan` sits about 3 pixels off that line, inside `func_0205fa2c`'s off-line test (`0x3000`), so the chain locked onto the lantern and jumped there. The route aims at one chosen core (`route_aimed_node`); the tip now picks only that core, so the line can pass the lantern on the way to the lever.
+
+Guard: scene-skip of the whole route. The pigeon swap, the valve, the lever trick and the lantern hop (steps 1004 to 1010) complete. `tests/unit/test_route_pad.c` still passes. The office fan (st09_game000 step 992) is still out of reach: the phone at (107, 208) to the fan at (133, 111) is 100 pixels, and no core in the room bridges Sissel's 48.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

@@ -522,6 +522,9 @@ static int core_under_the_tip(const struct script_machine *machine, float root_x
             if ((object_index == soul->active_object && slot == soul->active_slot) || !object_can_be_a_core(&machine->objects[object_index], slot)) {
                 continue;
             }
+            if (soul->route_aimed_node != NO_CORE && object_index * SCRIPT_CORE_SLOT_COUNT + slot != soul->route_aimed_node) {
+                continue;
+            }
             core_position(machine, object_index, slot, &x, &y);
             if (!core_is_within_tip_pickup(root_x, root_y, soul->tip_x, soul->tip_y, x, y)) {
                 continue;
@@ -2114,6 +2117,17 @@ static float core_distance(const struct script_machine *machine, int first_objec
     return sqrtf((second_x - first_x) * (second_x - first_x) + (second_y - first_y) * (second_y - first_y));
 }
 
+static int linking_that_core_would_swap(const struct script_machine *machine, int object_index)
+{
+    int shape;
+
+    if (machine->soul.active_ghost != SCRIPT_GHOST_MISSILE || machine->soul.active_object == NO_CORE) {
+        return 0;
+    }
+    shape = machine->objects[machine->soul.active_object].actor.shape;
+    return shape != 0 && machine->objects[object_index].actor.shape == shape;
+}
+
 static int first_hop_toward(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot)
 {
     int came_from[SCRIPT_OBJECT_MAX * SCRIPT_CORE_SLOT_COUNT];
@@ -2141,6 +2155,9 @@ static int first_hop_toward(const struct script_machine *machine, int target_obj
         from = queue[head++];
         for (node = 0; node < node_count; node++) {
             if (came_from[node] != NO_CORE || !object_can_be_a_core(&machine->objects[node / SCRIPT_CORE_SLOT_COUNT], node % SCRIPT_CORE_SLOT_COUNT)) {
+                continue;
+            }
+            if (node / SCRIPT_CORE_SLOT_COUNT != target_object && linking_that_core_would_swap(machine, node / SCRIPT_CORE_SLOT_COUNT)) {
                 continue;
             }
             if (core_distance(machine, from / SCRIPT_CORE_SLOT_COUNT, from % SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT, node % SCRIPT_CORE_SLOT_COUNT) <= script_soul_reach(machine) + SOUL_TIP_PICKUP_NEAR) {
