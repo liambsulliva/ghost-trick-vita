@@ -36,15 +36,17 @@ static struct script_vm vm_owned_by(int object_index)
     return vm;
 }
 
-static void test_each_soul_placing_op_puts_the_soul_on_the_named_core(void)
+static void test_each_placing_op_sets_the_core_of_its_own_ghost(void)
 {
     static const unsigned int ops[] = { 0x9c, 0xa4, 0xa7 };
+    static const int ghosts[] = { SCRIPT_GHOST_CICEL, SCRIPT_GHOST_MISSILE, SCRIPT_GHOST_BOSS };
     static const unsigned int second_core[4] = { 1, 0, 0, 0 };
     struct script_vm vm;
     unsigned int index;
 
     for (index = 0; index < sizeof(ops) / sizeof(ops[0]); index++) {
         set_up_two_objects();
+        machine.soul.active_ghost = ghosts[index];
         vm = vm_owned_by(1);
         CHECK_INT(script_opcode_family(ops[index]), SCRIPT_OP_ACTOR);
         script_ops_actor_run(&machine, &vm, ops[index], second_core);
@@ -53,8 +55,24 @@ static void test_each_soul_placing_op_puts_the_soul_on_the_named_core(void)
     }
 }
 
+static void test_placing_another_ghost_leaves_the_ghost_in_play_where_it_is(void)
+{
+    static const unsigned int second_core[4] = { 1, 0, 0, 0 };
+    struct script_vm vm;
+
+    set_up_two_objects();
+    machine.soul.active_ghost = SCRIPT_GHOST_CICEL;
+    vm = vm_owned_by(1);
+    script_ops_actor_run(&machine, &vm, 0xa4, second_core);
+    CHECK_INT(machine.soul.active_object, 0);
+    CHECK_INT(machine.soul.active_slot, 0);
+    CHECK_INT(machine.soul.ghost_core_objects[SCRIPT_GHOST_MISSILE], 1);
+    CHECK_INT(machine.soul.ghost_core_slots[SCRIPT_GHOST_MISSILE], 1);
+}
+
 int main(void)
 {
-    test_each_soul_placing_op_puts_the_soul_on_the_named_core();
+    test_each_placing_op_sets_the_core_of_its_own_ghost();
+    test_placing_another_ghost_leaves_the_ghost_in_play_where_it_is();
     return test_finish("unit/soul_placed_on_core");
 }

@@ -613,6 +613,7 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
 enum script_step_result script_choice_run_op(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words);
 
 void script_motion_update_all(struct script_machine *machine);
+void script_motion_hard_hide(struct script_actor *actor);
 void script_fades_update(struct script_machine *machine);
 void script_ghost_copies_update(struct script_machine *machine);
 void script_ghost_copy_fade_out(struct script_ghost_copy *copy);
@@ -670,6 +671,7 @@ void script_soul_reset(struct script_machine *machine);
 void script_soul_script_began(struct script_machine *machine, const char *script);
 void script_soul_act_began(struct script_machine *machine, const char *object_name, const char *act_name);
 void script_soul_set_first_core(struct script_machine *machine, int object_index, int slot);
+void script_soul_set_ghost_core(struct script_machine *machine, int ghost, int object_index, int slot);
 void script_soul_set_countdown(struct script_machine *machine, int first_tick_count);
 void script_soul_set_countdown_interval(struct script_machine *machine, int interval);
 void script_soul_set_fate_level(struct script_machine *machine, int level);

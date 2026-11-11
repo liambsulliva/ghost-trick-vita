@@ -887,6 +887,12 @@ Reported from the device: the Ghost and Trick pills and the tap balloons stayed 
 
 Guard: `script_machine_picture_is_hidden` is the swirl, the film strip, running narration or a fully black brightness. The pill group is none under it, a swirl hides the pills at once, balloon taps are dropped, and the HUD view carries the flag so the pills and balloons are neither drawn nor touchable. Demo mode offers the Ghost pill only while `a_trick_is_playing_out` is set, which a trick sets and a talk or the return to normal play clears. `tests/unit/test_ui_off_hidden_picture.c`. `tests/unit/test_route_pad.c` opens the view in demo mode only with a trick playing out.
 
+### 128. A ghost's core op moved whichever ghost was in play, and a script's own actor was looked up by the name "?"
+
+Chapter 18's swaps name the new pair with ops 0xa4 and 0xa5, and ops 0x9c, 0xa4 and 0xa7 place Sissel, Missile and the boss (`func_020101c0` from `func_02023fdc`). The port ran all three as `script_soul_set_first_core`, so placing Missile while Sissel was in play pulled Sissel onto Missile's core. They now record that ghost's core, and move the soul only when that ghost is the one in play. The same scripts address their own actor as "?"; hold changes and the core enable looked for an object of that name and found none, so they now use the object running the script. The swap's `EXCHANGE` `ROOT` and `TARGET` also hard-hide both actors for the scripted exchange.
+
+Guard: `tests/unit/test_soul_placed_on_core.c` places each ghost and checks that placing another ghost leaves the one in play where it is.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

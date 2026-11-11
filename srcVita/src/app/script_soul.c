@@ -2665,6 +2665,19 @@ void script_soul_set_first_core(struct script_machine *machine, int object_index
     machine->active_core_name = machine->objects[object_index].name;
 }
 
+void script_soul_set_ghost_core(struct script_machine *machine, int ghost, int object_index, int slot)
+{
+    if (ghost < 0 || ghost >= SCRIPT_GHOST_COUNT) {
+        return;
+    }
+    if (ghost == machine->soul.active_ghost) {
+        script_soul_set_first_core(machine, object_index, slot);
+        return;
+    }
+    machine->soul.ghost_core_objects[ghost] = object_index;
+    machine->soul.ghost_core_slots[ghost] = slot;
+}
+
 static int the_view_is_open_to_the_player(const struct script_machine *machine)
 {
     const struct script_soul *soul;

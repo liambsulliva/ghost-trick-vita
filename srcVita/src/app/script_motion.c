@@ -782,6 +782,13 @@ static void change_hold(struct script_actor *actor, enum hold_change change)
     }
 }
 
+void script_motion_hard_hide(struct script_actor *actor)
+{
+    change_hold(actor, HOLD_HARD_HIDE);
+}
+
+#define NAME_OF_THE_SCRIPTS_OWN_ACTOR '?'
+
 static void change_hold_on_targets(struct script_machine *machine, struct script_vm *vm, unsigned int name_word, enum hold_change change)
 {
     const char *target;
@@ -789,6 +796,15 @@ static void change_hold_on_targets(struct script_machine *machine, struct script
 
     target = script_machine_string(machine, vm, name_word);
     if (target == NULL) {
+        return;
+    }
+    if (target[0] == NAME_OF_THE_SCRIPTS_OWN_ACTOR) {
+        struct script_object *own;
+
+        own = script_machine_current_object(machine, vm);
+        if (own != NULL && own->actor.exists) {
+            change_hold(&own->actor, change);
+        }
         return;
     }
     for (index = 0; index < machine->object_count; index++) {
@@ -860,7 +876,7 @@ static void set_core_enabled(struct script_machine *machine, struct script_vm *v
     if (name == NULL) {
         return;
     }
-    object = script_machine_find_object(machine, name);
+    object = name[0] == NAME_OF_THE_SCRIPTS_OWN_ACTOR ? script_machine_current_object(machine, vm) : script_machine_find_object(machine, name);
     if (object == NULL) {
         return;
     }
@@ -1007,7 +1023,12 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
     case 0xa7:
         object = script_machine_current_object(machine, vm);
         if (object != NULL) {
-            script_soul_set_first_core(machine, (int)(object - machine->objects), (int)words[0]);
+            if (op == 0xa7) {
+                script_soul_set_ghost_core(machine, SCRIPT_GHOST_BOSS, (int)(object - machine->objects), (int)words[0]);
+                script_soul_set_first_core(machine, (int)(object - machine->objects), (int)words[0]);
+            } else {
+                script_soul_set_ghost_core(machine, op == 0xa4 ? SCRIPT_GHOST_MISSILE : SCRIPT_GHOST_CICEL, (int)(object - machine->objects), (int)words[0]);
+            }
             if (op == 0xa4) {
                 script_exchange_note_core(machine, 0, (int)(object - machine->objects), (int)words[0]);
             }

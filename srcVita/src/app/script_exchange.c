@@ -163,6 +163,8 @@ void script_exchange_step(struct script_machine *machine)
             machine->outputs->marked("exchange", machine->objects[exchange->target_object].name);
         }
         tell_both_ends(machine, "ROOT", "TARGET");
+        script_motion_hard_hide(&machine->objects[exchange->root_object].actor);
+        script_motion_hard_hide(&machine->objects[exchange->target_object].actor);
         break;
     case SCRIPT_EXCHANGE_ASKED:
         if (exchange->scripts_answered) {
