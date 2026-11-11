@@ -28,6 +28,7 @@ struct script_choice {
     int panel_count;
     int panel_limit;
     int control_is_up;
+    int delete_is_due;
     int is_open;
     int cancel_is_offered;
     int chosen;
@@ -48,5 +49,6 @@ void script_choice_pick(struct script_machine *machine, int index);
 void script_choice_move_cursor(struct script_machine *machine, int steps);
 void script_choice_note_cancel(struct script_machine *machine);
 void script_choice_take_cancel(struct script_machine *machine);
+void script_choice_delete_picked_control(struct script_machine *machine);
 
 #endif

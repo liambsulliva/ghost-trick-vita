@@ -1250,9 +1250,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0xdf:
     case 0xe0:
-        if (machine->outputs->swirl_changed != NULL) {
-            machine->outputs->swirl_changed(op == 0xe0);
-        }
+        script_machine_set_swirl(machine, op == 0xe0);
         return SCRIPT_STEP_NEXT;
     case 0xf3:
     case 0xf5:
@@ -1764,9 +1762,26 @@ static void tear_down_script(struct script_machine *machine)
     machine->soul_state_keeps_pause = 0;
     machine->soul_vision_message_at = NEVER;
     machine->film_frame_is_on = 0;
+    machine->swirl_is_on = 0;
     if (machine->outputs->stage_cleared != NULL) {
         machine->outputs->stage_cleared();
     }
+}
+
+void script_machine_set_swirl(struct script_machine *machine, int is_on)
+{
+    if (is_on && !machine->swirl_is_on) {
+        script_pills_hide_at_once(machine);
+    }
+    machine->swirl_is_on = is_on;
+    if (machine->outputs->swirl_changed != NULL) {
+        machine->outputs->swirl_changed(is_on);
+    }
+}
+
+int script_machine_picture_is_hidden(const struct script_machine *machine)
+{
+    return machine->swirl_is_on || machine->film_frame_is_on || machine->narration.is_running || machine->reported_brightness <= -NATIVE_BRIGHTNESS_SCALE;
 }
 
 static void load_pending_script(struct script_machine *machine)
@@ -2246,6 +2261,7 @@ void script_machine_tick(struct script_machine *machine)
     for (index = 0; index < machine->object_count; index++) {
         update_object(machine, &machine->objects[index]);
     }
+    script_choice_delete_picked_control(machine);
     script_ghost_copies_update(machine);
     script_motion_update_all(machine);
     script_fades_update(machine);

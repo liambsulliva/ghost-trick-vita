@@ -332,6 +332,7 @@ void script_talk_open(struct script_machine *machine, const char *label)
         talk->message = NULL;
         return;
     }
+    machine->soul.a_trick_is_playing_out = 0;
     machine->pause_bit = 1;
     machine->talk_is_open = 1;
     talk->phase = SCRIPT_TALK_OPENING;

@@ -265,6 +265,7 @@ static struct script_hud_view hud;
 static float stream_phase;
 
 static void advance_tap_balloons(void);
+static int the_picture_is_covered(void);
 
 void script_ui_view_clear(void)
 {
@@ -895,7 +896,7 @@ static void draw_tap_balloons(void)
 {
     int index;
 
-    if (hud.soul_view_is_on) {
+    if (hud.soul_view_is_on || hud.picture_is_hidden || the_picture_is_covered()) {
         return;
     }
     for (index = 0; index < TAP_BALLOON_MAX; index++) {
@@ -922,7 +923,7 @@ int script_ui_view_pill_at(float x, float y)
 {
     int index;
 
-    if (hud.is_hidden_for_movie || the_picture_is_covered()) {
+    if (hud.is_hidden_for_movie || hud.picture_is_hidden || the_picture_is_covered()) {
         return -1;
     }
     for (index = 0; index < SCRIPT_PILL_COUNT; index++) {
@@ -940,7 +941,7 @@ int script_ui_view_tap_balloon_kind_at(float x, float y)
 {
     int index;
 
-    if (hud.soul_view_is_on) {
+    if (hud.soul_view_is_on || hud.picture_is_hidden || the_picture_is_covered()) {
         return 0;
     }
     for (index = 0; index < TAP_BALLOON_MAX; index++) {
@@ -1161,7 +1162,7 @@ void script_ui_view_draw(void)
     if (!hud.is_hidden_for_movie) {
         draw_tap_balloons();
         draw_rewind_select();
-        if (!the_picture_is_covered()) {
+        if (!hud.picture_is_hidden && !the_picture_is_covered()) {
             draw_pills();
         }
         draw_narration_arrow();

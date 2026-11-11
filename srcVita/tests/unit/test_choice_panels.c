@@ -250,6 +250,19 @@ static void test_cancel_needs_the_cancel_panel(void)
     CHECK(!flag_is_set(2));
 }
 
+static void test_a_picked_control_outlives_the_pick_by_one_object_pass(void)
+{
+    start_scene(SCRIPT_AUTO_OFF, NO_TURNED_PANEL, 0, NULL);
+    run_ticks(TICKS_TO_RUN);
+    script_choice_pick(&machine, 0);
+    CHECK(was_marked("choice_picked panel1_1"));
+    CHECK_INT(machine.choice.control_is_up, 1);
+    CHECK_INT(machine.choice.delete_is_due, 1);
+    script_machine_tick(&machine);
+    CHECK_INT(machine.choice.control_is_up, 0);
+    CHECK_INT(machine.choice.is_open, 0);
+}
+
 static void test_a_scene_change_clears_the_panels(void)
 {
     start_scene(SCRIPT_AUTO_OFF, NO_TURNED_PANEL, 0, NULL);
@@ -269,6 +282,7 @@ int main(void)
     test_a_turned_panel_shows_at_its_index();
     test_a_turned_panel_shows_over_the_panel_at_its_index();
     test_cancel_needs_the_cancel_panel();
+    test_a_picked_control_outlives_the_pick_by_one_object_pass();
     test_a_scene_change_clears_the_panels();
     return test_finish("unit/choice_panels");
 }

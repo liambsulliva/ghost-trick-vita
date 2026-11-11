@@ -10,6 +10,7 @@
 #define PILL_SLIDE_STEPS 8
 #define PILL_PRESS_TICKS 12
 #define PILL_WAIT_BEFORE_SLIDE_IN 3
+#define DEMO_MODE 2
 #define NORMAL_PLAY_MODE 3
 #define FIRST_PILL_EFFECT 99
 #define PILL_EFFECT_COUNT 4
@@ -112,6 +113,9 @@ static enum pill_group current_group(const struct script_machine *machine)
     const struct script_soul *soul;
 
     soul = &machine->soul;
+    if (script_machine_picture_is_hidden(machine)) {
+        return GROUP_NONE;
+    }
     if (machine->film_frame_is_on || machine->eyecatch_ticks_left > 0 || soul->is_leaving_view || (soul->is_on && soul->view_change_ticks_left > 0)) {
         return GROUP_NONE;
     }
@@ -246,6 +250,12 @@ void script_pills_step(struct script_machine *machine)
     int view_press_holds_the_others;
 
     soul = &machine->soul;
+    if (machine->mode_byte == DEMO_MODE) {
+        soul->demo_mode_was_on = 1;
+    } else if (soul->demo_mode_was_on) {
+        soul->demo_mode_was_on = 0;
+        soul->a_trick_is_playing_out = 0;
+    }
     group = current_group(machine);
     is_leaving = some_pill_is_leaving(soul);
     view_press_holds_the_others = pill_press_changes_the_view(&soul->pills[SCRIPT_PILL_GHOST]) || pill_press_changes_the_view(&soul->pills[SCRIPT_PILL_BACK]);

@@ -134,8 +134,9 @@ enum script_step_result script_choice_run_op(struct script_machine *machine, str
     choice = &machine->choice;
     switch (op) {
     case 0x3a:
-        if (!choice->control_is_up) {
+        if (!choice->control_is_up || choice->delete_is_due) {
             choice->control_is_up = 1;
+            choice->delete_is_due = 0;
             choice->cancel_is_offered = 0;
         }
         break;
@@ -184,6 +185,7 @@ void script_choice_clear_all(struct script_machine *machine)
     clear_panels(choice);
     clear_turned_panels(choice);
     choice->control_is_up = 0;
+    choice->delete_is_due = 0;
     choice->is_open = 0;
     choice->cancel_is_offered = 0;
     choice->chosen = SCRIPT_CHOICE_NONE;
@@ -289,6 +291,14 @@ void script_choice_take_cancel(struct script_machine *machine)
     }
 }
 
+void script_choice_delete_picked_control(struct script_machine *machine)
+{
+    if (machine->choice.delete_is_due) {
+        machine->choice.delete_is_due = 0;
+        machine->choice.control_is_up = 0;
+    }
+}
+
 void script_choice_pick(struct script_machine *machine, int index)
 {
     struct script_choice *choice;
@@ -298,7 +308,7 @@ void script_choice_pick(struct script_machine *machine, int index)
     choice = &machine->choice;
     if (choice->is_open && index == SCRIPT_CHOICE_CANCEL && choice->cancel_is_offered) {
         choice->is_open = 0;
-        choice->control_is_up = 0;
+        choice->delete_is_due = 1;
         choice->picks = choice->picks + 1;
         mark(machine, "choice_picked", SCRIPT_CHOICE_CANCEL_NAME);
         script_machine_send(machine, "*", "select", SCRIPT_CHOICE_CANCEL_NAME);
@@ -312,7 +322,7 @@ void script_choice_pick(struct script_machine *machine, int index)
     choice->chosen = index;
     choice->picks = choice->picks + 1;
     choice->is_open = 0;
-    choice->control_is_up = 0;
+    choice->delete_is_due = 1;
     script_flags_write_known(&machine->flags, panel.flag, 1);
     mark(machine, "choice_picked", name_of_panel(&panel));
     if (panel.action == SCRIPT_CHOICE_OPENS_TALK) {

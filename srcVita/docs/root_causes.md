@@ -875,6 +875,18 @@ Guard: `tests/unit/test_fx_playhead.c` (plain loop, hold and end still play by a
 
 Class notes: the sweep found seven movies with jump rows, not only the st13 ones (`st02_yakan_00`, `st05_batibati_00`, `st14_gyorai_01`, `mazlflash2` among them); a movie whose script stops before its last frame now holds there, as Flash does, where the port used to run on to the end.
 
+### 126. A picked choice control was deleted in the same tick, so the handler waiting on it ran before the pick's event
+
+In Chapter 9's talk with Jowd (st03_game012, `j_core`), cancelling the topic menu reopened it for ever. Native's choice control (`func_0205a9e8`) sends its event (`select|cancel` or the panel's own) in state 11 or 12, moves to state 13 and is deleted only on the next update pass (`func_02015be4`). The port cleared `control_is_up` inside `script_choice_pick`, so op 0x39 on the handler that opened the menu resumed in the same tick, jumped back to the act that opens the menu and reset the object's handlers before the event's handler could run.
+
+Guard: the pick sets `delete_is_due` and `script_choice_delete_picked_control` clears the control after the tick's object pass. `tests/unit/test_choice_panels.c` (`test_a_picked_control_outlives_the_pick_by_one_object_pass`).
+
+### 127. Pills and tap balloons drew over pictures that hide the world, and demo mode offered the Ghost pill with nobody playing
+
+Reported from the device: the Ghost and Trick pills and the tap balloons stayed up over the swirling backdrop, over narration, over a black screen, and the balloons over the four-minutes-before-death film strip. They also slid in between dialogue boxes during a dramatic pause, and in demo mode whenever the world was merely running. Native keeps the swirl as bit 15 of `game+8` (`func_0200f084`, ops 0xdf and 0xe0), and every world draw asks `func_0203435c` first. The HUD board (`func_0204f850`, `func_02010ef4`) is asked for a group by the mode update: normal play (`func_02036f5c`) only while its mode is not the talk modes, and demo mode (`func_02034260`) only while the Ghost button is enabled and the world is not halted. A player's trick is what puts the world in demo mode (`func_02011110` from op 0x68); a talk (`func_02010ef4` with 0xff) takes the buttons away. The port showed the Ghost pill for the whole of demo mode, so every scripted beat between presses put the pills back up.
+
+Guard: `script_machine_picture_is_hidden` is the swirl, the film strip, running narration or a fully black brightness. The pill group is none under it, a swirl hides the pills at once, balloon taps are dropped, and the HUD view carries the flag so the pills and balloons are neither drawn nor touchable. Demo mode offers the Ghost pill only while `a_trick_is_playing_out` is set, which a trick sets and a talk or the return to normal play clears. `tests/unit/test_ui_off_hidden_picture.c`. `tests/unit/test_route_pad.c` opens the view in demo mode only with a trick playing out.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

@@ -104,6 +104,7 @@ static void test_the_pad_offers_the_ghost_view_in_demo_mode(void)
 {
     start_with_one_step(SCRIPT_ROUTE_GHOST_ON, "body", "no_talk");
     machine.mode_byte = DEMO_MODE;
+    machine.soul.a_trick_is_playing_out = 1;
     script_soul_run_command(&machine, "Button", "Trick:On");
     run_ticks(TICKS_FOR_A_PILL_TO_SLIDE_IN * 2);
     CHECK(machine.soul.is_on);

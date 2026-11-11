@@ -339,9 +339,7 @@ static void start_time_leap(struct script_machine *machine)
 
     soul = &machine->soul;
     if (machine->auto_press == SCRIPT_AUTO_FAST) {
-        if (machine->outputs->swirl_changed != NULL) {
-            machine->outputs->swirl_changed(1);
-        }
+        script_machine_set_swirl(machine, 1);
         script_machine_send(machine, "*", "timeleap", "start");
         return;
     }
@@ -359,9 +357,7 @@ static void step_the_time_leap(struct script_machine *machine)
         machine->outputs->soul_vision_changed(1, 1);
     }
     if (soul->leap_swirl_at == (long long)machine->tick) {
-        if (machine->outputs->swirl_changed != NULL) {
-            machine->outputs->swirl_changed(1);
-        }
+        script_machine_set_swirl(machine, 1);
         if (soul->is_on) {
             set_soul_view_with_effect(machine, 0, 0);
             machine->pause_bit = 1;
@@ -729,6 +725,7 @@ static void fire_trick(struct script_machine *machine)
     }
     object = &machine->objects[soul->active_object];
     soul->tricks_fired = soul->tricks_fired + 1;
+    soul->a_trick_is_playing_out = 1;
     if (soul->countdown_is_running && soul->countdown_step >= COUNTDOWN_ENDING_STEP && soul->countdown_ticks < TRICK_ACTION_AFTER_TICKS) {
         soul->countdown_ticks = TRICK_ACTION_AFTER_TICKS;
     }
@@ -842,6 +839,7 @@ static void report_hud(struct script_machine *machine)
     view.is_hidden_for_movie = machine->movie_ticks_left > 0 || machine->soul.phone_split_name[0] != '\0';
     view.narration_arrow_is_on = script_narration_wants_a_press(&machine->narration);
     view.soul_view_is_on = machine->soul.is_on;
+    view.picture_is_hidden = script_machine_picture_is_hidden(machine);
     view.active_ghost = machine->soul.active_ghost;
     view.rewind_select_ticks = machine->soul.rewind_select_ticks;
     view.rewind_press_ticks = machine->soul.rewind_press_ticks;
@@ -1430,9 +1428,7 @@ static int timeleap_is_up(const struct script_machine *machine)
 static void run_timeleap_command(struct script_machine *machine, const char *arg)
 {
     if (strcmp(arg, "BREAK") == 0) {
-        if (machine->outputs->swirl_changed != NULL) {
-            machine->outputs->swirl_changed(0);
-        }
+        script_machine_set_swirl(machine, 0);
     } else if (strcmp(arg, "SELECT") == 0 || ((strcmp(arg, "RESTART") == 0 || strcmp(arg, "RESTART FINAL") == 0) && !timeleap_is_up(machine))) {
         if (machine->auto_press == SCRIPT_AUTO_FAST) {
             start_the_time_jump(machine);
@@ -1532,7 +1528,7 @@ int script_soul_world_is_playable(const struct script_machine *machine)
 
 int script_soul_demo_mode_offers_the_ghost_view(const struct script_machine *machine)
 {
-    return !machine->pause_bit && machine->mode_byte == DEMO_MODE && machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on && !machine->choice.is_open && !machine->narration.is_running && machine->movie_ticks_left == 0;
+    return machine->soul.a_trick_is_playing_out && !machine->pause_bit && machine->mode_byte == DEMO_MODE && machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on && !machine->choice.is_open && !machine->narration.is_running && machine->movie_ticks_left == 0;
 }
 
 static int ghost_view_may_open(const struct script_machine *machine)
@@ -2493,7 +2489,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         take_character_button(machine);
     }
     if (soul->tap_group_is_pending != 0) {
-        if (!machine->pause_bit) {
+        if (!machine->pause_bit && !script_machine_picture_is_hidden(machine)) {
             script_balloons_tap(machine, soul->tap_group_is_pending);
             soul->taps_taken = soul->taps_taken + 1;
         }

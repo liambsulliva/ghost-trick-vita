@@ -314,6 +314,8 @@ struct script_soul {
     int pill_slide_in_wait;
     unsigned int pill_pulse_ticks;
     int ghost_pill_is_held_out;
+    int a_trick_is_playing_out;
+    int demo_mode_was_on;
     int trick_pill_is_held_out;
     int touch_is_down;
     float touch_x;
@@ -447,6 +449,7 @@ struct script_machine {
     int pause_bit;
     int mode_byte;
     int film_frame_is_on;
+    int swirl_is_on;
     int talk_is_open;
     struct script_choice choice;
     int has_runner;
@@ -572,6 +575,8 @@ void script_machine_init(struct script_machine *machine, const struct script_out
 int script_machine_add_source(struct script_machine *machine, const char *name, unsigned char *data, unsigned int size, const struct script_cue_list *cues);
 int script_machine_start(struct script_machine *machine, const char *name);
 void script_machine_tick(struct script_machine *machine);
+void script_machine_set_swirl(struct script_machine *machine, int is_on);
+int script_machine_picture_is_hidden(const struct script_machine *machine);
 void script_machine_name_of_path(const char *path, char *name, unsigned int name_size);
 
 void script_machine_pan_camera_back_to(struct script_machine *machine, int x, int y);
