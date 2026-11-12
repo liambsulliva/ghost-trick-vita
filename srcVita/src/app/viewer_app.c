@@ -555,6 +555,9 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
     }
     if (pause_menu_is_open()) {
         pause_menu_update(input, elapsed_us);
+        if (pause_menu_takes_title_request() && opening_can_play()) {
+            play_opening();
+        }
         return;
     }
     if ((input->pressed & INPUT_START) && script_player_is_active() && !debug_controls_are_on && pause_menu_is_ready()) {

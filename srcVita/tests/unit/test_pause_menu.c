@@ -287,6 +287,35 @@ static void test_people_opens_the_notebook_screen_where_l_switches_tabs_and_circ
     CHECK_INT(pause_menu_phase(), PAUSE_PHASE_PANNING_BACK);
 }
 
+static void test_title_asks_first_and_yes_hands_over_once_the_screen_is_black(void)
+{
+    int steps;
+
+    start_with_art();
+    open_until_shown();
+    press(INPUT_RIGHT);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_TITLE);
+    press(INPUT_CROSS);
+    wait_steps(SETTLE_STEPS);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SUBMENU);
+    press(INPUT_CROSS);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_PANNING_BACK);
+    CHECK_INT(pause_menu_takes_title_request(), 0);
+    wait_steps(SETTLE_STEPS);
+    press(INPUT_CROSS);
+    wait_steps(SETTLE_STEPS);
+    press(INPUT_LEFT);
+    press(INPUT_CROSS);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_HIDING);
+    CHECK_INT(pause_menu_takes_title_request(), 0);
+    for (steps = 0; steps < 200 && pause_menu_phase() != PAUSE_PHASE_BLACK_BEFORE_GAME; steps++) {
+        press(0);
+    }
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_BLACK_BEFORE_GAME);
+    CHECK_INT(pause_menu_takes_title_request(), 1);
+    CHECK_INT(pause_menu_takes_title_request(), 0);
+}
+
 static void test_every_menu_sprite_lands_on_whole_pixels_through_a_pan(void)
 {
     int step;
@@ -337,6 +366,7 @@ int main(void)
     test_sliding_off_a_label_before_lifting_picks_nothing();
     test_picking_pans_toward_the_item_side_and_back_fades_the_labels_in();
     test_people_opens_the_notebook_screen_where_l_switches_tabs_and_circle_returns();
+    test_title_asks_first_and_yes_hands_over_once_the_screen_is_black();
     test_every_menu_sprite_lands_on_whole_pixels_through_a_pan();
     test_the_menu_stays_shut_without_its_art();
     return test_finish("unit/pause_menu");

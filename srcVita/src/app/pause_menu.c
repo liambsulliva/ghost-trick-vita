@@ -90,6 +90,9 @@ static int widget_total;
 static int stick_was_out;
 static int touch_was_down;
 static int touched_item;
+static int touched_option;
+static struct pause_dialog title_dialog;
+static int title_is_wanted;
 
 static float clamp01(float value)
 {
@@ -405,6 +408,9 @@ void pause_menu_open(void)
     stick_was_out = 1;
     touch_was_down = 1;
     touched_item = -1;
+    touched_option = PAUSE_DIALOG_NOTHING;
+    title_dialog.is_open = 0;
+    title_is_wanted = 0;
     shown_ticks = 0;
     pause_cat_track_restart();
     shown_step.first = -1;
@@ -473,6 +479,40 @@ static void leave_submenu(void)
     }
 }
 
+static void open_title_dialog(void)
+{
+    title_dialog.line_count = 1;
+    title_dialog.lines[0] = "row.title_ask";
+    title_dialog.note = "bar.title_warning";
+    title_dialog.option_count = 2;
+    title_dialog.options[0] = "row.yes";
+    title_dialog.options[1] = "row.no";
+    pause_dialog_open(&title_dialog, 1);
+}
+
+static void step_title(unsigned int pressed)
+{
+    int chosen;
+
+    chosen = pause_dialog_steer(&title_dialog, pressed);
+    if (chosen == 0) {
+        title_is_wanted = 1;
+        run_log_write("pause return_to_title");
+        begin_hiding();
+    } else if (chosen != PAUSE_DIALOG_NOTHING) {
+        enter(PAUSE_PHASE_PANNING_BACK);
+    }
+}
+
+int pause_menu_takes_title_request(void)
+{
+    if (!title_is_wanted || phase != PAUSE_PHASE_BLACK_BEFORE_GAME) {
+        return 0;
+    }
+    title_is_wanted = 0;
+    return 1;
+}
+
 static int people_is_picked(void)
 {
     return picked == PAUSE_ITEM_PEOPLE && pause_people_is_loaded();
@@ -500,6 +540,8 @@ static void step_showing(unsigned int pressed)
             run_log_write("pause pick %s", item_names[picked]);
         } else if (picked == PAUSE_ITEM_PEOPLE && pause_people_is_loaded()) {
             pause_people_enter();
+            run_log_write("pause pick %s", item_names[picked]);
+        } else if (picked == PAUSE_ITEM_TITLE) {
             run_log_write("pause pick %s", item_names[picked]);
         } else {
             run_log_write("pause pick %s submenu=not_ported", item_names[picked]);
@@ -529,6 +571,9 @@ static void advance_phase(unsigned int pressed)
     case PAUSE_PHASE_PANNING_OUT:
         if (phase_ticks >= PAN_TICKS) {
             enter(PAUSE_PHASE_SUBMENU);
+            if (picked == PAUSE_ITEM_TITLE) {
+                open_title_dialog();
+            }
         }
         break;
     case PAUSE_PHASE_SUBMENU:
@@ -543,6 +588,8 @@ static void advance_phase(unsigned int pressed)
             if (pause_people_step(pressed) == PAUSE_PEOPLE_LEAVES) {
                 enter(PAUSE_PHASE_PANNING_BACK);
             }
+        } else if (picked == PAUSE_ITEM_TITLE) {
+            step_title(pressed);
         } else if (pressed & INPUT_CIRCLE) {
             enter(PAUSE_PHASE_PANNING_BACK);
         }
@@ -670,6 +717,18 @@ static unsigned int touch_presses(const struct input_state *input)
         }
     } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_OPTIONS) {
         pressed = pause_options_touch(lands, lifts, input->touch_is_down, input->touch_x, input->touch_y);
+    } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_TITLE && title_dialog.is_open) {
+        if (lands) {
+            touched_option = pause_dialog_option_at(&title_dialog, input->touch_x, input->touch_y);
+            if (touched_option >= 0) {
+                title_dialog.selected = touched_option;
+            }
+        } else if (lifts && touched_option >= 0 && pause_dialog_option_at(&title_dialog, input->touch_x, input->touch_y) == touched_option) {
+            pressed = INPUT_CROSS;
+        }
+        if (lifts) {
+            touched_option = PAUSE_DIALOG_NOTHING;
+        }
     } else if (phase == PAUSE_PHASE_SUBMENU && people_is_picked()) {
         pressed = pause_people_touch(lands, input->touch_x, input->touch_y);
     } else if (phase == PAUSE_PHASE_SUBMENU && lands && pause_is_on_back_pill(input->touch_x, input->touch_y)) {
@@ -908,6 +967,8 @@ static void draw_menu(void)
             pause_options_draw_bar(side_x);
         } else if (people_is_picked()) {
             pause_people_draw_bar(side_x);
+        } else if (picked == PAUSE_ITEM_TITLE) {
+            pause_draw_bar(side_x, "bar.title", NULL, NULL);
         } else {
             pause_draw_bar(side_x, NULL, NULL, NULL);
         }
@@ -919,6 +980,8 @@ static void draw_menu(void)
     }
     if (camera_x != 0.0f && picked == PAUSE_ITEM_OPTIONS) {
         pause_options_draw_dialog(side_x);
+    } else if (camera_x != 0.0f && picked == PAUSE_ITEM_TITLE) {
+        pause_dialog_draw(&title_dialog, whole(side_x));
     }
 }
 

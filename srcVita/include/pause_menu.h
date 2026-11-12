@@ -69,6 +69,7 @@ int pause_cat_page_count(void);
 
 void pause_menu_open(void);
 int pause_menu_is_open(void);
+int pause_menu_takes_title_request(void);
 int pause_menu_shows_game(void);
 void pause_menu_update(const struct input_state *input, unsigned long long elapsed_us);
 void pause_menu_step(unsigned int pressed);
