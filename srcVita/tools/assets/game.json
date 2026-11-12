@@ -8575,7 +8575,7 @@
         "object": "zen_arm2",
         "pace": "instant",
         "footage_s": 15344.75,
-        "wait": "act:zen_kansyu2:kansyu2_01 & reach:tenmado_core_r2 & playable"
+        "wait": "act:zen_kansyu2:kansyu2_03 & reach:tenmado_core_r2 & playable"
       },
       {
         "script": "st03-st03_game012_Expand",
@@ -8640,6 +8640,14 @@
         "pace": "quick",
         "footage_s": 15366.0,
         "wait": "view & core:tencore"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "character",
+        "object": "-",
+        "pace": "instant",
+        "footage_s": 15372.75,
+        "wait": "began:zen_kansyu3:kansyu3_01 & core:tencore & playable"
       },
       {
         "script": "st03-st03_game014_Expand",

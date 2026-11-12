@@ -910,8 +910,9 @@ Chapter 9 opens in `st03_game034_Expand`, the power room, and continues in `st03
 - A scene can leave on arrival at a core, not on a trick. `stage_move`'s `SV_CHGCORE` handler in st03_game034 checks the core with op 0xa0 and jumps to `st03_root` when the soul reaches the spoon, so that block is a ghost-on and five moves.
 - A cut scene can wait for the ghost view to close on one core. `stage_master`'s first act in st03_game012 handles `SV_END` only with the soul on the picture frame; the player presses Back there (footage 15045.5) and the hunters' cut scene plays. Without that `ghost_off` the trick that follows never becomes ready. The trick then waits on the act the cut scene leaves (`act:stage_master:st03_01`).
 - Jowd's talk is a dead talk on `j_core`: its `DEADTALK` handler offers two topic panels until `select cancel`, so the block asks both topics (`choose m03_7560`, `choose m03_7570`) and then `choose cancel`, as the footage does.
+- The sniper's loop is phased by the lower hatch. While it is open, `zen_kansyu3` falls through it, climbs back and crosses the ceiling about every 1240 ticks, and `stage_master`'s `st03_01` idle catches Jowd when the sniper drops with Jowd's x in [662,711] (op 0x65 checks, then `joedo_check` and `gameover_req`). Opening the hatch at any other time left a fall on Jowd's second call, so the ghost-on before it waits for Hunter #2's descent (`act:zen_kansyu2:kansyu2_03`), as the footage does, and the call fires at once as the sniper enters the ceiling (`began:zen_kansyu3:kansyu3_01`, pace instant).
 
-Guard: the whole-game replay without the stall breaker: 870 steps done, 0 failed.
+Guard: the whole-game replay without the stall breaker: 897 steps done, 0 failed, Jowd reaching `joedo_04` in the ceiling.
 
 ### 131. A route step could wait on an act only for its whole length, so it could not react to a guard turning
 
