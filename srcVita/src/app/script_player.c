@@ -763,7 +763,7 @@ void script_player_play(const char *entry_name)
     animation_library_clear();
     forget_loaded_bundles();
     scene_stage_hide_card();
-    scene_stage_set_fade(0.0f);
+    scene_stage_set_fade(1.0f);
     scene_effects_reset(scene_stage_effects());
     music_request_stop(MUSIC_QUICK_FADE_TICKS);
     sound_request_stop();
@@ -782,6 +782,7 @@ void script_player_play(const char *entry_name)
     script_tables_clear(&data->tables);
     read_ahead_clear();
     script_machine_init(&data->machine, script_bridge_outputs(), SCRIPT_TIMING_DS, NULL);
+    script_machine_start_from_black(&data->machine);
     phase = PHASE_READING;
 }
 

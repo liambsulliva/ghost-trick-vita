@@ -917,6 +917,12 @@ Each controls row drew a key name at a fixed x and its action at x 400, with no 
 
 Guard: `tests/tools/test_pause_glyphs.py` checks that every glyph the pause screens name is baked, inside the sheet and on its own cell. `tests/unit/test_pause_widgets.c` checks glyph widths and that text wider than its room shrinks to fit.
 
+### 133. Every fade to black was swallowed, and a fresh start drew the room before the opening's black
+
+The opening flashed the junkyard for a few frames before its black narration screen. Two causes sat on the same output. First, root cause 116's white wipe changed `script_fades_update` to report the larger of the wipe level and the script's brightness. With no wipe running the wipe level is 0, so every negative brightness (a fade to black, op 0xc and its kin) was reported as 0, in every chapter, from that commit on. A whole-game replay reported no dark brightness at all; it now reports 79 in the first 20,000 ticks. The wipe now counts only while one is running. Second, the player started each script at full brightness and with no screen fade. On the DS a script is always entered from black (the title, a load or the previous script's fade-out hands over a black screen) and each script fades itself in, so `st01_game000` placing its actors at tick 10 and covering them at tick 13 shows nothing natively. A top-level start (`script_player_play`: the opening, Continue, a chapter replay, Title) now begins at brightness -16 with the screen faded (`script_machine_start_from_black`), and the replay starts the same way. Scripts chained inside a run keep the brightness they inherit. The honest whole-game replay is unchanged by both fixes (432 steps done, the same 4 failures).
+
+Guard: `tests/unit/test_screen_brightness.c` checks that a fade to black reaches the brightness output when no white wipe runs, that a running wipe still wins, and that a fresh start reports black on its first tick.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

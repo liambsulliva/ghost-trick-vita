@@ -604,6 +604,7 @@ int main(int argument_count, char **arguments)
         return 1;
     }
     script_machine_init(&machine, &recording_outputs, timing, NULL);
+    script_machine_start_from_black(&machine);
     machine.auto_press = SCRIPT_AUTO_OFF;
     machine.route_is_driving = auto_press != SCRIPT_AUTO_OFF;
     machine.stall_breaker_is_off = stall_breaker_is_off;

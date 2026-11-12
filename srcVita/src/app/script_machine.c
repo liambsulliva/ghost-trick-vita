@@ -59,6 +59,11 @@ void script_machine_name_of_path(const char *path, char *name, unsigned int name
     }
 }
 
+void script_machine_start_from_black(struct script_machine *machine)
+{
+    machine->brightness = -NATIVE_BRIGHTNESS_SCALE;
+}
+
 void script_machine_init(struct script_machine *machine, const struct script_outputs *outputs, enum script_timing timing, const char *stop_act)
 {
     memset(machine, 0, sizeof(*machine));
