@@ -913,6 +913,12 @@ Chapter 9 opens in `st03_game034_Expand`, the power room, and continues in `st03
 
 Guard: the whole-game replay without the stall breaker: 870 steps done, 0 failed.
 
+### 131. A route step could wait on an act only for its whole length, so it could not react to a guard turning
+
+Chapter 9's escape (st03_game012) times each of Jowd's calls on a guard: the player presses the moment a hunter turns away. The hunters loop through acts (Hunter #1: `kansyu1_01` and `kansyu1_02`, 120 ticks each; Hunter #2 walks, climbs and comes back in five acts), and an `act:` wait holds from an act's start to its end. A call waiting on `act:zen_kansyu1:kansyu1_02` fired late in the act, the hunter turned back, and the scene ended in the game over (`kansyu1_03`). The pacing also could not help: a step's dwell began only once its wait held, and the wait had to hold through the whole dwell.
+
+Guard: the wait word `began:<object>:<act>` holds while that act is current and began at most 30 ticks ago (`act_began_tick`, set where native starts an act, op 0x23 in `start_act`). A step whose wait has a `began:` word counts its dwell from the step's own start, so the press comes at the first turn after the footage's pause. `tests/unit/test_route_pad.c` (`test_a_began_wait_holds_only_just_after_the_act_starts`, with a dwell longer than the window).
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

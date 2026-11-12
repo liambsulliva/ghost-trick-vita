@@ -645,6 +645,7 @@ static void start_act(struct script_machine *machine, struct script_vm *vm, cons
     script_machine_send(machine, object->name, "SYSTEM", "ACT_JUMP");
     act_name = script_machine_string(machine, vm, words[3]);
     object->current_act = act_name;
+    object->act_began_tick = machine->tick;
     if (act_name != NULL && machine->outputs->marked != NULL) {
         machine->outputs->marked("act_begun", act_name);
     }

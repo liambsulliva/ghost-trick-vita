@@ -196,6 +196,7 @@ struct script_actor {
 struct script_object {
     const char *name;
     const char *current_act;
+    unsigned int act_began_tick;
     struct script_vm main_vm;
     struct script_vm scanner;
     struct script_handler handlers[SCRIPT_HANDLER_MAX];

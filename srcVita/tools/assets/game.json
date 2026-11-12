@@ -8434,6 +8434,214 @@
         "wait": "choice"
       },
       {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_on",
+        "object": "bed3",
+        "pace": "normal",
+        "footage_s": 15301.0,
+        "wait": "playable & no_talk"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "move",
+        "object": "doku_3_wine",
+        "pace": "quick",
+        "footage_s": 15302.5,
+        "wait": "view & usable:doku_3_wine"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "move",
+        "object": "doku_3_frame",
+        "pace": "quick",
+        "footage_s": 15303.5,
+        "wait": "view & usable:doku_3_frame"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_off",
+        "object": "doku_3_frame",
+        "pace": "quick",
+        "footage_s": 15304.0,
+        "wait": "view & core:doku_3_frame"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "trick",
+        "object": "doku_3_frame",
+        "pace": "quick",
+        "footage_s": 15305.0,
+        "wait": "core:doku_3_frame & playable"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_on",
+        "object": "doku_3_frame",
+        "pace": "quick",
+        "footage_s": 15306.5,
+        "wait": "act:doku_3_frame:frame_00 & free"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "move",
+        "object": "toilet3",
+        "pace": "quick",
+        "footage_s": 15308.0,
+        "wait": "view & usable:toilet3"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "move",
+        "object": "lan2",
+        "pace": "quick",
+        "footage_s": 15309.0,
+        "wait": "view & usable:lan2"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "move",
+        "object": "bed4",
+        "pace": "quick",
+        "footage_s": 15310.0,
+        "wait": "view & usable:bed4"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_off",
+        "object": "bed4",
+        "pace": "quick",
+        "footage_s": 15310.5,
+        "wait": "view & core:bed4"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "character",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 15317.5,
+        "wait": "began:zen_kansyu1:kansyu1_02 & core:bed4 & playable"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_on",
+        "object": "bed4",
+        "pace": "quick",
+        "footage_s": 15321.5,
+        "wait": "act:joedo:joedo_00 & playable"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "move",
+        "object": "spoon",
+        "pace": "quick",
+        "footage_s": 15322.5,
+        "wait": "view & usable:spoon"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_off",
+        "object": "spoon",
+        "pace": "quick",
+        "footage_s": 15323.0,
+        "wait": "view & core:spoon"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_on",
+        "object": "spoon",
+        "pace": "instant",
+        "footage_s": 15325.5,
+        "wait": "reach:zen_arm2 & playable"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "move",
+        "object": "zen_arm2",
+        "pace": "instant",
+        "footage_s": 15326.5,
+        "wait": "view & usable:zen_arm2"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_off",
+        "object": "zen_arm2",
+        "pace": "instant",
+        "footage_s": 15327.0,
+        "wait": "view & core:zen_arm2"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_on",
+        "object": "zen_arm2",
+        "pace": "instant",
+        "footage_s": 15344.75,
+        "wait": "act:zen_kansyu2:kansyu2_01 & reach:tenmado_core_r2 & playable"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "move",
+        "object": "zen_arm3",
+        "pace": "quick",
+        "footage_s": 15346.0,
+        "wait": "view & usable:zen_arm3"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "move",
+        "object": "tencore",
+        "pace": "quick",
+        "footage_s": 15347.0,
+        "wait": "view & usable:tencore"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "move",
+        "object": "tenmado_core_r2",
+        "pace": "quick",
+        "footage_s": 15348.0,
+        "wait": "view & usable:tenmado_core_r2"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_off",
+        "object": "tenmado_core_r2",
+        "pace": "quick",
+        "footage_s": 15348.5,
+        "wait": "view & core:tenmado_core_r2"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "trick",
+        "object": "tenmado_core_r2",
+        "pace": "quick",
+        "footage_s": 15349.5,
+        "wait": "core:tenmado_core_r2 & playable"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_on",
+        "object": "tenmado_core_r2",
+        "pace": "normal",
+        "footage_s": 15362.75,
+        "wait": "act:tenmado_core_r2:tenmado_core_r2_00 & free & no_talk"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "move",
+        "object": "tencore",
+        "pace": "quick",
+        "footage_s": 15365.5,
+        "wait": "view & usable:tencore"
+      },
+      {
+        "script": "st03-st03_game012_Expand",
+        "action": "ghost_off",
+        "object": "tencore",
+        "pace": "quick",
+        "footage_s": 15366.0,
+        "wait": "view & core:tencore"
+      },
+      {
         "script": "st03-st03_game014_Expand",
         "action": "ghost_on",
         "object": "bed1",

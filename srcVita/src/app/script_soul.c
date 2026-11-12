@@ -29,6 +29,7 @@
 #define SOUL_TIP_SHORTEST_PICKUP 1.0f
 #define SOUL_TIP_LENGTH_FOR_SHORTEST_PICKUP 4.0f
 #define SOUL_TIP_LENGTH_FOR_ANY_PICKUP 32.0f
+#define ROUTE_ACT_JUST_BEGAN_TICKS 30u
 #define NO_CORE (-1)
 #define SOUL_BEAM_TICKS 6
 #define SOUL_LIGHTNING_TICKS 72
@@ -2086,6 +2087,9 @@ static int route_token_holds(const struct script_machine *machine, const struct 
         return machine->tick - soul->route_last_action_tick >= (unsigned int)atoi(first);
     case SCRIPT_ROUTE_WAIT_RETRIED:
         return machine->retries_of_the_scene >= atoi(first);
+    case SCRIPT_ROUTE_WAIT_BEGAN:
+        object_index = script_machine_index_of_object(machine, first);
+        return object_index != SCRIPT_NO_OBJECT && second != NULL && machine->objects[object_index].current_act != NULL && strcmp(machine->objects[object_index].current_act, second) == 0 && machine->tick - machine->objects[object_index].act_began_tick <= ROUTE_ACT_JUST_BEGAN_TICKS;
     case SCRIPT_ROUTE_WAIT_REACH:
         object_index = script_machine_index_of_object(machine, first);
         return object_index != SCRIPT_NO_OBJECT && soul_can_reach_core(machine, object_index, second != NULL ? atoi(second) : 0);
@@ -2408,6 +2412,21 @@ static int the_game_waits_for_this_answer(const struct script_machine *machine, 
     return 1;
 }
 
+static int wait_reacts_to_an_act_beginning(const char *wait)
+{
+    struct script_route_wait_token token;
+    const char *rest;
+
+    rest = wait;
+    while (rest != NULL) {
+        rest = script_route_read_wait_token(rest, &token);
+        if (token.word == SCRIPT_ROUTE_WAIT_BEGAN) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void run_route(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -2431,6 +2450,12 @@ static void run_route(struct script_machine *machine)
         }
         if (soul->route_ready_at == 0) {
             soul->route_ready_at = machine->tick + (unsigned int)step->dwell_ticks;
+            if (wait_reacts_to_an_act_beginning(step->wait)) {
+                soul->route_ready_at = soul->route_step_began_at + (unsigned int)step->dwell_ticks;
+                if (soul->route_ready_at < machine->tick) {
+                    soul->route_ready_at = machine->tick;
+                }
+            }
             mark_route_step(machine, "route_step_ready", step);
         }
         if (machine->tick < soul->route_ready_at) {
