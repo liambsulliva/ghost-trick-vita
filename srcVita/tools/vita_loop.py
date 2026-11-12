@@ -12,6 +12,9 @@ import sys
 import time
 import zlib
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets"))
+import output_folders
+
 VITA_HOST = os.environ.get("VITA_HOST", "10.0.0.151")
 FTP_PORT = 1337
 TEXTURE_FOLDER = "textures/"
@@ -224,7 +227,7 @@ def save_upload_record(record):
 
 def list_local_files(folder):
     files = [(os.path.join(folder, "manifest.txt"), "manifest.txt")]
-    for folder_name in ("textures", "animations", "scenes", "music", "music_ds", "sounds", "scripts"):
+    for folder_name in output_folders.NAMES:
         if not os.path.isdir(os.path.join(folder, folder_name)):
             continue
         for name in sorted(os.listdir(os.path.join(folder, folder_name))):

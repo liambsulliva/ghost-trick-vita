@@ -899,6 +899,12 @@ In the pigeon room (st14_game020) the two birds share a shape, so touching one w
 
 Guard: scene-skip of the whole route. The pigeon swap, the valve, the lever trick and the lantern hop (steps 1004 to 1010) complete. `tests/unit/test_route_pad.c` still passes. The office fan (st09_game000 step 992) is still out of reach: the phone at (107, 208) to the fan at (133, 111) is 100 pixels, and no core in the room bridges Sissel's 48.
 
+### 130. The pause menu's tables never reached the Vita, because the upload kept its own copy of the converter's folder list
+
+The converter writes into a fixed set of output folders and sweeps stale files from them. `vita_loop.py upload-assets` walked a second, hand-written copy of that list. When the pause menu added `pause/`, only the converter's copy changed. Its textures went up, but `pause/cat.txt`, `pause/cat_track.txt` and `pause/labels.txt` were never uploaded, so the device would have found no menu art and START would do nothing. The list now lives once, in `tools/assets/output_folders.py`, and the converter and the upload both read it.
+
+Guard: `tests/tools/test_vita_loop.py` puts a file in every folder of `output_folders.NAMES` and checks that each is listed for upload.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
