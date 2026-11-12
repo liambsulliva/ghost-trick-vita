@@ -16,6 +16,8 @@
 static struct game_settings current;
 static int default_music = GAME_MUSIC_ARRANGED;
 static char music_folders[2][FILE_PATH_MAX];
+static int has_remastered_art = 1;
+static int has_ds_art;
 
 static int clamp_level(int value, int least)
 {
@@ -33,6 +35,7 @@ static void keep_in_range(struct game_settings *settings)
     settings->unlock_all = settings->unlock_all != 0;
     settings->fps_cap = settings->fps_cap == GAME_FPS_CAPPED ? GAME_FPS_CAPPED : GAME_FPS_FULL;
     settings->high_contrast = settings->high_contrast != 0;
+    settings->visual_filter = settings->visual_filter == GAME_FILTER_DS ? GAME_FILTER_DS : GAME_FILTER_REMASTERED;
 }
 
 void game_settings_set_default_music(int music_type)
@@ -57,6 +60,7 @@ void game_settings_defaults(struct game_settings *settings)
     settings->unlock_all = 0;
     settings->fps_cap = GAME_FPS_FULL;
     settings->high_contrast = 0;
+    settings->visual_filter = GAME_FILTER_REMASTERED;
 }
 
 int game_settings_read_text(struct game_settings *settings, const char *text, unsigned int text_size)
@@ -93,6 +97,8 @@ int game_settings_read_text(struct game_settings *settings, const char *text, un
             settings->fps_cap = value;
         } else if (strcmp(name, "high_contrast") == 0) {
             settings->high_contrast = value;
+        } else if (strcmp(name, "visual_filter") == 0) {
+            settings->visual_filter = value;
         } else {
             known = known - 1;
         }
@@ -105,7 +111,7 @@ unsigned int game_settings_write_text(const struct game_settings *settings, char
 {
     int written;
 
-    written = snprintf(text, text_size, "brightness %d\nmaster %d\nmusic %d\neffects %d\nmusic_type %d\nlanguage %d\nunlock_all %d\nfps_cap %d\nhigh_contrast %d\n", settings->brightness, settings->master, settings->music, settings->effects, settings->music_type, settings->language, settings->unlock_all, settings->fps_cap, settings->high_contrast);
+    written = snprintf(text, text_size, "brightness %d\nmaster %d\nmusic %d\neffects %d\nmusic_type %d\nlanguage %d\nunlock_all %d\nfps_cap %d\nhigh_contrast %d\nvisual_filter %d\n", settings->brightness, settings->master, settings->music, settings->effects, settings->music_type, settings->language, settings->unlock_all, settings->fps_cap, settings->high_contrast, settings->visual_filter);
     return written < 0 || (unsigned int)written >= text_size ? 0u : (unsigned int)written;
 }
 
@@ -164,4 +170,26 @@ void game_settings_apply(void)
 float game_settings_darkness(void)
 {
     return (float)(GAME_SETTING_STEPS - clamp_level(current.brightness, 1)) * DARKNESS_PER_STEP;
+}
+
+void game_settings_set_bundled_art(int has_remastered, int has_ds)
+{
+    has_remastered_art = has_remastered != 0;
+    has_ds_art = has_ds != 0;
+}
+
+int game_settings_filter_is_pinned(void)
+{
+    return !(has_remastered_art && has_ds_art);
+}
+
+int game_settings_visual_filter(void)
+{
+    if (!has_ds_art) {
+        return GAME_FILTER_REMASTERED;
+    }
+    if (!has_remastered_art) {
+        return GAME_FILTER_DS;
+    }
+    return current.visual_filter;
 }

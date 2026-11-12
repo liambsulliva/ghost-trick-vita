@@ -38,6 +38,8 @@ ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
 REPOSITORY_FOLDER = os.path.dirname(SRC_VITA_FOLDER)
 ENCODER_CHANNELS = 2
+REMASTERED_ART = "remastered"
+DS_ART = "ds"
 DEFAULT_APK_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "remaster_apk")
 DEFAULT_DS_ROM_PATH = os.path.join(REPOSITORY_FOLDER, "extracted", "ds_rom", "game.nds")
 TEXTURE_TOOL_PATH = os.path.join(SRC_VITA_FOLDER, "build", "tools", "texture_tool")
@@ -376,6 +378,15 @@ def text_output_files(set_description, animation_texts, steps):
     return files
 
 
+def art_sets_of(set_description):
+    sets = []
+    if set_description.get("plates"):
+        sets.append(REMASTERED_ART)
+    if set_description.get("ds_art"):
+        sets.append(DS_ART)
+    return sets
+
+
 def manifest_bytes(set_description, animation_texts):
     scene_name = set_description.get("scene_name")
     scene_names = [] if scene_name is None else [scene_name]
@@ -383,7 +394,7 @@ def manifest_bytes(set_description, animation_texts):
     for texture in set_description.get("screen_textures", []):
         if texture.get("list_as_background"):
             background_names.append(texture["name"])
-    return asset_writers.manifest_text(scene_names, background_names, list(animation_texts.keys())).encode("ascii")
+    return asset_writers.manifest_text(scene_names, background_names, list(animation_texts.keys()), art_sets_of(set_description)).encode("ascii")
 
 
 def make_output_folders(output_folder):

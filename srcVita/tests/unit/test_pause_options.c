@@ -13,13 +13,14 @@
 #define CONTROLS_ROW 0
 #define BRIGHTNESS_ROW 2
 #define HIGH_CONTRAST_ROW 3
+#define VISUAL_FILTER_ROW 4
 #define FPS_CAP_ROW 5
-#define MASTER_ROW 8
-#define MUSIC_ROW 9
-#define MUSIC_TYPE_ROW 11
-#define LANGUAGE_ROW 12
-#define RESTORE_ROW 15
-#define UNLOCK_ROW 16
+#define MASTER_ROW 7
+#define MUSIC_ROW 8
+#define MUSIC_TYPE_ROW 10
+#define LANGUAGE_ROW 11
+#define RESTORE_ROW 14
+#define UNLOCK_ROW 15
 
 static void start_options(void)
 {
@@ -28,6 +29,7 @@ static void start_options(void)
     game_settings_set_music_folders("set/music_ds", "set/music");
     game_settings_defaults(game_settings_now());
     game_settings_apply();
+    game_settings_set_bundled_art(1, 0);
     pause_options_show_unlock(0);
     pause_options_enter();
 }
@@ -64,7 +66,7 @@ static void test_settings_survive_a_round_trip_and_bad_values_are_clamped(void)
     written.music_type = GAME_MUSIC_ORIGINAL;
     size = game_settings_write_text(&written, text, sizeof(text));
     game_settings_defaults(&read);
-    CHECK_INT(game_settings_read_text(&read, text, size), 9);
+    CHECK_INT(game_settings_read_text(&read, text, size), 10);
     CHECK_INT(read.brightness, 4);
     CHECK_INT(read.master, 3);
     CHECK_INT(read.music_type, GAME_MUSIC_ORIGINAL);
@@ -97,6 +99,8 @@ static void test_the_cursor_skips_rows_the_vita_fixes(void)
     CHECK_INT(pause_options_selected_row(), BRIGHTNESS_ROW);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), HIGH_CONTRAST_ROW);
+    pause_options_step(INPUT_DOWN);
+    CHECK_INT(pause_options_selected_row(), VISUAL_FILTER_ROW);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), FPS_CAP_ROW);
     pause_options_step(INPUT_DOWN);
@@ -273,6 +277,32 @@ static void test_display_switches_flip_save_and_reach_the_renderer(void)
     CHECK_INT(fake_renderer_vblanks_per_frame(), 1);
 }
 
+static void test_the_visual_filter_chooses_only_when_both_art_sets_are_bundled(void)
+{
+    start_options();
+    press_down_to(VISUAL_FILTER_ROW);
+    CHECK_INT(pause_options_selected_row(), VISUAL_FILTER_ROW);
+    CHECK_INT(game_settings_filter_is_pinned(), 1);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->visual_filter, GAME_FILTER_REMASTERED);
+    CHECK_INT(game_settings_visual_filter(), GAME_FILTER_REMASTERED);
+    game_settings_set_bundled_art(0, 1);
+    CHECK_INT(game_settings_filter_is_pinned(), 1);
+    CHECK_INT(game_settings_visual_filter(), GAME_FILTER_DS);
+    pause_options_step(INPUT_RIGHT);
+    CHECK_INT(game_settings_now()->visual_filter, GAME_FILTER_REMASTERED);
+    CHECK_INT(game_settings_visual_filter(), GAME_FILTER_DS);
+    game_settings_set_bundled_art(1, 1);
+    CHECK_INT(game_settings_filter_is_pinned(), 0);
+    CHECK_INT(game_settings_visual_filter(), GAME_FILTER_REMASTERED);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->visual_filter, GAME_FILTER_DS);
+    CHECK_INT(game_settings_visual_filter(), GAME_FILTER_DS);
+    pause_options_step(INPUT_LEFT);
+    CHECK_INT(game_settings_visual_filter(), GAME_FILTER_REMASTERED);
+    game_settings_set_bundled_art(1, 0);
+}
+
 int main(void)
 {
     test_settings_survive_a_round_trip_and_bad_values_are_clamped();
@@ -287,5 +317,6 @@ int main(void)
     test_a_tap_on_a_flame_sets_that_level();
     test_the_unlock_row_shows_only_when_built_in_and_flips_a_saved_setting();
     test_display_switches_flip_save_and_reach_the_renderer();
+    test_the_visual_filter_chooses_only_when_both_art_sets_are_bundled();
     return test_finish("unit/pause_options");
 }

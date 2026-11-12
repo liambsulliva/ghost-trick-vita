@@ -7,6 +7,9 @@
 #define ASSET_MANIFEST_BACKGROUND_MAX 512
 #define ASSET_MANIFEST_ANIMATION_MAX 512
 
+#define ASSET_ART_REMASTERED 1
+#define ASSET_ART_DS 2
+
 #define ASSET_MANIFEST_OK 0
 #define ASSET_MANIFEST_ERR_BAD_LINE -1
 #define ASSET_MANIFEST_ERR_TOO_MANY -2
@@ -15,6 +18,7 @@ struct asset_manifest {
     int scene_count;
     int background_count;
     int animation_count;
+    int art_sets;
     char scene_names[ASSET_MANIFEST_SCENE_MAX][ASSET_NAME_MAX];
     char background_names[ASSET_MANIFEST_BACKGROUND_MAX][ASSET_NAME_MAX];
     char animation_names[ASSET_MANIFEST_ANIMATION_MAX][ASSET_NAME_MAX];

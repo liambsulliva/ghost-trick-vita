@@ -102,8 +102,8 @@ def scene_text(name, steps):
     return "\n".join(lines) + "\n"
 
 
-def manifest_text(scene_names, background_names, animation_names):
-    lines = []
+def manifest_text(scene_names, background_names, animation_names, art_sets=()):
+    lines = ["art " + name for name in art_sets]
     for name in scene_names:
         lines.append("scene " + name)
     for name in background_names:

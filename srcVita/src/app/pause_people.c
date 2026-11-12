@@ -35,6 +35,7 @@
 #define SHOULDER_R_X 698.0f
 #define SHOULDER_HALF_WIDTH 22.0f
 #define SHOULDER_HALF_HEIGHT 14.0f
+#define SHOULDER_GLYPH_SIZE 36.0f
 #define TAB_TEXT_Y 32.0f
 #define FILM_TOP 64.0f
 #define FILM_HEIGHT 102.0f
@@ -544,10 +545,8 @@ static void draw_tabs(float x_offset)
         pause_draw_slice(index == tab ? "tab_selected" : "tab", left, TAB_TOP, TAB_WIDTH, TAB_HEIGHT, 1.0f);
         pause_draw_text(index == 0 ? "bar.people_tab" : "bar.phone_tab", left + TAB_WIDTH / 2.0f, TAB_TEXT_Y, PAUSE_ANCHOR_CENTRE, 1.0f);
     }
-    pause_draw_slice("shoulder", x_offset + SHOULDER_L_X - SHOULDER_HALF_WIDTH, TAB_TEXT_Y - SHOULDER_HALF_HEIGHT, 2.0f * SHOULDER_HALF_WIDTH, 2.0f * SHOULDER_HALF_HEIGHT, 1.0f);
-    pause_draw_slice("shoulder", x_offset + SHOULDER_R_X - SHOULDER_HALF_WIDTH, TAB_TEXT_Y - SHOULDER_HALF_HEIGHT, 2.0f * SHOULDER_HALF_WIDTH, 2.0f * SHOULDER_HALF_HEIGHT, 1.0f);
-    pause_draw_text("bar.key_l", x_offset + SHOULDER_L_X, TAB_TEXT_Y, PAUSE_ANCHOR_CENTRE, 1.0f);
-    pause_draw_text("bar.key_r", x_offset + SHOULDER_R_X, TAB_TEXT_Y, PAUSE_ANCHOR_CENTRE, 1.0f);
+    pause_draw_glyph("l", x_offset + SHOULDER_L_X, TAB_TEXT_Y, SHOULDER_GLYPH_SIZE, 1.0f);
+    pause_draw_glyph("r", x_offset + SHOULDER_R_X, TAB_TEXT_Y, SHOULDER_GLYPH_SIZE, 1.0f);
 }
 
 static void draw_strip(float x_offset)

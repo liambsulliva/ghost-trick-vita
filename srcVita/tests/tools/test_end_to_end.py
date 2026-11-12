@@ -488,6 +488,7 @@ class EndToEndTests(unittest.TestCase):
     def test_a_small_set_converts_completely(self):
         self.convert(tiny_set_description())
         self.assertEqual(self.read_text("manifest.txt"), "\n".join([
+            "art remastered",
             "scene opening",
             "background plate",
             "background card",
@@ -917,7 +918,7 @@ class EndToEndTests(unittest.TestCase):
         self.convert(tiny_set_description())
         set_description = {"animations": [{"name": "st01_a_000", "timeline": TIMELINE_PATH}], "plates": [{"name": "plate", "source": PLATE_PATH}]}
         self.convert(set_description)
-        self.assertEqual(self.read_text("manifest.txt"), "background plate\nanimation st01_a_000\n")
+        self.assertEqual(self.read_text("manifest.txt"), "art remastered\nbackground plate\nanimation st01_a_000\n")
         self.assertEqual(os.listdir(os.path.join(self.output_folder, "scenes")), [])
 
     def test_a_set_description_can_be_named_by_its_path(self):

@@ -7,6 +7,9 @@
 #define SCENE_LINE_START "scene "
 #define BACKGROUND_LINE_START "background "
 #define ANIMATION_LINE_START "animation "
+#define ART_LINE_START "art "
+#define REMASTERED_ART_NAME "remastered"
+#define DS_ART_NAME "ds"
 
 static int read_asset_name(const char *name_text, char names[][ASSET_NAME_MAX], int *count, int limit)
 {
@@ -18,6 +21,19 @@ static int read_asset_name(const char *name_text, char names[][ASSET_NAME_MAX], 
     }
     *count = *count + 1;
     return ASSET_MANIFEST_OK;
+}
+
+static int read_art_set(const char *name, struct asset_manifest *manifest)
+{
+    if (strcmp(name, REMASTERED_ART_NAME) == 0) {
+        manifest->art_sets |= ASSET_ART_REMASTERED;
+        return ASSET_MANIFEST_OK;
+    }
+    if (strcmp(name, DS_ART_NAME) == 0) {
+        manifest->art_sets |= ASSET_ART_DS;
+        return ASSET_MANIFEST_OK;
+    }
+    return ASSET_MANIFEST_ERR_BAD_LINE;
 }
 
 static int read_one_line(const char *line, struct asset_manifest *manifest)
@@ -34,6 +50,9 @@ static int read_one_line(const char *line, struct asset_manifest *manifest)
     if (text_line_starts_with(line, ANIMATION_LINE_START)) {
         return read_asset_name(line + strlen(ANIMATION_LINE_START), manifest->animation_names, &manifest->animation_count, ASSET_MANIFEST_ANIMATION_MAX);
     }
+    if (text_line_starts_with(line, ART_LINE_START)) {
+        return read_art_set(line + strlen(ART_LINE_START), manifest);
+    }
     return ASSET_MANIFEST_ERR_BAD_LINE;
 }
 
@@ -46,6 +65,7 @@ int asset_manifest_parse(const char *text, unsigned int text_size, struct asset_
     manifest->scene_count = 0;
     manifest->background_count = 0;
     manifest->animation_count = 0;
+    manifest->art_sets = 0;
     offset = 0;
     while (offset < text_size) {
         offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));

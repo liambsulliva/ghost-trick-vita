@@ -247,6 +247,7 @@ static void load_manifest(void)
     unsigned char *text;
     unsigned int text_size;
     int result;
+    int art_sets;
 
     if (!file_path_join(path, assets_folder, "manifest", ".txt")) {
         run_log_write("manifest path_too_long");
@@ -271,7 +272,9 @@ static void load_manifest(void)
         manifest = NULL;
         return;
     }
-    run_log_write("manifest loaded scenes=%d backgrounds=%d animations=%d", manifest->scene_count, manifest->background_count, manifest->animation_count);
+    art_sets = manifest->art_sets != 0 ? manifest->art_sets : ASSET_ART_REMASTERED;
+    game_settings_set_bundled_art(art_sets & ASSET_ART_REMASTERED, art_sets & ASSET_ART_DS);
+    run_log_write("manifest loaded scenes=%d backgrounds=%d animations=%d art=%d", manifest->scene_count, manifest->background_count, manifest->animation_count, art_sets);
 }
 
 static void create_placeholder_texture(void)

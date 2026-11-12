@@ -923,6 +923,12 @@ The opening flashed the junkyard for a few frames before its black narration scr
 
 Guard: `tests/unit/test_screen_brightness.c` checks that a fade to black reaches the brightness output when no white wipe runs, that a running wipe still wins, and that a fresh start reports black on its first tick.
 
+### 134. Removing the controls page's key strings left the People tabs' L and R blank
+
+Root cause 132 replaced the controls page's key names with button glyphs and deleted the `key_*` strings from `game.json`. The People page still drew `bar.key_l` and `bar.key_r` as words inside its shoulder pills, and a missing text key draws nothing, so the pills showed empty on the Vita. The tabs now draw the L and R button glyphs, like the controls page, and the unused shoulder pill is gone from the sheet. A string can be removed only when no pause code names it.
+
+Guard: `tests/tools/test_pause_option_keys.py` checks that every literal `bar.`, `row.`, `header.` and `language.` key in `src/app/pause_*.c` has a string, that every Options row, value and bar text the menu builds from its row table has one, and that two-line bar texts stay two lines short enough for the bar.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

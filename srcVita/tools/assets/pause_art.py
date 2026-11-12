@@ -12,6 +12,8 @@ import pause_people
 import texture_encoder
 
 CAT_SCREEN_PIXELS_PER_DS_PIXEL = 2 * frame_layout.SCREEN_PIXELS_PER_DS_PIXEL
+LINE_TIGHTENING = 8
+TWO_LINE_POINTS_LESS = 4
 GRID_STEP = 32
 SOLID = 128
 PAW_ROWS = 5
@@ -63,7 +65,6 @@ SLICES = [
     ("button_selected", 64, 56, 28, "black", PILL_RED, 4),
     ("tab", 44, 40, 20, "black", PILL_GREY, 3),
     ("tab_selected", 44, 40, 20, PILL_RED, BACK_EDGE, 3),
-    ("shoulder", 28, 28, 10, "#1e1a1e", "#9696a0", 2),
     ("sprocket", 11, 7, 2, "#46464c", "none", 0),
     ("note_box", 24, 24, 10, "#faf8f2", "#968c82", 2),
     ("save_panel", 40, 40, 12, "#2a0808", PILL_GREY, 3),
@@ -440,11 +441,18 @@ def arrow_down_pixels(work_folder):
     return supersampled(work_folder, w, h, ["-fill", WHITE, "-draw", "polygon %d,%d %d,%d %d,%d" % (WIDGET_SUPERSAMPLE, WIDGET_SUPERSAMPLE, (w - 1) * WIDGET_SUPERSAMPLE, WIDGET_SUPERSAMPLE, w * WIDGET_SUPERSAMPLE // 2, (h - 1) * WIDGET_SUPERSAMPLE)])
 
 
+def line_layout(points, text):
+    if "\n" not in text:
+        return []
+    return ["-gravity", "center", "-interline-spacing", str(-points // LINE_TIGHTENING)]
+
+
 def text_pixels(work_folder, font_path, points, color, text):
-    size = subprocess.run(["magick", "-background", "none", "-font", font_path, "-pointsize", str(points), "label:" + text, "-format", "%w %h", "info:"], check=True, capture_output=True, text=True).stdout.split()
+    layout = line_layout(points, text)
+    size = subprocess.run(["magick", "-background", "none", "-font", font_path, "-pointsize", str(points)] + layout + ["label:" + text, "-format", "%w %h", "info:"], check=True, capture_output=True, text=True).stdout.split()
     width, height = int(size[0]), int(size[1])
     rgba_path = os.path.join(work_folder, "pause_text.rgba")
-    subprocess.run(["magick", "-background", "none", "-fill", color, "-font", font_path, "-pointsize", str(points), "label:" + text, "-depth", "8", "rgba:" + rgba_path], check=True, capture_output=True)
+    subprocess.run(["magick", "-background", "none", "-fill", color, "-font", font_path, "-pointsize", str(points)] + layout + ["label:" + text, "-depth", "8", "rgba:" + rgba_path], check=True, capture_output=True)
     with open(rgba_path, "rb") as source:
         pixels = np.frombuffer(source.read(), dtype=np.uint8).reshape(height, width, 4).copy()
     os.remove(rgba_path)
@@ -456,7 +464,7 @@ def widget_cells(work_folder, fonts, widgets):
     cells = []
     for style, color, points in (("row", WHITE, widgets["row_points"]), ("header", HEADER_ORANGE, widgets["row_points"]), ("bar", WHITE, widgets["bar_points"])):
         for key, text in widgets[style].items():
-            cells.append(("text", style + "." + key, text_pixels(work_folder, font, points, color, text)))
+            cells.append(("text", style + "." + key, text_pixels(work_folder, font, points - TWO_LINE_POINTS_LESS if "\n" in text else points, color, text)))
     for number in range(1, widgets["chapter_count"] + 1):
         cells.append(("text", "row.chapter_%d" % number, text_pixels(work_folder, font, widgets["row_points"], WHITE, "%s %d" % (widgets["chapter_word"], number))))
     for language in widgets["languages"]:

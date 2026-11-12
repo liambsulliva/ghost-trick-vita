@@ -21,6 +21,7 @@
 #define BACK_WORD_X 114.0f
 #define BAR_GLYPH_ROOM 36.0f
 #define BAR_TEXT_MARGIN 16.0f
+#define BAR_TEXT_INSET 2.0f
 #define DIALOG_SIDE 150.0f
 #define DIALOG_TOP_PAD 40.0f
 #define DIALOG_LINE_STEP 38.0f
@@ -204,6 +205,19 @@ float pause_fit_scale(const char *key, float room)
     return width > room && room > 0.0f ? room / width : 1.0f;
 }
 
+float pause_fit_box_scale(const char *key, float room_width, float room_height)
+{
+    const struct widget *widget;
+    float scale;
+
+    widget = find(key);
+    scale = pause_fit_scale(key, room_width);
+    if (widget != NULL && widget->height * scale > room_height && room_height > 0.0f) {
+        scale = room_height / widget->height;
+    }
+    return scale;
+}
+
 void pause_draw_text_within(const char *key, float x, float y, float room, float alpha)
 {
     const struct widget *widget;
@@ -322,6 +336,19 @@ void pause_draw_cell(const char *name, float centre_x, float centre_y, float alp
     }
 }
 
+static void draw_text_in_box(const char *key, float centre_x, float centre_y, float room_width, float room_height)
+{
+    const struct widget *widget;
+    float scale;
+
+    widget = find(key);
+    if (widget == NULL) {
+        return;
+    }
+    scale = pause_fit_box_scale(key, room_width, room_height);
+    pause_draw_from(PAUSE_WIDGET_SHEET, widget->x, widget->y, widget->width, widget->height, whole(centre_x - widget->width * scale / 2.0f), whole(centre_y - widget->height * scale / 2.0f), widget->width * scale, widget->height * scale, 1.0f);
+}
+
 void pause_draw_bar(float x_offset, const char *before_key, const char *glyph, const char *after_key)
 {
     float middle;
@@ -333,8 +360,8 @@ void pause_draw_bar(float x_offset, const char *before_key, const char *glyph, c
     pause_draw_glyph("circle", BACK_GLYPH_X + x_offset, middle, BACK_GLYPH_SIZE, 1.0f);
     pause_draw_text("bar.back", BACK_WORD_X + x_offset, middle, PAUSE_ANCHOR_CENTRE, 1.0f);
     total = pause_text_width(before_key) + (glyph != NULL ? BAR_GLYPH_ROOM + pause_text_width(after_key) : 0.0f);
-    if (glyph == NULL && total > SCREEN_WIDTH - BACK_RIGHT - 2.0f * BAR_TEXT_MARGIN) {
-        pause_draw_text_within(before_key, BACK_RIGHT + BAR_TEXT_MARGIN + x_offset, middle, SCREEN_WIDTH - BACK_RIGHT - 2.0f * BAR_TEXT_MARGIN, 1.0f);
+    if (glyph == NULL) {
+        draw_text_in_box(before_key, (BACK_RIGHT + SCREEN_WIDTH) / 2.0f + x_offset, middle, SCREEN_WIDTH - BACK_RIGHT - 2.0f * BAR_TEXT_MARGIN, PAUSE_BAR_HEIGHT - 2.0f * BAR_TEXT_INSET);
         return;
     }
     x = (BACK_RIGHT + SCREEN_WIDTH) / 2.0f - total / 2.0f + x_offset;

@@ -9,6 +9,11 @@
 #define GAME_SETTINGS_TEXT_MAX 256
 #define GAME_SETTINGS_PATH FILE_DATA_FOLDER "/settings.txt"
 
+enum game_visual_filter {
+    GAME_FILTER_REMASTERED,
+    GAME_FILTER_DS
+};
+
 enum game_music_type {
     GAME_MUSIC_ORIGINAL,
     GAME_MUSIC_ARRANGED
@@ -24,6 +29,7 @@ struct game_settings {
     int unlock_all;
     int fps_cap;
     int high_contrast;
+    int visual_filter;
 };
 
 void game_settings_defaults(struct game_settings *settings);
@@ -37,5 +43,8 @@ int game_settings_save(const char *path);
 void game_settings_apply(void);
 int game_settings_volume_gain(int level);
 float game_settings_darkness(void);
+void game_settings_set_bundled_art(int has_remastered, int has_ds);
+int game_settings_filter_is_pinned(void);
+int game_settings_visual_filter(void);
 
 #endif

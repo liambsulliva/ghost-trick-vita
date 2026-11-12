@@ -69,6 +69,7 @@ enum row_job {
     JOB_RESET_SAVE,
     JOB_HIGH_CONTRAST,
     JOB_FPS_CAP,
+    JOB_VISUAL_FILTER,
     JOB_UNLOCK_ALL
 };
 
@@ -86,9 +87,8 @@ static const struct option_row rows[] = {
     { "display", "ff_unread", ROW_FIXED, JOB_NONE, 1, "off" },
     { NULL, "brightness", ROW_METER, JOB_BRIGHTNESS, 0, NULL },
     { NULL, "high_contrast", ROW_CYCLES, JOB_HIGH_CONTRAST, 0, NULL },
-    { NULL, "visual_filter", ROW_FIXED, JOB_NONE, 1, "filter_remastered" },
+    { NULL, "visual_filter", ROW_CYCLES, JOB_VISUAL_FILTER, 0, NULL },
     { NULL, "fps_cap", ROW_CYCLES, JOB_FPS_CAP, 0, NULL },
-    { NULL, "background", ROW_FIXED, JOB_NONE, 1, "pattern_1" },
     { NULL, "vsync", ROW_FIXED, JOB_NONE, 1, "on" },
     { "sound", "master", ROW_METER, JOB_MASTER, 0, NULL },
     { NULL, "music", ROW_METER, JOB_MUSIC, 0, NULL },
@@ -151,6 +151,11 @@ static void lay_out_rows(void)
         y = y + ROW_STEP;
     }
     list_height = y + LIST_BOTTOM_PAD;
+}
+
+static int is_dimmed(const struct option_row *row)
+{
+    return row->is_greyed || (row->job == JOB_VISUAL_FILTER && game_settings_filter_is_pinned());
 }
 
 static int is_selectable(int index)
@@ -277,6 +282,8 @@ static int *switch_of(enum row_job job)
         return &settings->high_contrast;
     case JOB_FPS_CAP:
         return &settings->fps_cap;
+    case JOB_VISUAL_FILTER:
+        return &settings->visual_filter;
     case JOB_UNLOCK_ALL:
         return &settings->unlock_all;
     default:
@@ -289,6 +296,9 @@ static const char *switch_value_name(enum row_job job, int value)
     if (job == JOB_FPS_CAP) {
         return value == GAME_FPS_CAPPED ? "fps_30" : "fps_60";
     }
+    if (job == JOB_VISUAL_FILTER) {
+        return game_settings_visual_filter() == GAME_FILTER_DS ? "filter_ds" : "filter_remastered";
+    }
     return value ? "on" : "off";
 }
 
@@ -300,7 +310,13 @@ static void flip_switch(enum row_job job)
     if (value == NULL) {
         return;
     }
-    if (job == JOB_FPS_CAP) {
+    if (job == JOB_VISUAL_FILTER && game_settings_filter_is_pinned()) {
+        run_log_write("pause option %s pinned=%d", rows[selected].name, game_settings_visual_filter());
+        return;
+    }
+    if (job == JOB_VISUAL_FILTER) {
+        *value = *value == GAME_FILTER_DS ? GAME_FILTER_REMASTERED : GAME_FILTER_DS;
+    } else if (job == JOB_FPS_CAP) {
         *value = *value == GAME_FPS_CAPPED ? GAME_FPS_FULL : GAME_FPS_CAPPED;
     } else {
         *value = !*value;
@@ -328,6 +344,7 @@ static void act_on_row(void)
         break;
     case JOB_HIGH_CONTRAST:
     case JOB_FPS_CAP:
+    case JOB_VISUAL_FILTER:
     case JOB_UNLOCK_ALL:
         flip_switch(rows[selected].job);
         break;
@@ -609,7 +626,7 @@ static void draw_row(int index, float x_offset)
     row = &rows[index];
     top = row_y[index] - scroll;
     middle = top + ROW_HEIGHT / 2.0f;
-    alpha = row->is_greyed ? GREYED_ALPHA : 1.0f;
+    alpha = is_dimmed(row) ? GREYED_ALPHA : 1.0f;
     if (row->header != NULL) {
         snprintf(key, sizeof(key), "header.%s", row->header);
         pause_draw_text(key, HEADER_TEXT_X + x_offset, top - HEADER_ABOVE, PAUSE_ANCHOR_LEFT, 1.0f);
@@ -722,7 +739,9 @@ void pause_options_draw_bar(float x_offset)
         pause_draw_bar(x_offset, "bar.controls_page", NULL, NULL);
         return;
     }
-    if (rows[selected].job == JOB_FPS_CAP) {
+    if (rows[selected].job == JOB_VISUAL_FILTER && game_settings_filter_is_pinned()) {
+        snprintf(key, sizeof(key), "bar.%s_only", switch_value_name(rows[selected].job, 0));
+    } else if (rows[selected].job == JOB_FPS_CAP || rows[selected].job == JOB_VISUAL_FILTER) {
         snprintf(key, sizeof(key), "bar.%s", switch_value_name(rows[selected].job, *switch_of(rows[selected].job)));
     } else {
         snprintf(key, sizeof(key), "bar.%s", rows[selected].name);
