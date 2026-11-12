@@ -7,6 +7,7 @@
 #include "game_settings.h"
 #include "input.h"
 #include "pause_menu.h"
+#include "pause_widgets.h"
 #include "pause_people.h"
 #include "script_machine.h"
 #include "run_log.h"
@@ -206,7 +207,9 @@ static void print_draws(void)
     pause_menu_draw();
     for (index = 0; index < fake_renderer_draw_count(); index++) {
         draw = fake_renderer_draw(index);
-        if (draw->is_filled_rect) {
+        if (draw->is_contrast) {
+            printf("contrast %g %g %g %g\n", draw->screen_area.x, draw->screen_area.y, draw->screen_area.width, draw->screen_area.height);
+        } else if (draw->is_filled_rect) {
             printf("rect %g %g %g %g %g %g %g %g\n", draw->screen_area.x, draw->screen_area.y, draw->screen_area.width, draw->screen_area.height, draw->color.red, draw->color.green, draw->color.blue, draw->color.alpha);
         } else {
             printf("sprite %s %g %g %g %g %.6f %.6f %.6f %.6f %g\n", name_of(draw->texture), draw->screen_area.x, draw->screen_area.y, draw->screen_area.width, draw->screen_area.height, draw->texture_area.x, draw->texture_area.y, draw->texture_area.width, draw->texture_area.height, draw->color.alpha);
@@ -245,6 +248,9 @@ int main(int argc, char **argv)
         add_texture(argv[1], name);
     }
     add_people_textures(argv[1]);
+    if (pause_preview_plate() != NULL) {
+        add_texture(argv[1], pause_preview_plate());
+    }
     if (argc > 3) {
         read_notes(argv[3]);
     }

@@ -9,6 +9,8 @@ void pause_options_enter(void);
 int pause_options_step(unsigned int pressed);
 unsigned int pause_options_touch(int lands, int lifts, int is_down, float x, float y);
 void pause_options_tick(void);
+float pause_options_scroll(void);
+float pause_options_preview_top(void);
 void pause_options_leave(void);
 int pause_options_selected_row(void);
 const char *pause_options_control_glyph(int control, int which);

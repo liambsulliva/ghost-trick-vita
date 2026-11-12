@@ -1945,6 +1945,17 @@ static int game_waits_on_a_press_that_works(const struct script_machine *machine
     return machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine);
 }
 
+int script_machine_text_takes_a_skip(const struct script_machine *machine)
+{
+    if (machine->choice.is_open) {
+        return 0;
+    }
+    if (machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine)) {
+        return 1;
+    }
+    return script_narration_takes_a_skip(&machine->narration);
+}
+
 static int word_after_op(const struct script_source *source, unsigned int pc, unsigned int *next)
 {
     unsigned int op;

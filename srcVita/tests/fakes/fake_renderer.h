@@ -16,6 +16,7 @@ struct fake_draw {
     struct renderer_rect texture_area;
     struct renderer_color color;
     int is_snapshot;
+    int is_contrast;
 };
 
 void fake_renderer_reset(void);

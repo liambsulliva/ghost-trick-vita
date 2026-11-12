@@ -19,6 +19,8 @@ static int uploads_should_fail;
 static int vblanks_per_frame = 1;
 static int contrast_raises;
 
+static struct fake_draw *record_draw(renderer_texture texture, int is_filled_rect, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color);
+
 void fake_renderer_reset(void)
 {
     vblanks_per_frame = 1;
@@ -140,6 +142,20 @@ void renderer_raise_contrast(void)
     contrast_raises = contrast_raises + 1;
 }
 
+void renderer_raise_contrast_in(struct renderer_rect screen_area)
+{
+    struct fake_draw *draw;
+    struct renderer_rect no_area;
+    struct renderer_color no_color;
+
+    memset(&no_area, 0, sizeof(no_area));
+    memset(&no_color, 0, sizeof(no_color));
+    draw = record_draw(RENDERER_NO_TEXTURE, 0, screen_area, no_area, no_color);
+    if (draw != NULL) {
+        draw->is_contrast = 1;
+    }
+}
+
 int fake_renderer_vblanks_per_frame(void)
 {
     return vblanks_per_frame;
@@ -213,6 +229,7 @@ static struct fake_draw *record_draw(renderer_texture texture, int is_filled_rec
     draw->texture_area = texture_area;
     draw->color = color;
     draw->is_snapshot = 0;
+    draw->is_contrast = 0;
     return draw;
 }
 

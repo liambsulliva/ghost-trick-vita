@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
+#include "input.h"
 #include "script_file.h"
+#include "script_input.h"
 #include "script_machine.h"
 #include "script_talk.h"
 #include "test_support.h"
@@ -13,7 +15,7 @@ static struct script_machine machine;
 static struct script_talk_book book;
 static unsigned char scene[SCRIPT_FILE_HEADER_SIZE + 256];
 
-static const char strings[] = "\0\0talk_paused_end\0talk_press_end\0";
+static const char strings[] = "\0\0talk_paused_end\0talk_press_end\0talk_long\0";
 
 static const struct script_outputs outputs = { 0 };
 
@@ -61,7 +63,10 @@ static void start_talk_then_set_a_flag(const char *label)
         "line 0 0 3 0 0 0\n"
         "talk talk_press_end\n"
         "page - 0 0 0 0 1 0\n"
-        "line 0 0 3 0 0 0\n";
+        "line 0 0 3 0 0 0\n"
+        "talk talk_long\n"
+        "page - 0 0 0 0 1 0\n"
+        "line 0 0 24 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n";
     unsigned int words[WORD_MAX];
     unsigned int count;
 
@@ -119,9 +124,65 @@ static void test_a_page_that_ends_on_a_press_holds_the_script(void)
     CHECK(!flag_is_set(SHOWN_FLAG));
 }
 
+static int ticks_revealing_at(enum script_text_speed speed)
+{
+    int tick;
+    int revealing;
+
+    start_talk_then_set_a_flag("talk_long");
+    machine.text_speed = speed;
+    revealing = 0;
+    for (tick = 0; tick < 300; tick++) {
+        script_machine_tick(&machine);
+        revealing = revealing + (machine.talk.phase == SCRIPT_TALK_REVEALING);
+    }
+    CHECK_INT(machine.talk.phase, SCRIPT_TALK_WAITING);
+    CHECK_INT(machine.talk.glyphs_shown, 24);
+    return revealing;
+}
+
+static void test_text_speed_halves_or_doubles_the_glyphs_shown_each_tick(void)
+{
+    int normal;
+
+    normal = ticks_revealing_at(SCRIPT_TEXT_NORMAL);
+    CHECK(normal >= 23 && normal <= 25);
+    CHECK_INT(ticks_revealing_at(SCRIPT_TEXT_SLOW), 2 * normal);
+    CHECK_INT(ticks_revealing_at(SCRIPT_TEXT_FAST), normal / 2);
+}
+
+static int ticks_until_the_talk_closes(unsigned int held)
+{
+    static struct script_input pad;
+    struct input_state frame;
+    int tick;
+
+    start_talk_then_set_a_flag("talk_long");
+    memset(&pad, 0, sizeof(pad));
+    memset(&frame, 0, sizeof(frame));
+    frame.held = held;
+    for (tick = 0; tick < 600 && !flag_is_set(SHOWN_FLAG); tick++) {
+        script_input_frame(&pad, &machine, &frame);
+        script_machine_tick(&machine);
+    }
+    return tick;
+}
+
+static void test_holding_circle_finishes_and_closes_talk_as_fast_as_it_can(void)
+{
+    int held;
+
+    CHECK_INT(ticks_until_the_talk_closes(0), 600);
+    held = ticks_until_the_talk_closes(INPUT_CIRCLE);
+    CHECK(held < 40);
+    CHECK_INT(ticks_until_the_talk_closes(INPUT_CROSS), 600);
+}
+
 int main(void)
 {
     test_a_shown_page_that_ends_the_message_lets_the_script_and_world_go_on();
     test_a_page_that_ends_on_a_press_holds_the_script();
+    test_text_speed_halves_or_doubles_the_glyphs_shown_each_tick();
+    test_holding_circle_finishes_and_closes_talk_as_fast_as_it_can();
     return test_finish("unit/talk_wait");
 }

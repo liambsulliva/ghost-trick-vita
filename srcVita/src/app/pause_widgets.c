@@ -45,6 +45,8 @@ struct widget {
 
 static struct widget widgets[PAUSE_WIDGETS_MOST];
 static int widget_count;
+static char preview_plate[ASSET_NAME_MAX];
+static float preview_crop[4];
 
 static void add_widget(const char *key, float x, float y, float width, float height, float corner)
 {
@@ -78,6 +80,7 @@ int pause_widgets_read_text(const char *text, unsigned int text_size)
     int corner;
 
     widget_count = 0;
+    preview_plate[0] = '\0';
     offset = 0;
     while (offset < text_size) {
         offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
@@ -95,6 +98,8 @@ int pause_widgets_read_text(const char *text, unsigned int text_size)
         } else if (sscanf(line, "glyph %47s %f %f %f", name, &x, &y, &width) == 4) {
             snprintf(key, sizeof(key), "glyph.%s", name);
             add_widget(key, x, y, width, width, 0.0f);
+        } else if (sscanf(line, "preview " ASSET_NAME_SCAN " %f %f %f %f", preview_plate, &preview_crop[0], &preview_crop[1], &preview_crop[2], &preview_crop[3]) == 5) {
+            continue;
         } else if (sscanf(line, "cell %47s %f %f %f %f", name, &x, &y, &width, &height) == 5) {
             snprintf(key, sizeof(key), "cell.%s", name);
             add_widget(key, x, y, width, height, 0.0f);
@@ -132,6 +137,26 @@ static const struct widget *find(const char *key)
         }
     }
     return NULL;
+}
+
+const char *pause_preview_plate(void)
+{
+    return preview_plate[0] != '\0' ? preview_plate : NULL;
+}
+
+int pause_draw_preview(float x, float y, float width, float height, float from, float to)
+{
+    const struct cached_texture *texture;
+
+    if (preview_plate[0] == '\0') {
+        return 0;
+    }
+    texture = texture_cache_use_or_start_loading(preview_plate);
+    if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
+        return 0;
+    }
+    pause_draw_from(preview_plate, preview_crop[0] + preview_crop[2] * from, preview_crop[1], preview_crop[2] * (to - from), preview_crop[3], x + width * from, y, width * (to - from), height, 1.0f);
+    return 1;
 }
 
 int pause_widgets_has(const char *key)

@@ -111,6 +111,21 @@ void scene_layers_hide_text(struct scene_layers *layers, int id, int fade_ticks)
     start_fade(line, 0.0f, fade_ticks);
 }
 
+void scene_layers_finish_text_fade_ins(struct scene_layers *layers)
+{
+    int index;
+    struct scene_text_line *line;
+
+    for (index = 0; index < SCENE_TEXT_LINE_MAX; index++) {
+        line = &layers->text_lines[index];
+        if (line->in_use && line->fade_target_alpha >= 1.0f) {
+            line->alpha = 1.0f;
+            line->fade_start_alpha = 1.0f;
+            line->fade_elapsed_us = line->fade_total_us;
+        }
+    }
+}
+
 void scene_layers_hide_all_text(struct scene_layers *layers)
 {
     memset(layers->text_lines, 0, sizeof(layers->text_lines));

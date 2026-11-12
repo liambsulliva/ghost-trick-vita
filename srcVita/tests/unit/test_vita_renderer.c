@@ -18,6 +18,7 @@
 #define renderer_draw_triangles real_renderer_draw_triangles
 #define renderer_set_vblanks_per_frame real_renderer_set_vblanks_per_frame
 #define renderer_raise_contrast real_renderer_raise_contrast
+#define renderer_raise_contrast_in real_renderer_raise_contrast_in
 #include "../../src/vita/renderer.c"
 #include "fakes/fake_platform.h"
 #include "test_support.h"

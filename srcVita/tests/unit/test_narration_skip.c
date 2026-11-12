@@ -10,6 +10,7 @@ static struct script_cue_list cues;
 static struct script_narration narration;
 static int groups_shown;
 static int pages_ended;
+static int texts_finished;
 
 static void on_report(void *listener, const char *label, enum script_narration_event event, int group)
 {
@@ -21,6 +22,9 @@ static void on_report(void *listener, const char *label, enum script_narration_e
     }
     if (event == SCRIPT_NARRATION_TEXT_OUT || event == SCRIPT_NARRATION_CUT) {
         pages_ended = pages_ended + 1;
+    }
+    if (event == SCRIPT_NARRATION_TEXT_FULL) {
+        texts_finished = texts_finished + 1;
     }
 }
 
@@ -34,6 +38,7 @@ static void start_a_page_of_three_lines(const char *page_line)
     CHECK(script_cues_parse(text, (unsigned int)strlen(text), &cues));
     groups_shown = 0;
     pages_ended = 0;
+    texts_finished = 0;
     script_narration_start(&narration, &cues, &cues.messages[0], SCRIPT_TIMING_REMASTER);
 }
 
@@ -83,10 +88,50 @@ static void test_a_page_left_alone_still_shows_every_line_in_its_own_time(void)
     CHECK_INT(pages_ended, 1);
 }
 
+static void start_a_shown_at_once_page(void)
+{
+    static const char text[] = "message m01_0002\npage 0 1 2 0 0\n";
+
+    CHECK(script_cues_parse(text, (unsigned int)strlen(text), &cues));
+    groups_shown = 0;
+    pages_ended = 0;
+    texts_finished = 0;
+    script_narration_start(&narration, &cues, &cues.messages[0], SCRIPT_TIMING_DS);
+    step_ticks(TICKS_FOR_A_PAGE_TO_SETTLE);
+}
+
+static void test_a_press_while_lines_still_fade_in_finishes_them_and_a_second_press_moves_on(void)
+{
+    start_a_shown_at_once_page();
+    CHECK_INT(groups_shown, 2);
+    CHECK(!script_narration_wants_a_press(&narration));
+    CHECK(script_narration_takes_a_skip(&narration));
+    script_narration_note_press(&narration);
+    step_ticks(TICKS_FOR_A_PAGE_TO_SETTLE);
+    CHECK_INT(texts_finished, 1);
+    CHECK_INT(pages_ended, 0);
+    CHECK(script_narration_wants_a_press(&narration));
+    script_narration_note_press(&narration);
+    step_ticks(TICKS_FOR_A_PAGE_TO_SETTLE);
+    CHECK_INT(pages_ended, 1);
+}
+
+static void test_the_arrow_waits_for_the_lines_to_finish_fading_in(void)
+{
+    start_a_shown_at_once_page();
+    CHECK(!script_narration_wants_a_press(&narration));
+    step_ticks(SCRIPT_NARRATION_GROUP_IN_TICKS);
+    CHECK(script_narration_wants_a_press(&narration));
+    CHECK_INT(texts_finished, 0);
+    CHECK_INT(pages_ended, 0);
+}
+
 int main(void)
 {
     test_a_press_in_the_fade_in_shows_the_whole_page_then_the_next_press_moves_on();
     test_a_press_moves_on_from_a_timed_page_without_its_wait();
     test_a_page_left_alone_still_shows_every_line_in_its_own_time();
+    test_a_press_while_lines_still_fade_in_finishes_them_and_a_second_press_moves_on();
+    test_the_arrow_waits_for_the_lines_to_finish_fading_in();
     return test_finish("unit/narration_skip");
 }

@@ -21,7 +21,8 @@ enum script_narration_event {
     SCRIPT_NARRATION_GROUP_IN,
     SCRIPT_NARRATION_TEXT_OUT,
     SCRIPT_NARRATION_CUT,
-    SCRIPT_NARRATION_DIM_OUT
+    SCRIPT_NARRATION_DIM_OUT,
+    SCRIPT_NARRATION_TEXT_FULL
 };
 
 struct script_cue_page {
@@ -64,6 +65,7 @@ struct script_narration {
     int count_to_limit;
     int group_was_reported;
     int press_is_pending;
+    int fade_left;
 };
 
 typedef void (*script_narration_report)(void *listener, const char *label, enum script_narration_event event, int group);

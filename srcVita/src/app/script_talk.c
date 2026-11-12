@@ -19,6 +19,9 @@
 #define SOUND_KIND_FACE_SLIDE 6
 #define FACE_SOUND_AFTER_TICKS 12
 #define NO_FACE "-"
+#define SLOW_HALVES_PER_TICK 1
+#define NORMAL_HALVES_PER_TICK 2
+#define FAST_HALVES_PER_TICK 4
 
 static int read_talk_row(const char *line, struct script_talk_book *book)
 {
@@ -269,6 +272,7 @@ static void begin_reveal(struct script_machine *machine)
     talk->phase = SCRIPT_TALK_REVEALING;
     talk->timer = 0;
     talk->glyphs_shown = 0;
+    talk->reveal_halves = 0;
     talk->fade_ticks = 0;
     page = current_page(machine);
     if (page != NULL && page->flashes) {
@@ -410,6 +414,17 @@ static void play_sound(struct script_machine *machine, int kind)
     }
 }
 
+static int halves_per_tick(enum script_text_speed speed)
+{
+    if (speed == SCRIPT_TEXT_SLOW) {
+        return SLOW_HALVES_PER_TICK;
+    }
+    if (speed == SCRIPT_TEXT_FAST) {
+        return FAST_HALVES_PER_TICK;
+    }
+    return NORMAL_HALVES_PER_TICK;
+}
+
 static void step_revealing(struct script_machine *machine)
 {
     struct script_talk *talk;
@@ -434,7 +449,9 @@ static void step_revealing(struct script_machine *machine)
         }
         return;
     }
-    talk->glyphs_shown = talk->glyphs_shown + 1;
+    talk->reveal_halves = talk->reveal_halves + halves_per_tick(machine->text_speed);
+    talk->glyphs_shown = talk->glyphs_shown + talk->reveal_halves / 2;
+    talk->reveal_halves = talk->reveal_halves % 2;
     if (talk->glyphs_shown >= page->glyph_count) {
         talk->glyphs_shown = page->glyph_count;
         finish_reveal(machine);

@@ -14,6 +14,13 @@ enum game_visual_filter {
     GAME_FILTER_DS
 };
 
+enum game_text_speed {
+    GAME_TEXT_SLOW,
+    GAME_TEXT_NORMAL,
+    GAME_TEXT_FAST,
+    GAME_TEXT_SPEED_COUNT
+};
+
 enum game_music_type {
     GAME_MUSIC_ORIGINAL,
     GAME_MUSIC_ARRANGED
@@ -30,6 +37,7 @@ struct game_settings {
     int fps_cap;
     int high_contrast;
     int visual_filter;
+    int text_speed;
 };
 
 void game_settings_defaults(struct game_settings *settings);

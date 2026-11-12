@@ -21,6 +21,7 @@
 #include "scene_view.h"
 #include "read_ahead.h"
 #include "game_save.h"
+#include "game_settings.h"
 #include "script_player.h"
 #include "script_ui_view.h"
 #include "script_view.h"
@@ -245,6 +246,17 @@ static char loaded_bundle_names[LOADED_BUNDLE_MAX][ASSET_NAME_MAX];
 static int loaded_bundle_evictions[LOADED_BUNDLE_MAX];
 static int loaded_bundle_count;
 static int next_loaded_bundle_slot;
+
+static enum script_text_speed talk_speed_of(int text_speed)
+{
+    if (text_speed == GAME_TEXT_SLOW) {
+        return SCRIPT_TEXT_SLOW;
+    }
+    if (text_speed == GAME_TEXT_FAST) {
+        return SCRIPT_TEXT_FAST;
+    }
+    return SCRIPT_TEXT_NORMAL;
+}
 
 static void forget_loaded_bundles(void)
 {
@@ -578,6 +590,7 @@ static int run_one_tick(void)
         script_route_pad_frame(&route_pad, &data->machine, &frame);
         script_input_frame(&route_input, &data->machine, &frame);
     }
+    data->machine.text_speed = talk_speed_of(game_settings_now()->text_speed);
     script_machine_tick(&data->machine);
     tick_us = clock_now_us() - started_us;
     if (tick_us > longest_tick_us) {

@@ -24,6 +24,7 @@
 #include "soul_transition.h"
 #include "scene_view.h"
 #include "script_player.h"
+#include "script_ui_view.h"
 #include "script_view.h"
 #include "sound_engine.h"
 #include "texture_cache.h"
@@ -89,6 +90,7 @@ static unsigned long long pending_background_started_us;
 static int current_animation_index;
 static int hud_is_visible;
 static int list_is_open;
+static int touch_was_down;
 static int debug_controls_are_on;
 
 static void asset_subfolder_path(char *path, const char *subfolder)
@@ -610,10 +612,21 @@ static void update_general_controls(const struct input_state *input)
     }
 }
 
+static int start_button_is_tapped(const struct input_state *input)
+{
+    int lands;
+
+    lands = input->touch_is_down && !touch_was_down;
+    touch_was_down = input->touch_is_down;
+    return lands && script_player_is_active() && script_ui_view_start_button_is_at(input->touch_x, input->touch_y);
+}
+
 void viewer_app_update(const struct input_state *input, unsigned long long elapsed_us)
 {
     int chapter;
+    int start_is_tapped;
 
+    start_is_tapped = start_button_is_tapped(input);
     texture_cache_upload_finished_reads(UPLOADS_PER_FRAME);
     texture_cache_begin_frame();
     if (input->pressed != 0) {
@@ -630,7 +643,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
         }
         return;
     }
-    if ((input->pressed & INPUT_START) && script_player_is_active() && !debug_controls_are_on && pause_menu_is_ready()) {
+    if (((input->pressed & INPUT_START) || start_is_tapped) && script_player_is_active() && !debug_controls_are_on && pause_menu_is_ready()) {
         pause_people_use_notes(everything_is_unlocked() ? pause_people_every_note() : script_player_note_levels());
         pause_menu_open();
         return;

@@ -503,6 +503,13 @@ def glyph_lines():
     return ["glyph %s %d %d %d %d" % (kind, x, y, width, hud_art.GLYPH_CELL) for kind, x, y, width in hud_art.glyph_cells()]
 
 
+def preview_lines(widgets):
+    preview = widgets.get("preview")
+    if preview is None:
+        return []
+    return ["preview %s %d %d %d %d" % tuple([preview["plate"]] + list(preview["crop"]))]
+
+
 def bake_widgets(packs, work_folder, record, code, widgets):
     fonts = narration.TextFonts(packs, work_folder)
     font_bytes = b"".join(fonts.pack_bytes(path) for path in sorted(set([widgets["font"]] + [language["font"] for language in widgets["languages"]])))
@@ -512,7 +519,7 @@ def bake_widgets(packs, work_folder, record, code, widgets):
     table = record.read_if_current(WIDGET_TABLE_PATH, key)
     if gtex is None or table is None:
         sheet, lines = pack_widget_cells(widget_cells(work_folder, fonts, widgets))
-        table = ("\n".join(lines + glyph_lines()) + "\n").encode("utf-8")
+        table = ("\n".join(lines + glyph_lines() + preview_lines(widgets)) + "\n").encode("utf-8")
         gtex = asset_writers.gtex_bytes(sheet.shape[1], sheet.shape[0], asset_writers.FORMAT_RGBA8888, sheet.tobytes())
         record.store(relative_path, key, gtex)
         record.store(WIDGET_TABLE_PATH, key, table)

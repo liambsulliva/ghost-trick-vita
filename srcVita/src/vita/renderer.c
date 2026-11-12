@@ -400,12 +400,18 @@ void renderer_snapshot_end(void)
 void renderer_raise_contrast(void)
 {
     struct renderer_rect screen;
-    struct renderer_color shade;
 
     screen.x = 0.0f;
     screen.y = 0.0f;
     screen.width = (float)RENDERER_WIDTH;
     screen.height = (float)RENDERER_HEIGHT;
+    renderer_raise_contrast_in(screen);
+}
+
+void renderer_raise_contrast_in(struct renderer_rect screen)
+{
+    struct renderer_color shade;
+
     shade.alpha = 1.0f;
     flush_batch();
     glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);

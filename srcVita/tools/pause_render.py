@@ -1,5 +1,6 @@
 import argparse
 import os
+import re
 import subprocess
 import sys
 
@@ -13,6 +14,16 @@ import asset_writers
 import gtex_pack
 
 RENDER_BINARY = os.path.join(SRC_VITA_FOLDER, "build", "tests", "golden", "pause_render")
+RENDERER_SOURCE = os.path.join(SRC_VITA_FOLDER, "src", "vita", "renderer.c")
+
+
+def renderer_constant(name):
+    with open(RENDERER_SOURCE, encoding="utf-8") as source:
+        return float(re.search(r"#define %s ([0-9.]+)f" % name, source.read()).group(1))
+
+
+CONTRAST_FLOOR = renderer_constant("CONTRAST_FLOOR")
+CONTRAST_GAIN = renderer_constant("CONTRAST_GAIN")
 SCREEN_WIDTH = 960
 SCREEN_HEIGHT = 544
 HEADER_SIZE = 20
@@ -127,6 +138,12 @@ def draw_rect(canvas, fields):
     blend(canvas, patch, int(round(x)), int(round(y)), alpha)
 
 
+def raise_contrast(canvas, fields):
+    x, y, w, h = [int(round(float(value))) for value in fields]
+    area = canvas[y:y + h, x:x + w]
+    area[:] = np.clip(area - CONTRAST_FLOOR * 255.0, 0.0, 255.0) * (1.0 + CONTRAST_GAIN)
+
+
 def render(assets_folder, buttons, output_path, notes=None):
     result = subprocess.run([RENDER_BINARY, assets_folder, buttons] + ([notes] if notes else []), check=True, capture_output=True, text=True)
     canvas = np.zeros((SCREEN_HEIGHT, SCREEN_WIDTH, 3), dtype=np.float32)
@@ -135,7 +152,9 @@ def render(assets_folder, buttons, output_path, notes=None):
         parts = line.split()
         if not parts:
             continue
-        if parts[0] == "rect":
+        if parts[0] == "contrast":
+            raise_contrast(canvas, parts[1:])
+        elif parts[0] == "rect":
             draw_rect(canvas, parts[1:])
         elif parts[0] == "sprite":
             name = parts[1]

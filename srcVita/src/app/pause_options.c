@@ -33,6 +33,15 @@
 #define SCROLL_KEEP_BELOW 40.0f
 #define SCROLL_EASE 0.18f
 #define SCROLL_SNAP 0.5f
+#define DRAG_START 12.0f
+#define SLIDER_KNOB_INSET 4.0f
+#define PREVIEW_INSET 8.0f
+#define PREVIEW_PICTURE_HEIGHT 194.0f
+#define PREVIEW_LABEL_ROOM 40.0f
+#define PREVIEW_CARD_HEIGHT (PREVIEW_PICTURE_HEIGHT + PREVIEW_LABEL_ROOM + PREVIEW_INSET)
+#define PREVIEW_GAP 8.0f
+#define PREVIEW_DIVIDER 2.0f
+#define SLIDER_TEXT_PAD 8.0f
 #define GREYED_ALPHA 0.42f
 #define DROP_ITEM_STEP 40.0f
 #define DROP_PAD 12.0f
@@ -53,6 +62,7 @@ enum row_kind {
     ROW_CYCLES,
     ROW_METER,
     ROW_DROPDOWN,
+    ROW_SLIDER,
     ROW_FIXED
 };
 
@@ -70,6 +80,7 @@ enum row_job {
     JOB_HIGH_CONTRAST,
     JOB_FPS_CAP,
     JOB_VISUAL_FILTER,
+    JOB_TEXT_SPEED,
     JOB_UNLOCK_ALL
 };
 
@@ -84,7 +95,7 @@ struct option_row {
 
 static const struct option_row rows[] = {
     { "controls", "controls", ROW_OPENS, JOB_CONTROLS, 0, NULL },
-    { "display", "ff_unread", ROW_FIXED, JOB_NONE, 1, "off" },
+    { "display", "text_speed", ROW_SLIDER, JOB_TEXT_SPEED, 0, NULL },
     { NULL, "brightness", ROW_METER, JOB_BRIGHTNESS, 0, NULL },
     { NULL, "high_contrast", ROW_CYCLES, JOB_HIGH_CONTRAST, 0, NULL },
     { NULL, "visual_filter", ROW_CYCLES, JOB_VISUAL_FILTER, 0, NULL },
@@ -107,6 +118,7 @@ static const char *const languages[LANGUAGE_COUNT] = { "english", "japanese", "f
 static const char *const control_keys[CONTROLS_COUNT] = { "stick", "right_stick", "cross", "circle", "l", "r", "faces", "select", "start", "touch" };
 static const char *const control_glyphs[CONTROLS_COUNT][CONTROLS_GLYPH_MOST] = { { "lstick", "dpad" }, { "rstick", NULL }, { "cross", NULL }, { "circle", NULL }, { "l", NULL }, { "r", NULL }, { "triangle", "square" }, { "select", NULL }, { "start", NULL }, { "touch", NULL } };
 
+static const char *const text_speed_keys[GAME_TEXT_SPEED_COUNT] = { "row.text_slow", "row.text_normal", "row.text_fast" };
 static float row_y[ROW_COUNT];
 static float list_height;
 static int selected;
@@ -115,6 +127,13 @@ static int is_on_controls_page;
 static int dropdown_is_open;
 static int dropdown_hovered;
 static float scroll;
+static int scroll_is_free;
+static int drag_is_tracking;
+static int drag_is_scrolling;
+static float drag_land_y;
+static float drag_land_scroll;
+static int *drag_level;
+static int drag_level_before;
 static int touched_row;
 static int touched_option;
 static int settings_changed;
@@ -184,6 +203,10 @@ void pause_options_enter(void)
     dropdown_is_open = 0;
     dropdown_hovered = 0;
     scroll = 0.0f;
+    scroll_is_free = 0;
+    drag_is_tracking = 0;
+    drag_is_scrolling = 0;
+    drag_level = NULL;
     touched_row = -1;
     touched_option = PAUSE_DIALOG_NOTHING;
     settings_changed = 0;
@@ -325,6 +348,35 @@ static void flip_switch(enum row_job job)
     run_log_write("pause option %s=%d", rows[selected].name, *value);
 }
 
+static void set_text_speed(int speed)
+{
+    struct game_settings *settings;
+
+    settings = game_settings_now();
+    speed = speed < 0 ? 0 : (speed >= GAME_TEXT_SPEED_COUNT ? GAME_TEXT_SPEED_COUNT - 1 : speed);
+    if (settings->text_speed != speed) {
+        settings->text_speed = speed;
+        settings_now_changed("text_speed");
+        run_log_write("pause option text_speed=%d", speed);
+    }
+}
+
+static float slider_stop_width(void)
+{
+    return (VALUE_RIGHT - VALUE_LEFT) / (float)GAME_TEXT_SPEED_COUNT;
+}
+
+static int slider_stop_at(float x)
+{
+    int stop;
+
+    if (x < VALUE_LEFT || x > VALUE_RIGHT) {
+        return -1;
+    }
+    stop = (int)((x - VALUE_LEFT) / slider_stop_width());
+    return stop >= GAME_TEXT_SPEED_COUNT ? GAME_TEXT_SPEED_COUNT - 1 : stop;
+}
+
 static void restore_defaults(void)
 {
     game_settings_defaults(game_settings_now());
@@ -341,6 +393,9 @@ static void act_on_row(void)
         break;
     case JOB_MUSIC_TYPE:
         cycle_music_type();
+        break;
+    case JOB_TEXT_SPEED:
+        set_text_speed((game_settings_now()->text_speed + 1) % GAME_TEXT_SPEED_COUNT);
         break;
     case JOB_HIGH_CONTRAST:
     case JOB_FPS_CAP:
@@ -390,6 +445,9 @@ static int step_dropdown(unsigned int pressed)
 
 static int step_controls_page(unsigned int pressed)
 {
+    if (pressed & (INPUT_UP | INPUT_DOWN)) {
+        scroll_is_free = 0;
+    }
     if (pressed & INPUT_CIRCLE) {
         is_on_controls_page = 0;
     } else if ((pressed & INPUT_UP) && controls_selected > 0) {
@@ -432,6 +490,9 @@ int pause_options_step(unsigned int pressed)
         pause_options_leave();
         return PAUSE_OPTIONS_LEAVES;
     }
+    if (pressed & (INPUT_UP | INPUT_DOWN)) {
+        scroll_is_free = 0;
+    }
     if (pressed & INPUT_UP) {
         selected = next_selectable(selected, -1);
     } else if (pressed & INPUT_DOWN) {
@@ -440,6 +501,8 @@ int pause_options_step(unsigned int pressed)
         level = level_of(rows[selected].job);
         if (level != NULL) {
             set_level(rows[selected].job, *level + ((pressed & INPUT_RIGHT) ? 1 : -1));
+        } else if (rows[selected].kind == ROW_SLIDER) {
+            set_text_speed(game_settings_now()->text_speed + ((pressed & INPUT_RIGHT) ? 1 : -1));
         } else if (rows[selected].kind == ROW_CYCLES) {
             act_on_row();
         }
@@ -449,26 +512,46 @@ int pause_options_step(unsigned int pressed)
     return PAUSE_OPTIONS_STAYS;
 }
 
+static float scroll_most(void)
+{
+    float most;
+
+    most = is_on_controls_page ? ROW_TOP + (float)CONTROLS_COUNT * ROW_STEP + LIST_BOTTOM_PAD - PAUSE_BAR_TOP : list_height - PAUSE_BAR_TOP;
+    return most < 0.0f ? 0.0f : most;
+}
+
+static float clamp_scroll(float value)
+{
+    float most;
+
+    most = scroll_most();
+    return value < 0.0f ? 0.0f : (value > most ? most : value);
+}
+
 static float scroll_target(void)
 {
     float bottom;
-    float most;
 
     if (is_on_controls_page) {
         bottom = ROW_TOP + (float)controls_selected * ROW_STEP + ROW_HEIGHT + SCROLL_KEEP_BELOW;
-        most = ROW_TOP + (float)CONTROLS_COUNT * ROW_STEP + LIST_BOTTOM_PAD - PAUSE_BAR_TOP;
     } else {
         bottom = row_y[selected] + ROW_HEIGHT + SCROLL_KEEP_BELOW;
-        most = list_height - PAUSE_BAR_TOP;
     }
-    bottom = bottom - PAUSE_BAR_TOP;
-    return bottom < 0.0f ? 0.0f : (bottom > most ? most : bottom);
+    return clamp_scroll(bottom - PAUSE_BAR_TOP);
+}
+
+float pause_options_scroll(void)
+{
+    return scroll;
 }
 
 void pause_options_tick(void)
 {
     float target;
 
+    if (scroll_is_free) {
+        return;
+    }
     target = scroll_target();
     scroll = scroll + (target - scroll) * SCROLL_EASE;
     if (fabsf(target - scroll) < SCROLL_SNAP) {
@@ -537,12 +620,50 @@ static int language_at(float x, float y)
     return -1;
 }
 
+static int drag_scrolls(int lands, int lifts, int is_down, float y)
+{
+    if (lands) {
+        drag_is_tracking = y < PAUSE_BAR_TOP;
+        drag_is_scrolling = 0;
+        drag_land_y = y;
+        drag_land_scroll = scroll;
+        drag_level = NULL;
+        return 0;
+    }
+    if (lifts) {
+        drag_is_tracking = 0;
+        drag_level = NULL;
+        if (drag_is_scrolling) {
+            drag_is_scrolling = 0;
+            touched_row = -1;
+            return 1;
+        }
+        return 0;
+    }
+    if (!is_down || !drag_is_tracking) {
+        return 0;
+    }
+    if (!drag_is_scrolling && fabsf(y - drag_land_y) >= DRAG_START) {
+        drag_is_scrolling = 1;
+        scroll_is_free = 1;
+        touched_row = -1;
+        if (drag_level != NULL && *drag_level != drag_level_before) {
+            *drag_level = drag_level_before;
+            settings_now_changed("drag");
+        }
+    }
+    if (drag_is_scrolling) {
+        scroll = clamp_scroll(drag_land_scroll - (y - drag_land_y));
+        return 1;
+    }
+    return 0;
+}
+
 unsigned int pause_options_touch(int lands, int lifts, int is_down, float x, float y)
 {
     int row;
     int flame;
 
-    (void)is_down;
     if (lands && pause_is_on_back_pill(x, y)) {
         return INPUT_CIRCLE;
     }
@@ -572,6 +693,9 @@ unsigned int pause_options_touch(int lands, int lifts, int is_down, float x, flo
         }
         return 0;
     }
+    if (drag_scrolls(lands, lifts, is_down, y)) {
+        return 0;
+    }
     if (is_on_controls_page) {
         return 0;
     }
@@ -581,7 +705,14 @@ unsigned int pause_options_touch(int lands, int lifts, int is_down, float x, flo
         if (touched_row >= 0) {
             selected = touched_row;
             flame = rows[selected].kind == ROW_METER ? flame_at(x) : 0;
-            if (flame > 0) {
+            if (rows[selected].kind == ROW_SLIDER && slider_stop_at(x) >= 0) {
+                drag_level = &game_settings_now()->text_speed;
+                drag_level_before = *drag_level;
+                set_text_speed(slider_stop_at(x));
+                touched_row = -1;
+            } else if (flame > 0) {
+                drag_level = level_of(rows[selected].job);
+                drag_level_before = drag_level != NULL ? *drag_level : 0;
                 set_level(rows[selected].job, flame);
                 touched_row = -1;
             }
@@ -589,7 +720,7 @@ unsigned int pause_options_touch(int lands, int lifts, int is_down, float x, flo
     } else if (lifts && touched_row >= 0) {
         row = row_at(y);
         touched_row = -1;
-        if (row == selected && rows[row].kind != ROW_METER) {
+        if (row == selected && rows[row].kind != ROW_METER && rows[row].kind != ROW_SLIDER) {
             return INPUT_CROSS;
         }
     }
@@ -610,6 +741,24 @@ static const char *value_key(const struct option_row *row, char *key, unsigned i
         return NULL;
     }
     return key;
+}
+
+static void draw_slider(float top, float middle, float x_offset, float alpha)
+{
+    float width;
+    float left;
+    float room;
+    int stop;
+
+    width = slider_stop_width();
+    pause_draw_slice("value", VALUE_LEFT + x_offset, top + VALUE_INSET, VALUE_RIGHT - VALUE_LEFT, ROW_HEIGHT - 2.0f * VALUE_INSET, alpha);
+    left = VALUE_LEFT + (float)game_settings_now()->text_speed * width;
+    pause_draw_slice("tab_selected", left + SLIDER_KNOB_INSET + x_offset, top + VALUE_INSET + SLIDER_KNOB_INSET, width - 2.0f * SLIDER_KNOB_INSET, ROW_HEIGHT - 2.0f * (VALUE_INSET + SLIDER_KNOB_INSET), alpha);
+    room = width - 2.0f * SLIDER_TEXT_PAD;
+    for (stop = 0; stop < GAME_TEXT_SPEED_COUNT; stop++) {
+        left = VALUE_LEFT + ((float)stop + 0.5f) * width;
+        pause_draw_text_within(text_speed_keys[stop], left - pause_text_width(text_speed_keys[stop]) * pause_fit_scale(text_speed_keys[stop], room) / 2.0f + x_offset, middle, room, alpha);
+    }
 }
 
 static void draw_row(int index, float x_offset)
@@ -639,6 +788,10 @@ static void draw_row(int index, float x_offset)
         for (step = 0; step < GAME_SETTING_STEPS; step++) {
             pause_draw_flame(step + 1, level != NULL && step < *level, FLAME_FIRST_X + (float)step * FLAME_STEP + x_offset, middle - FLAME_RISE, alpha);
         }
+        return;
+    }
+    if (row->kind == ROW_SLIDER) {
+        draw_slider(top, middle, x_offset, alpha);
         return;
     }
     if (value_key(row, key, sizeof(key)) == NULL) {
@@ -707,6 +860,47 @@ static void draw_controls_page(float x_offset)
     }
 }
 
+float pause_options_preview_top(void)
+{
+    float row_top;
+    float top;
+
+    row_top = row_y[selected] - scroll;
+    top = row_top - PREVIEW_GAP - PREVIEW_CARD_HEIGHT;
+    return top >= PREVIEW_GAP ? top : row_top + ROW_HEIGHT + PREVIEW_GAP;
+}
+
+static void draw_contrast_preview(float x_offset)
+{
+    struct renderer_rect half;
+    struct renderer_rect divider;
+    float left;
+    float top;
+    float picture_width;
+    float label_y;
+
+    left = VALUE_LEFT + x_offset;
+    top = pause_options_preview_top();
+    picture_width = VALUE_RIGHT - VALUE_LEFT - 2.0f * PREVIEW_INSET;
+    pause_draw_slice("box", left, top, VALUE_RIGHT - VALUE_LEFT, PREVIEW_CARD_HEIGHT, 1.0f);
+    if (!pause_draw_preview(left + PREVIEW_INSET, top + PREVIEW_INSET, picture_width, PREVIEW_PICTURE_HEIGHT, 0.0f, 0.5f) || !pause_draw_preview(left + PREVIEW_INSET, top + PREVIEW_INSET, picture_width, PREVIEW_PICTURE_HEIGHT, 0.5f, 1.0f)) {
+        return;
+    }
+    half.x = left + PREVIEW_INSET + picture_width / 2.0f;
+    half.y = top + PREVIEW_INSET;
+    half.width = picture_width / 2.0f;
+    half.height = PREVIEW_PICTURE_HEIGHT;
+    renderer_raise_contrast_in(half);
+    divider.x = half.x - PREVIEW_DIVIDER / 2.0f;
+    divider.y = half.y;
+    divider.width = PREVIEW_DIVIDER;
+    divider.height = PREVIEW_PICTURE_HEIGHT;
+    renderer_draw_filled_rect(divider, pause_white(1.0f));
+    label_y = top + PREVIEW_INSET + PREVIEW_PICTURE_HEIGHT + PREVIEW_LABEL_ROOM / 2.0f;
+    pause_draw_text("row.off", left + PREVIEW_INSET + picture_width / 4.0f, label_y, PAUSE_ANCHOR_CENTRE, 1.0f);
+    pause_draw_text("row.on", left + PREVIEW_INSET + 3.0f * picture_width / 4.0f, label_y, PAUSE_ANCHOR_CENTRE, 1.0f);
+}
+
 void pause_options_draw(float x_offset)
 {
     int index;
@@ -723,6 +917,8 @@ void pause_options_draw(float x_offset)
     }
     if (dropdown_is_open) {
         draw_dropdown(x_offset);
+    } else if (rows[selected].job == JOB_HIGH_CONTRAST) {
+        draw_contrast_preview(x_offset);
     }
 }
 

@@ -84,8 +84,15 @@ struct script_talk_book {
     int text_count;
 };
 
+enum script_text_speed {
+    SCRIPT_TEXT_NORMAL,
+    SCRIPT_TEXT_SLOW,
+    SCRIPT_TEXT_FAST
+};
+
 struct script_talk {
     enum script_talk_phase phase;
+    int reveal_halves;
     const struct script_talk_message *message;
     int page_index;
     int timer;

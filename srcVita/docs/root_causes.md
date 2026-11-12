@@ -929,6 +929,12 @@ Root cause 132 replaced the controls page's key names with button glyphs and del
 
 Guard: `tests/tools/test_pause_option_keys.py` checks that every literal `bar.`, `row.`, `header.` and `language.` key in `src/app/pause_*.c` has a string, that every Options row, value and bar text the menu builds from its row table has one, and that two-line bar texts stay two lines short enough for the bar.
 
+### 135. Narration shown all at once took the dismissing press while its lines were still fading in
+
+A narration page with the show-at-once option (DS timing, which the player uses) reports every line in one tick and goes straight to waiting for a press, while the view fades each line in over 62 ticks. So the first ✕ dismissed text that was still half drawn. The same gap left a group's fade running after a press that showed the whole page. The narration now counts down the fade from each line it reports: until it ends, a press finishes every fade at once (`SCRIPT_NARRATION_TEXT_FULL`, `scene_layers_finish_text_fade_ins`) instead of moving on, and the page arrow and auto-press wait for it. Dialogue already worked this way. The honest whole-game replay is unchanged (432 steps done, the same 4 failures).
+
+Guard: `tests/unit/test_narration_skip.c` checks that a press during a shown-at-once page's fade finishes the lines without ending the page, that the second press ends it, and that the arrow waits for the fade.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

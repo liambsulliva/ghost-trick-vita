@@ -471,6 +471,7 @@ struct script_machine {
     long long soul_sound_at;
     long long talk_close_at;
     struct script_talk talk;
+    enum script_text_speed text_speed;
     const struct script_talk_book *talk_book;
     int soul_state_keeps_pause;
     int eyecatch_marks_the_core;
@@ -627,6 +628,7 @@ void script_balloons_report_opened(struct script_machine *machine);
 void script_balloons_tap(struct script_machine *machine, int tap_group);
 int script_balloons_can_be_tapped(const struct script_machine *machine, int tap_group);
 void script_machine_note_press(struct script_machine *machine);
+int script_machine_text_takes_a_skip(const struct script_machine *machine);
 void script_machine_reload_scene(struct script_machine *machine);
 int script_machine_move_on_in_story_order(struct script_machine *machine, const char *why);
 void script_machine_scroll_camera(struct script_machine *machine, int delta_x, int delta_y);

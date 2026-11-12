@@ -43,6 +43,8 @@ void pause_draw_glyph(const char *kind, float centre_x, float centre_y, float si
 float pause_glyph_width(const char *kind, float height);
 float pause_draw_glyph_from_left(const char *kind, float left, float centre_y, float height, float alpha);
 float pause_fit_scale(const char *key, float room);
+const char *pause_preview_plate(void);
+int pause_draw_preview(float x, float y, float width, float height, float from, float to);
 float pause_fit_box_scale(const char *key, float room_width, float room_height);
 void pause_draw_text_within(const char *key, float x, float y, float room, float alpha);
 void pause_draw_cell(const char *name, float centre_x, float centre_y, float alpha);

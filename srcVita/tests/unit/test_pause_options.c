@@ -11,6 +11,7 @@
 #include "test_support.h"
 
 #define CONTROLS_ROW 0
+#define TEXT_SPEED_ROW 1
 #define BRIGHTNESS_ROW 2
 #define HIGH_CONTRAST_ROW 3
 #define VISUAL_FILTER_ROW 4
@@ -66,7 +67,7 @@ static void test_settings_survive_a_round_trip_and_bad_values_are_clamped(void)
     written.music_type = GAME_MUSIC_ORIGINAL;
     size = game_settings_write_text(&written, text, sizeof(text));
     game_settings_defaults(&read);
-    CHECK_INT(game_settings_read_text(&read, text, size), 10);
+    CHECK_INT(game_settings_read_text(&read, text, size), 11);
     CHECK_INT(read.brightness, 4);
     CHECK_INT(read.master, 3);
     CHECK_INT(read.music_type, GAME_MUSIC_ORIGINAL);
@@ -95,6 +96,8 @@ static void test_the_cursor_skips_rows_the_vita_fixes(void)
 {
     start_options();
     CHECK_INT(pause_options_selected_row(), CONTROLS_ROW);
+    pause_options_step(INPUT_DOWN);
+    CHECK_INT(pause_options_selected_row(), TEXT_SPEED_ROW);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), BRIGHTNESS_ROW);
     pause_options_step(INPUT_DOWN);
@@ -303,6 +306,75 @@ static void test_the_visual_filter_chooses_only_when_both_art_sets_are_bundled(v
     game_settings_set_bundled_art(1, 0);
 }
 
+static void settle(void)
+{
+    int tick;
+
+    for (tick = 0; tick < 120; tick++) {
+        pause_options_tick();
+    }
+}
+
+static void test_dragging_the_list_scrolls_it_without_picking_a_row(void)
+{
+    int level;
+
+    start_options();
+    settle();
+    CHECK(pause_options_scroll() == 0.0f);
+    CHECK_INT(pause_options_touch(1, 0, 1, 300.0f, 400.0f), 0u);
+    CHECK_INT(pause_options_touch(0, 0, 1, 300.0f, 395.0f), 0u);
+    CHECK(pause_options_scroll() == 0.0f);
+    CHECK_INT(pause_options_touch(0, 0, 1, 300.0f, 250.0f), 0u);
+    CHECK(pause_options_scroll() == 150.0f);
+    CHECK_INT(pause_options_touch(0, 1, 0, 300.0f, 250.0f), 0u);
+    settle();
+    CHECK(pause_options_scroll() == 150.0f);
+    CHECK_INT(pause_options_touch(1, 0, 1, 300.0f, 100.0f), 0u);
+    CHECK_INT(pause_options_touch(0, 0, 1, 300.0f, 440.0f), 0u);
+    CHECK(pause_options_scroll() == 0.0f);
+    CHECK_INT(pause_options_touch(0, 1, 0, 300.0f, 440.0f), 0u);
+    CHECK_INT(pause_options_touch(1, 0, 1, 300.0f, 400.0f), 0u);
+    CHECK_INT(pause_options_touch(0, 0, 1, 300.0f, -3000.0f), 0u);
+    CHECK(pause_options_scroll() > 150.0f);
+    CHECK(pause_options_scroll() < 2000.0f);
+    CHECK_INT(pause_options_touch(0, 1, 0, 300.0f, -3000.0f), 0u);
+    press_up_to(CONTROLS_ROW);
+    settle();
+    CHECK(pause_options_scroll() == 0.0f);
+    press_down_to(MASTER_ROW);
+    settle();
+    pause_options_step(INPUT_UP);
+    pause_options_step(INPUT_DOWN);
+    level = game_settings_now()->master;
+    CHECK_INT(pause_options_touch(1, 0, 1, 545.0f + 3.0f * 38.0f, 421.0f), 0u);
+    CHECK_INT(game_settings_now()->master, 4);
+    CHECK_INT(pause_options_touch(0, 0, 1, 545.0f + 3.0f * 38.0f, 340.0f), 0u);
+    CHECK_INT(game_settings_now()->master, level);
+    CHECK_INT(pause_options_touch(0, 1, 0, 545.0f + 3.0f * 38.0f, 340.0f), 0u);
+}
+
+static void test_the_text_speed_slider_steps_cycles_and_takes_a_tap(void)
+{
+    start_options();
+    press_down_to(TEXT_SPEED_ROW);
+    CHECK_INT(pause_options_selected_row(), TEXT_SPEED_ROW);
+    CHECK_INT(game_settings_now()->text_speed, GAME_TEXT_NORMAL);
+    pause_options_step(INPUT_RIGHT);
+    CHECK_INT(game_settings_now()->text_speed, GAME_TEXT_FAST);
+    pause_options_step(INPUT_RIGHT);
+    CHECK_INT(game_settings_now()->text_speed, GAME_TEXT_FAST);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->text_speed, GAME_TEXT_SLOW);
+    pause_options_step(INPUT_LEFT);
+    CHECK_INT(game_settings_now()->text_speed, GAME_TEXT_SLOW);
+    settle();
+    CHECK_INT(pause_options_touch(1, 0, 1, 900.0f, 276.0f + 31.0f), 0u);
+    CHECK_INT(pause_options_touch(0, 1, 0, 900.0f, 276.0f + 31.0f), 0u);
+    CHECK_INT(game_settings_now()->text_speed, GAME_TEXT_FAST);
+    CHECK_INT(pause_options_step(INPUT_CIRCLE), PAUSE_OPTIONS_LEAVES);
+}
+
 int main(void)
 {
     test_settings_survive_a_round_trip_and_bad_values_are_clamped();
@@ -318,5 +390,7 @@ int main(void)
     test_the_unlock_row_shows_only_when_built_in_and_flips_a_saved_setting();
     test_display_switches_flip_save_and_reach_the_renderer();
     test_the_visual_filter_chooses_only_when_both_art_sets_are_bundled();
+    test_dragging_the_list_scrolls_it_without_picking_a_row();
+    test_the_text_speed_slider_steps_cycles_and_takes_a_tap();
     return test_finish("unit/pause_options");
 }

@@ -504,6 +504,10 @@ static void on_narration_changed(const char *label, enum script_narration_event 
     case SCRIPT_NARRATION_TEXT_OUT:
         fade_out_message(label);
         break;
+    case SCRIPT_NARRATION_TEXT_FULL:
+        write_cue("text_full", label);
+        scene_layers_finish_text_fade_ins(scene_stage_layers());
+        break;
     case SCRIPT_NARRATION_CUT:
         write_cue("text_hide_all", label);
         write_cue("dim", label);
