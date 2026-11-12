@@ -98,7 +98,7 @@ MUTATIONS = [
     ("src/app/scene.c", "if (scene->step_count >= SCENE_STEP_MAX) {", "if (0) {"),
     ("src/app/viewer_app.c", "list_is_open = 0;\n    }\n    if (input->pressed & (INPUT_CIRCLE", "list_is_open = 1;\n    }\n    if (input->pressed & (INPUT_CIRCLE"),
     ("src/app/viewer_app.c", "hud_is_visible = 0;\n        debug_controls_are_on = 0;", "debug_controls_are_on = 0;"),
-    ("src/app/viewer_app.c", "debug_controls_are_on = 0;\n        play_opening", "play_opening"),
+    ("src/app/viewer_app.c", "debug_controls_are_on = 0;\n        continue_or_play_opening", "continue_or_play_opening"),
     ("src/app/viewer_app.c", "} else if (debug_controls_are_on) {", "} else if (1) {"),
     ("src/app/viewer_app.c", "x = x - (frame->x + frame->width / 2.0f);", ""),
     ("src/app/viewer_app.c", "y = y - (frame->y + frame->height / 2.0f);", ""),

@@ -7,6 +7,7 @@
 #include "pause_menu.h"
 #include "pause_options.h"
 #include "pause_people.h"
+#include "pause_save.h"
 #include "pause_widgets.h"
 #include "renderer.h"
 #include "run_log.h"
@@ -93,6 +94,7 @@ static int touched_item;
 static int touched_option;
 static struct pause_dialog title_dialog;
 static int title_is_wanted;
+static int title_asks_to_save;
 
 static float clamp01(float value)
 {
@@ -481,6 +483,20 @@ static void leave_submenu(void)
 
 static void open_title_dialog(void)
 {
+    title_asks_to_save = 1;
+    title_dialog.line_count = 2;
+    title_dialog.lines[0] = "row.title_save_ask";
+    title_dialog.lines[1] = "row.title_save_ask_more";
+    title_dialog.note = NULL;
+    title_dialog.option_count = 2;
+    title_dialog.options[0] = "row.yes";
+    title_dialog.options[1] = "row.no";
+    pause_dialog_open(&title_dialog, 0);
+}
+
+static void open_title_warning(void)
+{
+    title_asks_to_save = 0;
     title_dialog.line_count = 1;
     title_dialog.lines[0] = "row.title_ask";
     title_dialog.note = "bar.title_warning";
@@ -495,12 +511,29 @@ static void step_title(unsigned int pressed)
     int chosen;
 
     chosen = pause_dialog_steer(&title_dialog, pressed);
-    if (chosen == 0) {
+    if (chosen == PAUSE_DIALOG_NOTHING) {
+        return;
+    }
+    if (chosen == 0 && (!title_asks_to_save || pause_save_now())) {
         title_is_wanted = 1;
-        run_log_write("pause return_to_title");
+        run_log_write("pause return_to_title saved=%d", title_asks_to_save);
         begin_hiding();
-    } else if (chosen != PAUSE_DIALOG_NOTHING) {
+    } else if (title_asks_to_save && chosen != PAUSE_DIALOG_CANCEL) {
+        open_title_warning();
+    } else {
         enter(PAUSE_PHASE_PANNING_BACK);
+    }
+}
+
+static void step_save(unsigned int pressed)
+{
+    int result;
+
+    result = pause_save_step(pressed);
+    if (result == PAUSE_SAVE_LEAVES) {
+        enter(PAUSE_PHASE_PANNING_BACK);
+    } else if (result == PAUSE_SAVE_RESUMES) {
+        begin_hiding();
     }
 }
 
@@ -542,6 +575,9 @@ static void step_showing(unsigned int pressed)
             pause_people_enter();
             run_log_write("pause pick %s", item_names[picked]);
         } else if (picked == PAUSE_ITEM_TITLE) {
+            run_log_write("pause pick %s", item_names[picked]);
+        } else if (picked == PAUSE_ITEM_SAVE) {
+            pause_save_enter();
             run_log_write("pause pick %s", item_names[picked]);
         } else {
             run_log_write("pause pick %s submenu=not_ported", item_names[picked]);
@@ -590,6 +626,8 @@ static void advance_phase(unsigned int pressed)
             }
         } else if (picked == PAUSE_ITEM_TITLE) {
             step_title(pressed);
+        } else if (picked == PAUSE_ITEM_SAVE) {
+            step_save(pressed);
         } else if (pressed & INPUT_CIRCLE) {
             enter(PAUSE_PHASE_PANNING_BACK);
         }
@@ -729,6 +767,8 @@ static unsigned int touch_presses(const struct input_state *input)
         if (lifts) {
             touched_option = PAUSE_DIALOG_NOTHING;
         }
+    } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_SAVE) {
+        pressed = pause_save_touch(lands, lifts, input->touch_x, input->touch_y);
     } else if (phase == PAUSE_PHASE_SUBMENU && people_is_picked()) {
         pressed = pause_people_touch(lands, input->touch_x, input->touch_y);
     } else if (phase == PAUSE_PHASE_SUBMENU && lands && pause_is_on_back_pill(input->touch_x, input->touch_y)) {
@@ -960,6 +1000,8 @@ static void draw_menu(void)
         pause_options_draw(side_x);
     } else if (camera_x != 0.0f && people_is_picked()) {
         pause_people_draw(side_x);
+    } else if (camera_x != 0.0f && picked == PAUSE_ITEM_SAVE) {
+        pause_save_draw(side_x);
     }
     draw_floor();
     if (camera_x != 0.0f) {
@@ -969,6 +1011,8 @@ static void draw_menu(void)
             pause_people_draw_bar(side_x);
         } else if (picked == PAUSE_ITEM_TITLE) {
             pause_draw_bar(side_x, "bar.title", NULL, NULL);
+        } else if (picked == PAUSE_ITEM_SAVE) {
+            pause_save_draw_bar(side_x);
         } else {
             pause_draw_bar(side_x, NULL, NULL, NULL);
         }
@@ -982,6 +1026,8 @@ static void draw_menu(void)
         pause_options_draw_dialog(side_x);
     } else if (camera_x != 0.0f && picked == PAUSE_ITEM_TITLE) {
         pause_dialog_draw(&title_dialog, whole(side_x));
+    } else if (camera_x != 0.0f && picked == PAUSE_ITEM_SAVE) {
+        pause_save_draw_dialog(side_x);
     }
 }
 

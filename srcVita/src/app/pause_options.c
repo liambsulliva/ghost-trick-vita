@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "file.h"
+#include "game_save.h"
 #include "game_settings.h"
 #include "input.h"
 #include "pause_options.h"
@@ -59,7 +60,8 @@ enum row_job {
     JOB_EFFECTS,
     JOB_MUSIC_TYPE,
     JOB_LANGUAGE,
-    JOB_RESTORE
+    JOB_RESTORE,
+    JOB_RESET_SAVE
 };
 
 struct option_row {
@@ -85,7 +87,7 @@ static const struct option_row rows[] = {
     { NULL, "music_type", ROW_CYCLES, JOB_MUSIC_TYPE, 0, NULL },
     { "language", "language", ROW_DROPDOWN, JOB_LANGUAGE, 0, NULL },
     { "other", "credits", ROW_OPENS, JOB_NONE, 1, NULL },
-    { NULL, "reset_save", ROW_OPENS, JOB_NONE, 1, NULL },
+    { NULL, "reset_save", ROW_OPENS, JOB_RESET_SAVE, 0, NULL },
     { NULL, "restore", ROW_OPENS, JOB_RESTORE, 0, NULL }
 };
 
@@ -106,6 +108,7 @@ static int touched_row;
 static int touched_option;
 static int settings_changed;
 static struct pause_dialog restore_dialog;
+static enum row_job dialog_job;
 
 static float whole(float value)
 {
@@ -264,6 +267,10 @@ static void act_on_row(void)
         dropdown_hovered = game_settings_now()->language;
         break;
     case JOB_RESTORE:
+    case JOB_RESET_SAVE:
+        dialog_job = rows[selected].job;
+        restore_dialog.lines[0] = rows[selected].job == JOB_RESTORE ? "row.restore_ask" : "row.reset_ask";
+        restore_dialog.note = rows[selected].job == JOB_RESTORE ? NULL : "bar.reset_warning";
         pause_dialog_open(&restore_dialog, 1);
         break;
     default:
@@ -322,7 +329,9 @@ int pause_options_step(unsigned int pressed)
 
     if (restore_dialog.is_open) {
         chosen = pause_dialog_steer(&restore_dialog, pressed);
-        if (chosen == 0) {
+        if (chosen == 0 && dialog_job == JOB_RESET_SAVE) {
+            (void)game_save_erase_all();
+        } else if (chosen == 0) {
             restore_defaults();
         }
         return PAUSE_OPTIONS_STAYS;

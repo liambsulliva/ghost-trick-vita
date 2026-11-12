@@ -12,7 +12,9 @@
 #include "music_engine.h"
 #include "page_tiles.h"
 #include "pause_menu.h"
+#include "game_save.h"
 #include "pause_people.h"
+#include "pause_save.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "scene_player.h"
@@ -294,6 +296,26 @@ static void play_opening(void)
     viewer_app_play_script(SCRIPT_ENTRY_NAME);
 }
 
+static int slot_has_save(int slot)
+{
+    static struct game_save save;
+
+    return game_save_load(&save, slot == 0 ? GAME_SAVE_AUTO : GAME_SAVE_MANUAL);
+}
+
+static void continue_or_play_opening(void)
+{
+    static struct game_save save;
+
+    if (!game_save_load_newest(&save)) {
+        play_opening();
+        return;
+    }
+    pending_background_index = NO_PENDING_BACKGROUND;
+    scene_player_stop();
+    script_player_resume(&save);
+}
+
 static void read_page_tiles(const char *script_folder)
 {
     char path[FILE_PATH_MAX];
@@ -387,10 +409,11 @@ void viewer_app_start(const char *folder)
         return;
     }
     ui_list_init(&animation_list, manifest->animation_count, LIST_VISIBLE_ROWS);
+    pause_save_use(script_player_save_manual, slot_has_save);
     if (script_player_is_available()) {
         hud_is_visible = 0;
         debug_controls_are_on = 0;
-        play_opening();
+        continue_or_play_opening();
         return;
     }
     run_log_write("opening needs_scripts entry=%s", SCRIPT_ENTRY_NAME);

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "game_save.h"
 #include "script_input.h"
 #include "script_machine.h"
 #include "script_route_pad.h"
@@ -26,9 +27,6 @@ static const char *state_save_paths[STATE_SAVE_MAX];
 static int state_was_saved[STATE_SAVE_MAX];
 static int state_save_count;
 static int soul_state_was_loaded;
-static unsigned int loaded_pills_registered;
-static int loaded_trick_is_on;
-static int loaded_rollback_is_on;
 
 static void print_fetch(const struct script_fetch *fetch)
 {
@@ -70,30 +68,20 @@ static void on_music_started(int id) { CUE("music_start %d", id); }
 static void on_music_stopped(int fade) { CUE("music_stop %d", fade); }
 static void on_sound(int kind) { CUE("sound %d", kind); }
 static void on_soul_vision(int is_on, int with_effect) { (void)with_effect; CUE("soul_vision %d", is_on); }
-static void write_bytes(FILE *file, const char *name, const unsigned char *bytes, unsigned int count)
+static void write_state(const char *path, const char *script)
 {
-    unsigned int index;
-
-    fprintf(file, "%s ", name);
-    for (index = 0; index < count; index++) {
-        fprintf(file, "%02x", bytes[index]);
-    }
-    fprintf(file, "\n");
-}
-
-static void write_state(const char *path)
-{
+    static struct game_save save;
+    static char text[GAME_SAVE_TEXT_MAX];
+    unsigned int size;
     FILE *file;
 
+    game_save_capture(&save, &machine, script);
+    size = game_save_write_text(&save, text, sizeof(text));
     file = fopen(path, "w");
     if (file == NULL) {
         return;
     }
-    fprintf(file, "chapter_mark %d\nphone_book_place %d\nfate_level %d\n", machine.chapter_mark, machine.phone_book_place, machine.fate_level);
-    fprintf(file, "pills_registered %u\ntrick_is_on %d\nrollback_is_on %d\n", machine.soul.pills_registered, machine.soul.trick_is_on, machine.soul.rollback_is_on);
-    write_bytes(file, "game_flags", machine.flags.game, sizeof(machine.flags.game));
-    write_bytes(file, "chapter_flags", machine.flags.chapter, sizeof(machine.flags.chapter));
-    write_bytes(file, "game_bank_saved", machine.flags.game_bank_saved, sizeof(machine.flags.game_bank_saved));
+    fwrite(text, 1, size, file);
     fclose(file);
 }
 
@@ -107,67 +95,31 @@ static void save_state_when_due(const char *what, const char *name)
     for (index = 0; index < state_save_count; index++) {
         if (!state_was_saved[index] && strcmp(name, state_save_scripts[index]) == 0) {
             state_was_saved[index] = 1;
-            write_state(state_save_paths[index]);
+            write_state(state_save_paths[index], name);
         }
     }
 }
 
-static int read_bytes(const char *hex, unsigned char *bytes, unsigned int count)
-{
-    unsigned int index;
-    unsigned int value;
-
-    for (index = 0; index < count; index++) {
-        if (sscanf(hex + 2 * index, "%2x", &value) != 1) {
-            return 0;
-        }
-        bytes[index] = (unsigned char)value;
-    }
-    return 1;
-}
+static struct game_save loaded_save;
 
 static int load_state(const char *path)
 {
+    static char text[GAME_SAVE_TEXT_MAX];
+    size_t size;
     FILE *file;
-    char line[4 * SCRIPT_FLAG_BYTES];
-    char *value;
-    int is_whole;
 
     file = fopen(path, "r");
     if (file == NULL) {
         return 0;
     }
-    is_whole = 1;
-    while (fgets(line, sizeof(line), file) != NULL) {
-        value = strchr(line, ' ');
-        if (value == NULL) {
-            continue;
-        }
-        *value = '\0';
-        value = value + 1;
-        if (strcmp(line, "chapter_mark") == 0) {
-            machine.chapter_mark = atoi(value);
-        } else if (strcmp(line, "phone_book_place") == 0) {
-            machine.phone_book_place = atoi(value);
-        } else if (strcmp(line, "fate_level") == 0) {
-            script_soul_set_fate_level(&machine, atoi(value));
-        } else if (strcmp(line, "pills_registered") == 0) {
-            loaded_pills_registered = (unsigned int)strtoul(value, NULL, 10);
-            soul_state_was_loaded = 1;
-        } else if (strcmp(line, "trick_is_on") == 0) {
-            loaded_trick_is_on = atoi(value);
-        } else if (strcmp(line, "rollback_is_on") == 0) {
-            loaded_rollback_is_on = atoi(value);
-        } else if (strcmp(line, "game_flags") == 0) {
-            is_whole = is_whole && read_bytes(value, machine.flags.game, sizeof(machine.flags.game));
-        } else if (strcmp(line, "chapter_flags") == 0) {
-            is_whole = is_whole && read_bytes(value, machine.flags.chapter, sizeof(machine.flags.chapter));
-        } else if (strcmp(line, "game_bank_saved") == 0) {
-            is_whole = is_whole && read_bytes(value, machine.flags.game_bank_saved, sizeof(machine.flags.game_bank_saved));
-        }
-    }
+    size = fread(text, 1, sizeof(text), file);
     fclose(file);
-    return is_whole;
+    if (!game_save_read_text(&loaded_save, text, (unsigned int)size)) {
+        return 0;
+    }
+    game_save_apply_before_start(&loaded_save, &machine);
+    soul_state_was_loaded = loaded_save.has_soul_state;
+    return 1;
 }
 
 static struct script_flags flags_at_last_step;
@@ -681,9 +633,7 @@ int main(int argument_count, char **arguments)
         return 1;
     }
     if (soul_state_was_loaded) {
-        machine.soul.pills_registered = loaded_pills_registered;
-        machine.soul.trick_is_on = loaded_trick_is_on;
-        machine.soul.rollback_is_on = loaded_rollback_is_on;
+        game_save_apply_after_start(&loaded_save, &machine);
     }
     for (index = 0; index < start_count; index++) {
         script_soul_run_command(&machine, start_verbs[index], start_args[index]);

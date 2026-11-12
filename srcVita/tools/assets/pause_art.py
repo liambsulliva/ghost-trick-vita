@@ -66,6 +66,8 @@ SLICES = [
     ("shoulder", 28, 28, 10, "#1e1a1e", "#9696a0", 2),
     ("sprocket", 11, 7, 2, "#46464c", "none", 0),
     ("note_box", 24, 24, 10, "#faf8f2", "#968c82", 2),
+    ("save_panel", 40, 40, 12, "#2a0808", PILL_GREY, 3),
+    ("save_panel_selected", 40, 40, 12, "#2a0808", "#d3763a", 5),
 ]
 
 

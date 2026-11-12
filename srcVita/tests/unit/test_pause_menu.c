@@ -8,6 +8,7 @@
 #include "input.h"
 #include "pause_menu.h"
 #include "pause_people.h"
+#include "pause_save.h"
 #include "script_machine.h"
 #include "renderer.h"
 #include "test_support.h"
@@ -287,23 +288,45 @@ static void test_people_opens_the_notebook_screen_where_l_switches_tabs_and_circ
     CHECK_INT(pause_menu_phase(), PAUSE_PHASE_PANNING_BACK);
 }
 
+static int saves_made;
+
+static int fake_save(void)
+{
+    saves_made = saves_made + 1;
+    return 1;
+}
+
+static int no_save(void)
+{
+    return 0;
+}
+
+static void pick_title(void)
+{
+    press(INPUT_CROSS);
+    wait_steps(SETTLE_STEPS);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SUBMENU);
+}
+
 static void test_title_asks_first_and_yes_hands_over_once_the_screen_is_black(void)
 {
     int steps;
 
     start_with_art();
+    pause_save_use(no_save, NULL);
     open_until_shown();
     press(INPUT_RIGHT);
     CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_TITLE);
+    pick_title();
     press(INPUT_CROSS);
-    wait_steps(SETTLE_STEPS);
     CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SUBMENU);
     press(INPUT_CROSS);
     CHECK_INT(pause_menu_phase(), PAUSE_PHASE_PANNING_BACK);
     CHECK_INT(pause_menu_takes_title_request(), 0);
     wait_steps(SETTLE_STEPS);
+    pick_title();
+    press(INPUT_RIGHT);
     press(INPUT_CROSS);
-    wait_steps(SETTLE_STEPS);
     press(INPUT_LEFT);
     press(INPUT_CROSS);
     CHECK_INT(pause_menu_phase(), PAUSE_PHASE_HIDING);
@@ -314,6 +337,20 @@ static void test_title_asks_first_and_yes_hands_over_once_the_screen_is_black(vo
     CHECK_INT(pause_menu_phase(), PAUSE_PHASE_BLACK_BEFORE_GAME);
     CHECK_INT(pause_menu_takes_title_request(), 1);
     CHECK_INT(pause_menu_takes_title_request(), 0);
+}
+
+static void test_title_saves_first_when_yes_is_kept(void)
+{
+    start_with_art();
+    saves_made = 0;
+    pause_save_use(fake_save, NULL);
+    open_until_shown();
+    press(INPUT_RIGHT);
+    pick_title();
+    press(INPUT_CROSS);
+    CHECK_INT(saves_made, 1);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_HIDING);
+    pause_save_use(NULL, NULL);
 }
 
 static void test_every_menu_sprite_lands_on_whole_pixels_through_a_pan(void)
@@ -367,6 +404,7 @@ int main(void)
     test_picking_pans_toward_the_item_side_and_back_fades_the_labels_in();
     test_people_opens_the_notebook_screen_where_l_switches_tabs_and_circle_returns();
     test_title_asks_first_and_yes_hands_over_once_the_screen_is_black();
+    test_title_saves_first_when_yes_is_kept();
     test_every_menu_sprite_lands_on_whole_pixels_through_a_pan();
     test_the_menu_stays_shut_without_its_art();
     return test_finish("unit/pause_menu");
