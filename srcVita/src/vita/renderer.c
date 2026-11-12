@@ -1,8 +1,10 @@
 #include <math.h>
 #include <string.h>
+#include <psp2/display.h>
 #include <psp2/gxm.h>
 #include <vitaGL.h>
 #include "device_stats.h"
+#include "ds_units.h"
 #include "renderer.h"
 #include "run_log.h"
 
@@ -11,6 +13,10 @@
 #define BATCH_QUAD_MAX 1024
 #define VERTICES_PER_QUAD 6
 #define DEGREES_TO_RADIANS 0.017453293f
+#define LOW_RESOLUTION_WIDTH ((int)ceilf((float)RENDERER_WIDTH / VITA_PIXELS_PER_DS_PIXEL))
+#define LOW_RESOLUTION_HEIGHT ((int)ceilf((float)RENDERER_HEIGHT / VITA_PIXELS_PER_DS_PIXEL))
+#define CONTRAST_FLOOR 0.06f
+#define CONTRAST_GAIN 0.3f
 #define LOG_FOR_TOOLS_SNAPSHOT_TARGET "renderer snapshot_target ok=%d video_bytes=%d main_bytes=%d render_target_bytes=%u"
 
 struct batch_vertex {
@@ -32,6 +38,13 @@ static int batch_is_flat;
 static renderer_texture snapshot_texture;
 static GLuint snapshot_framebuffer;
 static unsigned int live_texture_count;
+static renderer_texture low_resolution_texture;
+static GLuint low_resolution_framebuffer;
+static int low_resolution_was_tried;
+static GLuint drawing_framebuffer;
+static int drawing_width = RENDERER_WIDTH;
+static int drawing_height = RENDERER_HEIGHT;
+static int vblanks_per_frame = 1;
 
 static void flush_batch(void)
 {
@@ -143,6 +156,32 @@ static void create_snapshot_target(void)
     run_log_write(LOG_FOR_TOOLS_SNAPSHOT_TARGET, snapshot_texture != RENDERER_NO_TEXTURE, (int)(before.video_memory_free - after.video_memory_free), (int)(before.main_memory_free - after.main_memory_free), snapshot_render_target_bytes());
 }
 
+static void create_low_resolution_target(void)
+{
+    GLuint texture;
+
+    texture = start_new_texture();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, LOW_RESOLUTION_WIDTH, LOW_RESOLUTION_HEIGHT, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
+    low_resolution_texture = finish_new_texture(texture);
+    if (low_resolution_texture != RENDERER_NO_TEXTURE) {
+        glGenFramebuffers(1, &low_resolution_framebuffer);
+        glBindFramebuffer(GL_FRAMEBUFFER, low_resolution_framebuffer);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, low_resolution_texture, 0);
+        clear_bound_target_to_black();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+    run_log_write("renderer low_resolution_target ok=%d width=%d height=%d", low_resolution_texture != RENDERER_NO_TEXTURE, LOW_RESOLUTION_WIDTH, LOW_RESOLUTION_HEIGHT);
+}
+
+static void bind_target(GLuint framebuffer, int width, int height)
+{
+    flush_batch();
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    glViewport(0, 0, width, height);
+}
+
 int renderer_init(void)
 {
     static const unsigned char white_pixel[4] = { 255, 255, 255, 255 };
@@ -157,6 +196,12 @@ int renderer_init(void)
 
 void renderer_shutdown(void)
 {
+    if (low_resolution_framebuffer != 0) {
+        glDeleteFramebuffers(1, &low_resolution_framebuffer);
+        renderer_texture_destroy(low_resolution_texture);
+        low_resolution_framebuffer = 0;
+    }
+    low_resolution_was_tried = 0;
     if (snapshot_framebuffer != 0) {
         glDeleteFramebuffers(1, &snapshot_framebuffer);
         renderer_texture_destroy(snapshot_texture);
@@ -174,8 +219,18 @@ void renderer_begin_frame(struct renderer_color clear_color)
 
 void renderer_end_frame(void)
 {
+    int extra;
+
     flush_batch();
     vglSwapBuffers(GL_FALSE);
+    for (extra = 1; extra < vblanks_per_frame; extra++) {
+        sceDisplayWaitVblankStart();
+    }
+}
+
+void renderer_set_vblanks_per_frame(int vblanks)
+{
+    vblanks_per_frame = vblanks < 1 ? 1 : vblanks;
 }
 
 renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int width, int height)
@@ -366,16 +421,85 @@ int renderer_snapshot_begin(void)
     if (snapshot_framebuffer == 0) {
         return 0;
     }
-    flush_batch();
-    glBindFramebuffer(GL_FRAMEBUFFER, snapshot_framebuffer);
+    bind_target(snapshot_framebuffer, RENDERER_WIDTH, RENDERER_HEIGHT);
     clear_bound_target_to_black();
     return 1;
 }
 
 void renderer_snapshot_end(void)
 {
+    bind_target(drawing_framebuffer, drawing_width, drawing_height);
+}
+
+int renderer_low_resolution_begin(void)
+{
+    if (!low_resolution_was_tried) {
+        low_resolution_was_tried = 1;
+        flush_batch();
+        create_low_resolution_target();
+    }
+    if (low_resolution_framebuffer == 0) {
+        return 0;
+    }
+    drawing_framebuffer = low_resolution_framebuffer;
+    drawing_width = LOW_RESOLUTION_WIDTH;
+    drawing_height = LOW_RESOLUTION_HEIGHT;
+    bind_target(drawing_framebuffer, drawing_width, drawing_height);
+    clear_bound_target_to_black();
+    return 1;
+}
+
+void renderer_low_resolution_end(void)
+{
+    struct renderer_rect screen;
+    struct renderer_rect texture_stored_bottom_row_first;
+    struct renderer_color white;
+
+    drawing_framebuffer = 0;
+    drawing_width = RENDERER_WIDTH;
+    drawing_height = RENDERER_HEIGHT;
+    bind_target(0, RENDERER_WIDTH, RENDERER_HEIGHT);
+    screen.x = 0.0f;
+    screen.y = 0.0f;
+    screen.width = (float)RENDERER_WIDTH;
+    screen.height = (float)RENDERER_HEIGHT;
+    texture_stored_bottom_row_first.x = 0.0f;
+    texture_stored_bottom_row_first.y = 1.0f;
+    texture_stored_bottom_row_first.width = 1.0f;
+    texture_stored_bottom_row_first.height = -1.0f;
+    white.red = 1.0f;
+    white.green = 1.0f;
+    white.blue = 1.0f;
+    white.alpha = 1.0f;
+    renderer_draw_sprite(low_resolution_texture, screen, texture_stored_bottom_row_first, white);
+}
+
+void renderer_raise_contrast(void)
+{
+    struct renderer_rect screen;
+    struct renderer_color shade;
+
+    screen.x = 0.0f;
+    screen.y = 0.0f;
+    screen.width = (float)RENDERER_WIDTH;
+    screen.height = (float)RENDERER_HEIGHT;
+    shade.alpha = 1.0f;
     flush_batch();
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+    glBlendFunc(GL_ONE, GL_ONE);
+    shade.red = CONTRAST_FLOOR;
+    shade.green = CONTRAST_FLOOR;
+    shade.blue = CONTRAST_FLOOR;
+    renderer_draw_filled_rect(screen, shade);
+    flush_batch();
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_DST_COLOR, GL_ONE);
+    shade.red = CONTRAST_GAIN;
+    shade.green = CONTRAST_GAIN;
+    shade.blue = CONTRAST_GAIN;
+    renderer_draw_filled_rect(screen, shade);
+    flush_batch();
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void renderer_draw_turned_snapshot(float center_x, float center_y, float half_width, float half_height, float degrees, float alpha)

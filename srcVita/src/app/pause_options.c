@@ -66,6 +66,9 @@ enum row_job {
     JOB_LANGUAGE,
     JOB_RESTORE,
     JOB_RESET_SAVE,
+    JOB_HIGH_CONTRAST,
+    JOB_VISUAL_FILTER,
+    JOB_FPS_CAP,
     JOB_UNLOCK_ALL
 };
 
@@ -82,6 +85,9 @@ static const struct option_row rows[] = {
     { "controls", "controls", ROW_OPENS, JOB_CONTROLS, 0, NULL },
     { "display", "ff_unread", ROW_FIXED, JOB_NONE, 1, "off" },
     { NULL, "brightness", ROW_METER, JOB_BRIGHTNESS, 0, NULL },
+    { NULL, "high_contrast", ROW_CYCLES, JOB_HIGH_CONTRAST, 0, NULL },
+    { NULL, "visual_filter", ROW_CYCLES, JOB_VISUAL_FILTER, 0, NULL },
+    { NULL, "fps_cap", ROW_CYCLES, JOB_FPS_CAP, 0, NULL },
     { NULL, "background", ROW_FIXED, JOB_NONE, 1, "pattern_1" },
     { NULL, "vsync", ROW_FIXED, JOB_NONE, 1, "on" },
     { "sound", "master", ROW_METER, JOB_MASTER, 0, NULL },
@@ -261,14 +267,51 @@ static void cycle_music_type(void)
     settings_now_changed("music_type");
 }
 
-static void flip_unlock_all(void)
+static int *switch_of(enum row_job job)
 {
     struct game_settings *settings;
 
     settings = game_settings_now();
-    settings->unlock_all = !settings->unlock_all;
-    settings_now_changed("unlock_all");
-    run_log_write("pause option unlock_all=%d", settings->unlock_all);
+    switch (job) {
+    case JOB_HIGH_CONTRAST:
+        return &settings->high_contrast;
+    case JOB_VISUAL_FILTER:
+        return &settings->visual_filter;
+    case JOB_FPS_CAP:
+        return &settings->fps_cap;
+    case JOB_UNLOCK_ALL:
+        return &settings->unlock_all;
+    default:
+        return NULL;
+    }
+}
+
+static const char *switch_value_name(enum row_job job, int value)
+{
+    if (job == JOB_VISUAL_FILTER) {
+        return value == GAME_FILTER_DS ? "filter_ds" : "filter_remastered";
+    }
+    if (job == JOB_FPS_CAP) {
+        return value == GAME_FPS_CAPPED ? "fps_30" : "fps_60";
+    }
+    return value ? "on" : "off";
+}
+
+static void flip_switch(enum row_job job)
+{
+    int *value;
+
+    value = switch_of(job);
+    if (value == NULL) {
+        return;
+    }
+    if (job == JOB_FPS_CAP) {
+        *value = *value == GAME_FPS_CAPPED ? GAME_FPS_FULL : GAME_FPS_CAPPED;
+    } else {
+        *value = !*value;
+    }
+    settings_now_changed(rows[selected].name);
+    run_log_write("pause option %s=%d", rows[selected].name, *value);
 }
 
 static void restore_defaults(void)
@@ -288,8 +331,11 @@ static void act_on_row(void)
     case JOB_MUSIC_TYPE:
         cycle_music_type();
         break;
+    case JOB_HIGH_CONTRAST:
+    case JOB_VISUAL_FILTER:
+    case JOB_FPS_CAP:
     case JOB_UNLOCK_ALL:
-        flip_unlock_all();
+        flip_switch(rows[selected].job);
         break;
     case JOB_LANGUAGE:
         dropdown_is_open = 1;
@@ -547,8 +593,8 @@ static const char *value_key(const struct option_row *row, char *key, unsigned i
         snprintf(key, key_size, "row.%s", game_settings_now()->music_type == GAME_MUSIC_ORIGINAL ? "original" : "arranged");
     } else if (row->job == JOB_LANGUAGE) {
         snprintf(key, key_size, "language.%s", languages[game_settings_now()->language]);
-    } else if (row->job == JOB_UNLOCK_ALL) {
-        snprintf(key, key_size, "row.%s", game_settings_now()->unlock_all ? "on" : "off");
+    } else if (switch_of(row->job) != NULL) {
+        snprintf(key, key_size, "row.%s", switch_value_name(row->job, *switch_of(row->job)));
     } else {
         return NULL;
     }
@@ -680,7 +726,11 @@ void pause_options_draw_bar(float x_offset)
         pause_draw_bar(x_offset, "bar.controls_page", NULL, NULL);
         return;
     }
-    snprintf(key, sizeof(key), "bar.%s", rows[selected].name);
+    if (rows[selected].job == JOB_VISUAL_FILTER || rows[selected].job == JOB_FPS_CAP) {
+        snprintf(key, sizeof(key), "bar.%s", switch_value_name(rows[selected].job, *switch_of(rows[selected].job)));
+    } else {
+        snprintf(key, sizeof(key), "bar.%s", rows[selected].name);
+    }
     pause_draw_bar(x_offset, key, NULL, NULL);
 }
 

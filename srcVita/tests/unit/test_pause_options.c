@@ -2,6 +2,7 @@
 #include <string.h>
 #include "audio_volume.h"
 #include "fakes/fake_platform.h"
+#include "fakes/fake_renderer.h"
 #include "file.h"
 #include "game_settings.h"
 #include "input.h"
@@ -11,12 +12,15 @@
 
 #define CONTROLS_ROW 0
 #define BRIGHTNESS_ROW 2
-#define MASTER_ROW 5
-#define MUSIC_ROW 6
-#define MUSIC_TYPE_ROW 8
-#define LANGUAGE_ROW 9
-#define RESTORE_ROW 12
-#define UNLOCK_ROW 13
+#define HIGH_CONTRAST_ROW 3
+#define VISUAL_FILTER_ROW 4
+#define FPS_CAP_ROW 5
+#define MASTER_ROW 8
+#define MUSIC_ROW 9
+#define MUSIC_TYPE_ROW 11
+#define LANGUAGE_ROW 12
+#define RESTORE_ROW 15
+#define UNLOCK_ROW 16
 
 static void start_options(void)
 {
@@ -38,6 +42,15 @@ static void press_down_to(int row)
     }
 }
 
+static void press_up_to(int row)
+{
+    int steps;
+
+    for (steps = 0; steps < 20 && pause_options_selected_row() != row; steps++) {
+        pause_options_step(INPUT_UP);
+    }
+}
+
 static void test_settings_survive_a_round_trip_and_bad_values_are_clamped(void)
 {
     static const char clamped[] = "brightness 0\nmaster 99\nlanguage 5\n";
@@ -52,7 +65,7 @@ static void test_settings_survive_a_round_trip_and_bad_values_are_clamped(void)
     written.music_type = GAME_MUSIC_ORIGINAL;
     size = game_settings_write_text(&written, text, sizeof(text));
     game_settings_defaults(&read);
-    CHECK_INT(game_settings_read_text(&read, text, size), 7);
+    CHECK_INT(game_settings_read_text(&read, text, size), 10);
     CHECK_INT(read.brightness, 4);
     CHECK_INT(read.master, 3);
     CHECK_INT(read.music_type, GAME_MUSIC_ORIGINAL);
@@ -83,6 +96,9 @@ static void test_the_cursor_skips_rows_the_vita_fixes(void)
     CHECK_INT(pause_options_selected_row(), CONTROLS_ROW);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), BRIGHTNESS_ROW);
+    pause_options_step(INPUT_DOWN);
+    CHECK_INT(pause_options_selected_row(), HIGH_CONTRAST_ROW);
+    press_down_to(FPS_CAP_ROW);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), MASTER_ROW);
     press_down_to(RESTORE_ROW);
@@ -192,8 +208,8 @@ static void test_a_tap_on_a_flame_sets_that_level(void)
     pause_options_step(INPUT_UP);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), MASTER_ROW);
-    CHECK_INT(pause_options_touch(1, 0, 1, 545.0f + 3.0f * 38.0f, 0.0f), 0u);
-    CHECK_INT(pause_options_touch(0, 1, 0, 0.0f, 0.0f), 0u);
+    CHECK_INT(pause_options_touch(1, 0, 1, 545.0f + 3.0f * 38.0f, 421.0f), 0u);
+    CHECK_INT(pause_options_touch(0, 1, 0, 0.0f, 421.0f), 0u);
     CHECK_INT(pause_options_touch(1, 0, 1, 90.0f, 518.0f), INPUT_CIRCLE);
 }
 
@@ -227,6 +243,40 @@ static void test_the_unlock_row_shows_only_when_built_in_and_flips_a_saved_setti
     pause_options_show_unlock(0);
 }
 
+static void test_display_switches_flip_save_and_reach_the_renderer(void)
+{
+    struct game_settings read;
+    const unsigned char *saved;
+    unsigned int size;
+
+    fake_renderer_reset();
+    start_options();
+    CHECK_INT(fake_renderer_vblanks_per_frame(), 1);
+    press_down_to(FPS_CAP_ROW);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->fps_cap, GAME_FPS_CAPPED);
+    CHECK_INT(fake_renderer_vblanks_per_frame(), 2);
+    press_up_to(VISUAL_FILTER_ROW);
+    pause_options_step(INPUT_RIGHT);
+    CHECK_INT(game_settings_now()->visual_filter, GAME_FILTER_DS);
+    press_up_to(HIGH_CONTRAST_ROW);
+    pause_options_step(INPUT_LEFT);
+    CHECK_INT(game_settings_now()->high_contrast, 1);
+    CHECK_INT(pause_options_step(INPUT_CIRCLE), PAUSE_OPTIONS_LEAVES);
+    saved = fake_files_contents(GAME_SETTINGS_PATH, &size);
+    CHECK(saved != NULL);
+    if (saved != NULL) {
+        game_settings_defaults(&read);
+        game_settings_read_text(&read, (const char *)saved, size);
+        CHECK_INT(read.fps_cap, GAME_FPS_CAPPED);
+        CHECK_INT(read.visual_filter, GAME_FILTER_DS);
+        CHECK_INT(read.high_contrast, 1);
+    }
+    game_settings_defaults(game_settings_now());
+    game_settings_apply();
+    CHECK_INT(fake_renderer_vblanks_per_frame(), 1);
+}
+
 int main(void)
 {
     test_settings_survive_a_round_trip_and_bad_values_are_clamped();
@@ -240,5 +290,6 @@ int main(void)
     test_controls_opens_a_page_that_circle_closes();
     test_a_tap_on_a_flame_sets_that_level();
     test_the_unlock_row_shows_only_when_built_in_and_flips_a_saved_setting();
+    test_display_switches_flip_save_and_reach_the_renderer();
     return test_finish("unit/pause_options");
 }

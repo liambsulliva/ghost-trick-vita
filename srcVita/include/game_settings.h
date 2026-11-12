@@ -4,8 +4,15 @@
 #include "file.h"
 
 #define GAME_SETTING_STEPS 10
+#define GAME_FPS_FULL 60
+#define GAME_FPS_CAPPED 30
 #define GAME_SETTINGS_TEXT_MAX 256
 #define GAME_SETTINGS_PATH FILE_DATA_FOLDER "/settings.txt"
+
+enum game_visual_filter {
+    GAME_FILTER_REMASTERED,
+    GAME_FILTER_DS
+};
 
 enum game_music_type {
     GAME_MUSIC_ORIGINAL,
@@ -20,6 +27,9 @@ struct game_settings {
     int music_type;
     int language;
     int unlock_all;
+    int fps_cap;
+    int high_contrast;
+    int visual_filter;
 };
 
 void game_settings_defaults(struct game_settings *settings);
