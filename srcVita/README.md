@@ -20,6 +20,7 @@ No game data lives in this folder. Converted assets, captures, reference video a
 | `tools/assets/` | The asset converter |
 | `tools/assets/extract_text_key.py` | Finds the text key in your own copy of the Android package |
 | `tools/vita_loop.py` | Installs, launches and reads back from the Vita |
+| `tools/pause_render.py` | Draws the pause menu on the Mac from the baked set, after a list of button presses, through `tests/golden/pause_render.c` |
 | `tools/longplay_check.py` | Compares the Vita's screen against the reference video |
 | `tools/audio_check.py` | Judges a run log's audio timing and checksums, with no listener |
 | `tools/mutation_check.py` | Breaks the code on purpose to prove the tests notice |
@@ -259,7 +260,7 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 | TRIANGLE or SQUARE | Tap the left or right balloon, when a script opens one that can be tapped |
 | R | The hourglass pill |
 | SELECT | The notebook pill |
-| START | During play, opens the pause menu: Resume, Save, People on the left; Title, Chapters, Options on the right. The d-pad or the left stick moves the cursor, and ✕ picks. A tap on a word selects it, and lifting the finger on it picks it. ○, START, or a tap on the Back pill's place in the bottom bar goes back. Only Resume works yet; the other items pan to an empty screen and log `submenu=not_ported` |
+| START | During play, opens the pause menu: Resume, Save, People on the left; Title, Chapters, Options on the right. The d-pad or the left stick moves the cursor, and ✕ picks. A tap on a word selects it, and lifting the finger on it picks it. ○, START, or a tap on the Back pill's place in the bottom bar goes back. Resume and Options work. Options sets brightness, master, music and sound effect volume, and the soundtrack (Original or Arranged, from the next piece of music). It shows the controls, and restores the defaults after asking. Rows the Vita fixes (resolution, screen mode, VSync, background) and rows not ported yet (fast forward of unread text, credits, erasing saves, languages other than English) are greyed, and the cursor skips them. Settings are kept in `ux0:data/ghosttrick/settings.txt` when you leave Options. The other items pan to an empty screen and log `submenu=not_ported` |
 | L and R together | Skip ahead |
 
 ## Debug controls

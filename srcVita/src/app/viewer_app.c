@@ -7,6 +7,7 @@
 #include "debug_font.h"
 #include "file.h"
 #include "file_path.h"
+#include "game_settings.h"
 #include "memory.h"
 #include "music_engine.h"
 #include "page_tiles.h"
@@ -28,8 +29,10 @@
 #define TEXTURE_FOLDER_BUCKETS 0u
 #endif
 #ifdef USE_DS_MUSIC
+#define DEFAULT_MUSIC_TYPE GAME_MUSIC_ORIGINAL
 #define MUSIC_SUBFOLDER "music_ds"
 #else
+#define DEFAULT_MUSIC_TYPE GAME_MUSIC_ARRANGED
 #define MUSIC_SUBFOLDER "music"
 #endif
 #define LIST_VISIBLE_ROWS 20
@@ -304,6 +307,38 @@ static void read_page_tiles(const char *script_folder)
     mem_free(bytes);
 }
 
+static void start_settings(void)
+{
+    char original_folder[FILE_PATH_MAX];
+    char arranged_folder[FILE_PATH_MAX];
+
+    asset_subfolder_path(original_folder, "music_ds");
+    asset_subfolder_path(arranged_folder, "music");
+    game_settings_set_music_folders(original_folder, arranged_folder);
+    game_settings_set_default_music(DEFAULT_MUSIC_TYPE);
+    game_settings_load(GAME_SETTINGS_PATH);
+    game_settings_apply();
+}
+
+static void draw_brightness(void)
+{
+    struct renderer_rect screen;
+    struct renderer_color black;
+
+    black.alpha = game_settings_darkness();
+    if (black.alpha <= 0.0f) {
+        return;
+    }
+    black.red = 0.0f;
+    black.green = 0.0f;
+    black.blue = 0.0f;
+    screen.x = 0.0f;
+    screen.y = 0.0f;
+    screen.width = (float)RENDERER_WIDTH;
+    screen.height = (float)RENDERER_HEIGHT;
+    renderer_draw_filled_rect(screen, black);
+}
+
 void viewer_app_start(const char *folder)
 {
     char texture_folder[FILE_PATH_MAX];
@@ -339,6 +374,7 @@ void viewer_app_start(const char *folder)
     (void)pause_menu_load(assets_folder);
     music_engine_init(music_folder);
     sound_engine_init(sound_folder);
+    start_settings();
     if (!debug_font_init()) {
         run_log_write("font failed");
     }
@@ -673,6 +709,7 @@ void viewer_app_draw(void)
 {
     if (!pause_menu_shows_game()) {
         pause_menu_draw();
+        draw_brightness();
         return;
     }
     if (manifest == NULL) {
@@ -698,6 +735,7 @@ void viewer_app_draw(void)
         draw_list();
     }
     pause_menu_draw();
+    draw_brightness();
 }
 
 void viewer_app_stop(void)

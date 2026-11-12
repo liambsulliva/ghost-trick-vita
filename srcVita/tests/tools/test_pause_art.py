@@ -1,3 +1,5 @@
+import shutil
+import tempfile
 import unittest
 
 import numpy as np
@@ -69,6 +71,34 @@ class SpotlightTest(unittest.TestCase):
         self.assertEqual(pixels.shape[:2], (100, 100))
         self.assertEqual(pixels[50, 50, 3], 255)
         self.assertEqual(pixels[0, 0, 3], 0)
+
+
+class WidgetSheetTest(unittest.TestCase):
+    def test_cells_are_packed_without_overlap_on_a_power_of_two_sheet(self):
+        cells = [("text", "row.%d" % index, np.full((10 + index % 7, 30 + index * 13 % 200, 4), index + 1, dtype=np.uint8)) for index in range(60)]
+        sheet, lines = pause_art.pack_widget_cells(cells)
+        self.assertEqual(sheet.shape[1], pause_art.WIDGET_SHEET_WIDTH)
+        self.assertEqual(sheet.shape[0] & (sheet.shape[0] - 1), 0)
+        for (_, _, pixels), line in zip(cells, lines):
+            x, y, w, h = (int(value) for value in line.split()[2:])
+            self.assertTrue((sheet[y:y + h, x:x + w] == pixels).all())
+
+    def test_glyphs_point_at_the_hud_sheet_face_cells(self):
+        lines = pause_art.glyph_lines()
+        self.assertEqual([line.split()[1] for line in lines], pause_art.hud_art.FACE_ORDER)
+        self.assertEqual(lines[1], "glyph %s %d 0 %d" % (pause_art.hud_art.FACE_ORDER[1], pause_art.hud_art.GLYPH_CELL, pause_art.hud_art.GLYPH_CELL))
+
+    def test_a_pill_slice_is_clear_at_its_corners_and_solid_down_its_middle(self):
+        work = tempfile.mkdtemp()
+        try:
+            pixels = pause_art.slice_pixels(work, 70, 62, 31, "black", pause_art.PILL_GREY, 4)
+        finally:
+            shutil.rmtree(work)
+        self.assertEqual(pixels.shape, (62, 70, 4))
+        self.assertEqual(pixels[0, 0, 3], 0)
+        self.assertEqual(pixels[61, 69, 3], 0)
+        self.assertEqual(pixels[31, 35, 3], 255)
+        self.assertGreater(int(pixels[1, 35, :3].max()), 40)
 
 
 class FramesFromTextTest(unittest.TestCase):

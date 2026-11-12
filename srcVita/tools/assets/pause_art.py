@@ -6,6 +6,7 @@ import numpy as np
 import asset_writers
 import bake_record
 import frame_layout
+import hud_art
 import narration
 import texture_encoder
 
@@ -33,6 +34,33 @@ ARROW_CELL = 40
 CREAM = "#efe7cc"
 NAVY = "#1b2a3a"
 GHOST_BLUE = "#78e8ff"
+WIDGET_SHEET_NAME = "pause_widgets"
+WIDGET_TABLE_PATH = "pause/widgets.txt"
+WIDGET_SHEET_WIDTH = 1024
+WIDGET_SUPERSAMPLE = 4
+WHITE = "#ffffff"
+HEADER_ORANGE = "#d3763a"
+PILL_GREY = "#3e424a"
+PILL_RED = "#c41c1c"
+BACK_RED = "#c4221c"
+BACK_EDGE = "#c8ccd2"
+FLAME_LIT = "#78c8f0"
+FLAME_DARK = "#343840"
+NUMBER_DARK = "#9696a0"
+METER_STEPS = 10
+FLAME_CELL = (40, 52)
+FLAME_SIZE = 34
+ARROW_DOWN_CELL = (20, 14)
+SLICES = [
+    ("row", 70, 62, 31, "black", PILL_GREY, 4),
+    ("row_selected", 70, 62, 31, "black", PILL_RED, 4),
+    ("value", 56, 48, 24, "black", PILL_GREY, 3),
+    ("back", 42, 34, 17, BACK_RED, BACK_EDGE, 4),
+    ("choice", 42, 34, 17, "none", PILL_RED, 3),
+    ("box", 56, 56, 22, "black", PILL_GREY, 4),
+    ("button", 64, 56, 28, "black", PILL_GREY, 4),
+    ("button_selected", 64, 56, 28, "black", PILL_RED, 4),
+]
 
 
 def remaster_page(packs, tool_path, work_folder, pack_path, crop):
@@ -364,6 +392,115 @@ def cat_track_text(cat_table, animations, fidget):
     return ("\n".join(lines) + "\n").encode("ascii")
 
 
+def magick_rgba(work_folder, width, height, arguments, out_width=None, out_height=None):
+    out_width, out_height = out_width or width, out_height or height
+    rgba_path = os.path.join(work_folder, "pause_widget.rgba")
+    subprocess.run(["magick", "-size", "%dx%d" % (width, height), "xc:none"] + arguments + ["-depth", "8", "rgba:" + rgba_path], check=True, capture_output=True)
+    with open(rgba_path, "rb") as source:
+        pixels = np.frombuffer(source.read(), dtype=np.uint8).reshape(out_height, out_width, 4).copy()
+    os.remove(rgba_path)
+    return pixels
+
+
+def supersampled(work_folder, width, height, arguments):
+    k = WIDGET_SUPERSAMPLE
+    return magick_rgba(work_folder, width * k, height * k, arguments + ["-filter", "Box", "-resize", "%dx%d!" % (width, height)], width, height)
+
+
+def slice_pixels(work_folder, width, height, radius, fill, stroke, stroke_width):
+    k = WIDGET_SUPERSAMPLE
+    inset = stroke_width * k // 2
+    inner = radius * k - inset
+    shape = "roundrectangle %d,%d %d,%d %d,%d" % (inset, inset, width * k - inset - 1, height * k - inset - 1, inner, inner)
+    return supersampled(work_folder, width, height, ["-fill", fill, "-stroke", stroke, "-strokewidth", str(stroke_width * k), "-draw", shape])
+
+
+def flame_pixels(work_folder, font_path, number, lit, points):
+    k = WIDGET_SUPERSAMPLE
+    cx, cy = FLAME_CELL[0] * k / 2, FLAME_CELL[1] * k / 2
+    size = FLAME_SIZE * k
+    r = size * 0.42
+    ellipse = "ellipse %d,%d %d,%d 0,360" % (cx, cy + size * 0.18, r, r)
+    flame_tip = "polygon %d,%d %d,%d %d,%d" % (cx - r * 0.95, cy + size * 0.1, cx + r * 0.95, cy + size * 0.1, cx + r * 0.25, cy - size * 0.62)
+    color = FLAME_LIT if lit else FLAME_DARK
+    number_color = WHITE if lit else NUMBER_DARK
+    return supersampled(work_folder, FLAME_CELL[0], FLAME_CELL[1], ["-fill", color, "-stroke", "none", "-draw", ellipse, "-draw", flame_tip, "-font", font_path, "-pointsize", str(points * k), "-fill", number_color, "-gravity", "center", "-annotate", "+0+%d" % round(size * 0.2), str(number)])
+
+
+def arrow_down_pixels(work_folder):
+    w, h = ARROW_DOWN_CELL
+    return supersampled(work_folder, w, h, ["-fill", WHITE, "-draw", "polygon %d,%d %d,%d %d,%d" % (WIDGET_SUPERSAMPLE, WIDGET_SUPERSAMPLE, (w - 1) * WIDGET_SUPERSAMPLE, WIDGET_SUPERSAMPLE, w * WIDGET_SUPERSAMPLE // 2, (h - 1) * WIDGET_SUPERSAMPLE)])
+
+
+def text_pixels(work_folder, font_path, points, color, text):
+    size = subprocess.run(["magick", "-background", "none", "-font", font_path, "-pointsize", str(points), "label:" + text, "-format", "%w %h", "info:"], check=True, capture_output=True, text=True).stdout.split()
+    width, height = int(size[0]), int(size[1])
+    rgba_path = os.path.join(work_folder, "pause_text.rgba")
+    subprocess.run(["magick", "-background", "none", "-fill", color, "-font", font_path, "-pointsize", str(points), "label:" + text, "-depth", "8", "rgba:" + rgba_path], check=True, capture_output=True)
+    with open(rgba_path, "rb") as source:
+        pixels = np.frombuffer(source.read(), dtype=np.uint8).reshape(height, width, 4).copy()
+    os.remove(rgba_path)
+    return pixels
+
+
+def widget_cells(work_folder, fonts, widgets):
+    font = fonts.decoded_path(widgets["font"])
+    cells = []
+    for style, color, points in (("row", WHITE, widgets["row_points"]), ("header", HEADER_ORANGE, widgets["row_points"]), ("bar", WHITE, widgets["bar_points"])):
+        for key, text in widgets[style].items():
+            cells.append(("text", style + "." + key, text_pixels(work_folder, font, points, color, text)))
+    for language in widgets["languages"]:
+        cells.append(("text", "language." + language["key"], text_pixels(work_folder, fonts.decoded_path(language["font"]), widgets["bar_points"], WHITE, language["text"])))
+    for name, width, height, radius, fill, stroke, stroke_width in SLICES:
+        cells.append(("slice", "%s %d" % (name, radius), slice_pixels(work_folder, width, height, radius, fill, stroke, stroke_width)))
+    for number in range(1, METER_STEPS + 1):
+        for lit in (0, 1):
+            cells.append(("flame", "%d %d" % (number, lit), flame_pixels(work_folder, font, number, lit, widgets["number_points"])))
+    cells.append(("cell", "arrow_down", arrow_down_pixels(work_folder)))
+    return cells
+
+
+def pack_widget_cells(cells):
+    order = sorted(range(len(cells)), key=lambda index: -cells[index][2].shape[0])
+    places = [None] * len(cells)
+    x = y = shelf = 0
+    for index in order:
+        h, w = cells[index][2].shape[:2]
+        if x + w > WIDGET_SHEET_WIDTH:
+            x, y, shelf = 0, y + shelf + CELL_GAP, 0
+        places[index] = (x, y)
+        x += w + CELL_GAP
+        shelf = max(shelf, h)
+    height = asset_writers.round_up_to_power_of_two(y + shelf)
+    sheet = np.zeros((height, WIDGET_SHEET_WIDTH, 4), dtype=np.uint8)
+    lines = []
+    for (kind, name, pixels), (x, y) in zip(cells, places):
+        h, w = pixels.shape[:2]
+        sheet[y:y + h, x:x + w] = pixels
+        lines.append("%s %s %d %d %d %d" % (kind, name, x, y, w, h))
+    return sheet, lines
+
+
+def glyph_lines():
+    return ["glyph %s %d 0 %d" % (kind, index * hud_art.GLYPH_CELL, hud_art.GLYPH_CELL) for index, kind in enumerate(hud_art.FACE_ORDER)]
+
+
+def bake_widgets(packs, work_folder, record, code, widgets):
+    fonts = narration.TextFonts(packs, work_folder)
+    font_bytes = b"".join(fonts.pack_bytes(path) for path in sorted(set([widgets["font"]] + [language["font"] for language in widgets["languages"]])))
+    key = record.key_for(code, {"widgets": widgets, "slices": SLICES, "flame": [FLAME_CELL, FLAME_SIZE], "glyphs": glyph_lines()}, font_bytes)
+    relative_path = "textures/" + WIDGET_SHEET_NAME + ".gtex"
+    gtex = record.read_if_current(relative_path, key)
+    table = record.read_if_current(WIDGET_TABLE_PATH, key)
+    if gtex is None or table is None:
+        sheet, lines = pack_widget_cells(widget_cells(work_folder, fonts, widgets))
+        table = ("\n".join(lines + glyph_lines()) + "\n").encode("utf-8")
+        gtex = asset_writers.gtex_bytes(sheet.shape[1], sheet.shape[0], asset_writers.FORMAT_RGBA8888, sheet.tobytes())
+        record.store(relative_path, key, gtex)
+        record.store(WIDGET_TABLE_PATH, key, table)
+    return table, bake_record.result_of_own_size(WIDGET_SHEET_NAME, gtex)
+
+
 def bake_pause_art(packs, tool_path, work_folder, record, code, pause, set_animations, table_texts, timelines, crops):
     files = {}
     animations = cat_animation_entries(set_animations, table_texts, pause["cat_animations"])
@@ -373,4 +510,6 @@ def bake_pause_art(packs, tool_path, work_folder, record, code, pause, set_anima
     label_table, label_result = bake_labels(packs, work_folder, record, code, pause["label_font"], pause["labels"])
     files[LABEL_TABLE_PATH] = label_table
     spotlight = bake_spotlight(packs, tool_path, work_folder, record, code, pause["spotlight_source"])
-    return files, cat_results + [label_result, spotlight]
+    widget_table, widget_result = bake_widgets(packs, work_folder, record, code, pause["widgets"])
+    files[WIDGET_TABLE_PATH] = widget_table
+    return files, cat_results + [label_result, spotlight, widget_result]

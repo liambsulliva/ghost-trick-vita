@@ -287,6 +287,134 @@
     "labels": ["RESUME", "SAVE", "PEOPLE", "TITLE", "CHAPTERS", "OPTIONS"],
     "cat_animations": [{"name": "st01_neko_001", "mirror": true}, {"name": "st01_neko_002", "mirror": true}],
     "cat_fidget": {"animation": 1, "play": [[0, 131], [130, 118], [110, 96]], "every": 240, "link": 164, "dissolve": 6},
+    "widgets": {
+      "font": "natives/android/gui/font/outlinefont/fot-chiarostd-b.oft.1",
+      "row_points": 30,
+      "bar_points": 26,
+      "number_points": 17,
+      "row": {
+        "controls": "Controls",
+        "ff_unread": "Fast forward unread text",
+        "brightness": "Brightness",
+        "background": "Background",
+        "resolution": "Screen Resolution",
+        "screen_mode": "Screen Mode",
+        "vsync": "VSync",
+        "master": "Master Volume",
+        "music": "Music",
+        "effects": "Sound Effects",
+        "music_type": "Music Type",
+        "language": "Display Language",
+        "credits": "Credits",
+        "reset_save": "Reset Save Data",
+        "restore": "Restore Default Settings",
+        "yes": "Yes",
+        "no": "No",
+        "restore_ask": "Return every setting to its default?",
+        "off": "Off",
+        "on": "On",
+        "pattern_1": "Pattern 1",
+        "resolution_value": "960x544",
+        "full_screen": "Full Screen",
+        "original": "Original",
+        "arranged": "Arranged"
+      },
+      "header": {
+        "controls": "Controls",
+        "display": "Display",
+        "sound": "Sound",
+        "language": "Language",
+        "other": "Other"
+      },
+      "bar": {
+        "back": "Back",
+        "controls": "View the button controls.",
+        "ff_unread": "Choose whether fast forward skips text you have not read.",
+        "brightness": "Adjust the screen brightness.",
+        "background": "Set the screen background.",
+        "resolution": "Set the screen resolution.",
+        "screen_mode": "Set the screen mode.",
+        "vsync": "Sync the frame rate to the display.",
+        "master": "Adjust the overall volume.",
+        "music": "Adjust the music volume.",
+        "effects": "Adjust the sound effects volume.",
+        "music_type": "Choose the original or arranged soundtrack.",
+        "language": "Choose the display language.",
+        "credits": "View the credits.",
+        "reset_save": "Erase all save data.",
+        "restore": "Return every setting to its default.",
+        "press": "Press",
+        "to_choose_language": "to choose a language.",
+        "controls_page": "The Vita's controls.",
+        "key_stick": "Left stick / D-pad",
+        "do_stick": "Aim the soul, pan the camera, move a cursor",
+        "key_right_stick": "Right stick",
+        "do_right_stick": "Pan the camera in the soul view",
+        "key_cross": "Cross",
+        "do_cross": "Advance text, do a trick, choose",
+        "key_circle": "Circle",
+        "do_circle": "Go back, or unlock a link",
+        "key_l": "L",
+        "do_l": "Open or close the soul view",
+        "key_r": "R",
+        "do_r": "The hourglass",
+        "key_faces": "Triangle / Square",
+        "do_faces": "Tap the left or right balloon",
+        "key_select": "Select",
+        "do_select": "The notebook",
+        "key_start": "Start",
+        "do_start": "This menu",
+        "key_touch": "Touch",
+        "do_touch": "Drag the soul, tap pills and balloons"
+      },
+      "languages": [
+        {
+          "key": "english",
+          "text": "English",
+          "font": "natives/android/gui/font/outlinefont/fot-chiarostd-b.oft.1"
+        },
+        {
+          "key": "japanese",
+          "text": "\u65e5\u672c\u8a9e",
+          "font": "natives/android/gui/font/outlinefont/fot-rodinntlgpro-b.oft.1"
+        },
+        {
+          "key": "french",
+          "text": "Fran\u00e7ais",
+          "font": "natives/android/gui/font/outlinefont/fot-chiarostd-b.oft.1"
+        },
+        {
+          "key": "italian",
+          "text": "Italiano",
+          "font": "natives/android/gui/font/outlinefont/fot-chiarostd-b.oft.1"
+        },
+        {
+          "key": "german",
+          "text": "Deutsch",
+          "font": "natives/android/gui/font/outlinefont/fot-chiarostd-b.oft.1"
+        },
+        {
+          "key": "spanish",
+          "text": "Espa\u00f1ol",
+          "font": "natives/android/gui/font/outlinefont/fot-chiarostd-b.oft.1"
+        },
+        {
+          "key": "chinese_traditional",
+          "text": "\u7e41\u9ad4\u4e2d\u6587",
+          "font": "natives/android/gui/font/outlinefont/mheihk-medium.oft.1"
+        },
+        {
+          "key": "chinese_simplified",
+          "text": "\u7b80\u4f53\u4e2d\u6587",
+          "font": "natives/android/gui/font/outlinefont/mheiprc-medium.oft.1"
+        },
+        {
+          "key": "korean",
+          "text": "\ud55c\uad6d\uc5b4",
+          "font": "natives/android/gui/font/outlinefont/fotk-yoongulimpro740.oft.1"
+        }
+      ]
+    },
     "spotlight_source": "natives/android/charfiles/3d/06_id/02_database/cmn_dbi_01_01_iml4.tex.691230823"
   },
   "screen_textures": [

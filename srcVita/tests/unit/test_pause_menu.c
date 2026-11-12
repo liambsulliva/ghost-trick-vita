@@ -49,6 +49,9 @@ static void start_with_art(void)
     add_cat_table();
     add_text("set/pause/cat_track.txt", track_text);
     add_text("set/pause/labels.txt", label_text);
+    add_text("set/pause/widgets.txt", "slice row 31 0 0 70 62\ntext bar.back 0 70 40 20\nglyph circle 40 0 40\n");
+    fake_files_add_rgba_texture("set/textures/pause_widgets.gtex", 8, 8);
+    fake_files_add_rgba_texture("set/textures/hud_sheet.gtex", 8, 8);
     fake_files_add_rgba_texture("set/textures/pause_backdrop.gtex", 8, 8);
     fake_files_add_rgba_texture("set/textures/pause_spotlight.gtex", 8, 8);
     fake_files_add_rgba_texture("set/textures/pause_labels.gtex", 8, 8);

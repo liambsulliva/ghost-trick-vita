@@ -5,6 +5,8 @@
 #include "file_path.h"
 #include "memory.h"
 #include "pause_menu.h"
+#include "pause_options.h"
+#include "pause_widgets.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "stick_aim.h"
@@ -45,9 +47,6 @@
 #define ARROW_LEFT_BACK 27.0f
 #define ARROW_SHOWN_FROM 0.5f
 #define TOUCH_MARGIN 14.0f
-#define BACK_PILL_LEFT 12.0f
-#define BACK_PILL_RIGHT 172.0f
-#define BACK_PILL_INSET 9.0f
 
 #define TRACK_IDLE 0
 #define TRACK_FIDGET 1
@@ -86,6 +85,7 @@ static int cursor;
 static int previous_cursor;
 static int cursor_ticks;
 static int picked;
+static int widget_total;
 static int stick_was_out;
 static int touch_was_down;
 static int touched_item;
@@ -247,6 +247,7 @@ int pause_menu_load(const char *assets_folder)
     int ticks;
     int words;
 
+    widget_total = 0;
     cat_frame_count = 0;
     cat_pages = 0;
     idle_count = 0;
@@ -256,14 +257,15 @@ int pause_menu_load(const char *assets_folder)
     frames = read_table(assets_folder, CAT_TABLE_PATH, pause_menu_read_cat_text);
     ticks = frames > 0 ? read_table(assets_folder, TRACK_TABLE_PATH, pause_menu_read_track_text) : 0;
     words = read_table(assets_folder, LABEL_TABLE_PATH, pause_menu_read_label_text);
+    widget_total = pause_widgets_load(assets_folder);
     phase = PAUSE_PHASE_CLOSED;
-    run_log_write("pause art frames=%d idle_ticks=%d fidget_ticks=%d labels=%d", frames, ticks, fidget_count, words);
+    run_log_write("pause art frames=%d idle_ticks=%d fidget_ticks=%d labels=%d widgets=%d", frames, ticks, fidget_count, words, widget_total);
     return pause_menu_is_ready();
 }
 
 int pause_menu_is_ready(void)
 {
-    return idle_count > 0 && label_count == PAUSE_MENU_ITEM_COUNT && arrow_size > 0.0f;
+    return idle_count > 0 && label_count == PAUSE_MENU_ITEM_COUNT && arrow_size > 0.0f && widget_total > 0;
 }
 
 const struct pause_cat_frame *pause_cat_frame_at(int row)
@@ -359,6 +361,8 @@ static int art_is_settled(void)
     settled = texture_is_settled(BACKDROP_NAME);
     settled = texture_is_settled(SPOTLIGHT_NAME) && settled;
     settled = texture_is_settled(LABEL_SHEET_NAME) && settled;
+    settled = texture_is_settled(PAUSE_WIDGET_SHEET) && settled;
+    settled = texture_is_settled(PAUSE_GLYPH_SHEET) && settled;
     for (page = 0; page < cat_pages; page++) {
         cat_page_name(name, sizeof(name), page);
         settled = texture_is_settled(name) && settled;
@@ -374,6 +378,8 @@ static void keep_art(void)
     texture_cache_keep_or_start_reading_ahead(BACKDROP_NAME);
     texture_cache_keep_or_start_reading_ahead(SPOTLIGHT_NAME);
     texture_cache_keep_or_start_reading_ahead(LABEL_SHEET_NAME);
+    texture_cache_keep_or_start_reading_ahead(PAUSE_WIDGET_SHEET);
+    texture_cache_keep_or_start_reading_ahead(PAUSE_GLYPH_SHEET);
     for (page = 0; page < cat_pages; page++) {
         cat_page_name(name, sizeof(name), page);
         texture_cache_keep_or_start_reading_ahead(name);
@@ -459,6 +465,18 @@ static void begin_hiding(void)
     enter(PAUSE_PHASE_HIDING);
 }
 
+static void leave_submenu(void)
+{
+    if (picked == PAUSE_ITEM_OPTIONS) {
+        pause_options_leave();
+    }
+}
+
+static int submenu_is_on_screen(void)
+{
+    return phase == PAUSE_PHASE_PANNING_OUT || phase == PAUSE_PHASE_SUBMENU || phase == PAUSE_PHASE_PANNING_BACK;
+}
+
 static void step_showing(unsigned int pressed)
 {
     if (pressed & (INPUT_CIRCLE | INPUT_START)) {
@@ -471,7 +489,12 @@ static void step_showing(unsigned int pressed)
             return;
         }
         picked = cursor;
-        run_log_write("pause pick %s submenu=not_ported", item_names[picked]);
+        if (picked == PAUSE_ITEM_OPTIONS) {
+            pause_options_enter();
+            run_log_write("pause pick %s", item_names[picked]);
+        } else {
+            run_log_write("pause pick %s submenu=not_ported", item_names[picked]);
+        }
         enter(PAUSE_PHASE_PANNING_OUT);
         return;
     }
@@ -501,7 +524,12 @@ static void advance_phase(unsigned int pressed)
         break;
     case PAUSE_PHASE_SUBMENU:
         if (pressed & INPUT_START) {
+            leave_submenu();
             begin_hiding();
+        } else if (picked == PAUSE_ITEM_OPTIONS) {
+            if (pause_options_step(pressed) == PAUSE_OPTIONS_LEAVES) {
+                enter(PAUSE_PHASE_PANNING_BACK);
+            }
         } else if (pressed & INPUT_CIRCLE) {
             enter(PAUSE_PHASE_PANNING_BACK);
         }
@@ -551,6 +579,9 @@ void pause_menu_step(unsigned int pressed)
         if (cursor_ticks < CURSOR_TICKS) {
             cursor_ticks = cursor_ticks + 1;
         }
+    }
+    if (submenu_is_on_screen() && picked == PAUSE_ITEM_OPTIONS) {
+        pause_options_tick();
     }
     phase_ticks = phase_ticks + 1;
     advance_phase(pressed);
@@ -604,11 +635,6 @@ static int item_under(float x, float y)
     return -1;
 }
 
-static int is_on_back_pill(float x, float y)
-{
-    return x >= BACK_PILL_LEFT && x <= BACK_PILL_RIGHT && y >= FLOOR_TOP + BACK_PILL_INSET && y <= SCREEN_HEIGHT - BACK_PILL_INSET;
-}
-
 static unsigned int touch_presses(const struct input_state *input)
 {
     unsigned int pressed;
@@ -629,7 +655,9 @@ static unsigned int touch_presses(const struct input_state *input)
         } else if (lifts && touched_item >= 0) {
             pressed = INPUT_CROSS;
         }
-    } else if (phase == PAUSE_PHASE_SUBMENU && lands && is_on_back_pill(input->touch_x, input->touch_y)) {
+    } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_OPTIONS) {
+        pressed = pause_options_touch(lands, lifts, input->touch_is_down, input->touch_x, input->touch_y);
+    } else if (phase == PAUSE_PHASE_SUBMENU && lands && pause_is_on_back_pill(input->touch_x, input->touch_y)) {
         pressed = INPUT_CIRCLE;
     }
     if (lifts) {
@@ -854,11 +882,24 @@ static void draw_menu(void)
     if (spotlight != NULL) {
         draw_part(spotlight, CENTRE_X - (float)(spotlight->width / 2u) - camera_x, SPOTLIGHT_CENTRE_Y - (float)(spotlight->height / 2u), 0.0f, 0.0f, (float)spotlight->width, (float)spotlight->height, 1.0f);
     }
+    if (camera_x != 0.0f && picked == PAUSE_ITEM_OPTIONS) {
+        pause_options_draw(side_x);
+    }
     draw_floor();
+    if (camera_x != 0.0f) {
+        if (picked == PAUSE_ITEM_OPTIONS) {
+            pause_options_draw_bar(side_x);
+        } else {
+            pause_draw_bar(side_x, NULL, NULL, NULL);
+        }
+    }
     draw_labels(camera_x, pause_menu_label_alpha());
     draw_cat_frame(shown_step.first, FEET_X - camera_x, 1.0f);
     if (shown_step.second >= 0) {
         draw_cat_frame(shown_step.second, FEET_X - camera_x, shown_step.weight);
+    }
+    if (camera_x != 0.0f && picked == PAUSE_ITEM_OPTIONS) {
+        pause_options_draw_dialog(side_x);
     }
 }
 
