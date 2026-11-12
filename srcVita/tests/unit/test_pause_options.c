@@ -13,7 +13,6 @@
 #define CONTROLS_ROW 0
 #define BRIGHTNESS_ROW 2
 #define HIGH_CONTRAST_ROW 3
-#define VISUAL_FILTER_ROW 4
 #define FPS_CAP_ROW 5
 #define MASTER_ROW 8
 #define MUSIC_ROW 9
@@ -65,7 +64,7 @@ static void test_settings_survive_a_round_trip_and_bad_values_are_clamped(void)
     written.music_type = GAME_MUSIC_ORIGINAL;
     size = game_settings_write_text(&written, text, sizeof(text));
     game_settings_defaults(&read);
-    CHECK_INT(game_settings_read_text(&read, text, size), 10);
+    CHECK_INT(game_settings_read_text(&read, text, size), 9);
     CHECK_INT(read.brightness, 4);
     CHECK_INT(read.master, 3);
     CHECK_INT(read.music_type, GAME_MUSIC_ORIGINAL);
@@ -98,7 +97,8 @@ static void test_the_cursor_skips_rows_the_vita_fixes(void)
     CHECK_INT(pause_options_selected_row(), BRIGHTNESS_ROW);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), HIGH_CONTRAST_ROW);
-    press_down_to(FPS_CAP_ROW);
+    pause_options_step(INPUT_DOWN);
+    CHECK_INT(pause_options_selected_row(), FPS_CAP_ROW);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), MASTER_ROW);
     press_down_to(RESTORE_ROW);
@@ -256,9 +256,6 @@ static void test_display_switches_flip_save_and_reach_the_renderer(void)
     pause_options_step(INPUT_CROSS);
     CHECK_INT(game_settings_now()->fps_cap, GAME_FPS_CAPPED);
     CHECK_INT(fake_renderer_vblanks_per_frame(), 2);
-    press_up_to(VISUAL_FILTER_ROW);
-    pause_options_step(INPUT_RIGHT);
-    CHECK_INT(game_settings_now()->visual_filter, GAME_FILTER_DS);
     press_up_to(HIGH_CONTRAST_ROW);
     pause_options_step(INPUT_LEFT);
     CHECK_INT(game_settings_now()->high_contrast, 1);
@@ -269,7 +266,6 @@ static void test_display_switches_flip_save_and_reach_the_renderer(void)
         game_settings_defaults(&read);
         game_settings_read_text(&read, (const char *)saved, size);
         CHECK_INT(read.fps_cap, GAME_FPS_CAPPED);
-        CHECK_INT(read.visual_filter, GAME_FILTER_DS);
         CHECK_INT(read.high_contrast, 1);
     }
     game_settings_defaults(game_settings_now());

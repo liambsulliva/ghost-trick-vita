@@ -18,15 +18,11 @@ static int textures_created;
 static int uploads_should_fail;
 static int vblanks_per_frame = 1;
 static int contrast_raises;
-static int low_resolution_frames;
-static int low_resolution_is_open;
 
 void fake_renderer_reset(void)
 {
     vblanks_per_frame = 1;
     contrast_raises = 0;
-    low_resolution_frames = 0;
-    low_resolution_is_open = 0;
     memset(texture_widths, 0, sizeof(texture_widths));
     memset(texture_is_alive, 0, sizeof(texture_is_alive));
     textures_created = 0;
@@ -144,18 +140,6 @@ void renderer_raise_contrast(void)
     contrast_raises = contrast_raises + 1;
 }
 
-int renderer_low_resolution_begin(void)
-{
-    low_resolution_is_open = 1;
-    return 1;
-}
-
-void renderer_low_resolution_end(void)
-{
-    low_resolution_is_open = 0;
-    low_resolution_frames = low_resolution_frames + 1;
-}
-
 int fake_renderer_vblanks_per_frame(void)
 {
     return vblanks_per_frame;
@@ -164,11 +148,6 @@ int fake_renderer_vblanks_per_frame(void)
 int fake_renderer_contrast_raises(void)
 {
     return contrast_raises;
-}
-
-int fake_renderer_low_resolution_frames(void)
-{
-    return low_resolution_frames;
 }
 
 renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int width, int height)

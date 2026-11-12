@@ -52,8 +52,6 @@ void renderer_snapshot_end(void);
 void renderer_draw_snapshot(struct renderer_rect screen_area, float alpha);
 void renderer_set_vblanks_per_frame(int vblanks);
 void renderer_raise_contrast(void);
-int renderer_low_resolution_begin(void);
-void renderer_low_resolution_end(void);
 void renderer_draw_turned_snapshot(float center_x, float center_y, float half_width, float half_height, float degrees, float alpha);
 
 #endif

@@ -18,8 +18,6 @@
 #define renderer_draw_triangles real_renderer_draw_triangles
 #define renderer_set_vblanks_per_frame real_renderer_set_vblanks_per_frame
 #define renderer_raise_contrast real_renderer_raise_contrast
-#define renderer_low_resolution_begin real_renderer_low_resolution_begin
-#define renderer_low_resolution_end real_renderer_low_resolution_end
 #include "../../src/vita/renderer.c"
 #include "fakes/fake_platform.h"
 #include "test_support.h"
@@ -392,12 +390,6 @@ static void forget_everything(void)
     memset(pixels_of_texture, 0, sizeof(pixels_of_texture));
     snapshot_framebuffer = 0;
     snapshot_texture = RENDERER_NO_TEXTURE;
-    low_resolution_framebuffer = 0;
-    low_resolution_texture = RENDERER_NO_TEXTURE;
-    low_resolution_was_tried = 0;
-    drawing_framebuffer = 0;
-    drawing_width = RENDERER_WIDTH;
-    drawing_height = RENDERER_HEIGHT;
     vblanks_per_frame = 1;
     vblank_waits = 0;
     blend_equation_count = 0;
@@ -583,63 +575,6 @@ static void test_shutting_down_with_no_target_deletes_only_the_white_texture(voi
     CHECK_INT(deleted_texture_count, 1);
 }
 
-static const struct texture_request *request_of_the_low_resolution_target(void)
-{
-    int index;
-
-    for (index = 0; index < texture_request_count; index++) {
-        if (texture_requests[index].data == NULL && texture_requests[index].width != RENDERER_WIDTH) {
-            return &texture_requests[index];
-        }
-    }
-    return NULL;
-}
-
-static void test_the_ds_look_draws_at_the_ds_pixel_size_and_enlarges_it_over_the_screen(void)
-{
-    const struct texture_request *request;
-    const struct draw_record *draw;
-    GLuint low_framebuffer;
-
-    start_renderer();
-    CHECK_INT(framebuffers_generated, 1);
-    real_renderer_begin_frame(white_at(1.0f));
-    CHECK(real_renderer_low_resolution_begin());
-    CHECK_INT(framebuffers_generated, 2);
-    request = request_of_the_low_resolution_target();
-    CHECK(request != NULL);
-    if (request == NULL) {
-        return;
-    }
-    CHECK_INT(request->width, 342);
-    CHECK_INT(request->height, 194);
-    low_framebuffer = bound_framebuffer;
-    CHECK(low_framebuffer != 0 && low_framebuffer != 501);
-    CHECK_INT(viewport_width, 342);
-    CHECK_INT(viewport_height, 194);
-    real_renderer_draw_filled_rect(rect_of(0.0f, 0.0f, 10.0f, 10.0f), white_at(1.0f));
-    CHECK(real_renderer_snapshot_begin());
-    CHECK_INT(viewport_width, RENDERER_WIDTH);
-    real_renderer_snapshot_end();
-    CHECK_INT(bound_framebuffer, low_framebuffer);
-    CHECK_INT(viewport_width, 342);
-    real_renderer_low_resolution_end();
-    real_renderer_end_frame();
-    CHECK_INT(bound_framebuffer, 0);
-    CHECK_INT(viewport_width, RENDERER_WIDTH);
-    CHECK_INT(viewport_height, RENDERER_HEIGHT);
-    draw = &draws[draw_count - 1];
-    CHECK_INT(draw->framebuffer, 0);
-    CHECK_INT(draw->texture, request->texture);
-    CHECK(draw->vertices[0].x == 0.0f && draw->vertices[0].y == 0.0f && draw->vertices[0].v == 1.0f);
-    CHECK(draw->vertices[4].x == (float)RENDERER_WIDTH && draw->vertices[4].y == (float)RENDERER_HEIGHT && draw->vertices[4].v == 0.0f);
-    CHECK(real_renderer_low_resolution_begin());
-    real_renderer_low_resolution_end();
-    CHECK_INT(framebuffers_generated, 2);
-    real_renderer_shutdown();
-    CHECK_INT(framebuffers_deleted, 2);
-}
-
 static void test_a_30_fps_cap_waits_out_one_more_vblank_each_frame(void)
 {
     start_renderer();
@@ -668,7 +603,6 @@ static void test_high_contrast_lowers_the_floor_then_scales_and_puts_blending_ba
 
 int main(void)
 {
-    test_the_ds_look_draws_at_the_ds_pixel_size_and_enlarges_it_over_the_screen();
     test_a_30_fps_cap_waits_out_one_more_vblank_each_frame();
     test_high_contrast_lowers_the_floor_then_scales_and_puts_blending_back();
     test_the_target_is_one_rgb565_texture_the_size_of_the_screen();

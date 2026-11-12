@@ -33,7 +33,6 @@ static void keep_in_range(struct game_settings *settings)
     settings->unlock_all = settings->unlock_all != 0;
     settings->fps_cap = settings->fps_cap == GAME_FPS_CAPPED ? GAME_FPS_CAPPED : GAME_FPS_FULL;
     settings->high_contrast = settings->high_contrast != 0;
-    settings->visual_filter = settings->visual_filter == GAME_FILTER_DS ? GAME_FILTER_DS : GAME_FILTER_REMASTERED;
 }
 
 void game_settings_set_default_music(int music_type)
@@ -58,7 +57,6 @@ void game_settings_defaults(struct game_settings *settings)
     settings->unlock_all = 0;
     settings->fps_cap = GAME_FPS_FULL;
     settings->high_contrast = 0;
-    settings->visual_filter = GAME_FILTER_REMASTERED;
 }
 
 int game_settings_read_text(struct game_settings *settings, const char *text, unsigned int text_size)
@@ -95,8 +93,6 @@ int game_settings_read_text(struct game_settings *settings, const char *text, un
             settings->fps_cap = value;
         } else if (strcmp(name, "high_contrast") == 0) {
             settings->high_contrast = value;
-        } else if (strcmp(name, "visual_filter") == 0) {
-            settings->visual_filter = value;
         } else {
             known = known - 1;
         }
@@ -109,7 +105,7 @@ unsigned int game_settings_write_text(const struct game_settings *settings, char
 {
     int written;
 
-    written = snprintf(text, text_size, "brightness %d\nmaster %d\nmusic %d\neffects %d\nmusic_type %d\nlanguage %d\nunlock_all %d\nfps_cap %d\nhigh_contrast %d\nvisual_filter %d\n", settings->brightness, settings->master, settings->music, settings->effects, settings->music_type, settings->language, settings->unlock_all, settings->fps_cap, settings->high_contrast, settings->visual_filter);
+    written = snprintf(text, text_size, "brightness %d\nmaster %d\nmusic %d\neffects %d\nmusic_type %d\nlanguage %d\nunlock_all %d\nfps_cap %d\nhigh_contrast %d\n", settings->brightness, settings->master, settings->music, settings->effects, settings->music_type, settings->language, settings->unlock_all, settings->fps_cap, settings->high_contrast);
     return written < 0 || (unsigned int)written >= text_size ? 0u : (unsigned int)written;
 }
 

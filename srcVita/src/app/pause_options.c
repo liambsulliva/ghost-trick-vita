@@ -24,6 +24,7 @@
 #define VALUE_LEFT 560.0f
 #define VALUE_RIGHT 922.0f
 #define VALUE_INSET 7.0f
+#define VALUE_TEXT_PAD 14.0f
 #define ARROW_FROM_RIGHT 36.0f
 #define FLAME_FIRST_X 545.0f
 #define FLAME_STEP 38.0f
@@ -67,7 +68,6 @@ enum row_job {
     JOB_RESTORE,
     JOB_RESET_SAVE,
     JOB_HIGH_CONTRAST,
-    JOB_VISUAL_FILTER,
     JOB_FPS_CAP,
     JOB_UNLOCK_ALL
 };
@@ -86,7 +86,7 @@ static const struct option_row rows[] = {
     { "display", "ff_unread", ROW_FIXED, JOB_NONE, 1, "off" },
     { NULL, "brightness", ROW_METER, JOB_BRIGHTNESS, 0, NULL },
     { NULL, "high_contrast", ROW_CYCLES, JOB_HIGH_CONTRAST, 0, NULL },
-    { NULL, "visual_filter", ROW_CYCLES, JOB_VISUAL_FILTER, 0, NULL },
+    { NULL, "visual_filter", ROW_FIXED, JOB_NONE, 1, "filter_remastered" },
     { NULL, "fps_cap", ROW_CYCLES, JOB_FPS_CAP, 0, NULL },
     { NULL, "background", ROW_FIXED, JOB_NONE, 1, "pattern_1" },
     { NULL, "vsync", ROW_FIXED, JOB_NONE, 1, "on" },
@@ -275,8 +275,6 @@ static int *switch_of(enum row_job job)
     switch (job) {
     case JOB_HIGH_CONTRAST:
         return &settings->high_contrast;
-    case JOB_VISUAL_FILTER:
-        return &settings->visual_filter;
     case JOB_FPS_CAP:
         return &settings->fps_cap;
     case JOB_UNLOCK_ALL:
@@ -288,9 +286,6 @@ static int *switch_of(enum row_job job)
 
 static const char *switch_value_name(enum row_job job, int value)
 {
-    if (job == JOB_VISUAL_FILTER) {
-        return value == GAME_FILTER_DS ? "filter_ds" : "filter_remastered";
-    }
     if (job == JOB_FPS_CAP) {
         return value == GAME_FPS_CAPPED ? "fps_30" : "fps_60";
     }
@@ -332,7 +327,6 @@ static void act_on_row(void)
         cycle_music_type();
         break;
     case JOB_HIGH_CONTRAST:
-    case JOB_VISUAL_FILTER:
     case JOB_FPS_CAP:
     case JOB_UNLOCK_ALL:
         flip_switch(rows[selected].job);
@@ -610,6 +604,7 @@ static void draw_row(int index, float x_offset)
     float alpha;
     int *level;
     int step;
+    float room;
 
     row = &rows[index];
     top = row_y[index] - scroll;
@@ -633,7 +628,8 @@ static void draw_row(int index, float x_offset)
         return;
     }
     pause_draw_slice("value", VALUE_LEFT + x_offset, top + VALUE_INSET, VALUE_RIGHT - VALUE_LEFT, ROW_HEIGHT - 2.0f * VALUE_INSET, alpha);
-    pause_draw_text(key, (VALUE_LEFT + VALUE_RIGHT) / 2.0f + x_offset, middle, PAUSE_ANCHOR_CENTRE, alpha);
+    room = VALUE_RIGHT - VALUE_LEFT - 2.0f * VALUE_TEXT_PAD;
+    pause_draw_text_within(key, (VALUE_LEFT + VALUE_RIGHT) / 2.0f - pause_text_width(key) * pause_fit_scale(key, room) / 2.0f + x_offset, middle, room, alpha);
     if (row->kind == ROW_DROPDOWN) {
         pause_draw_cell("arrow_down", VALUE_RIGHT - ARROW_FROM_RIGHT + x_offset, middle, alpha);
     }
@@ -726,7 +722,7 @@ void pause_options_draw_bar(float x_offset)
         pause_draw_bar(x_offset, "bar.controls_page", NULL, NULL);
         return;
     }
-    if (rows[selected].job == JOB_VISUAL_FILTER || rows[selected].job == JOB_FPS_CAP) {
+    if (rows[selected].job == JOB_FPS_CAP) {
         snprintf(key, sizeof(key), "bar.%s", switch_value_name(rows[selected].job, *switch_of(rows[selected].job)));
     } else {
         snprintf(key, sizeof(key), "bar.%s", rows[selected].name);

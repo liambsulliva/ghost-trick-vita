@@ -777,16 +777,6 @@ static void draw_game_picture(void)
     }
 }
 
-static void draw_game_picture_in_the_chosen_look(void)
-{
-    if (game_settings_now()->visual_filter == GAME_FILTER_DS && renderer_low_resolution_begin()) {
-        draw_game_picture();
-        renderer_low_resolution_end();
-        return;
-    }
-    draw_game_picture();
-}
-
 void viewer_app_draw(void)
 {
     if (!pause_menu_shows_game()) {
@@ -804,7 +794,7 @@ void viewer_app_draw(void)
             }
             script_view_snapshot_taken();
         }
-        draw_game_picture_in_the_chosen_look();
+        draw_game_picture();
     }
     if (playback_status() == SCENE_PLAYER_FINISHED && !debug_controls_are_on && !scene_layers_text_is_fading_out(scene_stage_layers())) {
         draw_centred_scene_end_line(SCENE_END_FIRST_LINE_Y, SCENE_END_FIRST_LINE);
