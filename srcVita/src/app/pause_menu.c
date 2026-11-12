@@ -1117,6 +1117,8 @@ static void draw_menu(void)
         pause_save_draw_dialog(side_x);
     } else if (camera_x != 0.0f && picked == PAUSE_ITEM_CHAPTERS) {
         pause_chapters_draw_dialog(side_x);
+    } else if (camera_x != 0.0f && people_is_picked()) {
+        pause_people_draw_dialog(side_x);
     }
 }
 

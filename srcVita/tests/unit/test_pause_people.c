@@ -164,6 +164,41 @@ static void test_touch_picks_tabs_thumbs_and_the_back_pill(void)
     CHECK_INT(pause_people_touch(1, 90.0f, 518.0f), INPUT_CIRCLE);
 }
 
+static void test_illustrations_add_a_third_tab_that_opens_full_screen(void)
+{
+    static char with_art[sizeof(table) + 128];
+
+    start_people();
+    pause_people_enter();
+    CHECK_INT(pause_people_tab_count(), 2);
+    pause_people_step(INPUT_R);
+    pause_people_step(INPUT_R);
+    CHECK_INT(pause_people_tab(), PAUSE_PEOPLE_TAB_PEOPLE);
+    strcpy(with_art, table);
+    strcat(with_art, "art pause_art_000 0 0 104 58\nart pause_art_001 106 0 104 58\n");
+    CHECK_INT(pause_people_read_text(with_art, (unsigned int)strlen(with_art)), 5);
+    pause_people_enter();
+    CHECK_INT(pause_people_tab_count(), 3);
+    CHECK_INT(pause_people_count(PAUSE_PEOPLE_TAB_ART), 2);
+    pause_people_step(INPUT_L);
+    CHECK_INT(pause_people_tab(), PAUSE_PEOPLE_TAB_ART);
+    CHECK_TEXT(pause_people_art(), "pause_art_000");
+    CHECK(pause_people_card() == NULL);
+    pause_people_step(INPUT_RIGHT);
+    CHECK_TEXT(pause_people_art(), "pause_art_001");
+    pause_people_step(INPUT_CROSS);
+    CHECK_INT(pause_people_is_viewing_art(), 1);
+    CHECK_INT(pause_people_step(INPUT_CIRCLE), PAUSE_PEOPLE_STAYS);
+    CHECK_INT(pause_people_is_viewing_art(), 0);
+    CHECK_INT(pause_people_touch(1, 480.0f, 330.0f), 0u);
+    CHECK_INT(pause_people_is_viewing_art(), 1);
+    CHECK_INT(pause_people_touch(1, 10.0f, 10.0f), 0u);
+    CHECK_INT(pause_people_is_viewing_art(), 0);
+    pause_people_step(INPUT_R);
+    CHECK_INT(pause_people_tab(), PAUSE_PEOPLE_TAB_PEOPLE);
+    CHECK_INT(pause_people_step(INPUT_CIRCLE), PAUSE_PEOPLE_LEAVES);
+}
+
 int main(void)
 {
     test_the_table_needs_order_cards_and_thumbs();
@@ -174,5 +209,6 @@ int main(void)
     test_the_card_is_the_highest_level_baked_at_or_below_the_known_one();
     test_left_right_move_within_the_tab_and_l_r_switch_tabs();
     test_touch_picks_tabs_thumbs_and_the_back_pill();
+    test_illustrations_add_a_third_tab_that_opens_full_screen();
     return test_finish("unit/pause_people");
 }

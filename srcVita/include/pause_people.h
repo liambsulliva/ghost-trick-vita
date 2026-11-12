@@ -5,6 +5,7 @@
 #define PAUSE_PEOPLE_LEAVES 1
 #define PAUSE_PEOPLE_TAB_PEOPLE 0
 #define PAUSE_PEOPLE_TAB_PLACES 1
+#define PAUSE_PEOPLE_TAB_ART 2
 #define PAUSE_PEOPLE_SLOTS 7
 
 int pause_people_read_text(const char *text, unsigned int text_size);
@@ -16,6 +17,8 @@ void pause_people_enter(void);
 int pause_people_step(unsigned int pressed);
 unsigned int pause_people_touch(int lands, float x, float y);
 int pause_people_tab(void);
+int pause_people_tab_count(void);
+int pause_people_is_viewing_art(void);
 int pause_people_selected(void);
 int pause_people_first_slot(void);
 int pause_people_count(int tab);
@@ -25,5 +28,6 @@ const char *pause_people_card(void);
 const char *pause_people_art(void);
 void pause_people_draw(float x_offset);
 void pause_people_draw_bar(float x_offset);
+void pause_people_draw_dialog(float x_offset);
 
 #endif

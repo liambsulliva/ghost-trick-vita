@@ -8,6 +8,7 @@ import bake_record
 import frame_layout
 import hud_art
 import narration
+import pause_gallery
 import pause_people
 import texture_encoder
 
@@ -538,5 +539,6 @@ def bake_pause_art(packs, tool_path, work_folder, record, code, pause, set_anima
     widget_table, widget_result = bake_widgets(packs, work_folder, record, code, pause["widgets"])
     files[WIDGET_TABLE_PATH] = widget_table
     people_table, people_results = pause_people.bake_people(packs, tool_path, work_folder, record, code, pause["people"], pause["widgets"]["font"], text_key)
-    files[pause_people.TABLE_PATH] = people_table
-    return files, cat_results + [label_result, spotlight, widget_result] + people_results
+    gallery_lines, gallery_results = pause_gallery.bake_gallery(packs, tool_path, work_folder, record, code, pause["people"]["illustrations"]) if "illustrations" in pause["people"] else ([], [])
+    files[pause_people.TABLE_PATH] = people_table + "".join(line + "\n" for line in gallery_lines).encode("ascii")
+    return files, cat_results + [label_result, spotlight, widget_result] + people_results + gallery_results

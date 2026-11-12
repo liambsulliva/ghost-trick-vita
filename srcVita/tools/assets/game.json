@@ -383,7 +383,9 @@
         "do_faces": "Tap the left or right balloon",
         "do_select": "The notebook",
         "do_start": "This menu, also the START button at the top right",
-        "people_hint": "Press L or R to switch between People and Phone Book.",
+        "people_hint": "Press L or R to switch tabs.",
+        "art_tab": "Illustrations",
+        "to_view_art": "to view it full screen.",
         "save_auto": "Saved by itself as each chapter begins.",
         "save_manual": "Save your progress to the Manual Save slot.",
         "save_ask_note": "Play picks up from the start of this scene.",
@@ -457,12 +459,17 @@
       "names": ["linne", "linne_g", "cicel", "cicel_cat", "cicel_trash", "cicel_evil", "cicel_soul", "kuneri", "kuneri_s", "killer_jo", "sith", "sanbou", "killer_po", "ribbon", "missile", "missile_o", "cubanelle", "jawed", "jawed_k", "keikan_A", "keikan_B", "keiji_G", "keiji_B", "doctor", "kalon", "waitress", "kanri", "yukai_M", "yukai_W", "barten", "enma", "eimin", "daijin", "keibi_A", "keibi_B", "kanshu", "keibi_C", "Rock", "shujin_B", "leaflet", "cock", "erai", "eihei", "crew", "mother"],
       "places": ["stage01_00", "stage02_00", "stage02_01", "stage03_00", "stage03_01", "stage03_02", "stage03_03", "stage03_04", "stage03_05", "stage03_06", "stage03_07", "stage04_00", "stage04_01", "stage05_00", "stage06_00", "stage07_00", "stage08_00", "stage09_00", "stage10_00", "stage11_00", "stage13_00", "stage14_00", "stage14_01"],
       "order": [3, 1, 8, 10, 11, 12, 13, 14, 15, 31, 32, 33, 22, 23, 24, 17, 25, 40, 27, 41, 20, 34, 38, 39, 18, 42, 26, 28, 29, 30, 45, 44, 6],
+      "illustrations": {
+        "table": "natives/android/gamedesign/gallery/illustgalleryuserdata.user.2",
+        "image": "natives/android/gui/ui040100/tex/%s_iml4.tex.691230823"
+      },
       "skip_people": [2, 4, 5, 7, 9, 16, 19, 21, 35, 36, 37],
       "skip_places": [5, 6, 7, 8, 9, 10, 17, 19, 23],
       "first_people": [3, 1, 8, 10],
       "first_places": [1],
-      "unknown_portraits": ["crew", "cicel_evil", "waitress"],
-      "portraits": {"cicel": 0, "linne": 1, "ribbon": 2, "cubanelle": 3, "jawed": 4, "kuneri": 6, "sith": 8, "sanbou": 9, "killer_jo": 7, "missile": 12, "enma": 13, "eimin": 14, "daijin": 15, "barten": 16, "kalon": 20, "doctor": 18, "erai": 28, "shujin_B": 26, "keiji_B": 21, "keiji_G": 22, "keikan_A": 23, "keibi_A": 24, "killer_po": 11, "kanri": 19, "yukai_M": 32, "cock": 29, "yukai_W": 33, "Rock": 25, "leaflet": 17, "mother": 27},
+      "unknown_portraits": ["crew"],
+      "shared_portraits": [["cicel", "cicel_evil"]],
+      "portraits": {"cicel": 0, "linne": 1, "ribbon": 2, "cubanelle": 3, "jawed": 4, "kuneri": 6, "sith": 8, "sanbou": 9, "killer_jo": 7, "missile": 12, "enma": 13, "eimin": 14, "daijin": 15, "barten": 16, "kalon": 20, "doctor": 18, "erai": 28, "shujin_B": 26, "keiji_B": 21, "keiji_G": 22, "keikan_A": 23, "keibi_A": 24, "killer_po": 11, "kanri": 19, "yukai_M": 32, "cock": 29, "yukai_W": 33, "Rock": 25, "leaflet": 17, "mother": 27, "waitress": 30, "cicel_evil": 0},
       "place_pictures": {"stage01_00": 0, "stage02_00": 1, "stage02_01": 2, "stage03_00": 3, "stage03_07": 4, "stage04_00": 5, "stage04_01": 6, "stage05_00": 7, "stage06_00": 8, "stage07_00": 9, "stage09_00": 10, "stage11_00": 11, "stage13_00": 12, "stage14_00": 13}
     },
     "spotlight_source": "natives/android/charfiles/3d/06_id/02_database/cmn_dbi_01_01_iml4.tex.691230823"

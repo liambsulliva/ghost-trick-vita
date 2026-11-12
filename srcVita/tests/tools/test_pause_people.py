@@ -61,7 +61,10 @@ class GameTableTest(unittest.TestCase):
         self.assertEqual(set(waiting) & set(people["portraits"]), set())
         shown = [name for index, name in enumerate(people["places"]) if index + 1 not in people["skip_places"]]
         self.assertEqual(sorted(shown), sorted(people["place_pictures"]))
-        self.assertEqual(len(set(people["portraits"].values())), len(people["portraits"]))
+        shared = [set(group) for group in people.get("shared_portraits", [])]
+        for index in set(people["portraits"].values()):
+            holders = set(name for name, value in people["portraits"].items() if value == index)
+            self.assertTrue(len(holders) == 1 or holders in shared, sorted(holders))
 
 
 if __name__ == "__main__":

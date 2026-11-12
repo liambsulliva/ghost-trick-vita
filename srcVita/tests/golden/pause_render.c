@@ -22,7 +22,7 @@
 
 static const char *const tables[] = { "pause/cat.txt", "pause/cat_track.txt", "pause/labels.txt", "pause/widgets.txt", "pause/people.txt" };
 static const char *const fixed_textures[] = { "pause_backdrop", "pause_spotlight", "pause_labels", "pause_widgets", "hud_sheet", "pause_people_thumbs", "pause_people_spot" };
-static char texture_names[512][ASSET_NAME_MAX];
+static char texture_names[1024][ASSET_NAME_MAX];
 static unsigned char notes[SCRIPT_NOTE_LIST_COUNT][SCRIPT_NOTE_ID_COUNT];
 static int texture_name_count;
 
@@ -144,7 +144,9 @@ static void add_people_textures(const char *assets_folder)
     int list;
     int id;
     int level;
+    int has_art;
 
+    has_art = 0;
     snprintf(path, sizeof(path), "%s/pause/people.txt", assets_folder);
     table = fopen(path, "r");
     if (table == NULL) {
@@ -153,9 +155,15 @@ static void add_people_textures(const char *assets_folder)
     while (fgets(line, sizeof(line), table) != NULL) {
         if (sscanf(line, "face %d %95s", &id, name) == 2 || sscanf(line, "place %d %95s", &id, name) == 2 || sscanf(line, "note %d %d %d %95s", &list, &id, &level, name) == 4) {
             add_texture(assets_folder, name);
+        } else if (sscanf(line, "art %95s", name) == 1) {
+            add_texture(assets_folder, name);
+            has_art = 1;
         }
     }
     fclose(table);
+    if (has_art) {
+        add_texture(assets_folder, "pause_art_thumbs");
+    }
 }
 
 static void read_notes(const char *spec)
