@@ -903,6 +903,16 @@ Now the plan compares shapes from the core each hop starts on, and accepts a hop
 
 Guard: `tests/unit/test_route_pad.c`: a core on the line is the hop a push takes; a core a slanted push can miss is passed with an aim on the far side; a Missile hop never steps from a core to one of its shape, judged from the hop's own start. Route note: st14_game020 (steps 997 to 1012) is still a placeholder that does not follow the walkthrough (Missile swaps the baseball and the basketballs; Sissel crosses on the baseball to the valve and the phone), and the scene-skip replay fails there until Chapter 16 is routed.
 
+### 130. Lessons from routing Chapter 9
+
+Chapter 9 opens in `st03_game034_Expand`, the power room, and continues in `st03_game012_Expand`, the cell block. Routed so far: the walk back to Jowd and his talk (route steps 850 to 870).
+
+- A scene can leave on arrival at a core, not on a trick. `stage_move`'s `SV_CHGCORE` handler in st03_game034 checks the core with op 0xa0 and jumps to `st03_root` when the soul reaches the spoon, so that block is a ghost-on and five moves.
+- A cut scene can wait for the ghost view to close on one core. `stage_master`'s first act in st03_game012 handles `SV_END` only with the soul on the picture frame; the player presses Back there (footage 15045.5) and the hunters' cut scene plays. Without that `ghost_off` the trick that follows never becomes ready. The trick then waits on the act the cut scene leaves (`act:stage_master:st03_01`).
+- Jowd's talk is a dead talk on `j_core`: its `DEADTALK` handler offers two topic panels until `select cancel`, so the block asks both topics (`choose m03_7560`, `choose m03_7570`) and then `choose cancel`, as the footage does.
+
+Guard: the whole-game replay without the stall breaker: 870 steps done, 0 failed.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
