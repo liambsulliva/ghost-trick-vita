@@ -19,6 +19,7 @@
 #define THUMB_SHEET "pause_people_thumbs"
 #define ART_THUMB_SHEET "pause_art_thumbs"
 #define ART_MOST 192
+#define ART_EVERY_CHAPTER 99
 #define TAB_MOST 3
 #define TAB_GAP 12.0f
 #define SHOULDER_FROM_TABS 38.0f
@@ -80,6 +81,7 @@ struct art_entry {
     float y;
     float width;
     float height;
+    int chapter;
 };
 
 struct thumb {
@@ -105,6 +107,10 @@ static int is_loaded;
 static const unsigned char *note_levels;
 static struct art_entry art_entries[ART_MOST];
 static int art_count;
+static int shown_art[ART_MOST];
+static int reached_chapter = ART_EVERY_CHAPTER;
+
+static void build_art_list(void);
 static int is_viewing_art;
 static int rows[2][ID_MOST];
 static int levels[2][ID_MOST];
@@ -182,7 +188,8 @@ static void read_art_entry(const char *text)
 {
     struct art_entry entry;
 
-    if (art_count >= ART_MOST || sscanf(text, "%95s %f %f %f %f", entry.name, &entry.x, &entry.y, &entry.width, &entry.height) != 5) {
+    entry.chapter = 0;
+    if (art_count >= ART_MOST || sscanf(text, "%95s %f %f %f %f %d", entry.name, &entry.x, &entry.y, &entry.width, &entry.height, &entry.chapter) < 5) {
         return;
     }
     art_entries[art_count] = entry;
@@ -306,7 +313,7 @@ static void build_lists(void)
 
     counts[PAUSE_PEOPLE_TAB_PEOPLE] = 0;
     counts[PAUSE_PEOPLE_TAB_PLACES] = 0;
-    counts[PAUSE_PEOPLE_TAB_ART] = art_count;
+    build_art_list();
     for (index = 0; index < order_count; index++) {
         level = level_of(PEOPLE_LIST, order[index]);
         if (level >= 0 && order[index] < ID_MOST && !skips[PAUSE_PEOPLE_TAB_PEOPLE][order[index]]) {
@@ -355,6 +362,38 @@ static void select_entry(int index)
     }
     selected[tab] = index;
     keep_in_strip();
+}
+
+void pause_people_use_reached_chapter(int chapter)
+{
+    reached_chapter = chapter;
+}
+
+int pause_people_art_unlocked_by(int chapter)
+{
+    int index;
+    int count;
+
+    count = 0;
+    for (index = 0; index < art_count; index++) {
+        if (art_entries[index].chapter <= chapter) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+static void build_art_list(void)
+{
+    int index;
+
+    counts[PAUSE_PEOPLE_TAB_ART] = 0;
+    for (index = 0; index < art_count; index++) {
+        if (art_entries[index].chapter <= reached_chapter) {
+            shown_art[counts[PAUSE_PEOPLE_TAB_ART]] = index;
+            counts[PAUSE_PEOPLE_TAB_ART] = counts[PAUSE_PEOPLE_TAB_ART] + 1;
+        }
+    }
 }
 
 int pause_people_tab_count(void)
@@ -552,7 +591,7 @@ const char *pause_people_art(void)
         return NULL;
     }
     if (tab == PAUSE_PEOPLE_TAB_ART) {
-        return art_entries[selected[tab]].name;
+        return art_entries[shown_art[selected[tab]]].name;
     }
     return art_for(tab, rows[tab][selected[tab]]);
 }
@@ -642,11 +681,11 @@ static void draw_art_thumb(int index, float x, float y)
     const struct art_entry *entry;
     float height;
 
-    if (index < 0 || index >= art_count) {
+    if (index < 0 || index >= counts[PAUSE_PEOPLE_TAB_ART]) {
         draw_thumb(NULL, x, y, THUMB_WIDTH, THUMB_HEIGHT);
         return;
     }
-    entry = &art_entries[index];
+    entry = &art_entries[shown_art[index]];
     height = floorf(THUMB_WIDTH * entry->height / entry->width + 0.5f);
     renderer_draw_filled_rect(area(x, y, THUMB_WIDTH, THUMB_HEIGHT), color_of(0, 0, 0));
     pause_draw_from(ART_THUMB_SHEET, entry->x, entry->y, entry->width, entry->height, x, y + floorf((THUMB_HEIGHT - height) / 2.0f), THUMB_WIDTH, height, 1.0f);

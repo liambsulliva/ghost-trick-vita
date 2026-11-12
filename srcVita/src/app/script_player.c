@@ -86,6 +86,7 @@ static int has_checkpoint;
 static struct game_save pending_resume;
 static int has_pending_resume;
 static int autosaved_chapter_mark = -1;
+static int newly_reached_chapter;
 
 static void take_checkpoint(const char *name);
 static enum script_player_phase phase;
@@ -1010,10 +1011,20 @@ static void take_checkpoint(const char *name)
     if (autosaved_chapter_mark >= 0 && checkpoint.chapter_mark > autosaved_chapter_mark) {
         (void)game_save_store_as_newest(&checkpoint, GAME_SAVE_AUTO);
         (void)game_save_store_chapter(&checkpoint, checkpoint.chapter_mark);
+        newly_reached_chapter = checkpoint.chapter_mark;
     }
     if (checkpoint.chapter_mark > autosaved_chapter_mark) {
         autosaved_chapter_mark = checkpoint.chapter_mark;
     }
+}
+
+int script_player_takes_new_chapter(void)
+{
+    int chapter;
+
+    chapter = newly_reached_chapter;
+    newly_reached_chapter = 0;
+    return chapter;
 }
 
 int script_player_save_manual(void)

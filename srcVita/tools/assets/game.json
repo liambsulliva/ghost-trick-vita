@@ -385,6 +385,7 @@
         "do_start": "This menu, also the START button at the top right",
         "people_hint": "Press L or R to switch tabs.",
         "art_tab": "Illustrations",
+        "new_illustrations": "New illustrations in the Record",
         "to_view_art": "to view it full screen.",
         "save_auto": "Saved by itself as each chapter begins.",
         "save_manual": "Save your progress to the Manual Save slot.",

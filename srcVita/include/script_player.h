@@ -15,6 +15,7 @@ int script_player_is_paused(void);
 int script_player_is_active(void);
 const unsigned char *script_player_note_levels(void);
 int script_player_save_manual(void);
+int script_player_takes_new_chapter(void);
 struct game_save;
 void script_player_resume(const struct game_save *save);
 int script_player_is_showing_next_chapter_card(void);

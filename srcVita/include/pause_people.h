@@ -18,6 +18,8 @@ int pause_people_step(unsigned int pressed);
 unsigned int pause_people_touch(int lands, float x, float y);
 int pause_people_tab(void);
 int pause_people_tab_count(void);
+void pause_people_use_reached_chapter(int chapter);
+int pause_people_art_unlocked_by(int chapter);
 int pause_people_is_viewing_art(void);
 int pause_people_selected(void);
 int pause_people_first_slot(void);

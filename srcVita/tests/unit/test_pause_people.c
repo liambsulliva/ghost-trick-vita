@@ -175,8 +175,15 @@ static void test_illustrations_add_a_third_tab_that_opens_full_screen(void)
     pause_people_step(INPUT_R);
     CHECK_INT(pause_people_tab(), PAUSE_PEOPLE_TAB_PEOPLE);
     strcpy(with_art, table);
-    strcat(with_art, "art pause_art_000 0 0 104 58\nart pause_art_001 106 0 104 58\n");
+    strcat(with_art, "art pause_art_000 0 0 104 58 1\nart pause_art_001 106 0 104 58 3\nart pause_art_002 212 0 104 58 9\n");
     CHECK_INT(pause_people_read_text(with_art, (unsigned int)strlen(with_art)), 5);
+    CHECK_INT(pause_people_art_unlocked_by(1), 1);
+    CHECK_INT(pause_people_art_unlocked_by(8), 2);
+    CHECK_INT(pause_people_art_unlocked_by(18), 3);
+    pause_people_use_reached_chapter(1);
+    pause_people_enter();
+    CHECK_INT(pause_people_count(PAUSE_PEOPLE_TAB_ART), 1);
+    pause_people_use_reached_chapter(3);
     pause_people_enter();
     CHECK_INT(pause_people_tab_count(), 3);
     CHECK_INT(pause_people_count(PAUSE_PEOPLE_TAB_ART), 2);
@@ -197,6 +204,7 @@ static void test_illustrations_add_a_third_tab_that_opens_full_screen(void)
     pause_people_step(INPUT_R);
     CHECK_INT(pause_people_tab(), PAUSE_PEOPLE_TAB_PEOPLE);
     CHECK_INT(pause_people_step(INPUT_CIRCLE), PAUSE_PEOPLE_LEAVES);
+    pause_people_use_reached_chapter(99);
 }
 
 int main(void)

@@ -25,6 +25,7 @@
 #include "scene_view.h"
 #include "script_player.h"
 #include "script_ui_view.h"
+#include "toast.h"
 #include "script_view.h"
 #include "sound_engine.h"
 #include "texture_cache.h"
@@ -34,6 +35,7 @@
 #ifndef TEXTURE_FOLDER_BUCKETS
 #define TEXTURE_FOLDER_BUCKETS 0u
 #endif
+#define NEW_ILLUSTRATIONS_TOAST "bar.new_illustrations"
 #ifdef USE_DS_MUSIC
 #define DEFAULT_MUSIC_TYPE GAME_MUSIC_ORIGINAL
 #define MUSIC_SUBFOLDER "music_ds"
@@ -91,6 +93,7 @@ static int current_animation_index;
 static int hud_is_visible;
 static int list_is_open;
 static int touch_was_down;
+static int illustrations_known_chapter;
 static int debug_controls_are_on;
 
 static void asset_subfolder_path(char *path, const char *subfolder)
@@ -330,6 +333,32 @@ static int chapter_has_save(int chapter)
     return everything_is_unlocked() || game_save_load_chapter(&save, chapter);
 }
 
+static int highest_reached_chapter(void)
+{
+    int chapter;
+
+    for (chapter = GAME_SAVE_CHAPTER_COUNT; chapter > 1; chapter--) {
+        if (chapter_has_save(chapter)) {
+            return chapter;
+        }
+    }
+    return 1;
+}
+
+static void toast_new_illustrations(void)
+{
+    int chapter;
+
+    chapter = script_player_takes_new_chapter();
+    if (chapter <= illustrations_known_chapter) {
+        return;
+    }
+    if (pause_people_art_unlocked_by(chapter) > pause_people_art_unlocked_by(illustrations_known_chapter)) {
+        toast_show(NEW_ILLUSTRATIONS_TOAST);
+    }
+    illustrations_known_chapter = chapter;
+}
+
 static void replay_chapter(int chapter)
 {
     static struct game_save save;
@@ -453,6 +482,7 @@ void viewer_app_start(const char *folder)
     pause_options_show_unlock(UNLOCK_ROW_IS_BUILT);
     pause_save_use(script_player_save_manual, slot_has_save);
     pause_chapters_use(chapter_has_save);
+    illustrations_known_chapter = highest_reached_chapter();
     if (script_player_is_available()) {
         hud_is_visible = 0;
         debug_controls_are_on = 0;
@@ -632,6 +662,8 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
     if (input->pressed != 0) {
         run_log_write("input pressed buttons=0x%04x", input->pressed);
     }
+    toast_new_illustrations();
+    toast_update(elapsed_us);
     if (pause_menu_is_open()) {
         pause_menu_update(input, elapsed_us);
         if (pause_menu_takes_title_request() && opening_can_play()) {
@@ -645,6 +677,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
     }
     if (((input->pressed & INPUT_START) || start_is_tapped) && script_player_is_active() && !debug_controls_are_on && pause_menu_is_ready()) {
         pause_people_use_notes(everything_is_unlocked() ? pause_people_every_note() : script_player_note_levels());
+        pause_people_use_reached_chapter(highest_reached_chapter());
         pause_menu_open();
         return;
     }
@@ -824,6 +857,9 @@ void viewer_app_draw(void)
     }
     if (game_settings_now()->high_contrast) {
         renderer_raise_contrast();
+    }
+    if (!pause_menu_is_open()) {
+        toast_draw();
     }
     pause_menu_draw();
     draw_brightness();
