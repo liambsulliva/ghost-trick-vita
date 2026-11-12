@@ -216,6 +216,8 @@ make -C srcVita FAST_FORWARD=1
 
 Add `FPS_COUNTER=1` to any build to draw the frame rate in the top-left corner: the average over the last 60 frames and the slowest of them, so a dip shows in screenshots and burst captures. It adds `-fps` to the build id and keeps its own objects.
 
+Add `DEBUG_UNLOCK=1` to show an Unlock Everything switch at the end of Options. While it is on, every chapter in the Chapters grid opens and every People and Places note shows at its highest level. A chapter with no save starts through `chapter.xml` with the chapter mark one below it, the way the DS chapter select does, but with empty flags, so chapters that share a stage (4 to 6 in st02) start at that stage's first part. It adds `-unlock` to the build id and keeps its own objects; other builds ignore the saved switch.
+
 It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`, so it never mixes with the normal build. It reads these extra lines from the commands file, which `vita_loop.py app-command` writes:
 
 | Line | What it does |

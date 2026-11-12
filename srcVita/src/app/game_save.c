@@ -253,6 +253,17 @@ int game_save_load_chapter(struct game_save *save, int chapter)
     return load_from(save, path);
 }
 
+int game_save_for_chapter_select(struct game_save *save, int chapter)
+{
+    memset(save, 0, sizeof(*save));
+    if (chapter < 1 || chapter > GAME_SAVE_CHAPTER_COUNT) {
+        return 0;
+    }
+    snprintf(save->script, sizeof(save->script), "%s", GAME_SAVE_CHAPTER_SELECT_SCRIPT);
+    save->chapter_mark = chapter - 1;
+    return 1;
+}
+
 int game_save_load_newest(struct game_save *save)
 {
     static struct game_save other;

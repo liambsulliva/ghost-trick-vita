@@ -4,6 +4,7 @@
 #define PAUSE_OPTIONS_STAYS 0
 #define PAUSE_OPTIONS_LEAVES 1
 
+void pause_options_show_unlock(int is_shown);
 void pause_options_enter(void);
 int pause_options_step(unsigned int pressed);
 unsigned int pause_options_touch(int lands, int lifts, int is_down, float x, float y);

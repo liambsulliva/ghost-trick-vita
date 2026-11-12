@@ -239,6 +239,14 @@ void pause_people_use_notes(const unsigned char *levels_by_list)
     note_levels = levels_by_list;
 }
 
+const unsigned char *pause_people_every_note(void)
+{
+    static unsigned char every[SCRIPT_NOTE_LIST_COUNT * SCRIPT_NOTE_ID_COUNT];
+
+    memset(every, 0xff, sizeof(every));
+    return every;
+}
+
 static int level_of(int list, int id)
 {
     unsigned char stored;

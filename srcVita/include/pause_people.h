@@ -11,6 +11,7 @@ int pause_people_read_text(const char *text, unsigned int text_size);
 int pause_people_load(const char *assets_folder);
 int pause_people_is_loaded(void);
 void pause_people_use_notes(const unsigned char *levels);
+const unsigned char *pause_people_every_note(void);
 void pause_people_enter(void);
 int pause_people_step(unsigned int pressed);
 unsigned int pause_people_touch(int lands, float x, float y);

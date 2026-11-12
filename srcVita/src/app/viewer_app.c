@@ -12,6 +12,7 @@
 #include "music_engine.h"
 #include "page_tiles.h"
 #include "pause_menu.h"
+#include "pause_options.h"
 #include "game_save.h"
 #include "pause_chapters.h"
 #include "pause_people.h"
@@ -38,6 +39,11 @@
 #else
 #define DEFAULT_MUSIC_TYPE GAME_MUSIC_ARRANGED
 #define MUSIC_SUBFOLDER "music"
+#endif
+#ifdef DEBUG_UNLOCK_BUILD
+#define UNLOCK_ROW_IS_BUILT 1
+#else
+#define UNLOCK_ROW_IS_BUILT 0
 #endif
 #define LIST_VISIBLE_ROWS 20
 #define PAGE_TILES_FILE_NAME "tiles"
@@ -307,21 +313,27 @@ static int slot_has_save(int slot)
     return save.chapter_mark;
 }
 
+static int everything_is_unlocked(void)
+{
+    return UNLOCK_ROW_IS_BUILT && game_settings_now()->unlock_all;
+}
+
 static int chapter_has_save(int chapter)
 {
     static struct game_save save;
 
-    return game_save_load_chapter(&save, chapter);
+    return everything_is_unlocked() || game_save_load_chapter(&save, chapter);
 }
 
 static void replay_chapter(int chapter)
 {
     static struct game_save save;
 
-    if (!game_save_load_chapter(&save, chapter)) {
+    if (!game_save_load_chapter(&save, chapter) && !(everything_is_unlocked() && game_save_for_chapter_select(&save, chapter))) {
         run_log_write("chapter_replay missing chapter=%d", chapter);
         return;
     }
+    run_log_write("chapter_replay chapter=%d script=%s chapter_mark=%d", chapter, save.script, save.chapter_mark);
     pending_background_index = NO_PENDING_BACKGROUND;
     scene_player_stop();
     script_player_resume(&save);
@@ -433,6 +445,7 @@ void viewer_app_start(const char *folder)
         return;
     }
     ui_list_init(&animation_list, manifest->animation_count, LIST_VISIBLE_ROWS);
+    pause_options_show_unlock(UNLOCK_ROW_IS_BUILT);
     pause_save_use(script_player_save_manual, slot_has_save);
     pause_chapters_use(chapter_has_save);
     if (script_player_is_available()) {
@@ -615,7 +628,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
         return;
     }
     if ((input->pressed & INPUT_START) && script_player_is_active() && !debug_controls_are_on && pause_menu_is_ready()) {
-        pause_people_use_notes(script_player_note_levels());
+        pause_people_use_notes(everything_is_unlocked() ? pause_people_every_note() : script_player_note_levels());
         pause_menu_open();
         return;
     }

@@ -157,6 +157,19 @@ static void test_chapter_slots_store_by_number_and_erase_with_the_rest(void)
     CHECK_INT(game_save_load_chapter(&read_back, 4), 0);
 }
 
+static void test_an_unsaved_chapter_starts_through_the_native_chapter_select(void)
+{
+    CHECK_INT(game_save_for_chapter_select(&read_back, 5), 1);
+    CHECK_TEXT(read_back.script, GAME_SAVE_CHAPTER_SELECT_SCRIPT);
+    CHECK_INT(read_back.chapter_mark, 4);
+    CHECK_INT(read_back.has_soul_state, 0);
+    CHECK_INT(read_back.game_flags[0], 0);
+    CHECK_INT(game_save_for_chapter_select(&read_back, 0), 0);
+    CHECK_INT(game_save_for_chapter_select(&read_back, GAME_SAVE_CHAPTER_COUNT + 1), 0);
+    CHECK_INT(game_save_for_chapter_select(&read_back, GAME_SAVE_CHAPTER_COUNT), 1);
+    CHECK_INT(read_back.chapter_mark, GAME_SAVE_CHAPTER_COUNT - 1);
+}
+
 static void test_the_chapters_grid_plays_only_reached_chapters_after_asking(void)
 {
     pause_chapters_use(fake_chapter_reached);
@@ -196,6 +209,7 @@ int main(void)
     test_the_save_screen_asks_then_saves_and_yes_resumes_play();
     test_no_or_a_failed_save_keeps_the_save_screen();
     test_chapter_slots_store_by_number_and_erase_with_the_rest();
+    test_an_unsaved_chapter_starts_through_the_native_chapter_select();
     test_the_chapters_grid_plays_only_reached_chapters_after_asking();
     return test_finish("unit/game_save");
 }

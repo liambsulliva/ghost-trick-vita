@@ -29,6 +29,7 @@ static void keep_in_range(struct game_settings *settings)
     settings->effects = clamp_level(settings->effects, 0);
     settings->music_type = settings->music_type == GAME_MUSIC_ORIGINAL ? GAME_MUSIC_ORIGINAL : GAME_MUSIC_ARRANGED;
     settings->language = 0;
+    settings->unlock_all = settings->unlock_all != 0;
 }
 
 void game_settings_set_default_music(int music_type)
@@ -50,6 +51,7 @@ void game_settings_defaults(struct game_settings *settings)
     settings->effects = GAME_SETTING_STEPS;
     settings->music_type = default_music;
     settings->language = 0;
+    settings->unlock_all = 0;
 }
 
 int game_settings_read_text(struct game_settings *settings, const char *text, unsigned int text_size)
@@ -80,6 +82,8 @@ int game_settings_read_text(struct game_settings *settings, const char *text, un
             settings->music_type = value;
         } else if (strcmp(name, "language") == 0) {
             settings->language = value;
+        } else if (strcmp(name, "unlock_all") == 0) {
+            settings->unlock_all = value;
         } else {
             known = known - 1;
         }
@@ -92,7 +96,7 @@ unsigned int game_settings_write_text(const struct game_settings *settings, char
 {
     int written;
 
-    written = snprintf(text, text_size, "brightness %d\nmaster %d\nmusic %d\neffects %d\nmusic_type %d\nlanguage %d\n", settings->brightness, settings->master, settings->music, settings->effects, settings->music_type, settings->language);
+    written = snprintf(text, text_size, "brightness %d\nmaster %d\nmusic %d\neffects %d\nmusic_type %d\nlanguage %d\nunlock_all %d\n", settings->brightness, settings->master, settings->music, settings->effects, settings->music_type, settings->language, settings->unlock_all);
     return written < 0 || (unsigned int)written >= text_size ? 0u : (unsigned int)written;
 }
 

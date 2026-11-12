@@ -90,6 +90,19 @@ static void test_an_empty_tab_shows_the_first_entries_at_level_ten(void)
     CHECK_INT(pause_people_count(PAUSE_PEOPLE_TAB_PEOPLE), 2);
 }
 
+static void test_every_note_lists_all_unskipped_entries_at_their_highest_card(void)
+{
+    start_people();
+    pause_people_use_notes(pause_people_every_note());
+    pause_people_enter();
+    CHECK_INT(pause_people_count(PAUSE_PEOPLE_TAB_PEOPLE), 8);
+    CHECK_INT(pause_people_entry(PAUSE_PEOPLE_TAB_PEOPLE, 0), 3);
+    CHECK_INT(pause_people_entry(PAUSE_PEOPLE_TAB_PEOPLE, 2), 8);
+    CHECK_INT(pause_people_count(PAUSE_PEOPLE_TAB_PLACES), 3);
+    CHECK_TEXT(pause_people_card(), "pause_note_1_03_040");
+    pause_people_use_notes(&notes[0][0]);
+}
+
 static void test_the_card_is_the_highest_level_baked_at_or_below_the_known_one(void)
 {
     start_people();
@@ -156,6 +169,7 @@ int main(void)
     test_the_table_needs_order_cards_and_thumbs();
     test_people_follow_the_order_table_and_skip_unknown_and_variant_ids();
     test_places_run_in_id_order_and_skip_listed_ones();
+    test_every_note_lists_all_unskipped_entries_at_their_highest_card();
     test_an_empty_tab_shows_the_first_entries_at_level_ten();
     test_the_card_is_the_highest_level_baked_at_or_below_the_known_one();
     test_left_right_move_within_the_tab_and_l_r_switch_tabs();

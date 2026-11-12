@@ -61,7 +61,8 @@ enum row_job {
     JOB_MUSIC_TYPE,
     JOB_LANGUAGE,
     JOB_RESTORE,
-    JOB_RESET_SAVE
+    JOB_RESET_SAVE,
+    JOB_UNLOCK_ALL
 };
 
 struct option_row {
@@ -88,7 +89,8 @@ static const struct option_row rows[] = {
     { "language", "language", ROW_DROPDOWN, JOB_LANGUAGE, 0, NULL },
     { "other", "credits", ROW_OPENS, JOB_NONE, 1, NULL },
     { NULL, "reset_save", ROW_OPENS, JOB_RESET_SAVE, 0, NULL },
-    { NULL, "restore", ROW_OPENS, JOB_RESTORE, 0, NULL }
+    { NULL, "restore", ROW_OPENS, JOB_RESTORE, 0, NULL },
+    { NULL, "unlock_all", ROW_CYCLES, JOB_UNLOCK_ALL, 0, NULL }
 };
 
 #define ROW_COUNT ((int)(sizeof(rows) / sizeof(rows[0])))
@@ -109,6 +111,17 @@ static int touched_option;
 static int settings_changed;
 static struct pause_dialog restore_dialog;
 static enum row_job dialog_job;
+static int unlock_row_is_shown;
+
+void pause_options_show_unlock(int is_shown)
+{
+    unlock_row_is_shown = is_shown;
+}
+
+static int row_count(void)
+{
+    return unlock_row_is_shown ? ROW_COUNT : ROW_COUNT - 1;
+}
 
 static float whole(float value)
 {
@@ -121,7 +134,7 @@ static void lay_out_rows(void)
     int index;
 
     y = ROW_TOP;
-    for (index = 0; index < ROW_COUNT; index++) {
+    for (index = 0; index < row_count(); index++) {
         if (rows[index].header != NULL && index > 0) {
             y = y + HEADER_GAP;
         }
@@ -133,14 +146,14 @@ static void lay_out_rows(void)
 
 static int is_selectable(int index)
 {
-    return index >= 0 && index < ROW_COUNT && !rows[index].is_greyed;
+    return index >= 0 && index < row_count() && !rows[index].is_greyed;
 }
 
 static int next_selectable(int from, int direction)
 {
     int index;
 
-    for (index = from + direction; index >= 0 && index < ROW_COUNT; index += direction) {
+    for (index = from + direction; index >= 0 && index < row_count(); index += direction) {
         if (is_selectable(index)) {
             return index;
         }
@@ -245,6 +258,16 @@ static void cycle_music_type(void)
     settings_now_changed("music_type");
 }
 
+static void flip_unlock_all(void)
+{
+    struct game_settings *settings;
+
+    settings = game_settings_now();
+    settings->unlock_all = !settings->unlock_all;
+    settings_now_changed("unlock_all");
+    run_log_write("pause option unlock_all=%d", settings->unlock_all);
+}
+
 static void restore_defaults(void)
 {
     game_settings_defaults(game_settings_now());
@@ -261,6 +284,9 @@ static void act_on_row(void)
         break;
     case JOB_MUSIC_TYPE:
         cycle_music_type();
+        break;
+    case JOB_UNLOCK_ALL:
+        flip_unlock_all();
         break;
     case JOB_LANGUAGE:
         dropdown_is_open = 1;
@@ -397,7 +423,7 @@ static int row_at(float y)
     if (y >= PAUSE_BAR_TOP) {
         return -1;
     }
-    for (index = 0; index < ROW_COUNT; index++) {
+    for (index = 0; index < row_count(); index++) {
         if (y >= row_y[index] - scroll && y <= row_y[index] - scroll + ROW_HEIGHT) {
             return index;
         }
@@ -421,7 +447,7 @@ static int dropdown_row(void)
 {
     int index;
 
-    for (index = 0; index < ROW_COUNT; index++) {
+    for (index = 0; index < row_count(); index++) {
         if (rows[index].kind == ROW_DROPDOWN) {
             return index;
         }
@@ -518,6 +544,8 @@ static const char *value_key(const struct option_row *row, char *key, unsigned i
         snprintf(key, key_size, "row.%s", game_settings_now()->music_type == GAME_MUSIC_ORIGINAL ? "original" : "arranged");
     } else if (row->job == JOB_LANGUAGE) {
         snprintf(key, key_size, "language.%s", languages[game_settings_now()->language]);
+    } else if (row->job == JOB_UNLOCK_ALL) {
+        snprintf(key, key_size, "row.%s", game_settings_now()->unlock_all ? "on" : "off");
     } else {
         return NULL;
     }
@@ -609,7 +637,7 @@ void pause_options_draw(float x_offset)
         draw_controls_page(x_offset);
         return;
     }
-    for (index = 0; index < ROW_COUNT; index++) {
+    for (index = 0; index < row_count(); index++) {
         if (row_y[index] - scroll < PAUSE_BAR_TOP && row_y[index] - scroll + ROW_HEIGHT > -HEADER_GAP) {
             draw_row(index, x_offset);
         }

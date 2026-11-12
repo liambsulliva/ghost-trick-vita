@@ -16,6 +16,7 @@
 #define MUSIC_TYPE_ROW 10
 #define LANGUAGE_ROW 11
 #define RESTORE_ROW 14
+#define UNLOCK_ROW 15
 
 static void start_options(void)
 {
@@ -24,6 +25,7 @@ static void start_options(void)
     game_settings_set_music_folders("set/music_ds", "set/music");
     game_settings_defaults(game_settings_now());
     game_settings_apply();
+    pause_options_show_unlock(0);
     pause_options_enter();
 }
 
@@ -50,7 +52,7 @@ static void test_settings_survive_a_round_trip_and_bad_values_are_clamped(void)
     written.music_type = GAME_MUSIC_ORIGINAL;
     size = game_settings_write_text(&written, text, sizeof(text));
     game_settings_defaults(&read);
-    CHECK_INT(game_settings_read_text(&read, text, size), 6);
+    CHECK_INT(game_settings_read_text(&read, text, size), 7);
     CHECK_INT(read.brightness, 4);
     CHECK_INT(read.master, 3);
     CHECK_INT(read.music_type, GAME_MUSIC_ORIGINAL);
@@ -195,6 +197,36 @@ static void test_a_tap_on_a_flame_sets_that_level(void)
     CHECK_INT(pause_options_touch(1, 0, 1, 90.0f, 518.0f), INPUT_CIRCLE);
 }
 
+static void test_the_unlock_row_shows_only_when_built_in_and_flips_a_saved_setting(void)
+{
+    unsigned int size;
+    const unsigned char *saved;
+    struct game_settings read;
+
+    start_options();
+    press_down_to(UNLOCK_ROW);
+    CHECK_INT(pause_options_selected_row(), RESTORE_ROW);
+    pause_options_show_unlock(1);
+    pause_options_enter();
+    press_down_to(UNLOCK_ROW);
+    CHECK_INT(pause_options_selected_row(), UNLOCK_ROW);
+    CHECK_INT(game_settings_now()->unlock_all, 0);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->unlock_all, 1);
+    pause_options_step(INPUT_RIGHT);
+    CHECK_INT(game_settings_now()->unlock_all, 0);
+    pause_options_step(INPUT_LEFT);
+    CHECK_INT(pause_options_step(INPUT_CIRCLE), PAUSE_OPTIONS_LEAVES);
+    saved = fake_files_contents(GAME_SETTINGS_PATH, &size);
+    CHECK(saved != NULL);
+    if (saved != NULL) {
+        game_settings_defaults(&read);
+        game_settings_read_text(&read, (const char *)saved, size);
+        CHECK_INT(read.unlock_all, 1);
+    }
+    pause_options_show_unlock(0);
+}
+
 int main(void)
 {
     test_settings_survive_a_round_trip_and_bad_values_are_clamped();
@@ -207,5 +239,6 @@ int main(void)
     test_the_language_list_opens_on_cross_and_circle_closes_it_first();
     test_controls_opens_a_page_that_circle_closes();
     test_a_tap_on_a_flame_sets_that_level();
+    test_the_unlock_row_shows_only_when_built_in_and_flips_a_saved_setting();
     return test_finish("unit/pause_options");
 }

@@ -19,6 +19,7 @@ struct game_settings {
     int effects;
     int music_type;
     int language;
+    int unlock_all;
 };
 
 void game_settings_defaults(struct game_settings *settings);
