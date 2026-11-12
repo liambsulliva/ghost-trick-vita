@@ -158,7 +158,7 @@ static float whole(float value)
     return floorf(value + 0.5f);
 }
 
-static void draw_from(const char *sheet, float u, float v, float u_size, float v_size, float x, float y, float width, float height, float alpha)
+void pause_draw_from(const char *sheet, float u, float v, float u_size, float v_size, float x, float y, float width, float height, float alpha)
 {
     const struct cached_texture *texture;
     struct renderer_rect screen;
@@ -189,7 +189,7 @@ void pause_draw_text(const char *key, float x, float y, enum pause_anchor anchor
         return;
     }
     left = anchor == PAUSE_ANCHOR_LEFT ? x : (anchor == PAUSE_ANCHOR_CENTRE ? x - widget->width / 2.0f : x - widget->width);
-    draw_from(PAUSE_WIDGET_SHEET, widget->x, widget->y, widget->width, widget->height, whole(left), whole(y - widget->height / 2.0f), widget->width, widget->height, alpha);
+    pause_draw_from(PAUSE_WIDGET_SHEET, widget->x, widget->y, widget->width, widget->height, whole(left), whole(y - widget->height / 2.0f), widget->width, widget->height, alpha);
 }
 
 void pause_draw_slice(const char *style, float x, float y, float width, float height, float alpha)
@@ -230,7 +230,7 @@ void pause_draw_slice(const char *style, float x, float y, float width, float he
     target_y[3] = y + height;
     for (row = 0; row < 3; row++) {
         for (column = 0; column < 3; column++) {
-            draw_from(PAUSE_WIDGET_SHEET, source_x[column], source_y[row], source_x[column + 1] - source_x[column], source_y[row + 1] - source_y[row], target_x[column], target_y[row], target_x[column + 1] - target_x[column], target_y[row + 1] - target_y[row], alpha);
+            pause_draw_from(PAUSE_WIDGET_SHEET, source_x[column], source_y[row], source_x[column + 1] - source_x[column], source_y[row + 1] - source_y[row], target_x[column], target_y[row], target_x[column + 1] - target_x[column], target_y[row + 1] - target_y[row], alpha);
         }
     }
 }
@@ -243,7 +243,7 @@ void pause_draw_flame(int number, int lit, float centre_x, float centre_y, float
     snprintf(key, sizeof(key), "flame.%d.%d", number, lit ? 1 : 0);
     widget = find(key);
     if (widget != NULL) {
-        draw_from(PAUSE_WIDGET_SHEET, widget->x, widget->y, widget->width, widget->height, whole(centre_x - widget->width / 2.0f), whole(centre_y - widget->height / 2.0f), widget->width, widget->height, alpha);
+        pause_draw_from(PAUSE_WIDGET_SHEET, widget->x, widget->y, widget->width, widget->height, whole(centre_x - widget->width / 2.0f), whole(centre_y - widget->height / 2.0f), widget->width, widget->height, alpha);
     }
 }
 
@@ -255,7 +255,7 @@ void pause_draw_glyph(const char *kind, float centre_x, float centre_y, float si
     snprintf(key, sizeof(key), "glyph.%s", kind);
     widget = find(key);
     if (widget != NULL) {
-        draw_from(PAUSE_GLYPH_SHEET, widget->x, widget->y, widget->width, widget->height, whole(centre_x - size / 2.0f), whole(centre_y - size / 2.0f), size, size, alpha);
+        pause_draw_from(PAUSE_GLYPH_SHEET, widget->x, widget->y, widget->width, widget->height, whole(centre_x - size / 2.0f), whole(centre_y - size / 2.0f), size, size, alpha);
     }
 }
 
@@ -267,7 +267,7 @@ void pause_draw_cell(const char *name, float centre_x, float centre_y, float alp
     snprintf(key, sizeof(key), "cell.%s", name);
     widget = find(key);
     if (widget != NULL) {
-        draw_from(PAUSE_WIDGET_SHEET, widget->x, widget->y, widget->width, widget->height, whole(centre_x - widget->width / 2.0f), whole(centre_y - widget->height / 2.0f), widget->width, widget->height, alpha);
+        pause_draw_from(PAUSE_WIDGET_SHEET, widget->x, widget->y, widget->width, widget->height, whole(centre_x - widget->width / 2.0f), whole(centre_y - widget->height / 2.0f), widget->width, widget->height, alpha);
     }
 }
 

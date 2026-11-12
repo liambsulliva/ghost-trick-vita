@@ -7,6 +7,8 @@
 #include "fakes/fake_texture_files.h"
 #include "input.h"
 #include "pause_menu.h"
+#include "pause_people.h"
+#include "script_machine.h"
 #include "renderer.h"
 #include "test_support.h"
 #include "texture_cache.h"
@@ -258,6 +260,33 @@ static void test_picking_pans_toward_the_item_side_and_back_fades_the_labels_in(
     CHECK(pause_menu_black_alpha() == 0.0f);
 }
 
+static void test_people_opens_the_notebook_screen_where_l_switches_tabs_and_circle_returns(void)
+{
+    static unsigned char notes[SCRIPT_NOTE_LIST_COUNT][SCRIPT_NOTE_ID_COUNT];
+
+    start_with_art();
+    add_text("set/pause/people.txt", "order 3 1\nplace_count 2\nface 3 pause_face_00\nthumb pause_face_00 0 0 104 78\nnote 1 3 10 pause_note_1_03_010\n");
+    CHECK(pause_menu_load("set"));
+    memset(notes, 0, sizeof(notes));
+    notes[1][3] = 11;
+    pause_people_use_notes(&notes[0][0]);
+    open_until_shown();
+    press(INPUT_DOWN);
+    press(INPUT_DOWN);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_PEOPLE);
+    press(INPUT_CROSS);
+    wait_steps(SETTLE_STEPS);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SUBMENU);
+    CHECK(pause_menu_camera_x() == -(float)RENDERER_WIDTH);
+    CHECK_INT(pause_people_count(PAUSE_PEOPLE_TAB_PEOPLE), 1);
+    CHECK_TEXT(pause_people_card(), "pause_note_1_03_010");
+    press(INPUT_L);
+    CHECK_INT(pause_people_tab(), PAUSE_PEOPLE_TAB_PLACES);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SUBMENU);
+    press(INPUT_CIRCLE);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_PANNING_BACK);
+}
+
 static void test_every_menu_sprite_lands_on_whole_pixels_through_a_pan(void)
 {
     int step;
@@ -307,6 +336,7 @@ int main(void)
     test_tapping_a_label_selects_it_and_lifting_on_it_picks_it();
     test_sliding_off_a_label_before_lifting_picks_nothing();
     test_picking_pans_toward_the_item_side_and_back_fades_the_labels_in();
+    test_people_opens_the_notebook_screen_where_l_switches_tabs_and_circle_returns();
     test_every_menu_sprite_lands_on_whole_pixels_through_a_pan();
     test_the_menu_stays_shut_without_its_art();
     return test_finish("unit/pause_menu");

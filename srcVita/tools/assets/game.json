@@ -364,6 +364,9 @@
         "do_select": "The notebook",
         "key_start": "Start",
         "do_start": "This menu",
+        "people_hint": "Press L or R to switch between People and Phone Book.",
+        "people_tab": "People",
+        "phone_tab": "Phone Book",
         "key_touch": "Touch",
         "do_touch": "Drag the soul, tap pills and balloons"
       },
@@ -414,6 +417,27 @@
           "font": "natives/android/gui/font/outlinefont/fotk-yoongulimpro740.oft.1"
         }
       ]
+    },
+    "people": {
+      "message_file": "natives/android/gamedesign/text/database/database.msg.22",
+      "key_prefix": "database_",
+      "portrait": "natives/android/charfiles/3d/06_id/02_database/cmn_db_03_%02d_iml4.tex.691230823",
+      "place_picture": "natives/android/charfiles/3d/06_id/01_load/cmn_load_08_%02d_iml3.tex.691230823",
+      "unknown": "natives/android/charfiles/3d/06_id/02_database/cmn_db_06_99_iml3.tex.691230823",
+      "frame": "natives/android/charfiles/3d/06_id/02_database/cmn_dbi_10_iml4.tex.691230823",
+      "spotlight": "natives/android/charfiles/3d/06_id/02_database/cmn_dbi_01_01_iml4.tex.691230823",
+      "band_points": 28,
+      "text_points": 21,
+      "phone_word": "Phone",
+      "names": ["linne", "linne_g", "cicel", "cicel_cat", "cicel_trash", "cicel_evil", "cicel_soul", "kuneri", "kuneri_s", "killer_jo", "sith", "sanbou", "killer_po", "ribbon", "missile", "missile_o", "cubanelle", "jawed", "jawed_k", "keikan_A", "keikan_B", "keiji_G", "keiji_B", "doctor", "kalon", "waitress", "kanri", "yukai_M", "yukai_W", "barten", "enma", "eimin", "daijin", "keibi_A", "keibi_B", "kanshu", "keibi_C", "Rock", "shujin_B", "leaflet", "cock", "erai", "eihei", "crew", "mother"],
+      "places": ["stage01_00", "stage02_00", "stage02_01", "stage03_00", "stage03_01", "stage03_02", "stage03_03", "stage03_04", "stage03_05", "stage03_06", "stage03_07", "stage04_00", "stage04_01", "stage05_00", "stage06_00", "stage07_00", "stage08_00", "stage09_00", "stage10_00", "stage11_00", "stage13_00", "stage14_00", "stage14_01"],
+      "order": [3, 1, 8, 10, 11, 12, 13, 14, 15, 31, 32, 33, 22, 23, 24, 17, 25, 40, 27, 41, 20, 34, 38, 39, 18, 42, 26, 28, 29, 30, 45, 44, 6],
+      "skip_people": [2, 4, 5, 7, 9, 16, 19, 21, 35, 36, 37],
+      "skip_places": [5, 6, 7, 8, 9, 10, 17, 19, 23],
+      "first_people": [3, 1, 8, 10],
+      "first_places": [1],
+      "portraits": {"cicel": 0, "linne": 1, "ribbon": 2, "cubanelle": 3, "jawed": 4, "kuneri": 6, "crew": 7, "sith": 8, "sanbou": 9, "killer_jo": 10, "leaflet": 11, "missile": 12, "enma": 13, "eimin": 14, "daijin": 15, "barten": 16, "kalon": 17, "doctor": 18, "erai": 19, "shujin_B": 20, "keiji_B": 21, "keiji_G": 22, "keikan_A": 23, "keibi_A": 24, "killer_po": 25, "kanri": 26, "waitress": 27, "yukai_M": 28, "cock": 29, "yukai_W": 30, "Rock": 31, "cicel_evil": 32, "mother": 33},
+      "place_pictures": {"stage01_00": 0, "stage02_00": 1, "stage02_01": 2, "stage03_00": 3, "stage03_07": 4, "stage04_00": 5, "stage04_01": 6, "stage05_00": 7, "stage06_00": 8, "stage07_00": 9, "stage09_00": 10, "stage11_00": 11, "stage13_00": 12, "stage14_00": 13}
     },
     "spotlight_source": "natives/android/charfiles/3d/06_id/02_database/cmn_dbi_01_01_iml4.tex.691230823"
   },

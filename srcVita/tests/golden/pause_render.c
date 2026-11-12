@@ -7,6 +7,8 @@
 #include "game_settings.h"
 #include "input.h"
 #include "pause_menu.h"
+#include "pause_people.h"
+#include "script_machine.h"
 #include "run_log.h"
 #include "texture_cache.h"
 #include "texture_file.h"
@@ -15,10 +17,12 @@
 #define PATH_MOST 512
 #define SETTLE_STEPS 80
 #define PAN_STEPS 40
+#define LOAD_ROUNDS 4
 
-static const char *const tables[] = { "pause/cat.txt", "pause/cat_track.txt", "pause/labels.txt", "pause/widgets.txt" };
-static const char *const fixed_textures[] = { "pause_backdrop", "pause_spotlight", "pause_labels", "pause_widgets", "hud_sheet" };
-static char texture_names[64][ASSET_NAME_MAX];
+static const char *const tables[] = { "pause/cat.txt", "pause/cat_track.txt", "pause/labels.txt", "pause/widgets.txt", "pause/people.txt" };
+static const char *const fixed_textures[] = { "pause_backdrop", "pause_spotlight", "pause_labels", "pause_widgets", "hud_sheet", "pause_people_thumbs", "pause_people_spot" };
+static char texture_names[512][ASSET_NAME_MAX];
+static unsigned char notes[SCRIPT_NOTE_LIST_COUNT][SCRIPT_NOTE_ID_COUNT];
 static int texture_name_count;
 
 static void add_disk_file(const char *assets_folder, const char *relative_path)
@@ -114,6 +118,12 @@ static void press_each(const char *buttons)
         case 'o':
             press(INPUT_CIRCLE);
             break;
+        case 'L':
+            press(INPUT_L);
+            break;
+        case 'R':
+            press(INPUT_R);
+            break;
         case '.':
             wait_steps(PAN_STEPS);
             break;
@@ -122,6 +132,48 @@ static void press_each(const char *buttons)
         }
     }
     wait_steps(PAN_STEPS);
+}
+
+static void add_people_textures(const char *assets_folder)
+{
+    char path[PATH_MOST];
+    char line[256];
+    char name[ASSET_NAME_MAX];
+    FILE *table;
+    int list;
+    int id;
+    int level;
+
+    snprintf(path, sizeof(path), "%s/pause/people.txt", assets_folder);
+    table = fopen(path, "r");
+    if (table == NULL) {
+        return;
+    }
+    while (fgets(line, sizeof(line), table) != NULL) {
+        if (sscanf(line, "face %d %95s", &id, name) == 2 || sscanf(line, "place %d %95s", &id, name) == 2 || sscanf(line, "note %d %d %d %95s", &list, &id, &level, name) == 4) {
+            add_texture(assets_folder, name);
+        }
+    }
+    fclose(table);
+}
+
+static void read_notes(const char *spec)
+{
+    int list;
+    int id;
+    int level;
+    int used;
+
+    while (sscanf(spec, "%d:%d:%d%n", &list, &id, &level, &used) == 3) {
+        if (list >= 0 && list < SCRIPT_NOTE_LIST_COUNT && id > 0 && id < SCRIPT_NOTE_ID_COUNT) {
+            notes[list][id] = (unsigned char)(level + 1);
+        }
+        spec += used;
+        if (*spec != ',') {
+            break;
+        }
+        spec++;
+    }
 }
 
 static const char *name_of(renderer_texture texture)
@@ -141,8 +193,15 @@ static const char *name_of(renderer_texture texture)
 static void print_draws(void)
 {
     int index;
+    int round;
     const struct fake_draw *draw;
 
+    for (round = 0; round < LOAD_ROUNDS; round++) {
+        fake_renderer_clear_draws();
+        pause_menu_draw();
+        texture_cache_upload_finished_reads(64);
+        texture_cache_begin_frame();
+    }
     fake_renderer_clear_draws();
     pause_menu_draw();
     for (index = 0; index < fake_renderer_draw_count(); index++) {
@@ -162,7 +221,7 @@ int main(int argc, char **argv)
     int page;
 
     if (argc < 3) {
-        fprintf(stderr, "usage: pause_render <assets folder> <buttons: u d l r x o, . waits>\n");
+        fprintf(stderr, "usage: pause_render <assets folder> <buttons: u d l r x o L R, . waits> [notes list:id:level,...]\n");
         return 2;
     }
     fake_files_reset();
@@ -185,6 +244,11 @@ int main(int argc, char **argv)
         snprintf(name, sizeof(name), "pause_cat_%02d", page);
         add_texture(argv[1], name);
     }
+    add_people_textures(argv[1]);
+    if (argc > 3) {
+        read_notes(argv[3]);
+    }
+    pause_people_use_notes(&notes[0][0]);
     pause_menu_open();
     wait_steps(SETTLE_STEPS);
     press_each(argv[2]);

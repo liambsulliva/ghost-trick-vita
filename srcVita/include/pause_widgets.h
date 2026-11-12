@@ -35,6 +35,7 @@ int pause_widgets_load(const char *assets_folder);
 int pause_widgets_has(const char *key);
 float pause_text_width(const char *key);
 struct renderer_color pause_white(float alpha);
+void pause_draw_from(const char *sheet, float u, float v, float u_size, float v_size, float x, float y, float width, float height, float alpha);
 void pause_draw_text(const char *key, float x, float y, enum pause_anchor anchor, float alpha);
 void pause_draw_slice(const char *style, float x, float y, float width, float height, float alpha);
 void pause_draw_flame(int number, int lit, float centre_x, float centre_y, float alpha);

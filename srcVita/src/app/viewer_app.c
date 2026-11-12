@@ -12,6 +12,7 @@
 #include "music_engine.h"
 #include "page_tiles.h"
 #include "pause_menu.h"
+#include "pause_people.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "scene_player.h"
@@ -557,6 +558,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
         return;
     }
     if ((input->pressed & INPUT_START) && script_player_is_active() && !debug_controls_are_on && pause_menu_is_ready()) {
+        pause_people_use_notes(script_player_note_levels());
         pause_menu_open();
         return;
     }

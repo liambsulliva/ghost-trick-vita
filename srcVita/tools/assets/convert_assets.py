@@ -255,14 +255,14 @@ def convert_hud_sheet(packs, set_description, work_folder, record):
     return [hud_art.bake_hud_sheet(fonts, work_folder, record, code, hud["label_font"], hud["key_font"]), hud_art.bake_hud_disc(work_folder, record, code)]
 
 
-def convert_pause_art(packs, set_description, record, table_texts, timelines, crops):
+def convert_pause_art(packs, set_description, record, table_texts, timelines, crops, text_key):
     pause = set_description.get("pause")
     if pause is None:
         return {}, []
-    code = code_fingerprint_with_magick(TEXT_CODE_FILES + ["pause_art.py", "frame_layout.py", "hud_art.py"])
+    code = code_fingerprint_with_magick(TEXT_CODE_FILES + ["pause_art.py", "pause_people.py", "frame_layout.py", "hud_art.py"])
     work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
     try:
-        return pause_art.bake_pause_art(packs, TEXTURE_TOOL_PATH, work_folder, record, code, pause, set_description.get("animations", []), table_texts, timelines, crops)
+        return pause_art.bake_pause_art(packs, TEXTURE_TOOL_PATH, work_folder, record, code, pause, set_description.get("animations", []), table_texts, timelines, crops, text_key)
     finally:
         delete_work_folder(work_folder)
 
@@ -515,7 +515,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         files.update(text_output_files(set_description, animation_texts, steps))
         table_texts, motion_lines = script_assets.table_animations(set_description, output_folder, timelines, crops)
         files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in table_texts.items()})
-        pause_files, pause_results = convert_pause_art(packs, set_description, record, table_texts, timelines, crops)
+        pause_files, pause_results = convert_pause_art(packs, set_description, record, table_texts, timelines, crops, text_key)
         files.update(pause_files)
         texture_results = sorted(texture_results + pause_results, key=lambda result: result["name"])
         texture_sizes = {result["name"]: (result["width"], result["height"]) for result in texture_results}

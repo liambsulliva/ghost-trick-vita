@@ -127,8 +127,8 @@ def draw_rect(canvas, fields):
     blend(canvas, patch, int(round(x)), int(round(y)), alpha)
 
 
-def render(assets_folder, buttons, output_path):
-    result = subprocess.run([RENDER_BINARY, assets_folder, buttons], check=True, capture_output=True, text=True)
+def render(assets_folder, buttons, output_path, notes=None):
+    result = subprocess.run([RENDER_BINARY, assets_folder, buttons] + ([notes] if notes else []), check=True, capture_output=True, text=True)
     canvas = np.zeros((SCREEN_HEIGHT, SCREEN_WIDTH, 3), dtype=np.float32)
     textures = {}
     for line in result.stdout.splitlines():
@@ -152,10 +152,11 @@ def render(assets_folder, buttons, output_path):
 def main():
     parser = argparse.ArgumentParser(description="Draws the pause menu on the Mac from the baked assets, after a list of button presses.")
     parser.add_argument("assets_folder", help="a converted set folder, such as ../extracted/vita_assets/game")
-    parser.add_argument("buttons", help="presses after the menu opens: u d l r x o, and . to wait")
+    parser.add_argument("buttons", help="presses after the menu opens: u d l r x o L R, and . to wait")
     parser.add_argument("output", help="the PNG to write")
+    parser.add_argument("--notes", help="notebook entries known, as list:id:level,... (1 people, 2 places)")
     arguments = parser.parse_args()
-    render(arguments.assets_folder, arguments.buttons, arguments.output)
+    render(arguments.assets_folder, arguments.buttons, arguments.output, arguments.notes)
     return 0
 
 

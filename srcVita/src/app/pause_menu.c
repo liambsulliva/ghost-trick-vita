@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "pause_menu.h"
 #include "pause_options.h"
+#include "pause_people.h"
 #include "pause_widgets.h"
 #include "renderer.h"
 #include "run_log.h"
@@ -259,7 +260,7 @@ int pause_menu_load(const char *assets_folder)
     words = read_table(assets_folder, LABEL_TABLE_PATH, pause_menu_read_label_text);
     widget_total = pause_widgets_load(assets_folder);
     phase = PAUSE_PHASE_CLOSED;
-    run_log_write("pause art frames=%d idle_ticks=%d fidget_ticks=%d labels=%d widgets=%d", frames, ticks, fidget_count, words, widget_total);
+    run_log_write("pause art frames=%d idle_ticks=%d fidget_ticks=%d labels=%d widgets=%d people=%d", frames, ticks, fidget_count, words, widget_total, pause_people_load(assets_folder));
     return pause_menu_is_ready();
 }
 
@@ -472,6 +473,11 @@ static void leave_submenu(void)
     }
 }
 
+static int people_is_picked(void)
+{
+    return picked == PAUSE_ITEM_PEOPLE && pause_people_is_loaded();
+}
+
 static int submenu_is_on_screen(void)
 {
     return phase == PAUSE_PHASE_PANNING_OUT || phase == PAUSE_PHASE_SUBMENU || phase == PAUSE_PHASE_PANNING_BACK;
@@ -491,6 +497,9 @@ static void step_showing(unsigned int pressed)
         picked = cursor;
         if (picked == PAUSE_ITEM_OPTIONS) {
             pause_options_enter();
+            run_log_write("pause pick %s", item_names[picked]);
+        } else if (picked == PAUSE_ITEM_PEOPLE && pause_people_is_loaded()) {
+            pause_people_enter();
             run_log_write("pause pick %s", item_names[picked]);
         } else {
             run_log_write("pause pick %s submenu=not_ported", item_names[picked]);
@@ -528,6 +537,10 @@ static void advance_phase(unsigned int pressed)
             begin_hiding();
         } else if (picked == PAUSE_ITEM_OPTIONS) {
             if (pause_options_step(pressed) == PAUSE_OPTIONS_LEAVES) {
+                enter(PAUSE_PHASE_PANNING_BACK);
+            }
+        } else if (people_is_picked()) {
+            if (pause_people_step(pressed) == PAUSE_PEOPLE_LEAVES) {
                 enter(PAUSE_PHASE_PANNING_BACK);
             }
         } else if (pressed & INPUT_CIRCLE) {
@@ -657,6 +670,8 @@ static unsigned int touch_presses(const struct input_state *input)
         }
     } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_OPTIONS) {
         pressed = pause_options_touch(lands, lifts, input->touch_is_down, input->touch_x, input->touch_y);
+    } else if (phase == PAUSE_PHASE_SUBMENU && people_is_picked()) {
+        pressed = pause_people_touch(lands, input->touch_x, input->touch_y);
     } else if (phase == PAUSE_PHASE_SUBMENU && lands && pause_is_on_back_pill(input->touch_x, input->touch_y)) {
         pressed = INPUT_CIRCLE;
     }
@@ -884,11 +899,15 @@ static void draw_menu(void)
     }
     if (camera_x != 0.0f && picked == PAUSE_ITEM_OPTIONS) {
         pause_options_draw(side_x);
+    } else if (camera_x != 0.0f && people_is_picked()) {
+        pause_people_draw(side_x);
     }
     draw_floor();
     if (camera_x != 0.0f) {
         if (picked == PAUSE_ITEM_OPTIONS) {
             pause_options_draw_bar(side_x);
+        } else if (people_is_picked()) {
+            pause_people_draw_bar(side_x);
         } else {
             pause_draw_bar(side_x, NULL, NULL, NULL);
         }

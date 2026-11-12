@@ -8,6 +8,7 @@ import bake_record
 import frame_layout
 import hud_art
 import narration
+import pause_people
 import texture_encoder
 
 CAT_SCREEN_PIXELS_PER_DS_PIXEL = 2 * frame_layout.SCREEN_PIXELS_PER_DS_PIXEL
@@ -60,6 +61,11 @@ SLICES = [
     ("box", 56, 56, 22, "black", PILL_GREY, 4),
     ("button", 64, 56, 28, "black", PILL_GREY, 4),
     ("button_selected", 64, 56, 28, "black", PILL_RED, 4),
+    ("tab", 44, 40, 20, "black", PILL_GREY, 3),
+    ("tab_selected", 44, 40, 20, PILL_RED, BACK_EDGE, 3),
+    ("shoulder", 28, 28, 10, "#1e1a1e", "#9696a0", 2),
+    ("sprocket", 11, 7, 2, "#46464c", "none", 0),
+    ("note_box", 24, 24, 10, "#faf8f2", "#968c82", 2),
 ]
 
 
@@ -501,7 +507,7 @@ def bake_widgets(packs, work_folder, record, code, widgets):
     return table, bake_record.result_of_own_size(WIDGET_SHEET_NAME, gtex)
 
 
-def bake_pause_art(packs, tool_path, work_folder, record, code, pause, set_animations, table_texts, timelines, crops):
+def bake_pause_art(packs, tool_path, work_folder, record, code, pause, set_animations, table_texts, timelines, crops, text_key):
     files = {}
     animations = cat_animation_entries(set_animations, table_texts, pause["cat_animations"])
     cat_table, cat_results = bake_cat(packs, tool_path, work_folder, record, code, timelines, crops, animations)
@@ -512,4 +518,6 @@ def bake_pause_art(packs, tool_path, work_folder, record, code, pause, set_anima
     spotlight = bake_spotlight(packs, tool_path, work_folder, record, code, pause["spotlight_source"])
     widget_table, widget_result = bake_widgets(packs, work_folder, record, code, pause["widgets"])
     files[WIDGET_TABLE_PATH] = widget_table
-    return files, cat_results + [label_result, spotlight, widget_result]
+    people_table, people_results = pause_people.bake_people(packs, tool_path, work_folder, record, code, pause["people"], pause["widgets"]["font"], text_key)
+    files[pause_people.TABLE_PATH] = people_table
+    return files, cat_results + [label_result, spotlight, widget_result] + people_results
