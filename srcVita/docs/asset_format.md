@@ -247,6 +247,16 @@ page <limit> <options> <group_count> <hold of each group>
 
 A missing ROM keeps what is already in `scripts/`, and the tables that need only baked scripts still come out.
 
+## Pause menu: `pause/`
+
+`tools/assets/pause_art.py` bakes the pause menu from the `pause` section of the set description. The engine reads it in `src/app/pause_menu.c`.
+
+- `pause/cat.txt` starts with `pages <count>`, for the DXT5 pages `pause_cat_00` onward. Each `frame <animation> <index> <ticks> <page> <x> <y> <width> <height> <left> <top>` line is one frame of the listed cat animations, in order. `x y width height` is the cell on its page. `left top` is where the cell goes, in screen pixels from the paw anchor, which the engine puts at whole pixels.
+- The cat is baked at twice the atlas scale from the remaster pages. Every frame is pinned by its toe, paw row and body band to whole source pixels. Then it is placed on one shared grid whose size and anchor are multiples of 32 source pixels, so the 45/32 resize puts the anchor on a whole screen pixel. Each frame is resized as part of that grid.
+- `pause/cat_track.txt` holds `every <ticks>`, `link <idle tick>` and `dissolve <ticks>`, then one `idle <row>` line and one `fidget <row>` line per tick. Rows count the `frame` lines of `cat.txt` from 0. The fidget's `play` ranges in the set description are inclusive and may run backwards.
+- `pause/labels.txt` places the menu words on `pause_labels`: `label <item> <x> <y> <width> <height>` for the cream word, the same cell `selected_column` pixels to the right for the ghost blue word, and `arrows <x> <y> <size>` for the right-pointing arrow, with the left-pointing one beside it.
+- `pause_spotlight` is the database screen's ring pool, rebuilt as a full circle and drawn 1:1. `pause_backdrop` is a `screen_textures` entry.
+
 ## Source files
 
 The byte offsets the converter reads from the remaster's files, and only those. For what the fields mean see [frame_mapping.md](../../docs/frame_mapping.md), and for the format codes and pack names see [inventory.md](../../docs/inventory.md). Numbers are little-endian.

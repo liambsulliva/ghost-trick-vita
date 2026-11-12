@@ -23,6 +23,7 @@ import hud_art
 import narration
 import pack_files
 import page_tiles
+import pause_art
 import read_ahead
 import route_pacing
 import script_assets
@@ -40,7 +41,7 @@ DEFAULT_APK_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "remaster_apk"
 DEFAULT_DS_ROM_PATH = os.path.join(REPOSITORY_FOLDER, "extracted", "ds_rom", "game.nds")
 TEXTURE_TOOL_PATH = os.path.join(SRC_VITA_FOLDER, "build", "tools", "texture_tool")
 FORMAT_NAMES = {asset_writers.FORMAT_RGBA8888: "RGBA8888", asset_writers.FORMAT_DXT5: "DXT5", asset_writers.FORMAT_DXT1: "DXT1"}
-OUTPUT_FOLDER_NAMES = ("textures", "animations", "scenes", "music", "music_ds", "sounds", "scripts")
+OUTPUT_FOLDER_NAMES = ("textures", "animations", "scenes", "music", "music_ds", "sounds", "scripts", "pause")
 TEXTURE_CODE_FILES = ["asset_writers.py", "astc_decode.c", "astc_decode.h", "etc_decode.c", "etc_decode.h", "texture_encoder.py", "texture_tool.c"]
 COMPOSED_CODE_FILES = TEXTURE_CODE_FILES + ["bubble_art.py"]
 TEXT_CODE_FILES = ["asset_writers.py", "chapter_assets.py", "font_file.py", "line_renderer.py", "message_cues.py", "message_file.py", "narration.py", "talk_assets.py", "texture_encoder.py"]
@@ -251,6 +252,18 @@ def convert_hud_sheet(packs, set_description, work_folder, record):
     fonts = narration.TextFonts(packs, work_folder)
     code = code_fingerprint_with_magick(TEXT_CODE_FILES + ["hud_art.py"])
     return [hud_art.bake_hud_sheet(fonts, work_folder, record, code, hud["label_font"], hud["key_font"]), hud_art.bake_hud_disc(work_folder, record, code)]
+
+
+def convert_pause_art(packs, set_description, record, table_texts, timelines, crops):
+    pause = set_description.get("pause")
+    if pause is None:
+        return {}, []
+    code = code_fingerprint_with_magick(TEXT_CODE_FILES + ["pause_art.py", "frame_layout.py"])
+    work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
+    try:
+        return pause_art.bake_pause_art(packs, TEXTURE_TOOL_PATH, work_folder, record, code, pause, set_description.get("animations", []), table_texts, timelines, crops)
+    finally:
+        delete_work_folder(work_folder)
 
 
 def convert_text_textures(packs, set_description, messages, work_folder, record):
@@ -501,6 +514,9 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         files.update(text_output_files(set_description, animation_texts, steps))
         table_texts, motion_lines = script_assets.table_animations(set_description, output_folder, timelines, crops)
         files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in table_texts.items()})
+        pause_files, pause_results = convert_pause_art(packs, set_description, record, table_texts, timelines, crops)
+        files.update(pause_files)
+        texture_results = sorted(texture_results + pause_results, key=lambda result: result["name"])
         texture_sizes = {result["name"]: (result["width"], result["height"]) for result in texture_results}
         files.update(talk_files)
         files.update(script_assets.table_files(set_description, output_folder, motion_lines, narration_lines, texture_sizes, plate_size_lookup(texture_results, plates), list(table_texts), talk_assets.talk_texture_names(talk_files)))

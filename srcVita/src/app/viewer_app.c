@@ -10,6 +10,7 @@
 #include "memory.h"
 #include "music_engine.h"
 #include "page_tiles.h"
+#include "pause_menu.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "scene_player.h"
@@ -335,6 +336,7 @@ void viewer_app_start(const char *folder)
     scene_player_init(scene_folder);
     script_player_init(script_folder);
     read_page_tiles(script_folder);
+    (void)pause_menu_load(assets_folder);
     music_engine_init(music_folder);
     sound_engine_init(sound_folder);
     if (!debug_font_init()) {
@@ -514,6 +516,14 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
     if (input->pressed != 0) {
         run_log_write("input pressed buttons=0x%04x", input->pressed);
     }
+    if (pause_menu_is_open()) {
+        pause_menu_update(input, elapsed_us);
+        return;
+    }
+    if ((input->pressed & INPUT_START) && script_player_is_active() && !debug_controls_are_on && pause_menu_is_ready()) {
+        pause_menu_open();
+        return;
+    }
     if ((input->pressed & INPUT_SELECT) && !script_player_is_active()) {
         set_debug_controls(!debug_controls_are_on);
     }
@@ -661,6 +671,10 @@ static void draw_game_picture(void)
 
 void viewer_app_draw(void)
 {
+    if (!pause_menu_shows_game()) {
+        pause_menu_draw();
+        return;
+    }
     if (manifest == NULL) {
         draw_no_assets_screen();
     } else if (playback_status() != SCENE_PLAYER_PRELOADING) {
@@ -683,6 +697,7 @@ void viewer_app_draw(void)
     if (list_is_open) {
         draw_list();
     }
+    pause_menu_draw();
 }
 
 void viewer_app_stop(void)

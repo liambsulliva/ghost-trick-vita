@@ -259,7 +259,7 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 | TRIANGLE or SQUARE | Tap the left or right balloon, when a script opens one that can be tapped |
 | R | The hourglass pill |
 | SELECT | The notebook pill |
-| START | Nothing yet (the pause menu is not ported) |
+| START | During play, opens the pause menu: Resume, Save, People on the left; Title, Chapters, Options on the right. ✕ picks, ○ or START goes back. Only Resume works yet; the other items pan to an empty screen and log `submenu=not_ported` |
 | L and R together | Skip ahead |
 
 ## Debug controls
