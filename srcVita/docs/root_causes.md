@@ -905,6 +905,18 @@ The converter writes into a fixed set of output folders and sweeps stale files f
 
 Guard: `tests/tools/test_vita_loop.py` puts a file in every folder of `output_folders.NAMES` and checks that each is listed for upload.
 
+### 131. People portraits were assigned by guessing from the image numbers, so twelve people showed someone else's face
+
+The remaster's notebook images (`cmn_db_03_00` to `_35`) carry no table that ties them to the database names, and the DS notebook draws no faces (overlay 006 only draws text cards, `func_ov006_020d7108`), so there is no native order to follow. The first `portraits` map guessed from the image numbers and the story order. Each image was still used once, so nothing looked wrong in the data, but eight people were swapped among themselves and four took images that belonged to others. The fixes came from the user reading the screen. People whose image is not confirmed are now listed in `unknown_portraits` and show the unknown silhouette instead of a guess.
+
+Guard: `tests/tools/test_pause_people.py` requires every listed person to be either in `portraits` or in `unknown_portraits`, never both, and every image to be used once.
+
+### 132. The controls page wrote button names as words, and the longest action ran past its row
+
+Each controls row drew a key name at a fixed x and its action at x 400, with no limit on the action's width, so the stick's action ran past the row's right edge. The key column now draws the Vita's button glyphs (`hud_art.glyph_cells`, the same art as the HUD prompts), and the action starts right after them. `pause_draw_text_within` shrinks any text wider than its room, so a longer translation cannot overflow either.
+
+Guard: `tests/tools/test_pause_glyphs.py` checks that every glyph the pause screens name is baked, inside the sheet and on its own cell. `tests/unit/test_pause_widgets.c` checks glyph widths and that text wider than its room shrinks to fit.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

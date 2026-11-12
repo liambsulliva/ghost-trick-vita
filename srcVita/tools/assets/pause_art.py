@@ -492,7 +492,7 @@ def pack_widget_cells(cells):
 
 
 def glyph_lines():
-    return ["glyph %s %d 0 %d" % (kind, index * hud_art.GLYPH_CELL, hud_art.GLYPH_CELL) for index, kind in enumerate(hud_art.FACE_ORDER)]
+    return ["glyph %s %d %d %d %d" % (kind, x, y, width, hud_art.GLYPH_CELL) for kind, x, y, width in hud_art.glyph_cells()]
 
 
 def bake_widgets(packs, work_folder, record, code, widgets):

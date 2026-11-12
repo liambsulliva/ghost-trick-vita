@@ -39,7 +39,11 @@
 #define DROP_OVERLAP 4.0f
 #define DROP_CHOICE_INSET 8.0f
 #define DROP_CHOICE_HALF 17.0f
-#define CONTROLS_ACTION_X 400.0f
+#define CONTROLS_ACTION_X 196.0f
+#define CONTROLS_GLYPH_HEIGHT 40.0f
+#define CONTROLS_GLYPH_GAP 8.0f
+#define CONTROLS_GLYPH_MOST 2
+#define CONTROLS_TEXT_END 910.0f
 #define LANGUAGE_COUNT 9
 #define CONTROLS_COUNT 10
 
@@ -79,8 +83,6 @@ static const struct option_row rows[] = {
     { "display", "ff_unread", ROW_FIXED, JOB_NONE, 1, "off" },
     { NULL, "brightness", ROW_METER, JOB_BRIGHTNESS, 0, NULL },
     { NULL, "background", ROW_FIXED, JOB_NONE, 1, "pattern_1" },
-    { NULL, "resolution", ROW_FIXED, JOB_NONE, 1, "resolution_value" },
-    { NULL, "screen_mode", ROW_FIXED, JOB_NONE, 1, "full_screen" },
     { NULL, "vsync", ROW_FIXED, JOB_NONE, 1, "on" },
     { "sound", "master", ROW_METER, JOB_MASTER, 0, NULL },
     { NULL, "music", ROW_METER, JOB_MUSIC, 0, NULL },
@@ -97,6 +99,7 @@ static const struct option_row rows[] = {
 
 static const char *const languages[LANGUAGE_COUNT] = { "english", "japanese", "french", "italian", "german", "spanish", "chinese_traditional", "chinese_simplified", "korean" };
 static const char *const control_keys[CONTROLS_COUNT] = { "stick", "right_stick", "cross", "circle", "l", "r", "faces", "select", "start", "touch" };
+static const char *const control_glyphs[CONTROLS_COUNT][CONTROLS_GLYPH_MOST] = { { "lstick", "dpad" }, { "rstick", NULL }, { "cross", NULL }, { "circle", NULL }, { "l", NULL }, { "r", NULL }, { "triangle", "square" }, { "select", NULL }, { "start", NULL }, { "touch", NULL } };
 
 static float row_y[ROW_COUNT];
 static float list_height;
@@ -609,6 +612,24 @@ static void draw_dropdown(float x_offset)
     }
 }
 
+const char *pause_options_control_glyph(int control, int which)
+{
+    return control >= 0 && control < CONTROLS_COUNT && which >= 0 && which < CONTROLS_GLYPH_MOST ? control_glyphs[control][which] : NULL;
+}
+
+static void draw_control_glyphs(int control, float left, float centre_y)
+{
+    const char *glyph;
+    int which;
+
+    for (which = 0; which < CONTROLS_GLYPH_MOST; which++) {
+        glyph = control_glyphs[control][which];
+        if (glyph != NULL) {
+            left = left + pause_draw_glyph_from_left(glyph, left, centre_y, CONTROLS_GLYPH_HEIGHT, 1.0f) + CONTROLS_GLYPH_GAP;
+        }
+    }
+}
+
 static void draw_controls_page(float x_offset)
 {
     char key[KEY_MAX];
@@ -621,10 +642,9 @@ static void draw_controls_page(float x_offset)
             pause_draw_text("header.controls", HEADER_TEXT_X + x_offset, top - HEADER_ABOVE, PAUSE_ANCHOR_LEFT, 1.0f);
         }
         pause_draw_slice(index == controls_selected ? "row_selected" : "row", ROW_LEFT + x_offset, top, ROW_RIGHT - ROW_LEFT, ROW_HEIGHT, 1.0f);
-        snprintf(key, sizeof(key), "bar.key_%s", control_keys[index]);
-        pause_draw_text(key, ROW_TEXT_X + x_offset, top + ROW_HEIGHT / 2.0f, PAUSE_ANCHOR_LEFT, 1.0f);
+        draw_control_glyphs(index, ROW_TEXT_X + x_offset, top + ROW_HEIGHT / 2.0f);
         snprintf(key, sizeof(key), "bar.do_%s", control_keys[index]);
-        pause_draw_text(key, CONTROLS_ACTION_X + x_offset, top + ROW_HEIGHT / 2.0f, PAUSE_ANCHOR_LEFT, 1.0f);
+        pause_draw_text_within(key, CONTROLS_ACTION_X + x_offset, top + ROW_HEIGHT / 2.0f, CONTROLS_TEXT_END - CONTROLS_ACTION_X, 1.0f);
     }
 }
 

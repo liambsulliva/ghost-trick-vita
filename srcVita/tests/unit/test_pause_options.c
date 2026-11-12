@@ -11,12 +11,12 @@
 
 #define CONTROLS_ROW 0
 #define BRIGHTNESS_ROW 2
-#define MASTER_ROW 7
-#define MUSIC_ROW 8
-#define MUSIC_TYPE_ROW 10
-#define LANGUAGE_ROW 11
-#define RESTORE_ROW 14
-#define UNLOCK_ROW 15
+#define MASTER_ROW 5
+#define MUSIC_ROW 6
+#define MUSIC_TYPE_ROW 8
+#define LANGUAGE_ROW 9
+#define RESTORE_ROW 12
+#define UNLOCK_ROW 13
 
 static void start_options(void)
 {

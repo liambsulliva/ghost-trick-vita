@@ -56,7 +56,9 @@ class GameTableTest(unittest.TestCase):
             people = json.load(source)["pause"]["people"]
         names = people["names"]
         listed = [names[index - 1] for index in people["order"] if index not in people["skip_people"]]
-        self.assertEqual(sorted(listed), sorted(people["portraits"]))
+        waiting = people["unknown_portraits"]
+        self.assertEqual(sorted(listed), sorted(list(people["portraits"]) + waiting))
+        self.assertEqual(set(waiting) & set(people["portraits"]), set())
         shown = [name for index, name in enumerate(people["places"]) if index + 1 not in people["skip_places"]]
         self.assertEqual(sorted(shown), sorted(people["place_pictures"]))
         self.assertEqual(len(set(people["portraits"].values())), len(people["portraits"]))

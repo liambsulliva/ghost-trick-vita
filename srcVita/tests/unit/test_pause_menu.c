@@ -200,6 +200,55 @@ static void test_the_left_stick_steps_the_cursor_once_per_push(void)
     CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_TITLE);
 }
 
+static void hold(unsigned int buttons, unsigned int fresh, float stick_y)
+{
+    struct input_state input;
+
+    memset(&input, 0, sizeof(input));
+    input.held = buttons;
+    input.pressed = fresh;
+    input.stick_y = stick_y;
+    texture_cache_upload_finished_reads(8);
+    texture_cache_begin_frame();
+    pause_menu_update(&input, PAUSE_TICK_US);
+}
+
+static void hold_for(unsigned int buttons, float stick_y, int steps)
+{
+    int step;
+
+    for (step = 0; step < steps; step++) {
+        hold(buttons, 0, stick_y);
+    }
+}
+
+static void test_a_held_direction_repeats_after_a_pause_but_only_from_a_fresh_press(void)
+{
+    start_with_art();
+    open_until_shown();
+    hold(INPUT_DOWN, INPUT_DOWN, 0.0f);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_SAVE);
+    hold_for(INPUT_DOWN, 0.0f, 20);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_SAVE);
+    hold_for(INPUT_DOWN, 0.0f, 12);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_PEOPLE);
+    hold(0, 0, 0.0f);
+    hold(0, 0, -1.0f);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_SAVE);
+    hold_for(0, -1.0f, 40);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_RESUME);
+    hold(0, 0, 0.0f);
+}
+
+static void test_a_direction_held_into_the_menu_never_repeats(void)
+{
+    start_with_art();
+    pause_menu_open();
+    hold_for(INPUT_DOWN, 0.0f, SETTLE_STEPS + 60);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SHOWING);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_RESUME);
+}
+
 static void test_a_stick_held_while_start_opens_the_menu_waits_for_a_fresh_push(void)
 {
     int step;
@@ -245,7 +294,9 @@ static void test_picking_pans_toward_the_item_side_and_back_fades_the_labels_in(
 {
     start_with_art();
     open_until_shown();
+    press(INPUT_DOWN);
     press(INPUT_RIGHT);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_CHAPTERS);
     press(INPUT_CROSS);
     CHECK_INT(pause_menu_phase(), PAUSE_PHASE_PANNING_OUT);
     wait_steps(SETTLE_STEPS);
@@ -304,8 +355,10 @@ static int no_save(void)
 static void pick_title(void)
 {
     press(INPUT_CROSS);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SHOWING);
     wait_steps(SETTLE_STEPS);
-    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SUBMENU);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SHOWING);
+    CHECK(pause_menu_camera_x() == 0.0f);
 }
 
 static void test_title_asks_first_and_yes_hands_over_once_the_screen_is_black(void)
@@ -319,11 +372,16 @@ static void test_title_asks_first_and_yes_hands_over_once_the_screen_is_black(vo
     CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_TITLE);
     pick_title();
     press(INPUT_CROSS);
-    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SUBMENU);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SHOWING);
     press(INPUT_CROSS);
-    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_PANNING_BACK);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SHOWING);
     CHECK_INT(pause_menu_takes_title_request(), 0);
-    wait_steps(SETTLE_STEPS);
+    press(INPUT_LEFT);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_RESUME);
+    press(INPUT_RIGHT);
+    pick_title();
+    press(INPUT_CIRCLE);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SHOWING);
     pick_title();
     press(INPUT_RIGHT);
     press(INPUT_CROSS);
@@ -393,6 +451,8 @@ static void test_the_menu_stays_shut_without_its_art(void)
 
 int main(void)
 {
+    test_a_held_direction_repeats_after_a_pause_but_only_from_a_fresh_press();
+    test_a_direction_held_into_the_menu_never_repeats();
     test_the_fidget_dissolves_in_at_the_link_tick_and_back_out_to_it();
     test_start_darkens_the_game_then_shows_the_menu();
     test_resume_hands_the_screen_back_to_the_game();

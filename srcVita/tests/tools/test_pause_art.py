@@ -85,8 +85,8 @@ class WidgetSheetTest(unittest.TestCase):
 
     def test_glyphs_point_at_the_hud_sheet_face_cells(self):
         lines = pause_art.glyph_lines()
-        self.assertEqual([line.split()[1] for line in lines], pause_art.hud_art.FACE_ORDER)
-        self.assertEqual(lines[1], "glyph %s %d 0 %d" % (pause_art.hud_art.FACE_ORDER[1], pause_art.hud_art.GLYPH_CELL, pause_art.hud_art.GLYPH_CELL))
+        self.assertEqual([line.split()[1] for line in lines][:4], pause_art.hud_art.FACE_ORDER)
+        self.assertEqual(lines[1], "glyph %s %d 0 %d %d" % (pause_art.hud_art.FACE_ORDER[1], pause_art.hud_art.GLYPH_CELL, pause_art.hud_art.GLYPH_CELL, pause_art.hud_art.GLYPH_CELL))
 
     def test_a_pill_slice_is_clear_at_its_corners_and_solid_down_its_middle(self):
         work = tempfile.mkdtemp()

@@ -11,6 +11,7 @@ unsigned int pause_options_touch(int lands, int lifts, int is_down, float x, flo
 void pause_options_tick(void);
 void pause_options_leave(void);
 int pause_options_selected_row(void);
+const char *pause_options_control_glyph(int control, int which);
 int pause_options_is_on_controls_page(void);
 int pause_options_dropdown_is_open(void);
 int pause_options_dialog_is_open(void);

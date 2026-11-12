@@ -50,6 +50,9 @@
 #define ARROW_LEFT_BACK 27.0f
 #define ARROW_SHOWN_FROM 0.5f
 #define TOUCH_MARGIN 14.0f
+#define REPEAT_DELAY_US 400000ull
+#define REPEAT_EVERY_US 90000ull
+#define DIRECTION_BUTTONS (INPUT_UP | INPUT_DOWN | INPUT_LEFT | INPUT_RIGHT)
 
 #define TRACK_IDLE 0
 #define TRACK_FIDGET 1
@@ -90,6 +93,9 @@ static int cursor_ticks;
 static int picked;
 static int widget_total;
 static int stick_was_out;
+static unsigned int repeat_directions;
+static int repeat_is_armed;
+static unsigned long long repeat_held_us;
 static int touch_was_down;
 static int touched_item;
 static int touched_option;
@@ -410,6 +416,8 @@ void pause_menu_open(void)
     cursor_ticks = CURSOR_TICKS;
     picked = PAUSE_ITEM_RESUME;
     stick_was_out = 1;
+    repeat_directions = 0;
+    repeat_is_armed = 0;
     touch_was_down = 1;
     touched_item = -1;
     touched_option = PAUSE_DIALOG_NOTHING;
@@ -523,8 +531,6 @@ static void step_title(unsigned int pressed)
         begin_hiding();
     } else if (title_asks_to_save && chosen != PAUSE_DIALOG_CANCEL) {
         open_title_warning();
-    } else {
-        enter(PAUSE_PHASE_PANNING_BACK);
     }
 }
 
@@ -586,6 +592,11 @@ static int submenu_is_on_screen(void)
 
 static void step_showing(unsigned int pressed)
 {
+    if (title_dialog.is_open && !(pressed & INPUT_START)) {
+        step_title(pressed);
+        return;
+    }
+    title_dialog.is_open = 0;
     if (pressed & (INPUT_CIRCLE | INPUT_START)) {
         begin_hiding();
         return;
@@ -604,6 +615,8 @@ static void step_showing(unsigned int pressed)
             run_log_write("pause pick %s", item_names[picked]);
         } else if (picked == PAUSE_ITEM_TITLE) {
             run_log_write("pause pick %s", item_names[picked]);
+            open_title_dialog();
+            return;
         } else if (picked == PAUSE_ITEM_SAVE) {
             pause_save_enter();
             run_log_write("pause pick %s", item_names[picked]);
@@ -638,9 +651,6 @@ static void advance_phase(unsigned int pressed)
     case PAUSE_PHASE_PANNING_OUT:
         if (phase_ticks >= PAN_TICKS) {
             enter(PAUSE_PHASE_SUBMENU);
-            if (picked == PAUSE_ITEM_TITLE) {
-                open_title_dialog();
-            }
         }
         break;
     case PAUSE_PHASE_SUBMENU:
@@ -655,8 +665,6 @@ static void advance_phase(unsigned int pressed)
             if (pause_people_step(pressed) == PAUSE_PEOPLE_LEAVES) {
                 enter(PAUSE_PHASE_PANNING_BACK);
             }
-        } else if (picked == PAUSE_ITEM_TITLE) {
-            step_title(pressed);
         } else if (picked == PAUSE_ITEM_SAVE) {
             step_save(pressed);
         } else if (picked == PAUSE_ITEM_CHAPTERS) {
@@ -739,6 +747,46 @@ static unsigned int stick_presses(const struct input_state *input)
     return pressed;
 }
 
+static unsigned int held_directions(const struct input_state *input)
+{
+    unsigned int held;
+    int pushed_x;
+    int pushed_y;
+
+    held = input->held & DIRECTION_BUTTONS;
+    if (input->stick_x != 0.0f || input->stick_y != 0.0f) {
+        stick_aim_first_push(input->stick_x, input->stick_y, &pushed_x, &pushed_y);
+        held |= (pushed_x < 0 ? INPUT_LEFT : 0) | (pushed_x > 0 ? INPUT_RIGHT : 0) | (pushed_y < 0 ? INPUT_UP : 0) | (pushed_y > 0 ? INPUT_DOWN : 0);
+    }
+    return held;
+}
+
+static unsigned int repeat_presses(const struct input_state *input, unsigned int fresh, unsigned long long elapsed_us)
+{
+    unsigned int held;
+    unsigned long long before;
+
+    held = held_directions(input);
+    if (held == 0 || held != repeat_directions) {
+        repeat_directions = held;
+        repeat_is_armed = held != 0 && (fresh & DIRECTION_BUTTONS) != 0;
+        repeat_held_us = 0;
+        return 0;
+    }
+    if (!repeat_is_armed) {
+        return 0;
+    }
+    before = repeat_held_us;
+    repeat_held_us = repeat_held_us + elapsed_us;
+    if (repeat_held_us < REPEAT_DELAY_US) {
+        return 0;
+    }
+    if (before < REPEAT_DELAY_US || (repeat_held_us - REPEAT_DELAY_US) / REPEAT_EVERY_US != (before - REPEAT_DELAY_US) / REPEAT_EVERY_US) {
+        return held;
+    }
+    return 0;
+}
+
 static float label_centre_x(int item)
 {
     return CENTRE_X + (float)side_of(item) * row_x[row_of(item)];
@@ -775,7 +823,19 @@ static unsigned int touch_presses(const struct input_state *input)
     pressed = 0;
     lands = input->touch_is_down && !touch_was_down;
     lifts = !input->touch_is_down && touch_was_down;
-    if (phase == PAUSE_PHASE_SHOWING) {
+    if (phase == PAUSE_PHASE_SHOWING && title_dialog.is_open) {
+        if (lands) {
+            touched_option = pause_dialog_option_at(&title_dialog, input->touch_x, input->touch_y);
+            if (touched_option >= 0) {
+                title_dialog.selected = touched_option;
+            }
+        } else if (lifts && touched_option >= 0 && pause_dialog_option_at(&title_dialog, input->touch_x, input->touch_y) == touched_option) {
+            pressed = INPUT_CROSS;
+        }
+        if (lifts) {
+            touched_option = PAUSE_DIALOG_NOTHING;
+        }
+    } else if (phase == PAUSE_PHASE_SHOWING) {
         if (lands) {
             touched_item = item_under(input->touch_x, input->touch_y);
             if (touched_item >= 0) {
@@ -788,18 +848,6 @@ static unsigned int touch_presses(const struct input_state *input)
         }
     } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_OPTIONS) {
         pressed = pause_options_touch(lands, lifts, input->touch_is_down, input->touch_x, input->touch_y);
-    } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_TITLE && title_dialog.is_open) {
-        if (lands) {
-            touched_option = pause_dialog_option_at(&title_dialog, input->touch_x, input->touch_y);
-            if (touched_option >= 0) {
-                title_dialog.selected = touched_option;
-            }
-        } else if (lifts && touched_option >= 0 && pause_dialog_option_at(&title_dialog, input->touch_x, input->touch_y) == touched_option) {
-            pressed = INPUT_CROSS;
-        }
-        if (lifts) {
-            touched_option = PAUSE_DIALOG_NOTHING;
-        }
     } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_CHAPTERS) {
         pressed = pause_chapters_touch(lands, lifts, input->touch_x, input->touch_y);
     } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_SAVE) {
@@ -830,6 +878,7 @@ void pause_menu_update(const struct input_state *input, unsigned long long elaps
         steps = PAUSE_TICKS_PER_UPDATE_MOST;
     }
     pressed = input->pressed | stick_presses(input) | touch_presses(input);
+    pressed = pressed | repeat_presses(input, pressed, elapsed_us);
     pause_menu_step(pressed);
     while (steps > 1ull) {
         pause_menu_step(0);
@@ -1046,8 +1095,6 @@ static void draw_menu(void)
             pause_options_draw_bar(side_x);
         } else if (people_is_picked()) {
             pause_people_draw_bar(side_x);
-        } else if (picked == PAUSE_ITEM_TITLE) {
-            pause_draw_bar(side_x, "bar.title", NULL, NULL);
         } else if (picked == PAUSE_ITEM_SAVE) {
             pause_save_draw_bar(side_x);
         } else if (picked == PAUSE_ITEM_CHAPTERS) {
@@ -1061,10 +1108,11 @@ static void draw_menu(void)
     if (shown_step.second >= 0) {
         draw_cat_frame(shown_step.second, FEET_X - camera_x, shown_step.weight);
     }
+    if (phase == PAUSE_PHASE_SHOWING) {
+        pause_dialog_draw(&title_dialog, 0.0f);
+    }
     if (camera_x != 0.0f && picked == PAUSE_ITEM_OPTIONS) {
         pause_options_draw_dialog(side_x);
-    } else if (camera_x != 0.0f && picked == PAUSE_ITEM_TITLE) {
-        pause_dialog_draw(&title_dialog, whole(side_x));
     } else if (camera_x != 0.0f && picked == PAUSE_ITEM_SAVE) {
         pause_save_draw_dialog(side_x);
     } else if (camera_x != 0.0f && picked == PAUSE_ITEM_CHAPTERS) {

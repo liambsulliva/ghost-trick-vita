@@ -40,6 +40,10 @@ void pause_draw_text(const char *key, float x, float y, enum pause_anchor anchor
 void pause_draw_slice(const char *style, float x, float y, float width, float height, float alpha);
 void pause_draw_flame(int number, int lit, float centre_x, float centre_y, float alpha);
 void pause_draw_glyph(const char *kind, float centre_x, float centre_y, float size, float alpha);
+float pause_glyph_width(const char *kind, float height);
+float pause_draw_glyph_from_left(const char *kind, float left, float centre_y, float height, float alpha);
+float pause_fit_scale(const char *key, float room);
+void pause_draw_text_within(const char *key, float x, float y, float room, float alpha);
 void pause_draw_cell(const char *name, float centre_x, float centre_y, float alpha);
 void pause_draw_bar(float x_offset, const char *before_key, const char *glyph, const char *after_key);
 int pause_is_on_back_pill(float x, float y);
