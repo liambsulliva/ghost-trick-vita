@@ -7,6 +7,7 @@
 #include "pause_menu.h"
 #include "renderer.h"
 #include "run_log.h"
+#include "stick_aim.h"
 #include "text_lines.h"
 #include "texture_cache.h"
 
@@ -43,6 +44,10 @@
 #define ARROW_RIGHT_BACK 13.0f
 #define ARROW_LEFT_BACK 27.0f
 #define ARROW_SHOWN_FROM 0.5f
+#define TOUCH_MARGIN 14.0f
+#define BACK_PILL_LEFT 12.0f
+#define BACK_PILL_RIGHT 172.0f
+#define BACK_PILL_INSET 9.0f
 
 #define TRACK_IDLE 0
 #define TRACK_FIDGET 1
@@ -81,6 +86,9 @@ static int cursor;
 static int previous_cursor;
 static int cursor_ticks;
 static int picked;
+static int stick_was_out;
+static int touch_was_down;
+static int touched_item;
 
 static float clamp01(float value)
 {
@@ -387,6 +395,9 @@ void pause_menu_open(void)
     previous_cursor = -1;
     cursor_ticks = CURSOR_TICKS;
     picked = PAUSE_ITEM_RESUME;
+    stick_was_out = 1;
+    touch_was_down = 1;
+    touched_item = -1;
     shown_ticks = 0;
     pause_cat_track_restart();
     shown_step.first = -1;
@@ -549,9 +560,89 @@ void pause_menu_step(unsigned int pressed)
     }
 }
 
+static unsigned int stick_presses(const struct input_state *input)
+{
+    int pressed_x;
+    int pressed_y;
+    int stick_is_out;
+    unsigned int pressed;
+
+    pressed = 0;
+    stick_is_out = input->stick_x != 0.0f || input->stick_y != 0.0f;
+    if (stick_is_out && !stick_was_out) {
+        stick_aim_first_push(input->stick_x, input->stick_y, &pressed_x, &pressed_y);
+        pressed = (pressed_x < 0 ? INPUT_LEFT : 0) | (pressed_x > 0 ? INPUT_RIGHT : 0) | (pressed_y < 0 ? INPUT_UP : 0) | (pressed_y > 0 ? INPUT_DOWN : 0);
+    }
+    stick_was_out = stick_is_out;
+    return pressed;
+}
+
+static float label_centre_x(int item)
+{
+    return CENTRE_X + (float)side_of(item) * row_x[row_of(item)];
+}
+
+static float label_centre_y(int item)
+{
+    return whole(FLOOR_TOP * (float)(row_of(item) + 1) / 4.0f);
+}
+
+static int item_under(float x, float y)
+{
+    int item;
+
+    for (item = 0; item < PAUSE_MENU_ITEM_COUNT; item++) {
+        float half_width;
+        float half_height;
+
+        half_width = labels[item].width / 2.0f + TOUCH_MARGIN;
+        half_height = labels[item].height / 2.0f + TOUCH_MARGIN;
+        if (fabsf(x - label_centre_x(item)) <= half_width && fabsf(y - label_centre_y(item)) <= half_height) {
+            return item;
+        }
+    }
+    return -1;
+}
+
+static int is_on_back_pill(float x, float y)
+{
+    return x >= BACK_PILL_LEFT && x <= BACK_PILL_RIGHT && y >= FLOOR_TOP + BACK_PILL_INSET && y <= SCREEN_HEIGHT - BACK_PILL_INSET;
+}
+
+static unsigned int touch_presses(const struct input_state *input)
+{
+    unsigned int pressed;
+    int lands;
+    int lifts;
+
+    pressed = 0;
+    lands = input->touch_is_down && !touch_was_down;
+    lifts = !input->touch_is_down && touch_was_down;
+    if (phase == PAUSE_PHASE_SHOWING) {
+        if (lands) {
+            touched_item = item_under(input->touch_x, input->touch_y);
+            if (touched_item >= 0) {
+                move_cursor(touched_item);
+            }
+        } else if (input->touch_is_down && touched_item >= 0 && item_under(input->touch_x, input->touch_y) != touched_item) {
+            touched_item = -1;
+        } else if (lifts && touched_item >= 0) {
+            pressed = INPUT_CROSS;
+        }
+    } else if (phase == PAUSE_PHASE_SUBMENU && lands && is_on_back_pill(input->touch_x, input->touch_y)) {
+        pressed = INPUT_CIRCLE;
+    }
+    if (lifts) {
+        touched_item = -1;
+    }
+    touch_was_down = input->touch_is_down;
+    return pressed;
+}
+
 void pause_menu_update(const struct input_state *input, unsigned long long elapsed_us)
 {
     unsigned long long steps;
+    unsigned int pressed;
 
     if (phase == PAUSE_PHASE_CLOSED) {
         return;
@@ -561,7 +652,8 @@ void pause_menu_update(const struct input_state *input, unsigned long long elaps
     if (steps > PAUSE_TICKS_PER_UPDATE_MOST) {
         steps = PAUSE_TICKS_PER_UPDATE_MOST;
     }
-    pause_menu_step(input->pressed);
+    pressed = input->pressed | stick_presses(input) | touch_presses(input);
+    pause_menu_step(pressed);
     while (steps > 1ull) {
         pause_menu_step(0);
         steps = steps - 1ull;
@@ -702,8 +794,8 @@ static void draw_labels(float camera_x, float alpha)
         }
         label = &labels[item];
         weight = cursor_weight(item);
-        x = CENTRE_X + (float)side_of(item) * row_x[row_of(item)] + (float)side_of(item) * LABEL_SLIDE * (1.0f - appear) - camera_x;
-        y = whole(FLOOR_TOP * (float)(row_of(item) + 1) / 4.0f);
+        x = label_centre_x(item) + (float)side_of(item) * LABEL_SLIDE * (1.0f - appear) - camera_x;
+        y = label_centre_y(item);
         draw_part(sheet, whole(x - label->width / 2.0f), whole(y - label->height / 2.0f), label->x, label->y, label->width, label->height, alpha);
         draw_part(sheet, whole(x - label->width / 2.0f), whole(y - label->height / 2.0f), label->x + selected_column, label->y, label->width, label->height, alpha * weight);
         if (weight > ARROW_SHOWN_FROM) {

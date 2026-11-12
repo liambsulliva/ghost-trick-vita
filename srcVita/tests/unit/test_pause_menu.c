@@ -57,6 +57,31 @@ static void start_with_art(void)
     CHECK(pause_menu_load("set"));
 }
 
+static void push_stick(float x, float y)
+{
+    struct input_state input;
+
+    memset(&input, 0, sizeof(input));
+    input.stick_x = x;
+    input.stick_y = y;
+    texture_cache_upload_finished_reads(8);
+    texture_cache_begin_frame();
+    pause_menu_update(&input, PAUSE_TICK_US);
+}
+
+static void touch(int is_down, float x, float y)
+{
+    struct input_state input;
+
+    memset(&input, 0, sizeof(input));
+    input.touch_is_down = is_down;
+    input.touch_x = x;
+    input.touch_y = y;
+    texture_cache_upload_finished_reads(8);
+    texture_cache_begin_frame();
+    pause_menu_update(&input, PAUSE_TICK_US);
+}
+
 static void press(unsigned int buttons)
 {
     struct input_state input;
@@ -153,6 +178,63 @@ static void test_the_cursor_walks_the_two_columns(void)
     CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_PEOPLE);
 }
 
+static void test_the_left_stick_steps_the_cursor_once_per_push(void)
+{
+    start_with_art();
+    open_until_shown();
+    push_stick(0.0f, 0.9f);
+    push_stick(0.0f, 1.0f);
+    push_stick(0.1f, 0.8f);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_SAVE);
+    push_stick(0.0f, 0.0f);
+    push_stick(0.9f, 0.2f);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_CHAPTERS);
+    push_stick(0.0f, 0.0f);
+    push_stick(-0.2f, -0.9f);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_TITLE);
+}
+
+static void test_a_stick_held_while_start_opens_the_menu_waits_for_a_fresh_push(void)
+{
+    int step;
+
+    start_with_art();
+    pause_menu_open();
+    for (step = 0; step < SETTLE_STEPS; step++) {
+        push_stick(0.0f, 1.0f);
+    }
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SHOWING);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_RESUME);
+}
+
+static void test_tapping_a_label_selects_it_and_lifting_on_it_picks_it(void)
+{
+    start_with_art();
+    open_until_shown();
+    touch(1, 810.0f, 369.0f);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_OPTIONS);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SHOWING);
+    touch(0, 0.0f, 0.0f);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_PANNING_OUT);
+    wait_steps(SETTLE_STEPS);
+    touch(1, 90.0f, 518.0f);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_PANNING_BACK);
+}
+
+static void test_sliding_off_a_label_before_lifting_picks_nothing(void)
+{
+    start_with_art();
+    open_until_shown();
+    touch(1, 300.0f, 123.0f);
+    CHECK_INT(pause_menu_cursor(), PAUSE_ITEM_RESUME);
+    touch(1, 480.0f, 300.0f);
+    touch(0, 0.0f, 0.0f);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SHOWING);
+    touch(1, 480.0f, 300.0f);
+    touch(0, 0.0f, 0.0f);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SHOWING);
+}
+
 static void test_picking_pans_toward_the_item_side_and_back_fades_the_labels_in(void)
 {
     start_with_art();
@@ -217,6 +299,10 @@ int main(void)
     test_start_darkens_the_game_then_shows_the_menu();
     test_resume_hands_the_screen_back_to_the_game();
     test_the_cursor_walks_the_two_columns();
+    test_the_left_stick_steps_the_cursor_once_per_push();
+    test_a_stick_held_while_start_opens_the_menu_waits_for_a_fresh_push();
+    test_tapping_a_label_selects_it_and_lifting_on_it_picks_it();
+    test_sliding_off_a_label_before_lifting_picks_nothing();
     test_picking_pans_toward_the_item_side_and_back_fades_the_labels_in();
     test_every_menu_sprite_lands_on_whole_pixels_through_a_pan();
     test_the_menu_stays_shut_without_its_art();
