@@ -457,6 +457,8 @@ def widget_cells(work_folder, fonts, widgets):
     for style, color, points in (("row", WHITE, widgets["row_points"]), ("header", HEADER_ORANGE, widgets["row_points"]), ("bar", WHITE, widgets["bar_points"])):
         for key, text in widgets[style].items():
             cells.append(("text", style + "." + key, text_pixels(work_folder, font, points, color, text)))
+    for number in range(1, widgets["chapter_count"] + 1):
+        cells.append(("text", "row.chapter_%d" % number, text_pixels(work_folder, font, widgets["row_points"], WHITE, "%s %d" % (widgets["chapter_word"], number))))
     for language in widgets["languages"]:
         cells.append(("text", "language." + language["key"], text_pixels(work_folder, fonts.decoded_path(language["font"]), widgets["bar_points"], WHITE, language["text"])))
     for name, width, height, radius, fill, stroke, stroke_width in SLICES:

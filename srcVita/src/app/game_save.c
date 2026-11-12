@@ -198,19 +198,59 @@ int game_save_store(const struct game_save *save, enum game_save_slot slot)
     return result;
 }
 
-int game_save_load(struct game_save *save, enum game_save_slot slot)
+static void chapter_path(char *path, unsigned int path_size, int chapter)
+{
+    snprintf(path, path_size, "%s/chapter_%02d.txt", FILE_DATA_FOLDER, chapter);
+}
+
+static int load_from(struct game_save *save, const char *path)
 {
     unsigned char *bytes;
     unsigned int size;
     int result;
 
     memset(save, 0, sizeof(*save));
-    if (file_read_whole(game_save_path(slot), &bytes, &size) != FILE_OK) {
+    if (file_read_whole(path, &bytes, &size) != FILE_OK) {
         return 0;
     }
     result = game_save_read_text(save, (const char *)bytes, size) && save->script[0] != '\0';
     mem_free(bytes);
     return result;
+}
+
+int game_save_load(struct game_save *save, enum game_save_slot slot)
+{
+    return load_from(save, game_save_path(slot));
+}
+
+int game_save_store_chapter(const struct game_save *save, int chapter)
+{
+    static char text[GAME_SAVE_TEXT_MAX];
+    char path[64];
+    unsigned int size;
+    int result;
+
+    if (chapter < 1 || chapter > GAME_SAVE_CHAPTER_COUNT) {
+        return 0;
+    }
+    chapter_path(path, sizeof(path), chapter);
+    size = game_save_write_text(save, text, sizeof(text));
+    (void)file_make_folder(FILE_DATA_FOLDER);
+    result = size > 0 && file_write_whole(path, (const unsigned char *)text, size) == FILE_OK;
+    run_log_write("save chapter=%d script=%s ok=%d", chapter, save->script, result);
+    return result;
+}
+
+int game_save_load_chapter(struct game_save *save, int chapter)
+{
+    char path[64];
+
+    if (chapter < 1 || chapter > GAME_SAVE_CHAPTER_COUNT) {
+        memset(save, 0, sizeof(*save));
+        return 0;
+    }
+    chapter_path(path, sizeof(path), chapter);
+    return load_from(save, path);
 }
 
 int game_save_load_newest(struct game_save *save)
@@ -233,10 +273,16 @@ int game_save_load_newest(struct game_save *save)
 
 int game_save_erase_all(void)
 {
+    char path[64];
+    int chapter;
     int erased;
 
     erased = file_delete(GAME_SAVE_AUTO_PATH) == FILE_OK;
     erased = (file_delete(GAME_SAVE_MANUAL_PATH) == FILE_OK) || erased;
+    for (chapter = 1; chapter <= GAME_SAVE_CHAPTER_COUNT; chapter++) {
+        chapter_path(path, sizeof(path), chapter);
+        erased = (file_delete(path) == FILE_OK) || erased;
+    }
     run_log_write("save erased=%d", erased);
     return erased;
 }

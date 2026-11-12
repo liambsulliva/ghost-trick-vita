@@ -2,6 +2,7 @@
 #include "fakes/fake_platform.h"
 #include "game_save.h"
 #include "input.h"
+#include "pause_chapters.h"
 #include "pause_save.h"
 #include "script_machine.h"
 #include "test_support.h"
@@ -137,6 +138,56 @@ static void test_no_or_a_failed_save_keeps_the_save_screen(void)
     CHECK_INT(pause_save_dialog_is_open(), 0);
 }
 
+static int fake_chapter_reached(int chapter)
+{
+    return chapter == 1 || chapter == 2;
+}
+
+static void test_chapter_slots_store_by_number_and_erase_with_the_rest(void)
+{
+    fake_files_reset();
+    fill_machine();
+    game_save_capture(&save, &machine, "st02-st02_root");
+    CHECK_INT(game_save_store_chapter(&save, 4), 1);
+    CHECK_INT(game_save_store_chapter(&save, 19), 0);
+    CHECK_INT(game_save_load_chapter(&read_back, 4), 1);
+    CHECK_TEXT(read_back.script, "st02-st02_root");
+    CHECK_INT(game_save_load_chapter(&read_back, 3), 0);
+    CHECK_INT(game_save_erase_all(), 1);
+    CHECK_INT(game_save_load_chapter(&read_back, 4), 0);
+}
+
+static void test_the_chapters_grid_plays_only_reached_chapters_after_asking(void)
+{
+    pause_chapters_use(fake_chapter_reached);
+    pause_chapters_enter();
+    CHECK_INT(pause_chapters_selected(), 2);
+    pause_chapters_step(INPUT_RIGHT);
+    CHECK_INT(pause_chapters_selected(), 3);
+    pause_chapters_step(INPUT_RIGHT);
+    CHECK_INT(pause_chapters_selected(), 3);
+    pause_chapters_step(INPUT_CROSS);
+    CHECK_INT(pause_chapters_dialog_is_open(), 0);
+    pause_chapters_step(INPUT_DOWN);
+    CHECK_INT(pause_chapters_selected(), 6);
+    pause_chapters_step(INPUT_UP);
+    pause_chapters_step(INPUT_LEFT);
+    pause_chapters_step(INPUT_LEFT);
+    CHECK_INT(pause_chapters_selected(), 1);
+    pause_chapters_step(INPUT_LEFT);
+    CHECK_INT(pause_chapters_selected(), 1);
+    pause_chapters_step(INPUT_CROSS);
+    CHECK_INT(pause_chapters_dialog_is_open(), 1);
+    CHECK_INT(pause_chapters_step(INPUT_CROSS), PAUSE_CHAPTERS_STAYS);
+    pause_chapters_step(INPUT_CROSS);
+    pause_chapters_step(INPUT_LEFT);
+    CHECK_INT(pause_chapters_step(INPUT_CROSS), PAUSE_CHAPTERS_PLAYS);
+    CHECK_INT(pause_chapters_step(INPUT_CIRCLE), PAUSE_CHAPTERS_LEAVES);
+    CHECK_INT(pause_chapters_touch(1, 0, 60.0f + 290.0f + 10.0f, 115.0f), 0u);
+    CHECK_INT(pause_chapters_selected(), 2);
+    CHECK_INT(pause_chapters_touch(1, 0, 60.0f + 290.0f + 10.0f, 115.0f), INPUT_CROSS);
+}
+
 int main(void)
 {
     test_a_save_survives_text_and_restores_the_machine();
@@ -144,5 +195,7 @@ int main(void)
     test_the_newest_slot_wins_and_each_store_counts_up();
     test_the_save_screen_asks_then_saves_and_yes_resumes_play();
     test_no_or_a_failed_save_keeps_the_save_screen();
+    test_chapter_slots_store_by_number_and_erase_with_the_rest();
+    test_the_chapters_grid_plays_only_reached_chapters_after_asking();
     return test_finish("unit/game_save");
 }

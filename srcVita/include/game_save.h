@@ -9,6 +9,7 @@
 #define GAME_SAVE_AUTO_PATH FILE_DATA_FOLDER "/save_auto.txt"
 #define GAME_SAVE_MANUAL_PATH FILE_DATA_FOLDER "/save_manual.txt"
 #define GAME_SAVE_TEXT_MAX 8192
+#define GAME_SAVE_CHAPTER_COUNT 18
 
 enum game_save_slot {
     GAME_SAVE_AUTO,
@@ -43,5 +44,7 @@ int game_save_store_as_newest(struct game_save *save, enum game_save_slot slot);
 int game_save_load(struct game_save *save, enum game_save_slot slot);
 int game_save_load_newest(struct game_save *save);
 int game_save_erase_all(void);
+int game_save_store_chapter(const struct game_save *save, int chapter);
+int game_save_load_chapter(struct game_save *save, int chapter);
 
 #endif

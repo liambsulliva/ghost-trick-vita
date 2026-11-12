@@ -13,6 +13,7 @@
 #include "page_tiles.h"
 #include "pause_menu.h"
 #include "game_save.h"
+#include "pause_chapters.h"
 #include "pause_people.h"
 #include "pause_save.h"
 #include "renderer.h"
@@ -303,6 +304,26 @@ static int slot_has_save(int slot)
     return game_save_load(&save, slot == 0 ? GAME_SAVE_AUTO : GAME_SAVE_MANUAL);
 }
 
+static int chapter_has_save(int chapter)
+{
+    static struct game_save save;
+
+    return game_save_load_chapter(&save, chapter);
+}
+
+static void replay_chapter(int chapter)
+{
+    static struct game_save save;
+
+    if (!game_save_load_chapter(&save, chapter)) {
+        run_log_write("chapter_replay missing chapter=%d", chapter);
+        return;
+    }
+    pending_background_index = NO_PENDING_BACKGROUND;
+    scene_player_stop();
+    script_player_resume(&save);
+}
+
 static void continue_or_play_opening(void)
 {
     static struct game_save save;
@@ -410,6 +431,7 @@ void viewer_app_start(const char *folder)
     }
     ui_list_init(&animation_list, manifest->animation_count, LIST_VISIBLE_ROWS);
     pause_save_use(script_player_save_manual, slot_has_save);
+    pause_chapters_use(chapter_has_save);
     if (script_player_is_available()) {
         hud_is_visible = 0;
         debug_controls_are_on = 0;
@@ -571,6 +593,8 @@ static void update_general_controls(const struct input_state *input)
 
 void viewer_app_update(const struct input_state *input, unsigned long long elapsed_us)
 {
+    int chapter;
+
     texture_cache_upload_finished_reads(UPLOADS_PER_FRAME);
     texture_cache_begin_frame();
     if (input->pressed != 0) {
@@ -580,6 +604,10 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
         pause_menu_update(input, elapsed_us);
         if (pause_menu_takes_title_request() && opening_can_play()) {
             play_opening();
+        }
+        chapter = pause_menu_takes_chapter_request();
+        if (chapter > 0) {
+            replay_chapter(chapter);
         }
         return;
     }

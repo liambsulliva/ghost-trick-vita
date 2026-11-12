@@ -290,6 +290,8 @@
     "widgets": {
       "font": "natives/android/gui/font/outlinefont/fot-chiarostd-b.oft.1",
       "row_points": 30,
+      "chapter_word": "Chapter",
+      "chapter_count": 18,
       "bar_points": 26,
       "number_points": 17,
       "row": {
@@ -321,7 +323,9 @@
         "saved_game": "Saved game",
         "no_data": "No Data",
         "ok": "OK",
-        "reset_ask": "Erase both saved games?",
+        "reset_ask": "Erase every saved game?",
+        "chapters_title": "Chapters",
+        "chapters_ask": "Play this chapter from its start?",
         "off": "Off",
         "on": "On",
         "pattern_1": "Pattern 1",
@@ -383,6 +387,8 @@
         "save_manual": "Save your progress to the Manual Save slot.",
         "save_ask_note": "Play picks up from the start of this scene.",
         "reset_warning": "This cannot be undone.",
+        "chapters": "Replay a chapter from its start.",
+        "chapter_locked": "Reach this chapter to replay it.",
         "title_warning": "Progress will be lost without saving.",
         "people_tab": "People",
         "phone_tab": "Phone Book",

@@ -995,6 +995,7 @@ static void take_checkpoint(const char *name)
     has_checkpoint = 1;
     if (autosaved_chapter_mark >= 0 && checkpoint.chapter_mark > autosaved_chapter_mark) {
         (void)game_save_store_as_newest(&checkpoint, GAME_SAVE_AUTO);
+        (void)game_save_store_chapter(&checkpoint, checkpoint.chapter_mark);
     }
     if (checkpoint.chapter_mark > autosaved_chapter_mark) {
         autosaved_chapter_mark = checkpoint.chapter_mark;

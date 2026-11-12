@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "pause_menu.h"
 #include "pause_options.h"
+#include "pause_chapters.h"
 #include "pause_people.h"
 #include "pause_save.h"
 #include "pause_widgets.h"
@@ -95,6 +96,7 @@ static int touched_option;
 static struct pause_dialog title_dialog;
 static int title_is_wanted;
 static int title_asks_to_save;
+static int chapter_wanted;
 
 static float clamp01(float value)
 {
@@ -413,6 +415,7 @@ void pause_menu_open(void)
     touched_option = PAUSE_DIALOG_NOTHING;
     title_dialog.is_open = 0;
     title_is_wanted = 0;
+    chapter_wanted = 0;
     shown_ticks = 0;
     pause_cat_track_restart();
     shown_step.first = -1;
@@ -537,6 +540,31 @@ static void step_save(unsigned int pressed)
     }
 }
 
+static void step_chapters(unsigned int pressed)
+{
+    int result;
+
+    result = pause_chapters_step(pressed);
+    if (result == PAUSE_CHAPTERS_LEAVES) {
+        enter(PAUSE_PHASE_PANNING_BACK);
+    } else if (result == PAUSE_CHAPTERS_PLAYS) {
+        chapter_wanted = pause_chapters_selected();
+        begin_hiding();
+    }
+}
+
+int pause_menu_takes_chapter_request(void)
+{
+    int chapter;
+
+    if (chapter_wanted == 0 || phase != PAUSE_PHASE_BLACK_BEFORE_GAME) {
+        return 0;
+    }
+    chapter = chapter_wanted;
+    chapter_wanted = 0;
+    return chapter;
+}
+
 int pause_menu_takes_title_request(void)
 {
     if (!title_is_wanted || phase != PAUSE_PHASE_BLACK_BEFORE_GAME) {
@@ -578,6 +606,9 @@ static void step_showing(unsigned int pressed)
             run_log_write("pause pick %s", item_names[picked]);
         } else if (picked == PAUSE_ITEM_SAVE) {
             pause_save_enter();
+            run_log_write("pause pick %s", item_names[picked]);
+        } else if (picked == PAUSE_ITEM_CHAPTERS) {
+            pause_chapters_enter();
             run_log_write("pause pick %s", item_names[picked]);
         } else {
             run_log_write("pause pick %s submenu=not_ported", item_names[picked]);
@@ -628,6 +659,8 @@ static void advance_phase(unsigned int pressed)
             step_title(pressed);
         } else if (picked == PAUSE_ITEM_SAVE) {
             step_save(pressed);
+        } else if (picked == PAUSE_ITEM_CHAPTERS) {
+            step_chapters(pressed);
         } else if (pressed & INPUT_CIRCLE) {
             enter(PAUSE_PHASE_PANNING_BACK);
         }
@@ -767,6 +800,8 @@ static unsigned int touch_presses(const struct input_state *input)
         if (lifts) {
             touched_option = PAUSE_DIALOG_NOTHING;
         }
+    } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_CHAPTERS) {
+        pressed = pause_chapters_touch(lands, lifts, input->touch_x, input->touch_y);
     } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_SAVE) {
         pressed = pause_save_touch(lands, lifts, input->touch_x, input->touch_y);
     } else if (phase == PAUSE_PHASE_SUBMENU && people_is_picked()) {
@@ -1002,6 +1037,8 @@ static void draw_menu(void)
         pause_people_draw(side_x);
     } else if (camera_x != 0.0f && picked == PAUSE_ITEM_SAVE) {
         pause_save_draw(side_x);
+    } else if (camera_x != 0.0f && picked == PAUSE_ITEM_CHAPTERS) {
+        pause_chapters_draw(side_x);
     }
     draw_floor();
     if (camera_x != 0.0f) {
@@ -1013,6 +1050,8 @@ static void draw_menu(void)
             pause_draw_bar(side_x, "bar.title", NULL, NULL);
         } else if (picked == PAUSE_ITEM_SAVE) {
             pause_save_draw_bar(side_x);
+        } else if (picked == PAUSE_ITEM_CHAPTERS) {
+            pause_chapters_draw_bar(side_x);
         } else {
             pause_draw_bar(side_x, NULL, NULL, NULL);
         }
@@ -1028,6 +1067,8 @@ static void draw_menu(void)
         pause_dialog_draw(&title_dialog, whole(side_x));
     } else if (camera_x != 0.0f && picked == PAUSE_ITEM_SAVE) {
         pause_save_draw_dialog(side_x);
+    } else if (camera_x != 0.0f && picked == PAUSE_ITEM_CHAPTERS) {
+        pause_chapters_draw_dialog(side_x);
     }
 }
 
