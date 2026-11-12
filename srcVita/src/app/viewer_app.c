@@ -301,7 +301,10 @@ static int slot_has_save(int slot)
 {
     static struct game_save save;
 
-    return game_save_load(&save, slot == 0 ? GAME_SAVE_AUTO : GAME_SAVE_MANUAL);
+    if (!game_save_load(&save, slot == 0 ? GAME_SAVE_AUTO : GAME_SAVE_MANUAL)) {
+        return PAUSE_SAVE_NO_DATA;
+    }
+    return save.chapter_mark;
 }
 
 static int chapter_has_save(int chapter)

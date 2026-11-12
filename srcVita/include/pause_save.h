@@ -6,6 +6,7 @@
 #define PAUSE_SAVE_RESUMES 2
 #define PAUSE_SAVE_AUTO_PANEL 0
 #define PAUSE_SAVE_MANUAL_PANEL 1
+#define PAUSE_SAVE_NO_DATA (-1)
 
 typedef int (*pause_save_now_function)(void);
 typedef int (*pause_slot_has_data_function)(int slot);

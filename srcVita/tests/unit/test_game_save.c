@@ -22,7 +22,7 @@ static int fake_save_now(void)
 
 static int fake_slot_has_data(int slot)
 {
-    return slot == PAUSE_SAVE_AUTO_PANEL;
+    return slot == PAUSE_SAVE_AUTO_PANEL ? 2 : PAUSE_SAVE_NO_DATA;
 }
 
 static void fill_machine(void)

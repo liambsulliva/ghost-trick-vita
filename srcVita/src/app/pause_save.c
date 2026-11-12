@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stddef.h>
+#include <stdio.h>
 #include "input.h"
 #include "pause_save.h"
 #include "pause_widgets.h"
@@ -14,6 +15,7 @@
 #define LABEL_DROP 30.0f
 #define STATE_DROP 100.0f
 #define TITLE_Y 40.0f
+#define SAVE_CHAPTER_MOST 18
 
 enum save_dialog {
     DIALOG_NONE,
@@ -35,7 +37,7 @@ static void check_slots(void)
     int slot;
 
     for (slot = 0; slot < 2; slot++) {
-        has_data[slot] = slot_checker != NULL && slot_checker(slot);
+        has_data[slot] = slot_checker != NULL ? slot_checker(slot) : PAUSE_SAVE_NO_DATA;
     }
 }
 
@@ -178,6 +180,7 @@ int pause_save_dialog_is_open(void)
 
 void pause_save_draw(float x_offset)
 {
+    char key[PAUSE_WIDGET_KEY_MAX];
     int panel;
     float top;
     float width;
@@ -189,7 +192,12 @@ void pause_save_draw(float x_offset)
         top = panel_top(panel);
         pause_draw_slice(panel == selected ? "save_panel_selected" : "save_panel", PANEL_LEFT + x_offset, top, width, PANEL_HEIGHT, 1.0f);
         pause_draw_text(panel == PAUSE_SAVE_AUTO_PANEL ? "header.autosave" : "header.manual_save", PANEL_TEXT_X + x_offset, top + LABEL_DROP, PAUSE_ANCHOR_LEFT, 1.0f);
-        pause_draw_text(has_data[panel] ? "row.saved_game" : "row.no_data", PANEL_TEXT_X + x_offset, top + STATE_DROP, PAUSE_ANCHOR_LEFT, 1.0f);
+        if (has_data[panel] >= 1 && has_data[panel] <= SAVE_CHAPTER_MOST) {
+            snprintf(key, sizeof(key), "row.chapter_%d", has_data[panel]);
+        } else {
+            snprintf(key, sizeof(key), "%s", has_data[panel] == PAUSE_SAVE_NO_DATA ? "row.no_data" : "row.saved_game");
+        }
+        pause_draw_text(key, PANEL_TEXT_X + x_offset, top + STATE_DROP, PAUSE_ANCHOR_LEFT, 1.0f);
     }
 }
 
