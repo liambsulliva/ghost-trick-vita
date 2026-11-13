@@ -32,6 +32,8 @@ static const signed char shake_directions[SHAKE_DIRECTION_COUNT][2] = {
 #define CAMERA_BAND_SNAP_MARGIN 16
 #define CAMERA_BAND_SNAP_MOST 4
 #define SOUL_CAMERA_RETURN_SPEED_FIXED 0x4000
+#define CORE_PAN_LEFT_OF_THE_CORE 128
+#define CORE_PAN_ABOVE_THE_CORE 96
 
 static int signed_word(unsigned int word)
 {
@@ -504,6 +506,28 @@ static void pan_to_object(struct script_machine *machine, struct script_vm *vm, 
     begin_pan(machine, target_x, target_y, (int)script_machine_u32(words, 4), 1);
 }
 
+static int camera_top_for_the_core(const struct script_machine *machine, int core_y)
+{
+    int band;
+    int top;
+
+    band = band_holding(machine, core_y);
+    top = band >= 0 ? machine->camera_band_keys[band] - DS_VIEW_HEIGHT : core_y - CORE_PAN_ABOVE_THE_CORE;
+    return top < 0 ? 0 : top;
+}
+
+static void pan_to_the_soul_core(struct script_machine *machine, const unsigned int *words)
+{
+    float core_x;
+    float core_y;
+
+    if (machine->soul.active_object < 0 || machine->soul.active_object >= machine->object_count) {
+        return;
+    }
+    script_machine_node_position(&machine->objects[machine->soul.active_object], SCRIPT_FIRST_CORE_NODE + machine->soul.active_slot, &core_x, &core_y);
+    begin_pan(machine, machine->world_origin_x + (int)core_x - CORE_PAN_LEFT_OF_THE_CORE, machine->world_origin_y + camera_top_for_the_core(machine, (int)core_y), (int)script_machine_u32(words, 0), 1);
+}
+
 static void follow_the_current_actor(struct script_machine *machine, const struct script_vm *vm)
 {
     const struct script_object *object;
@@ -726,6 +750,9 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         break;
     case 0xc7:
         pan_to_position(machine, words);
+        break;
+    case 0xcd:
+        pan_to_the_soul_core(machine, words);
         break;
     case 0xce:
         pan_to_object(machine, vm, words);

@@ -1157,6 +1157,12 @@ Native's op 0xf6 (`func_02023fdc`) finds the first `uSpriteCaptureNormal` in the
 
 Guard: `fade_the_screen_still` counts the still down from op 0xf6, sends its alpha in 31 steps and takes it down at 0. `tests/unit/test_screen_still_fade.c` checks the fade, that the alpha only falls, that the still goes away once, and that a fade with no still and a still with no fade change nothing.
 
+### 160. Op 0xcd left the camera where it was
+
+Native's op 0xcd (`func_02023fdc`) reads a speed word and calls `func_0200f958`, which takes the core Sissel is in (`func_02010194`) and pans to it with `func_0200f61c`, the pan op 0xce also ends in: the camera's left edge 128 pixels left of the core, and its top either from the camera band holding the core (`func_02012318`: the band's bottom less the 192-pixel view, not below 0) or, with no band, 96 pixels above the core, not below 0; the world offset at game+0xdd8 (`func_0200f9cc`) turns that into the port's world origin. Thirty scripts from `st01` to `st14` send it 66 times, 45 of them at 0x1000000, which is a cut, and the rest between 0x2000 and 0x100000. The port logged `op_not_ported`, so the camera stayed wherever a demo had left it. Three parts are not ported: when game+0xc bit 12 is set (cleared by `func_0200ef60`, tested by `func_0200f084` around the window at game+0xee0) native uses 96 pixels above the core even inside a band, and the port has no state for that window; the op also deletes every `uScrollBg` (`func_0202fad4` with `data_020cf93c`), which no script creates; and it clears game+8 bit 4 (`func_0200ee54`), whose reader is not identified.
+
+Guard: `pan_to_the_soul_core` aims the pan from the soul's core. `tests/unit/test_pan_to_the_soul_core.c` checks the offsets, the band, the top of the room and that no soul core leaves the camera.
+
 Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
 
 - In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.
