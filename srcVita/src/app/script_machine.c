@@ -1304,6 +1304,9 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
     case 0xea:
         set_core_busy(script_machine_current_object(machine, vm), (int)words[0], op == 0xea);
         return SCRIPT_STEP_NEXT;
+    case 0x7f:
+    case 0x80:
+        return SCRIPT_STEP_NEXT;
     case 0xfe:
         machine->soul.rollback_is_on = 1;
         return SCRIPT_STEP_NEXT;

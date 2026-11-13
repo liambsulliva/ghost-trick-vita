@@ -1145,6 +1145,12 @@ Native's op 0x9f (`func_02023fdc` case 0x9f) takes the current object (`func_020
 
 Guard: `set_core_info` writes a gimmick's core info from op 0x9f and from the 0xfff6 word, and the Trick press refuses a core whose row has no action. `tests/unit/test_core_trick_info.c` checks both writers, that a human is left alone, the refusal and its sound, and a press that fires.
 
+### 158. Ops 0x7f and 0x80 logged as not ported although native does nothing with them
+
+Native's ops 0x7f and 0x80 (`func_02023fdc`) call `func_02015748` and `func_02015418` on the sound singleton `func_0201003c` builds (`func_02015864`, `func_020158c4`). Those reach slots 28 and 27 of its first member (`func_02016508`, vtable `0x020a3784`): `func_0201683c` and `func_02016828`, which call slots 30 and 29 of the player it holds at +0xc. `func_02016bec` makes that player one of two classes (`func_0201abcc`, `func_0201b170`), and both fill slots 29 and 30 with the empty `func_02016838` and `func_0201684c`. The game over master in `st14_game033_Expand` and the scripts of `st03_game012_Expand` and `st13_game000_Expand` send them around their sounds; in the retail game they change nothing. The port had no case and logged `op_not_ported`.
+
+Guard: both ops are control ops of one word that step on. `tests/unit/test_sound_slot_ops.c` runs a script through them and checks nothing is logged as not ported.
+
 Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
 
 - In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.
