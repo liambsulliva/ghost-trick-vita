@@ -814,7 +814,7 @@ static int shown_art_is_loading(void)
     if (script_view_movie_covers_the_screen()) {
         return script_view_movie_is_waiting_for_frames();
     }
-    return scene_view_visible_art_is_loading(scene_stage_view());
+    return scene_view_visible_art_is_loading(scene_stage_view()) || script_bridge_balloon_art_is_loading();
 }
 
 static int art_gate_holds(unsigned long long elapsed_us)

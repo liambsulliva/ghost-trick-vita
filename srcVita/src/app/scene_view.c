@@ -889,6 +889,16 @@ int scene_view_visible_art_is_loading(const struct scene_stage *stage)
             is_loading = 1;
         }
     }
+    for (index = 0; index < SCENE_OVERLAY_MAX; index++) {
+        if (stage->layers.overlays[index].in_use && texture_is_still_loading(stage->layers.overlays[index].texture_name)) {
+            is_loading = 1;
+        }
+    }
+    for (index = 0; index < SCENE_TEXT_LINE_MAX; index++) {
+        if (stage->layers.text_lines[index].in_use && texture_is_still_loading(stage->layers.text_lines[index].texture_name)) {
+            is_loading = 1;
+        }
+    }
     return is_loading;
 }
 

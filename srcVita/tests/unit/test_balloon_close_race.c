@@ -33,6 +33,8 @@ static void run_ticks(int ticks)
     int tick;
 
     for (tick = 0; tick < ticks; tick++) {
+        texture_cache_upload_finished_reads(TICKS_FOR_EVERY_PART);
+        texture_cache_begin_frame();
         script_bridge_finish_tick();
     }
 }

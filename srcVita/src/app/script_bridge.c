@@ -13,6 +13,7 @@
 #include "script_player.h"
 #include "script_view.h"
 #include "sound_engine.h"
+#include "texture_cache.h"
 #include "ds_units.h"
 
 #define ALL_EFFECTS_NAME "*"
@@ -601,6 +602,46 @@ struct balloon_shake {
 
 static struct balloon_shake balloon_shakes[SCRIPT_BALLOON_MAX];
 
+static int pending_art_is_loading(const struct pending_overlay *pending)
+{
+    const struct cached_texture *texture;
+
+    if (!pending->in_use || pending->is_hide) {
+        return 0;
+    }
+    texture = texture_cache_use_or_start_loading(pending->part->texture_name);
+    return texture == NULL || texture->state == CACHED_TEXTURE_LOADING;
+}
+
+static int balloon_of_overlay(int overlay_id)
+{
+    return (overlay_id - 1) / OVERLAYS_PER_BALLOON;
+}
+
+static int balloon_art_is_loading(int balloon)
+{
+    int index;
+
+    for (index = 0; index < PENDING_OVERLAY_MAX; index++) {
+        if (balloon_of_overlay(pending_overlays[index].overlay_id) == balloon && pending_art_is_loading(&pending_overlays[index])) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int script_bridge_balloon_art_is_loading(void)
+{
+    int index;
+
+    for (index = 0; index < PENDING_OVERLAY_MAX; index++) {
+        if (pending_art_is_loading(&pending_overlays[index])) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void run_due_overlays(void)
 {
     int index;
@@ -610,6 +651,9 @@ static void run_due_overlays(void)
 
         pending = &pending_overlays[index];
         if (!pending->in_use || pending->due_tick > tick) {
+            continue;
+        }
+        if (!pending->is_hide && balloon_art_is_loading(balloon_of_overlay(pending->overlay_id))) {
             continue;
         }
         pending->in_use = 0;
