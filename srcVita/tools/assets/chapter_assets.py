@@ -41,9 +41,14 @@ SOUND_GROUP_NAMES = {0: "sys", 1: "gim"}
 SOUND_SOURCE = "natives/android/streaming/sound/se_resource/%s/%s.asrc.31"
 MUSIC_SOURCE = "natives/android/streaming/sound/bgm_new/bgm%02d_new.asrc.31"
 MUSIC_NAME = "bgm%02d_new"
-NATIVE_SOUND_KINDS = (5, 6, 11, 12, 13, 14, 15, 16, 18, 19, 28, 82)
+NATIVE_SOUND_KINDS = (4, 5, 6, 11, 12, 13, 14, 15, 16, 18, 19, 28, 82)
 NATIVE_MUSIC_IDS = (9,)
 FACE_TABLE_ADDRESS = 0x02085724
+CORE_INFO_TABLE_ADDRESS = 0x0209c448
+CORE_INFO_ROW_SIZE = 8
+CORE_INFO_ACTION_FIELD = 2
+CORE_INFO_NO_ACTIONS = (0, 0x8000)
+CORE_INFO_OP = 0x9f
 FACE_ROW_SIZE = 14
 FACE_ROW_COUNT = 320
 FIRST_FACE_RESOURCE = 204
@@ -91,6 +96,8 @@ MUSIC_OPS = (0x106, 0x107, 0x10a)
 TAG_BEGIN = -3
 TAG_SOUND = -9
 TAG_EFFECT = -8
+TAG_CORE_VALUE = -10
+CORE_VALUE_INFO_MASK = 0xfff
 PRELOADED_TABLES_PER_SCRIPT = 32
 
 
@@ -354,6 +361,28 @@ def sound_kinds_used(scripts):
                 if record[1] == TAG_SOUND:
                     kinds.add(record[2][0] & 0xffff)
     return sorted(kinds)
+
+
+def core_infos_used(scripts):
+    infos = set()
+    for script in scripts.values():
+        for _, _, op, operands in script.operations:
+            if op == CORE_INFO_OP:
+                infos.add(operands[1])
+        for table in script.tables:
+            for record in table[2]:
+                if record[1] == TAG_CORE_VALUE:
+                    infos.add(record[2][0] & CORE_VALUE_INFO_MASK)
+    return sorted(infos)
+
+
+def trickless_core_infos(arm9, scripts):
+    trickless = []
+    for info in core_infos_used(scripts):
+        fields = struct.unpack_from("<4H", arm9, CORE_INFO_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + CORE_INFO_ROW_SIZE * info)
+        if fields[CORE_INFO_ACTION_FIELD] in CORE_INFO_NO_ACTIONS:
+            trickless.append(info)
+    return trickless
 
 
 def music_ids_used(scripts):
@@ -627,6 +656,8 @@ def expand_set(set_description, packs, rom_path, text_key):
     section["room_plates"] = room_plates
     section["room_sizes"] = room_sizes
     section["room_bands"] = {str(room): read_room_bands(arm9, room) for room in rooms_used(scripts)}
+    if "soul_view" in set_description:
+        expanded["soul_view"] = dict(set_description["soul_view"], trickless_core_infos=trickless_core_infos(arm9, scripts))
     animations, motion_tables, unresolved = resolve_tables(packs, scripts)
     expanded["animations"] = animations
     section["motion_tables"] = motion_tables

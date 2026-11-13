@@ -14,6 +14,7 @@
 #define SCRIPT_CLASS_GMK_SOUL_DEAD_MISSILE 0x1d2e0ed8u
 
 int script_class_is_human(unsigned int class_id);
+int script_class_is_gimmick(unsigned int class_id);
 int script_class_is_past_dead(unsigned int class_id);
 int script_class_is_soul_start(unsigned int class_id);
 unsigned int script_class_of_soul_style(unsigned int class_id);

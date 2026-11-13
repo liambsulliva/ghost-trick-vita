@@ -15,6 +15,9 @@
 #define WORD_POINT_N 0xfff5u
 #define WORD_CORE_PLACE 0xfff0u
 #define WORD_CORE_VALUE 0xfff6u
+#define CORE_VALUE_CORE_SHIFT 12
+#define CORE_VALUE_CORE_MASK 0xf
+#define CORE_VALUE_INFO_MASK 0xfff
 #define WORD_SOUND 0xfff7u
 #define WORD_EFFECT 0xfff8u
 #define WORD_LOOP 0xffffu
@@ -120,6 +123,23 @@ static void run_point_word(struct script_machine *machine, struct script_object 
     }
     actor->points[point][0] = x;
     actor->points[point][1] = y;
+}
+
+static void set_core_info(struct script_object *object, int core, int core_info)
+{
+    if (object == NULL || !object->actor.exists || !script_class_is_gimmick(object->actor.class_id) || core < 0 || core >= SCRIPT_CORE_SLOT_COUNT) {
+        return;
+    }
+    object->actor.core_infos[core] = core_info;
+}
+
+static void run_core_value_word(struct script_object *object)
+{
+    int value;
+
+    if (read_signed_word(object->actor.table_source, object->actor.table_word + 1, &value)) {
+        set_core_info(object, (value >> CORE_VALUE_CORE_SHIFT) & CORE_VALUE_CORE_MASK, value & CORE_VALUE_INFO_MASK);
+    }
 }
 
 static void run_core_word(struct script_machine *machine, struct script_object *object)
@@ -299,6 +319,7 @@ static void run_table(struct script_machine *machine, struct script_object *obje
             actor->table_word = actor->table_word + 4;
             break;
         case WORD_CORE_VALUE:
+            run_core_value_word(object);
             actor->table_word = actor->table_word + 2;
             break;
         case WORD_SHAPE:
@@ -1033,6 +1054,9 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
                 script_exchange_note_core(machine, 0, (int)(object - machine->objects), (int)words[0]);
             }
         }
+        break;
+    case 0x9f:
+        set_core_info(script_machine_current_object(machine, vm), (int)words[0], (int)words[1]);
         break;
     case 0xa5:
         object = script_machine_current_object(machine, vm);

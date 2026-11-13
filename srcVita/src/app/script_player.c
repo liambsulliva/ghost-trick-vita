@@ -447,6 +447,8 @@ static void begin_loading_animations(void)
     apply_auto_play();
     data->machine.route = data->tables.route.step_count > 0 ? &data->tables.route : NULL;
     memcpy(data->machine.room_bounds, data->tables.room_bounds, sizeof(data->machine.room_bounds));
+    data->machine.trickless_core_infos = data->tables.trickless_core_infos;
+    data->machine.trickless_core_info_count = data->tables.trickless_core_info_count;
     time_jump = script_tables_find_movie(&data->tables, "time_jump");
     data->machine.time_jump_movie_ticks = time_jump != NULL ? time_jump->frame_count * time_jump->ticks_per_frame : 0;
     request_audio();

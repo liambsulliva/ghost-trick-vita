@@ -612,6 +612,8 @@ int main(int argument_count, char **arguments)
     script_input_reset(&route_input);
     add_every_script_of_the_chain(folder);
     read_room_bounds(folder);
+    machine.trickless_core_infos = tables_for_the_size_check.trickless_core_infos;
+    machine.trickless_core_info_count = tables_for_the_size_check.trickless_core_info_count;
     read_talk_book(folder);
     if (auto_press != SCRIPT_AUTO_OFF) {
         read_route(folder);

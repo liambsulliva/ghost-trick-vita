@@ -109,6 +109,7 @@ enum tutorial_mode {
 #define MARK_TICKS_BEFORE_THE_CORE_SHOWS 30
 #define MARK_AFTER_LEAVING_TICKS 5
 #define MARK_SOUND_KIND 18
+#define TRICK_REFUSED_SOUND_KIND 4
 #define PILL_HOLD_AFTER_VIEW_CHANGE 2
 #define PILL_HOLD_AFTER_TRICK 1
 #define SOUL_VIEW_ENTER_TICKS 33
@@ -622,6 +623,25 @@ static int core_is_busy(const struct script_machine *machine)
 
     soul = &machine->soul;
     return soul->active_object != NO_CORE && (machine->objects[soul->active_object].actor.busy_cores & (1 << soul->active_slot)) != 0;
+}
+
+static int core_names_no_trick(const struct script_machine *machine)
+{
+    const struct script_soul *soul;
+    int core_info;
+    int index;
+
+    soul = &machine->soul;
+    if (soul->active_object == NO_CORE) {
+        return 0;
+    }
+    core_info = machine->objects[soul->active_object].actor.core_infos[soul->active_slot];
+    for (index = 0; index < machine->trickless_core_info_count; index++) {
+        if (machine->trickless_core_infos[index] == core_info) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 static int a_scripted_event_holds_the_soul(const struct script_machine *machine)
@@ -1713,6 +1733,13 @@ static void take_press(struct script_machine *machine)
         return;
     }
     if (script_soul_world_is_playable(machine) && soul->trick_is_on && !core_is_busy(machine) && pill_answers_a_press(machine, SCRIPT_PILL_TRICK)) {
+        if (core_names_no_trick(machine)) {
+            soul->tricks_refused = soul->tricks_refused + 1;
+            if (machine->outputs->sound_played != NULL) {
+                machine->outputs->sound_played(TRICK_REFUSED_SOUND_KIND);
+            }
+            return;
+        }
         script_pills_press(machine, SCRIPT_PILL_TRICK, PILL_HOLD_AFTER_TRICK);
         soul->mark_age_ticks = MARK_IS_OFF;
         fire_trick(machine);
@@ -1962,7 +1989,7 @@ static void go_to_route_step(struct script_machine *machine, int step_index)
     soul->route_step_began_at = machine->tick;
     soul->route_ready_at = 0;
     soul->route_action_has_begun = 0;
-    soul->route_tricks_when_step_began = soul->tricks_fired;
+    soul->route_tricks_when_step_began = soul->tricks_fired + soul->tricks_refused;
     soul->route_presses_when_step_began = soul->presses_taken;
     soul->route_taps_when_step_began = soul->taps_taken;
     soul->route_character_presses_when_step_began = soul->character_presses_taken;
@@ -2428,7 +2455,7 @@ static int route_step_is_done(struct script_machine *machine, const struct scrip
     case SCRIPT_ROUTE_MOVE:
         return route_move_is_done(machine, step);
     case SCRIPT_ROUTE_TRICK:
-        return soul->tricks_fired != soul->route_tricks_when_step_began;
+        return soul->tricks_fired + soul->tricks_refused != soul->route_tricks_when_step_began;
     case SCRIPT_ROUTE_TOUCH:
         return soul->presses_taken != soul->route_presses_when_step_began;
     case SCRIPT_ROUTE_GHOST_ON:

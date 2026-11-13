@@ -144,6 +144,7 @@ struct script_actor {
     int is_hard_hidden;
     int disabled_cores;
     int busy_cores;
+    int core_infos[SCRIPT_CORE_SLOT_COUNT];
     int loop_carry_x;
     int loop_carry_y;
     int is_after_loop;
@@ -379,6 +380,7 @@ struct script_soul {
     unsigned int route_action_began_at;
     unsigned int route_last_action_tick;
     int tricks_fired;
+    int tricks_refused;
     int route_tricks_when_step_began;
     int route_aimed_node;
     int presses_taken;
@@ -555,6 +557,8 @@ struct script_machine {
     int mode_before_eyecatch;
     int countdown_interval;
     const struct script_route *route;
+    const int *trickless_core_infos;
+    int trickless_core_info_count;
     const char *scene_name;
     unsigned int scene_hashes_seen[SCRIPT_SCENES_SEEN_MAX];
     int scenes_seen;

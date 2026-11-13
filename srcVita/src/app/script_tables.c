@@ -448,10 +448,29 @@ const struct script_flipbook *script_tables_find_flipbook(const struct script_ta
     return NULL;
 }
 
+static int read_trickless_line(struct script_tables *tables, const char *line)
+{
+    int core_info;
+
+    if (sscanf(line, "trickless %d", &core_info) != 1) {
+        return 0;
+    }
+    if (tables->trickless_core_info_count >= SCRIPT_TRICKLESS_CORE_INFO_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
+        return 1;
+    }
+    tables->trickless_core_infos[tables->trickless_core_info_count] = core_info;
+    tables->trickless_core_info_count = tables->trickless_core_info_count + 1;
+    return 1;
+}
+
 static int read_soul_line(struct script_tables *tables, const char *line)
 {
     struct script_soul_style *style;
 
+    if (read_trickless_line(tables, line)) {
+        return 1;
+    }
     if (tables->soul_style_count >= SCRIPT_SOUL_STYLE_MAX) {
         tables->rows_dropped = tables->rows_dropped + 1;
         return 1;

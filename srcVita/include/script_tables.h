@@ -17,6 +17,7 @@
 #define SCRIPT_CORE_LABEL_MAX 64
 #define SCRIPT_FLIPBOOK_PAGE_MAX 3
 #define SCRIPT_SOUL_STYLE_MAX 16
+#define SCRIPT_TRICKLESS_CORE_INFO_MAX 256
 #define SCRIPT_BALLOON_PART_MAX 4
 #define SCRIPT_MOTION_ROW_MAX 16384
 #define SCRIPT_MOTION_BUCKET_COUNT 8192
@@ -222,6 +223,8 @@ struct script_tables {
     int movie_count;
     struct script_soul_style soul_styles[SCRIPT_SOUL_STYLE_MAX];
     int soul_style_count;
+    int trickless_core_infos[SCRIPT_TRICKLESS_CORE_INFO_MAX];
+    int trickless_core_info_count;
     struct script_core_label core_labels[SCRIPT_CORE_LABEL_MAX];
     int core_label_count;
     struct script_audio_row music_rows[SCRIPT_AUDIO_ROW_MAX];

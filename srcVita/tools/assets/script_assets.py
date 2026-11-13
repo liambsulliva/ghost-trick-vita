@@ -349,6 +349,7 @@ def is_soul_red(style):
 def soul_text(soul_view):
     lines = ["owner " + soul_view["owner"], "ring " + soul_view["ring"]]
     lines.extend("core " + name for name in soul_view.get("cores", []))
+    lines.extend("trickless %d" % info for info in soul_view.get("trickless_core_infos", []))
     for class_id, style in soul_view.get("classes", {}).items():
         lines.append("class %s %s %d" % (class_id, " ".join(asset_writers.format_number(value) for value in style), 1 if is_soul_red(style) else 0))
     for object_name, style in soul_view.get("objects", {}).items():
