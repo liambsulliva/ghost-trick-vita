@@ -4,9 +4,7 @@ A PS Vita port using the original DS game logic with the 2023 remaster's art and
 
 ## Where the port stands
 
-The port is close to complete and now reaches well past Chapter 1. What is left is proving the game from start to finish.
-
-That proof is an automatic playthrough: a route of 1075 button presses that follows a reference playthrough through Chapter 18, replayed on a computer through the same input code the Vita uses. Chapters 1 to 8 play through with every step passing and nothing skipped, which is the first 849 steps. The replay stops at the opening of Chapter 9, whose first scene has no route yet. The remaining work is writing the route for the scenes it does not cover and fixing whatever stops it.
+The whole game is routed and plays from start to finish. An automatic playthrough of 1719 route steps follows a reference playthrough from the opening of Chapter 1 to the closing credits and back to the title screen, replayed on a computer through the same input code the Vita uses. It finishes with no step failed, no scene skipped and no stand-in for the game's own logic; one step the route passes over is left out of the count. What is left is the script opcodes that still log as not ported, and checking the later chapters on the Vita itself.
 
 On the Vita itself the app installs and runs from locally converted remaster art. The one-command setup below still prepares Chapter 1 only.
 
@@ -105,7 +103,7 @@ The port follows the DS game's own code wherever it can. The changes below are d
 
 ## Roadmap
 
-1. **Finish the remaining chapters**, on the same data-driven code. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
+1. **Finish the remaining script opcodes**, on the same data-driven code, and play the later chapters on the Vita. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
 2. **A DS-faithful look.** An option to simulate nearest-neighbor upscaling, so the picture looks as it did on the DS.
 3. **Every language the remaster has.** Spanish, French, German, Italian, Japanese, Korean, Simplified Chinese and Traditional Chinese, alongside English.
 4. **An animated 3D pause menu.** An all-new menu whose transitions are tied to character models.
