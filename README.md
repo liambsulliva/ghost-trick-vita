@@ -101,20 +101,12 @@ The port follows the DS game's own code wherever it can. The changes below are d
 
 - **Narration can be hurried.** A CROSS press while Sissel's narration fades in shows the whole page at once, as it does for speech bubbles. The next press moves on, even on pages the original times by itself.
 - **The right stick pans the ghost view.** While the player holds the chain, the left stick moves the soul and the right stick pans the camera. The camera stays where it was panned until the soul is aimed again.
+- **Holding CIRCLE moves through dialogue.** While talk or narration shows, a held CIRCLE finishes each page and moves on as fast as the game allows. It never picks a choice.
+- **Save at any point.** The pause menu's Save keeps the game whenever the player has the controls, not only at the game's own checkpoints. Loading picks up again from the start of the scene it was saved in.
+- **A high-contrast mode.** An Options setting that makes cores easier to pick out in crowded rooms, for players with low vision.
 - **Vita buttons instead of touch alone.** Every touch action also has a button, and the on-screen prompts show the Vita's buttons rather than the remaster's keyboard keys. [The app's README](srcVita/README.md#controls) lists them.
 
 ## Roadmap
-
-Already in the port, from earlier versions of this list ([the app's README](srcVita/README.md#controls) has the details):
-
-- **The animated pause menu.** Resume, Save, Record, Title, Chapters and Options.
-- **Saving.** Save from the pause menu at any point; the game picks up again from the start of the scene it was saved in. An autosave is written as each chapter begins.
-- **A settings menu.** Text speed, brightness, volumes, the Original or Arranged soundtrack, a 30 FPS cap, High Contrast and Visual Filter.
-- **Starting from any chapter already reached**, from the Chapters grid.
-- **Fast-forward through dialogue.** Holding CIRCLE moves through talk and narration as fast as the game allows.
-- **A high-contrast mode.** Makes cores easier to pick out in crowded rooms, for players with low vision.
-
-Still to do:
 
 1. **Finish the remaining script opcodes**, on the same data-driven code. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
 2. **A DS-faithful look.** Visual Filter's DS setting draws with nearest-neighbour sampling, but it needs the DS art baked, which no set does yet.
