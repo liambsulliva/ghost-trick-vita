@@ -148,6 +148,9 @@
 #define PILL_GLYPH_NUDGE_Y -2.0f
 #define PILL_BOTTOM_Y 494.0f
 #define PILL_TOP_Y 12.5f
+#define START_PILL_WIDTH 76.0f
+#define START_PILL_GAP 10.0f
+#define START_GLYPH_WIDTH 36.0f
 
 struct tap_balloon {
     int is_open;
@@ -189,6 +192,7 @@ static const struct pill_sheet_cell glyph_l = { 160.0f, 0.0f, 40.0f, 40.0f };
 static const struct pill_sheet_cell glyph_r = { 200.0f, 0.0f, 40.0f, 40.0f };
 static const struct pill_sheet_cell glyph_triangle = { 120.0f, 0.0f, 40.0f, 40.0f };
 static const struct pill_sheet_cell glyph_select = { 312.0f, 0.0f, 84.0f, 40.0f };
+static const struct pill_sheet_cell glyph_start = { 240.0f, 0.0f, 72.0f, 40.0f };
 static const struct pill_sheet_cell label_ghost = { 0.0f, 48.0f, 160.0f, 64.0f };
 static const struct pill_sheet_cell label_trick = { 160.0f, 48.0f, 160.0f, 64.0f };
 static const struct pill_sheet_cell label_back = { 320.0f, 48.0f, 160.0f, 64.0f };
@@ -1144,6 +1148,77 @@ static void draw_pills(void)
     }
 }
 
+static int ui_is_showing(void)
+{
+    int index;
+
+    if (tables == NULL || hud.is_hidden_for_movie || hud.picture_is_hidden || the_picture_is_covered()) {
+        return 0;
+    }
+    for (index = 0; index < SCRIPT_PILL_COUNT; index++) {
+        if (hud.pills[index].is_on_screen) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void start_pill(struct pill_layout *layout, struct script_pill_view *view)
+{
+    const struct pill_layout *hourglass;
+    int index;
+
+    hourglass = &pill_layouts[SCRIPT_PILL_HOURGLASS];
+    memset(layout, 0, sizeof(*layout));
+    memset(view, 0, sizeof(*view));
+    layout->width = START_PILL_WIDTH;
+    layout->x = hud.pills[SCRIPT_PILL_HOURGLASS].is_on_screen ? hourglass->x - START_PILL_GAP - START_PILL_WIDTH : hourglass->x + hourglass->width - START_PILL_WIDTH;
+    layout->y = PILL_TOP_Y;
+    layout->icon_cell_x = -1.0f;
+    layout->glyph = &glyph_start;
+    layout->glyph_x = (START_PILL_WIDTH - START_GLYPH_WIDTH) / 2.0f;
+    layout->glyph_width = START_GLYPH_WIDTH;
+    for (index = 0; index < SCRIPT_PILL_COUNT; index++) {
+        if (hud.pills[index].is_on_screen && hud.pills[index].slide_step > view->slide_step) {
+            view->slide_step = hud.pills[index].slide_step;
+        }
+    }
+    view->is_on_screen = 1;
+}
+
+static void draw_start_pill(void)
+{
+    struct pill_layout layout;
+    struct script_pill_view view;
+    const struct cached_texture *art;
+    const struct cached_texture *sheet;
+
+    art = ready_texture(PILL_ART_TEXTURE);
+    sheet = ready_texture(PILL_SHEET_TEXTURE);
+    if (art == NULL || sheet == NULL || !ui_is_showing()) {
+        return;
+    }
+    start_pill(&layout, &view);
+    draw_pill(&layout, &view, art, sheet);
+}
+
+int script_ui_view_start_button_is_at(float x, float y)
+{
+    struct pill_layout layout;
+    struct script_pill_view view;
+
+    if (!ui_is_showing()) {
+        return 0;
+    }
+    start_pill(&layout, &view);
+    return point_is_in_box(x, y, layout.x, layout.y, layout.width, PILL_RING_HEIGHT);
+}
+
+int script_ui_view_start_button_is_shown(void)
+{
+    return ui_is_showing();
+}
+
 void script_ui_view_draw_under_talk(float screen_fade)
 {
     if (tables == NULL || hud.is_hidden_for_movie) {
@@ -1164,6 +1239,7 @@ void script_ui_view_draw(void)
         draw_rewind_select();
         if (!hud.picture_is_hidden && !the_picture_is_covered()) {
             draw_pills();
+            draw_start_pill();
         }
         draw_narration_arrow();
     }

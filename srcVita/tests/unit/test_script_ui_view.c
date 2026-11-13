@@ -178,6 +178,40 @@ static void test_the_side_label_and_hourglass_draw_under_the_talk(void)
     CHECK_INT(fake_renderer_draw_count(), 0);
 }
 
+static void test_the_start_button_shows_top_right_with_the_ui_and_steps_aside_for_the_hourglass(void)
+{
+    static struct script_tables tables;
+    struct script_hud_view view;
+
+    memset(&tables, 0, sizeof(tables));
+    script_ui_view_start(&tables);
+    scene_stage_hide_card();
+    scene_stage_set_fade(0.0f);
+    memset(&view, 0, sizeof(view));
+    script_ui_view_hud_changed(&view);
+    CHECK(!script_ui_view_start_button_is_shown());
+    CHECK(!script_ui_view_start_button_is_at(910.0f, 30.0f));
+    show_pill(&view, SCRIPT_PILL_GHOST, PILL_FULLY_SHOWN, 0);
+    script_ui_view_hud_changed(&view);
+    CHECK(script_ui_view_start_button_is_shown());
+    CHECK(script_ui_view_start_button_is_at(910.0f, 30.0f));
+    CHECK(!script_ui_view_start_button_is_at(480.0f, 30.0f));
+    show_pill(&view, SCRIPT_PILL_HOURGLASS, PILL_FULLY_SHOWN, 0);
+    script_ui_view_hud_changed(&view);
+    CHECK(!script_ui_view_start_button_is_at(910.0f, 30.0f));
+    CHECK_INT(script_ui_view_pill_at(910.0f, 30.0f), SCRIPT_PILL_HOURGLASS);
+    CHECK(script_ui_view_start_button_is_at(830.0f, 30.0f));
+    view.picture_is_hidden = 1;
+    script_ui_view_hud_changed(&view);
+    CHECK(!script_ui_view_start_button_is_shown());
+    view.picture_is_hidden = 0;
+    view.is_hidden_for_movie = 1;
+    script_ui_view_hud_changed(&view);
+    CHECK(!script_ui_view_start_button_is_shown());
+    memset(&view, 0, sizeof(view));
+    script_ui_view_hud_changed(&view);
+}
+
 int main(void)
 {
     test_a_shown_pill_answers_a_tap_inside_it();
@@ -187,5 +221,6 @@ int main(void)
     test_pills_hide_under_a_card_or_a_full_fade();
     test_every_pill_has_a_place_and_draws();
     test_the_rewind_button_answers_only_while_it_is_up();
+    test_the_start_button_shows_top_right_with_the_ui_and_steps_aside_for_the_hourglass();
     return test_finish("unit/script_ui_view");
 }

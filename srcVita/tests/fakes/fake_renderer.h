@@ -16,6 +16,7 @@ struct fake_draw {
     struct renderer_rect texture_area;
     struct renderer_color color;
     int is_snapshot;
+    int is_contrast;
 };
 
 void fake_renderer_reset(void);
@@ -32,5 +33,8 @@ int fake_renderer_snapshots_taken(void);
 int fake_renderer_snapshot_is_open(void);
 int fake_renderer_snapshot_draw_count(void);
 const struct fake_draw *fake_renderer_snapshot_draw(int index);
+
+int fake_renderer_vblanks_per_frame(void);
+int fake_renderer_contrast_raises(void);
 
 #endif

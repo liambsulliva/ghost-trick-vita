@@ -2,6 +2,7 @@
 #include <string.h>
 #include "asset_name.h"
 #include "audio_port.h"
+#include "audio_volume.h"
 #include "audio_thread.h"
 #include "clock.h"
 #include "file.h"
@@ -645,6 +646,7 @@ static int submit_grain(unsigned long long mix_us)
     previous_return_us = totals.last_submit_ended_us;
     submit_started_us = clock_now_us();
     window.gap_us_max = larger_of(window.gap_us_max, submit_started_us - previous_return_us);
+    audio_volume_scale(AUDIO_PORT_SOUND, grain, SOUND_GRAIN_FRAMES * SAMPLES_PER_FRAME);
     result = audio_port_submit(AUDIO_PORT_SOUND, grain);
     totals.last_submit_ended_us = clock_now_us();
     if (result < 0) {

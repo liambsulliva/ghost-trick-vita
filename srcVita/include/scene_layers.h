@@ -44,6 +44,7 @@ void scene_layers_clear_overlays(struct scene_layers *layers);
 void scene_layers_show_text(struct scene_layers *layers, int id, const char *texture_name, float center_x, float top_y, int fade_ticks);
 void scene_layers_hide_text(struct scene_layers *layers, int id, int fade_ticks);
 void scene_layers_hide_all_text(struct scene_layers *layers);
+void scene_layers_finish_text_fade_ins(struct scene_layers *layers);
 void scene_layers_show_overlay(struct scene_layers *layers, int id, const char *texture_name, float x, float y, float width, float height, int grow_ticks);
 void scene_layers_hide_overlay(struct scene_layers *layers, int id);
 void scene_layers_shake_overlay(struct scene_layers *layers, int id, float x, float y);

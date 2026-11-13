@@ -1,5 +1,6 @@
 #include <math.h>
 #include <string.h>
+#include <psp2/display.h>
 #include <psp2/gxm.h>
 #include <vitaGL.h>
 #include "device_stats.h"
@@ -11,6 +12,8 @@
 #define BATCH_QUAD_MAX 1024
 #define VERTICES_PER_QUAD 6
 #define DEGREES_TO_RADIANS 0.017453293f
+#define CONTRAST_FLOOR 0.06f
+#define CONTRAST_GAIN 0.3f
 #define LOG_FOR_TOOLS_SNAPSHOT_TARGET "renderer snapshot_target ok=%d video_bytes=%d main_bytes=%d render_target_bytes=%u"
 
 struct batch_vertex {
@@ -32,6 +35,7 @@ static int batch_is_flat;
 static renderer_texture snapshot_texture;
 static GLuint snapshot_framebuffer;
 static unsigned int live_texture_count;
+static int vblanks_per_frame = 1;
 
 static void flush_batch(void)
 {
@@ -143,6 +147,13 @@ static void create_snapshot_target(void)
     run_log_write(LOG_FOR_TOOLS_SNAPSHOT_TARGET, snapshot_texture != RENDERER_NO_TEXTURE, (int)(before.video_memory_free - after.video_memory_free), (int)(before.main_memory_free - after.main_memory_free), snapshot_render_target_bytes());
 }
 
+static void bind_target(GLuint framebuffer, int width, int height)
+{
+    flush_batch();
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    glViewport(0, 0, width, height);
+}
+
 int renderer_init(void)
 {
     static const unsigned char white_pixel[4] = { 255, 255, 255, 255 };
@@ -174,8 +185,18 @@ void renderer_begin_frame(struct renderer_color clear_color)
 
 void renderer_end_frame(void)
 {
+    int extra;
+
     flush_batch();
     vglSwapBuffers(GL_FALSE);
+    for (extra = 1; extra < vblanks_per_frame; extra++) {
+        sceDisplayWaitVblankStart();
+    }
+}
+
+void renderer_set_vblanks_per_frame(int vblanks)
+{
+    vblanks_per_frame = vblanks < 1 ? 1 : vblanks;
 }
 
 renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int width, int height)
@@ -366,16 +387,48 @@ int renderer_snapshot_begin(void)
     if (snapshot_framebuffer == 0) {
         return 0;
     }
-    flush_batch();
-    glBindFramebuffer(GL_FRAMEBUFFER, snapshot_framebuffer);
+    bind_target(snapshot_framebuffer, RENDERER_WIDTH, RENDERER_HEIGHT);
     clear_bound_target_to_black();
     return 1;
 }
 
 void renderer_snapshot_end(void)
 {
+    bind_target(0, RENDERER_WIDTH, RENDERER_HEIGHT);
+}
+
+void renderer_raise_contrast(void)
+{
+    struct renderer_rect screen;
+
+    screen.x = 0.0f;
+    screen.y = 0.0f;
+    screen.width = (float)RENDERER_WIDTH;
+    screen.height = (float)RENDERER_HEIGHT;
+    renderer_raise_contrast_in(screen);
+}
+
+void renderer_raise_contrast_in(struct renderer_rect screen)
+{
+    struct renderer_color shade;
+
+    shade.alpha = 1.0f;
     flush_batch();
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+    glBlendFunc(GL_ONE, GL_ONE);
+    shade.red = CONTRAST_FLOOR;
+    shade.green = CONTRAST_FLOOR;
+    shade.blue = CONTRAST_FLOOR;
+    renderer_draw_filled_rect(screen, shade);
+    flush_batch();
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_DST_COLOR, GL_ONE);
+    shade.red = CONTRAST_GAIN;
+    shade.green = CONTRAST_GAIN;
+    shade.blue = CONTRAST_GAIN;
+    renderer_draw_filled_rect(screen, shade);
+    flush_batch();
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void renderer_draw_turned_snapshot(float center_x, float center_y, float half_width, float half_height, float degrees, float alpha)

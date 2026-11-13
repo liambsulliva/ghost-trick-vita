@@ -164,10 +164,14 @@ static int groups_before_current_page(const struct script_narration *narration)
     return groups;
 }
 
-static void tell(const struct script_narration *narration, script_narration_report report, void *listener, enum script_narration_event event, int group)
+static void tell(struct script_narration *narration, script_narration_report report, void *listener, enum script_narration_event event, int group)
 {
     if (event == SCRIPT_NARRATION_GROUP_IN) {
         group = group + groups_before_current_page(narration);
+        narration->fade_left = SCRIPT_NARRATION_GROUP_IN_TICKS;
+    }
+    if (event == SCRIPT_NARRATION_TEXT_FULL || event == SCRIPT_NARRATION_TEXT_OUT || event == SCRIPT_NARRATION_CUT) {
+        narration->fade_left = 0;
     }
     report(listener, narration->message->label, event, group);
 }
@@ -312,6 +316,7 @@ static void show_the_whole_page(struct script_narration *narration, script_narra
     for (index = first; index < narration->group_count; index++) {
         tell(narration, report, listener, SCRIPT_NARRATION_GROUP_IN, index);
     }
+    tell(narration, report, listener, SCRIPT_NARRATION_TEXT_FULL, 0);
     narration->state = STATE_HOLD;
     narration->group = narration->group_count;
     narration->group_was_reported = 1;
@@ -334,7 +339,7 @@ int script_narration_takes_a_skip(const struct script_narration *narration)
 
 int script_narration_wants_a_press(const struct script_narration *narration)
 {
-    return narration->is_running && narration->state == STATE_HOLD && narration->group >= narration->group_count && narration->limit == 0;
+    return narration->is_running && narration->state == STATE_HOLD && narration->group >= narration->group_count && narration->limit == 0 && narration->fade_left == 0;
 }
 
 void script_narration_note_press(struct script_narration *narration)
@@ -366,6 +371,14 @@ int script_narration_step(struct script_narration *narration, script_narration_r
         narration->press_is_pending = 0;
         show_the_whole_page(narration, report, listener);
         return 0;
+    }
+    if (narration->press_is_pending && narration->state == STATE_HOLD && narration->fade_left > 0) {
+        narration->press_is_pending = 0;
+        tell(narration, report, listener, SCRIPT_NARRATION_TEXT_FULL, 0);
+        return 0;
+    }
+    if (narration->fade_left > 0) {
+        narration->fade_left = narration->fade_left - 1;
     }
     if (narration->state != STATE_HOLD) {
         narration->level = narration->level + narration->speed;

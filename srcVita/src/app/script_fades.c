@@ -133,7 +133,10 @@ void script_fades_update(struct script_machine *machine)
 
     update_mask_fade(machine);
     update_brightness(machine);
-    brightness = machine->soul.white_wipe_level > machine->brightness ? machine->soul.white_wipe_level : machine->brightness;
+    brightness = machine->brightness;
+    if (machine->soul.white_wipe_name[0] != '\0' && machine->soul.white_wipe_level > brightness) {
+        brightness = machine->soul.white_wipe_level;
+    }
     if (brightness != machine->reported_brightness) {
         machine->reported_brightness = brightness;
         if (machine->outputs->brightness_changed != NULL) {

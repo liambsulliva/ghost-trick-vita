@@ -1063,6 +1063,42 @@ Lessons from routing the rest of Chapter 15 (`st02_game035_Expand` and `st02_gam
 - The footage changes character in the living world; the port offers the switch only in the view, so the route's `character` steps follow a ghost-on.
 - The wrap-up talk: `move kaba_core` and `dead_talk kaba_core` from the telephone, topics `msg_000`, `msg_010`, `msg_020`, `msg_040`, then `cancel`; hops to `stand` and `kanri_core`, topics `msg_100`, `msg_110`, `msg_120`, then `cancel`, which ends the chapter through `func_check_select` and `sys_act020`.
 
+### 146. The pause menu's tables never reached the Vita, because the upload kept its own copy of the converter's folder list
+
+The converter writes into a fixed set of output folders and sweeps stale files from them. `vita_loop.py upload-assets` walked a second, hand-written copy of that list. When the pause menu added `pause/`, only the converter's copy changed. Its textures went up, but `pause/cat.txt`, `pause/cat_track.txt` and `pause/labels.txt` were never uploaded, so the device would have found no menu art and START would do nothing. The list now lives once, in `tools/assets/output_folders.py`, and the converter and the upload both read it.
+
+Guard: `tests/tools/test_vita_loop.py` puts a file in every folder of `output_folders.NAMES` and checks that each is listed for upload.
+
+### 147. People portraits were assigned by guessing from the image numbers, so twelve people showed someone else's face
+
+The remaster's notebook images (`cmn_db_03_00` to `_35`) carry no table that ties them to the database names, and the DS notebook draws no faces (overlay 006 only draws text cards, `func_ov006_020d7108`), so there is no native order to follow. The first `portraits` map guessed from the image numbers and the story order. Each image was still used once, so nothing looked wrong in the data, but eight people were swapped among themselves and four took images that belonged to others. The fixes came from the user reading the screen. People whose image is not confirmed are now listed in `unknown_portraits` and show the unknown silhouette instead of a guess.
+
+Guard: `tests/tools/test_pause_people.py` requires every listed person to be either in `portraits` or in `unknown_portraits`, never both, and every image to be used once.
+
+### 148. The controls page wrote button names as words, and the longest action ran past its row
+
+Each controls row drew a key name at a fixed x and its action at x 400, with no limit on the action's width, so the stick's action ran past the row's right edge. The key column now draws the Vita's button glyphs (`hud_art.glyph_cells`, the same art as the HUD prompts), and the action starts right after them. `pause_draw_text_within` shrinks any text wider than its room, so a longer translation cannot overflow either.
+
+Guard: `tests/tools/test_pause_glyphs.py` checks that every glyph the pause screens name is baked, inside the sheet and on its own cell. `tests/unit/test_pause_widgets.c` checks glyph widths and that text wider than its room shrinks to fit.
+
+### 149. Every fade to black was swallowed, and a fresh start drew the room before the opening's black
+
+The opening flashed the junkyard for a few frames before its black narration screen. Two causes sat on the same output. First, root cause 116's white wipe changed `script_fades_update` to report the larger of the wipe level and the script's brightness. With no wipe running the wipe level is 0, so every negative brightness (a fade to black, op 0xc and its kin) was reported as 0, in every chapter, from that commit on. A whole-game replay reported no dark brightness at all; it now reports 79 in the first 20,000 ticks. The wipe now counts only while one is running. Second, the player started each script at full brightness and with no screen fade. On the DS a script is always entered from black (the title, a load or the previous script's fade-out hands over a black screen) and each script fades itself in, so `st01_game000` placing its actors at tick 10 and covering them at tick 13 shows nothing natively. A top-level start (`script_player_play`: the opening, Continue, a chapter replay, Title) now begins at brightness -16 with the screen faded (`script_machine_start_from_black`), and the replay starts the same way. Scripts chained inside a run keep the brightness they inherit. The honest whole-game replay is unchanged by both fixes (432 steps done, the same 4 failures).
+
+Guard: `tests/unit/test_screen_brightness.c` checks that a fade to black reaches the brightness output when no white wipe runs, that a running wipe still wins, and that a fresh start reports black on its first tick.
+
+### 150. Removing the controls page's key strings left the People tabs' L and R blank
+
+Root cause 148 replaced the controls page's key names with button glyphs and deleted the `key_*` strings from `game.json`. The People page still drew `bar.key_l` and `bar.key_r` as words inside its shoulder pills, and a missing text key draws nothing, so the pills showed empty on the Vita. The tabs now draw the L and R button glyphs, like the controls page, and the unused shoulder pill is gone from the sheet. A string can be removed only when no pause code names it.
+
+Guard: `tests/tools/test_pause_option_keys.py` checks that every literal `bar.`, `row.`, `header.` and `language.` key in `src/app/pause_*.c` has a string, that every Options row, value and bar text the menu builds from its row table has one, and that two-line bar texts stay two lines short enough for the bar.
+
+### 151. Narration shown all at once took the dismissing press while its lines were still fading in
+
+A narration page with the show-at-once option (DS timing, which the player uses) reports every line in one tick and goes straight to waiting for a press, while the view fades each line in over 62 ticks. So the first ✕ dismissed text that was still half drawn. The same gap left a group's fade running after a press that showed the whole page. The narration now counts down the fade from each line it reports: until it ends, a press finishes every fade at once (`SCRIPT_NARRATION_TEXT_FULL`, `scene_layers_finish_text_fade_ins`) instead of moving on, and the page arrow and auto-press wait for it. Dialogue already worked this way. The honest whole-game replay is unchanged (432 steps done, the same 4 failures).
+
+Guard: `tests/unit/test_narration_skip.c` checks that a press during a shown-at-once page's fade finishes the lines without ending the page, that the second press ends it, and that the arrow waits for the fade.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

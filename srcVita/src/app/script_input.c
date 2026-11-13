@@ -142,6 +142,13 @@ static void send_touch(struct script_input *input, struct script_machine *machin
     input->touch_was_down = frame->touch_is_down;
 }
 
+static void skip_text_while_circle_is_held(struct script_machine *machine, unsigned int held)
+{
+    if ((held & INPUT_CIRCLE) && script_machine_text_takes_a_skip(machine)) {
+        script_machine_note_press(machine);
+    }
+}
+
 static void send_buttons(struct script_machine *machine, unsigned int pressed)
 {
     if (pressed & INPUT_L) {
@@ -178,4 +185,5 @@ void script_input_frame(struct script_input *input, struct script_machine *machi
     send_view_pan(machine, frame);
     send_touch(input, machine, frame);
     send_buttons(machine, frame->pressed);
+    skip_text_while_circle_is_held(machine, frame->held);
 }

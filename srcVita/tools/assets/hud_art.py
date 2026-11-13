@@ -36,6 +36,8 @@ KEY_WORD_NUDGE_Y = 8
 LETTER_POINTS = 112
 START_POINTS = 64
 SELECT_POINTS = 64
+STICK_LETTER_POINTS = 72
+EXTRA_GLYPHS = [("dpad", 396, 0), ("lstick", 436, 0), ("rstick", 420, 112), ("touch", 460, 112)]
 
 
 def scaled(value):
@@ -64,6 +66,62 @@ def face_arguments(kind, cell_x):
     for shape in face_symbol(kind, center_x, center_y):
         arguments += ["-draw", shape]
     return arguments
+
+
+def disc_plate(center_x, center_y):
+    radius = scaled(GLYPH_CELL) * 44 // 100
+    return ["-fill", INK_NAVY, "-stroke", WHITE, "-strokewidth", "8", "-draw", "circle %d,%d %d,%d" % (center_x, center_y, center_x, center_y + radius)]
+
+
+def dpad_arguments(center_x, center_y):
+    reach = scaled(GLYPH_CELL) * 44 // 100
+    arm = scaled(GLYPH_CELL) * 16 // 100
+    points = [(-arm, -reach), (arm, -reach), (arm, -arm), (reach, -arm), (reach, arm), (arm, arm), (arm, reach), (-arm, reach), (-arm, arm), (-reach, arm), (-reach, -arm), (-arm, -arm)]
+    shape = " ".join("%d,%d" % (center_x + dx, center_y + dy) for dx, dy in points)
+    return ["-fill", INK_NAVY, "-stroke", WHITE, "-strokewidth", "8", "-draw", "polygon " + shape]
+
+
+def stick_arguments(key_font_path, letter, center_x, center_y, cell_x, row_y):
+    cap = scaled(GLYPH_CELL) * 27 // 100
+    arguments = disc_plate(center_x, center_y)
+    arguments += ["-fill", "none", "-stroke", WHITE, "-strokewidth", "6", "-draw", "circle %d,%d %d,%d" % (center_x, center_y, center_x, center_y + cap)]
+    arguments += ["(", "-size", "%dx%d" % (scaled(GLYPH_CELL), scaled(GLYPH_CELL)), "xc:none", "-font", key_font_path, "-pointsize", str(STICK_LETTER_POINTS), "-gravity", "center", "-fill", WHITE, "-stroke", "none", "-annotate", "+0+%d" % (KEY_WORD_NUDGE_Y // 2), letter, ")", "-gravity", "NorthWest", "-geometry", "+%d+%d" % (scaled(cell_x), scaled(row_y)), "-composite"]
+    return arguments
+
+
+def touch_arguments(center_x, center_y):
+    ring = scaled(GLYPH_CELL) * 25 // 100
+    dot = scaled(GLYPH_CELL) * 11 // 100
+    arguments = disc_plate(center_x, center_y)
+    arguments += ["-fill", "none", "-stroke", WHITE, "-strokewidth", "6", "-draw", "circle %d,%d %d,%d" % (center_x, center_y, center_x, center_y + ring)]
+    arguments += ["-fill", WHITE, "-stroke", "none", "-draw", "circle %d,%d %d,%d" % (center_x, center_y, center_x, center_y + dot)]
+    return arguments
+
+
+def extra_glyph_arguments(key_font_path, kind, cell_x, row_y):
+    center_x = scaled(cell_x) + scaled(GLYPH_CELL) // 2
+    center_y = scaled(row_y) + scaled(GLYPH_CELL) // 2
+    if kind == "dpad":
+        return dpad_arguments(center_x, center_y)
+    if kind == "touch":
+        return touch_arguments(center_x, center_y)
+    return stick_arguments(key_font_path, "L" if kind == "lstick" else "R", center_x, center_y, cell_x, row_y)
+
+
+def glyph_cells():
+    cells = []
+    cell_x = 0
+    for kind in FACE_ORDER:
+        cells.append((kind, cell_x, 0, GLYPH_CELL))
+        cell_x += GLYPH_CELL
+    for letter in LETTER_ORDER:
+        cells.append((letter.lower(), cell_x, 0, GLYPH_CELL))
+        cell_x += GLYPH_CELL
+    cells.append(("start", cell_x, 0, START_WIDTH))
+    cells.append(("select", cell_x + START_WIDTH, 0, SELECT_WIDTH))
+    for kind, extra_x, row_y in EXTRA_GLYPHS:
+        cells.append((kind, extra_x, row_y, GLYPH_CELL))
+    return cells
 
 
 def word_button_arguments(key_font_path, word, cell_x, cell_width, points):
@@ -100,6 +158,8 @@ def sheet_arguments(label_font_path, key_font_path, output_path):
     for index, word in enumerate(SWAP_LABELS):
         arguments += label_arguments(label_font_path, word, index * SWAP_LABEL_WIDTH, SWAP_LABEL_ROW_Y, SWAP_LABEL_WIDTH)
     arguments += wide_label_arguments(label_font_path)
+    for kind, extra_x, row_y in EXTRA_GLYPHS:
+        arguments += extra_glyph_arguments(key_font_path, kind, extra_x, row_y)
     arguments += ["-filter", "Box", "-resize", "%dx%d!" % (SHEET_WIDTH, SHEET_HEIGHT), "-depth", "8", "rgba:" + output_path]
     return arguments
 

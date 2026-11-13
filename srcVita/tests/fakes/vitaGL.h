@@ -28,7 +28,12 @@ typedef void GLvoid;
 #define GL_PROJECTION 0x1701
 #define GL_RGB 0x1907
 #define GL_RGBA 0x1908
+#define GL_NEAREST 0x2600
 #define GL_LINEAR 0x2601
+#define GL_ONE 1
+#define GL_DST_COLOR 0x0306
+#define GL_FUNC_ADD 0x8006
+#define GL_FUNC_REVERSE_SUBTRACT 0x800B
 #define GL_TEXTURE_MAG_FILTER 0x2800
 #define GL_TEXTURE_MIN_FILTER 0x2801
 #define GL_TEXTURE_WRAP_S 0x2802
@@ -55,6 +60,7 @@ void glOrtho(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdou
 void glDisable(GLenum capability);
 void glEnable(GLenum capability);
 void glBlendFunc(GLenum source_factor, GLenum destination_factor);
+void glBlendEquation(GLenum mode);
 void glEnableClientState(GLenum array);
 void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
 void glClear(GLbitfield mask);

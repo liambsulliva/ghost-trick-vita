@@ -9,6 +9,7 @@
 #define MUSIC_STARVE_MS_MAX 5000
 
 void music_engine_init(const char *music_folder);
+void music_engine_use_folder(const char *music_folder);
 void music_request_prepare(const char *name);
 int music_prepare_is_done(const char *name);
 void music_request_play(const char *name, int is_looping);

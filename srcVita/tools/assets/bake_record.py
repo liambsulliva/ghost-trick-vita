@@ -138,7 +138,9 @@ class BakeRecord:
     def store(self, relative_path, key, data, details=None):
         if relative_path.startswith(TEXTURE_FOLDER_PREFIX) and relative_path.endswith(TEXTURE_FILE_SUFFIX):
             data = gtex_pack.pack_gtex(data)
-        write_file_atomically(os.path.join(self.output_folder, relative_path), data)
+        path = os.path.join(self.output_folder, relative_path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        write_file_atomically(path, data)
         entry = {"key": key, "output": sha256_of_bytes(data)}
         if details is not None:
             entry["details"] = details

@@ -100,6 +100,7 @@ class MemoryEstimateTests(unittest.TestCase):
 class ManifestWriterTests(unittest.TestCase):
     def test_manifest_lists_each_kind(self):
         self.assertEqual(asset_writers.manifest_text(["opening"], ["st01-00"], ["st01_x_000"]), "scene opening\nbackground st01-00\nanimation st01_x_000\n")
+        self.assertEqual(asset_writers.manifest_text([], ["st01-00"], [], ["remastered", "ds"]), "art remastered\nart ds\nbackground st01-00\n")
 
 
 if __name__ == "__main__":

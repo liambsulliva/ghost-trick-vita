@@ -23,6 +23,8 @@ import hud_art
 import narration
 import pack_files
 import page_tiles
+import output_folders
+import pause_art
 import read_ahead
 import route_pacing
 import script_assets
@@ -36,11 +38,13 @@ ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
 REPOSITORY_FOLDER = os.path.dirname(SRC_VITA_FOLDER)
 ENCODER_CHANNELS = 2
+REMASTERED_ART = "remastered"
+DS_ART = "ds"
 DEFAULT_APK_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "remaster_apk")
 DEFAULT_DS_ROM_PATH = os.path.join(REPOSITORY_FOLDER, "extracted", "ds_rom", "game.nds")
 TEXTURE_TOOL_PATH = os.path.join(SRC_VITA_FOLDER, "build", "tools", "texture_tool")
 FORMAT_NAMES = {asset_writers.FORMAT_RGBA8888: "RGBA8888", asset_writers.FORMAT_DXT5: "DXT5", asset_writers.FORMAT_DXT1: "DXT1"}
-OUTPUT_FOLDER_NAMES = ("textures", "animations", "scenes", "music", "music_ds", "sounds", "scripts")
+OUTPUT_FOLDER_NAMES = output_folders.NAMES
 TEXTURE_CODE_FILES = ["asset_writers.py", "astc_decode.c", "astc_decode.h", "etc_decode.c", "etc_decode.h", "texture_encoder.py", "texture_tool.c"]
 COMPOSED_CODE_FILES = TEXTURE_CODE_FILES + ["bubble_art.py"]
 TEXT_CODE_FILES = ["asset_writers.py", "chapter_assets.py", "font_file.py", "line_renderer.py", "message_cues.py", "message_file.py", "narration.py", "talk_assets.py", "texture_encoder.py"]
@@ -253,6 +257,18 @@ def convert_hud_sheet(packs, set_description, work_folder, record):
     return [hud_art.bake_hud_sheet(fonts, work_folder, record, code, hud["label_font"], hud["key_font"]), hud_art.bake_hud_disc(work_folder, record, code)]
 
 
+def convert_pause_art(packs, set_description, record, table_texts, timelines, crops, text_key):
+    pause = set_description.get("pause")
+    if pause is None:
+        return {}, []
+    code = code_fingerprint_with_magick(TEXT_CODE_FILES + ["pause_art.py", "pause_people.py", "frame_layout.py", "hud_art.py"])
+    work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
+    try:
+        return pause_art.bake_pause_art(packs, TEXTURE_TOOL_PATH, work_folder, record, code, pause, set_description.get("animations", []), table_texts, timelines, crops, text_key)
+    finally:
+        delete_work_folder(work_folder)
+
+
 def convert_text_textures(packs, set_description, messages, work_folder, record):
     code = text_code_fingerprint() if narration.set_uses_text(set_description) else None
     return narration.bake_text_textures(packs, set_description, messages, work_folder, record, code)
@@ -362,6 +378,15 @@ def text_output_files(set_description, animation_texts, steps):
     return files
 
 
+def art_sets_of(set_description):
+    sets = []
+    if set_description.get("plates"):
+        sets.append(REMASTERED_ART)
+    if set_description.get("ds_art"):
+        sets.append(DS_ART)
+    return sets
+
+
 def manifest_bytes(set_description, animation_texts):
     scene_name = set_description.get("scene_name")
     scene_names = [] if scene_name is None else [scene_name]
@@ -369,7 +394,7 @@ def manifest_bytes(set_description, animation_texts):
     for texture in set_description.get("screen_textures", []):
         if texture.get("list_as_background"):
             background_names.append(texture["name"])
-    return asset_writers.manifest_text(scene_names, background_names, list(animation_texts.keys())).encode("ascii")
+    return asset_writers.manifest_text(scene_names, background_names, list(animation_texts.keys()), art_sets_of(set_description)).encode("ascii")
 
 
 def make_output_folders(output_folder):
@@ -501,6 +526,9 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         files.update(text_output_files(set_description, animation_texts, steps))
         table_texts, motion_lines = script_assets.table_animations(set_description, output_folder, timelines, crops)
         files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in table_texts.items()})
+        pause_files, pause_results = convert_pause_art(packs, set_description, record, table_texts, timelines, crops, text_key)
+        files.update(pause_files)
+        texture_results = sorted(texture_results + pause_results, key=lambda result: result["name"])
         texture_sizes = {result["name"]: (result["width"], result["height"]) for result in texture_results}
         files.update(talk_files)
         files.update(script_assets.table_files(set_description, output_folder, motion_lines, narration_lines, texture_sizes, plate_size_lookup(texture_results, plates), list(table_texts), talk_assets.talk_texture_names(talk_files)))

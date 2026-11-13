@@ -200,6 +200,14 @@ class UploadAssetsTests(DeviceFreeTestCase):
         relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
         self.assertIn("scripts/a-b.lmg", relative_paths)
 
+    def test_every_folder_the_converter_writes_is_uploaded(self):
+        for folder_name in vita_loop.output_folders.NAMES:
+            os.makedirs(os.path.join(self.set_folder, folder_name), exist_ok=True)
+            self.write_file(folder_name + "/probe.txt", b"probe")
+        relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
+        for folder_name in vita_loop.output_folders.NAMES:
+            self.assertIn(folder_name + "/probe.txt", relative_paths)
+
     def test_a_file_left_half_written_by_the_converter_is_not_listed(self):
         self.write_file("music/song.ogg.new", b"half")
         self.write_file("scenes/s.scene.new", b"half")

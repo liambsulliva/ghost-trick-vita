@@ -2,6 +2,7 @@
 #include <string.h>
 #include "asset_name.h"
 #include "audio_port.h"
+#include "audio_volume.h"
 #include "audio_thread.h"
 #include "clock.h"
 #include "crc32.h"
@@ -75,7 +76,8 @@ struct window_totals {
     unsigned long long period_us_max;
 };
 
-static char folder[FILE_PATH_MAX];
+static char folders[2][FILE_PATH_MAX];
+static volatile int folder_in_use;
 static int worker_is_running;
 
 static struct music_wish mailbox;
@@ -105,11 +107,25 @@ static void log_main_thread_facts(void)
     run_log_write("music main_thread priority=%d mask=0x%08x cpu=%d arm_mhz=%d", facts.priority, facts.cpu_mask, facts.cpu, facts.arm_mhz);
 }
 
+void music_engine_use_folder(const char *music_folder)
+{
+    int next;
+
+    if (strcmp(folders[folder_in_use], music_folder) == 0) {
+        return;
+    }
+    next = 1 - folder_in_use;
+    snprintf(folders[next], sizeof(folders[next]), "%s", music_folder);
+    folder_in_use = next;
+    run_log_write("music folder=%s", music_folder);
+}
+
 void music_engine_init(const char *music_folder)
 {
     int result;
 
-    snprintf(folder, sizeof(folder), "%s", music_folder);
+    folder_in_use = 0;
+    snprintf(folders[0], sizeof(folders[0]), "%s", music_folder);
     memset(&mailbox, 0, sizeof(mailbox));
     prepared_name[0] = '\0';
     track_data = NULL;
@@ -238,7 +254,7 @@ static void read_loop_points(const char *name)
     unsigned int loop_start;
     unsigned int loop_last;
 
-    if (!file_path_join(path, folder, name, ".loop") || file_read_whole(path, &data, &size) != FILE_OK) {
+    if (!file_path_join(path, folders[folder_in_use], name, ".loop") || file_read_whole(path, &data, &size) != FILE_OK) {
         return;
     }
     if (size >= sizeof(text)) {
@@ -269,7 +285,7 @@ static int read_track_file(const char *name, unsigned int *size)
     char path[FILE_PATH_MAX];
     int result;
 
-    if (!file_path_join(path, folder, name, ".ogg")) {
+    if (!file_path_join(path, folders[folder_in_use], name, ".ogg")) {
         run_log_write("music path_too_long name=%s", name);
         return 0;
     }
@@ -395,6 +411,7 @@ static int submit_grain(unsigned long long decode_us)
     previous_return_us = playback.last_submit_ended_us;
     submit_started_us = clock_now_us();
     playback.last_submit_started_us = submit_started_us;
+    audio_volume_scale(AUDIO_PORT_MUSIC, grain, MUSIC_GRAIN_FRAMES * SAMPLES_PER_FRAME);
     result = audio_port_submit(AUDIO_PORT_MUSIC, grain);
     playback.last_submit_ended_us = clock_now_us();
     if (result < 0) {

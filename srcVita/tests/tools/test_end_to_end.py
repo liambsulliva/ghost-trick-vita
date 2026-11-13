@@ -403,7 +403,7 @@ class EndToEndTests(unittest.TestCase):
 
     def test_no_story_text_or_decoded_font_is_left_in_the_output(self):
         self.convert_text_set()
-        self.assertEqual(sorted(os.listdir(self.output_folder)), [bake_record.RECORD_FILE_NAME, "animations", "manifest.txt", "music", "music_ds", "scenes", "scripts", "sounds", "textures"])
+        self.assertEqual(sorted(os.listdir(self.output_folder)), [bake_record.RECORD_FILE_NAME, "animations", "manifest.txt", "music", "music_ds", "pause", "scenes", "scripts", "sounds", "textures"])
         font_start = synthetic_files.box_font_bytes()[:64]
         for path in all_files_under(self.output_folder):
             with open(path, "rb") as source:
@@ -488,6 +488,7 @@ class EndToEndTests(unittest.TestCase):
     def test_a_small_set_converts_completely(self):
         self.convert(tiny_set_description())
         self.assertEqual(self.read_text("manifest.txt"), "\n".join([
+            "art remastered",
             "scene opening",
             "background plate",
             "background card",
@@ -917,7 +918,7 @@ class EndToEndTests(unittest.TestCase):
         self.convert(tiny_set_description())
         set_description = {"animations": [{"name": "st01_a_000", "timeline": TIMELINE_PATH}], "plates": [{"name": "plate", "source": PLATE_PATH}]}
         self.convert(set_description)
-        self.assertEqual(self.read_text("manifest.txt"), "background plate\nanimation st01_a_000\n")
+        self.assertEqual(self.read_text("manifest.txt"), "art remastered\nbackground plate\nanimation st01_a_000\n")
         self.assertEqual(os.listdir(os.path.join(self.output_folder, "scenes")), [])
 
     def test_a_set_description_can_be_named_by_its_path(self):

@@ -7,9 +7,16 @@
 #include "debug_font.h"
 #include "file.h"
 #include "file_path.h"
+#include "game_settings.h"
 #include "memory.h"
 #include "music_engine.h"
 #include "page_tiles.h"
+#include "pause_menu.h"
+#include "pause_options.h"
+#include "game_save.h"
+#include "pause_chapters.h"
+#include "pause_people.h"
+#include "pause_save.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "scene_player.h"
@@ -17,6 +24,8 @@
 #include "soul_transition.h"
 #include "scene_view.h"
 #include "script_player.h"
+#include "script_ui_view.h"
+#include "toast.h"
 #include "script_view.h"
 #include "sound_engine.h"
 #include "texture_cache.h"
@@ -26,10 +35,18 @@
 #ifndef TEXTURE_FOLDER_BUCKETS
 #define TEXTURE_FOLDER_BUCKETS 0u
 #endif
+#define NEW_ILLUSTRATIONS_TOAST "bar.new_illustrations"
 #ifdef USE_DS_MUSIC
+#define DEFAULT_MUSIC_TYPE GAME_MUSIC_ORIGINAL
 #define MUSIC_SUBFOLDER "music_ds"
 #else
+#define DEFAULT_MUSIC_TYPE GAME_MUSIC_ARRANGED
 #define MUSIC_SUBFOLDER "music"
+#endif
+#ifdef DEBUG_UNLOCK_BUILD
+#define UNLOCK_ROW_IS_BUILT 1
+#else
+#define UNLOCK_ROW_IS_BUILT 0
 #endif
 #define LIST_VISIBLE_ROWS 20
 #define PAGE_TILES_FILE_NAME "tiles"
@@ -75,6 +92,8 @@ static unsigned long long pending_background_started_us;
 static int current_animation_index;
 static int hud_is_visible;
 static int list_is_open;
+static int touch_was_down;
+static int illustrations_known_chapter;
 static int debug_controls_are_on;
 
 static void asset_subfolder_path(char *path, const char *subfolder)
@@ -233,6 +252,7 @@ static void load_manifest(void)
     unsigned char *text;
     unsigned int text_size;
     int result;
+    int art_sets;
 
     if (!file_path_join(path, assets_folder, "manifest", ".txt")) {
         run_log_write("manifest path_too_long");
@@ -257,7 +277,9 @@ static void load_manifest(void)
         manifest = NULL;
         return;
     }
-    run_log_write("manifest loaded scenes=%d backgrounds=%d animations=%d", manifest->scene_count, manifest->background_count, manifest->animation_count);
+    art_sets = manifest->art_sets != 0 ? manifest->art_sets : ASSET_ART_REMASTERED;
+    game_settings_set_bundled_art(art_sets & ASSET_ART_REMASTERED, art_sets & ASSET_ART_DS);
+    run_log_write("manifest loaded scenes=%d backgrounds=%d animations=%d art=%d", manifest->scene_count, manifest->background_count, manifest->animation_count, art_sets);
 }
 
 static void create_placeholder_texture(void)
@@ -289,6 +311,81 @@ static void play_opening(void)
     viewer_app_play_script(SCRIPT_ENTRY_NAME);
 }
 
+static int slot_has_save(int slot)
+{
+    static struct game_save save;
+
+    if (!game_save_load(&save, slot == 0 ? GAME_SAVE_AUTO : GAME_SAVE_MANUAL)) {
+        return PAUSE_SAVE_NO_DATA;
+    }
+    return save.chapter_mark;
+}
+
+static int everything_is_unlocked(void)
+{
+    return UNLOCK_ROW_IS_BUILT && game_settings_now()->unlock_all;
+}
+
+static int chapter_has_save(int chapter)
+{
+    static struct game_save save;
+
+    return everything_is_unlocked() || game_save_load_chapter(&save, chapter);
+}
+
+static int highest_reached_chapter(void)
+{
+    int chapter;
+
+    for (chapter = GAME_SAVE_CHAPTER_COUNT; chapter > 1; chapter--) {
+        if (chapter_has_save(chapter)) {
+            return chapter;
+        }
+    }
+    return 1;
+}
+
+static void toast_new_illustrations(void)
+{
+    int chapter;
+
+    chapter = script_player_takes_new_chapter();
+    if (chapter <= illustrations_known_chapter) {
+        return;
+    }
+    if (pause_people_art_unlocked_by(chapter) > pause_people_art_unlocked_by(illustrations_known_chapter)) {
+        toast_show(NEW_ILLUSTRATIONS_TOAST);
+    }
+    illustrations_known_chapter = chapter;
+}
+
+static void replay_chapter(int chapter)
+{
+    static struct game_save save;
+
+    if (!game_save_load_chapter(&save, chapter) && !(everything_is_unlocked() && game_save_for_chapter_select(&save, chapter))) {
+        run_log_write("chapter_replay missing chapter=%d", chapter);
+        return;
+    }
+    run_log_write("chapter_replay chapter=%d script=%s chapter_mark=%d", chapter, save.script, save.chapter_mark);
+    pending_background_index = NO_PENDING_BACKGROUND;
+    scene_player_stop();
+    script_player_resume(&save);
+}
+
+static void continue_or_play_opening(void)
+{
+    static struct game_save save;
+
+    if (!game_save_load_newest(&save)) {
+        play_opening();
+        return;
+    }
+    pending_background_index = NO_PENDING_BACKGROUND;
+    scene_player_stop();
+    script_player_resume(&save);
+}
+
 static void read_page_tiles(const char *script_folder)
 {
     char path[FILE_PATH_MAX];
@@ -301,6 +398,38 @@ static void read_page_tiles(const char *script_folder)
     }
     run_log_write("page tiles read count=%d dropped=%d", page_tiles_read_text((const char *)bytes, size), page_tiles_dropped_count());
     mem_free(bytes);
+}
+
+static void start_settings(void)
+{
+    char original_folder[FILE_PATH_MAX];
+    char arranged_folder[FILE_PATH_MAX];
+
+    asset_subfolder_path(original_folder, "music_ds");
+    asset_subfolder_path(arranged_folder, "music");
+    game_settings_set_music_folders(original_folder, arranged_folder);
+    game_settings_set_default_music(DEFAULT_MUSIC_TYPE);
+    game_settings_load(GAME_SETTINGS_PATH);
+    game_settings_apply();
+}
+
+static void draw_brightness(void)
+{
+    struct renderer_rect screen;
+    struct renderer_color black;
+
+    black.alpha = game_settings_darkness();
+    if (black.alpha <= 0.0f) {
+        return;
+    }
+    black.red = 0.0f;
+    black.green = 0.0f;
+    black.blue = 0.0f;
+    screen.x = 0.0f;
+    screen.y = 0.0f;
+    screen.width = (float)RENDERER_WIDTH;
+    screen.height = (float)RENDERER_HEIGHT;
+    renderer_draw_filled_rect(screen, black);
 }
 
 void viewer_app_start(const char *folder)
@@ -335,8 +464,10 @@ void viewer_app_start(const char *folder)
     scene_player_init(scene_folder);
     script_player_init(script_folder);
     read_page_tiles(script_folder);
+    (void)pause_menu_load(assets_folder);
     music_engine_init(music_folder);
     sound_engine_init(sound_folder);
+    start_settings();
     if (!debug_font_init()) {
         run_log_write("font failed");
     }
@@ -348,10 +479,14 @@ void viewer_app_start(const char *folder)
         return;
     }
     ui_list_init(&animation_list, manifest->animation_count, LIST_VISIBLE_ROWS);
+    pause_options_show_unlock(UNLOCK_ROW_IS_BUILT);
+    pause_save_use(script_player_save_manual, slot_has_save);
+    pause_chapters_use(chapter_has_save);
+    illustrations_known_chapter = highest_reached_chapter();
     if (script_player_is_available()) {
         hud_is_visible = 0;
         debug_controls_are_on = 0;
-        play_opening();
+        continue_or_play_opening();
         return;
     }
     run_log_write("opening needs_scripts entry=%s", SCRIPT_ENTRY_NAME);
@@ -507,12 +642,44 @@ static void update_general_controls(const struct input_state *input)
     }
 }
 
+static int start_button_is_tapped(const struct input_state *input)
+{
+    int lands;
+
+    lands = input->touch_is_down && !touch_was_down;
+    touch_was_down = input->touch_is_down;
+    return lands && script_player_is_active() && script_ui_view_start_button_is_at(input->touch_x, input->touch_y);
+}
+
 void viewer_app_update(const struct input_state *input, unsigned long long elapsed_us)
 {
+    int chapter;
+    int start_is_tapped;
+
+    start_is_tapped = start_button_is_tapped(input);
     texture_cache_upload_finished_reads(UPLOADS_PER_FRAME);
     texture_cache_begin_frame();
     if (input->pressed != 0) {
         run_log_write("input pressed buttons=0x%04x", input->pressed);
+    }
+    toast_new_illustrations();
+    toast_update(elapsed_us);
+    if (pause_menu_is_open()) {
+        pause_menu_update(input, elapsed_us);
+        if (pause_menu_takes_title_request() && opening_can_play()) {
+            play_opening();
+        }
+        chapter = pause_menu_takes_chapter_request();
+        if (chapter > 0) {
+            replay_chapter(chapter);
+        }
+        return;
+    }
+    if (((input->pressed & INPUT_START) || start_is_tapped) && script_player_is_active() && !debug_controls_are_on && pause_menu_is_ready()) {
+        pause_people_use_notes(everything_is_unlocked() ? pause_people_every_note() : script_player_note_levels());
+        pause_people_use_reached_chapter(highest_reached_chapter());
+        pause_menu_open();
+        return;
     }
     if ((input->pressed & INPUT_SELECT) && !script_player_is_active()) {
         set_debug_controls(!debug_controls_are_on);
@@ -661,6 +828,11 @@ static void draw_game_picture(void)
 
 void viewer_app_draw(void)
 {
+    if (!pause_menu_shows_game()) {
+        pause_menu_draw();
+        draw_brightness();
+        return;
+    }
     if (manifest == NULL) {
         draw_no_assets_screen();
     } else if (playback_status() != SCENE_PLAYER_PRELOADING) {
@@ -683,6 +855,14 @@ void viewer_app_draw(void)
     if (list_is_open) {
         draw_list();
     }
+    if (game_settings_now()->high_contrast) {
+        renderer_raise_contrast();
+    }
+    if (!pause_menu_is_open()) {
+        toast_draw();
+    }
+    pause_menu_draw();
+    draw_brightness();
 }
 
 void viewer_app_stop(void)

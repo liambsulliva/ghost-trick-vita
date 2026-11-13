@@ -20,6 +20,8 @@
 #include "script_machine.h"
 #include "scene_view.h"
 #include "read_ahead.h"
+#include "game_save.h"
+#include "game_settings.h"
 #include "script_player.h"
 #include "script_ui_view.h"
 #include "script_view.h"
@@ -79,6 +81,14 @@ static struct script_route_pad route_pad;
 static char folder[FILE_PATH_MAX];
 static char entry[ASSET_NAME_MAX];
 static struct script_data *data;
+static struct game_save checkpoint;
+static int has_checkpoint;
+static struct game_save pending_resume;
+static int has_pending_resume;
+static int autosaved_chapter_mark = -1;
+static int newly_reached_chapter;
+
+static void take_checkpoint(const char *name);
 static enum script_player_phase phase;
 static int is_available;
 static int is_active;
@@ -237,6 +247,17 @@ static char loaded_bundle_names[LOADED_BUNDLE_MAX][ASSET_NAME_MAX];
 static int loaded_bundle_evictions[LOADED_BUNDLE_MAX];
 static int loaded_bundle_count;
 static int next_loaded_bundle_slot;
+
+static enum script_text_speed talk_speed_of(int text_speed)
+{
+    if (text_speed == GAME_TEXT_SLOW) {
+        return SCRIPT_TEXT_SLOW;
+    }
+    if (text_speed == GAME_TEXT_FAST) {
+        return SCRIPT_TEXT_FAST;
+    }
+    return SCRIPT_TEXT_NORMAL;
+}
 
 static void forget_loaded_bundles(void)
 {
@@ -417,6 +438,12 @@ static void begin_loading_animations(void)
     if (data->tables.entry_name[0] != '\0') {
         snprintf(entry, sizeof(entry), "%s", data->tables.entry_name);
     }
+    if (has_pending_resume) {
+        snprintf(entry, sizeof(entry), "%s", pending_resume.script);
+        game_save_apply_before_start(&pending_resume, &data->machine);
+        autosaved_chapter_mark = pending_resume.chapter_mark;
+        run_log_write("save resumed script=%s chapter_mark=%d", pending_resume.script, pending_resume.chapter_mark);
+    }
     apply_auto_play();
     data->machine.route = data->tables.route.step_count > 0 ? &data->tables.route : NULL;
     memcpy(data->machine.room_bounds, data->tables.room_bounds, sizeof(data->machine.room_bounds));
@@ -492,6 +519,11 @@ static void start_running(void)
         phase = PHASE_FINISHED;
         return;
     }
+    if (has_pending_resume) {
+        game_save_apply_after_start(&pending_resume, &data->machine);
+        has_pending_resume = 0;
+        take_checkpoint(entry);
+    }
     for (command = 0; command < SCRIPT_STAFF_PAGE_MAX; command++) {
         script_staff_roll_set_screens(&data->machine.staff_roll, command, data->tables.staff_page_screens[command]);
     }
@@ -559,6 +591,7 @@ static int run_one_tick(void)
         script_route_pad_frame(&route_pad, &data->machine, &frame);
         script_input_frame(&route_input, &data->machine, &frame);
     }
+    data->machine.text_speed = talk_speed_of(game_settings_now()->text_speed);
     script_machine_tick(&data->machine);
     tick_us = clock_now_us() - started_us;
     if (tick_us > longest_tick_us) {
@@ -744,7 +777,7 @@ void script_player_play(const char *entry_name)
     animation_library_clear();
     forget_loaded_bundles();
     scene_stage_hide_card();
-    scene_stage_set_fade(0.0f);
+    scene_stage_set_fade(1.0f);
     scene_effects_reset(scene_stage_effects());
     music_request_stop(MUSIC_QUICK_FADE_TICKS);
     sound_request_stop();
@@ -763,6 +796,7 @@ void script_player_play(const char *entry_name)
     script_tables_clear(&data->tables);
     read_ahead_clear();
     script_machine_init(&data->machine, script_bridge_outputs(), SCRIPT_TIMING_DS, NULL);
+    script_machine_start_from_black(&data->machine);
     phase = PHASE_READING;
 }
 
@@ -873,6 +907,11 @@ int script_player_is_active(void)
     return is_active;
 }
 
+const unsigned char *script_player_note_levels(void)
+{
+    return data == NULL ? NULL : &data->machine.note_levels[0][0];
+}
+
 int script_player_is_showing_next_chapter_card(void)
 {
     return phase == PHASE_NEXT_CHAPTER_CARD;
@@ -962,6 +1001,49 @@ static int route_step_number_is(const char *step_name, const char *wanted)
     return strtoul(step_name, NULL, 10) == strtoul(wanted, NULL, 10) && step_name[0] >= '0' && step_name[0] <= '9';
 }
 
+static void take_checkpoint(const char *name)
+{
+    if (data == NULL || has_pending_resume) {
+        return;
+    }
+    game_save_capture(&checkpoint, &data->machine, name);
+    has_checkpoint = 1;
+    if (autosaved_chapter_mark >= 0 && checkpoint.chapter_mark > autosaved_chapter_mark) {
+        (void)game_save_store_as_newest(&checkpoint, GAME_SAVE_AUTO);
+        (void)game_save_store_chapter(&checkpoint, checkpoint.chapter_mark);
+        newly_reached_chapter = checkpoint.chapter_mark;
+    }
+    if (checkpoint.chapter_mark > autosaved_chapter_mark) {
+        autosaved_chapter_mark = checkpoint.chapter_mark;
+    }
+}
+
+int script_player_takes_new_chapter(void)
+{
+    int chapter;
+
+    chapter = newly_reached_chapter;
+    newly_reached_chapter = 0;
+    return chapter;
+}
+
+int script_player_save_manual(void)
+{
+    if (!has_checkpoint) {
+        run_log_write("save refused reason=no_checkpoint");
+        return 0;
+    }
+    return game_save_store_as_newest(&checkpoint, GAME_SAVE_MANUAL);
+}
+
+void script_player_resume(const struct game_save *save)
+{
+    pending_resume = *save;
+    has_pending_resume = 1;
+    has_checkpoint = 0;
+    script_player_play(save->script);
+}
+
 void script_player_note_mark(const char *what, const char *name)
 {
     if (data != NULL) {
@@ -969,6 +1051,7 @@ void script_player_note_mark(const char *what, const char *name)
     }
     if (strcmp(what, "script_begun") == 0) {
         load_script_animations(name);
+        take_checkpoint(name);
     }
     if (strcmp(run_until_kind, "step") == 0 && strcmp(what, "route_step_done") == 0 && route_step_number_is(name, run_until_name)) {
         snprintf(run_until_kind, sizeof(run_until_kind), "reached");

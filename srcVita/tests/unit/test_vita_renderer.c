@@ -16,6 +16,9 @@
 #define renderer_draw_snapshot real_renderer_draw_snapshot
 #define renderer_draw_turned_snapshot real_renderer_draw_turned_snapshot
 #define renderer_draw_triangles real_renderer_draw_triangles
+#define renderer_set_vblanks_per_frame real_renderer_set_vblanks_per_frame
+#define renderer_raise_contrast real_renderer_raise_contrast
+#define renderer_raise_contrast_in real_renderer_raise_contrast_in
 #include "../../src/vita/renderer.c"
 #include "fakes/fake_platform.h"
 #include "test_support.h"
@@ -45,6 +48,8 @@ struct texture_request {
 struct draw_record {
     GLuint texture;
     GLuint framebuffer;
+    GLenum equation;
+    GLsizei viewport_width;
     GLsizei vertex_count;
     struct batch_vertex vertices[VERTICES_PER_QUAD];
 };
@@ -79,6 +84,11 @@ static GLenum attached_to;
 static GLenum attach_target;
 static GLuint attached_on_framebuffer;
 static int textures_with_no_pixels_fail;
+static int vblank_waits;
+static int blend_equation_count;
+static GLenum blend_equation = GL_FUNC_ADD;
+static GLsizei viewport_width = RENDERER_WIDTH;
+static GLsizei viewport_height = RENDERER_HEIGHT;
 static int device_stats_reads;
 static SceGxmRenderTargetParams seen_target_params;
 static const unsigned char some_pixels[4] = { 1, 2, 3, 4 };
@@ -131,8 +141,20 @@ void glViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
     (void)x;
     (void)y;
-    (void)width;
-    (void)height;
+    viewport_width = width;
+    viewport_height = height;
+}
+
+void glBlendEquation(GLenum mode)
+{
+    blend_equation = mode;
+    blend_equation_count = blend_equation_count + 1;
+}
+
+int sceDisplayWaitVblankStart(void)
+{
+    vblank_waits = vblank_waits + 1;
+    return 0;
 }
 
 void glMatrixMode(GLenum mode)
@@ -220,6 +242,8 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count)
     (void)first;
     draws[draw_count].texture = bound_texture;
     draws[draw_count].framebuffer = bound_framebuffer;
+    draws[draw_count].equation = blend_equation;
+    draws[draw_count].viewport_width = viewport_width;
     draws[draw_count].vertex_count = count;
     memcpy(draws[draw_count].vertices, batch_vertices, sizeof(draws[draw_count].vertices));
     draw_count = draw_count + 1;
@@ -367,6 +391,12 @@ static void forget_everything(void)
     memset(pixels_of_texture, 0, sizeof(pixels_of_texture));
     snapshot_framebuffer = 0;
     snapshot_texture = RENDERER_NO_TEXTURE;
+    vblanks_per_frame = 1;
+    vblank_waits = 0;
+    blend_equation_count = 0;
+    blend_equation = GL_FUNC_ADD;
+    viewport_width = RENDERER_WIDTH;
+    viewport_height = RENDERER_HEIGHT;
     batch_quad_count = 0;
     batch_texture = RENDERER_NO_TEXTURE;
     fake_files_reset();
@@ -546,8 +576,36 @@ static void test_shutting_down_with_no_target_deletes_only_the_white_texture(voi
     CHECK_INT(deleted_texture_count, 1);
 }
 
+static void test_a_30_fps_cap_waits_out_one_more_vblank_each_frame(void)
+{
+    start_renderer();
+    real_renderer_end_frame();
+    CHECK_INT(vblank_waits, 0);
+    real_renderer_set_vblanks_per_frame(2);
+    real_renderer_end_frame();
+    real_renderer_end_frame();
+    CHECK_INT(vblank_waits, 2);
+    real_renderer_set_vblanks_per_frame(1);
+    real_renderer_end_frame();
+    CHECK_INT(vblank_waits, 2);
+}
+
+static void test_high_contrast_lowers_the_floor_then_scales_and_puts_blending_back(void)
+{
+    start_renderer();
+    real_renderer_begin_frame(white_at(1.0f));
+    real_renderer_raise_contrast();
+    CHECK_INT(draw_count, 2);
+    CHECK_INT(draws[0].equation, GL_FUNC_REVERSE_SUBTRACT);
+    CHECK_INT(draws[1].equation, GL_FUNC_ADD);
+    CHECK(draws[0].vertices[4].x == (float)RENDERER_WIDTH && draws[0].vertices[4].y == (float)RENDERER_HEIGHT);
+    CHECK_INT(blend_equation, GL_FUNC_ADD);
+}
+
 int main(void)
 {
+    test_a_30_fps_cap_waits_out_one_more_vblank_each_frame();
+    test_high_contrast_lowers_the_floor_then_scales_and_puts_blending_back();
     test_the_target_is_one_rgb565_texture_the_size_of_the_screen();
     test_the_target_costs_under_three_mib_of_video_memory();
     test_starting_clears_the_target_so_its_first_use_holds_no_old_memory();
