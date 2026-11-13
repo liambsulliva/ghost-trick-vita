@@ -1036,6 +1036,33 @@ Lessons from routing Chapter 15's first three scenes (`st02_game030_Expand`, `st
 - A swap moves the two objects, not Missile: after the tire and lid swap Missile is still in `b1_03tire`, which now plays the lid's motions, and the door's swap target is `b1_floor_ex`. Read the `EXCHANGE` handlers for the object names.
 - The lid falls flat inside `b1_03tire_act020` with no act change; the last ghost-on waits `ticks:200` after the ghost-off, the footage's four seconds. A wait word for an object's shape is still missing.
 
+### 143. The default buttons did not come back at a script change
+
+A scene that ends with `All:Off` left the next script with no Ghost or Trick button. 108 of the 117 game scripts never send `All:On`, and the scene after `st02_game035_Expand` (which ends with `All:Off`) sends none, so the wrap-up talk of Chapter 15 could not be entered. Chapter 1's scripts each send `All:Off` again when they want the buttons gone. The lifetime is read from the scripts; native's reset of the board at `game+0xfb8` on a script change is not identified.
+
+Guard: `tear_down_script` registers the default buttons again and then drops the character ones (root cause 139). `tests/unit/test_demo_soul_view_styles.c` checks that Trick and Ghost return after an unregister and that the character buttons do not.
+
+### 144. A scene that makes and deletes objects over and over ran out of object slots
+
+`create_object` only appended, so the 128 slots (`SCRIPT_OBJECT_MAX`) filled with deleted objects. `st02_game036_Expand` creates its 17 flashback objects before each topic (`func_create_demo_obj`) and deletes them after (op 0x17 `@demo`); by the third flashback `demohum2`, `demohum3` and `demosys` were never created, op 0x83 fell back to the handler's owner and its op 0xa9 waited on a motion that never played. Native's object pool is not read; the port only needs deleted slots to be usable again.
+
+Guard: at the cap `create_object` takes the first deleted slot that is not the running handler's owner, and notes `too_many_objects` only when there is none. `tests/unit/test_object_slots.c` fills the table, deletes and creates again.
+
+### 145. A talk that starts again left the flashback's film frame on
+
+A topic's flashback turns the film frame on with op 0x6f and several end handlers never run op 0x70 (`st04_demo_700` `end` in `st02_game036_Expand`): they send `GameApp DeadTalk|Restart`. Native's dead-talk start (`func_0203bd18`, which sets mode 0x15 and calls `func_0203b648`) closes the frame itself with `func_02010d18`. The port left it on, and the frame holds every button and the route pad, so after the talk's `cancel` the view could not be played.
+
+Guard: `start_dead_talk` in `script_soul.c` closes the frame and reports it. `tests/unit/test_dead_talk.c` restarts a talk with the frame on.
+
+Lessons from routing the rest of Chapter 15 (`st02_game035_Expand` and `st02_game036_Expand`, route steps 1390 to 1444):
+
+- The `game_over` object sends `sys_sub` `start` `game_over` on every swivel of the desk lamp (`stand`) and every rock of the helmet (`f1_03met`). It is harmless or progress only inside `sys_sub_act020` with flags 0x12 and 0x13 set and 0x14 clear; anywhere else it jumps to `sys_sub_act100` and the scene is lost. Both tricks wait on `act:sys_sub:sys_sub_act020 & flag:0x13 & noflag:0x14`.
+- The lamp must finish its swivel (flag 0x23) before the hop from its light core (slot 1) to the helmet, which is out of reach from the base.
+- Trick Time begins at `sys_sub_act052`, not `act050`.
+- The scene closes the view itself after the first swap, so no ghost-off follows it. The bullet's swap target is `f1_03book`, which carries the knit hat's look after the first swap.
+- The footage changes character in the living world; the port offers the switch only in the view, so the route's `character` steps follow a ghost-on.
+- The wrap-up talk: `move kaba_core` and `dead_talk kaba_core` from the telephone, topics `msg_000`, `msg_010`, `msg_020`, `msg_040`, then `cancel`; hops to `stand` and `kanri_core`, topics `msg_100`, `msg_110`, `msg_120`, then `cancel`, which ends the chapter through `func_check_select` and `sys_act020`.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

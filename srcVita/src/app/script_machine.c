@@ -558,12 +558,26 @@ static void delete_objects_named(struct script_machine *machine, struct script_v
     }
 }
 
+static int deleted_object_slot(const struct script_machine *machine, const struct script_vm *vm)
+{
+    int index;
+
+    for (index = 0; index < machine->object_count; index++) {
+        if (machine->objects[index].is_deleted && &machine->objects[index] != vm->owner) {
+            return index;
+        }
+    }
+    return SCRIPT_NO_OBJECT;
+}
+
 static void create_object(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
     struct script_object *object;
     const char *name;
+    int slot;
 
-    if (machine->object_count >= SCRIPT_OBJECT_MAX) {
+    slot = machine->object_count < SCRIPT_OBJECT_MAX ? machine->object_count : deleted_object_slot(machine, vm);
+    if (slot == SCRIPT_NO_OBJECT) {
         script_machine_note(machine, vm, "too_many_objects", "");
         return;
     }
@@ -571,13 +585,15 @@ static void create_object(struct script_machine *machine, struct script_vm *vm, 
     if (name == NULL) {
         return;
     }
-    object = &machine->objects[machine->object_count];
+    object = &machine->objects[slot];
     memset(object, 0, sizeof(*object));
     object->name = name;
     object->idle_handler = SCRIPT_NO_SELECTION;
     begin_vm(&object->main_vm, SCRIPT_VM_MAIN, vm->source, object, vm->pc + 5);
     begin_vm(&object->scanner, SCRIPT_VM_SCANNER, vm->source, object, vm->pc + 5);
-    machine->object_count = machine->object_count + 1;
+    if (slot == machine->object_count) {
+        machine->object_count = machine->object_count + 1;
+    }
 }
 
 static void register_handler(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
@@ -1752,7 +1768,9 @@ static void tear_down_script(struct script_machine *machine)
     countdown_interval = machine->countdown_interval;
     script_flags_write_known(&machine->flags, COUNTDOWN_KEPT_ACROSS_A_SCRIPT_CHANGE_FLAG, 0);
     script_soul_reset(machine);
-    machine->soul.pills_registered = pills_registered & ~CHARACTER_BUTTONS;
+    machine->soul.pills_registered = pills_registered;
+    script_pills_register_all(machine);
+    machine->soul.pills_registered = machine->soul.pills_registered & ~CHARACTER_BUTTONS;
     machine->soul.rollback_is_on = rollback_is_on;
     machine->soul.trick_is_on = trick_is_on;
     if (countdown_is_kept) {

@@ -1361,6 +1361,12 @@ static void start_dead_talk(struct script_machine *machine, int object_index)
     }
     machine->soul.dead_talk_is_on = 1;
     machine->soul.dead_talk_object = object_index;
+    if (machine->film_frame_is_on) {
+        machine->film_frame_is_on = 0;
+        if (machine->outputs->film_frame_changed != NULL) {
+            machine->outputs->film_frame_changed(0);
+        }
+    }
     if (object_index != NO_CORE && !core_is_for_the_dead(machine, object_index)) {
         script_machine_send(machine, "*", "SYSTEM", "CORETALK");
         return;

@@ -24,8 +24,32 @@ static void test_the_route_reads_a_dead_talk_step(void)
     CHECK_TEXT(script_route_action_name(SCRIPT_ROUTE_DEAD_TALK), "dead_talk");
 }
 
+static int film_frame_reports;
+static int film_frame_reported;
+
+static void film_frame_changed(int is_on)
+{
+    film_frame_reports++;
+    film_frame_reported = is_on;
+}
+
+static const struct script_outputs film_outputs = { .film_frame_changed = film_frame_changed };
+
+static void test_a_talk_that_starts_again_closes_the_film_frame_a_flashback_left(void)
+{
+    script_machine_init(&machine, &film_outputs, SCRIPT_TIMING_REMASTER, NULL);
+    machine.film_frame_is_on = 1;
+    film_frame_reports = 0;
+    script_soul_run_command(&machine, "DeadTalk", "Restart");
+    CHECK_INT(machine.film_frame_is_on, 0);
+    CHECK_INT(film_frame_reports, 1);
+    CHECK_INT(film_frame_reported, 0);
+    CHECK_INT(machine.soul.dead_talk_is_on, 1);
+}
+
 int main(void)
 {
+    test_a_talk_that_starts_again_closes_the_film_frame_a_flashback_left();
     test_the_route_reads_a_dead_talk_step();
     return test_finish("unit/dead_talk");
 }
