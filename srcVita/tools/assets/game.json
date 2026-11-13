@@ -11486,27 +11486,709 @@
         "place": 21
       },
       {
-        "script": "st09-st09_game021_Expand",
+        "script": "st13-st13_game010_Expand",
         "action": "ghost_on",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 21086.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "biraA",
+        "pace": "quick",
+        "footage_s": 21088.0,
+        "wait": "view & usable:biraA"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "chickenbox",
+        "pace": "quick",
+        "footage_s": 21090.0,
+        "wait": "view & usable:chickenbox"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "ghost_on",
+        "object": "chickenbox",
+        "pace": "instant",
+        "footage_s": 21129.0,
+        "wait": "free & no_talk & reach:cap"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "cap",
+        "pace": "quick",
+        "footage_s": 21130.0,
+        "wait": "view & reach:cap"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "branco",
+        "pace": "quick",
+        "footage_s": 21131.0,
+        "wait": "view & usable:branco"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "ghost_off",
+        "object": "branco",
+        "pace": "quick",
+        "footage_s": 21132.0,
+        "wait": "view & core:branco"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "trick",
+        "object": "branco",
+        "pace": "quick",
+        "footage_s": 21133.5,
+        "wait": "core:branco & playable"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "ghost_on",
+        "object": "branco",
+        "pace": "instant",
+        "footage_s": 21141.0,
+        "wait": "free & no_talk & reach:gj_basketball"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "gj_basketball",
+        "pace": "quick",
+        "footage_s": 21143.0,
+        "wait": "view & reach:gj_basketball"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "globe1",
+        "pace": "quick",
+        "footage_s": 21145.0,
+        "wait": "view & usable:globe1"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "ghost_off",
+        "object": "globe1",
+        "pace": "quick",
+        "footage_s": 21146.0,
+        "wait": "view & core:globe1"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "trick",
+        "object": "globe1",
+        "pace": "quick",
+        "footage_s": 21149.0,
+        "wait": "core:globe1 & playable"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "ghost_on",
+        "object": "globe1",
+        "pace": "normal",
+        "footage_s": 21150.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "gj_basketball",
+        "pace": "quick",
+        "footage_s": 21152.0,
+        "wait": "view & usable:gj_basketball"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "ghost_off",
+        "object": "gj_basketball",
+        "pace": "quick",
+        "footage_s": 21153.0,
+        "wait": "view & core:gj_basketball"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "ghost_on",
+        "object": "gj_basketball",
+        "pace": "instant",
+        "footage_s": 21156.0,
+        "wait": "free & no_talk & reach:baseball"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "baseball",
+        "pace": "quick",
+        "footage_s": 21157.0,
+        "wait": "view & usable:baseball"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "seesaw",
+        "pace": "quick",
+        "footage_s": 21159.0,
+        "wait": "view & usable:seesaw"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "ghost_off",
+        "object": "seesaw",
+        "pace": "quick",
+        "footage_s": 21161.0,
+        "wait": "view & core:seesaw"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "trick",
+        "object": "seesaw",
+        "pace": "quick",
+        "footage_s": 21162.0,
+        "wait": "core:seesaw & playable"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "ghost_on",
+        "object": "seesaw",
+        "pace": "normal",
+        "footage_s": 21164.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "baseball",
+        "pace": "quick",
+        "footage_s": 21165.0,
+        "wait": "view & usable:baseball"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "seesaw",
+        "slot": 1,
+        "pace": "quick",
+        "footage_s": 21166.0,
+        "wait": "view & usable:seesaw:1"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "tire",
+        "pace": "quick",
+        "footage_s": 21167.0,
+        "wait": "view & usable:tire"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "deadtalk",
+        "pace": "quick",
+        "footage_s": 21168.0,
+        "wait": "view & usable:deadtalk"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "dead_talk",
         "object": "deadtalk",
         "pace": "normal",
-        "footage_s": 21176.0,
+        "footage_s": 21169.0,
+        "wait": "view & core:deadtalk"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "leaf",
+        "pace": "normal",
+        "footage_s": 21213.0,
+        "wait": "view & no_talk & usable:leaf"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "drumSV",
+        "pace": "quick",
+        "footage_s": 21215.0,
+        "wait": "view & usable:drumSV"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "move",
+        "object": "bira",
+        "pace": "quick",
+        "footage_s": 21216.5,
+        "wait": "view & usable:bira"
+      },
+      {
+        "script": "st13-st13_game010_Expand",
+        "action": "touch",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 21277.0,
+        "wait": "timeleap_armed"
+      },
+      {
+        "script": "st13-st13_game012_Expand",
+        "action": "ghost_on",
+        "object": "souldead",
+        "pace": "normal",
+        "footage_s": 21439.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st13-st13_game012_Expand",
+        "action": "ghost_on",
+        "object": "souldead",
+        "pace": "normal",
+        "footage_s": 21475.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st13-st13_game012_Expand",
+        "action": "move",
+        "object": "shovel",
+        "pace": "quick",
+        "footage_s": 21477.0,
+        "wait": "view & usable:shovel"
+      },
+      {
+        "script": "st13-st13_game012_Expand",
+        "action": "move",
+        "object": "souldead2",
+        "pace": "quick",
+        "footage_s": 21478.0,
+        "wait": "view & usable:souldead2"
+      },
+      {
+        "script": "st13-st13_game012_Expand",
+        "action": "dead_talk",
+        "object": "souldead2",
+        "pace": "normal",
+        "footage_s": 21478.5,
+        "wait": "view & core:souldead2"
+      },
+      {
+        "script": "st13-st13_game012_Expand",
+        "action": "move",
+        "object": "mino",
+        "pace": "normal",
+        "footage_s": 21670.0,
+        "wait": "view & no_talk & usable:mino"
+      },
+      {
+        "script": "st13-st13_game012_Expand",
+        "action": "swap",
+        "object": "leaf",
+        "pace": "normal",
+        "footage_s": 21746.0,
+        "wait": "view & no_talk & core:mino"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_on",
+        "object": "souldead",
+        "pace": "normal",
+        "footage_s": 21899.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "drumSV",
+        "pace": "quick",
+        "footage_s": 21901.0,
+        "wait": "view & usable:drumSV"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "dust",
+        "pace": "quick",
+        "footage_s": 21901.5,
+        "wait": "view & usable:dust"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_off",
+        "object": "dust",
+        "pace": "quick",
+        "footage_s": 21902.0,
+        "wait": "view & core:dust"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "trick",
+        "object": "dust",
+        "pace": "quick",
+        "footage_s": 21903.5,
+        "wait": "core:dust & playable"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_on",
+        "object": "dust",
+        "pace": "normal",
+        "footage_s": 21905.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "seesaw",
+        "slot": 1,
+        "pace": "quick",
+        "footage_s": 21906.0,
+        "wait": "view & usable:seesaw:1"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_off",
+        "object": "seesaw",
+        "pace": "quick",
+        "footage_s": 21906.5,
+        "wait": "view & core:seesaw"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "trick",
+        "object": "seesaw",
+        "pace": "quick",
+        "footage_s": 21907.0,
+        "wait": "core:seesaw & playable"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_on",
+        "object": "seesaw",
+        "pace": "instant",
+        "footage_s": 21910.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "baseball",
+        "pace": "quick",
+        "footage_s": 21911.0,
+        "wait": "view & usable:baseball"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "seesaw",
+        "pace": "normal",
+        "footage_s": 21933.0,
+        "wait": "view & no_talk & usable:seesaw"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_off",
+        "object": "seesaw",
+        "pace": "quick",
+        "footage_s": 21934.0,
+        "wait": "view & core:seesaw"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_on",
+        "object": "seesaw",
+        "pace": "instant",
+        "footage_s": 21950.0,
+        "wait": "free & no_talk & reach:gj_basketball"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "gj_basketball",
+        "pace": "quick",
+        "footage_s": 21951.0,
+        "wait": "view & usable:gj_basketball"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "globe1",
+        "pace": "quick",
+        "footage_s": 21952.0,
+        "wait": "view & usable:globe1"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_off",
+        "object": "globe1",
+        "pace": "quick",
+        "footage_s": 21953.0,
+        "wait": "view & core:globe1"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "trick",
+        "object": "globe1",
+        "pace": "quick",
+        "footage_s": 21955.0,
+        "wait": "core:globe1 & playable"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_on",
+        "object": "globe1",
+        "pace": "instant",
+        "footage_s": 21961.0,
+        "wait": "free & no_talk & reach:balloonSV"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "balloonSV",
+        "pace": "quick",
+        "footage_s": 21964.0,
+        "wait": "view & usable:balloonSV"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_off",
+        "object": "balloonSV",
+        "pace": "quick",
+        "footage_s": 21965.0,
+        "wait": "view & core:balloonSV"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "trick",
+        "object": "balloonSV",
+        "pace": "quick",
+        "footage_s": 21968.0,
+        "wait": "core:balloonSV & playable"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_on",
+        "object": "balloonSV",
+        "pace": "normal",
+        "footage_s": 21970.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "kasa",
+        "pace": "quick",
+        "footage_s": 21971.5,
+        "wait": "view & usable:kasa"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_off",
+        "object": "kasa",
+        "pace": "quick",
+        "footage_s": 21972.0,
+        "wait": "view & core:kasa"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "trick",
+        "object": "kasa",
+        "pace": "quick",
+        "footage_s": 21973.5,
+        "wait": "core:kasa & playable"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "trick",
+        "object": "kasa",
+        "pace": "normal",
+        "footage_s": 21977.0,
+        "wait": "core:kasa & playable"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_on",
+        "object": "kasa",
+        "pace": "normal",
+        "footage_s": 21981.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "character",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 21982.0,
+        "wait": "view"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "shovel",
+        "pace": "quick",
+        "footage_s": 21985.0,
+        "wait": "view & usable:shovel"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "drumSV",
+        "pace": "quick",
+        "footage_s": 21986.0,
+        "wait": "view & usable:drumSV"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "tire",
+        "pace": "quick",
+        "footage_s": 21987.0,
+        "wait": "view & usable:tire"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "seesaw",
+        "pace": "quick",
+        "footage_s": 21988.0,
+        "wait": "view & usable:seesaw"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "baseball",
+        "pace": "quick",
+        "footage_s": 21989.0,
+        "wait": "view & usable:baseball"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "swap",
+        "object": "gj_basketball",
+        "pace": "normal",
+        "footage_s": 21992.0,
+        "wait": "view & core:baseball"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_off",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 21996.0,
+        "wait": "view"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "ghost_on",
+        "object": "basketball",
+        "pace": "normal",
+        "footage_s": 22010.0,
+        "wait": "free & no_talk & near:basketball:kasa:12"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "swap",
+        "object": "tire",
+        "pace": "normal",
+        "footage_s": 22015.0,
+        "wait": "view & core:basketball"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "dust",
+        "pace": "quick",
+        "footage_s": 22090.0,
+        "wait": "flag:0x17 & view & no_talk & usable:dust"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "move",
+        "object": "rugbyball",
+        "pace": "quick",
+        "footage_s": 22091.0,
+        "wait": "view & usable:rugbyball"
+      },
+      {
+        "script": "st13-st13_game013_Expand",
+        "action": "swap",
+        "object": "mino",
+        "pace": "normal",
+        "footage_s": 22093.0,
+        "wait": "view & core:rugbyball"
+      },
+      {
+        "script": "st13-st13_game014_Expand",
+        "action": "ghost_on",
+        "object": "dust",
+        "pace": "normal",
+        "footage_s": 22350.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st13-st13_game014_Expand",
+        "action": "move",
+        "object": "dtbira",
+        "pace": "quick",
+        "footage_s": 22353.0,
+        "wait": "view & usable:dtbira"
+      },
+      {
+        "script": "st13-st13_game014_Expand",
+        "action": "dead_talk",
+        "object": "dtbira",
+        "pace": "normal",
+        "footage_s": 22356.0,
+        "wait": "view & core:dtbira"
+      },
+      {
+        "script": "st13-st13_game014_Expand",
+        "action": "choose",
+        "object": "panel_1",
+        "pace": "normal",
+        "footage_s": 22375.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st13-st13_game014_Expand",
+        "action": "choose",
+        "object": "panel_2",
+        "pace": "normal",
+        "footage_s": 22457.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st13-st13_game014_Expand",
+        "action": "choose",
+        "object": "panel_3",
+        "pace": "normal",
+        "footage_s": 22569.0,
+        "wait": "choice"
+      },
+      {
+        "script": "st09-st09_game021_Expand",
+        "action": "ghost_on",
+        "object": "denwa",
+        "pace": "normal",
+        "footage_s": 22870.0,
         "wait": "free & no_talk"
       },
       {
         "script": "st09-st09_game021_Expand",
         "action": "move",
         "object": "deadtalk",
-        "pace": "normal",
-        "footage_s": 21177.0,
+        "pace": "quick",
+        "footage_s": 22875.0,
         "wait": "view & usable:deadtalk"
       },
       {
         "script": "st09-st09_game021_Expand",
         "action": "dead_talk",
-        "object": "-",
+        "object": "deadtalk",
         "pace": "normal",
-        "footage_s": 21180.0,
+        "footage_s": 22880.0,
         "wait": "view & core:deadtalk"
       },
       {
@@ -11514,7 +12196,7 @@
         "action": "choose",
         "object": "panel_1",
         "pace": "normal",
-        "footage_s": 21220.0,
+        "footage_s": 22897.0,
         "wait": "choice"
       },
       {
@@ -11522,7 +12204,7 @@
         "action": "choose",
         "object": "panel_2",
         "pace": "normal",
-        "footage_s": 21290.0,
+        "footage_s": 22947.0,
         "wait": "choice"
       },
       {
@@ -11530,15 +12212,7 @@
         "action": "choose",
         "object": "panel_3",
         "pace": "normal",
-        "footage_s": 21350.0,
-        "wait": "choice"
-      },
-      {
-        "script": "st09-st09_game021_Expand",
-        "action": "choose",
-        "object": "panel_1",
-        "pace": "normal",
-        "footage_s": 21400.0,
+        "footage_s": 23000.0,
         "wait": "choice"
       },
       {
@@ -11546,66 +12220,8 @@
         "action": "choose",
         "object": "panel_3_2",
         "pace": "normal",
-        "footage_s": 21460.0,
+        "footage_s": 23071.0,
         "wait": "choice"
-      },
-      {
-        "script": "st09-st09_game021_Expand",
-        "action": "ghost_off",
-        "object": "deadtalk",
-        "pace": "quick",
-        "footage_s": 21468.0,
-        "wait": "view & core:deadtalk & no_talk"
-      },
-      {
-        "script": "st09-st09_game000_Expand",
-        "action": "ghost_on",
-        "object": "fan",
-        "pace": "normal",
-        "footage_s": 21476.0,
-        "wait": "free & no_talk"
-      },
-      {
-        "script": "st09-st09_game000_Expand",
-        "action": "move",
-        "object": "fan",
-        "pace": "normal",
-        "footage_s": 21477.0,
-        "wait": "view & usable:fan"
-      },
-      {
-        "script": "st09-st09_game000_Expand",
-        "action": "ghost_off",
-        "object": "fan",
-        "pace": "quick",
-        "footage_s": 21480.0,
-        "wait": "view & core:fan"
-      },
-      {
-        "script": "st09-st09_game000_Expand",
-        "action": "trick",
-        "object": "fan",
-        "pace": "quick",
-        "footage_s": 21481.0,
-        "wait": "core:fan & playable"
-      },
-      {
-        "script": "st09-st09_game000_Expand",
-        "action": "phone_call",
-        "object": "denwa",
-        "pace": "normal",
-        "footage_s": 21500.0,
-        "wait": "act:denwa:denwa_act000 & playable",
-        "place": 21
-      },
-      {
-        "script": "st13-st13_demo000_Expand",
-        "action": "phone_call",
-        "object": "denwa",
-        "pace": "normal",
-        "footage_s": 21700.0,
-        "wait": "act:denwa:denwa_act01",
-        "place": 21
       },
       {
         "script": "st14-st14_game020_Expand",

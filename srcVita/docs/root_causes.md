@@ -975,6 +975,31 @@ Not ported and hit here: ops 0xb5 and 0xb6 (st05_game001) and 0x9f (st09_game020
 
 The whole-game replay without the stall breaker: 1251 steps done, 0 failed, stopping at the park's `st13_game010_Expand`.
 
+### 136. All:On dropped the Missile and Sissel switch buttons
+
+Native `GameApp` `Button` `All:On` calls `func_02010f20(game, 5)`, which sets each button's bit (`func_0204fbfc` mode 5 ors it into board+0x38) but skips slot 5 (Jawed) and slots 6 and 7 (Missile, Cicel): it adds buttons and leaves the character ones as they were. `All:Off` (`func_02010f20(game, 2)`) clears every slot, those three included. The port's `All:On` assigned its own set, so it also cleared Jowd's, Missile's and Sissel's buttons. In the park (`st13_game013_Expand`) `GAME START` registers `Missile:On` and `Cicel:On` and the `timeup` handler then sends `All:On`, so the switch (`func_02035078`, which needs slots 6 and 7 through `func_02010f84`) was never offered and Missile could not be chosen.
+
+Guard: `script_pills_register_all` ors the `All:On` set into the registered buttons. `tests/unit/test_character_buttons.c` keeps the switch across `All:On` and loses it across `All:Off`, `All:On`.
+
+### 137. A button hidden while pressed kept every other button out
+
+A pressed button holds the others back until its hold runs out, and the hold only counts down while the button is shown. `All:Off` hides every button at once (`script_pills_unregister_all`) but left the hold, so a button hidden during its press (the park's `tire_in` handler sends `All:Off` right after Missile's Swap) kept `some_pill_is_leaving` true for the rest of the scene and no button slid in again: the next Swap was linked but could never be pressed.
+
+Guard: `script_pills_unregister_all` clears the hold with the state. `tests/unit/test_trick_pill_hold.c` presses a button, sends `All:Off` and `All:On`, and the button comes back.
+
+Lessons from routing Chapter 14 (`st13_game010_Expand`, `st13_game012_Expand`, `st13_game013_Expand`, `st13_game014_Expand` and `st09_game021_Expand`, route steps 1252 to 1343):
+
+- The switch pill is offered in the ghost view only (`func_02035078` runs in the view), so a `character` step follows a `ghost_on`.
+- A swap is `swap <target core>` from the core Missile holds: the planner links same-shape cores and presses Swap. The first swap (baseball for `gj_basketball`) puts the basketball on the seesaw; the park protector's escape from the globe climber launches whatever lies there, so the next `ghost_on` waits on `near:basketball:kasa:12`, or the tire is launched instead.
+- The world must run for the fate to arrive: after the tire swap the route waits out of the view until flag 0x17, when the scene opens Missile's view itself (`CustomSoulVision` `Start` in `move4` and `move5`), then hops `dust`, `rugbyball` and swaps with `mino`.
+- Scattered leaflets (`biraA` to `biraD`) are cores only while they fly; a `ghost_on` gated on `reach:<final core>` at pace instant waits until the whole hop chain exists.
+- The scene closes the view by itself after some hops (`chickenbox`); a `ghost_off` there fails and is left out.
+- The talk with the park protector starts from `dtbira` (`panel_1`, `panel_2`, `panel_3`, which loads `st09_root`), and the minister's from `deadtalk` (`panel_1`, `panel_2`, `panel_3`, `panel_3_2`), which ends the chapter through `st09_game022` and `chapter.xml`. The placeholder blocks for `st09_game000` and `st13_demo000` named scripts the story never loads here and are gone.
+
+Not ported and hit here: op 0x9f (st09_game021).
+
+The whole-game replay without the stall breaker: 1343 steps done, 0 failed, stopping at Chapter 15's `st02_game030_Expand`.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

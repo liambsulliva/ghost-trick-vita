@@ -15,7 +15,7 @@
 #define FIRST_PILL_EFFECT 99
 #define PILL_EFFECT_COUNT 4
 #define BIT(id) (1u << (unsigned int)(id))
-#define NON_NATIVE_ALL (BIT(SCRIPT_PILL_GHOST) | BIT(SCRIPT_PILL_BACK) | BIT(SCRIPT_PILL_NOTEBOOK) | BIT(SCRIPT_PILL_TRICK) | BIT(SCRIPT_PILL_EXCHANGE) | BIT(SCRIPT_PILL_UNLOCK))
+#define ALL_ON_BUTTONS (BIT(SCRIPT_PILL_GHOST) | BIT(SCRIPT_PILL_BACK) | BIT(SCRIPT_PILL_NOTEBOOK) | BIT(SCRIPT_PILL_TRICK) | BIT(SCRIPT_PILL_EXCHANGE) | BIT(SCRIPT_PILL_UNLOCK))
 
 enum pill_group {
     GROUP_NONE,
@@ -54,7 +54,7 @@ void script_pills_register(struct script_machine *machine, enum script_pill_id i
 
 void script_pills_register_all(struct script_machine *machine)
 {
-    machine->soul.pills_registered = NON_NATIVE_ALL;
+    machine->soul.pills_registered = machine->soul.pills_registered | ALL_ON_BUTTONS;
 }
 
 void script_pills_hide_at_once(struct script_machine *machine)
@@ -77,6 +77,7 @@ void script_pills_unregister_all(struct script_machine *machine)
         if (index != SCRIPT_PILL_HOURGLASS) {
             machine->soul.pills[index].state = PILL_HIDDEN;
             machine->soul.pills[index].step = 0;
+            machine->soul.pills[index].hold_ticks = 0;
         }
     }
 }

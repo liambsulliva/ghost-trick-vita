@@ -100,6 +100,21 @@ static void test_the_switch_needs_both_character_buttons(void)
     CHECK(!script_pills_is_up(&machine, SCRIPT_PILL_MISSILE));
 }
 
+static void test_all_on_keeps_the_character_buttons_and_all_off_drops_them(void)
+{
+    start_in_normal_play_with_two_cores();
+    script_soul_run_command(&machine, "Button", "Missile:On");
+    script_soul_run_command(&machine, "Button", "Cicel:On");
+    script_soul_run_command(&machine, "Button", "All:On");
+    machine.soul.is_on = 1;
+    step_until_up(SCRIPT_PILL_MISSILE);
+    CHECK(script_pills_is_up(&machine, SCRIPT_PILL_MISSILE));
+    script_soul_run_command(&machine, "Button", "All:Off");
+    script_soul_run_command(&machine, "Button", "All:On");
+    step_until_up(SCRIPT_PILL_MISSILE);
+    CHECK(!script_pills_is_up(&machine, SCRIPT_PILL_MISSILE));
+}
+
 static void test_exceptions_choose_the_active_ghost(void)
 {
     start_in_normal_play_with_two_cores();
@@ -120,6 +135,7 @@ int main(void)
     test_the_jowd_button_is_gone_once_turned_off();
     test_the_switch_swaps_ghosts_in_the_ghost_view_and_each_keeps_its_core();
     test_the_switch_needs_both_character_buttons();
+    test_all_on_keeps_the_character_buttons_and_all_off_drops_them();
     test_exceptions_choose_the_active_ghost();
     return test_finish("unit/character_buttons");
 }
