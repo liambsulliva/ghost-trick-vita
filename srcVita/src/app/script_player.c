@@ -72,6 +72,8 @@ struct script_data {
     const struct script_cue_list *cues_of_next_file;
     unsigned char *file_bytes[SCRIPT_CHAIN_FILE_MAX];
     int file_bytes_count;
+    unsigned char *ahead_bytes[SCRIPT_CHAIN_FILE_MAX];
+    int ahead_bytes_count;
     struct script_talk_book *talk_book;
 };
 
@@ -235,9 +237,10 @@ static void read_script_motions(const char *name)
         note_failure("motions_invalid", name);
     }
     mem_free(bytes);
-    if (read_named_file(name, ".ahead", &bytes, &size) == FILE_OK) {
+    if (data->ahead_bytes_count < SCRIPT_CHAIN_FILE_MAX && read_named_file(name, ".ahead", &bytes, &size) == FILE_OK) {
+        data->ahead_bytes[data->ahead_bytes_count] = bytes;
+        data->ahead_bytes_count = data->ahead_bytes_count + 1;
         read_ahead_add_text(name, (const char *)bytes, size);
-        mem_free(bytes);
     }
 }
 
@@ -737,8 +740,12 @@ static void free_data(void)
     if (data == NULL) {
         return;
     }
+    read_ahead_clear();
     for (index = 0; index < data->file_bytes_count; index++) {
         mem_free(data->file_bytes[index]);
+    }
+    for (index = 0; index < data->ahead_bytes_count; index++) {
+        mem_free(data->ahead_bytes[index]);
     }
     mem_free(data->talk_book);
     mem_free(data);
