@@ -41,7 +41,7 @@ export VITASDK=/usr/local/vitasdk PATH="/usr/local/vitasdk/bin:$PATH"
 make -C srcVita -j8
 ```
 
-This is the player's build, at normal speed with none of the development tools. It plays the DS soundtrack, rendered from your own ROM during the bake, until Options switches to the remaster's arranged one; the bake always writes both. Work on the device uses the [fast forward build](#fast-forward-build) instead. The two share every fix: they differ only in the dev tools the fast forward build adds, and `make test` compiles the app both ways. The build relinks every time, so a changed build always reaches the package.
+This is the player's build, at normal speed with none of the development tools. It plays the DS soundtrack, rendered from your own ROM during the bake, until Options switches to the remaster's arranged one; the bake always writes both. Work on the device uses the [debug build](#debug-build) instead. The two share every fix: they differ only in the dev tools the debug build adds, and `make test` compiles the app both ways. The build relinks every time, so a changed build always reaches the package.
 
 This writes the installable package to `srcVita/build/ghosttrick.vpk`. It holds only the app. The art goes on the Vita separately, as [the top-level README](../README.md#run-it-on-a-vita) explains, and the Vita also needs its shader compiler at `ur0:data/libshacccg.suprx`.
 
@@ -195,15 +195,15 @@ The main thread never touches the decoder. It posts a request to the mailbox and
 - Nothing logs while holding the lock, so a slow log write cannot hold up the other threads.
 - music_starve is the one exception: it does not change the generation, and the worker clears it when it reads it.
 
-## Fast forward build
+## Debug build
 
 The device loop installs this build. It can play through the game by itself, at normal speed or far faster than a person, and holds every development tool:
 
 ```bash
-make -C srcVita FAST_FORWARD=1
+make -C srcVita DEBUG=1
 ```
 
-It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`, so it never mixes with the player's build. It adds an Unlock Everything switch at the end of Options: while it is on, every chapter in the Chapters grid opens and every People and Places note shows at its highest level. A chapter with no save starts through `chapter.xml` with the chapter mark one below it, the way the DS chapter select does, but with empty flags, so chapters that share a stage (4 to 6 in st02) start at that stage's first part. The player's build ignores the saved switch. SQUARE saves a screen capture, and the [debug controls](#debug-controls) are on. It reads these lines from the commands file, which `vita_loop.py app-command` writes:
+It adds `-debug` to the build id and keeps its objects in `build/obj_debug`, so it never mixes with the player's build. It adds an Unlock Everything switch at the end of Options: while it is on, every chapter in the Chapters grid opens and every People and Places note shows at its highest level. A chapter with no save starts through `chapter.xml` with the chapter mark one below it, the way the DS chapter select does, but with empty flags, so chapters that share a stage (4 to 6 in st02) start at that stage's first part. The player's build ignores the saved switch. SQUARE saves a screen capture, and the [debug controls](#debug-controls) are on. It reads these lines from the commands file, which `vita_loop.py app-command` writes:
 
 | Line | What it does |
 |---|---|
@@ -253,7 +253,7 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 
 While a script chain loads, a loading screen shows the pause backdrop with "Now Loading" and a red bar in the pause menu's floor (`src/app/loading_screen.c`): reading the tables and scripts fills the first fifth, animations the next three tenths and textures the last half. Behind it, every renderer primitive is drawn once, clear, so vitaGL compiles its shaders before play. With the debug controls on, the debug HUD shows instead.
 
-In the fast forward build, SELECT outside a chapter turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the opening. SELECT turns them off again, which resumes a paused scene and restarts the opening if you browsed away from it.
+In the debug build, SELECT outside a chapter turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the opening. SELECT turns them off again, which resumes a paused scene and restarts the opening if you browsed away from it.
 
 They stay off during normal play, so that no button can stall the scene. The log records every button press, pause and skipped hold, as `input pressed buttons=...`, `scene paused` and `scene hold_skipped`.
 
@@ -265,7 +265,7 @@ Nothing halts the game. An op, table word, effect id or GameApp pair the VM does
 
 `script_soul.c` is the player's side: soul view, core selection, tricks and the game events that only native code sends. Pressing the trick button sends `core|ready` at once and `core|action` 8 ticks later, as the DS does. A dead person's core sends `timeleap|start` instead.
 
-In the fast forward build's commands file, `play_script route` restarts the opening. X replays it when it finishes.
+In the debug build's commands file, `play_script route` restarts the opening. X replays it when it finishes.
 
 `make -C srcVita golden` compares the VM's fetches with the saved DS trace, on a machine that has one in `extracted/trace/vm_golden/`. It exits 2 with a message otherwise.
 

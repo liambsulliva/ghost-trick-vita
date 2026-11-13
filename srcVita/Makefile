@@ -4,8 +4,8 @@ TITLE_ID := GHTR00001
 APP_VER  := 01.00
 BUILD_ID := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(shell git diff --quiet HEAD -- . 2>/dev/null || echo -dirty)-$(shell date +%Y%m%d%H%M%S)
 
-ifeq ($(FAST_FORWARD),1)
-BUILD_ID := $(BUILD_ID)-ff
+ifeq ($(DEBUG),1)
+BUILD_ID := $(BUILD_ID)-debug
 endif
 
 PREFIX  := arm-vita-eabi
@@ -24,9 +24,9 @@ LIBS    := -lvitaGL -lstdc++ -lSceLibKernel_stub -lSceAppMgr_stub -lSceAppUtil_s
 STB_VORBIS_SOURCE := src/third_party/stb_vorbis.c
 STB_VORBIS_DEFINES := -DSTB_VORBIS_NO_STDIO -DSTB_VORBIS_NO_PUSHDATA_API
 OBJECT_FOLDER := build/obj
-ifeq ($(FAST_FORWARD),1)
-CFLAGS += -DFAST_FORWARD_BUILD
-OBJECT_FOLDER := build/obj_fast_forward
+ifeq ($(DEBUG),1)
+CFLAGS += -DDEBUG_BUILD
+OBJECT_FOLDER := build/obj_debug
 endif
 
 SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
@@ -45,7 +45,7 @@ PLAN_SCRIPTS := ../extracted/vita_assets/$(PLAN_SET)/scripts
 STEPS_THE_STORY_PASSES_OVER := 1
 HOST_CC     := clang
 HOST_STANDARD_CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -g -O1 -Iinclude -Itests
-HOST_CFLAGS := $(HOST_STANDARD_CFLAGS) -DFAST_FORWARD_BUILD -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
+HOST_CFLAGS := $(HOST_STANDARD_CFLAGS) -DDEBUG_BUILD -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
 APP_SRCS    := $(wildcard src/app/*.c)
 FAKE_SRCS   := $(wildcard tests/fakes/*.c)
 TEST_SRCS   := $(wildcard tests/unit/*.c) $(wildcard tests/integration/*.c)

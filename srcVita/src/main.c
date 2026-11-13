@@ -64,7 +64,7 @@ static void log_memory_and_textures(void)
     run_log_write("textures bytes=%u loads=%u evictions=%u missing=%u retries=%u read_ahead_dropped=%u longest_wait_us=%llu longest_upload_us=%llu", totals.bytes_in_use, totals.loads, totals.evictions, totals.missing, totals.retries, totals.read_ahead_dropped, totals.longest_wait_us, totals.longest_upload_us);
 }
 
-#ifdef FAST_FORWARD_BUILD
+#ifdef DEBUG_BUILD
 static void save_capture(const char *name)
 {
     char path[FILE_PATH_MAX];
@@ -241,7 +241,7 @@ static void run_main_loop(void)
         }
         frame_started_us = clock_now_us();
         input_poll(&input);
-#ifdef FAST_FORWARD_BUILD
+#ifdef DEBUG_BUILD
         input.pressed = input.pressed | injected_buttons;
         input.held = input.held | injected_buttons;
         injected_buttons = 0;
@@ -267,7 +267,7 @@ static void run_main_loop(void)
             run_log_write("input start pressed");
             break;
         }
-#ifdef FAST_FORWARD_BUILD
+#ifdef DEBUG_BUILD
         if ((input.pressed & INPUT_SQUARE) && !script_player_is_active()) {
             save_manual_capture();
         }
@@ -282,7 +282,7 @@ static void run_main_loop(void)
         } else {
             renderer_begin_frame(clear_color);
             viewer_app_draw();
-#ifdef FAST_FORWARD_BUILD
+#ifdef DEBUG_BUILD
             if (fps_overlay_is_on) {
                 fps_overlay_draw();
             }
@@ -295,7 +295,7 @@ static void run_main_loop(void)
 
         last_frame_us = frame_timer_tick(&frame_timer);
         screen_watch_note_frame();
-#ifdef FAST_FORWARD_BUILD
+#ifdef DEBUG_BUILD
         fps_overlay_note_frame(last_frame_us);
         if (burst_pause_began_us != 0 && clock_now_us() - burst_pause_began_us > BURST_PAUSE_MOST_US) {
             burst_pause_began_us = 0;
@@ -318,7 +318,7 @@ static void run_main_loop(void)
         if (frame_stats_window_is_full(&stats)) {
             publish_frame_stats(&stats);
         }
-#ifdef FAST_FORWARD_BUILD
+#ifdef DEBUG_BUILD
         if (frame_number % COMMAND_POLL_FRAMES == 0) {
             quit_requested = run_pending_commands();
         }
@@ -340,7 +340,7 @@ int main(void)
 
     full_resolution = renderer_init();
     run_log_write("renderer ready full_resolution=%d", full_resolution);
-#ifdef FAST_FORWARD_BUILD
+#ifdef DEBUG_BUILD
     screen_burst_reserve_memory();
 #endif
     viewer_app_start(ASSETS_FOLDER);
