@@ -1,3 +1,4 @@
+#include <math.h>
 #include "soul_chain.h"
 #include "test_support.h"
 
@@ -143,8 +144,72 @@ static void test_the_tip_meets_the_head_when_a_core_is_picked(void)
     CHECK_INT(soul_chain_tip_is_at_head(&chain), 1);
 }
 
+static float distance_from_line(float x, float y, float to_x, float to_y)
+{
+    float length;
+
+    length = sqrtf(to_x * to_x + to_y * to_y);
+    return fabsf(x * to_y - y * to_x) / length;
+}
+
+static void test_the_cloud_covers_the_whole_line_with_blobs_of_many_sizes(void)
+{
+    struct soul_chain_blob blobs[SOUL_CHAIN_CLOUD_BLOBS];
+    struct soul_chain_blob later[SOUL_CHAIN_CLOUD_BLOBS];
+    float line_x[SOUL_CHAIN_POINTS];
+    float line_y[SOUL_CHAIN_POINTS];
+    float smallest;
+    float largest;
+    float furthest_along;
+    int strays;
+    int moved;
+    int count;
+    int index;
+
+    for (index = 0; index < SOUL_CHAIN_POINTS; index++) {
+        line_x[index] = 30.0f * (float)index;
+        line_y[index] = 40.0f * (float)index;
+    }
+    count = soul_chain_cloud(line_x, line_y, 1.0f, 7u, blobs);
+    CHECK(count >= 30 && count <= SOUL_CHAIN_CLOUD_BLOBS);
+    smallest = 1000.0f;
+    largest = 0.0f;
+    furthest_along = 0.0f;
+    strays = 0;
+    for (index = 0; index < count; index++) {
+        float along;
+
+        along = (blobs[index].x * 30.0f + blobs[index].y * 40.0f) / 50.0f;
+        if (blobs[index].radius < 7.0f) {
+            strays = strays + 1;
+            CHECK(blobs[index].y < blobs[index].x * 40.0f / 30.0f);
+            continue;
+        }
+        CHECK(distance_from_line(blobs[index].x, blobs[index].y, 30.0f, 40.0f) <= blobs[index].radius + 3.0f);
+        smallest = blobs[index].radius < smallest ? blobs[index].radius : smallest;
+        largest = blobs[index].radius > largest ? blobs[index].radius : largest;
+        furthest_along = along > furthest_along ? along : furthest_along;
+    }
+    CHECK(largest >= smallest * 1.5f);
+    CHECK(largest <= 20.0f);
+    CHECK(furthest_along >= 350.0f - 12.0f);
+    CHECK(strays >= 2);
+    CHECK(soul_chain_cloud(line_x, line_y, 1.0f, 8u, later) == count);
+    moved = 0;
+    for (index = 0; index < count; index++) {
+        moved = moved + (later[index].radius != blobs[index].radius);
+    }
+    CHECK(moved > count / 2);
+    for (index = 0; index < SOUL_CHAIN_POINTS; index++) {
+        line_x[index] = 0.5f * (float)index;
+        line_y[index] = 0.0f;
+    }
+    CHECK(soul_chain_cloud(line_x, line_y, 1.0f, 7u, blobs) == 0);
+}
+
 int main(void)
 {
+    test_the_cloud_covers_the_whole_line_with_blobs_of_many_sizes();
     test_a_held_d_pad_moves_the_tip_at_a_steady_rate_up_to_the_reach();
     test_a_touch_pulls_the_tip_most_of_the_way_each_tick();
     test_turning_bows_the_line_before_it_straightens();

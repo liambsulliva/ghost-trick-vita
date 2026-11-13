@@ -154,6 +154,7 @@
 #define SOUL_BEAM_TEXTURE "soul_beam"
 #define SOUL_BEAM_HALF_WIDTH 16.0f
 #define CHAIN_SEGMENT_SHORTEST 0.5f
+#define CHAIN_CLOUD_TICKS_PER_LOOK 2u
 #define CHAIN_TEXTURE_S_SPAN 64.0f
 #define SOUL_SPARKS_MOVIE "deadtricklight"
 #define STAFF_SCREEN_TEXTURE "staff_%02d_%02d"
@@ -1046,6 +1047,18 @@ static const char *soul_beam_texture(void)
     }
 }
 
+static void draw_chain_cloud(const float *screen_x, const float *screen_y)
+{
+    struct soul_chain_blob blobs[SOUL_CHAIN_CLOUD_BLOBS];
+    int blob_count;
+    int index;
+
+    blob_count = soul_chain_cloud(screen_x, screen_y, 1.0f, age_ticks / CHAIN_CLOUD_TICKS_PER_LOOK, blobs);
+    for (index = 0; index < blob_count; index++) {
+        draw_blob(blobs[index].x, blobs[index].y, blobs[index].radius);
+    }
+}
+
 static void draw_chain_beam(void)
 {
     static const float texture_s_of_joint[SOUL_CHAIN_POINTS] = { 8.0f, 15.0f, 22.0f, 29.0f, 35.0f, 42.0f, 49.0f, 56.0f };
@@ -1063,6 +1076,7 @@ static void draw_chain_beam(void)
     for (index = 0; index < SOUL_CHAIN_POINTS; index++) {
         scene_view_world_to_screen(scene_stage_view(), chain_x[index], chain_y[index], &screen_x[index], &screen_y[index]);
     }
+    draw_chain_cloud(screen_x, screen_y);
     triangle_count = 0;
     for (index = 0; index < SOUL_CHAIN_POINTS - 1; index++) {
         struct renderer_vertex *quad;
@@ -1371,7 +1385,15 @@ static void draw_possession_sparks(void)
 static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y)
 {
     const struct cached_texture *texture;
+    float line_x[SOUL_CHAIN_POINTS];
+    float line_y[SOUL_CHAIN_POINTS];
+    int index;
 
+    for (index = 0; index < SOUL_CHAIN_POINTS; index++) {
+        line_x[index] = from_x + (to_x - from_x) * (float)index / (float)SOUL_CHAIN_TIP;
+        line_y[index] = from_y + (to_y - from_y) * (float)index / (float)SOUL_CHAIN_TIP;
+    }
+    draw_chain_cloud(line_x, line_y);
     texture = texture_cache_use_or_start_loading(soul_beam_texture());
     if (texture != NULL && texture->state == CACHED_TEXTURE_READY) {
         renderer_draw_beam(texture->texture, from_x, from_y, to_x, to_y, SOUL_BEAM_HALF_WIDTH, white);

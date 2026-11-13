@@ -1000,6 +1000,12 @@ Not ported and hit here: op 0x9f (st09_game021).
 
 The whole-game replay without the stall breaker: 1343 steps done, 0 failed, stopping at Chapter 15's `st02_game030_Expand`.
 
+### 138. The ghost's reach was a bare line
+
+The port drew the reach (the chain `func_0205fa2c` moves, and the straight beam the route's hops use) as the tentacle strip alone, so it read as a thin line. The footage draws the strip on top of a cloud of the soul's own blobs, for Sissel and for Missile alike. Native's tentacle drawing is not read; the cloud is measured from the footage at 60 frames per second (23851 for Sissel, 24603 for Missile): blobs of 10 to 26 pixels radius at 720p cover the line from root to tip in a band about 30 pixels to each side, every blob is re-rolled every second frame, and a few dots of 3 to 9 pixels rise above the line. The cloud keeps the soul's blue in every ghost's view; only the strip is hue-turned.
+
+Guard: `soul_chain_cloud` lays the blobs out from the chain's points and both beam paths in `script_view.c` draw them under the strip with the soul body's blob texture, so every ghost and every reach shares it. `tests/unit/test_soul_chain.c` checks that the blobs cover the line to its tip, vary in size, change with the step, send dots above the line, and that a collapsed chain has none. Not ported: the body flowing along the line during a jump, which the footage shows as one thick mass leaving droplets behind.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

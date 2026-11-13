@@ -3,6 +3,7 @@
 
 #define SOUL_CHAIN_POINTS 8
 #define SOUL_CHAIN_TIP (SOUL_CHAIN_POINTS - 1)
+#define SOUL_CHAIN_CLOUD_BLOBS 64
 
 enum soul_chain_state {
     SOUL_CHAIN_RESTING,
@@ -23,6 +24,12 @@ struct soul_chain {
     int is_first_aiming_tick;
 };
 
+struct soul_chain_blob {
+    float x;
+    float y;
+    float radius;
+};
+
 void soul_chain_rest_at(struct soul_chain *chain, float x, float y);
 void soul_chain_hold_root(struct soul_chain *chain, float x, float y);
 void soul_chain_aim(struct soul_chain *chain, float head_x, float head_y, float reach);
@@ -31,5 +38,6 @@ void soul_chain_jump(struct soul_chain *chain, float core_x, float core_y);
 void soul_chain_retract(struct soul_chain *chain);
 void soul_chain_step(struct soul_chain *chain);
 int soul_chain_tip_is_at_head(const struct soul_chain *chain);
+int soul_chain_cloud(const float *x, const float *y, float scale, unsigned int step, struct soul_chain_blob *blobs);
 
 #endif

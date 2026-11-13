@@ -194,3 +194,81 @@ int soul_chain_tip_is_at_head(const struct soul_chain *chain)
 {
     return distance_between(chain->x[SOUL_CHAIN_TIP], chain->y[SOUL_CHAIN_TIP], chain->head_x, chain->head_y) < TIP_MEETS_HEAD_DS_PIXELS;
 }
+
+#define CLOUD_SPACING 10.0f
+#define CLOUD_SIDE_SPREAD 10.0f
+#define CLOUD_RADIUS_LEAST 8.0f
+#define CLOUD_RADIUS_SPREAD 11.0f
+#define CLOUD_STRAY_EVERY 4
+#define CLOUD_STRAY_RISE_LEAST 14.0f
+#define CLOUD_STRAY_RISE_SPREAD 28.0f
+#define CLOUD_STRAY_RADIUS_LEAST 2.0f
+#define CLOUD_STRAY_RADIUS_SPREAD 4.5f
+
+static float cloud_fraction(unsigned int seed, unsigned int salt)
+{
+    unsigned int value;
+
+    value = (seed * 31u + salt) * 2654435761u;
+    value = value ^ (value >> 13);
+    return (float)((value >> 8) & 1023u) / 1023.0f;
+}
+
+int soul_chain_cloud(const float *x, const float *y, float scale, unsigned int step, struct soul_chain_blob *blobs)
+{
+    float whole;
+    float walked;
+    float next_at;
+    int count;
+    int placed;
+    int index;
+
+    whole = 0.0f;
+    for (index = 0; index < SOUL_CHAIN_TIP; index++) {
+        whole = whole + distance_between(x[index], y[index], x[index + 1], y[index + 1]);
+    }
+    if (whole < CLOUD_SPACING * scale) {
+        return 0;
+    }
+    count = 0;
+    placed = 0;
+    walked = 0.0f;
+    next_at = CLOUD_SPACING * scale / 2.0f;
+    for (index = 0; index < SOUL_CHAIN_TIP; index++) {
+        float length;
+        float along_x;
+        float along_y;
+
+        length = distance_between(x[index], y[index], x[index + 1], y[index + 1]);
+        if (length <= 0.0f) {
+            continue;
+        }
+        along_x = (x[index + 1] - x[index]) / length;
+        along_y = (y[index + 1] - y[index]) / length;
+        while (next_at <= walked + length && count < SOUL_CHAIN_CLOUD_BLOBS) {
+            unsigned int seed;
+            float side;
+            float at_x;
+            float at_y;
+
+            seed = (unsigned int)placed * 97u + step * 13u;
+            side = (cloud_fraction(seed, 1u) * 2.0f - 1.0f) * CLOUD_SIDE_SPREAD * scale;
+            at_x = x[index] + along_x * (next_at - walked);
+            at_y = y[index] + along_y * (next_at - walked);
+            blobs[count].x = at_x - along_y * side;
+            blobs[count].y = at_y + along_x * side;
+            blobs[count].radius = (CLOUD_RADIUS_LEAST + cloud_fraction(seed, 2u) * CLOUD_RADIUS_SPREAD) * scale;
+            count = count + 1;
+            if (placed % CLOUD_STRAY_EVERY == CLOUD_STRAY_EVERY - 1 && count < SOUL_CHAIN_CLOUD_BLOBS) {
+                blobs[count].x = at_x + (cloud_fraction(seed, 3u) * 2.0f - 1.0f) * CLOUD_SIDE_SPREAD * scale;
+                blobs[count].y = at_y - (CLOUD_STRAY_RISE_LEAST + cloud_fraction(seed, 4u) * CLOUD_STRAY_RISE_SPREAD) * scale;
+                blobs[count].radius = (CLOUD_STRAY_RADIUS_LEAST + cloud_fraction(seed, 5u) * CLOUD_STRAY_RADIUS_SPREAD) * scale;
+                count = count + 1;
+            }
+            placed = placed + 1;
+            next_at = next_at + CLOUD_SPACING * scale;
+        }
+        walked = walked + length;
+    }
+    return count;
+}
