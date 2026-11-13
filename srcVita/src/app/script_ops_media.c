@@ -5,21 +5,38 @@
 #define MODE_BYTE_NARRATION 0x12
 #define SOUND_KIND_NONE 0
 #define SOUND_KIND_REFUSED 33
-#define PARAGRAPH_ARG_COUNT 8
+#define PARAGRAPH_ARG_COUNT 4
 #define TAP_BALLOON_ICON_KIND 5
 #define SOUL_BALLOON_SLOT 1
 #define ANY_TAP_GROUP -1
 #define LABEL_THAT_CLOSES 0u
 
-static const char *const paragraph_args[PARAGRAPH_ARG_COUNT] = { "paragraph0", "paragraph1", "paragraph2", "paragraph3", "paragraph4", "paragraph5", "paragraph6", "paragraph7" };
+static const char *const paragraph_args[PARAGRAPH_ARG_COUNT] = { "paragraph0", "paragraph1", "paragraph2", "paragraph3" };
+
+static int group_within_its_page(const struct script_narration *narration, int group)
+{
+    int page;
+
+    for (page = 0; page < narration->page; page++) {
+        group = group - narration->cues->pages[narration->message->first_page + page].group_count;
+    }
+    return group;
+}
 
 void script_narration_report_to_outputs(void *listener, const char *label, enum script_narration_event event, int group)
 {
     struct script_machine *machine;
+    int group_on_page;
 
     machine = listener;
-    if (event == SCRIPT_NARRATION_GROUP_IN && group >= 0 && group < PARAGRAPH_ARG_COUNT) {
-        script_machine_send(machine, "*", "monologue", paragraph_args[group]);
+    if (event == SCRIPT_NARRATION_GROUP_IN) {
+        group_on_page = group_within_its_page(&machine->narration, group);
+        if (group_on_page >= 0 && group_on_page < PARAGRAPH_ARG_COUNT) {
+            script_machine_send(machine, "*", "monologue", paragraph_args[group_on_page]);
+        }
+    }
+    if (event == SCRIPT_NARRATION_TEXT_OUT) {
+        script_machine_send(machine, "*", "monologue", machine->narration.page >= machine->narration.message->page_count - 1 ? "before end" : "pagefeed");
     }
     if (event == SCRIPT_NARRATION_DIM_OUT) {
         script_machine_send(machine, "*", "message", "end");

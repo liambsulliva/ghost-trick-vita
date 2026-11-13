@@ -1022,7 +1022,7 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
     case 0xa4:
     case 0xa7:
         object = script_machine_current_object(machine, vm);
-        if (object != NULL) {
+        if (object != NULL && object->actor.exists) {
             if (op == 0xa7) {
                 script_soul_set_ghost_core(machine, SCRIPT_GHOST_BOSS, (int)(object - machine->objects), (int)words[0]);
                 script_soul_set_first_core(machine, (int)(object - machine->objects), (int)words[0]);

@@ -22,6 +22,8 @@ static void set_up_two_objects(void)
     machine.objects[1].name = "phone";
     machine.objects[0].main_vm.source = &source;
     machine.objects[1].main_vm.source = &source;
+    machine.objects[0].actor.exists = 1;
+    machine.objects[1].actor.exists = 1;
     script_soul_set_first_core(&machine, 0, 0);
 }
 
@@ -70,6 +72,24 @@ static void test_placing_another_ghost_leaves_the_ghost_in_play_where_it_is(void
     CHECK_INT(machine.soul.ghost_core_slots[SCRIPT_GHOST_MISSILE], 1);
 }
 
+static void test_a_placing_op_run_by_an_object_without_a_unit_leaves_the_ghost(void)
+{
+    static const unsigned int ops[] = { 0x9c, 0xa4, 0xa7 };
+    static const int ghosts[] = { SCRIPT_GHOST_CICEL, SCRIPT_GHOST_MISSILE, SCRIPT_GHOST_BOSS };
+    static const unsigned int first_core[4] = { 0, 0, 0, 0 };
+    struct script_vm vm;
+    unsigned int index;
+
+    for (index = 0; index < sizeof(ops) / sizeof(ops[0]); index++) {
+        set_up_two_objects();
+        machine.objects[1].actor.exists = 0;
+        machine.soul.active_ghost = ghosts[index];
+        vm = vm_owned_by(1);
+        script_ops_actor_run(&machine, &vm, ops[index], first_core);
+        CHECK_INT(machine.soul.active_object, 0);
+    }
+}
+
 #define TICKS_FOR_THE_SOUL_TO_TRAVEL 200
 
 static void test_the_travel_op_takes_the_soul_to_the_core_in_the_ghost_view(void)
@@ -95,6 +115,7 @@ static void test_the_travel_op_takes_the_soul_to_the_core_in_the_ghost_view(void
 
 int main(void)
 {
+    test_a_placing_op_run_by_an_object_without_a_unit_leaves_the_ghost();
     test_the_travel_op_takes_the_soul_to_the_core_in_the_ghost_view();
     test_each_placing_op_sets_the_core_of_its_own_ghost();
     test_placing_another_ghost_leaves_the_ghost_in_play_where_it_is();

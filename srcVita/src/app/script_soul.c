@@ -2183,6 +2183,9 @@ static int route_token_holds(const struct script_machine *machine, const struct 
         return actors_are_near_along_x(machine, first, second);
     case SCRIPT_ROUTE_WAIT_CORES:
         return first_cores_are_within(machine, first, second);
+    case SCRIPT_ROUTE_WAIT_FRAME:
+        object_index = script_machine_index_of_object(machine, first);
+        return object_index != SCRIPT_NO_OBJECT && second != NULL && machine->objects[object_index].actor.exists && machine->objects[object_index].actor.frame_number == atoi(second);
     case SCRIPT_ROUTE_WAIT_REACH:
         object_index = script_machine_index_of_object(machine, first);
         return object_index != SCRIPT_NO_OBJECT && soul_can_reach_core(machine, object_index, second != NULL ? atoi(second) : 0);

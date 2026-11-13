@@ -390,6 +390,18 @@ static void test_a_cores_wait_holds_while_two_first_cores_are_within_a_distance(
     CHECK_INT(machine.soul.route_step, 1);
 }
 
+static void test_a_frame_wait_holds_while_an_actor_shows_one_frame(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_WAIT, "-", "frame:body:11");
+    route.steps[0].dwell_ticks = TICKS_FOR_A_MOVE;
+    machine.objects[0].actor.frame_number = 10;
+    run_ticks(TICKS_FOR_A_DEAD_TALK_TO_START);
+    CHECK_INT(machine.soul.route_step, 0);
+    machine.objects[0].actor.frame_number = 11;
+    run_ticks(TICKS_FOR_A_MOVE + TICKS_FOR_A_DEAD_TALK_TO_START);
+    CHECK_INT(machine.soul.route_step, 1);
+}
+
 static void test_a_camera_step_scrolls_until_its_object_is_in_view(void)
 {
     int camera_before;
@@ -421,6 +433,7 @@ int main(void)
     test_a_began_wait_holds_only_just_after_the_act_starts();
     test_a_near_wait_holds_while_two_actors_are_close_along_x();
     test_a_cores_wait_holds_while_two_first_cores_are_within_a_distance();
+    test_a_frame_wait_holds_while_an_actor_shows_one_frame();
     test_the_pad_picks_the_route_panel_only_once_the_step_has_begun();
     test_the_pad_presses_the_rewind_button_once_it_is_up();
     test_a_dead_talk_from_a_living_core_is_a_core_talk();

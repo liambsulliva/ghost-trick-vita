@@ -1115,6 +1115,36 @@ Lessons from routing Chapter 16's first three scenes (`st14_game020_Expand`, `st
 - Four minutes before the death the soul starts on `linne_dead_core` and the gun comes into reach when Kamila levels it (`reach:gun`, pace instant); the path is gun, `handle`, `moni`, `lan` and the valve above the phone (`valve`), whose trick knocks the receiver off.
 - Op 0xfd (the checkpoint at the fate change in `st14_game021_Expand`) is not ported.
 
+### 153. A placing op run by an object with no unit moved the ghost into it
+
+`st14_game040_Expand`'s `roll_demo` puts Sissel back after the torpedo turns: it selects `jairo_sv_left` or `jairo_sv_right` with op 0x83 and runs op 0x9c. Neither name is an object of that script, so the selection stays empty and the op runs on the handler's owner, `stage_master`, which has no unit. Native's cases 0x9c, 0xa4 and 0xa7 in `func_02023fdc` place a ghost only when the current object passes the class test `func_02008828(t, data_020cf898)`; the stage master does not, so Sissel stays in the right gyroscope, as the footage shows (he hops back from it over the detonator and the striker to the joint). The port placed him in `stage_master`, 357 pixels from any core, and every hop after the roll failed.
+
+Guard: ops 0x9c, 0xa4 and 0xa7 act only on an object whose actor exists. `tests/unit/test_soul_placed_on_core.c` runs each on an object without one.
+
+### 154. A route had no way to press on the frame a trick tests
+
+The gyroscopes of `st14_game040_Expand` stop with the weight up only when their `core` `ready` handler finds frame register 2 in 10 to 12 of a 20-frame loop at 4 ticks a frame (frames 20, 1 and 2 stop it weight down, the rest do nothing). A route step could wait on acts, flags and distances but not on what an actor shows, so the press landed on whatever frame the loop was at.
+
+Guard: the wait word `frame:<object>:<number>` holds while that actor shows that frame. The Trick pill takes about 24 ticks from the press to `ready`, so the route presses at frame 5. `tests/unit/test_route_pad.c` covers the word.
+
+### 155. A monologue numbered its paragraphs across pages and never said a page had ended
+
+Native's monologue update `func_02054f04` sends `*` `monologue` `paragraphN` when a paragraph has faded in, with N counted from the start of the page (state 3 sets the index back to 0 for each page) and only for the first four (`data_0209d70c`). When a page's last wait is over it sends `monologue` `pagefeed` if more pages follow and `monologue` `before end` on the last one, unless the page has option 2, which closes at once. The port numbered paragraphs across the whole message (eight names) and sent neither page event. `st15_demo000_Expand` builds its `paragraph1` handler on `pagefeed`, and `st01_game014` and `st02_game024` are the other scripts with `monologue` handlers.
+
+Guard: `script_narration_report_to_outputs` numbers a paragraph within its page and sends the two page events. `tests/unit/test_monologue_events.c` checks the numbering on a second page, both page events and that a cut page sends none.
+
+Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
+
+- In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.
+- The conveyor capsule is `capcel`; the wastebasket's trick, the basketball and the emergency light `gim_pato2` are reach-gated (`reach:`), pace instant.
+- In the torpedo the joint is `arm-button`, the striker `sinkan`, the detonator `red-button`; the second gyroscope's stop turns the torpedo by itself and the joint's trick ends the scene.
+- A machine that moves cores while time runs is routed as cycles of `ghost_on` on `free & no_talk & reach:<next>`, `move`, `ghost_off`, all pace instant (the engine room's gears and pistons in `st14_game032_Expand` and `st14_game033_Expand`). The starter is `piston_l` and each trick runs one cycle.
+- The steam valve that drops the glove is `valve_b` (it docks to `kata_p`), not `handle`; the fuse box is `haiden`, the switch `lver`.
+- `st14_game033_Expand` is the same room turned on its side, so every core has new coordinates. Missile starts in the debris `dust3`. A touch between two fans or two pipes links them, so he must reach a fan or pipe from a core of another shape: `dust2`, `bonbe`, `gear1` to the middle fan `fan_r`, and from `pipe1` back over `fan_r` to `pipe2`. The swaps are `fan_r` with `fan_c`, then with `fan_l`, then (from `piston_c` to `fan_r` at the top) with `fan_mini`; `pipe4` with `pipe1` and `pipe2` with `pipe3`.
+- The first pipe swap closes the view for a hint (`change_end`), so a `ghost_on` follows it; the fan swaps and the second pipe swap leave it open.
+- Sissel reaches the debris only once Lynne has carried the flashlight near it (`ghost_off`, then `ghost_on` on `reach:dust3`). The hook `c_hook` is tricked twice, the second time on flag 0xf (Lynne is on it), and the door is `hatch`.
+- Ops 0xfd (the checkpoints of `st14_game021_Expand`, `st14_game040_Expand` and `st13_game021_Expand`), 0x9f, 0xb6, 0xb7, 0xcd, 0xaf, 0x7f, 0x80 and 0xf6 log as not ported in these scenes. Without op 0xfd a game over in the torpedo restarts at `st14_game031_Expand`.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
