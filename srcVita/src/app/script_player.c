@@ -107,6 +107,7 @@ static int latest_acted_route_step = -1;
 static unsigned int latest_route_action_began_at;
 static int preload_row;
 static int preload_passes;
+static int most_textures_loading;
 static const char *preload_music_name;
 static unsigned long long preload_started_us;
 static unsigned long long time_owed_us;
@@ -478,6 +479,7 @@ static void load_next_animation(void)
             return;
         }
     }
+    most_textures_loading = 0;
     phase = PHASE_PRELOADING;
 }
 
@@ -841,6 +843,35 @@ static int art_gate_holds(unsigned long long elapsed_us)
 int script_player_is_holding_for_art(void)
 {
     return is_holding_for_art;
+}
+
+void script_player_load_counts(struct loading_counts *counts)
+{
+    int loading;
+
+    counts->done = 0;
+    counts->total = 0;
+    if (data == NULL) {
+        counts->stage = LOADING_DONE;
+    } else if (phase == PHASE_READING) {
+        counts->stage = LOADING_READING;
+        counts->done = read_step;
+        counts->total = FIXED_TABLE_COUNT + data->tables.file_count * FILES_PER_SCRIPT;
+    } else if (phase == PHASE_LOADING_ANIMATIONS) {
+        counts->stage = LOADING_ANIMATIONS;
+        counts->done = preload_row;
+        counts->total = data->tables.preload_row_count;
+    } else if (phase == PHASE_PRELOADING) {
+        counts->stage = LOADING_TEXTURES;
+        loading = texture_cache_loading_count();
+        if (loading > most_textures_loading) {
+            most_textures_loading = loading;
+        }
+        counts->done = most_textures_loading > 0 ? most_textures_loading - loading : 1;
+        counts->total = most_textures_loading > 0 ? most_textures_loading : 1;
+    } else {
+        counts->stage = LOADING_DONE;
+    }
 }
 
 void script_player_update(unsigned long long elapsed_us)

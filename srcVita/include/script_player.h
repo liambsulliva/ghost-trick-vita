@@ -2,6 +2,7 @@
 #define SCRIPT_PLAYER_H
 
 #include "input.h"
+#include "loading_screen.h"
 #include "scene_player.h"
 
 
@@ -23,6 +24,7 @@ int script_player_is_showing_next_chapter_card(void);
 enum scene_playback_state script_player_status(void);
 void script_player_skip_ahead(void);
 int script_player_is_holding_for_art(void);
+void script_player_load_counts(struct loading_counts *counts);
 void script_player_input_frame(const struct input_state *frame);
 void script_player_set_auto_play(int is_on);
 void script_player_set_stall_breaker(int is_on);

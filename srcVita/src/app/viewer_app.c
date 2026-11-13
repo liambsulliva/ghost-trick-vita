@@ -10,6 +10,7 @@
 #include "game_settings.h"
 #include "memory.h"
 #include "music_engine.h"
+#include "loading_screen.h"
 #include "page_tiles.h"
 #include "pause_clock.h"
 #include "pause_menu.h"
@@ -96,6 +97,7 @@ static int list_is_open;
 static int touch_was_down;
 static int illustrations_known_chapter;
 static int debug_controls_are_on;
+static int loading_screen_is_shown;
 
 static void asset_subfolder_path(char *path, const char *subfolder)
 {
@@ -664,6 +666,22 @@ static int start_button_is_tapped(const struct input_state *input)
     return lands && script_player_is_active() && script_ui_view_start_button_is_at(input->touch_x, input->touch_y);
 }
 
+static void update_loading_screen(unsigned long long elapsed_us)
+{
+    struct loading_counts counts;
+
+    if (!script_player_is_active() || playback_status() != SCENE_PLAYER_PRELOADING) {
+        loading_screen_is_shown = 0;
+        return;
+    }
+    if (!loading_screen_is_shown) {
+        loading_screen_begin();
+        loading_screen_is_shown = 1;
+    }
+    script_player_load_counts(&counts);
+    loading_screen_update(&counts, elapsed_us);
+}
+
 void viewer_app_update(const struct input_state *input, unsigned long long elapsed_us)
 {
     int chapter;
@@ -715,6 +733,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
     } else {
         scene_player_update(elapsed_us);
     }
+    update_loading_screen(elapsed_us);
 }
 
 void viewer_app_set_status_text(const char *text)
@@ -866,7 +885,10 @@ void viewer_app_draw(void)
         draw_centred_scene_end_line(SCENE_END_FIRST_LINE_Y, SCENE_END_FIRST_LINE);
         draw_centred_scene_end_line(SCENE_END_SECOND_LINE_Y, SCENE_END_SECOND_LINE);
     }
-    if (hud_is_visible || playback_status() == SCENE_PLAYER_PRELOADING) {
+    if (loading_screen_is_shown && !debug_controls_are_on) {
+        loading_screen_draw();
+        loading_screen_warm_up_the_renderer();
+    } else if (hud_is_visible || playback_status() == SCENE_PLAYER_PRELOADING) {
         draw_hud();
     }
     if (list_is_open) {

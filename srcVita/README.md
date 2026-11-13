@@ -267,6 +267,8 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 
 ## Debug controls
 
+While a script chain loads, a loading screen shows the pause backdrop with "Now Loading" and a red bar in the pause menu's floor (`src/app/loading_screen.c`): reading the tables and scripts fills the first fifth, animations the next three tenths and textures the last half. Behind it, every renderer primitive is drawn once, clear, so vitaGL compiles its shaders before play. With the debug controls on, the debug HUD shows instead.
+
 Outside a chapter, SELECT turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the opening. SELECT turns them off again, which resumes a paused scene and restarts the opening if you browsed away from it.
 
 They stay off during normal play, so that no button can stall the scene. The log records every button press, pause and skipped hold, as `input pressed buttons=...`, `scene paused` and `scene hold_skipped`.

@@ -71,6 +71,8 @@ SLICES = [
     ("note_box", 24, 24, 10, "#faf8f2", "#968c82", 2),
     ("save_panel", 40, 40, 12, "#2a0808", PILL_GREY, 3),
     ("save_panel_selected", 40, 40, 12, "#2a0808", "#d3763a", 5),
+    ("loading_track", 24, 16, 8, "black", PILL_GREY, 2),
+    ("loading_fill", 16, 10, 5, PILL_RED, "none", 0),
 ]
 
 
