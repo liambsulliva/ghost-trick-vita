@@ -946,6 +946,17 @@ Not ported and hit here: ops 0x9f, 0xfd and 0xd3 (st09_game003), and 0x49 (st09_
 
 Guard: the whole-game replay without the stall breaker: 1122 steps done, 0 failed. It ends Chapter 10 with the ride to st07 (place 16) and plays the steps Chapter 11 already had in st07_game000 (1048 to 1122).
 
+### 134. Lessons from routing Chapter 11
+
+Chapter 11 is Kamila's old house, `st07_game000_Expand`: the contraption and the talk with Kamila, route steps 1048 to 1171.
+
+- A step that follows a trick's cut scene waits on the act, not on `free` alone. The world is still playable for a tick after the press, and a demo that a trick plays out offers the ghost view (`script_soul_demo_mode_offers_the_ghost_view`), so a `ghost_on` gated on `free & no_talk` opened the view inside `toyAct030` and froze the toy at its op 0xa9 (wait for the motion table to end); the core stayed 92 pixels from the ball. The step waits on `act:toy:toyAct000`, the act the handler returns to (op 0x23).
+- A `ghost_on` that waits on a swinging core is pace instant. The fan decoration (`movestarSV`) follows the fan's motion tables, which `fan`'s `sync` and `sync2` handlers change with flags 0x11 and 0x1a; at pace normal the dwell let the swing pass and the step became ready again and again without acting.
+- The dead talk belongs to the object that holds the `SYSTEM DEADTALK` handler. Kamila's is `deadtalk`, a core-only object docked to her (op 0x85), not `book`: native `func_0203bd84` sends DEADTALK to the dead core the soul sits on (`func_02058b4c`) and nothing for a core that is neither dead nor a ghost's own. The hop waits on flag 0x8, which the `SV_START` demo sets when it ends.
+- Its panels are read from the replay's `choice_opened` marks: `m07_0310`, then `m07_0330` in the same place, `m07_0350`, and `panel_2_2` once flag 0x5 is set; flags 0x4 and 0x6 together end the talk (`select_loop`), and `deadtalkAct030` sets flag 0xa, which `game`'s `check` turns into `gameAct050` and the chapter's end.
+
+Guard: the whole-game replay without the stall breaker: 1220 steps done, 0 failed. It ends Chapter 11 through `st07_game001_Expand` and `chapter`, and plays the steps Chapter 12 already had (1172 to 1220).
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
