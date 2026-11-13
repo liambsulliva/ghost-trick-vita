@@ -30,6 +30,8 @@
 #define SOUL_TIP_LENGTH_FOR_SHORTEST_PICKUP 4.0f
 #define SOUL_TIP_LENGTH_FOR_ANY_PICKUP 32.0f
 #define ROUTE_ACT_JUST_BEGAN_TICKS 30u
+#define ROUTE_NEAR_PIXELS_SEPARATOR ':'
+#define ROUTE_NEAR_NAME_MAX 64
 #define NO_CORE (-1)
 #define SOUL_BEAM_TICKS 6
 #define SOUL_LIGHTNING_TICKS 72
@@ -2044,6 +2046,47 @@ static int soul_can_reach_core(const struct script_machine *machine, int object_
     return first_hop_toward(machine, object_index, slot, &hop_object, &hop_slot);
 }
 
+static int actors_are_near_along_x(const struct script_machine *machine, const char *first_name, const char *second_name_and_pixels)
+{
+    char second_name[ROUTE_NEAR_NAME_MAX];
+    const char *separator;
+    const struct script_actor *first;
+    const struct script_actor *second;
+    size_t length;
+    int first_index;
+    int second_index;
+    int difference;
+
+    if (second_name_and_pixels == NULL) {
+        return 0;
+    }
+    separator = strchr(second_name_and_pixels, ROUTE_NEAR_PIXELS_SEPARATOR);
+    if (separator == NULL) {
+        return 0;
+    }
+    length = (size_t)(separator - second_name_and_pixels);
+    if (length >= sizeof(second_name)) {
+        return 0;
+    }
+    memcpy(second_name, second_name_and_pixels, length);
+    second_name[length] = '\0';
+    first_index = script_machine_index_of_object(machine, first_name);
+    second_index = script_machine_index_of_object(machine, second_name);
+    if (first_index == SCRIPT_NO_OBJECT || second_index == SCRIPT_NO_OBJECT) {
+        return 0;
+    }
+    first = &machine->objects[first_index].actor;
+    second = &machine->objects[second_index].actor;
+    if (!first->exists || !second->exists) {
+        return 0;
+    }
+    difference = (second->x + second->points[0][0]) - (first->x + first->points[0][0]);
+    if (difference < 0) {
+        difference = -difference;
+    }
+    return difference <= atoi(separator + 1);
+}
+
 static int route_token_holds(const struct script_machine *machine, const struct script_route_wait_token *token)
 {
     const struct script_soul *soul;
@@ -2090,6 +2133,8 @@ static int route_token_holds(const struct script_machine *machine, const struct 
     case SCRIPT_ROUTE_WAIT_BEGAN:
         object_index = script_machine_index_of_object(machine, first);
         return object_index != SCRIPT_NO_OBJECT && second != NULL && machine->objects[object_index].current_act != NULL && strcmp(machine->objects[object_index].current_act, second) == 0 && machine->tick - machine->objects[object_index].act_began_tick <= ROUTE_ACT_JUST_BEGAN_TICKS;
+    case SCRIPT_ROUTE_WAIT_NEAR:
+        return actors_are_near_along_x(machine, first, second);
     case SCRIPT_ROUTE_WAIT_REACH:
         object_index = script_machine_index_of_object(machine, first);
         return object_index != SCRIPT_NO_OBJECT && soul_can_reach_core(machine, object_index, second != NULL ? atoi(second) : 0);

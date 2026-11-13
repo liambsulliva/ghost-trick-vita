@@ -358,6 +358,18 @@ static void test_a_began_wait_holds_only_just_after_the_act_starts(void)
     CHECK_INT(machine.soul.route_step, 1);
 }
 
+static void test_a_near_wait_holds_while_two_actors_are_close_along_x(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_WAIT, "-", "near:gate:body:16");
+    route.steps[0].dwell_ticks = TICKS_FOR_A_MOVE;
+    machine.objects[1].actor.x = BODY_X + 17;
+    run_ticks(TICKS_FOR_A_DEAD_TALK_TO_START);
+    CHECK_INT(machine.soul.route_step, 0);
+    machine.objects[1].actor.x = BODY_X + 16;
+    run_ticks(TICKS_FOR_A_MOVE + TICKS_FOR_A_DEAD_TALK_TO_START);
+    CHECK_INT(machine.soul.route_step, 1);
+}
+
 int main(void)
 {
     test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up();
@@ -368,6 +380,7 @@ int main(void)
     test_the_pad_aims_past_a_core_a_slanted_push_can_miss();
     test_a_missile_hop_never_steps_from_a_core_to_one_of_its_shape();
     test_a_began_wait_holds_only_just_after_the_act_starts();
+    test_a_near_wait_holds_while_two_actors_are_close_along_x();
     test_the_pad_picks_the_route_panel_only_once_the_step_has_begun();
     test_the_pad_presses_the_rewind_button_once_it_is_up();
     test_a_dead_talk_from_a_living_core_is_a_core_talk();

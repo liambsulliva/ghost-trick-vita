@@ -957,6 +957,24 @@ Chapter 11 is Kamila's old house, `st07_game000_Expand`: the contraption and the
 
 Guard: the whole-game replay without the stall breaker: 1220 steps done, 0 failed. It ends Chapter 11 through `st07_game001_Expand` and `chapter`, and plays the steps Chapter 12 already had (1172 to 1220).
 
+### 135. A route step could not wait for a walker to pass under something
+
+Chapter 13's chandelier catches the lady only when she stands under it: `madam_act04`'s `chandelier_down` handler measures the x distance between her and the chandelier (op 0x92, `func_02023fdc` case 0x92) and compares it (op 0x65) with 40 pixels to count as an attempt at all, then with a quarter pixel on the first attempt, 8 pixels once flag 0xd is set and 16 once flag 0xe is too. The footage drops it twice as she leaves the crank (two dodges, which set 0xd and 0xe) and a third time as she walks under it. The route had no word for that: three steps gated on `act:madam:madam_act04` all fired as the act began, she dodged each and went back to her desk (`madam_act08`), and the step that raises her never became ready.
+
+Guard: the wait word `near:<object>:<other>:<pixels>` holds while both actors exist and their first points are at most that many pixels apart along x, the measure op 0x92 takes. `tests/unit/test_route_pad.c` holds a step at 17 pixels and lets it go at 16. A step that waits on it is pace instant, like one that waits on a moving core.
+
+Lessons from routing Chapter 13 (`st05_game001_Expand` and `st09_game020_Expand`, route steps 1193 to 1251):
+
+- The steps this scene had were a placeholder in the wrong order that happened to end the replay in a playable state; a block is not routed until each trick's act and flags are read against the footage.
+- A trick that needs no demo leaves the world playable, so `free & no_talk` is no gate after it. The chandelier's fire lights the rat only while the world runs: the ghost view froze `e_fire_f` at its op 0xaa and `mouse_06` never got `fire`. The next `ghost_on` waits on `act:mouse:mouse_04`.
+- Read the footage's bubbles for tricks a coarse sheet hides. The left latch (`tendoor3`) is turned on the way to the crank (19966), which sets flag 0x7 and sends `mouse_06` on its way; the walkthrough turns it later, the footage does not.
+- The crank is `handle`: `handle_act02` drops the chandelier and `handle_act01` raises it, so the raise waits on `act:madam:madam_act05`, the act she is caught in.
+- The talk with the minister starts from `deadtalk`, the core-only object docked to him, like Kamila's (root cause 134); its panels are `panel_1`, `panel_2`, `panel_3_1` and `panel_3_2`. The ride out is `place` 21 (st13), which loads `st13_game016`, `st13_game015`, `chapter` and `st13_game010`.
+
+Not ported and hit here: ops 0xb5 and 0xb6 (st05_game001) and 0x9f (st09_game020).
+
+The whole-game replay without the stall breaker: 1251 steps done, 0 failed, stopping at the park's `st13_game010_Expand`.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
