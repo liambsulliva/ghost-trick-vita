@@ -36,12 +36,15 @@ def read_lines(path):
 def animation_pages(animation_folder, animation_name, cache):
     if animation_name not in cache:
         pages = []
+        ticks_before = 0
         path = os.path.join(animation_folder, animation_name + ".anim")
         if os.path.exists(path):
             for line in read_lines(path):
                 fields = line.split()
-                if len(fields) > 1 and fields[0] == "frame" and fields[1] != "-" and fields[1] not in pages:
-                    pages.append(fields[1])
+                if len(fields) > 2 and fields[0] == "frame":
+                    if fields[1] != "-" and fields[1] not in [page for page, _ in pages]:
+                        pages.append((fields[1], ticks_before))
+                    ticks_before += int(fields[2]) if fields[2].isdigit() else 0
         cache[animation_name] = pages
     return cache[animation_name]
 
@@ -115,14 +118,15 @@ def schedules_from_cues(cues_path, scripts_folder, animation_folder):
     current_pages = {}
 
     def schedule(pages, tick, suffix):
-        for page in pages:
+        for page, delay in pages:
+            due = tick + delay
             for texture in [name + suffix for name in tiles.get(page, [page])]:
                 if texture not in seen:
                     seen.add(texture)
-                    schedules[script_name].append((anchor, tick - anchor_tick, texture))
-                    if previous is not None and tick - script_tick < OPENING_TICKS and texture not in previous[3]:
+                    schedules[script_name].append((anchor, due - anchor_tick, texture))
+                    if previous is not None and due - script_tick < OPENING_TICKS and texture not in previous[3]:
                         previous[3].add(texture)
-                        schedules[previous[0]].append((previous[1], tick - previous[2], texture))
+                        schedules[previous[0]].append((previous[1], due - previous[2], texture))
 
     for line in read_lines(cues_path):
         tick_text, _, text = line.partition("\t")
@@ -160,7 +164,7 @@ def schedules_from_cues(cues_path, scripts_folder, animation_folder):
         if script_name is None:
             continue
         if is_grayscale != was_grayscale:
-            schedule([page for pages in current_pages.values() for page in pages], tick, suffix)
+            schedule([(page, 0) for pages in current_pages.values() for page, _ in pages], tick, suffix)
             continue
         if fields[0] == "mark" and len(fields) > 2 and fields[1] == "act_begun" and fields[2].startswith(ANCHOR_ACT_PREFIX):
             anchor, anchor_tick = fields[2], tick
@@ -172,7 +176,7 @@ def schedules_from_cues(cues_path, scripts_folder, animation_folder):
                 wanted = animation_pages(animation_folder, animation, page_cache)
                 current_pages[fields[1]] = wanted
         elif fields[0] == "effect" and len(fields) > 1:
-            wanted = textures_of_effect.get(fields[1], [])
+            wanted = [(texture, 0) for texture in textures_of_effect.get(fields[1], [])]
         schedule(wanted, tick, suffix)
     return schedules
 

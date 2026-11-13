@@ -39,11 +39,35 @@ class ReadAheadTest(unittest.TestCase):
             schedules = read_ahead.schedules_from_cues(cues, scripts, animations)
         self.assertEqual(schedules["scene"], [
             ("gameAct000", 1, "ball_00"),
-            ("gameAct000", 1, "ball_01"),
+            ("gameAct000", 5, "ball_01"),
             ("gameAct010", 15, "big_00_t00"),
             ("gameAct010", 15, "big_00_t10"),
             ("gameAct010", 20, "fx_sparkle_00"),
             ("gameAct010", 20, "fx_sparkle_01"),
+        ])
+
+
+    def test_each_page_of_a_long_animation_is_due_when_its_first_frame_is_shown(self):
+        with tempfile.TemporaryDirectory() as folder:
+            scripts = os.path.join(folder, "scripts")
+            animations = os.path.join(folder, "animations")
+            os.makedirs(scripts)
+            os.makedirs(animations)
+            write(scripts, "scene.motions", "motion 1a2b t_walk 1\n")
+            write(scripts, "tiles.txt", "tile walk_01 2840 2600 walk_01_t00 0 0 2048 2048 0 0 2046 2046\ntile walk_01 2840 2600 walk_01_t10 2044 0 796 2048 2046 0 2840 2046\n")
+            write(animations, "t_walk.anim", "animation t_walk\nloops 0\nframe walk_00 30 0 0 1 1 0 0 1 1\nframe - 10\nframe walk_00 20 0 0 1 1 0 0 1 1\nframe walk_01 40 0 0 1 1 0 0 1 1\nframe walk_02 5 0 0 1 1 0 0 1 1\nframe walk_01 5 0 0 1 1 0 0 1 1\n")
+            cues = os.path.join(folder, "cues.tsv")
+            write(folder, "cues.tsv", "\n".join([
+                "100\tmark script_begun scene",
+                "200\tactor walker table=1a2b frame=0",
+                "201\tactor walker table=1a2b frame=0",
+            ]) + "\n")
+            schedules = read_ahead.schedules_from_cues(cues, scripts, animations)
+        self.assertEqual(schedules["scene"], [
+            ("*", 100, "walk_00"),
+            ("*", 160, "walk_01_t00"),
+            ("*", 160, "walk_01_t10"),
+            ("*", 200, "walk_02"),
         ])
 
 
@@ -124,7 +148,7 @@ class ReadAheadTest(unittest.TestCase):
             ]) + "\n")
             schedules = read_ahead.schedules_from_cues(cues, scripts, animations)
         self.assertIn(("gameAct050", 810, "hand_00"), schedules["first"])
-        self.assertIn(("gameAct050", 810, "hand_01"), schedules["first"])
+        self.assertIn(("gameAct050", 814, "hand_01"), schedules["first"])
         self.assertIn(("*", 10, "hand_00"), schedules["second"])
 
 

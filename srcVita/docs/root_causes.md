@@ -1169,6 +1169,12 @@ The read-ahead plans are a port device with no native counterpart: the DS reads 
 
 Guard: the player keeps each plan's text, and `read_ahead_note_mark` reads only the beginning script's plan into the table at `script_begun`; the largest plan, `st03_game010_Expand`, has 1212 lines. `tests/unit/test_read_ahead_every_script.c` adds four plans that together overflow the table and checks that the last script still reads ahead, that a new script drops the earlier one's entries, and that a script with no plan reads nothing.
 
+### 162. Read-ahead fetched a long animation's later pages too early to keep them
+
+`read_ahead.py` scheduled every page of an actor's animation at the tick its motion table started, though a page is first drawn only after the frames before it have run. The runtime keeps a read-ahead texture wanted only until 30 ticks past its due tick, so the later pages of a long multi-page animation were read, fell to the cache's first eviction tier undrawn, and were taken by the next pages' reads before the animation reached them; they then loaded again as drawn textures while the picture held. In the Vita fast-forward run of build `30e5a251`, 696 textures loaded a second time within 2 seconds in the same script, among them each 9 MB page of `st01_killera_020` (pages 01 and 02 read at 143.1 s and again at 144.3 s).
+
+Guard: the planner reads each frame's ticks from the `.anim` file and dates each page at the start tick plus the ticks of the frames before its first use. `tests/tools/test_read_ahead.py` (`test_each_page_of_a_long_animation_is_due_when_its_first_frame_is_shown`) checks a page after an empty frame, a tiled page, and a page used twice.
+
 Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
 
 - In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.
