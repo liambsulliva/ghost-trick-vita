@@ -55,7 +55,6 @@
 #define SOUL_BLOB_DISC_FRACTION 0.59f
 #define SOUL_ORB_SIZE 56.0f
 #define SOUL_TWO_PI 6.2831853f
-#define SOUL_ANIMATION_TICKS_PER_STEP 4u
 #define SOUL_BASE_RISE 4.0f
 #define SOUL_BASE_RADIUS 28.0f
 #define SOUL_BASE_LUMP_COUNT 7
@@ -154,7 +153,6 @@
 #define SOUL_BEAM_TEXTURE "soul_beam"
 #define SOUL_BEAM_HALF_WIDTH 16.0f
 #define CHAIN_SEGMENT_SHORTEST 0.5f
-#define CHAIN_CLOUD_TICKS_PER_LOOK 2u
 #define CHAIN_TEXTURE_S_SPAN 64.0f
 #define SOUL_SPARKS_MOVIE "deadtricklight"
 #define STAFF_SCREEN_TEXTURE "staff_%02d_%02d"
@@ -1033,7 +1031,7 @@ static void draw_soul_body(float x, float y)
 {
     unsigned int step;
 
-    step = age_ticks / SOUL_ANIMATION_TICKS_PER_STEP;
+    step = soul_animation_step(age_ticks);
     draw_soul_wisp(x, y, step);
     draw_soul_base(x, y, step);
 }
@@ -1060,7 +1058,7 @@ static void draw_chain_cloud(const float *screen_x, const float *screen_y)
     int blob_count;
     int index;
 
-    blob_count = soul_chain_cloud(screen_x, screen_y, 1.0f, age_ticks / CHAIN_CLOUD_TICKS_PER_LOOK, blobs);
+    blob_count = soul_chain_cloud(screen_x, screen_y, 1.0f, soul_animation_step(age_ticks), blobs);
     for (index = 0; index < blob_count; index++) {
         draw_blob(blobs[index].x, blobs[index].y, blobs[index].radius);
     }
@@ -1329,7 +1327,7 @@ static void draw_lightning(float from_x, float from_y, float to_x, float to_y)
     float side_y;
     int pass;
 
-    step = age_ticks / SOUL_ANIMATION_TICKS_PER_STEP;
+    step = soul_animation_step(age_ticks);
     length = sqrtf((to_x - from_x) * (to_x - from_x) + (to_y - from_y) * (to_y - from_y));
     if (length < 1.0f) {
         return;
@@ -1355,7 +1353,7 @@ static void draw_lightning_stream(float from_x, float from_y, float to_x, float 
     unsigned int step;
     unsigned int index;
 
-    step = age_ticks / SOUL_ANIMATION_TICKS_PER_STEP;
+    step = soul_animation_step(age_ticks);
     for (index = 0; index < LIGHTNING_LUMP_COUNT; index++) {
         unsigned int age;
         unsigned int seed;

@@ -4,6 +4,7 @@
 #define SOUL_CHAIN_POINTS 8
 #define SOUL_CHAIN_TIP (SOUL_CHAIN_POINTS - 1)
 #define SOUL_CHAIN_CLOUD_BLOBS 64
+#define SOUL_TICKS_PER_ANIMATION_STEP 4u
 
 enum soul_chain_state {
     SOUL_CHAIN_RESTING,
@@ -38,6 +39,7 @@ void soul_chain_jump(struct soul_chain *chain, float core_x, float core_y);
 void soul_chain_retract(struct soul_chain *chain);
 void soul_chain_step(struct soul_chain *chain);
 int soul_chain_tip_is_at_head(const struct soul_chain *chain);
+unsigned int soul_animation_step(unsigned int age_ticks);
 int soul_chain_cloud(const float *x, const float *y, float scale, unsigned int step, struct soul_chain_blob *blobs);
 
 #endif

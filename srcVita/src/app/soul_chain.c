@@ -214,6 +214,11 @@ static float cloud_fraction(unsigned int seed, unsigned int salt)
     return (float)((value >> 8) & 1023u) / 1023.0f;
 }
 
+unsigned int soul_animation_step(unsigned int age_ticks)
+{
+    return age_ticks / SOUL_TICKS_PER_ANIMATION_STEP;
+}
+
 int soul_chain_cloud(const float *x, const float *y, float scale, unsigned int step, struct soul_chain_blob *blobs)
 {
     float whole;

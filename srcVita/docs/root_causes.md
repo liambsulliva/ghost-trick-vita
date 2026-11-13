@@ -1181,6 +1181,12 @@ Native's ghost-view field update (`func_02032914`, the per-frame step of pGameMa
 
 Guard: the soul marks a view opened by `SoulVision` as a tutorial view, and `follow_core_with_camera` follows nothing in it or while the core is busy. `tests/unit/test_ghost_view_camera_follow.c` checks four cases: a player's view follows the core; a tutorial view does not; a busy core does not; a player's view after a tutorial follows again.
 
+### 165. The spirit's travel cloud churned twice as fast as the spirit
+
+Root cause 138's cloud of blobs under the chain and under the travel beam re-rolled every second tick, as measured from the footage. The spirit's own body, wisps and lightning step every 4 ticks. On the Vita the user saw the cloud race ahead of the spirit it travels with. Native's tentacle drawing is still not read, so the spirit's body is the reference.
+
+Guard: `soul_animation_step` in `soul_chain.c` is the one pace for every soul effect. The body, the wisps, the lightning and the chain and travel clouds all take their step from it, so no soul effect can run at its own rate. `tests/unit/test_soul_chain.c` (`test_the_cloud_keeps_pace_with_the_soul_body`) checks that the cloud holds for a whole step and changes on the next.
+
 Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
 
 - In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.

@@ -1,3 +1,4 @@
+#include <string.h>
 #include <math.h>
 #include "soul_chain.h"
 #include "test_support.h"
@@ -207,8 +208,34 @@ static void test_the_cloud_covers_the_whole_line_with_blobs_of_many_sizes(void)
     CHECK(soul_chain_cloud(line_x, line_y, 1.0f, 7u, blobs) == 0);
 }
 
+static void test_the_cloud_keeps_pace_with_the_soul_body(void)
+{
+    struct soul_chain_blob first[SOUL_CHAIN_CLOUD_BLOBS];
+    struct soul_chain_blob held[SOUL_CHAIN_CLOUD_BLOBS];
+    float line_x[SOUL_CHAIN_POINTS];
+    float line_y[SOUL_CHAIN_POINTS];
+    unsigned int age;
+    int count;
+    int index;
+
+    for (index = 0; index < SOUL_CHAIN_POINTS; index++) {
+        line_x[index] = 30.0f * (float)index;
+        line_y[index] = 0.0f;
+    }
+    count = soul_chain_cloud(line_x, line_y, 1.0f, soul_animation_step(0u), first);
+    for (age = 1u; age < SOUL_TICKS_PER_ANIMATION_STEP; age++) {
+        CHECK_INT(soul_animation_step(age), 0);
+        CHECK(soul_chain_cloud(line_x, line_y, 1.0f, soul_animation_step(age), held) == count);
+        CHECK(memcmp(first, held, sizeof(first[0]) * (unsigned int)count) == 0);
+    }
+    CHECK_INT(soul_animation_step(SOUL_TICKS_PER_ANIMATION_STEP), 1);
+    CHECK(soul_chain_cloud(line_x, line_y, 1.0f, soul_animation_step(SOUL_TICKS_PER_ANIMATION_STEP), held) == count);
+    CHECK(memcmp(first, held, sizeof(first[0]) * (unsigned int)count) != 0);
+}
+
 int main(void)
 {
+    test_the_cloud_keeps_pace_with_the_soul_body();
     test_the_cloud_covers_the_whole_line_with_blobs_of_many_sizes();
     test_a_held_d_pad_moves_the_tip_at_a_steady_rate_up_to_the_reach();
     test_a_touch_pulls_the_tip_most_of_the_way_each_tick();
