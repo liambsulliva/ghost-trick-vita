@@ -16,7 +16,6 @@ ALL_PYTHON_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py
 ALL_PYTHON_TEST_TIME_LIMIT_SECONDS = 600
 AUDIO_TOOL_FILES = ("audio_check.py", "audio_file.py")
 REPOSITORY_TOOL_FILES = ("lz.py", "lmg_decode.py")
-LONGPLAY_TEST_COMMAND = [sys.executable, "-I", "-B", "tests/tools/run_tests.py", "--failfast", "test_longplay_check.py"]
 TESTS_THAT_INCLUDE_THE_SOURCE = {
     "src/main.c": ["integration/test_main_loop"],
     "src/vita/keep_awake.c": ["unit/test_vita_calls"],
@@ -26,7 +25,6 @@ TESTS_THAT_INCLUDE_THE_SOURCE = {
 TEST_FILES_MOST_LIKELY_TO_CATCH = {
     "bake_record.py": ("test_bake_record.py", "test_narration.py"),
     "bubble_art.py": ("test_bubble_art.py", "test_end_to_end.py"),
-    "chapter1_opening.json": ("test_convert_assets.py",),
     "convert_assets.py": ("test_convert_assets.py", "test_end_to_end.py"),
     "extract_text_key.py": ("test_extract_text_key.py",),
     "line_renderer.py": ("test_line_renderer.py", "test_narration.py"),
@@ -571,11 +569,6 @@ PYTHON_MUTATIONS = [
     ("tools/assets/line_renderer.py", "SUPERSAMPLE = 4", "SUPERSAMPLE = 2"),
     ("tools/assets/line_renderer.py", "LINE_BOX_ASCENT_EM = 1.0", "LINE_BOX_ASCENT_EM = 1.2"),
     ("tools/assets/line_renderer.py", "LINE_BOX_DESCENT_EM = 0.3", "LINE_BOX_DESCENT_EM = 0.4"),
-    ("tools/assets/chapter1_opening.json", '["dissolve", 32, 2]', '["dissolve", 31, 2]'),
-    ("tools/assets/chapter1_opening.json", '["dissolve", 32, 2]', '["dissolve", 32, 1]'),
-    ("tools/assets/chapter1_opening.json", '["wait", 7],\n    ["dissolve", 32, 2]', '["wait", 8],\n    ["dissolve", 32, 2]'),
-    ("tools/assets/chapter1_opening.json", '["wait", 109]', '["wait", 105]'),
-    ("tools/assets/chapter1_opening.json", '["dissolve", 32, 2],\n    ["camera", 0, 384],', '["camera", 0, 384],\n    ["dissolve", 32, 2],'),
     ("tools/assets/extract_text_key.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGTERM, signal.SIGHUP)"),
     ("tools/assets/extract_text_key.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGINT, signal.SIGHUP)"),
     ("tools/assets/extract_text_key.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM)"),
@@ -644,9 +637,6 @@ PYTHON_MUTATIONS = [
     ("tools/vita_loop.py", "if loop_path not in relative_paths:", "if True:"),
     ("tools/vita_loop.py", 'delete_if_present(connection, ASSETS_FOLDER + "/" + loop_path)\n', "pass\n"),
     ("tools/vita_loop.py", "if record.pop(loop_path, None) is not None:\n                save_upload_record(record)\n", "pass\n"),
-    ("tools/assets/chapter1_opening.json", '"alert_burst", 41.6, 226.1333', '"alert_burst", 41.6, 226.14'),
-    ("tools/assets/chapter1_opening.json", '"alert_mark", 51.2, 228.2667', '"alert_mark", 51.07, 228.2667'),
-    ("tools/assets/chapter1_opening.json", '"alert_mark", 51.2, 228.2667', '"alert_mark", 51.2, 228.36'),
     ("tools/assets/convert_assets.py", "sys.exit(EXIT_CODE_BASE_FOR_SIGNALS + signal_number)", "sys.exit(1)"),
     ("tools/assets/ds_rom.py", "if header[GAME_CODE_OFFSET:GAME_CODE_OFFSET + GAME_CODE_SIZE] != ACCEPTED_GAME_CODE:", "if False:"),
     ("../tools/lz.py", "return lz11_decompress(data)", "return lz10_decompress(data)"),
@@ -680,8 +670,6 @@ PYTHON_MUTATIONS = [
     ("tools/vita_loop.py", "    for folder_name in output_folders.NAMES:\n        if not os.path.isdir", '    for folder_name in ("textures", "music"):\n        if not os.path.isdir'),
     ("tools/assets/output_folders.py", '"scripts", "pause")', '"scripts")'),
     ("tools/assets/convert_assets.py", "future.cancel()", "pass"),
-    ("tools/assets/chapter1_opening.json", '"oval_bubble", 98.8444, 242.8444', '"oval_bubble", 98.93, 242.67'),
-    ("tools/assets/chapter1_opening.json", '"oval_bubble_text", 113.7778, 251.0222', '"oval_bubble_text", 113.64, 250.93'),
     ("tools/assets/message_file.py", "value ^ previous ^ key[index & 15]", "value ^ previous ^ key[index & 7]"),
     ("tools/assets/message_file.py", "previous = value", "previous = decoded[index]"),
     ("tools/assets/message_file.py", 'TEXT_KEY_FILE_NAME = "text_key.bin"', 'TEXT_KEY_FILE_NAME = "other_name.bin"'),
@@ -777,10 +765,6 @@ PYTHON_MUTATIONS = [
     ("tools/assets/convert_assets.py", '"line_renderer.py", ', ""),
     ("tools/assets/convert_assets.py", '"font_file.py", ', ""),
     ("tools/assets/convert_assets.py", 'print("failed: " + name + ": " + reason, file=sys.stderr)', "pass"),
-    ("tools/assets/chapter1_opening.json", '["overlay_hide", 3],\n    ["overlay_hide", 4],\n    ["mask_on"]', '["mask_on"],\n    ["wait", 1],\n    ["overlay_hide", 3],\n    ["overlay_hide", 4]'),
-    ("tools/assets/chapter1_opening.json", '["dim_to", 1, 0],\n    ["wait", 4]', '["dim_to", 0, 0],\n    ["wait", 4]'),
-    ("tools/assets/chapter1_opening.json", '"alert_burst", 41.6, 226.1333', '"alert_burst", 0.93, 226.1333'),
-    ("tools/assets/chapter1_opening.json", '["narration_show", "m01_0040", 0, 60]', '["wait", 1],\n    ["narration_show", "m01_0040", 0, 60]'),
     ("tools/audio_check.py", "            segments[-1].pop()\n", ""),
     ("tools/audio_check.py", "if late > previous_late and window is not forgiven_window:", "if False:"),
     ("tools/audio_check.py", "late > previous_late and window is not forgiven_window", "late > previous_late"),
@@ -843,37 +827,6 @@ PYTHON_MUTATIONS = [
     ("tools/assets/audio_file.py", 'if stream["rate"] != PLAYBACK_RATE:', "if False:"),
     ("tools/assets/audio_file.py", 'if struct.unpack_from("<I", data, OFFSET_OGG_SIZE)[0] != len(data) - WRAPPER_SIZE:', "if False:"),
     ("tools/assets/audio_file.py", '"ogg": data[WRAPPER_SIZE:],', '"ogg": data,'),
-    ("tools/longplay_check.py", "    report_whether_the_app_is_alive()\n    run_log_shows_no_load_failures()\n", "    run_log_shows_no_load_failures()\n"),
-    ("tools/longplay_check.py", "    report_whether_the_app_is_alive()\n    run_log_shows_no_load_failures()\n", "    report_whether_the_app_is_alive()\n"),
-    ("tools/longplay_check.py", "        print(\"the first scene never became ready\")\n        report_why_the_run_stopped()\n", "        print(\"the first scene never became ready\")\n"),
-    ("tools/longplay_check.py", "        if not capture_one_scene(scene_name):\n            report_why_the_run_stopped()\n", "        if not capture_one_scene(scene_name):\n"),
-    ("tools/longplay_check.py", "        captured_names.append(scene_name)\n", ""),
-    ("tools/longplay_check.py", "    forget_old_captures(scene_names)\n", ""),
-    ("tools/longplay_check.py", "for path in (capture_path(scene_name), pair_image_path(scene_name)):", "for path in (capture_path(scene_name),):"),
-    ("tools/longplay_check.py", "for path in (capture_path(scene_name), pair_image_path(scene_name)):", "for path in (pair_image_path(scene_name),):"),
-    ("tools/longplay_check.py", "            if os.path.exists(path):\n                os.remove(path)\n", "            os.remove(path)\n"),
-    ("tools/longplay_check.py", "    except ftplib.all_errors as problem:\n        print(\"the device stopped answering:\", problem)\n", "    except ZeroDivisionError as problem:\n        print(\"the device stopped answering:\", problem)\n"),
-    ("tools/longplay_check.py", "    except ftplib.all_errors as problem:\n        print(\"could not quit the app:\", problem)\n", "    except ZeroDivisionError as problem:\n        print(\"could not quit the app:\", problem)\n"),
-    ("tools/longplay_check.py", "    except ftplib.all_errors as problem:\n        print(\"could not delete the check files from the device:\", problem)\n", "    except ZeroDivisionError as problem:\n        print(\"could not delete the check files from the device:\", problem)\n"),
-    ("tools/longplay_check.py", "        quit_if_the_device_answers()\n", "        pass\n"),
-    ("tools/longplay_check.py", "captured_names = saved_capture_names(scene_names)", "captured_names = scene_names"),
-    ("tools/longplay_check.py", "return [name for name in scene_names if os.path.exists(capture_path(name))]", "return scene_names"),
-    ("tools/longplay_check.py", "size_after is not None and size_before is not None and size_after > size_before", "size_after != size_before"),
-    ("tools/longplay_check.py", "size_after is not None and size_before is not None and size_after > size_before", "False"),
-    ("tools/longplay_check.py", "if vita_loop.commands_file_is_waiting():", "if False:"),
-    ("tools/longplay_check.py", "    except vita_loop.CommandNotRead as problem:\n        print(problem)\n        return False\n", "    except ZeroDivisionError as problem:\n        print(problem)\n        return False\n"),
-    ("tools/longplay_check.py", "        if not capture_run_was_clean:\n            print(", "        if False:\n            print("),
-    ("tools/longplay_check.py", "if len(captured_names) == 0 and not capture_run_was_clean:", "if False:"),
-    ("tools/longplay_check.py", "return 0 if capture_run_was_clean and all(views_passed)", "return 0 if all(views_passed)"),
-    ("tools/longplay_check.py", "views_passed = [score_view_check(check, captured_names) for check in view_checks]", "views_passed = [score_view_check(check, scene_names) for check in view_checks]"),
-    ("tools/longplay_check.py", "motion_passed = score_motion_checks(motion_checks, captured_names)", "motion_passed = score_motion_checks(motion_checks, scene_names)"),
-    ("tools/longplay_check.py", "masks_passed = [score_mask_check(check, captured_names) for check in mask_checks]", "masks_passed = [score_mask_check(check, scene_names) for check in mask_checks]"),
-    ("tools/longplay_check.py", "def score_view_check(check, captured_names):\n    if check[\"name\"] not in captured_names:", "def score_view_check(check, captured_names):\n    if False:"),
-    ("tools/longplay_check.py", "def score_mask_check(check, captured_names):\n    if check[\"name\"] not in captured_names:", "def score_mask_check(check, captured_names):\n    if False:"),
-    ("tools/longplay_check.py", "names_missing = [name for name in names_needed if name not in captured_names]", "names_missing = []"),
-    ("tools/longplay_check.py", "if only_object_scene_name(check[\"name\"], object_name) not in captured_names:", "if False:"),
-    ("tools/longplay_check.py", "names_needed = [check[\"name\"], only_object_scene_name(check[\"name\"], check[\"object\"])]", "names_needed = [check[\"name\"]]"),
-    ("tools/longplay_check.py", "names_needed = [check[\"name\"], only_object_scene_name(check[\"name\"], check[\"object\"])]", "names_needed = [only_object_scene_name(check[\"name\"], check[\"object\"])]"),
 ]
 
 
@@ -909,15 +862,13 @@ def mutation_outcome(folder):
 
 def python_test_command_for(path):
     file_name = os.path.basename(path)
-    if file_name == "longplay_check.py":
-        return LONGPLAY_TEST_COMMAND
     if file_name in AUDIO_TOOL_FILES:
         return AUDIO_PYTHON_TEST_COMMAND
     return ALL_PYTHON_TEST_COMMAND + ["--first", ",".join(TEST_FILES_MOST_LIKELY_TO_CATCH.get(file_name, ()))]
 
 
 def time_limit_for(command):
-    return TEST_TIME_LIMIT_SECONDS if command in (AUDIO_PYTHON_TEST_COMMAND, LONGPLAY_TEST_COMMAND) else ALL_PYTHON_TEST_TIME_LIMIT_SECONDS
+    return TEST_TIME_LIMIT_SECONDS if command == AUDIO_PYTHON_TEST_COMMAND else ALL_PYTHON_TEST_TIME_LIMIT_SECONDS
 
 
 def python_mutation_outcome(folder, path):
@@ -987,12 +938,8 @@ def use_private_temp_folder(temporary_root):
 PYTHON_MUTATIONS += [
     ("tools/mutation_check.py", '"tests/tools/run_tests.py", "--failfast"]', '"tests/tools/run_tests.py"]'),
     ("tools/mutation_check.py", '"--failfast", "test_audio_*.py"]', '"test_audio_*.py"]'),
-    ("tools/mutation_check.py", '"--failfast", "test_longplay_check.py"]', '"test_longplay_check.py"]'),
     ("tools/mutation_check.py", '"bubble_art.py": ("test_bubble_art.py", "test_end_to_end.py"),', '"bubble_art.py": ("test_bubble_art_that_is_gone.py", "test_end_to_end.py"),'),
-    ("tools/mutation_check.py", "return TEST_TIME_LIMIT_SECONDS if command in (AUDIO_PYTHON_TEST_COMMAND, LONGPLAY_TEST_COMMAND) else ALL_PYTHON_TEST_TIME_LIMIT_SECONDS", "return ALL_PYTHON_TEST_TIME_LIMIT_SECONDS if command is ALL_PYTHON_TEST_COMMAND else TEST_TIME_LIMIT_SECONDS"),
-    ("tools/mutation_check.py", "command in (AUDIO_PYTHON_TEST_COMMAND, LONGPLAY_TEST_COMMAND) else", "command in (AUDIO_PYTHON_TEST_COMMAND,) else"),
     ("tools/mutation_check.py", 'ALL_PYTHON_TEST_COMMAND + ["--first", ",".join(TEST_FILES_MOST_LIKELY_TO_CATCH.get(file_name, ()))]', "ALL_PYTHON_TEST_COMMAND"),
-    ("tools/mutation_check.py", 'if file_name == "longplay_check.py":', "if False:"),
     ("tools/mutation_check.py", "if file_name in AUDIO_TOOL_FILES:", "if False:"),
     ("tools/mutation_check.py", '",".join(reversed(test_files))', '",".join(test_files)'),
     ("tools/mutation_check.py", "for command in (ALL_PYTHON_TEST_COMMAND, python_tests_in_reverse_order_command(folder)))", "for command in (ALL_PYTHON_TEST_COMMAND,))"),

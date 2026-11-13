@@ -81,7 +81,6 @@ static void start_with_a_route_step(const char *balloon_name)
     machine.route_is_driving = SCRIPT_AUTO_PACED != SCRIPT_AUTO_OFF;
     script_route_pad_reset(&route_pad);
     script_input_reset(&route_input);
-    machine.stall_breaker_is_off = 1;
     CHECK(script_machine_add_source(&machine, "a", scene, SCRIPT_FILE_HEADER_SIZE + sizeof(words) / sizeof(words[0]) * 2, NULL));
     mark_count = 0;
     CHECK(script_machine_start(&machine, "a"));

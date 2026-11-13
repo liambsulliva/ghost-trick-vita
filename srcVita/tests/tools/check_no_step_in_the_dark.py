@@ -30,7 +30,7 @@ def steps_begun_in_the_dark(cue_lines):
 def main():
     with tempfile.TemporaryDirectory() as folder:
         cues_path = os.path.join(folder, "cues.tsv")
-        subprocess.run([REPLAY, "--scripts", SCRIPTS, "--timing", "remaster", "--auto-paced", "--marks", "--no-stall-breaker", "--cues", cues_path, "--stop-tick", STOP_TICK], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run([REPLAY, "--scripts", SCRIPTS, "--timing", "remaster", "--auto-paced", "--marks", "--cues", cues_path, "--stop-tick", STOP_TICK], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         with open(cues_path, errors="replace") as source:
             found = steps_begun_in_the_dark(source)
     for tick, script, step in found:

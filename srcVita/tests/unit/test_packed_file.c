@@ -5,7 +5,7 @@
 #include "packed_file.h"
 #include "test_support.h"
 
-#define MANIFEST "/private/tmp/claude-501/-Users-liambsulliva-Developer-ghost-trick-vita/e3f1daaa-125f-4131-a71b-113a6314608b/scratchpad/fx/vectors/manifest.txt"
+#define MANIFEST "build/packed_vectors/manifest.txt"
 #define PATH_LIMIT 1024
 
 static unsigned char *read_whole(const char *path, unsigned int *size)

@@ -2,7 +2,6 @@
 #include "script_machine.h"
 #include "ds_units.h"
 
-#define MODE_BYTE_NARRATION 0x12
 #define SOUND_KIND_NONE 0
 #define SOUND_KIND_REFUSED 33
 #define PARAGRAPH_ARG_COUNT 4
@@ -61,7 +60,7 @@ static void start_narration(struct script_machine *machine, struct script_vm *vm
         return;
     }
     machine->pause_bit = 1;
-    machine->mode_byte = MODE_BYTE_NARRATION;
+    machine->mode_byte = SCRIPT_MODE_NARRATION;
     script_narration_start(&machine->narration, vm->source->cues, message, machine->timing);
     machine->narration_started_this_tick = 1;
 }

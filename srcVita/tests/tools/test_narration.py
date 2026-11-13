@@ -78,46 +78,6 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(narration.texture_top_for_ink_top(100.0, 39, 38.5), 93)
 
 
-class StepExpansionTests(unittest.TestCase):
-    def setUp(self):
-        self.lines = {"m": {"paragraphs": [[line_record(1, 70), line_record(2, 120)], [line_record(3, 240)]]}}
-
-    def expand(self, steps, sizes=None):
-        return narration.expand_text_steps(steps, self.lines, sizes or {})
-
-    def test_showing_a_paragraph_shows_each_of_its_lines_centred(self):
-        self.assertEqual(self.expand([["narration_show", "m", 0, 60]]), [
-            ["text_show", 1, "tex_1", 480, 70, 60],
-            ["text_show", 2, "tex_2", 480, 120, 60],
-        ])
-        self.assertEqual(self.expand([["narration_show", "m", 1, 30]]), [["text_show", 3, "tex_3", 480, 240, 30]])
-
-    def test_hiding_a_message_hides_every_line_of_it(self):
-        self.assertEqual(self.expand([["narration_hide", "m", 60]]), [["text_hide", 1, 60], ["text_hide", 2, 60], ["text_hide", 3, 60]])
-
-    def test_an_overlay_gets_its_size_from_the_texture_at_screen_scale(self):
-        step = self.expand([["overlay", 7, "art", 10, 20, 6]], {"art": (90, 180)})[0]
-        self.assertEqual(step[:5], ["overlay", 7, "art", 10, 20])
-        self.assertAlmostEqual(step[5], 90 / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL)
-        self.assertAlmostEqual(step[6], 180 / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL)
-        self.assertEqual(step[7], 6)
-
-    def test_other_steps_pass_through_in_order(self):
-        self.assertEqual(self.expand([["wait", 5], ["text_hide_all"], ["overlay_hide", 2]]), [["wait", 5], ["text_hide_all"], ["overlay_hide", 2]])
-
-    def test_unknown_names_and_paragraphs_are_refused(self):
-        with self.assertRaises(narration.NarrationError):
-            self.expand([["narration_show", "absent", 0, 60]])
-        with self.assertRaises(narration.NarrationError):
-            self.expand([["narration_hide", "absent", 60]])
-        with self.assertRaises(narration.NarrationError):
-            self.expand([["narration_show", "m", 2, 60]])
-        with self.assertRaises(narration.NarrationError):
-            self.expand([["narration_show", "m", -1, 60]])
-        with self.assertRaises(narration.NarrationError):
-            self.expand([["overlay", 1, "absent", 0, 0, 0]])
-
-
 class ConversionTests(unittest.TestCase):
     def setUp(self):
         self.work_folder = tempfile.mkdtemp()

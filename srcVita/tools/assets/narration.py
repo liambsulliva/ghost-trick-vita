@@ -305,50 +305,6 @@ def bake_text_textures(packs, set_description, messages, work_folder, record, co
     return narration, results, failures
 
 
-def message_for_step(narration, name):
-    if name not in narration:
-        raise NarrationError("step names unknown narration: " + name)
-    return narration[name]
-
-
-def show_steps(narration, name, paragraph_index, fade_ticks):
-    paragraphs = message_for_step(narration, name)["paragraphs"]
-    if paragraph_index < 0 or paragraph_index >= len(paragraphs):
-        raise NarrationError("step names a paragraph that does not exist in: " + name)
-    return [["text_show", line["id"], line["texture"], SCREEN_CENTER_X, line["top_y"], fade_ticks] for line in paragraphs[paragraph_index]]
-
-
-def hide_steps(narration, name, fade_ticks):
-    steps = []
-    for paragraph in message_for_step(narration, name)["paragraphs"]:
-        for line in paragraph:
-            steps.append(["text_hide", line["id"], fade_ticks])
-    return steps
-
-
-def overlay_step(texture_sizes, step):
-    _, overlay_id, texture_name, x, y, grow_ticks = step
-    if texture_name not in texture_sizes:
-        raise NarrationError("overlay names an unknown texture: " + texture_name)
-    width, height = texture_sizes[texture_name]
-    return ["overlay", overlay_id, texture_name, x, y, width / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL, height / frame_layout.SCREEN_PIXELS_PER_DS_PIXEL, grow_ticks]
-
-
-def expand_text_steps(steps, narration, texture_sizes):
-    expanded = []
-    for step in steps:
-        kind = step[0]
-        if kind == "narration_show":
-            expanded.extend(show_steps(narration, step[1], step[2], step[3]))
-        elif kind == "narration_hide":
-            expanded.extend(hide_steps(narration, step[1], step[2]))
-        elif kind == "overlay":
-            expanded.append(overlay_step(texture_sizes, step))
-        else:
-            expanded.append(step)
-    return expanded
-
-
 def print_narration_summary(narration):
     if not narration:
         return

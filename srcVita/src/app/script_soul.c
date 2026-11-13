@@ -9,8 +9,6 @@
 #include "stick_aim.h"
 
 #define SOUL_VISION_MESSAGE_AFTER_TICKS 90
-#define DEMO_MODE 2
-#define NORMAL_PLAY_MODE 3
 #define ROUTE_WAIT_MOST_TICKS 30000u
 #define FIRST_CORE_DISABLED_BIT 1
 #define SECOND_CORE_DISABLED_BIT 2
@@ -50,7 +48,6 @@
 #define TRICK_ACTION_AFTER_TICKS 8
 #define TIME_JUMP_AFTER_TICKS 30
 #define GAME_OVER_MENU_TICKS 60
-#define GAME_OVER_RETRIES_AT_ONE_STEP_MOST 3
 #define TIME_JUMP_MOVIE "time_jump"
 #define COUNTDOWN_DEFAULT_INTERVAL 300
 #define COUNTDOWN_ZERO_STEP 3
@@ -102,7 +99,6 @@ enum tutorial_mode {
 #define LEAP_SPOKES_AFTER_TICKS 87
 #define LEAP_SWIRL_AFTER_TICKS 102
 #define LEAP_MESSAGE_AFTER_TICKS 282
-#define REWIND_SLIDE_TICKS 20
 #define REWIND_PRESS_TO_MOVIE_TICKS 63
 #define MARK_IS_OFF -1
 #define MARK_LAST_TICK 165
@@ -835,7 +831,7 @@ static void run_countdown(struct script_machine *machine)
     struct script_soul *soul;
 
     soul = &machine->soul;
-    if (!soul->countdown_is_running || machine->pause_bit || machine->mode_byte != NORMAL_PLAY_MODE) {
+    if (!soul->countdown_is_running || machine->pause_bit || machine->mode_byte != SCRIPT_MODE_NORMAL) {
         return;
     }
     script_soul_set_fate_level(machine, soul->countdown_step >= COUNTDOWN_ENDING_STEP ? 0 : 1);
@@ -882,7 +878,7 @@ static void report_hud(struct script_machine *machine)
     }
     view.side_is_on = script_flags_read(&machine->flags, FATE_SECTION_FLAG);
     view.fate_level = machine->fate_level;
-    view.world_is_running = !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && machine->eyecatch_ticks_left == 0;
+    view.world_is_running = !machine->pause_bit && machine->mode_byte == SCRIPT_MODE_NORMAL && machine->eyecatch_ticks_left == 0;
     view.is_hidden_for_movie = machine->movie_ticks_left > 0 || machine->soul.phone_split_name[0] != '\0';
     view.narration_arrow_is_on = script_narration_wants_a_press(&machine->narration);
     view.soul_view_is_on = machine->soul.is_on;
@@ -922,7 +918,7 @@ static void start_eye_catch(struct script_machine *machine, const char *kind)
     if (machine->eyecatch_ticks_left == 0) {
         machine->mode_before_eyecatch = machine->mode_byte;
     }
-    machine->mode_byte = DEMO_MODE;
+    machine->mode_byte = SCRIPT_MODE_DEMO;
     machine->eyecatch_marks_the_core = strcmp(kind, "Trick") == 0;
     machine->eyecatch_ticks_left = machine->auto_press == SCRIPT_AUTO_FAST ? 0 : frames + EYECATCH_RELEASE_TICKS;
 }
@@ -933,7 +929,7 @@ int script_soul_step_eyecatch(struct script_machine *machine)
         return 0;
     }
     machine->eyecatch_ticks_left = machine->eyecatch_ticks_left - 1;
-    if (machine->eyecatch_ticks_left == 0 && machine->mode_byte == DEMO_MODE) {
+    if (machine->eyecatch_ticks_left == 0 && machine->mode_byte == SCRIPT_MODE_DEMO) {
         machine->mode_byte = machine->mode_before_eyecatch;
     }
     if (machine->eyecatch_ticks_left == 0 && machine->eyecatch_marks_the_core) {
@@ -1147,7 +1143,7 @@ static void finish_leaving_view_when_due(struct script_machine *machine)
         return;
     }
     soul->view_change_ticks_left = soul->view_change_ticks_left - 1;
-    if (soul->is_leaving_view && soul->view_change_ticks_left == SOUL_VIEW_LEAVE_TICKS - MARK_AFTER_LEAVING_TICKS && (machine->mode_byte == NORMAL_PLAY_MODE || soul->leaving_shows_the_mark)) {
+    if (soul->is_leaving_view && soul->view_change_ticks_left == SOUL_VIEW_LEAVE_TICKS - MARK_AFTER_LEAVING_TICKS && (machine->mode_byte == SCRIPT_MODE_NORMAL || soul->leaving_shows_the_mark)) {
         soul->leaving_shows_the_mark = 0;
         script_soul_start_player_mark(machine);
     }
@@ -1173,7 +1169,7 @@ static void enter_scripted_soul_view(struct script_machine *machine, const char 
 static void leave_soul_view(struct script_machine *machine)
 {
     machine->soul.tutorial_mode = TUTORIAL_NONE;
-    machine->mode_byte = DEMO_MODE;
+    machine->mode_byte = SCRIPT_MODE_DEMO;
     set_soul_view_with_effect(machine, 0, !leaving_skips_the_effect(machine));
 }
 
@@ -1315,7 +1311,7 @@ static void run_exception_command(struct script_machine *machine, const char *ar
     } else if (strcmp(arg, "GameOverWhiteProceed") == 0) {
         machine->soul.white_wipe_is_held = 0;
     } else if (strcmp(arg, "ForceDemo") == 0) {
-        machine->mode_byte = DEMO_MODE;
+        machine->mode_byte = SCRIPT_MODE_DEMO;
     } else if (strcmp(arg, "Missile:On") == 0) {
         script_soul_make_ghost_active(machine, SCRIPT_GHOST_MISSILE);
     } else if (strcmp(arg, "Missile:Off") == 0 || strcmp(arg, "Cicel:On") == 0) {
@@ -1361,9 +1357,9 @@ static void run_custom_soul_command(struct script_machine *machine, const char *
     } else if (strcmp(arg, "NoEffectFinish") == 0) {
         soul->next_leaving_is_quiet = 1;
     } else if (strcmp(arg, "ReturnGame") == 0) {
-        return_from_soul_view(machine, NORMAL_PLAY_MODE);
+        return_from_soul_view(machine, SCRIPT_MODE_NORMAL);
     } else if (strcmp(arg, "ReturnDemo") == 0) {
-        return_from_soul_view(machine, DEMO_MODE);
+        return_from_soul_view(machine, SCRIPT_MODE_DEMO);
     }
 }
 
@@ -1376,8 +1372,8 @@ static void run_system_command(struct script_machine *machine, const char *arg)
     }
     mode = machine->mode_a_script_asked_for;
     machine->mode_a_script_asked_for = 0;
-    if (mode == DEMO_MODE && machine->soul.is_on) {
-        return_from_soul_view(machine, DEMO_MODE);
+    if (mode == SCRIPT_MODE_DEMO && machine->soul.is_on) {
+        return_from_soul_view(machine, SCRIPT_MODE_DEMO);
     }
     machine->mode_byte = mode;
 }
@@ -1426,7 +1422,7 @@ static void run_dead_talk_command(struct script_machine *machine, const char *ar
     } else if (strcmp(arg, "Abort") == 0) {
         machine->soul.dead_talk_is_on = 0;
         run_custom_soul_command(machine, "NoEffectFinish");
-        return_from_soul_view(machine, DEMO_MODE);
+        return_from_soul_view(machine, SCRIPT_MODE_DEMO);
     } else if (strcmp(arg, "Restart") == 0) {
         if (!machine->soul.is_on) {
             set_soul_view_with_effect(machine, 1, 0);
@@ -1578,12 +1574,12 @@ static void send_tutorial_input(struct script_machine *machine)
 
 int script_soul_world_is_playable(const struct script_machine *machine)
 {
-    return !machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on && !machine->choice.is_open;
+    return !machine->pause_bit && machine->mode_byte == SCRIPT_MODE_NORMAL && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on && !machine->choice.is_open;
 }
 
 int script_soul_demo_mode_offers_the_ghost_view(const struct script_machine *machine)
 {
-    return machine->soul.a_trick_is_playing_out && !machine->pause_bit && machine->mode_byte == DEMO_MODE && machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on && !machine->choice.is_open && !machine->narration.is_running && machine->movie_ticks_left == 0;
+    return machine->soul.a_trick_is_playing_out && !machine->pause_bit && machine->mode_byte == SCRIPT_MODE_DEMO && machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->soul.input_is_off && !machine->soul.dead_talk_is_on && !machine->choice.is_open && !machine->narration.is_running && machine->movie_ticks_left == 0;
 }
 
 static int ghost_view_may_open(const struct script_machine *machine)
@@ -1633,16 +1629,6 @@ static int game_over_waits_for_a_retry(const struct script_machine *machine)
 
 static const struct script_route_step *current_route_step(const struct script_machine *machine);
 
-static int retries_are_going_nowhere(struct script_machine *machine)
-{
-    if (machine->soul.route_step != machine->game_over_retry_step) {
-        machine->game_over_retry_step = machine->soul.route_step;
-        machine->game_over_retries_at_that_step = 0;
-    }
-    machine->game_over_retries_at_that_step = machine->game_over_retries_at_that_step + 1;
-    return current_route_step(machine) == NULL || machine->game_over_retries_at_that_step > GAME_OVER_RETRIES_AT_ONE_STEP_MOST;
-}
-
 static void forget_the_core_kept_for_the_retry(struct script_machine *machine)
 {
     machine->soul_core_kept_for_the_retry[0] = '\0';
@@ -1666,9 +1652,6 @@ static void retry_after_the_game_over(struct script_machine *machine)
     int restarts_in_place;
 
     machine->game_over_is_pending = 0;
-    if (!machine->stall_breaker_is_off && machine->route_is_driving && machine->route != NULL && retries_are_going_nowhere(machine) && script_machine_move_on_in_story_order(machine, "game_over")) {
-        return;
-    }
     restarts_in_place = script_machine_handles(machine, "SYSTEM", "RESTART");
     machine->retries_of_the_scene = machine->retries_of_the_scene + 1;
     if (machine->outputs->marked != NULL) {
@@ -1705,12 +1688,10 @@ static void take_press(struct script_machine *machine)
     soul->presses_taken = soul->presses_taken + 1;
     if (machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine)) {
         script_talk_note_press(machine);
-        machine->last_new_site_tick = machine->tick;
         return;
     }
     if (script_narration_takes_a_skip(&machine->narration)) {
         script_narration_note_press(&machine->narration);
-        machine->last_new_site_tick = machine->tick;
         return;
     }
     if (machine->choice.is_open) {
@@ -1721,7 +1702,7 @@ static void take_press(struct script_machine *machine)
         retry_after_the_game_over(machine);
         return;
     }
-    if (soul->rewind_select_ticks >= REWIND_SLIDE_TICKS) {
+    if (soul->rewind_select_ticks >= SCRIPT_REWIND_SLIDE_TICKS) {
         if (soul->rewind_press_ticks == 0) {
             soul->rewind_press_ticks = 1;
         }
@@ -1773,7 +1754,7 @@ static void take_ghost_button(struct script_machine *machine)
     if (soul->is_on && !soul->view_demo_is_on && soul->tutorial_mode == TUTORIAL_NONE) {
         if (pill_answers_a_press(machine, SCRIPT_PILL_BACK)) {
             script_pills_press(machine, SCRIPT_PILL_BACK, PILL_HOLD_AFTER_VIEW_CHANGE);
-            machine->mode_byte = NORMAL_PLAY_MODE;
+            machine->mode_byte = SCRIPT_MODE_NORMAL;
             set_soul_view(machine, 0);
         }
         return;
@@ -1879,7 +1860,7 @@ static void follow_core_in_normal_play(struct script_machine *machine, float cor
     int whole_y;
 
     soul = &machine->soul;
-    if (machine->pause_bit || machine->mode_byte != NORMAL_PLAY_MODE || machine->room < 0 || machine->room >= SCRIPT_ROOM_ID_MAX) {
+    if (machine->pause_bit || machine->mode_byte != SCRIPT_MODE_NORMAL || machine->room < 0 || machine->room >= SCRIPT_ROOM_ID_MAX) {
         return;
     }
     bounds = &machine->room_bounds[machine->room];
@@ -2012,7 +1993,6 @@ static void go_to_route_step(struct script_machine *machine, int step_index)
 static void finish_route_step(struct script_machine *machine, const struct script_route_step *step)
 {
     mark_route_step(machine, "route_step_done", step);
-    machine->last_new_site_tick = machine->tick;
     machine->soul.route_last_action_tick = machine->tick;
     go_to_route_step(machine, machine->soul.route_step + 1);
 }
@@ -2081,7 +2061,7 @@ static int route_word_without_argument_holds(const struct script_machine *machin
     case SCRIPT_ROUTE_WAIT_CAMERA_TUTORIAL:
         return soul->camera_tutorial_is_on;
     case SCRIPT_ROUTE_WAIT_TIMELEAP_ARMED:
-        return soul->rewind_select_ticks >= REWIND_SLIDE_TICKS || soul->time_jump_event.target != NULL;
+        return soul->rewind_select_ticks >= SCRIPT_REWIND_SLIDE_TICKS || soul->time_jump_event.target != NULL;
     case SCRIPT_ROUTE_WAIT_CHOICE:
         return machine->choice.is_open;
     case SCRIPT_ROUTE_WAIT_RETRIED:
@@ -3034,11 +3014,6 @@ int script_soul_route_hop_aim(const struct script_machine *machine, int target_o
     return a_push_lands_on(machine, machine->soul.active_object * SCRIPT_CORE_SLOT_COUNT + machine->soul.active_slot, hop_object * SCRIPT_CORE_SLOT_COUNT + hop_slot, aim_x, aim_y);
 }
 
-void script_soul_core_position(const struct script_machine *machine, int object_index, int slot, float *x, float *y)
-{
-    core_position(machine, object_index, slot, x, y);
-}
-
 int script_soul_route_balloon_group(const struct script_machine *machine, const char *name)
 {
     int balloon;
@@ -3059,5 +3034,5 @@ int script_soul_game_over_waits(const struct script_machine *machine)
 
 int script_soul_rewind_button_waits(const struct script_machine *machine)
 {
-    return machine->soul.rewind_select_ticks >= REWIND_SLIDE_TICKS && machine->soul.rewind_press_ticks == 0;
+    return machine->soul.rewind_select_ticks >= SCRIPT_REWIND_SLIDE_TICKS && machine->soul.rewind_press_ticks == 0;
 }

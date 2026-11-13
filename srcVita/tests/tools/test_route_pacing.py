@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -128,6 +129,44 @@ class PacingFileTest(unittest.TestCase):
 
     def test_reads_a_missing_file_as_nothing_stretched(self):
         self.assertEqual(route_pacing.read_pacing("/nonexistent/route_pacing.txt"), set())
+
+
+class KeptPacingTest(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.folder)
+        self.kept = os.path.join(self.folder, "game_pacing.txt")
+        self.baked = os.path.join(self.folder, "route_pacing.txt")
+        self.route = b"step a move x 0 90 -\n"
+
+    def write(self, path, text):
+        with open(path, "w", encoding="ascii") as output:
+            output.write(text)
+
+    def read(self, path):
+        with open(path, encoding="ascii") as source:
+            return source.read()
+
+    def test_a_fresh_bake_starts_from_the_kept_pacing_of_the_same_route(self):
+        self.write(self.kept, route_pacing.pacing_file_text(self.route, {1: 250}))
+        self.assertTrue(route_pacing.seed_from_kept(self.kept, self.baked, self.route))
+        self.assertEqual(route_pacing.dwells_baked_for(self.baked, self.route), {1: 250})
+
+    def test_kept_pacing_for_another_route_is_ignored(self):
+        self.write(self.kept, route_pacing.pacing_file_text(b"step other\n", {1: 250}))
+        self.assertFalse(route_pacing.seed_from_kept(self.kept, self.baked, self.route))
+        self.assertFalse(os.path.exists(self.baked))
+
+    def test_a_current_bake_is_not_replaced(self):
+        self.write(self.kept, route_pacing.pacing_file_text(self.route, {1: 250}))
+        self.write(self.baked, route_pacing.pacing_file_text(self.route, {1: 300}))
+        self.assertFalse(route_pacing.seed_from_kept(self.kept, self.baked, self.route))
+        self.assertEqual(route_pacing.dwells_baked_for(self.baked, self.route), {1: 300})
+
+    def test_a_settled_bake_is_kept(self):
+        self.write(self.baked, route_pacing.pacing_file_text(self.route, {2: 120}))
+        route_pacing.keep_settled(self.kept, self.baked)
+        self.assertEqual(self.read(self.kept), self.read(self.baked))
 
 
 if __name__ == "__main__":

@@ -377,15 +377,6 @@ static void read_route(const char *folder)
             printf("route_pacing.txt was baked for another route; using each step's pace\n");
         }
     }
-    snprintf(path, sizeof(path), "%s/scenes.txt", folder);
-    source = fopen(path, "r");
-    if (source != NULL) {
-        size = fread(text, 1, sizeof(text), source);
-        fclose(source);
-        if (!script_route_read_scenes(&replay_route, text, (unsigned int)size)) {
-            printf("scenes.txt is invalid\n");
-        }
-    }
     machine.route = &replay_route;
 }
 
@@ -530,7 +521,6 @@ int main(int argument_count, char **arguments)
     int index;
     int press;
     int auto_press;
-    int stall_breaker_is_off = 0;
     const char *state_load_path;
     const char *start_override;
     int chapter_mark_override;
@@ -542,7 +532,7 @@ int main(int argument_count, char **arguments)
     start_override = NULL;
     chapter_mark_override = -1;
     flag_change_count = 0;
-    folder = "extracted/vita_assets/chapter1_opening/scripts";
+    folder = "extracted/vita_assets/game/scripts";
     stop_tick = 100000;
     timing = SCRIPT_TIMING_DS;
     press_count = 0;
@@ -570,8 +560,6 @@ int main(int argument_count, char **arguments)
             auto_press = SCRIPT_AUTO_FAST;
         } else if (strcmp(arguments[index], "--auto-paced") == 0) {
             auto_press = SCRIPT_AUTO_PACED;
-        } else if (strcmp(arguments[index], "--no-stall-breaker") == 0) {
-            stall_breaker_is_off = 1;
         } else if (strcmp(arguments[index], "--marks") == 0) {
             marks_to_stdout = 1;
         } else if (strcmp(arguments[index], "--rows") == 0) {
@@ -607,7 +595,6 @@ int main(int argument_count, char **arguments)
     script_machine_start_from_black(&machine);
     machine.auto_press = SCRIPT_AUTO_OFF;
     machine.route_is_driving = auto_press != SCRIPT_AUTO_OFF;
-    machine.stall_breaker_is_off = stall_breaker_is_off;
     script_route_pad_reset(&route_pad);
     script_input_reset(&route_input);
     add_every_script_of_the_chain(folder);
@@ -665,8 +652,8 @@ int main(int argument_count, char **arguments)
     if (marks_to_stdout) {
         print_cores();
     }
-    printf("ended tick=%u finished=%d fetches=%u pushes=%u\n", machine.tick, machine.is_finished, machine.fetch_total, machine.push_count);
-    printf("state talk=%d open=%d pause=%d mode=%d tutorial=%d soul_keeps=%d objects=%d quiet=%u\n", (int)machine.talk.phase, machine.talk_is_open, machine.pause_bit, machine.mode_byte, machine.soul.tutorial_mode, machine.soul_state_keeps_pause, machine.object_count, machine.tick - machine.last_new_site_tick);
+    printf("ended tick=%u finished=%d fetches=%u\n", machine.tick, machine.is_finished, machine.fetch_total);
+    printf("state talk=%d open=%d pause=%d mode=%d tutorial=%d soul_keeps=%d objects=%d\n", (int)machine.talk.phase, machine.talk_is_open, machine.pause_bit, machine.mode_byte, machine.soul.tutorial_mode, machine.soul_state_keeps_pause, machine.object_count);
     printf("soul view=%d pills=%u rewind_select=%u rewind_press=%u movie_left=%d time_jump_at=%lld time_jump=%s input_off=%d dead_talk=%d choice=%d narration=%d\n", machine.soul.is_on, machine.soul.pills_registered, (unsigned int)machine.soul.rewind_select_ticks, (unsigned int)machine.soul.rewind_press_ticks, (int)machine.movie_ticks_left, machine.soul.time_jump_event.target != NULL ? machine.soul.time_jump_event.at : -1LL, machine.soul.time_jump_event.target != NULL ? machine.soul.time_jump_event.target : "-", machine.soul.input_is_off, machine.soul.dead_talk_is_on, machine.choice.is_open, machine.narration.is_running);
     printf("soul_held view_change=%d view_demo=%d demo_soul=%d film=%d pill_out=%d tutorial=%d chain=%d pick=%d drag=%d\n", (int)machine.soul.view_change_ticks_left, machine.soul.view_demo_is_on, machine.demo_soul_is_on, machine.film_frame_is_on, machine.soul.ghost_pill_is_held_out, machine.soul.tutorial_holds_input, (int)machine.soul.chain.state, machine.soul.chain_pick_object, (int)machine.soul.drag_ticks_left);
     for (index = 0; index < machine.object_count; index++) {

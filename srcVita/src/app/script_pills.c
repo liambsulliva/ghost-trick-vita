@@ -7,11 +7,8 @@
 #define PILL_SLIDING_IN 2
 #define PILL_SLIDING_OUT 3
 #define PILL_PRESSED 4
-#define PILL_SLIDE_STEPS 8
 #define PILL_PRESS_TICKS 12
 #define PILL_WAIT_BEFORE_SLIDE_IN 3
-#define DEMO_MODE 2
-#define NORMAL_PLAY_MODE 3
 #define FIRST_PILL_EFFECT 99
 #define PILL_EFFECT_COUNT 4
 #define BIT(id) (1u << (unsigned int)(id))
@@ -126,7 +123,7 @@ static enum pill_group current_group(const struct script_machine *machine)
     if (soul->is_on) {
         return machine->demo_soul_is_on ? GROUP_DEMO : GROUP_GHOST;
     }
-    if (!machine->pause_bit && machine->mode_byte == NORMAL_PLAY_MODE) {
+    if (!machine->pause_bit && machine->mode_byte == SCRIPT_MODE_NORMAL) {
         return GROUP_NORMAL;
     }
     if (script_soul_demo_mode_offers_the_ghost_view(machine)) {
@@ -209,14 +206,14 @@ static void step_pill(struct script_pill *pill, int is_wanted, int may_slide_in)
             pill->hold_ticks = pill->hold_ticks - 1;
         } else if (!is_wanted) {
             pill->state = PILL_SLIDING_OUT;
-            pill->step = PILL_SLIDE_STEPS;
+            pill->step = SCRIPT_PILL_SLIDE_STEPS;
         }
         break;
     case PILL_SLIDING_IN:
         pill->step = pill->step + 1;
         if (!is_wanted) {
             pill->state = PILL_SLIDING_OUT;
-        } else if (pill->step >= PILL_SLIDE_STEPS) {
+        } else if (pill->step >= SCRIPT_PILL_SLIDE_STEPS) {
             pill->state = PILL_SHOWN;
         }
         break;
@@ -251,7 +248,7 @@ void script_pills_step(struct script_machine *machine)
     int view_press_holds_the_others;
 
     soul = &machine->soul;
-    if (machine->mode_byte == DEMO_MODE) {
+    if (machine->mode_byte == SCRIPT_MODE_DEMO) {
         soul->demo_mode_was_on = 1;
     } else if (soul->demo_mode_was_on) {
         soul->demo_mode_was_on = 0;
@@ -289,7 +286,7 @@ void script_pills_press(struct script_machine *machine, enum script_pill_id id, 
         return;
     }
     pill->state = PILL_PRESSED;
-    pill->step = PILL_SLIDE_STEPS;
+    pill->step = SCRIPT_PILL_SLIDE_STEPS;
     pill->press_ticks = 0;
     pill->hold_ticks = ticks_after_press;
 }
@@ -322,6 +319,6 @@ void script_pills_fill_view(const struct script_machine *machine, struct script_
         pill = &machine->soul.pills[index];
         view->pills[index].is_on_screen = pill->state != PILL_HIDDEN;
         view->pills[index].is_pressed = pill->state == PILL_PRESSED;
-        view->pills[index].slide_step = pill->state == PILL_SHOWN || pill->state == PILL_PRESSED ? PILL_SLIDE_STEPS : pill->step;
+        view->pills[index].slide_step = pill->state == PILL_SHOWN || pill->state == PILL_PRESSED ? SCRIPT_PILL_SLIDE_STEPS : pill->step;
     }
 }

@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
+#include "game_save.h"
 #include "input.h"
 #include "pause_save.h"
 #include "pause_widgets.h"
@@ -15,7 +16,6 @@
 #define LABEL_DROP 30.0f
 #define STATE_DROP 100.0f
 #define TITLE_Y 40.0f
-#define SAVE_CHAPTER_MOST 18
 
 enum save_dialog {
     DIALOG_NONE,
@@ -192,7 +192,7 @@ void pause_save_draw(float x_offset)
         top = panel_top(panel);
         pause_draw_slice(panel == selected ? "save_panel_selected" : "save_panel", PANEL_LEFT + x_offset, top, width, PANEL_HEIGHT, 1.0f);
         pause_draw_text(panel == PAUSE_SAVE_AUTO_PANEL ? "header.autosave" : "header.manual_save", PANEL_TEXT_X + x_offset, top + LABEL_DROP, PAUSE_ANCHOR_LEFT, 1.0f);
-        if (has_data[panel] >= 1 && has_data[panel] <= SAVE_CHAPTER_MOST) {
+        if (has_data[panel] >= 1 && has_data[panel] <= GAME_SAVE_CHAPTER_COUNT) {
             snprintf(key, sizeof(key), "row.chapter_%d", has_data[panel]);
         } else {
             snprintf(key, sizeof(key), "%s", has_data[panel] == PAUSE_SAVE_NO_DATA ? "row.no_data" : "row.saved_game");

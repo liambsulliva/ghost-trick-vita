@@ -64,7 +64,6 @@ class PythonMutationOutcomeTests(unittest.TestCase):
     def test_a_mutation_run_stops_at_the_first_failure_and_a_normal_test_run_does_not(self):
         self.assertIn("--failfast", mutation_check.ALL_PYTHON_TEST_COMMAND)
         self.assertIn("--failfast", mutation_check.AUDIO_PYTHON_TEST_COMMAND)
-        self.assertIn("--failfast", mutation_check.LONGPLAY_TEST_COMMAND)
         with open(os.path.join(mutation_check.SRC_VITA_FOLDER, "tools", "assets", "Makefile"), encoding="utf-8") as source:
             self.assertNotIn("--failfast", source.read())
 
@@ -89,8 +88,8 @@ class PythonMutationOutcomeTests(unittest.TestCase):
         self.assertGreater(mutation_check.time_limit_for(mutation_check.ALL_PYTHON_TEST_COMMAND), mutation_check.time_limit_for(mutation_check.AUDIO_PYTHON_TEST_COMMAND))
         self.assertEqual(mutation_check.time_limit_for(mutation_check.python_test_command_for("narration.py")), mutation_check.ALL_PYTHON_TEST_TIME_LIMIT_SECONDS)
 
-    def test_the_longplay_tests_keep_the_short_time_limit(self):
-        self.assertEqual(mutation_check.time_limit_for(mutation_check.python_test_command_for("/x/tools/longplay_check.py")), mutation_check.TEST_TIME_LIMIT_SECONDS)
+    def test_the_audio_tests_keep_the_short_time_limit(self):
+        self.assertEqual(mutation_check.time_limit_for(mutation_check.python_test_command_for("/x/tools/audio_check.py")), mutation_check.TEST_TIME_LIMIT_SECONDS)
 
 
 class EntryTests(unittest.TestCase):
@@ -151,14 +150,11 @@ class RepositoryToolCopyTests(unittest.TestCase):
 
 
 class PythonTestChoiceTests(unittest.TestCase):
-    def test_a_longplay_mutation_runs_the_longplay_tests(self):
-        self.assertEqual(mutation_check.python_test_command_for("/x/tools/longplay_check.py"), mutation_check.LONGPLAY_TEST_COMMAND)
-
     def test_an_audio_tool_runs_the_audio_tests(self):
         self.assertEqual(mutation_check.python_test_command_for("/x/tools/audio_check.py"), mutation_check.AUDIO_PYTHON_TEST_COMMAND)
 
-    def test_the_audio_and_longplay_routes_are_not_given_a_running_order(self):
-        for file_name in ("audio_check.py", "audio_file.py", "longplay_check.py"):
+    def test_the_audio_route_is_not_given_a_running_order(self):
+        for file_name in ("audio_check.py", "audio_file.py"):
             self.assertNotIn("--first", mutation_check.python_test_command_for(os.path.join("tools", file_name)))
 
 

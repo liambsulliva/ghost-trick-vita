@@ -13,7 +13,6 @@ float pause_options_scroll(void);
 float pause_options_preview_top(void);
 void pause_options_leave(void);
 int pause_options_selected_row(void);
-const char *pause_options_control_glyph(int control, int which);
 int pause_options_is_on_controls_page(void);
 int pause_options_dropdown_is_open(void);
 int pause_options_dialog_is_open(void);

@@ -5,30 +5,18 @@
 #include "ds_units.h"
 
 #define NOTE_ADDED_TALK_LABEL "sys_add_data"
-#define MODE_BYTE_LOADING 1
-#define MODE_BYTE_NORMAL 2
 #define STILL_DOES_NOT_FADE -1
 #define STILL_ALPHA_STEPS 31
-#define MODE_BYTE_ALSO_RUNS_IDLE 3
-#define MODE_BYTE_STAFF_ROLL 0x17
 #define GAME_START_AFTER_LOAD_TICKS 3
 #define LOAD_AFTER_TEARDOWN_TICKS 4
 #define SOUL_SOUND_KIND 14
 #define NARRATION_OVERHEAD_TICKS 3
 #define MOVIE_SOUND_KIND 82
 #define NEVER -1
-#define SCRIPT_CHANGE_OP 0x24u
 #define GAME_APP_TARGET "GameApp"
 #define XML_SUFFIX ".xml"
-#define STUCK_AFTER_QUIET_TICKS 240
 #define DEBUG_ARG_PREFIX "debug"
-#define STUCK_AFTER_ANY_TICKS 3000
-#define STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT 18000
-#define STUCK_PUSHES_BEFORE_LEAVING_THE_SCRIPT 60
 #define FNV_OFFSET_BASIS 2166136261u
-#define CHAPTER_MARK_OP 0x74u
-#define CHAPTER_MARK_SEARCH_WORDS 12u
-#define SCRIPT_MOVE_ON_MARK_MAX 64
 
 static const char *vm_kind_name(enum script_vm_kind kind)
 {
@@ -74,11 +62,9 @@ void script_machine_init(struct script_machine *machine, const struct script_out
     machine->stop_act = stop_act;
     machine->teardown_at = NEVER;
     machine->load_at = NEVER;
-    machine->furthest_scene = -1;
     machine->route_furthest_acted_step = -1;
     machine->background_color_level = SCRIPT_COLOR_LEVEL_NORMAL;
     machine->route_step_after_retry = -1;
-    machine->game_over_retry_step = -1;
     machine->game_start_at = NEVER;
     machine->camera_follow_object = SCRIPT_NO_SELECTION;
     machine->pause_clear_at = NEVER;
@@ -132,36 +118,7 @@ static void begin_vm(struct script_vm *vm, enum script_vm_kind kind, const struc
 
 static void clear_what_the_earlier_scene_left(struct script_machine *machine);
 static void note_scene_began(struct script_machine *machine, const char *name);
-static int scene_was_seen(const struct script_machine *machine, unsigned int hash);
 static unsigned int hash_text(unsigned int hash, const char *text);
-
-static int chapter_mark_of_source(const struct script_source *source)
-{
-    unsigned int index;
-    unsigned int op;
-    unsigned int mark;
-
-    for (index = 0; index + 1 < CHAPTER_MARK_SEARCH_WORDS; index++) {
-        if (script_file_read_word(&source->file, index, &op) != SCRIPT_FILE_OK || script_file_read_word(&source->file, index + 1, &mark) != SCRIPT_FILE_OK) {
-            return 0;
-        }
-        if (op == CHAPTER_MARK_OP) {
-            return (int)mark;
-        }
-    }
-    return 0;
-}
-
-static int scene_is_behind_the_story(const struct script_machine *machine, const struct script_source *source, int was_seen)
-{
-    int mark;
-
-    if (machine->route == NULL || machine->route->scene_count == 0 || !machine->route_is_driving || !was_seen) {
-        return 0;
-    }
-    mark = chapter_mark_of_source(source);
-    return mark > 0 && mark < machine->chapter_mark;
-}
 
 static void begin_script(struct script_machine *machine, const struct script_source *source)
 {
@@ -169,16 +126,10 @@ static void begin_script(struct script_machine *machine, const struct script_sou
         script_flags_clear_chapter(&machine->flags);
     }
     clear_what_the_earlier_scene_left(machine);
-    machine->scene_is_behind_the_story = scene_is_behind_the_story(machine, source, scene_was_seen(machine, hash_text(FNV_OFFSET_BASIS, source->name)));
     note_scene_began(machine, source->name);
     begin_vm(&machine->runner, SCRIPT_VM_RUNNER, source, NULL, 0);
     machine->has_runner = 1;
     machine->background_color_level = SCRIPT_COLOR_LEVEL_NORMAL;
-    memset(machine->visited_sites, 0, sizeof(machine->visited_sites));
-    memset(machine->pushed_sites, 0, sizeof(machine->pushed_sites));
-    machine->pushes_in_this_script = 0;
-    machine->last_new_site_tick = machine->tick;
-    machine->last_timer_tick = machine->tick;
     if (machine->outputs->marked != NULL) {
         machine->outputs->marked("script_begun", source->name);
     }
@@ -188,7 +139,7 @@ static void begin_script(struct script_machine *machine, const struct script_sou
     memset(machine->free_units, 0, sizeof(machine->free_units));
     machine->actor_count = 0;
     machine->gameapp_count = 0;
-    machine->mode_byte = MODE_BYTE_LOADING;
+    machine->mode_byte = SCRIPT_MODE_LOADING;
     machine->pause_bit = 0;
     script_flags_clear_local(&machine->flags);
     machine->game_start_at = (long long)machine->tick + GAME_START_AFTER_LOAD_TICKS;
@@ -215,36 +166,9 @@ static unsigned int hash_text(unsigned int hash, const char *text)
     return hash;
 }
 
-static int scene_was_seen(const struct script_machine *machine, unsigned int hash)
-{
-    int index;
-
-    for (index = 0; index < machine->scenes_seen; index++) {
-        if (machine->scene_hashes_seen[index] == hash) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
 static void note_scene_began(struct script_machine *machine, const char *name)
 {
-    unsigned int hash;
-    int scene;
-
     machine->scene_name = name;
-    hash = hash_text(FNV_OFFSET_BASIS, name);
-    if (!scene_was_seen(machine, hash)) {
-        if (machine->scenes_seen < SCRIPT_SCENES_SEEN_MAX) {
-            machine->scene_hashes_seen[machine->scenes_seen] = hash;
-            machine->scenes_seen = machine->scenes_seen + 1;
-        }
-        machine->last_new_scene_tick = machine->tick;
-    }
-    scene = machine->route != NULL ? script_route_scene_index(machine->route, name) : -1;
-    if (scene > machine->furthest_scene) {
-        machine->furthest_scene = scene;
-    }
 }
 
 static void note_leftover(struct script_machine *machine, const char *what)
@@ -1115,7 +1039,7 @@ static void start_staff_roll(struct script_machine *machine, int page)
     if (!machine->staff_roll.is_on) {
         machine->mode_byte_under_the_staff_roll = machine->mode_byte;
     }
-    machine->mode_byte = MODE_BYTE_STAFF_ROLL;
+    machine->mode_byte = SCRIPT_MODE_STAFF_ROLL;
     script_staff_roll_start(&machine->staff_roll, page);
     snprintf(text, sizeof(text), "%d screens=%d", page, machine->staff_roll.screen_count);
     mark_staff_roll(machine, "staff_roll_started", text);
@@ -1270,20 +1194,20 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         vm->condition = words[0] != 0 && (machine->random_state >> 16) % words[0] == 0;
         return SCRIPT_STEP_NEXT;
     case 0x67:
-        machine->mode_byte = MODE_BYTE_ALSO_RUNS_IDLE;
-        machine->mode_a_script_asked_for = MODE_BYTE_ALSO_RUNS_IDLE;
+        machine->mode_byte = SCRIPT_MODE_NORMAL;
+        machine->mode_a_script_asked_for = SCRIPT_MODE_NORMAL;
         queue_gameapp(machine, vm, "System", "ChangeMode");
         if (machine->soul.mark_age_ticks < 0) {
             script_soul_start_player_mark(machine);
         }
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x68:
-        machine->mode_byte = MODE_BYTE_NORMAL;
-        machine->mode_a_script_asked_for = MODE_BYTE_NORMAL;
+        machine->mode_byte = SCRIPT_MODE_DEMO;
+        machine->mode_a_script_asked_for = SCRIPT_MODE_DEMO;
         queue_gameapp(machine, vm, "System", "ChangeMode");
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x69:
-        vm->condition = machine->mode_byte == MODE_BYTE_NORMAL;
+        vm->condition = machine->mode_byte == SCRIPT_MODE_DEMO;
         return SCRIPT_STEP_NEXT;
     case 0x6b:
         vm->condition = script_change_is_pending(machine);
@@ -1388,7 +1312,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         }
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0xe3:
-        machine->mode_byte = MODE_BYTE_NORMAL;
+        machine->mode_byte = SCRIPT_MODE_DEMO;
         machine->pause_bit = 0;
         set_pause_class(vm, PAUSE_CLASS_NORMAL);
         machine->demo_soul_is_on = 0;
@@ -1427,7 +1351,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         start_staff_roll(machine, (int)words[0]);
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0xf9:
-        if (machine->mode_byte == MODE_BYTE_STAFF_ROLL && script_staff_roll_holds_the_script(&machine->staff_roll)) {
+        if (machine->mode_byte == SCRIPT_MODE_STAFF_ROLL && script_staff_roll_holds_the_script(&machine->staff_roll)) {
             return SCRIPT_STEP_MOVED_THEN_YIELD;
         }
         return SCRIPT_STEP_NEXT;
@@ -1482,7 +1406,6 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0x2f:
         vm->wait_ticks = words[0];
-        vm->wait_began_on_a_new_site = machine->fetched_site_is_new;
         return SCRIPT_STEP_NEXT_THEN_YIELD;
     case 0x30:
         machine->has_runner = 0;
@@ -1565,20 +1488,6 @@ static int read_operands(struct script_machine *machine, struct script_vm *vm, u
     return 1;
 }
 
-static void note_visited_site(struct script_machine *machine, const struct script_vm *vm)
-{
-    unsigned int site;
-
-    site = ((unsigned int)(vm->source - machine->sources) * 2654435761u + vm->pc * 40503u) % (SCRIPT_VISITED_SITE_BYTES * 8u);
-    if (machine->visited_sites[site / 8] & (1u << (site % 8))) {
-        machine->fetched_site_is_new = 0;
-        return;
-    }
-    machine->visited_sites[site / 8] = (unsigned char)(machine->visited_sites[site / 8] | (1u << (site % 8)));
-    machine->fetched_site_is_new = 1;
-    machine->last_new_site_tick = machine->tick;
-}
-
 static void remember_fetch(struct script_machine *machine, const struct script_vm *vm, unsigned int op, const unsigned int *words, unsigned int length)
 {
     struct script_recent_fetch *recent;
@@ -1591,7 +1500,6 @@ static void remember_fetch(struct script_machine *machine, const struct script_v
     recent->op = op;
     recent->object_name = vm->owner != NULL ? vm->owner->name : "runner";
     machine->fetch_total = machine->fetch_total + 1;
-    note_visited_site(machine, vm);
     if (machine->outputs->fetched == NULL) {
         return;
     }
@@ -1764,7 +1672,7 @@ static void update_object(struct script_machine *machine, struct script_object *
             return;
         }
     }
-    if (!any_was_busy && object->idle_handler != SCRIPT_NO_SELECTION && (machine->mode_byte == MODE_BYTE_NORMAL || machine->mode_byte == MODE_BYTE_ALSO_RUNS_IDLE)) {
+    if (!any_was_busy && object->idle_handler != SCRIPT_NO_SELECTION && (machine->mode_byte == SCRIPT_MODE_DEMO || machine->mode_byte == SCRIPT_MODE_NORMAL)) {
         struct script_handler *idle;
 
         idle = &object->handlers[object->idle_handler];
@@ -1882,7 +1790,7 @@ static void run_native_steps_before_tasks(struct script_machine *machine)
 {
     if (machine->pause_clear_at == (long long)machine->tick) {
         machine->pause_bit = 0;
-        machine->mode_byte = MODE_BYTE_NORMAL;
+        machine->mode_byte = SCRIPT_MODE_DEMO;
         machine->pause_clear_at = NEVER;
     }
     script_balloons_count_down(machine);
@@ -1904,7 +1812,7 @@ static void run_native_steps_before_tasks(struct script_machine *machine)
                 machine->outputs->marked("countdown_carried_over", machine->runner.source != NULL ? machine->runner.source->name : "-");
             }
         }
-        machine->mode_byte = MODE_BYTE_NORMAL;
+        machine->mode_byte = SCRIPT_MODE_DEMO;
         machine->pause_bit = 0;
     }
     if (machine->soul_vision_message_at == (long long)machine->tick) {
@@ -1955,64 +1863,6 @@ static void run_gameapp_queue(struct script_machine *machine)
     }
 }
 
-static int vm_has_a_running_timer(const struct script_vm *vm)
-{
-    return vm->wait_ticks > 0;
-}
-
-static int object_has_a_running_timer(const struct script_object *object)
-{
-    int index;
-
-    if (vm_has_a_running_timer(&object->main_vm)) {
-        return 1;
-    }
-    for (index = 0; index < object->handler_count; index++) {
-        if (index != object->idle_handler && object->handlers[index].is_busy && vm_has_a_running_timer(&object->handlers[index].vm)) {
-            return 1;
-        }
-    }
-    if (object->idle_handler != SCRIPT_NO_SELECTION && object->idle_handler < object->handler_count) {
-        return vm_has_a_running_timer(&object->handlers[object->idle_handler].vm) && object->handlers[object->idle_handler].vm.wait_began_on_a_new_site;
-    }
-    return 0;
-}
-
-static int something_is_running_to_a_known_end(const struct script_machine *machine)
-{
-    int index;
-
-    if (machine->narration.is_running || machine->fade_count > 0 || machine->pan_is_active) {
-        return 1;
-    }
-    if (machine->movie_ticks_left > 0 || machine->eyecatch_ticks_left > 0 || machine->soul.view_change_ticks_left > 0 || machine->soul.phone_event.target != NULL || machine->soul.time_jump_event.target != NULL) {
-        return 1;
-    }
-    if (machine->talk.phase != SCRIPT_TALK_CLOSED && machine->talk.phase != SCRIPT_TALK_WAITING && machine->talk.phase != SCRIPT_TALK_PAUSED_BEFORE_TEXT) {
-        return 1;
-    }
-    if (machine->teardown_at != NEVER || machine->load_at != NEVER || machine->game_start_at != NEVER || machine->pause_clear_at != NEVER || machine->soul_vision_message_at != NEVER || machine->talk_close_at != NEVER) {
-        return 1;
-    }
-    for (index = 0; index < machine->object_count; index++) {
-        if (object_has_a_running_timer(&machine->objects[index])) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-static int game_waits_on_a_press_that_works(const struct script_machine *machine)
-{
-    if (machine->auto_press == SCRIPT_AUTO_FAST) {
-        return 0;
-    }
-    if (script_soul_waits_on_the_player(machine)) {
-        return 1;
-    }
-    return machine->talk.phase != SCRIPT_TALK_CLOSED && script_talk_wants_a_press(machine);
-}
-
 int script_machine_text_takes_a_skip(const struct script_machine *machine)
 {
     if (machine->choice.is_open) {
@@ -2024,109 +1874,12 @@ int script_machine_text_takes_a_skip(const struct script_machine *machine)
     return script_narration_takes_a_skip(&machine->narration);
 }
 
-static int word_after_op(const struct script_source *source, unsigned int pc, unsigned int *next)
-{
-    unsigned int op;
-    unsigned int length;
-
-    if (script_file_read_word(&source->file, pc, &op) != SCRIPT_FILE_OK) {
-        return 0;
-    }
-    length = script_opcode_length(op);
-    if (length == 0) {
-        return 0;
-    }
-    *next = pc + length;
-    return 1;
-}
-
-static int move_object_to_next_act(struct script_machine *machine, struct script_object *object)
-{
-    unsigned int pc;
-    unsigned int op;
-    int steps;
-
-    pc = object->main_vm.pc;
-    for (steps = 0; steps < SCRIPT_RUN_STEP_MAX; steps++) {
-        if (script_file_read_word(&object->main_vm.source->file, pc, &op) != SCRIPT_FILE_OK) {
-            return 0;
-        }
-        if (op == 0x19 && pc != object->main_vm.pc) {
-            object->main_vm.pc = pc;
-            object->main_vm.wait_ticks = 0;
-            object->main_vm.has_ended = 0;
-            script_machine_note(machine, &object->main_vm, "stuck_moved_to_next_act", object->name);
-            return 1;
-        }
-        if (op == 0x0 && steps > 0) {
-            return 0;
-        }
-        if (!word_after_op(object->main_vm.source, pc, &pc)) {
-            return 0;
-        }
-    }
-    return 0;
-}
-
-static int move_to_next_act(struct script_machine *machine)
-{
-    int index;
-
-    for (index = 0; index < machine->object_count; index++) {
-        if (machine->objects[index].handler_count > 0 && move_object_to_next_act(machine, &machine->objects[index])) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-static int names_a_script(const char *path)
-{
-    unsigned int length;
-
-    if (path == NULL) {
-        return 0;
-    }
-    length = (unsigned int)strlen(path);
-    return length > strlen(XML_SUFFIX) && strcmp(&path[length - strlen(XML_SUFFIX)], XML_SUFFIX) == 0;
-}
-
-static const char *first_script_change_of(const struct script_source *source)
-{
-    unsigned int pc;
-    unsigned int op;
-    unsigned int string_word;
-    const char *path;
-
-    for (pc = 0; script_file_read_word(&source->file, pc, &op) == SCRIPT_FILE_OK; pc++) {
-        if (op != SCRIPT_CHANGE_OP || script_file_read_word(&source->file, pc + 1, &string_word) != SCRIPT_FILE_OK) {
-            continue;
-        }
-        path = script_file_string(&source->file, string_word);
-        if (names_a_script(path)) {
-            return path;
-        }
-    }
-    return NULL;
-}
-
 static void begin_script_change(struct script_machine *machine, const char *path)
 {
     machine->pause_bit = 1;
     machine->pending_script = path;
     machine->teardown_at = (long long)machine->tick + 1;
     machine->load_at = machine->teardown_at + LOAD_AFTER_TEARDOWN_TICKS;
-}
-
-static const char *exit_of_this_scene(const struct script_machine *machine)
-{
-    const char *path;
-
-    path = machine->has_runner ? first_script_change_of(machine->runner.source) : NULL;
-    if (path == NULL && machine->object_count > 0) {
-        path = first_script_change_of(machine->objects[0].main_vm.source);
-    }
-    return path;
 }
 
 static void force_script_change(struct script_machine *machine, const char *path)
@@ -2145,183 +1898,6 @@ void script_machine_reload_scene(struct script_machine *machine)
     }
 }
 
-static void move_to_next_script(struct script_machine *machine)
-{
-    const char *path;
-
-    path = exit_of_this_scene(machine);
-    if (path == NULL) {
-        machine->is_finished = 1;
-        script_machine_note(machine, NULL, "stuck_with_nowhere_left_to_go", "");
-        return;
-    }
-    script_machine_note(machine, NULL, "stuck_moved_to_next_script", path);
-    force_script_change(machine, path);
-}
-
-void script_machine_skip_ahead(struct script_machine *machine)
-{
-    machine->last_new_site_tick = machine->tick;
-    if (script_change_is_pending(machine)) {
-        return;
-    }
-    machine->talk_close_at = (long long)machine->tick + 1;
-    if (!move_to_next_act(machine)) {
-        move_to_next_script(machine);
-    }
-}
-
-static void push_when_stuck(struct script_machine *machine)
-{
-    unsigned int quiet_ticks;
-
-    if (machine->stall_breaker_is_off || !machine->route_is_driving) {
-        return;
-    }
-    quiet_ticks = machine->tick - machine->last_new_site_tick;
-    if (script_change_is_pending(machine)) {
-        return;
-    }
-    if (game_waits_on_a_press_that_works(machine)) {
-        if (!machine->route_is_driving) {
-            machine->last_new_site_tick = machine->tick;
-            machine->last_timer_tick = machine->tick;
-            return;
-        }
-        machine->last_timer_tick = machine->tick;
-        if (quiet_ticks < STUCK_AFTER_ANY_TICKS) {
-            return;
-        }
-    }
-    if (something_is_running_to_a_known_end(machine)) {
-        machine->last_timer_tick = machine->tick;
-    }
-    if (script_soul_world_is_playable(machine) && quiet_ticks < STUCK_AFTER_TICKS_WHEN_THE_PLAYER_CAN_ACT) {
-        return;
-    }
-    if (quiet_ticks < STUCK_AFTER_ANY_TICKS && (quiet_ticks < STUCK_AFTER_QUIET_TICKS || machine->tick - machine->last_timer_tick < STUCK_AFTER_QUIET_TICKS)) {
-        return;
-    }
-    machine->last_new_site_tick = machine->tick;
-    machine->last_timer_tick = machine->tick;
-    machine->push_count = machine->push_count + 1;
-    if (!script_machine_move_on_in_story_order(machine, "stall")) {
-        move_to_next_script(machine);
-    }
-}
-
-static const char *next_scene_in_route_order(const struct script_machine *machine)
-{
-    const struct script_route *route;
-    int from;
-    int index;
-
-    route = machine->route;
-    if (route == NULL || route->step_count == 0 || machine->scene_name == NULL) {
-        return NULL;
-    }
-    from = machine->route_furthest_acted_step >= 0 ? machine->route_furthest_acted_step + 1 : -1;
-    if (machine->soul.route_step > from) {
-        from = machine->soul.route_step;
-    }
-    if (from < 0) {
-        from = script_route_first_step_of_script(route, machine->scene_name);
-    }
-    if (from < 0) {
-        return NULL;
-    }
-    for (index = from; index < route->step_count; index++) {
-        if (strcmp(route->steps[index].script, machine->scene_name) != 0 && find_source(machine, route->steps[index].script) != NULL) {
-            return route->steps[index].script;
-        }
-    }
-    return NULL;
-}
-
-static const char *scene_where_the_story_should_be(const struct script_machine *machine)
-{
-    int scene;
-    const char *routed;
-
-    routed = next_scene_in_route_order(machine);
-    if (routed != NULL || machine->route->scene_count == 0) {
-        return routed;
-    }
-
-    scene = machine->scene_name != NULL ? script_route_scene_index(machine->route, machine->scene_name) : -1;
-    if (scene < 0 || scene + 1 >= machine->route->scene_count) {
-        return NULL;
-    }
-    if (scene < machine->furthest_scene) {
-        scene = machine->furthest_scene + 1 < machine->route->scene_count ? machine->furthest_scene : machine->furthest_scene - 1;
-    }
-    return machine->route->scenes[scene + 1];
-}
-
-static int scene_has_run_too_long(const struct script_machine *machine)
-{
-    if (machine->stall_breaker_is_off || machine->route == NULL || machine->route->scene_most_ticks <= 0 || !machine->route_is_driving) {
-        return 0;
-    }
-    if (script_change_is_pending(machine) || machine->stop_is_requested) {
-        return 0;
-    }
-    return machine->tick - machine->last_new_scene_tick >= (unsigned int)machine->route->scene_most_ticks;
-}
-
-static void move_on_when_the_story_went_back(struct script_machine *machine)
-{
-    const char *next;
-
-    if (machine->stall_breaker_is_off || !machine->scene_is_behind_the_story || script_change_is_pending(machine) || machine->stop_is_requested) {
-        return;
-    }
-    machine->scene_is_behind_the_story = 0;
-    next = machine->furthest_scene + 1 < machine->route->scene_count ? machine->route->scenes[machine->furthest_scene + 1] : NULL;
-    if (next == NULL || find_source(machine, next) == NULL) {
-        script_machine_note(machine, NULL, "scene_behind_the_story_found_no_way_on", machine->scene_name != NULL ? machine->scene_name : "");
-        return;
-    }
-    if (machine->outputs->marked != NULL) {
-        machine->outputs->marked("scene_behind_the_story_left", machine->scene_name != NULL ? machine->scene_name : "");
-        machine->outputs->marked("scene_behind_the_story_moved_to", next);
-    }
-    machine->last_new_scene_tick = machine->tick;
-    force_script_change(machine, next);
-}
-
-int script_machine_move_on_in_story_order(struct script_machine *machine, const char *why)
-{
-    char mark[SCRIPT_MOVE_ON_MARK_MAX];
-    const char *next;
-
-    machine->last_new_scene_tick = machine->tick;
-    next = machine->route != NULL ? scene_where_the_story_should_be(machine) : NULL;
-    if (next == NULL || find_source(machine, next) == NULL) {
-        next = exit_of_this_scene(machine);
-    }
-    if (next == NULL) {
-        snprintf(mark, sizeof(mark), "%s_found_no_way_on", why);
-        script_machine_note(machine, NULL, mark, machine->scene_name != NULL ? machine->scene_name : "");
-        return 0;
-    }
-    if (machine->outputs->marked != NULL) {
-        snprintf(mark, sizeof(mark), "%s_left", why);
-        machine->outputs->marked(mark, machine->scene_name != NULL ? machine->scene_name : "");
-        snprintf(mark, sizeof(mark), "%s_moved_to", why);
-        machine->outputs->marked(mark, next);
-    }
-    force_script_change(machine, next);
-    return 1;
-}
-
-static void move_on_when_the_scene_runs_too_long(struct script_machine *machine)
-{
-    if (scene_has_run_too_long(machine)) {
-        script_machine_move_on_in_story_order(machine, "scene_timeout");
-    }
-}
-
 void script_machine_tick(struct script_machine *machine)
 {
     int index;
@@ -2329,8 +1905,6 @@ void script_machine_tick(struct script_machine *machine)
     if (script_soul_step_eyecatch(machine)) {
         return;
     }
-    move_on_when_the_story_went_back(machine);
-    move_on_when_the_scene_runs_too_long(machine);
     if (machine->is_finished) {
         machine->tick = machine->tick + 1;
         return;
@@ -2355,7 +1929,6 @@ void script_machine_tick(struct script_machine *machine)
     script_talk_step(machine);
     script_balloons_report_opened(machine);
     run_gameapp_queue(machine);
-    push_when_stuck(machine);
     if (machine->stop_is_requested) {
         machine->is_finished = 1;
     }

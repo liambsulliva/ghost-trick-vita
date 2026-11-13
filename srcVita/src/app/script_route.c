@@ -9,9 +9,6 @@
 #define PACING_LINE_SCAN "dwell %d %d"
 #define PACING_ROUTE_WORD "route "
 #define PACING_ROUTE_SCAN "route %x"
-#define SCENE_TIMEOUT_LINE_SCAN "scene_most_ticks %d"
-#define SCENE_TIMEOUT_WORD "scene_most_ticks "
-#define SCENE_LINE_SCAN "scene %95s"
 #define ROUTE_ACTION_WORD_MAX 16
 #define ROUTE_EMPTY_WORD "-"
 #define WAIT_TOKEN_SEPARATOR '&'
@@ -127,54 +124,16 @@ int script_route_read(struct script_route *route, const char *text, unsigned int
 
     offset = 0;
     route->step_count = 0;
-    route->scene_most_ticks = 0;
     route->steps_text_crc = crc32_add(0u, (const unsigned char *)text, text_size);
     route->pacing_is_stale = 0;
     while (offset < text_size) {
         offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
-        if (strncmp(line, SCENE_TIMEOUT_WORD, strlen(SCENE_TIMEOUT_WORD)) == 0) {
-            if (sscanf(line, SCENE_TIMEOUT_LINE_SCAN, &route->scene_most_ticks) != 1 || route->scene_most_ticks < 0) {
-                return 0;
-            }
-        } else if (line[0] != '\0' && !read_step(route, line)) {
+        if (line[0] != '\0' && !read_step(route, line)) {
             route->step_count = 0;
             return 0;
         }
     }
     return 1;
-}
-
-int script_route_read_scenes(struct script_route *route, const char *text, unsigned int text_size)
-{
-    char line[ROUTE_LINE_MAX];
-    unsigned int offset;
-
-    offset = 0;
-    route->scene_count = 0;
-    while (offset < text_size) {
-        offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
-        if (line[0] == '\0') {
-            continue;
-        }
-        if (route->scene_count >= SCRIPT_ROUTE_SCENE_MAX || sscanf(line, SCENE_LINE_SCAN, route->scenes[route->scene_count]) != 1) {
-            route->scene_count = 0;
-            return 0;
-        }
-        route->scene_count = route->scene_count + 1;
-    }
-    return 1;
-}
-
-int script_route_scene_index(const struct script_route *route, const char *script)
-{
-    int index;
-
-    for (index = 0; index < route->scene_count; index++) {
-        if (strcmp(route->scenes[index], script) == 0) {
-            return index;
-        }
-    }
-    return -1;
 }
 
 static int pacing_names_another_route(const struct script_route *route, const char *text, unsigned int text_size)

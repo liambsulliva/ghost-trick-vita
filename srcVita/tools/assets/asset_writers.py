@@ -6,7 +6,6 @@ FORMAT_DXT1 = 2
 BLOCK_BYTES = {FORMAT_DXT5: 16, FORMAT_DXT1: 8}
 NAME_MAX_LENGTH = 95
 ANIMATION_FRAME_MAX = 1024
-SCENE_STEP_MAX = 1024
 BLANK_TEXTURE = "-"
 ALLOWED_NAME_CHARACTERS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-")
 
@@ -78,27 +77,6 @@ def anim_text(name, loops, frames):
         for key in ("x", "y", "width", "height", "u", "v", "u_size", "v_size"):
             fields.append(format_number(frame[key]))
         lines.append("frame " + " ".join(fields))
-    return "\n".join(lines) + "\n"
-
-
-def scene_step_line(step):
-    fields = [step[0]]
-    for value in step[1:]:
-        if isinstance(value, str):
-            check_name(value)
-            fields.append(value)
-        else:
-            fields.append(format_number(value))
-    return " ".join(fields)
-
-
-def scene_text(name, steps):
-    check_name(name)
-    if len(steps) == 0 or len(steps) > SCENE_STEP_MAX:
-        raise ValueError("bad step count in scene " + name)
-    lines = ["scene " + name]
-    for step in steps:
-        lines.append(scene_step_line(step))
     return "\n".join(lines) + "\n"
 
 

@@ -56,7 +56,6 @@
 #define REWIND_BUTTON_HEIGHT 69.0f
 #define REWIND_BUTTON_CORNER 20.0f
 #define REWIND_BUTTON_CORNER_UV 0.345f
-#define REWIND_SLIDE_TICKS 20
 #define REWIND_SLIDE_PIXELS 330.0f
 #define REWIND_PRESS_FLASH_TICKS 12
 #define REWIND_RESTING_BRIGHTNESS 0.88f
@@ -114,7 +113,6 @@
 #define PILL_SHEET_WIDTH 512.0f
 #define PILL_SHEET_HEIGHT 256.0f
 #define PILL_LABEL_CELL_WIDTH 160.0f
-#define PILL_SLIDE_STEPS 8
 #define PILL_SLIDE_PIXELS_PER_STEP 11.25f
 #define PILL_PRESSED_DROP 3.75f
 #define PILL_PRESSED_GREEN 0.5216f
@@ -788,7 +786,7 @@ static void draw_rewind_select(void)
     draw_rock_layer(REWIND_FAR_ROCKS_TEXTURE, REWIND_FAR_SPEED, alpha);
     draw_rock_layer(REWIND_MID_ROCKS_TEXTURE, REWIND_MID_SPEED, alpha);
     draw_rock_layer(REWIND_NEAR_ROCKS_TEXTURE, REWIND_NEAR_SPEED, alpha);
-    slide = 1.0f - (float)hud.rewind_select_ticks / (float)REWIND_SLIDE_TICKS;
+    slide = 1.0f - (float)hud.rewind_select_ticks / (float)SCRIPT_REWIND_SLIDE_TICKS;
     if (slide < 0.0f) {
         slide = 0.0f;
     }
@@ -941,7 +939,7 @@ int script_ui_view_pill_at(float x, float y)
         const struct script_pill_view *pill;
 
         pill = &hud.pills[index];
-        if (pill->is_on_screen && pill->slide_step == PILL_SLIDE_STEPS && !pill->is_pressed && point_is_in_box(x, y, pill_layouts[index].x, pill_layouts[index].y, pill_layouts[index].width, PILL_RING_HEIGHT)) {
+        if (pill->is_on_screen && pill->slide_step == SCRIPT_PILL_SLIDE_STEPS && !pill->is_pressed && point_is_in_box(x, y, pill_layouts[index].x, pill_layouts[index].y, pill_layouts[index].width, PILL_RING_HEIGHT)) {
             return index;
         }
     }
@@ -1093,7 +1091,7 @@ static float pill_screen_y(const struct pill_layout *layout, int slide_step)
 {
     float away;
 
-    away = (float)(PILL_SLIDE_STEPS - slide_step) * PILL_SLIDE_PIXELS_PER_STEP;
+    away = (float)(SCRIPT_PILL_SLIDE_STEPS - slide_step) * PILL_SLIDE_PIXELS_PER_STEP;
     return layout->is_at_bottom ? layout->y + away : layout->y - away;
 }
 

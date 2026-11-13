@@ -1,6 +1,5 @@
 import argparse
 import os
-import struct
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -9,15 +8,6 @@ import bake_record
 import packed_file
 
 AHEAD_EXTENSION = ".ahead"
-SCENES_FILE_NAME = "scenes.txt"
-DISPATCHER_SCRIPTS = ("route", "phone", "chapter", "flags")
-ROOT_SCRIPT_MARK = "_root"
-SCRIPT_EXTENSION = ".lmg"
-SCRIPT_HEADER_SIZE = 0x34
-SCRIPT_CODE_SIZE_OFFSET = 0x08
-CHAPTER_MARK_OP = 0x74
-CHAPTER_MARK_SEARCH_WORDS = 12
-CHAPTER_END_SCRIPT_MARK = "_chapter"
 BUNDLE_EXTENSION = ".anims"
 MOTIONS_EXTENSION = ".motions"
 ANCHOR_ACT_PREFIX = "game"
@@ -199,57 +189,6 @@ def bundle_text(scripts_folder, animation_folder, script_name):
     return "".join(parts)
 
 
-def chapter_mark_of_script(path):
-    with open(path, "rb") as source:
-        data = source.read(SCRIPT_HEADER_SIZE + 2 * CHAPTER_MARK_SEARCH_WORDS)
-    if len(data) < SCRIPT_HEADER_SIZE:
-        return None
-    code_size = struct.unpack_from("<I", data, SCRIPT_CODE_SIZE_OFFSET)[0]
-    word_count = min(code_size // 2, (len(data) - SCRIPT_HEADER_SIZE) // 2)
-    words = struct.unpack_from("<%dH" % word_count, data, SCRIPT_HEADER_SIZE)
-    for index in range(word_count - 1):
-        if words[index] == CHAPTER_MARK_OP:
-            return words[index + 1]
-    return None
-
-
-def chapter_marks(scripts_folder):
-    marks = {}
-    for file_name in os.listdir(scripts_folder):
-        if file_name.endswith(SCRIPT_EXTENSION):
-            mark = chapter_mark_of_script(os.path.join(scripts_folder, file_name))
-            if mark is not None:
-                marks[file_name[:-len(SCRIPT_EXTENSION)]] = mark
-    return marks
-
-
-def story_order(visited, marks):
-    frontier = max([marks[name] for name in visited if name in marks], default=0)
-    later = [name for name, mark in marks.items() if name not in visited and mark >= frontier]
-    return visited + sorted(later, key=lambda name: (marks[name], CHAPTER_END_SCRIPT_MARK in name, name))
-
-
-def scene_order_from_cues(cues_path):
-    scenes = []
-    for line in read_lines(cues_path):
-        fields = line.partition("\t")[2].split()
-        if len(fields) > 2 and fields[0] == "mark" and fields[1] == "script_begun":
-            name = fields[2]
-            if name not in DISPATCHER_SCRIPTS and ROOT_SCRIPT_MARK not in name and name not in scenes:
-                scenes.append(name)
-    return scenes
-
-
-SCENE_NAME_WIDTH = 95
-
-
-def scenes_text(scenes):
-    for name in scenes:
-        if len(name) > SCENE_NAME_WIDTH:
-            raise ValueError("scene name %r is longer than the player reads (%d)" % (name, SCENE_NAME_WIDTH))
-    return "".join("scene %s\n" % name for name in scenes)
-
-
 def ahead_text(entries):
     return "".join("ahead %s %d %s\n" % entry for entry in entries)
 
@@ -261,8 +200,6 @@ def main():
     parser.add_argument("animation_folder", help="baked animations folder")
     arguments = parser.parse_args()
     schedules = schedules_from_cues(arguments.cues, arguments.scripts_folder, arguments.animation_folder)
-    scenes = story_order(scene_order_from_cues(arguments.cues), chapter_marks(arguments.scripts_folder))
-    bake_record.write_if_different(os.path.join(arguments.scripts_folder, SCENES_FILE_NAME), scenes_text(scenes).encode("ascii"))
     for path in os.listdir(arguments.scripts_folder):
         if path.endswith(MOTIONS_EXTENSION):
             schedules.setdefault(path[:-len(MOTIONS_EXTENSION)], [])

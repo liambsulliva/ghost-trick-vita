@@ -70,23 +70,6 @@ class AnimWriterTests(unittest.TestCase):
             asset_writers.anim_text("x" * 96, 0, [asset_writers.blank_frame(1)])
 
 
-class SceneWriterTests(unittest.TestCase):
-    def test_steps_become_lines(self):
-        steps = [["room", 11], ["plate", "st01-00", 0, 0, 1024, 384], ["object", "linne", "st01_linne_004", 281, 385.5, 900, 0], ["camera_pan", 0, 192, 60], ["hide_card"]]
-        self.assertEqual(asset_writers.scene_text("opening", steps), "\n".join([
-            "scene opening",
-            "room 11",
-            "plate st01-00 0 0 1024 384",
-            "object linne st01_linne_004 281 385.5 900 0",
-            "camera_pan 0 192 60",
-            "hide_card",
-        ]) + "\n")
-
-    def test_too_many_steps_are_refused(self):
-        with self.assertRaises(ValueError):
-            asset_writers.scene_text("opening", [["wait", 1]] * 1025)
-
-
 class MemoryEstimateTests(unittest.TestCase):
     def test_compressed_sides_round_up_to_powers_of_two(self):
         self.assertEqual(asset_writers.memory_bytes(720, 540, asset_writers.FORMAT_DXT1), 524288)

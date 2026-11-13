@@ -283,45 +283,6 @@ def plate_size_lookup(texture_results, plates):
     return sizes
 
 
-def object_step(set_description, name, animation_name, x, y):
-    settings = set_description["objects"][name]
-    return ["object", name, animation_name, x, y, settings["layer"], settings["flip"]]
-
-
-def expand_steps(set_description, plate_sizes):
-    steps = []
-    for step in set_description.get("steps", []):
-        kind = step[0]
-        if kind == "object_group":
-            for name, animation_name, x, y in set_description["object_groups"][step[1]]:
-                steps.append(object_step(set_description, name, animation_name, x, y))
-        elif kind == "object":
-            _, name, animation_name, x, y = step
-            steps.append(object_step(set_description, name, animation_name, x, y))
-        elif kind == "plate":
-            _, name, x, y = step
-            width, height = plate_sizes[name]
-            steps.append(["plate", name, x, y, width, height])
-        else:
-            steps.append(list(step))
-    return steps
-
-
-def check_steps_refer_to_known_assets(steps, texture_names, animation_names, music_names, sound_names):
-    for step in steps:
-        kind = step[0]
-        if kind in ("plate", "card") and step[1] not in texture_names:
-            raise ValueError(kind + " names an unknown texture: " + step[1])
-        if kind == "object" and step[2] not in animation_names:
-            raise ValueError("object names an unknown animation: " + step[2])
-        if kind == "music" and step[1] not in music_names:
-            raise ValueError("music step names an unknown track: " + step[1])
-        if kind == "sound" and step[1] not in sound_names:
-            raise ValueError("sound step names an unknown sound: " + step[1])
-        if kind in ("text_show", "overlay") and step[2] not in texture_names:
-            raise ValueError(kind + " names an unknown texture: " + step[2])
-
-
 def check_texture_names_differ(names):
     seen = set()
     repeated = []
@@ -370,14 +331,6 @@ def ds_music_output_files(set_description, rom_path, music_results, record):
     return ds_music.music_files(section, sdat, music_results, record, set_description.get("scripts", {}).get("music_ids", {}))
 
 
-def text_output_files(set_description, animation_texts, steps):
-    files = {"animations/" + name + ".anim": text.encode("ascii") for name, text in animation_texts.items()}
-    scene_name = set_description.get("scene_name")
-    if scene_name is not None:
-        files["scenes/" + scene_name + ".scene"] = asset_writers.scene_text(scene_name, steps).encode("ascii")
-    return files
-
-
 def art_sets_of(set_description):
     sets = []
     if set_description.get("plates"):
@@ -388,13 +341,11 @@ def art_sets_of(set_description):
 
 
 def manifest_bytes(set_description, animation_texts):
-    scene_name = set_description.get("scene_name")
-    scene_names = [] if scene_name is None else [scene_name]
     background_names = [plate["name"] for plate in set_description.get("plates", [])]
     for texture in set_description.get("screen_textures", []):
         if texture.get("list_as_background"):
             background_names.append(texture["name"])
-    return asset_writers.manifest_text(scene_names, background_names, list(animation_texts.keys()), art_sets_of(set_description)).encode("ascii")
+    return asset_writers.manifest_text([], background_names, list(animation_texts.keys()), art_sets_of(set_description)).encode("ascii")
 
 
 def make_output_folders(output_folder):
@@ -406,7 +357,7 @@ def outputs_of_the_read_ahead_step(output_folder):
     scripts_folder = os.path.join(output_folder, script_assets.SCRIPTS_FOLDER)
     if not os.path.isdir(scripts_folder):
         return set()
-    return set(script_assets.SCRIPTS_FOLDER + "/" + name for name in os.listdir(scripts_folder) if name.endswith((read_ahead.AHEAD_EXTENSION, read_ahead.BUNDLE_EXTENSION)) or name in (route_pacing.PACING_FILE_NAME, read_ahead.SCENES_FILE_NAME))
+    return set(script_assets.SCRIPTS_FOLDER + "/" + name for name in os.listdir(scripts_folder) if name.endswith((read_ahead.AHEAD_EXTENSION, read_ahead.BUNDLE_EXTENSION)) or name == route_pacing.PACING_FILE_NAME)
 
 
 def write_outputs(output_folder, record, texture_results, files, manifest, script_paths):
@@ -419,7 +370,7 @@ def write_outputs(output_folder, record, texture_results, files, manifest, scrip
     bake_record.remove_leftover_temporary_file(os.path.join(output_folder, "manifest.txt"))
 
 
-def print_summary(record, texture_results, animation_texts, steps, music_results, sound_results):
+def print_summary(record, texture_results, animation_texts, music_results, sound_results):
     totals = {}
     for result in texture_results:
         format_name = FORMAT_NAMES[result["format"]]
@@ -437,7 +388,6 @@ def print_summary(record, texture_results, animation_texts, steps, music_results
     animation_bytes = sum(len(text) for text in animation_texts.values())
     frame_count = sum(text.count("\nframe ") for text in animation_texts.values())
     print("animations: %d files, %d frames, %d bytes" % (len(animation_texts), frame_count, animation_bytes))
-    print("scene steps: %d" % len(steps))
     print("music: %d files, %d bytes" % (len(music_results), sum(len(result["ogg"]) for result in music_results)))
     print("sounds: %d files, %d bytes" % (len(sound_results), sum(len(result["ogg"]) for result in sound_results)))
     if record.baked_in("scripts") + record.reused_in("scripts") > 0:
@@ -518,12 +468,9 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         for movie in set_description.get("movies", []):
             talk_results = talk_results + bake_movie_frames(packs, record, movie)
         texture_results = sorted(texture_results + text_results + composed_results + talk_results, key=lambda result: result["name"])
-        steps = expand_steps(set_description, plate_size_lookup(texture_results, plates))
-        steps = narration.expand_text_steps(steps, narration_lines, {result["name"]: (result["width"], result["height"]) for result in texture_results})
-        check_steps_refer_to_known_assets(steps, set(result["name"] for result in texture_results), set(animation_texts.keys()), set(result["name"] for result in music_results), set(result["name"] for result in sound_results))
         files = audio_output_files(music_results, sound_results)
         files.update(ds_music_output_files(set_description, ds_rom_path, music_results, record))
-        files.update(text_output_files(set_description, animation_texts, steps))
+        files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in animation_texts.items()})
         table_texts, motion_lines = script_assets.table_animations(set_description, output_folder, timelines, crops)
         files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in table_texts.items()})
         pause_files, pause_results = convert_pause_art(packs, set_description, record, table_texts, timelines, crops, text_key)
@@ -538,7 +485,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts), script_paths)
     finally:
         record.save()
-    print_summary(record, texture_results, animation_texts, steps, music_results, sound_results)
+    print_summary(record, texture_results, animation_texts, music_results, sound_results)
     narration.print_narration_summary(narration_lines)
     talk_assets.print_talk_summary(talk_files)
 

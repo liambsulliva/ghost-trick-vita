@@ -1,8 +1,8 @@
 # srcVita
 
-The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real Vita and plays the opening of Chapter 1 at 60 fps, using art converted from the remaster.
+The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real Vita and plays the game at 60 fps, using art converted from the remaster.
 
-The opening runs from the DS's own script bytes on the script VM (see [The script VM](#the-script-vm)). Only Chapter 1 is baked, and parts of the game are still missing. See [What is missing](#what-is-missing).
+The game runs from the DS's own script bytes on the script VM (see [The script VM](#the-script-vm)). The whole story is baked as one set, and parts of the game are still missing. See [What is missing](#what-is-missing).
 
 No game data lives in this folder. Converted assets, captures, reference video and the text key stay in the ignored `extracted/` and `build/` folders.
 
@@ -21,7 +21,6 @@ No game data lives in this folder. Converted assets, captures, reference video a
 | `tools/assets/extract_text_key.py` | Finds the text key in your own copy of the Android package |
 | `tools/vita_loop.py` | Installs, launches and reads back from the Vita |
 | `tools/pause_render.py` | Draws the pause menu on the Mac from the baked set, after a list of button presses, through `tests/golden/pause_render.c` |
-| `tools/longplay_check.py` | Compares the Vita's screen against the reference video |
 | `tools/audio_check.py` | Judges a run log's audio timing and checksums, with no listener |
 | `tools/mutation_check.py` | Breaks the code on purpose to prove the tests notice |
 | `docs/asset_format.md` | The file formats shared by the converter and the app |
@@ -42,7 +41,7 @@ export VITASDK=/usr/local/vitasdk PATH="/usr/local/vitasdk/bin:$PATH"
 make -C srcVita -j8
 ```
 
-The build plays the DS soundtrack by default, rendered from your own ROM during the bake. `make -C srcVita -j8 DS_MUSIC=0` plays the remaster's arranged soundtrack instead. The bake always writes both, so switching only needs a rebuild and a reinstall, and the build relinks every time so a changed flag always reaches the package.
+This is the player's build, at normal speed with none of the development tools. It plays the DS soundtrack, rendered from your own ROM during the bake, until Options switches to the remaster's arranged one; the bake always writes both. Work on the device uses the [fast forward build](#fast-forward-build) instead. The two share every fix: they differ only in the dev tools the fast forward build adds, and `make test` compiles the app both ways. The build relinks every time, so a changed build always reaches the package.
 
 This writes the installable package to `srcVita/build/ghosttrick.vpk`. It holds only the app. The art goes on the Vita separately, as [the top-level README](../README.md#run-it-on-a-vita) explains, and the Vita also needs its shader compiler at `ur0:data/libshacccg.suprx`.
 
@@ -60,7 +59,7 @@ make -C srcVita test-all
 python3 -I srcVita/tools/mutation_check.py
 ```
 
-Every mutation should be caught. A survivor means the tests have a gap. The run works on a copy of this folder plus `tools/lz.py` and `tools/lmg_decode.py`, so it leaves your files alone. It breaks one thing at a time, in the C code and the Python tools, including the text key tool. A C mutation rebuilds only the file it changed. A Python mutation runs the Python tests with `--failfast`, starting with the test files most likely to catch that tool and going on to all the others, so it stops at the first failure and is only called a survivor once every test has passed. `audio_check.py` and `audio_file.py` run only the audio tests, and `longplay_check.py` runs only its own. Before the Python mutations, the whole suite also runs once with its test files in reverse order, so a test that passes only in the usual order stops the run instead of making mutations look caught. The last full run had 778 mutations and took about 36 minutes on a busy Mac, about 11 of them in the Python ones. It does not cover `tools/rom_audit.py`, because it does not copy that file.
+Every mutation should be caught. A survivor means the tests have a gap. The run works on a copy of this folder plus `tools/lz.py` and `tools/lmg_decode.py`, so it leaves your files alone. It breaks one thing at a time, in the C code and the Python tools, including the text key tool. A C mutation rebuilds only the file it changed. A Python mutation runs the Python tests with `--failfast`, starting with the test files most likely to catch that tool and going on to all the others, so it stops at the first failure and is only called a survivor once every test has passed. `audio_check.py` and `audio_file.py` run only the audio tests. Before the Python mutations, the whole suite also runs once with its test files in reverse order, so a test that passes only in the usual order stops the run instead of making mutations look caught. The last full run had 778 mutations and took about 36 minutes on a busy Mac, about 11 of them in the Python ones. It does not cover `tools/rom_audit.py`, because it does not copy that file.
 
 Before pushing, run the audit from the top of the repository with your key file in place. If it prints `key search skipped`, the key was not searched for.
 
@@ -93,7 +92,7 @@ A package with the logo contains game art, so keep it for your own Vita. The pac
 
 [The top-level README](../README.md#set-everything-up-with-one-command) has one script, `tools/set_up_game.py`, that copies the game files out of your Android package, finds the text key, converts everything, plans the loading and builds the package. The app loads them from `ux0:data/ghosttrick/assets/`.
 
-`tools/assets/chapter1.json` lists what goes into the chapter's set.
+`tools/assets/game.json` lists what goes into the set.
 
 Converting needs the text key, which the setup script finds in your own copy of the package.
 
@@ -105,18 +104,20 @@ After every bake, run the loading step:
 make -C srcVita read-ahead
 ```
 
-It replays the chapter's scripts on the Mac at auto-play pace and writes two files beside each script in `scripts/`:
+It replays the game's scripts on the Mac at auto-play pace and writes two files beside each script in `scripts/`:
 
 - `<script>.ahead` lists every texture the scene's actors and effects use, keyed to the scene's last `game` act and the ticks since it. The app reads each texture a few seconds before it is due, so a room change or a new animation finds its art already loaded.
 - `<script>.anims` holds all of the scene's animations in one file. The app reads it once while the scene loads, so starting a new animation never waits on the memory card.
 
-Upload the assets after this step, so the Vita gets both files.
+It also paces the route into `scripts/route_pacing.txt`. Pacing depends on the passes before it, so a fresh run does not reproduce a settled one: each settled pacing is kept in `tools/assets/game_pacing.txt`, and the next run starts from it while the route is unchanged.
+
+Upload the assets after this step, so the Vita gets every file.
 
 Music and sounds are the remaster's own Ogg Vorbis files, unchanged apart from losing their wrappers.
 
 The DS scene scripts are baked from your own USA DS ROM into `scripts/`, with the tables the app needs to run them. The app always plays the opening from those scripts, so the ROM is required. Without `scripts/chain.txt` it logs `opening needs_scripts` and opens the asset browser instead. [The top-level README](../README.md#set-everything-up-with-one-command) passes the ROM to the converter, and `docs/asset_format.md` has the format.
 
-The converter bakes only what changed. `.bake_record.json` in the output folder holds hashes for each texture and script, so one is baked again only when its source bytes, its settings or the code that bakes it changes, or when its output file is missing or edited. Music, sounds, animations, the scene and the manifest are rewritten only when their bytes differ. On this Mac a clean conversion took about 4 seconds and a repeat with nothing changed about 0.2 seconds, and a repeat and a clean run gave the same files byte for byte. If a texture fails, it is named on stderr with `failed:`, the rest still bake, and the last good scene and manifest stay.
+The converter bakes only what changed. `.bake_record.json` in the output folder holds hashes for each texture and script, so one is baked again only when its source bytes, its settings or the code that bakes it changes, or when its output file is missing or edited. Music, sounds, animations and the manifest are rewritten only when their bytes differ. On this Mac a clean conversion took about 4 seconds and a repeat with nothing changed about 0.2 seconds, and a repeat and a clean run gave the same files byte for byte. If a texture fails, it is named on stderr with `failed:`, the rest still bake, and the last good manifest stays.
 
 An animation can have up to 1024 frames, and the app allocates each animation's frame list to the size its own file needs.
 
@@ -127,7 +128,7 @@ vitaGL rounds compressed textures up to power-of-two sizes, so a texture can tak
 This loop is for working on the app. It needs Vita Companion on the Vita, at the address in `VITA_HOST` (10.0.0.151 if unset). It uses FTP on port 1337 and the command port 1338, which stay up while the app runs, so nobody has to touch the device.
 
 ```bash
-python3 -I srcVita/tools/vita_loop.py upload-assets extracted/vita_assets/chapter1
+python3 -I srcVita/tools/vita_loop.py upload-assets extracted/vita_assets/game
 ```
 
 Under `ux0:data/ghosttrick/assets/`, textures live in 64 folders: `textures/<two hex digits>/<name>.gtex`, where the digits are `crc32(name) % 64` in hex. The uploader moves an older flat copy into its folder by rename when the size matches, and uploads the file if the Vita refuses the rename. Upload while the game is running, because the app keeps the Vita awake only while it runs.
@@ -161,18 +162,6 @@ The log is `ux0:data/ghosttrick/run.log`. Each second it records frame timing, f
 ```bash
 python3 -I srcVita/tools/vita_loop.py burst --seconds 20 --ms-between-pictures 33 --output build/bursts
 ```
-
-## Check against the reference video
-
-This needs the reference video at `extracted/reference/chapter1_720p60.mp4`, plus `ffmpeg`, `magick` and Python's `numpy`.
-
-```bash
-python3 -I srcVita/tools/longplay_check.py
-```
-
-It first checks that the Vita has the same `eboot.bin` and manifest as this machine. Then it uploads temporary scenes that hold one exact pose, captures each on the Vita, deletes them, and compares each capture with the matching video frame. Each measured sprite is also captured alone, so only its own pixels are scored. Only the DS camera's 720 by 540 window is compared, because the video shows no more than that. The check fails if a sprite sits more than 0.4 DS pixels from the video, if a sprite or the picture differs too much, if motion frames match the video out of order, or if the screen's left and right edges are wrong: wide rooms must have art there, and the close-up and chapter card must have black. Side-by-side images land in `build/longplay_check/`.
-
-Use `--score-only` to re-score saved captures without the device; a capture that is not there fails as not captured. Each device run deletes the old captures and pair images first, so what is saved always comes from one run. If a capture is missed, for example because the app froze, the check says whether the log is still growing and whether the app read its commands file, names any load failures, then scores the captures that run took and exits non-zero. If the device stops answering, it says so and does the same.
 
 ## Audio timing
 
@@ -208,17 +197,13 @@ The main thread never touches the decoder. It posts a request to the mailbox and
 
 ## Fast forward build
 
-The build can play through the game by itself, at normal speed or far faster than a person:
+The device loop installs this build. It can play through the game by itself, at normal speed or far faster than a person, and holds every development tool:
 
 ```bash
 make -C srcVita FAST_FORWARD=1
 ```
 
-Add `FPS_COUNTER=1` to any build to draw the frame rate in the top-left corner: the average over the last 60 frames and the slowest of them, so a dip shows in screenshots and burst captures. It adds `-fps` to the build id and keeps its own objects.
-
-Add `DEBUG_UNLOCK=1` to show an Unlock Everything switch at the end of Options. While it is on, every chapter in the Chapters grid opens and every People and Places note shows at its highest level. A chapter with no save starts through `chapter.xml` with the chapter mark one below it, the way the DS chapter select does, but with empty flags, so chapters that share a stage (4 to 6 in st02) start at that stage's first part. It adds `-unlock` to the build id and keeps its own objects; other builds ignore the saved switch.
-
-It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`, so it never mixes with the normal build. It reads these extra lines from the commands file, which `vita_loop.py app-command` writes:
+It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`, so it never mixes with the player's build. It adds an Unlock Everything switch at the end of Options: while it is on, every chapter in the Chapters grid opens and every People and Places note shows at its highest level. A chapter with no save starts through `chapter.xml` with the chapter mark one below it, the way the DS chapter select does, but with empty flags, so chapters that share a stage (4 to 6 in st02) start at that stage's first part. The player's build ignores the saved switch. SQUARE saves a screen capture, and the [debug controls](#debug-controls) are on. It reads these lines from the commands file, which `vita_loop.py app-command` writes:
 
 | Line | What it does |
 |---|---|
@@ -226,13 +211,13 @@ It adds `-ff` to the build id and keeps its objects in `build/obj_fast_forward`,
 | `ff <n>` | Run `n` script ticks per frame, pressing buttons by itself |
 | `ff_until script <name>`, `ff_until act <name>`, `ff_until tick <n>` | Fast forward until that point, then pause |
 | `resume` | Carry on from a pause |
-| `skip` | Same as L and R together: push on to the next act or script |
 | `press <hex>` | Press a button mask for one frame |
 | `drag x0 y0 x1 y1 frames delay` | Move an injected finger in a straight line from `x0,y0` to `x1,y1` over `frames` frames, after waiting `delay` frames |
 | `drag_soul dx dy frames delay` | Start the finger on the soul's screen position and move it by `dx,dy` over `frames` frames, after `delay` frames. Does nothing if the soul is not on screen |
 | `burst <seconds> [ms]`, `burst 0` | Record a half-size picture of the screen for that long, `ms` apart (default 200; anything under 33 is raised to 33), into one file on the Vita. It then pauses the script until `resume`. `vita_loop.py burst` drives this, so nothing talks to the Vita while it records |
+| `fps on`, `fps off` | Draw the frame rate in the top-left corner: the average over the last 60 frames and the slowest of them, so a dip shows in screenshots and burst captures |
 
-Automatic play closes dialogue and follows the route in `tools/assets/chapter1.json`, baked to `route_steps.txt`, through the same inputs a player uses. Each step waits for a named game state. A step it can't finish logs `route_step_failed` and play carries on, and `make route-check` fails if a replay stops matching the route. Sounds stay quiet at speed. Each picture copy costs the game about 59 ms, so the game runs at about 50 fps during a burst and 59.9 fps outside one.
+Automatic play closes dialogue and follows the route in `tools/assets/game.json`, baked to `route_steps.txt`, through the same inputs a player uses. Each step waits for a named game state. A step it can't finish logs `route_step_failed` and play carries on; nothing pushes a stuck scene on, so the route alone has to reach the end. `make route-check` fails if a replay does a step out of order, passes over more steps than the story does, or never reaches the game's end. Sounds stay quiet at speed. Each picture copy costs the game about 59 ms, so the game runs at about 50 fps during a burst and 59.9 fps outside one.
 
 The Mac replay does the same with no device:
 
@@ -241,10 +226,10 @@ make -C srcVita build/tests/golden/script_replay
 ```
 
 ```bash
-srcVita/build/tests/golden/script_replay --scripts extracted/vita_assets/chapter1/scripts --timing remaster --auto-press --marks --stop-tick 500000
+srcVita/build/tests/golden/script_replay --scripts extracted/vita_assets/game/scripts --timing remaster --auto-paced --marks --stop-tick 4200000
 ```
 
-Its `mark` lines say which scripts and acts began, which tricks fired and when the stuck check had to push.
+Its `mark` lines say which scripts and acts began, which tricks fired and which route steps were done or failed.
 
 ## Controls
 
@@ -263,13 +248,12 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 | R | The hourglass pill |
 | SELECT | Opens the pause menu straight on the Record (People) screen while the player has the controls (whenever the game's pills show), as the notebook pill does; CIRCLE there goes back to the game |
 | START | During play, opens the pause menu, as does a tap on the START button (the remaster's round pause button with the START glyph) drawn at the top right whenever the game's pills show (left of the hourglass when it is up): Resume, Save, Record on the left; Title, Chapters, Options on the right. The top left shows the story's time and place: the time from the scene's place in its chapter, moved on from that chapter card's time toward the next card's, and the place from the room's stage as the notebook names it (`pause.clock` in `game.json`); the final chapter shows only the place. The d-pad or the left stick moves the cursor, and holding either repeats the step after 0.4 s, every 0.09 s, on every pause screen; ✕ picks. A tap on a word selects it, and lifting the finger on it picks it. ○, START, or a tap on the Back pill's place in the bottom bar goes back. Resume, People and Options work. People is the notebook, as the DS database screen lists it (overlay 6, `func_ov006_020d5114`): a People tab and a Phone Book tab, plus an Illustrations tab when the remaster's illustration gallery was baked (its 144 pictures in the order `illustgalleryuserdata` lists them, each at 960 by 540; each picture's record holds a chapter key after its thumbnail path, and a picture shows once the chapter after its key has begun (key 0 from the start, keys 18 and up from Chapter 18), read from the chapter starts Chapters uses; when a newly begun chapter unlocks pictures, a toast slides down from the top of the screen for three seconds; ✕ or a tap shows one full screen and ○ closes it). L and R step through the tabs, a tap on a tab picks it, a strip of portraits or place pictures that left and right walk, and the selected entry's art and text at the level the story has reached. It reads the script machine's notebook levels, so it lasts as long as that run. Options scrolls by dragging the list up or down as well as with the cursor; a drag that starts on a meter keeps its old level. It sets Text Speed (a Slow, Normal, Fast slider: Normal reveals one glyph a tick, as the port's talk always did, Slow half that and Fast twice), brightness, master, music and sound effect volume, and the soundtrack (Original or Arranged, from the next piece of music). High Contrast lowers the picture's floor and scales it up with two blend passes over the game and HUD; while its row is selected a card shows a game plate (`pause.widgets.preview` in `game.json`) plain on the left and raised on the right. Visual Filter chooses between the Remastered art (bilinear sampling) and the DS art (nearest-neighbour), but only when the converter bundled both: the manifest lists each bundled set as an `art` line (`remastered` when the set has Android plates, `ds` when it lists `ds_art`), and with one set the row is dimmed and pinned to it, with flavour text that says so. No set bakes DS art yet, so it stays at Remastered. Framerate at 30 FPS waits out a second vblank each frame, so the game updates and draws 30 times a second. It shows the controls with the Vita's button glyphs, and restores the defaults after asking. Rows the Vita fixes (VSync) and rows not ported yet (credits, languages other than English) are greyed, and the cursor skips them. Settings are kept in `ux0:data/ghosttrick/settings.txt` when you leave Options. Save keeps the game in the Manual Save slot after asking; the Autosave slot is written when a new chapter begins (the DS saves through `pGameMainSave` and script-placed `cGameAppSaver` checkpoints). Both hold the state at the start of the current script, in `src/app/game_save.c`'s text format, as `ux0:data/ghosttrick/save_auto.txt` and `save_manual.txt`: the flag banks, chapter mark, phone place, fate level, soul switches and notebook. At boot the newer slot is continued from its script; with no save the opening plays. Options' Reset Save Data erases both slots and the chapter starts, and a device run that needs the opening with a save on the card sends `play_script route` first. Title opens its question over the menu, without a pan, and offers to save before returning, then warns before returning without saving; returning restarts the opening under black, since the port has no title screen yet. Chapters shows Chapters 1 to 18 in a grid and replays a reached one from its start after asking. Each chapter's start is kept as `ux0:data/ghosttrick/chapter_NN.txt` when the chapter begins (the chapter mark, which `chapter.xml` sets with op 0x74 before loading the chapter's stage), so a replay carries the flags of the playthrough that reached it and log `submenu=not_ported` |
-| L and R together | Skip ahead |
 
 ## Debug controls
 
 While a script chain loads, a loading screen shows the pause backdrop with "Now Loading" and a red bar in the pause menu's floor (`src/app/loading_screen.c`): reading the tables and scripts fills the first fifth, animations the next three tenths and textures the last half. Behind it, every renderer primitive is drawn once, clear, so vitaGL compiles its shaders before play. With the debug controls on, the debug HUD shows instead.
 
-Outside a chapter, SELECT turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the opening. SELECT turns them off again, which resumes a paused scene and restarts the opening if you browsed away from it.
+In the fast forward build, SELECT outside a chapter turns the debug controls on and shows the HUD. While they are on, LEFT, RIGHT, UP and DOWN browse backgrounds and animations, CROSS pauses, TRIANGLE toggles the HUD, R opens the animation list and L restarts the opening. SELECT turns them off again, which resumes a paused scene and restarts the opening if you browsed away from it.
 
 They stay off during normal play, so that no button can stall the scene. The log records every button press, pause and skipped hold, as `input pressed buttons=...`, `scene paused` and `scene hold_skipped`.
 
@@ -277,11 +261,11 @@ They stay off during normal play, so that no button can stall the scene. The log
 
 `script_machine.c` and the `script_*` files beside it run the DS's own script bytes, one tick per 16,666 microseconds. The core has no SDK calls and no clock, and everything it tells the rest of the app goes through the `void` functions in `script_outputs.h`. On the Vita those are `script_bridge.c`, which drives the stage, effects, text, overlays and audio. In `tests/golden/script_replay.c` they print. `script_player.c` reads the files before tick zero, one per frame, and owns the clock.
 
-Nothing halts the game. An op, table word, effect id or GameApp pair the VM does not know writes one note to the log and the script carries on. If the script stops making progress, a stuck check closes the talk box, ends the narration, fires a waiting handler, moves on to the next act and at last the next script, so the chapter can always be finished. L and R together does the same on demand.
+Nothing halts the game. An op, table word, effect id or GameApp pair the VM does not know writes one note to the log and the script carries on.
 
 `script_soul.c` is the player's side: soul view, core selection, tricks and the game events that only native code sends. Pressing the trick button sends `core|ready` at once and `core|action` 8 ticks later, as the DS does. A dead person's core sends `timeleap|start` instead.
 
-From the Vita's commands file, `play_script route` restarts the opening. X replays it when it finishes. `play_scene <name>` plays a single baked scene, which the reference check uses to hold exact poses.
+In the fast forward build's commands file, `play_script route` restarts the opening. X replays it when it finishes.
 
 `make -C srcVita golden` compares the VM's fetches with the saved DS trace, on a machine that has one in `extracted/trace/vm_golden/`. It exits 2 with a message otherwise.
 
@@ -331,7 +315,6 @@ As of 2026-11-07. Items under "Built, not proven" are written but not checked on
 - **Soul view art past the rings.** Object tints and class gates are not drawn, and every core can be reached from every other, with no range limit.
 - **Some HUD pieces.** The countdown runs and sends its events but draws nothing, and the same goes for the `EyeCatch` banners.
 - **Touch.** The back touch pad is not read. The front screen works alongside the buttons: tap pills, balloons, Rewind Time and talk, drag the soul in Ghost view, and drag the camera where the game allows it.
-- **A second chapter.** `chapter.xml` is not baked, so Chapter 1's end goes to an end screen.
 - **Playing without the APK.** Planned, not started. The parts:
   - Art: the DS sprites, rooms and effects, converted from the cartridge's own graphics and drawn at the DS's resolution, scaled up to the Vita's screen.
   - Text: the DS text and font in place of the remaster's encrypted text, so no text key is needed.

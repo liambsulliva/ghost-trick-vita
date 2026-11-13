@@ -38,7 +38,7 @@ def scripts_section(files=("first.xml", "area/second.xml")):
 
 
 def hand_set(section=None):
-    description = {"scene_name": "s", "plates": [{"name": "plate", "source": test_end_to_end.PLATE_PATH}], "steps": [["wait", 1]]}
+    description = {"plates": [{"name": "plate", "source": test_end_to_end.PLATE_PATH}]}
     if section is not None:
         description["scripts"] = section
     return description
@@ -157,7 +157,6 @@ class ScriptBakeTests(unittest.TestCase):
         self.assertNotIn("scripts:", printed)
         self.assertEqual(os.listdir(self.output_path("scripts")), [])
         self.assertTrue(os.path.isfile(self.output_path(os.path.join("textures", "plate.gtex"))))
-        self.assertTrue(os.path.isfile(self.output_path(os.path.join("scenes", "s.scene"))))
 
     def test_rom_absent_keeps_existing_scripts(self):
         self.convert(hand_set(scripts_section()))

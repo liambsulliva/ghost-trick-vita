@@ -2059,7 +2059,6 @@
   ],
   "ui_clips": true,
   "route": {
-    "scene_most_ticks": 51600,
     "dwell_ticks": {
       "normal": 90,
       "quick": 45,

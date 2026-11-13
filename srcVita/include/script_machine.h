@@ -35,6 +35,13 @@
 #define SCRIPT_GHOST_CICEL 0
 #define SCRIPT_GHOST_MISSILE 1
 #define SCRIPT_GHOST_BOSS 2
+#define SCRIPT_MODE_LOADING 1
+#define SCRIPT_MODE_DEMO 2
+#define SCRIPT_MODE_NORMAL 3
+#define SCRIPT_MODE_NARRATION 0x12
+#define SCRIPT_MODE_STAFF_ROLL 0x17
+#define SCRIPT_PILL_SLIDE_STEPS 8
+#define SCRIPT_REWIND_SLIDE_TICKS 20
 #define SCRIPT_GHOST_COUNT 3
 #define SCRIPT_CICEL_REACH_DS_PIXELS 48.0f
 #define SCRIPT_MISSILE_REACH_DS_PIXELS 112.0f
@@ -46,8 +53,6 @@
 #define SCRIPT_NOTED_OP_BYTES ((SCRIPT_OPCODE_COUNT / 8) + 1)
 #define SCRIPT_NOTED_EFFECT_BYTES 128
 #define SCRIPT_NOTED_PROBLEM_BYTES 1024
-#define SCRIPT_VISITED_SITE_BYTES 8192
-#define SCRIPT_PUSHED_SITE_BYTES 1024
 #define SCRIPT_CALL_DEPTH_MAX 4
 #define SCRIPT_ROOM_ID_MAX 256
 #define SCRIPT_CAMERA_BAND_MAX 4
@@ -84,7 +89,6 @@ struct script_vm {
     unsigned int pc;
     unsigned int start_pc;
     unsigned int wait_ticks;
-    int wait_began_on_a_new_site;
     int condition;
     int pause_class;
     int selected_object;
@@ -437,7 +441,6 @@ struct script_soul {
     struct script_exchange exchange;
 };
 
-#define SCRIPT_SCENES_SEEN_MAX 512
 #define COUNTDOWN_KEPT_ACROSS_A_SCRIPT_CHANGE_FLAG 0x1008u
 
 struct script_machine {
@@ -544,16 +547,8 @@ struct script_machine {
     unsigned char noted_ops[SCRIPT_NOTED_OP_BYTES];
     unsigned char noted_effects[SCRIPT_NOTED_EFFECT_BYTES];
     unsigned char noted_problems[SCRIPT_NOTED_PROBLEM_BYTES];
-    unsigned char visited_sites[SCRIPT_VISITED_SITE_BYTES];
-    unsigned char pushed_sites[SCRIPT_PUSHED_SITE_BYTES];
-    int pushes_in_this_script;
-    unsigned int last_new_site_tick;
-    int fetched_site_is_new;
-    unsigned int last_timer_tick;
-    unsigned int push_count;
     int auto_press;
     int route_is_driving;
-    int stall_breaker_is_off;
     int fate_level;
     int fate_previous_level;
     int eyecatch_ticks_left;
@@ -566,9 +561,6 @@ struct script_machine {
     const int *trickless_core_infos;
     int trickless_core_info_count;
     const char *scene_name;
-    unsigned int scene_hashes_seen[SCRIPT_SCENES_SEEN_MAX];
-    int scenes_seen;
-    int furthest_scene;
     int route_furthest_acted_step;
     int route_step_after_retry;
     int retries_of_the_scene;
@@ -576,10 +568,6 @@ struct script_machine {
     char soul_core_kept_for_the_retry[SCRIPT_SOURCE_NAME_MAX];
     char scene_kept_for_the_retry[SCRIPT_SOURCE_NAME_MAX];
     int soul_slot_kept_for_the_retry;
-    int game_over_retry_step;
-    int game_over_retries_at_that_step;
-    int scene_is_behind_the_story;
-    unsigned int last_new_scene_tick;
     int demo_soul_is_on;
     unsigned int random_state;
 };
@@ -607,7 +595,6 @@ void script_machine_spawn_table_effect(struct script_machine *machine, struct sc
 int script_machine_camera_band_snap(const struct script_machine *machine, int object_y);
 void script_machine_note(struct script_machine *machine, const struct script_vm *vm, const char *reason, const char *detail);
 void script_machine_end_block(struct script_machine *machine, struct script_vm *vm, const char *reason);
-void script_machine_skip_ahead(struct script_machine *machine);
 void script_machine_update_camera(struct script_machine *machine);
 const char *script_machine_string(struct script_machine *machine, const struct script_vm *vm, unsigned int string_offset);
 int script_machine_index_of_object(const struct script_machine *machine, const char *name);
@@ -642,7 +629,6 @@ int script_balloons_can_be_tapped(const struct script_machine *machine, int tap_
 void script_machine_note_press(struct script_machine *machine);
 int script_machine_text_takes_a_skip(const struct script_machine *machine);
 void script_machine_reload_scene(struct script_machine *machine);
-int script_machine_move_on_in_story_order(struct script_machine *machine, const char *why);
 void script_machine_scroll_camera(struct script_machine *machine, int delta_x, int delta_y);
 int script_machine_camera_can_scroll(const struct script_machine *machine, int delta_x, int delta_y);
 void script_machine_set_world_origin(struct script_machine *machine, int x, int y);
@@ -678,7 +664,6 @@ void script_soul_travel_to_core(struct script_machine *machine, int object_index
 int script_soul_route_camera_push(const struct script_machine *machine, int *push_x, int *push_y);
 int script_soul_route_hop_aim(const struct script_machine *machine, int target_object, int target_slot, float *aim_x, float *aim_y);
 int script_soul_route_wait_reaches(const struct script_machine *machine, const char *wait);
-void script_soul_core_position(const struct script_machine *machine, int object_index, int slot, float *x, float *y);
 int script_soul_route_balloon_group(const struct script_machine *machine, const char *name);
 int script_soul_page_wants_a_press(const struct script_machine *machine);
 int script_soul_game_over_waits(const struct script_machine *machine);

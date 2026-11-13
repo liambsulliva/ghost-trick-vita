@@ -97,7 +97,6 @@ def sample_rate_of(path):
 
 def tiny_set_description():
     return {
-        "scene_name": "opening",
         "screen_textures": [
             {"name": "card", "source": PLATE_PATH, "width": 64, "height": 48, "list_as_background": True},
             {"name": "card_corner", "source": PLATE_PATH, "width": 8, "height": 16, "crop": [0, 0, 32, 64]},
@@ -108,21 +107,6 @@ def tiny_set_description():
         "animations": [
             {"name": "st01_a_000", "timeline": TIMELINE_PATH},
             {"name": "st01_a_000_f01", "timeline": TIMELINE_PATH, "ds_frames": [1]},
-        ],
-        "objects": {"a": {"layer": 3, "flip": 1}},
-        "object_groups": {"everyone": [["a", "st01_a_000", 10, 20]]},
-        "steps": [
-            ["card", "card"],
-            ["hide_card"],
-            ["room", 1],
-            ["plate", "plate", 0, 16],
-            ["camera", 0, 0],
-            ["object_group", "everyone"],
-            ["wait", 30],
-            ["object", "a", "st01_a_000_f01", 30, 40],
-            ["music", "song", 1],
-            ["sound", "ping"],
-            ["music_stop", 4],
         ],
     }
 
@@ -159,16 +143,6 @@ def text_set_description():
         "height": 8,
         "parts": [{"crop": [0, 0, 32, 32], "x": 0, "y": 0, "width": 16, "height": 8}],
     }]
-    set_description["steps"] = [
-        ["narration_show", "m01", 0, 60],
-        ["wait", 10],
-        ["narration_show", "m01", 1, 60],
-        ["narration_hide", "m01", 30],
-        ["text_hide_all"],
-        ["overlay", 1, "bubble_body", 10, 20, 6],
-        ["overlay", 2, "bubble_words", 30, 40, 0],
-        ["overlay_hide", 1],
-    ]
     return set_description
 
 
@@ -253,7 +227,7 @@ class EndToEndTests(unittest.TestCase):
 
     def test_the_right_key_gets_through_the_command_line(self):
         self.assertEqual(self.run_converter_on_the_text_set().returncode, 0)
-        self.assertIn("text_show 1 text_m01_0", self.read_text("scenes", "opening.scene"))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_folder, "textures", "text_m01_0.gtex")))
 
     def assert_key_not_printed(self, result, key):
         printed = (result.stdout + result.stderr).encode("utf-8")
@@ -280,10 +254,10 @@ class EndToEndTests(unittest.TestCase):
 
     def test_a_traceback_from_a_failed_conversion_does_not_print_the_key(self):
         set_description = text_set_description()
-        set_description["steps"].append(["object", "a", "no_such_animation", 0, 0])
+        set_description["screen_textures"].append({"name": "card_corner", "source": PLATE_PATH, "width": 8, "height": 16})
         result = self.run_converter_on_the_text_set(set_description)
         self.assertEqual(result.returncode, 1)
-        self.assertIn("no_such_animation", result.stderr)
+        self.assertIn("card_corner", result.stderr)
         self.assert_key_not_printed(result, synthetic_files.FAKE_TEXT_KEY)
 
     def test_a_wrong_entry_name_stops_plainly_without_blaming_the_key(self):
@@ -333,7 +307,7 @@ class EndToEndTests(unittest.TestCase):
     def test_a_set_without_text_needs_no_key_file(self):
         os.remove(os.path.join(self.apk_folder, "text_key.bin"))
         self.convert(tiny_set_description())
-        self.assertIn("scene opening", self.read_text("manifest.txt"))
+        self.assertIn("background plate", self.read_text("manifest.txt"))
 
     def start_converter(self, temp_folder, stderr=subprocess.DEVNULL):
         synthetic_files.write_apk_folder(self.apk_folder, long_text_game_files())
@@ -358,20 +332,6 @@ class EndToEndTests(unittest.TestCase):
     def convert_text_set(self):
         synthetic_files.write_apk_folder(self.apk_folder, text_game_files())
         self.convert(text_set_description())
-
-    def test_narration_and_bubbles_reach_the_scene_with_their_places(self):
-        self.convert_text_set()
-        lines = self.read_text("scenes", "opening.scene").splitlines()
-        first_top = int(lines[1].split()[4])
-        self.assertEqual(lines[1], "text_show 1 text_m01_0 480 %d 60" % first_top)
-        self.assertEqual(lines[2], "text_show 2 text_m01_1 480 %d 60" % (first_top + 39))
-        self.assertEqual(lines[3], "wait 10")
-        self.assertEqual(lines[4], "text_show 3 text_m01_2 480 %d 60" % (first_top + 131))
-        self.assertEqual(lines[5:9], ["text_hide 1 30", "text_hide 2 30", "text_hide 3 30", "text_hide_all"])
-        self.assertEqual(lines[9], "overlay 1 bubble_body 10 20 5.688889 2.844444 6")
-        words_header, _ = self.read_gtex_header("bubble_words")
-        self.assertEqual(lines[10], "overlay 2 bubble_words 30 40 %.6f %.6f 0" % (words_header[0] / 2.8125, words_header[1] / 2.8125))
-        self.assertEqual(lines[11], "overlay_hide 1")
 
     def test_text_textures_are_compressed_white_or_black_with_alpha(self):
         self.convert_text_set()
@@ -478,36 +438,14 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("narration: 1 messages, 3 lines", output.getvalue())
         self.assertIn("narration lines squeezed: none", output.getvalue())
 
-    def test_a_scene_naming_unknown_narration_is_refused(self):
-        synthetic_files.write_apk_folder(self.apk_folder, text_game_files())
-        set_description = text_set_description()
-        set_description["steps"].append(["narration_show", "absent", 0, 60])
-        with self.assertRaises(ValueError):
-            self.convert(set_description)
-
     def test_a_small_set_converts_completely(self):
         self.convert(tiny_set_description())
         self.assertEqual(self.read_text("manifest.txt"), "\n".join([
             "art remastered",
-            "scene opening",
             "background plate",
             "background card",
             "animation st01_a_000",
             "animation st01_a_000_f01",
-        ]) + "\n")
-        self.assertEqual(self.read_text("scenes", "opening.scene"), "\n".join([
-            "scene opening",
-            "card card",
-            "hide_card",
-            "room 1",
-            "plate plate 0 16 32 16",
-            "camera 0 0",
-            "object a st01_a_000 10 20 3 1",
-            "wait 30",
-            "object a st01_a_000_f01 30 40 3 1",
-            "music song 1",
-            "sound ping",
-            "music_stop 4",
         ]) + "\n")
         self.assertEqual(self.read_text("animations", "st01_a_000.anim"), "\n".join([
             "animation st01_a_000",
@@ -540,7 +478,6 @@ class EndToEndTests(unittest.TestCase):
     def test_a_looped_sound_gets_a_loop_file_too(self):
         set_description = tiny_set_description()
         set_description["sounds"] = [{"name": "hum", "source": LOOPED_SONG_PATH}]
-        set_description["steps"] = [step for step in set_description["steps"] if step[0] != "sound"]
         self.convert(set_description)
         self.assertEqual(self.read_text("sounds", "hum.loop"), "4 9\n")
 
@@ -548,7 +485,6 @@ class EndToEndTests(unittest.TestCase):
         set_description = tiny_set_description()
         del set_description["music"]
         del set_description["sounds"]
-        set_description["steps"] = [step for step in set_description["steps"] if step[0] not in ("music", "sound", "music_stop")]
         self.convert(set_description)
         self.assertEqual(os.listdir(os.path.join(self.output_folder, "music")), [])
 
@@ -557,12 +493,6 @@ class EndToEndTests(unittest.TestCase):
         set_description["sounds"] = [{"name": "ping", "source": ODD_RATE_PING_PATH}]
         self.convert(set_description)
         self.assertEqual(sample_rate_of(os.path.join(self.output_folder, "sounds", "ping.ogg")), 44100)
-
-    def test_a_music_step_naming_an_undeclared_track_is_refused(self):
-        set_description = tiny_set_description()
-        set_description["steps"].append(["music", "no_such_track", 0])
-        with self.assertRaises(ValueError):
-            self.convert(set_description)
 
     def test_stale_audio_is_removed(self):
         self.convert(tiny_set_description())
@@ -591,12 +521,10 @@ class EndToEndTests(unittest.TestCase):
         stale_path = os.path.join(self.output_folder, "textures", "old.gtex")
         with open(stale_path, "wb") as output:
             output.write(b"old")
-        first_scene = self.read_text("scenes", "opening.scene")
         with open(os.path.join(self.output_folder, "textures", "plate.gtex"), "rb") as source:
             first_plate = source.read()
         self.convert(tiny_set_description())
         self.assertFalse(os.path.exists(stale_path))
-        self.assertEqual(self.read_text("scenes", "opening.scene"), first_scene)
         with open(os.path.join(self.output_folder, "textures", "plate.gtex"), "rb") as source:
             self.assertEqual(source.read(), first_plate)
 
@@ -662,7 +590,6 @@ class EndToEndTests(unittest.TestCase):
         old_set = tiny_set_description()
         old_set["screen_textures"][0]["width"] = 32
         old_set["animations"] = old_set["animations"][:1]
-        old_set["steps"] = [step for step in old_set["steps"] if step[0] != "object"]
         self.convert(old_set)
         self.convert(tiny_set_description())
         incremental = self.output_tree()
@@ -757,11 +684,9 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(baked["rendered"], ["bubble_words"])
         self.assertEqual(baked["encoded"], ["bubble_words"])
 
-    def test_a_moved_message_bakes_nothing_and_only_moves_its_lines(self):
+    def test_a_moved_message_bakes_nothing(self):
         self.bake_text_set_with()
-        first_scene = self.read_text("scenes", "opening.scene")
         self.assertEqual(self.bake_text_set_with(story=story_text(pos_y=30)), self.nothing_baked())
-        self.assertNotEqual(self.read_text("scenes", "opening.scene"), first_scene)
         clean = self.output_tree()
         shutil.rmtree(self.output_folder)
         self.bake_text_set_with(story=story_text(pos_y=30))
@@ -851,7 +776,6 @@ class EndToEndTests(unittest.TestCase):
         old_set["bubble_text"][0]["color"] = [255, 0, 0]
         old_set["composed_textures"][0]["parts"][0]["x"] = 2
         old_set["narration"] = [{"name": "old_message", "file": MESSAGE_PATH, "entry": "entry_story"}]
-        old_set["steps"] = [["narration_show", "old_message", 0, 60], ["wait", 5]]
         self.bake_text_set_with(old_set, story=story_text(pos_y=30, last_line="older"), narration_font_key=OTHER_FONT_KEY)
         self.bake_text_set_with()
         incremental = self.output_tree()
@@ -878,7 +802,6 @@ class EndToEndTests(unittest.TestCase):
         self.assertNotIn(STORY_LINE_PREFIX, str(caught.exception))
         after = self.output_tree()
         self.assertEqual(after["manifest.txt"], before["manifest.txt"])
-        self.assertEqual(after[os.path.join("scenes", "opening.scene")], before[os.path.join("scenes", "opening.scene")])
         self.assertEqual(sorted(after), sorted(before))
         self.assertEqual(after[os.path.join("textures", "text_m01_1.gtex")], before[os.path.join("textures", "text_m01_1.gtex")])
         self.assertNotEqual(after[os.path.join("textures", "bubble_words.gtex")], before[os.path.join("textures", "bubble_words.gtex")])
@@ -926,13 +849,6 @@ class EndToEndTests(unittest.TestCase):
         with open(path, "w", encoding="ascii") as output:
             output.write('{"scene_name": "x"}')
         self.assertEqual(convert_assets.load_set_description(path), {"scene_name": "x"})
-
-    def test_a_scene_naming_an_unknown_animation_is_refused(self):
-        set_description = tiny_set_description()
-        set_description["steps"].append(["object", "a", "no_such_animation", 0, 0])
-        with self.assertRaises(ValueError):
-            self.convert(set_description)
-
 
 if __name__ == "__main__":
     unittest.main()

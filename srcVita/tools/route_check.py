@@ -2,7 +2,6 @@ import argparse
 import sys
 
 OPENING_SCRIPT = "st01-st01_game000_Expand"
-PUSHES_STILL_EXPECTED = 0
 EXPECTED_OPENING = [
     ("core", "shadanki"),
     ("trick", "shadanki"),
@@ -13,8 +12,6 @@ EXPECTED_OPENING = [
     ("act_begun", "gameAct070"),
 ]
 FAILURE_MARKS = ("route_step_failed", "route_hop_beyond_reach")
-ENDED_LINE_PREFIX = "ended "
-PUSHES_WORD_PREFIX = "pushes="
 
 
 def read_marks(path):
@@ -58,52 +55,37 @@ def step_count_of(route_path):
     return len(read_route_steps(route_path))
 
 
-def order_problems(marks, route_path):
-    wanted = [word[3] for word in read_route_steps(route_path) if word[2] == "move"]
-    moved = [name for what, name in marks if what == "core"]
-    if moved == wanted:
-        return []
-    for index, (got, expected) in enumerate(zip(moved, wanted)):
-        if got != expected:
-            return ["soul move %d went to %s, the route says %s" % (index, got, expected)]
-    return ["the replay made %d soul moves, the route has %d" % (len(moved), len(wanted))]
+def order_problems(marks):
+    last = -1
+    for what, name in marks:
+        if what == "route_step_done":
+            index = int(name.split(":", 1)[0])
+            if index <= last:
+                return ["route step %d finished after step %d" % (index, last)]
+            last = index
+    return []
 
 
-def route_problems(marks, route_path):
+def route_problems(marks, route_path, most_passed_over):
     problems = ["%s %s" % mark for mark in marks if mark[0] in FAILURE_MARKS]
     done = len([mark for mark in marks if mark[0] == "route_step_done"])
     expected = step_count_of(route_path)
-    if done < expected:
+    if done < expected - most_passed_over:
         problems.append("only %d of %d route steps finished" % (done, expected))
     return problems
 
 
-def forced_pushes(marks_path):
-    with open(marks_path, encoding="utf-8", errors="replace") as source:
-        for line in source:
-            if line.startswith(ENDED_LINE_PREFIX):
-                for word in line.split():
-                    if word.startswith(PUSHES_WORD_PREFIX):
-                        return int(word[len(PUSHES_WORD_PREFIX):])
-    return None
-
-
-def push_problems(marks_path):
-    pushes = forced_pushes(marks_path)
-    if pushes is None:
-        return ["the replay never reported how it ended"]
-    if pushes > PUSHES_STILL_EXPECTED:
-        return ["the replay needed %d forced pushes" % pushes]
-    return []
-
-
 def main():
-    parser = argparse.ArgumentParser(description="fail if a replay stopped following the Chapter 1 route")
+    parser = argparse.ArgumentParser(description="fail if a replay stopped following the route")
     parser.add_argument("marks", help="the output of script_replay --marks")
     parser.add_argument("route", help="the baked route_steps.txt")
+    parser.add_argument("--most-passed-over", type=int, default=0, help="route steps the story may pass over without playing")
+    parser.add_argument("--must-reach", help="a mark name the replay must end on, such as the last script change")
     arguments = parser.parse_args()
     marks = read_marks(arguments.marks)
-    problems = opening_problems(marks) + order_problems(marks, arguments.route) + route_problems(marks, arguments.route) + push_problems(arguments.marks)
+    problems = opening_problems(marks) + order_problems(marks) + route_problems(marks, arguments.route, arguments.most_passed_over)
+    if arguments.must_reach is not None and not any(name == arguments.must_reach.split()[0] for what, name in marks):
+        problems.append("the replay never reached %s" % arguments.must_reach)
     for problem in problems:
         print(problem)
     print("route check", "failed" if problems else "passed", len(problems), "problems")

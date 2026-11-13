@@ -41,8 +41,7 @@ static void test_command_file_parses_each_line_in_order(void)
     CHECK_INT(command.kind, COMMAND_SHOW_ANIMATION);
     CHECK_TEXT(command.name, "walk_1");
     offset = command_parse_next_line(text, size, offset, &command);
-    CHECK_INT(command.kind, COMMAND_PLAY_SCENE);
-    CHECK_TEXT(command.name, "opening");
+    CHECK_INT(command.kind, COMMAND_UNKNOWN);
     offset = command_parse_next_line(text, size, offset, &command);
     CHECK_INT(command.kind, COMMAND_HUD_ON);
     offset = command_parse_next_line(text, size, offset, &command);
@@ -50,6 +49,32 @@ static void test_command_file_parses_each_line_in_order(void)
     CHECK_INT(offset, size);
     offset = command_parse_next_line(text, size, offset, &command);
     CHECK_INT(command.kind, COMMAND_NONE);
+    CHECK_INT(offset, size);
+}
+
+static void test_the_harness_commands_parse_and_the_removed_ones_do_not(void)
+{
+    const char text[] = "ff 8\nfps on\nfps off\nauto_play\nskip\nstall_breaker on\n";
+    unsigned int size;
+    unsigned int offset;
+    struct command command;
+
+    size = sizeof(text) - 1;
+    offset = command_parse_next_line(text, size, 0, &command);
+    CHECK_INT(command.kind, COMMAND_FAST_FORWARD);
+    CHECK_INT(command.number, 8);
+    offset = command_parse_next_line(text, size, offset, &command);
+    CHECK_INT(command.kind, COMMAND_FPS);
+    CHECK_INT(command.number, 1);
+    offset = command_parse_next_line(text, size, offset, &command);
+    CHECK_INT(command.kind, COMMAND_FPS);
+    CHECK_INT(command.number, 0);
+    offset = command_parse_next_line(text, size, offset, &command);
+    CHECK_INT(command.kind, COMMAND_AUTO_PLAY);
+    offset = command_parse_next_line(text, size, offset, &command);
+    CHECK_INT(command.kind, COMMAND_UNKNOWN);
+    offset = command_parse_next_line(text, size, offset, &command);
+    CHECK_INT(command.kind, COMMAND_UNKNOWN);
     CHECK_INT(offset, size);
 }
 
@@ -76,6 +101,7 @@ static void test_music_starve_takes_a_positive_number_of_milliseconds(void)
 
 int main(void)
 {
+    test_the_harness_commands_parse_and_the_removed_ones_do_not();
     test_command_names_only_allow_plain_characters();
     test_command_file_parses_each_line_in_order();
     test_music_starve_takes_a_positive_number_of_milliseconds();

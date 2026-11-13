@@ -68,7 +68,6 @@ static int read_music_starve_command(const char *line, struct command *command)
     return 1;
 }
 
-#ifdef FAST_FORWARD_BUILD
 static int read_fast_forward_command(const char *line, struct command *command)
 {
     char kind[16];
@@ -77,11 +76,6 @@ static int read_fast_forward_command(const char *line, struct command *command)
     if (strcmp(line, "auto_play") == 0 || strcmp(line, "auto_play off") == 0) {
         command->kind = COMMAND_AUTO_PLAY;
         command->number = strcmp(line, "auto_play") == 0;
-        return 1;
-    }
-    if (strcmp(line, "stall_breaker on") == 0 || strcmp(line, "stall_breaker off") == 0) {
-        command->kind = COMMAND_STALL_BREAKER;
-        command->number = strcmp(line, "stall_breaker on") == 0;
         return 1;
     }
     if (sscanf(line, "ff %d", &command->number) == 1) {
@@ -94,12 +88,13 @@ static int read_fast_forward_command(const char *line, struct command *command)
         snprintf(command->detail, sizeof(command->detail), "%s", kind);
         return 1;
     }
-    if (strcmp(line, "resume") == 0) {
-        command->kind = COMMAND_RESUME;
+    if (strcmp(line, "fps on") == 0 || strcmp(line, "fps off") == 0) {
+        command->kind = COMMAND_FPS;
+        command->number = strcmp(line, "fps on") == 0;
         return 1;
     }
-    if (strcmp(line, "skip") == 0) {
-        command->kind = COMMAND_SKIP_AHEAD;
+    if (strcmp(line, "resume") == 0) {
+        command->kind = COMMAND_RESUME;
         return 1;
     }
     command->ms_between_pictures = 0;
@@ -125,7 +120,6 @@ static int read_fast_forward_command(const char *line, struct command *command)
     }
     return 0;
 }
-#endif
 
 unsigned int command_parse_next_line(const char *text, unsigned int text_size, unsigned int offset, struct command *command)
 {
@@ -153,9 +147,6 @@ unsigned int command_parse_next_line(const char *text, unsigned int text_size, u
         command->kind = COMMAND_HUD_OFF;
         return offset;
     }
-    if (read_named_command(line, "play_scene ", COMMAND_PLAY_SCENE, command)) {
-        return offset;
-    }
     if (read_named_command(line, "play_script ", COMMAND_PLAY_SCRIPT, command)) {
         return offset;
     }
@@ -171,11 +162,9 @@ unsigned int command_parse_next_line(const char *text, unsigned int text_size, u
     if (read_music_starve_command(line, command)) {
         return offset;
     }
-#ifdef FAST_FORWARD_BUILD
     if (read_fast_forward_command(line, command)) {
         return offset;
     }
-#endif
     command->kind = COMMAND_UNKNOWN;
     return offset;
 }

@@ -76,7 +76,6 @@ void script_narration_start(struct script_narration *narration, const struct scr
 int script_narration_wants_a_press(const struct script_narration *narration);
 int script_narration_takes_a_skip(const struct script_narration *narration);
 void script_narration_note_press(struct script_narration *narration);
-void script_narration_finish_soon(struct script_narration *narration);
 int script_narration_step(struct script_narration *narration, script_narration_report report, void *listener);
 
 #endif

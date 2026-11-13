@@ -824,11 +824,6 @@ static void draw_dropdown(float x_offset)
     }
 }
 
-const char *pause_options_control_glyph(int control, int which)
-{
-    return control >= 0 && control < CONTROLS_COUNT && which >= 0 && which < CONTROLS_GLYPH_MOST ? control_glyphs[control][which] : NULL;
-}
-
 static void draw_control_glyphs(int control, float left, float centre_y)
 {
     const char *glyph;

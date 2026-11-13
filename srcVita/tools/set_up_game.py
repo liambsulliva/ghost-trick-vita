@@ -12,7 +12,8 @@ SRC_VITA_FOLDER = os.path.dirname(TOOLS_FOLDER)
 REPOSITORY_FOLDER = os.path.dirname(SRC_VITA_FOLDER)
 APK_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "remaster_apk")
 DEFAULT_DS_ROM = os.path.join(REPOSITORY_FOLDER, "extracted", "ds_rom", "game.nds")
-OUTPUT_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "vita_assets", "chapter1")
+SET_NAME = "game"
+OUTPUT_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "vita_assets", SET_NAME)
 TEXT_KEY_PATH = os.path.join(APK_FOLDER, "text_key.bin")
 DEFAULT_VITASDK = "/usr/local/vitasdk"
 PACK_NAMES = ("re_chunk_000.pak", "data01", "data02")
@@ -165,7 +166,7 @@ def find_text_key(apk_path):
 
 
 def convert(ds_rom):
-    lines = run_with_progress([sys.executable, "-I", os.path.join(TOOLS_FOLDER, "assets", "convert_assets.py"), "--set", "chapter1", "--output", OUTPUT_FOLDER, "--ds-rom", ds_rom], "converting")
+    lines = run_with_progress([sys.executable, "-I", os.path.join(TOOLS_FOLDER, "assets", "convert_assets.py"), "--set", SET_NAME, "--output", OUTPUT_FOLDER, "--ds-rom", ds_rom], "converting")
     for line in lines:
         if line.startswith(("textures:", "music:", "sounds:", "scripts:", "talk:")):
             show("    " + line)
@@ -176,12 +177,12 @@ def vitasdk_folder():
     return folder if os.path.isdir(os.path.join(folder, "bin")) else None
 
 
-def build_package(folder, arranged_music):
+def build_package(folder):
     environment = dict(os.environ)
     environment["VITASDK"] = folder
     environment["PATH"] = os.path.join(folder, "bin") + os.pathsep + environment.get("PATH", "")
-    run_with_progress(["make", "-C", "srcVita", "-j8", "DS_MUSIC=0" if arranged_music else "DS_MUSIC=1"], "building", environment)
-    show("  package: srcVita/build/ghosttrick.vpk, with the %s soundtrack" % ("remaster's arranged" if arranged_music else "DS"))
+    run_with_progress(["make", "-C", "srcVita", "-j8"], "building", environment)
+    show("  package: srcVita/build/ghosttrick.vpk")
 
 
 def run_stages(arguments):
@@ -213,25 +214,24 @@ def run_stages(arguments):
     convert(arguments.ds_rom)
 
     stage_header(6)
-    run_with_progress(["make", "-C", "srcVita", "read-ahead"], "replaying the chapter")
+    run_with_progress(["make", "-C", "srcVita", "read-ahead", "PLAN_SET=" + SET_NAME], "replaying the game")
 
     folder = vitasdk_folder()
     if folder is None:
         stage_header(7, "VitaSDK not found, skipped")
     else:
         stage_header(7)
-        build_package(folder, arguments.arranged_music)
+        build_package(folder)
 
     stage_header(8)
     show("  install srcVita/build/ghosttrick.vpk with VitaShell")
-    show("  copy what is inside extracted/vita_assets/chapter1 to ux0:data/ghosttrick/assets/")
+    show("  copy what is inside extracted/vita_assets/%s to ux0:data/ghosttrick/assets/" % SET_NAME)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Prepares everything the Vita app needs from your own copies of the game, in one go.")
     parser.add_argument("--apk", help="your copy of the remaster's Android package; not needed once its files are copied and the key is found")
     parser.add_argument("--ds-rom", default=DEFAULT_DS_ROM, help="your own dump of the USA DS cartridge (game code BGTE)")
-    parser.add_argument("--arranged-music", action="store_true", help="play the remaster's arranged soundtrack instead of the DS one")
     arguments = parser.parse_args()
     started = time.time()
     try:

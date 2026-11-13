@@ -31,11 +31,7 @@
 #define BURST_PAUSE_MOST_US 120000000ULL
 #define ART_HOLD_SLEEP_US 4000
 
-#ifdef FAST_FORWARD_BUILD
 #define COMMAND_POLL_FRAMES 6
-#else
-#define COMMAND_POLL_FRAMES 30
-#endif
 #define KEEP_AWAKE_FRAMES 30
 #define CAPTURE_NAME_MAX 64
 #define FIRST_TIMED_FRAME 2
@@ -68,6 +64,7 @@ static void log_memory_and_textures(void)
     run_log_write("textures bytes=%u loads=%u evictions=%u missing=%u retries=%u read_ahead_dropped=%u longest_wait_us=%llu longest_upload_us=%llu", totals.bytes_in_use, totals.loads, totals.evictions, totals.missing, totals.retries, totals.read_ahead_dropped, totals.longest_wait_us, totals.longest_upload_us);
 }
 
+#ifdef FAST_FORWARD_BUILD
 static void save_capture(const char *name)
 {
     char path[FILE_PATH_MAX];
@@ -83,7 +80,6 @@ static void save_capture(const char *name)
     run_log_write(LOG_FOR_TOOLS_CAPTURE_DONE, name, result, clock_now_us() - started_us);
 }
 
-#ifdef FAST_FORWARD_BUILD
 static unsigned int injected_buttons;
 static unsigned long long burst_pause_began_us;
 static int injected_touch_frames;
@@ -91,7 +87,17 @@ static struct command injected_drag;
 static int injected_drag_frame;
 static float injected_touch_x;
 static float injected_touch_y;
-#endif
+static int fps_overlay_is_on;
+
+static void save_manual_capture(void)
+{
+    static unsigned int manual_capture_count;
+    char capture_name[CAPTURE_NAME_MAX];
+
+    manual_capture_count = manual_capture_count + 1;
+    snprintf(capture_name, sizeof(capture_name), "manual_%u", manual_capture_count);
+    save_capture(capture_name);
+}
 
 static int run_one_command(const struct command *command)
 {
@@ -105,9 +111,6 @@ static int run_one_command(const struct command *command)
     } else if (command->kind == COMMAND_SHOW_ANIMATION) {
         succeeded = viewer_app_show_animation(command->name);
         run_log_write("command show_animation name=%s ok=%d", command->name, succeeded);
-    } else if (command->kind == COMMAND_PLAY_SCENE) {
-        succeeded = viewer_app_play_scene(command->name);
-        run_log_write("command play_scene name=%s ok=%d", command->name, succeeded);
     } else if (command->kind == COMMAND_PLAY_SCRIPT) {
         succeeded = viewer_app_play_script(command->name);
         run_log_write("command play_script name=%s ok=%d", command->name, succeeded);
@@ -118,11 +121,11 @@ static int run_one_command(const struct command *command)
     } else if (command->kind == COMMAND_MUSIC_STARVE) {
         music_request_starve(command->number);
         run_log_write(LOG_FOR_TOOLS_MUSIC_STARVE_COMMAND, command->number);
-#ifdef FAST_FORWARD_BUILD
+    } else if (command->kind == COMMAND_FPS) {
+        fps_overlay_is_on = command->number;
+        fps_overlay_reset();
     } else if (command->kind == COMMAND_AUTO_PLAY) {
         script_player_set_auto_play(command->number);
-    } else if (command->kind == COMMAND_STALL_BREAKER) {
-        script_player_set_stall_breaker(command->number);
     } else if (command->kind == COMMAND_FAST_FORWARD) {
         script_player_set_fast_forward(command->number);
     } else if (command->kind == COMMAND_FAST_FORWARD_UNTIL) {
@@ -130,8 +133,6 @@ static int run_one_command(const struct command *command)
     } else if (command->kind == COMMAND_RESUME) {
         burst_pause_began_us = 0;
         script_player_set_paused(0);
-    } else if (command->kind == COMMAND_SKIP_AHEAD) {
-        script_player_skip_ahead();
     } else if (command->kind == COMMAND_PRESS) {
         injected_buttons = (unsigned int)command->number;
     } else if (command->kind == COMMAND_TOUCH) {
@@ -159,7 +160,6 @@ static int run_one_command(const struct command *command)
         run_log_write("command drag from=%d,%d to=%d,%d frames=%d delay=%d", command->touch_x, command->touch_y, command->touch_end_x, command->touch_end_y, command->number, command->delay_frames);
     } else if (command->kind == COMMAND_BURST) {
         screen_burst_run_for_seconds(command->number, command->ms_between_pictures);
-#endif
     } else if (command->kind == COMMAND_QUIT) {
         run_log_write("command quit");
         return 1;
@@ -193,6 +193,7 @@ static int run_pending_commands(void)
     mem_free(text);
     return quit_requested;
 }
+#endif
 
 static void publish_frame_stats(struct frame_stats *stats)
 {
@@ -218,19 +219,16 @@ static void run_main_loop(void)
     struct frame_stats stats;
     struct frame_timer frame_timer;
     unsigned int frame_number;
-    unsigned int manual_capture_count;
     unsigned long long frame_started_us;
     unsigned long long update_ended_us;
     unsigned long long draw_ended_us;
     unsigned long long present_ended_us;
     unsigned long long last_frame_us;
-    char capture_name[CAPTURE_NAME_MAX];
     int quit_requested;
 
     input.pressed = 0;
     input.held = 0;
     frame_number = 0;
-    manual_capture_count = 0;
     last_frame_us = 0;
     quit_requested = 0;
     frame_stats_reset(&stats);
@@ -269,11 +267,11 @@ static void run_main_loop(void)
             run_log_write("input start pressed");
             break;
         }
+#ifdef FAST_FORWARD_BUILD
         if ((input.pressed & INPUT_SQUARE) && !script_player_is_active()) {
-            manual_capture_count = manual_capture_count + 1;
-            snprintf(capture_name, sizeof(capture_name), "manual_%u", manual_capture_count);
-            save_capture(capture_name);
+            save_manual_capture();
         }
+#endif
         viewer_app_update(&input, last_frame_us);
         update_ended_us = clock_now_us();
 
@@ -284,8 +282,10 @@ static void run_main_loop(void)
         } else {
             renderer_begin_frame(clear_color);
             viewer_app_draw();
-#ifdef FPS_COUNTER_BUILD
-            fps_overlay_draw();
+#ifdef FAST_FORWARD_BUILD
+            if (fps_overlay_is_on) {
+                fps_overlay_draw();
+            }
 #endif
             draw_ended_us = clock_now_us();
 
@@ -294,11 +294,9 @@ static void run_main_loop(void)
         }
 
         last_frame_us = frame_timer_tick(&frame_timer);
-#ifdef FPS_COUNTER_BUILD
-        fps_overlay_note_frame(last_frame_us);
-#endif
         screen_watch_note_frame();
 #ifdef FAST_FORWARD_BUILD
+        fps_overlay_note_frame(last_frame_us);
         if (burst_pause_began_us != 0 && clock_now_us() - burst_pause_began_us > BURST_PAUSE_MOST_US) {
             burst_pause_began_us = 0;
             script_player_set_paused(0);
@@ -320,9 +318,11 @@ static void run_main_loop(void)
         if (frame_stats_window_is_full(&stats)) {
             publish_frame_stats(&stats);
         }
+#ifdef FAST_FORWARD_BUILD
         if (frame_number % COMMAND_POLL_FRAMES == 0) {
             quit_requested = run_pending_commands();
         }
+#endif
     }
     run_log_write("loop ended frames=%u", frame_number);
 }

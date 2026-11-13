@@ -120,6 +120,28 @@ def read_pacing(path):
     return stretched
 
 
+def stamp_of(path):
+    if path is None or not os.path.exists(path):
+        return None
+    with open(path, encoding="ascii") as source:
+        return source.readline().rstrip("\n")
+
+
+def seed_from_kept(kept_path, pacing_path, route_steps_bytes):
+    if stamp_of(kept_path) != route_stamp(route_steps_bytes) or stamp_of(pacing_path) == route_stamp(route_steps_bytes):
+        return False
+    with open(kept_path, "rb") as source:
+        bake_record.write_if_different(pacing_path, source.read())
+    return True
+
+
+def keep_settled(kept_path, pacing_path):
+    if kept_path is None:
+        return
+    with open(pacing_path, "rb") as source:
+        bake_record.write_if_different(kept_path, source.read())
+
+
 def replay(replay_binary, scripts_folder, cues_path, stop_tick):
     subprocess.run([replay_binary, "--scripts", scripts_folder, "--timing", "remaster", "--auto-paced", "--cues", cues_path, "--stop-tick", str(stop_tick)], check=True, stdout=subprocess.DEVNULL)
 
@@ -131,6 +153,7 @@ def main():
     parser.add_argument("scripts", help="the baked scripts folder; route_pacing.txt is written here")
     parser.add_argument("cues", help="where the paced replay writes its cues")
     parser.add_argument("--stop-tick", type=int, default=200000)
+    parser.add_argument("--kept", help="the settled pacing kept with the set's sources; it seeds the bake and is updated when the bake settles")
     arguments = parser.parse_args()
     with open(arguments.set_description, encoding="utf-8") as source:
         route = json.load(source)["route"]
@@ -138,6 +161,7 @@ def main():
     windows_too_short = set()
     with open(os.path.join(arguments.scripts, ROUTE_STEPS_FILE_NAME), "rb") as source:
         route_steps_bytes = source.read()
+    seed_from_kept(arguments.kept, pacing_path, route_steps_bytes)
     for pass_number in range(1, MOST_PASSES + 1):
         stretched = read_pacing(pacing_path)
         earlier_dwells = dwells_baked_for(pacing_path, route_steps_bytes)
@@ -150,6 +174,7 @@ def main():
         changed = bake_record.write_if_different(pacing_path, pacing_file_text(route_steps_bytes, dwells).encode("ascii"))
         print("route pacing pass %d: %d steps stretched, %d extra ticks, %d kept short%s" % (pass_number, len(dwells), sum(dwells[index] - base_dwell(route, route["steps"][index]) for index in dwells), len(windows_too_short), "" if changed else ", settled"))
         if not changed:
+            keep_settled(arguments.kept, pacing_path)
             for index in sorted(drift):
                 step = route["steps"][index]
                 print("  footage runs %.1f s longer before step %d %s %s" % (drift[index] / TICKS_PER_SECOND, index, step["action"], step.get("object", "-")))

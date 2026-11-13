@@ -38,17 +38,13 @@
 #define TEXTURE_FOLDER_BUCKETS 0u
 #endif
 #define NEW_ILLUSTRATIONS_TOAST "bar.new_illustrations"
-#ifdef USE_DS_MUSIC
 #define DEFAULT_MUSIC_TYPE GAME_MUSIC_ORIGINAL
-#define MUSIC_SUBFOLDER "music_ds"
+#define ORIGINAL_MUSIC_SUBFOLDER "music_ds"
+#define ARRANGED_MUSIC_SUBFOLDER "music"
+#ifdef FAST_FORWARD_BUILD
+#define DEV_TOOLS_ARE_BUILT 1
 #else
-#define DEFAULT_MUSIC_TYPE GAME_MUSIC_ARRANGED
-#define MUSIC_SUBFOLDER "music"
-#endif
-#ifdef DEBUG_UNLOCK_BUILD
-#define UNLOCK_ROW_IS_BUILT 1
-#else
-#define UNLOCK_ROW_IS_BUILT 0
+#define DEV_TOOLS_ARE_BUILT 0
 #endif
 #define LIST_VISIBLE_ROWS 20
 #define PAGE_TILES_FILE_NAME "tiles"
@@ -326,7 +322,7 @@ static int slot_has_save(int slot)
 
 static int everything_is_unlocked(void)
 {
-    return UNLOCK_ROW_IS_BUILT && game_settings_now()->unlock_all;
+    return DEV_TOOLS_ARE_BUILT && game_settings_now()->unlock_all;
 }
 
 static int chapter_has_save(int chapter)
@@ -408,8 +404,8 @@ static void start_settings(void)
     char original_folder[FILE_PATH_MAX];
     char arranged_folder[FILE_PATH_MAX];
 
-    asset_subfolder_path(original_folder, "music_ds");
-    asset_subfolder_path(arranged_folder, "music");
+    asset_subfolder_path(original_folder, ORIGINAL_MUSIC_SUBFOLDER);
+    asset_subfolder_path(arranged_folder, ARRANGED_MUSIC_SUBFOLDER);
     game_settings_set_music_folders(original_folder, arranged_folder);
     game_settings_set_default_music(DEFAULT_MUSIC_TYPE);
     game_settings_load(GAME_SETTINGS_PATH);
@@ -448,7 +444,7 @@ void viewer_app_start(const char *folder)
     asset_subfolder_path(texture_folder, "textures");
     asset_subfolder_path(animation_folder, "animations");
     asset_subfolder_path(scene_folder, "scenes");
-    asset_subfolder_path(music_folder, MUSIC_SUBFOLDER);
+    asset_subfolder_path(music_folder, ORIGINAL_MUSIC_SUBFOLDER);
     asset_subfolder_path(sound_folder, "sounds");
     asset_subfolder_path(script_folder, "scripts");
     manifest = NULL;
@@ -457,7 +453,7 @@ void viewer_app_start(const char *folder)
     current_animation_index = 0;
     hud_is_visible = 1;
     list_is_open = 0;
-    debug_controls_are_on = 1;
+    debug_controls_are_on = DEV_TOOLS_ARE_BUILT;
     status_text[0] = '\0';
 
     texture_cache_init(texture_folder, TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
@@ -482,7 +478,7 @@ void viewer_app_start(const char *folder)
         return;
     }
     ui_list_init(&animation_list, manifest->animation_count, LIST_VISIBLE_ROWS);
-    pause_options_show_unlock(UNLOCK_ROW_IS_BUILT);
+    pause_options_show_unlock(DEV_TOOLS_ARE_BUILT);
     pause_save_use(script_player_save_manual, slot_has_save);
     pause_chapters_use(chapter_has_save);
     illustrations_known_chapter = highest_reached_chapter();
@@ -493,7 +489,9 @@ void viewer_app_start(const char *folder)
         return;
     }
     run_log_write("opening needs_scripts entry=%s", SCRIPT_ENTRY_NAME);
-    start_browsing_first_assets();
+    if (DEV_TOOLS_ARE_BUILT) {
+        start_browsing_first_assets();
+    }
 }
 
 static void step_background(int direction)
@@ -595,10 +593,6 @@ static void update_player_controls(const struct input_state *input)
 {
     struct input_state frame;
 
-    if ((input->pressed & (INPUT_L | INPUT_R)) && (input->held & (INPUT_L | INPUT_R)) == (INPUT_L | INPUT_R)) {
-        script_player_skip_ahead();
-        return;
-    }
     frame = *input;
     if ((frame.pressed & INPUT_CROSS) && playback_status() == SCENE_PLAYER_FINISHED && opening_can_play()) {
         frame.pressed = frame.pressed & ~INPUT_CROSS;
@@ -716,7 +710,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
         pause_menu_open_on_record();
         return;
     }
-    if ((input->pressed & INPUT_SELECT) && !script_player_is_active()) {
+    if (DEV_TOOLS_ARE_BUILT && (input->pressed & INPUT_SELECT) && !script_player_is_active()) {
         set_debug_controls(!debug_controls_are_on);
     }
     if (list_is_open) {
@@ -730,7 +724,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
     switch_to_pending_background_when_ready();
     if (script_player_is_active()) {
         script_player_update(elapsed_us);
-    } else {
+    } else if (DEV_TOOLS_ARE_BUILT) {
         scene_player_update(elapsed_us);
     }
     update_loading_screen(elapsed_us);
@@ -783,6 +777,10 @@ static void write_second_hud_line(char *line, unsigned int line_size)
 {
     if (manifest == NULL) {
         snprintf(line, line_size, "no assets in %s", assets_folder);
+        return;
+    }
+    if (!script_player_is_available()) {
+        snprintf(line, line_size, "no scripts in %s/scripts", assets_folder);
         return;
     }
     if (playback_status() == SCENE_PLAYER_PRELOADING) {

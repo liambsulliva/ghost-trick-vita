@@ -2206,7 +2206,7 @@ static void test_a_reader_thread_that_fails_to_start_is_logged(void)
 
 static void add_audio_files(void)
 {
-    fake_files_add("assets/music/song.ogg", sine_stereo_ogg, sizeof(sine_stereo_ogg));
+    fake_files_add("assets/music_ds/song.ogg", sine_stereo_ogg, sizeof(sine_stereo_ogg));
     fake_files_add("assets/sounds/ping.ogg", sine_mono_ogg, sizeof(sine_mono_ogg));
 }
 
@@ -2317,7 +2317,7 @@ static void test_a_scene_with_damaged_audio_files_still_plays_to_its_end(void)
     set_up_scene_assets("scene opening\nroom 1\nplate room_a 0 0 1024 384\nmusic song 1\nsound ping\nwait 30\n");
     memcpy(damaged_song, sine_stereo_ogg, sizeof(sine_stereo_ogg));
     damaged_song[SINE_STEREO_VENDOR_LENGTH_TOP_BYTE_OFFSET] ^= 0x80;
-    fake_files_add("assets/music/song.ogg", damaged_song, sizeof(damaged_song));
+    fake_files_add("assets/music_ds/song.ogg", damaged_song, sizeof(damaged_song));
     memcpy(damaged_ping, sine_mono_ogg, sizeof(sine_mono_ogg));
     damaged_ping[SINE_MONO_VENDOR_LENGTH_TOP_BYTE_OFFSET] ^= 0x80;
     fake_files_add("assets/sounds/ping.ogg", damaged_ping, sizeof(damaged_ping));

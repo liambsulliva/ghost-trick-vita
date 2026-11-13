@@ -8,14 +8,6 @@ ifeq ($(FAST_FORWARD),1)
 BUILD_ID := $(BUILD_ID)-ff
 endif
 
-ifeq ($(FPS_COUNTER),1)
-BUILD_ID := $(BUILD_ID)-fps
-endif
-
-ifeq ($(DEBUG_UNLOCK),1)
-BUILD_ID := $(BUILD_ID)-unlock
-endif
-
 PREFIX  := arm-vita-eabi
 CC      := $(PREFIX)-gcc
 CFLAGS  := -Wall -Wextra -O2 -Iinclude -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -DBUILD_ID=\"$(BUILD_ID)\"
@@ -37,24 +29,6 @@ CFLAGS += -DFAST_FORWARD_BUILD
 OBJECT_FOLDER := build/obj_fast_forward
 endif
 
-DS_MUSIC ?= 1
-ifeq ($(DS_MUSIC),1)
-CFLAGS += -DUSE_DS_MUSIC
-OBJECT_FOLDER := $(OBJECT_FOLDER)_ds_music
-endif
-
-FPS_COUNTER ?= 0
-ifeq ($(FPS_COUNTER),1)
-CFLAGS += -DFPS_COUNTER_BUILD
-OBJECT_FOLDER := $(OBJECT_FOLDER)_fps_counter
-endif
-
-DEBUG_UNLOCK ?= 0
-ifeq ($(DEBUG_UNLOCK),1)
-CFLAGS += -DDEBUG_UNLOCK_BUILD
-OBJECT_FOLDER := $(OBJECT_FOLDER)_debug_unlock
-endif
-
 SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
 OBJS := $(patsubst src/%.c,$(OBJECT_FOLDER)/%.o,$(SRCS))
 
@@ -65,10 +39,13 @@ LIVEAREA_STYLE := $(if $(and $(filter-out 1,$(RELEASE)),$(LIVEAREA_ASSETS_PRESEN
 LIVEAREA_SOURCE := build/livearea_$(LIVEAREA_STYLE)
 LIVEAREA_IMAGE_NAMES := icon0.png livearea/contents/bg.png livearea/contents/startup.png
 
-PLAN_SET ?= chapter1
-PLAN_STOP_TICK ?= 200000
+PLAN_SET ?= game
+PLAN_STOP_TICK ?= 4200000
+PLAN_SCRIPTS := ../extracted/vita_assets/$(PLAN_SET)/scripts
+STEPS_THE_STORY_PASSES_OVER := 1
 HOST_CC     := clang
-HOST_CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -g -O1 -Iinclude -Itests -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
+HOST_STANDARD_CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -g -O1 -Iinclude -Itests
+HOST_CFLAGS := $(HOST_STANDARD_CFLAGS) -DFAST_FORWARD_BUILD -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
 APP_SRCS    := $(wildcard src/app/*.c)
 FAKE_SRCS   := $(wildcard tests/fakes/*.c)
 TEST_SRCS   := $(wildcard tests/unit/*.c) $(wildcard tests/integration/*.c)
@@ -147,6 +124,10 @@ build/test_objects/tests/%.o: tests/%.c $(TEST_HEADERS)
 build/test_objects/tests/integration/test_main_loop.o: src/main.c
 build/test_objects/tests/unit/test_vita_calls.o: src/vita/keep_awake.c src/vita/system_state.c
 build/test_objects/tests/unit/test_vita_renderer.o: src/vita/renderer.c
+build/tests/unit/test_packed_file: | build/packed_vectors/manifest.txt
+
+build/packed_vectors/manifest.txt: tests/tools/make_packed_vectors.py tools/assets/packed_file.py
+	python3 -I tests/tools/make_packed_vectors.py build/packed_vectors
 
 build/tests/%: build/test_objects/tests/%.o $(APP_TEST_OBJECTS) $(FAKE_TEST_OBJECTS) $(STB_VORBIS_TEST_OBJECT)
 	@mkdir -p $(dir $@)
@@ -156,7 +137,14 @@ build/tests/%: build/test_objects/tests/%.o $(APP_TEST_OBJECTS) $(FAKE_TEST_OBJE
 
 test-binaries: $(TEST_BINS)
 
-test: $(TEST_BINS)
+STANDARD_BUILD_CHECK := build/test_objects/standard_build_compiles
+
+$(STANDARD_BUILD_CHECK): src/main.c $(APP_SRCS) $(TEST_HEADERS)
+	@mkdir -p $(dir $@)
+	@for source in src/main.c $(APP_SRCS); do $(HOST_CC) $(HOST_STANDARD_CFLAGS) -Itests/fakes -fsyntax-only $$source || exit 1; done
+	@touch $@
+
+test: $(STANDARD_BUILD_CHECK) $(TEST_BINS)
 	@failed=0; for test_binary in $(TEST_BINS); do $$test_binary || failed=1; done; exit $$failed
 
 $(TEST_RUNS): run-%: %
@@ -170,7 +158,7 @@ test-all: test
 golden: build/tests/golden/script_replay
 	@mkdir -p build/golden
 	@test -f ../extracted/trace/vm_golden/golden_trace.tsv || { echo "no golden trace in extracted/trace/vm_golden"; exit 2; }
-	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1/scripts --timing ds --rows build/golden/rows_ds.tsv --cues build/golden/cues_ds.tsv --stop-tick 6056 --close-talk-at 5643 --close-talk-at 5823 --close-talk-at 6002
+	build/tests/golden/script_replay --scripts $(PLAN_SCRIPTS) --timing ds --rows build/golden/rows_ds.tsv --cues build/golden/cues_ds.tsv --stop-tick 6056 --close-talk-at 5643 --close-talk-at 5823 --close-talk-at 6002
 	python3 -I tools/script_golden_check.py build/golden/rows_ds.tsv --stop-tick 7095
 
 coverage: route-check
@@ -178,13 +166,13 @@ coverage: route-check
 
 read-ahead: build/tests/golden/script_replay
 	@mkdir -p build/golden
-	python3 -I tools/assets/route_pacing.py build/tests/golden/script_replay tools/assets/$(PLAN_SET).json ../extracted/vita_assets/$(PLAN_SET)/scripts build/golden/cues_paced_$(PLAN_SET).tsv --stop-tick $(PLAN_STOP_TICK)
+	python3 -I tools/assets/route_pacing.py build/tests/golden/script_replay tools/assets/$(PLAN_SET).json ../extracted/vita_assets/$(PLAN_SET)/scripts build/golden/cues_paced_$(PLAN_SET).tsv --stop-tick $(PLAN_STOP_TICK) --kept tools/assets/$(PLAN_SET)_pacing.txt
 	python3 -I tools/assets/read_ahead.py build/golden/cues_paced_$(PLAN_SET).tsv ../extracted/vita_assets/$(PLAN_SET)/scripts ../extracted/vita_assets/$(PLAN_SET)/animations
 
 route-check: build/tests/golden/script_replay
 	@mkdir -p build/golden
-	build/tests/golden/script_replay --scripts ../extracted/vita_assets/chapter1/scripts --timing remaster --auto-paced --marks --stop-tick 200000 > build/golden/route_marks.txt
-	python3 -I tools/route_check.py build/golden/route_marks.txt ../extracted/vita_assets/chapter1/scripts/route_steps.txt
+	build/tests/golden/script_replay --scripts $(PLAN_SCRIPTS) --timing remaster --auto-paced --marks --stop-tick $(PLAN_STOP_TICK) > build/golden/route_marks.txt
+	python3 -I tools/route_check.py build/golden/route_marks.txt $(PLAN_SCRIPTS)/route_steps.txt --most-passed-over $(STEPS_THE_STORY_PASSES_OVER) --must-reach GOTO
 
 clean:
 	rm -rf build

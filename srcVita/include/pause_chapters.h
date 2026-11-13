@@ -1,10 +1,12 @@
 #ifndef PAUSE_CHAPTERS_H
 #define PAUSE_CHAPTERS_H
 
+#include "game_save.h"
+
 #define PAUSE_CHAPTERS_STAYS 0
 #define PAUSE_CHAPTERS_LEAVES 1
 #define PAUSE_CHAPTERS_PLAYS 2
-#define PAUSE_CHAPTERS_MOST 18
+#define PAUSE_CHAPTERS_MOST GAME_SAVE_CHAPTER_COUNT
 
 typedef int (*pause_chapter_reached_function)(int chapter);
 

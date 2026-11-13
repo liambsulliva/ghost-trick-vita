@@ -8,7 +8,6 @@
 #include "test_support.h"
 
 #define LONG_WAIT_TICKS 60000
-#define SCENE_MOST_TICKS 100
 #define TICKS_TO_RUN 400
 #define MARK_MAX 64
 
@@ -32,10 +31,6 @@ static char marks[MARK_MAX][96];
 static int mark_count;
 static unsigned char waiting_scene[SCRIPT_FILE_HEADER_SIZE + 64];
 static unsigned char next_scene[SCRIPT_FILE_HEADER_SIZE + 64];
-static unsigned char scene_with_data_before_its_exit[SCRIPT_FILE_HEADER_SIZE + 64];
-static unsigned char first_chapter_scene[SCRIPT_FILE_HEADER_SIZE + 64];
-static unsigned char second_chapter_scene[SCRIPT_FILE_HEADER_SIZE + 64];
-static unsigned char third_chapter_scene[SCRIPT_FILE_HEADER_SIZE + 64];
 static unsigned char failing_scene[SCRIPT_FILE_HEADER_SIZE + 64];
 
 static void on_marked(const char *what, const char *name)
@@ -102,22 +97,14 @@ static unsigned int make_script(unsigned char *bytes, unsigned int capacity, con
     return SCRIPT_FILE_HEADER_SIZE + code_size + string_size;
 }
 
-static void start_in(const char *first_scene, int auto_press, int with_scene_order)
+static void start_in(const char *first_scene, int auto_press)
 {
     static const unsigned int waiting_words[] = { 0x2f, LONG_WAIT_TICKS, 0x24, 0, 0x0 };
     static const unsigned int next_words[] = { 0x2f, LONG_WAIT_TICKS, 0x0 };
-    static const unsigned int data_words[] = { 0x2f, LONG_WAIT_TICKS, 0x22, 6, 0, 0x8283, 0x24, 0, 0x0 };
-    static const char exit_strings[] = "b.xml\0";
     unsigned int size;
 
     mark_count = 0;
     memset(&route, 0, sizeof(route));
-    route.scene_most_ticks = SCENE_MOST_TICKS;
-    if (with_scene_order) {
-        snprintf(route.scenes[0], sizeof(route.scenes[0]), "a");
-        snprintf(route.scenes[1], sizeof(route.scenes[1]), "b");
-        route.scene_count = 2;
-    }
     script_machine_init(&machine, &outputs, SCRIPT_TIMING_REMASTER, NULL);
     machine.route = &route;
     machine.route_is_driving = auto_press != SCRIPT_AUTO_OFF;
@@ -127,8 +114,6 @@ static void start_in(const char *first_scene, int auto_press, int with_scene_ord
     CHECK(script_machine_add_source(&machine, "a", waiting_scene, size, NULL));
     size = make_script(next_scene, sizeof(next_scene), next_words, sizeof(next_words) / sizeof(next_words[0]), "\0\0", 2);
     CHECK(script_machine_add_source(&machine, "b", next_scene, size, NULL));
-    size = make_script(scene_with_data_before_its_exit, sizeof(scene_with_data_before_its_exit), data_words, sizeof(data_words) / sizeof(data_words[0]), exit_strings, sizeof(exit_strings) - 1);
-    CHECK(script_machine_add_source(&machine, "c", scene_with_data_before_its_exit, size, NULL));
     CHECK(script_machine_start(&machine, first_scene));
 }
 
@@ -142,157 +127,23 @@ static void run_ticks(int ticks)
     }
 }
 
-static void test_a_scene_past_its_timeout_moves_to_the_next_scene_in_story_order(void)
+static void test_auto_play_never_moves_a_waiting_scene_on(void)
 {
-    start_in("a", SCRIPT_AUTO_PACED, 1);
-    run_ticks(TICKS_TO_RUN);
-    CHECK(was_marked("scene_timeout_left a"));
-    CHECK(was_marked("scene_timeout_moved_to b"));
-    CHECK(was_marked("script_begun b"));
-}
-
-static void test_without_auto_play_the_scene_never_times_out(void)
-{
-    start_in("a", SCRIPT_AUTO_OFF, 1);
-    run_ticks(TICKS_TO_RUN);
-    CHECK(!was_marked("scene_timeout_left a"));
-    CHECK(!was_marked("script_begun b"));
-}
-
-static void test_with_the_stall_breaker_off_nothing_moves_the_scene_on(void)
-{
-    start_in("a", SCRIPT_AUTO_PACED, 1);
-    machine.stall_breaker_is_off = 1;
-    run_ticks(TICKS_TO_RUN);
-    CHECK(!was_marked("scene_timeout_left a"));
+    start_in("a", SCRIPT_AUTO_PACED);
+    run_ticks(TICKS_TO_RUN * 50);
     CHECK(!was_marked("script_begun b"));
     CHECK(!was_marked_starting_with("stuck_"));
-}
-
-static void test_the_scene_exit_is_found_past_data_after_a_jump(void)
-{
-    start_in("c", SCRIPT_AUTO_PACED, 0);
-    run_ticks(TICKS_TO_RUN);
-    CHECK(was_marked("scene_timeout_moved_to b.xml"));
-    CHECK(was_marked("script_begun b"));
+    CHECK(!was_marked_starting_with("scene_timeout_"));
+    CHECK(!was_marked_starting_with("stall_"));
 }
 
 static void test_a_press_left_from_the_earlier_scene_is_cleared(void)
 {
-    start_in("a", SCRIPT_AUTO_PACED, 1);
+    start_in("a", SCRIPT_AUTO_PACED);
     script_machine_note_press(&machine);
     CHECK(script_machine_start(&machine, "b"));
     CHECK(was_marked("scene_leftover_cleared press"));
     CHECK_INT(machine.press_is_pending, 0);
-}
-
-static void test_a_loop_back_returns_to_the_furthest_scene_reached(void)
-{
-    start_in("a", SCRIPT_AUTO_PACED, 1);
-    run_ticks(TICKS_TO_RUN);
-    CHECK(was_marked("script_begun b"));
-    CHECK(script_machine_start(&machine, "a"));
-    mark_count = 0;
-    run_ticks(TICKS_TO_RUN);
-    CHECK(was_marked("scene_timeout_left a"));
-    CHECK(was_marked("scene_timeout_moved_to b"));
-}
-
-static void test_a_finished_machine_still_times_out(void)
-{
-    start_in("a", SCRIPT_AUTO_PACED, 1);
-    run_ticks(TICKS_TO_RUN);
-    machine.is_finished = 1;
-    CHECK(script_machine_start(&machine, "a"));
-    machine.is_finished = 1;
-    mark_count = 0;
-    run_ticks(TICKS_TO_RUN);
-    CHECK(was_marked("scene_timeout_moved_to b"));
-    CHECK(was_marked("script_begun b"));
-}
-
-static void test_a_scene_newer_than_the_scene_order_takes_its_own_exit(void)
-{
-    start_in("a", SCRIPT_AUTO_PACED, 1);
-    run_ticks(TICKS_TO_RUN);
-    CHECK(script_machine_start(&machine, "c"));
-    mark_count = 0;
-    run_ticks(TICKS_TO_RUN);
-    CHECK(was_marked("scene_timeout_moved_to b.xml"));
-}
-
-static void test_a_loop_back_resumes_after_the_furthest_scene_reached(void)
-{
-    start_in("a", SCRIPT_AUTO_PACED, 1);
-    snprintf(route.scenes[2], sizeof(route.scenes[2]), "c");
-    route.scene_count = 3;
-    run_ticks(TICKS_TO_RUN);
-    CHECK(was_marked("script_begun b"));
-    CHECK(script_machine_start(&machine, "a"));
-    mark_count = 0;
-    run_ticks(TICKS_TO_RUN);
-    CHECK(was_marked("scene_timeout_moved_to c"));
-}
-
-static void start_with_chapters(int auto_press)
-{
-    static const unsigned int first_words[] = { 0x74, 1, 0x2f, LONG_WAIT_TICKS, 0x0 };
-    static const unsigned int second_words[] = { 0x74, 2, 0x2f, LONG_WAIT_TICKS, 0x0 };
-    static const unsigned int third_words[] = { 0x74, 3, 0x2f, LONG_WAIT_TICKS, 0x0 };
-    unsigned int size;
-
-    mark_count = 0;
-    memset(&route, 0, sizeof(route));
-    route.scene_most_ticks = SCENE_MOST_TICKS;
-    snprintf(route.scenes[0], sizeof(route.scenes[0]), "one");
-    snprintf(route.scenes[1], sizeof(route.scenes[1]), "two");
-    snprintf(route.scenes[2], sizeof(route.scenes[2]), "three");
-    route.scene_count = 3;
-    script_machine_init(&machine, &outputs, SCRIPT_TIMING_REMASTER, NULL);
-    machine.route = &route;
-    machine.route_is_driving = auto_press != SCRIPT_AUTO_OFF;
-    script_route_pad_reset(&route_pad);
-    script_input_reset(&route_input);
-    size = make_script(first_chapter_scene, sizeof(first_chapter_scene), first_words, 5, "\0\0", 2);
-    CHECK(script_machine_add_source(&machine, "one", first_chapter_scene, size, NULL));
-    size = make_script(second_chapter_scene, sizeof(second_chapter_scene), second_words, 5, "\0\0", 2);
-    CHECK(script_machine_add_source(&machine, "two", second_chapter_scene, size, NULL));
-    size = make_script(third_chapter_scene, sizeof(third_chapter_scene), third_words, 5, "\0\0", 2);
-    CHECK(script_machine_add_source(&machine, "three", third_chapter_scene, size, NULL));
-    CHECK(script_machine_start(&machine, "one"));
-}
-
-static void test_auto_play_never_goes_back_to_an_earlier_chapter(void)
-{
-    start_with_chapters(SCRIPT_AUTO_PACED);
-    run_ticks(SCENE_MOST_TICKS + SCENE_MOST_TICKS / 2);
-    CHECK(was_marked("script_begun two"));
-    CHECK_INT(machine.chapter_mark, 2);
-    mark_count = 0;
-    CHECK(script_machine_start(&machine, "one"));
-    run_ticks(20);
-    CHECK(was_marked("scene_behind_the_story_left one"));
-    CHECK(was_marked("scene_behind_the_story_moved_to three"));
-    CHECK(was_marked("script_begun three"));
-}
-
-static void test_a_rewind_inside_a_chapter_stays(void)
-{
-    start_with_chapters(SCRIPT_AUTO_PACED);
-    run_ticks(20);
-    CHECK(script_machine_start(&machine, "one"));
-    run_ticks(20);
-    CHECK(!was_marked("scene_behind_the_story_left one"));
-}
-
-static void test_manual_play_may_go_back(void)
-{
-    start_with_chapters(SCRIPT_AUTO_OFF);
-    CHECK(script_machine_start(&machine, "two"));
-    run_ticks(20);
-    CHECK(script_machine_start(&machine, "one"));
-    run_ticks(20);
-    CHECK(!was_marked("scene_behind_the_story_left one"));
 }
 
 static int count_marks(const char *text)
@@ -437,17 +288,7 @@ int main(void)
     test_a_retry_starts_the_soul_on_the_core_it_failed_on();
     test_a_fresh_start_of_the_scene_starts_the_soul_on_its_own_first_core();
     test_another_scene_forgets_the_core_kept_for_the_retry();
-    test_auto_play_never_goes_back_to_an_earlier_chapter();
-    test_a_rewind_inside_a_chapter_stays();
-    test_manual_play_may_go_back();
-    test_a_scene_past_its_timeout_moves_to_the_next_scene_in_story_order();
-    test_without_auto_play_the_scene_never_times_out();
-    test_with_the_stall_breaker_off_nothing_moves_the_scene_on();
-    test_the_scene_exit_is_found_past_data_after_a_jump();
+    test_auto_play_never_moves_a_waiting_scene_on();
     test_a_press_left_from_the_earlier_scene_is_cleared();
-    test_a_loop_back_returns_to_the_furthest_scene_reached();
-    test_a_finished_machine_still_times_out();
-    test_a_scene_newer_than_the_scene_order_takes_its_own_exit();
-    test_a_loop_back_resumes_after_the_furthest_scene_reached();
-    return test_finish("unit/scene_timeout");
+    return test_finish("unit/scene_retry");
 }

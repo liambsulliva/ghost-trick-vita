@@ -6,7 +6,7 @@ A PS Vita port using the original DS game logic with the 2023 remaster's art and
 
 The whole game is routed and plays from start to finish. An automatic playthrough of 1719 route steps follows a reference playthrough from the opening of Chapter 1 to the closing credits and back to the title screen, replayed on a computer through the same input code the Vita uses. It finishes with no step failed, no scene skipped and no stand-in for the game's own logic; one step the route passes over is left out of the count. What is left is the script opcodes that still log as not ported, and checking the later chapters on the Vita itself.
 
-On the Vita itself the app installs and runs from locally converted remaster art. The one-command setup below still prepares Chapter 1 only.
+On the Vita itself the app installs and runs from locally converted remaster art. The one-command setup below prepares the whole game.
 
 ## Legal disclaimer
 
@@ -60,9 +60,9 @@ It prints each stage as it starts, with a progress bar while it copies the game 
 2. **Copy the game files out of the Android package.** It takes `re_chunk_000.pak`, `data01` and `data02` (about 3.1 GB) from the package's `assets/` folder into `extracted/remaster_apk/`. They were only tested with Android v1.0.0, packaged as one APK with all three files.
 3. **Find the text key.** The narration and speech bubbles are stored encrypted. The key is not in this repository, so it is found in your own package, saved as `extracted/remaster_apk/text_key.bin` and never printed.
 4. **Build the converter.**
-5. **Convert the art, sound, text and DS scripts** into `extracted/vita_assets/chapter1/` (about 500 MB). The app plays the opening from the DS game's own scripts, so the cartridge dump is required. A cartridge from another region is refused, because no other region's scripts have been checked.
-6. **Plan the loading.** It replays the chapter on this computer and writes, for each scene, the list of textures to read ahead and one bundle of its animations.
-7. **Build the package**, if VitaSDK is installed. [The app's README](srcVita/README.md#build-and-test) lists its libraries. The package plays the DS soundtrack; add `--arranged-music` to use the remaster's arranged soundtrack instead.
+5. **Convert the art, sound, text and DS scripts** into `extracted/vita_assets/game/` (about 3.3 GB). The app plays the game from the DS game's own scripts, so the cartridge dump is required. A cartridge from another region is refused, because no other region's scripts have been checked.
+6. **Plan the loading.** It replays the game on this computer and writes, for each scene, the list of textures to read ahead and one bundle of its animations.
+7. **Build the package**, if VitaSDK is installed. [The app's README](srcVita/README.md#build-and-test) lists its libraries.
 8. **Copy everything to the Vita.** The script tells you what to install and copy, which the next section explains.
 
 Running it again skips what is already done and converts only what changed, so it is also how you update after pulling this repository. Stages 2 and 3 are skipped once their files are in place, so `--apk` is only needed the first time. If a stage fails, the script stops and shows the last lines that stage printed.
@@ -71,13 +71,13 @@ Everything under `extracted/` is ignored by git. `tools/rom_audit.py` refuses a 
 
 ### Copy everything to the Vita
 
-Install `srcVita/build/ghosttrick.vpk` with VitaShell from anywhere under `ux0:`, then copy what is inside `extracted/vita_assets/chapter1/` to `ux0:data/ghosttrick/assets/`. Copy the folder's contents, not the folder itself: a path like `ux0:data/ghosttrick/assets/chapter1/manifest.txt` will not be found.
+Install `srcVita/build/ghosttrick.vpk` with VitaShell from anywhere under `ux0:`, then copy what is inside `extracted/vita_assets/game/` to `ux0:data/ghosttrick/assets/`. Copy the folder's contents, not the folder itself: a path like `ux0:data/ghosttrick/assets/game/manifest.txt` will not be found.
 
 To copy by hand, put the Vita and this computer on the same Wi-Fi network. In VitaShell, press SELECT to start its FTP server. If SELECT starts USB instead, press START and set **SELECT button** to **FTP**. Then connect an FTP client to the address VitaShell shows.
 
 ### Check that it worked
 
-Launch the app. If it was already open, quit it with START first, because it reads the files only when it starts. The screen stays black for about 5 seconds, a `loading` bar shows at the top, and the chapter card appears about 8 seconds after launch.
+Launch the app. If it was already open, quit it with START first, because it reads the files only when it starts. A Now Loading screen with a red bar shows while the scripts and art load, then the opening plays.
 
 If you see something else:
 
@@ -85,7 +85,7 @@ If you see something else:
 | --------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------- |
 | Black or a crash before anything else appears                   | `ur0:data/libshacccg.suprx` is probably missing                  |                                          |
 | A checker pattern and `no assets in ux0:data/ghosttrick/assets` | `manifest.txt` is missing, misplaced or out of date              | `manifest missing`, `manifest invalid`   |
-| The asset browser instead of the chapter                        | `scripts/` is missing, because the DS cartridge step did not run | `opening needs_scripts`                  |
+| `no scripts in ux0:data/ghosttrick/assets/scripts`             | `scripts/` is missing, because the DS cartridge step did not run | `opening needs_scripts`                  |
 | Magenta blocks                                                  | `textures/` is missing or out of date                            | `texture missing`                        |
 | Rooms with nothing in them                                      | `animations/` is missing or out of date                          | `animation missing`, `animation invalid` |
 

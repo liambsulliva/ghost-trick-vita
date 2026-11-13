@@ -510,6 +510,8 @@ Guard: game start sends the carry-over whenever the countdown survived the chang
 
 ### 77. The stall breaker derailed the stories it was meant to carry
 
+Superseded by root cause 173: the stall breaker is removed.
+
 The breaker was built for the old instant auto-play. It pushed after 1200 quiet ticks (about 20 s) while a route drove, then closed talks, pushed waiting handlers, forced acts and scripts, and finally moved to the next scene on a list built from an old replay. At a player's pace that fired where nothing was stuck. A long conversation counted as quiet because the script just waits on the talk. On the Vita, run 40's pushes skipped Chapter 1's steps 73 to 89. Its scene timeouts then jumped from st01_game016 to st14_game040 (a Chapter 16/17 scene), so the device played chapters out of order. With the breaker on, the Mac replay played 67 steps, against 160 without it.
 
 Guard:
@@ -538,6 +540,8 @@ Native enters the ghost view from the living world only through a request code (
 Guard: directions in the living world only scroll the free camera (`move_free_camera`, unless a script forbids it with op 0x6e). The ghost view opens only through the Ghost pill or the L button. `tests/unit/test_script_input.c` holds the d-pad and pushes the stick in the living world, then checks that the camera panned and the ghost view stayed shut.
 
 ### 80. The stall breaker went back to a finished scene
+
+Superseded by root cause 173: the stall breaker is removed.
 
 The breaker's search for the next scene in route order started at the furthest step already acted on, inclusive. From a scene with no route steps (Chapter 6's st03_game000, after the phone call at step 348 in st02_game024), the first step it looked at was that finished step. Its scene differs from the stuck one, so the breaker returned to st02_game024.
 
@@ -1238,6 +1242,16 @@ Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game04
 - The first pipe swap closes the view for a hint (`change_end`), so a `ghost_on` follows it; the fan swaps and the second pipe swap leave it open.
 - Sissel reaches the debris only once Lynne has carried the flashlight near it (`ghost_off`, then `ghost_on` on `reach:dust3`). The hook `c_hook` is tricked twice, the second time on flag 0xf (Lynne is on it), and the door is `hatch`.
 - Ops 0xfd (the checkpoints of `st14_game021_Expand`, `st14_game040_Expand` and `st13_game021_Expand`), 0x9f, 0xb6, 0xb7, 0xcd, 0xaf, 0x7f, 0x80 and 0xf6 log as not ported in these scenes. Without op 0xfd a game over in the torpedo restarts at `st14_game031_Expand`.
+
+### 173. The stall breaker outlived the routes it carried
+
+The stall breaker (stuck pushes, the scene timeout, the behind-the-story move and the game-over move-on) and the L+R and `skip` pushes were a stopgap while routes were incomplete. Native has none of them: a scene waits for its player as long as it takes. Once the honest route played the whole game (1718 steps, 0 failed, to GOTO TITLE), each piece only hid a missing step and kept code in the player's build that no player needs.
+
+The breaker is gone from `script_machine.c`, `script_soul.c`, `script_player.c` and the replay, with `scenes.txt` and its scene order in `read_ahead.py`; the honest replay's marks and cues are byte for byte what they were before. The mode byte's values are named once in `script_machine.h` (`SCRIPT_MODE_LOADING`, `SCRIPT_MODE_DEMO` for `pGameMainDemoMode`, `SCRIPT_MODE_NORMAL` for `pGameMainNormalMode`, `SCRIPT_MODE_NARRATION`, `SCRIPT_MODE_STAFF_ROLL`), where the files had kept their own copies under different names (value 2 was "normal" in one file and "demo" in another). The player's build is the standard build and the device loop's is the fast forward build; the fps counter, the unlock switch, the debug controls and the commands file are fast forward only, with no flags of their own.
+
+Re-baking the route also showed that the route pacing does not reproduce: `route_pacing.py` never shortens a hold it once lengthened, so a fresh run from an empty pacing settles elsewhere (1330 steps done, 5 failed). The settled pacing is now kept in `tools/assets/game_pacing.txt` and seeds the next run while the route is unchanged.
+
+Guard: `make route-check` fails if route steps are done out of order, more steps are passed over than the story passes over, or the replay never reaches GOTO. `tests/unit/test_scene_retry.c` checks that auto-play never moves a waiting scene on. `tests/tools/test_route_pacing.py` (`KeptPacingTest`) checks the seeding and keeping. `make test` compiles the app without `FAST_FORWARD_BUILD` as well (`standard_build_compiles`), and `tests/tools/test_no_session_paths.py` fails a source that reads a machine or session folder. Root causes 77 and 80 describe the breaker and are superseded.
 
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.

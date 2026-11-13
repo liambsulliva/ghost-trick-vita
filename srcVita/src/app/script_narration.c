@@ -347,16 +347,6 @@ void script_narration_note_press(struct script_narration *narration)
     narration->press_is_pending = 1;
 }
 
-void script_narration_finish_soon(struct script_narration *narration)
-{
-    if (!narration->is_running) {
-        return;
-    }
-    narration->state = STATE_DIM_OUT;
-    narration->level = LEVEL_DIM_TOP;
-    narration->speed = -DIM_SPEED;
-}
-
 int script_narration_step(struct script_narration *narration, script_narration_report report, void *listener)
 {
     int is_done;

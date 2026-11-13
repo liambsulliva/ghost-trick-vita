@@ -67,7 +67,6 @@ static void start_with_one_step(enum script_route_action action, const char *obj
     script_machine_init(&machine, &no_outputs, SCRIPT_TIMING_REMASTER, NULL);
     machine.route = &route;
     machine.route_is_driving = 1;
-    machine.stall_breaker_is_off = 1;
     script_route_pad_reset(&route_pad);
     script_input_reset(&route_input);
     CHECK(script_machine_add_source(&machine, "a", scene, SCRIPT_FILE_HEADER_SIZE + sizeof(words) / sizeof(words[0]) * 2, NULL));
