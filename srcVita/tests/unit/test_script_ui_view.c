@@ -9,6 +9,8 @@
 #include "test_support.h"
 
 #define PILL_FULLY_SHOWN 8
+#define PAUSE_ICON_CELL_Y 421.0f
+#define PILL_ART_TEXELS 512.0f
 
 static void show_pill(struct script_hud_view *view, enum script_pill_id id, int slide_step, int is_pressed)
 {
@@ -59,6 +61,21 @@ static int pill_draws_now(void)
     return fake_renderer_draw_count();
 }
 
+static int the_pause_icon_is_drawn(void)
+{
+    int index;
+
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        const struct fake_draw *draw;
+
+        draw = fake_renderer_draw(index);
+        if (!draw->is_filled_rect && draw->screen_area.x > 800.0f && draw->texture_area.x == 0.0f && draw->texture_area.y == PAUSE_ICON_CELL_Y / PILL_ART_TEXELS) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void test_pills_hide_under_a_card_or_a_full_fade(void)
 {
     static struct script_tables tables;
@@ -80,6 +97,7 @@ static void test_pills_hide_under_a_card_or_a_full_fade(void)
     scene_stage_hide_card();
     scene_stage_set_fade(0.0f);
     CHECK(pill_draws_now() > 0);
+    CHECK(the_pause_icon_is_drawn());
     CHECK_INT(script_ui_view_pill_at(100.0f, 510.0f), SCRIPT_PILL_GHOST);
     scene_stage_set_fade(0.5f);
     CHECK(pill_draws_now() > 0);

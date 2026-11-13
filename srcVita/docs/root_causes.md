@@ -1211,6 +1211,12 @@ Native opens its notebook (pGameSubDatabase, the People and Places database) fro
 
 Guard: SELECT, or a press on the notebook pill when it shows, sets `record_is_wanted` whenever the player has the controls (any of the game's pills is on screen). The app then opens the pause menu straight on the Record screen, which fades in from black without the main menu, and CIRCLE there resumes the game. `tests/unit/test_select_wants_the_record.c` checks the request and its gate; `tests/unit/test_pause_menu.c` (`test_select_opens_straight_onto_the_record_and_circle_returns_to_the_game`) checks the direct opening and the way back.
 
+### 170. The START button had no pause icon
+
+The remaster's in-play pause button is one of the round HUD buttons on `cmn_button_02` (the sheet the port bakes as `hud_button_art`): the white pause bars on the navy disc at (0, 421), with its pressed look beside it at (80, 421). It sits in the same sheet as the hourglass, flame and notebook icons. The DS has no pause button, so the remaster is the reference. The port drew START as a plain pill holding only the START glyph, which did not read as the game's pause button.
+
+Guard: the START pill is built like the hourglass pill, with the pause icon on the left and the START glyph on the right, from the same sheet cells. It keeps its place left of the hourglass. `tests/unit/test_script_ui_view.c` checks that the pause icon's cell is drawn at the top right while the pills show.
+
 Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
 
 - In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.

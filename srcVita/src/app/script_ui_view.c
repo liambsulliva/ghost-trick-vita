@@ -148,9 +148,16 @@
 #define PILL_GLYPH_NUDGE_Y -2.0f
 #define PILL_BOTTOM_Y 494.0f
 #define PILL_TOP_Y 12.5f
-#define START_PILL_WIDTH 76.0f
 #define START_PILL_GAP 10.0f
 #define START_GLYPH_WIDTH 36.0f
+#define START_GLYPH_X 40.5f
+#define START_GLYPH_MARGIN_RIGHT 9.25f
+#define START_PILL_WIDTH (START_GLYPH_X + START_GLYPH_WIDTH + START_GLYPH_MARGIN_RIGHT)
+#define START_FILL_LEFT 30.0f
+#define START_FILL_RIGHT_MARGIN 28.75f
+#define PAUSE_ICON_CELL_X 0.0f
+#define PAUSE_ICON_CELL_Y 421.0f
+#define PAUSE_ICON_Y (-1.0f)
 
 struct tap_balloon {
     int is_open;
@@ -1174,9 +1181,13 @@ static void start_pill(struct pill_layout *layout, struct script_pill_view *view
     layout->width = START_PILL_WIDTH;
     layout->x = hud.pills[SCRIPT_PILL_HOURGLASS].is_on_screen ? hourglass->x - START_PILL_GAP - START_PILL_WIDTH : hourglass->x + hourglass->width - START_PILL_WIDTH;
     layout->y = PILL_TOP_Y;
-    layout->icon_cell_x = -1.0f;
+    layout->fill_left = START_FILL_LEFT;
+    layout->fill_right = START_PILL_WIDTH - START_FILL_RIGHT_MARGIN;
+    layout->icon_y = PAUSE_ICON_Y;
+    layout->icon_cell_x = PAUSE_ICON_CELL_X;
+    layout->icon_cell_y = PAUSE_ICON_CELL_Y;
     layout->glyph = &glyph_start;
-    layout->glyph_x = (START_PILL_WIDTH - START_GLYPH_WIDTH) / 2.0f;
+    layout->glyph_x = START_GLYPH_X;
     layout->glyph_width = START_GLYPH_WIDTH;
     for (index = 0; index < SCRIPT_PILL_COUNT; index++) {
         if (hud.pills[index].is_on_screen && hud.pills[index].slide_step > view->slide_step) {
