@@ -1199,6 +1199,12 @@ Native draws a balloon from graphics it already holds, so the bubble and its lin
 
 Guard: a balloon's parts are not shown until every part of that balloon has loaded. `script_bridge_balloon_art_is_loading` asks for them from the moment the balloon opens and joins the art gate, so the game holds instead of showing an empty bubble. `scene_view_visible_art_is_loading` also counts shown overlays and text lines. Every balloon, "!" alert and narration line shares this path. `tests/unit/test_balloon_waits_for_its_text.c` checks that the bubble waits for its text, then shows on its own ticks, and that shown text and overlays hold the game while they load. The replay drives the machine without the bridge, so the replays are unchanged.
 
+### 168. People-screen pictures left a hole until they loaded
+
+The DS People screen (overlay 6; `func_ov006_020d6c20` draws it) shows the selected entry's portrait or place picture as soon as the cursor lands, because it reads its graphics in its own loading step. The port's People screen and its Illustrations tab read each large picture (portraits, place pictures, text cards, the illustrations themselves) only when first drawn, and drew nothing until it arrived. On the Vita the frame stood empty over the backdrop for a moment after every move, and longest on the Illustrations tab, whose pictures are the biggest.
+
+Guard: while the screen is drawn, `pause_people_read_ahead` keeps the pictures and cards of the two entries on each side of the selection read ahead. Until the full picture is ready, the frame shows the entry's thumbnail from the resident thumbnail sheet, scaled up, so the frame never stands empty. `tests/unit/test_pause_people.c` (`test_pictures_around_the_selection_are_read_ahead`) checks that a neighbour's picture is ready without ever being drawn.
+
 Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
 
 - In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.

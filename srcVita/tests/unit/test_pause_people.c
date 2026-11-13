@@ -1,8 +1,13 @@
+#include <stdio.h>
 #include <string.h>
+#include "fakes/fake_platform.h"
+#include "fakes/fake_reader.h"
+#include "fakes/fake_texture_files.h"
 #include "input.h"
 #include "pause_people.h"
 #include "script_machine.h"
 #include "test_support.h"
+#include "texture_cache.h"
 
 static const char table[] =
     "order 3 1 8 2 10 11 12 13 14\n"
@@ -207,8 +212,50 @@ static void test_illustrations_add_a_third_tab_that_opens_full_screen(void)
     pause_people_use_reached_chapter(99);
 }
 
+static int is_ready(const char *name)
+{
+    const struct cached_texture *entry;
+
+    entry = texture_cache_use_or_start_loading(name);
+    return entry != NULL && entry->state == CACHED_TEXTURE_READY;
+}
+
+static void test_pictures_around_the_selection_are_read_ahead(void)
+{
+    static char with_art[sizeof(table) + 256];
+    static const char *const names[] = { "pause_art_000", "pause_art_001", "pause_art_002", "pause_art_003" };
+    char path[64];
+    int frame;
+    int index;
+
+    fake_files_reset();
+    fake_reader_reset();
+    for (index = 0; index < 4; index++) {
+        snprintf(path, sizeof(path), "tex/%s.gtex", names[index]);
+        fake_files_add_rgba_texture(path, 4, 4);
+    }
+    texture_cache_init("tex", 64u * 1024u * 1024u);
+    start_people();
+    strcpy(with_art, table);
+    strcat(with_art, "art pause_art_000 0 0 104 58 1\nart pause_art_001 106 0 104 58 1\nart pause_art_002 212 0 104 58 1\nart pause_art_003 318 0 104 58 1\n");
+    CHECK_INT(pause_people_read_text(with_art, (unsigned int)strlen(with_art)), 5);
+    pause_people_use_reached_chapter(1);
+    pause_people_enter();
+    pause_people_step(INPUT_L);
+    CHECK_INT(pause_people_tab(), PAUSE_PEOPLE_TAB_ART);
+    for (frame = 0; frame < 8; frame++) {
+        texture_cache_begin_frame();
+        pause_people_read_ahead();
+        texture_cache_upload_finished_reads(4);
+    }
+    CHECK_INT(texture_cache_loading_count(), 0);
+    CHECK(is_ready("pause_art_002"));
+    pause_people_use_reached_chapter(99);
+}
+
 int main(void)
 {
+    test_pictures_around_the_selection_are_read_ahead();
     test_the_table_needs_order_cards_and_thumbs();
     test_people_follow_the_order_table_and_skip_unknown_and_variant_ids();
     test_places_run_in_id_order_and_skip_listed_ones();

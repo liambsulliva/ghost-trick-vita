@@ -18,6 +18,7 @@
 #define TABLE_PATH "pause/people.txt"
 #define THUMB_SHEET "pause_people_thumbs"
 #define ART_THUMB_SHEET "pause_art_thumbs"
+#define PAUSE_PEOPLE_READ_AHEAD_REACH 2
 #define ART_MOST 192
 #define ART_EVERY_CHAPTER 99
 #define TAB_MOST 3
@@ -691,18 +692,64 @@ static void draw_art_thumb(int index, float x, float y)
     pause_draw_from(ART_THUMB_SHEET, entry->x, entry->y, entry->width, entry->height, x, y + floorf((THUMB_HEIGHT - height) / 2.0f), THUMB_WIDTH, height, 1.0f);
 }
 
-static void draw_texture_in(const char *name, float x, float y, float width, float height)
+static int draw_texture_in(const char *name, float x, float y, float width, float height)
 {
     const struct cached_texture *texture;
 
     if (name == NULL) {
-        return;
+        return 0;
     }
     texture = texture_cache_use_or_start_loading(name);
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
-        return;
+        return 0;
     }
     pause_draw_from(name, 0.0f, 0.0f, (float)texture->width, (float)texture->height, x, y, width, height, 1.0f);
+    return 1;
+}
+
+static void draw_art_or_its_thumb(float x, float y, float width, float height)
+{
+    const struct art_entry *entry;
+
+    if (draw_texture_in(pause_people_art(), x, y, width, height) || counts[tab] == 0) {
+        return;
+    }
+    if (tab != PAUSE_PEOPLE_TAB_ART) {
+        draw_thumb(pause_people_art(), x, y, width, height);
+        return;
+    }
+    entry = &art_entries[shown_art[selected[tab]]];
+    pause_draw_from(ART_THUMB_SHEET, entry->x, entry->y, entry->width, entry->height, x, y, width, height, 1.0f);
+}
+
+static const char *art_at(int index)
+{
+    if (index < 0 || index >= counts[tab]) {
+        return NULL;
+    }
+    if (tab == PAUSE_PEOPLE_TAB_ART) {
+        return art_entries[shown_art[index]].name;
+    }
+    return art_for(tab, rows[tab][index]);
+}
+
+static void read_ahead_name(const char *name)
+{
+    if (name != NULL) {
+        texture_cache_keep_or_start_reading_ahead(name);
+    }
+}
+
+void pause_people_read_ahead(void)
+{
+    int index;
+
+    for (index = selected[tab] - PAUSE_PEOPLE_READ_AHEAD_REACH; index <= selected[tab] + PAUSE_PEOPLE_READ_AHEAD_REACH; index++) {
+        read_ahead_name(art_at(index));
+        if (tab != PAUSE_PEOPLE_TAB_ART && index >= 0 && index < counts[tab]) {
+            read_ahead_name(card_for(tab, rows[tab][index], levels[tab][index]));
+        }
+    }
 }
 
 static void draw_frame_around(float x_offset, float left, float top, float width, float height)
@@ -744,12 +791,12 @@ static void draw_detail(float x_offset)
 {
     if (tab == PAUSE_PEOPLE_TAB_ART) {
         draw_frame_around(x_offset, art_view_left(), ART_VIEW_TOP, art_view_width(), ART_VIEW_HEIGHT);
-        draw_texture_in(pause_people_art(), x_offset + art_view_left(), ART_VIEW_TOP, art_view_width(), ART_VIEW_HEIGHT);
+        draw_art_or_its_thumb(x_offset + art_view_left(), ART_VIEW_TOP, art_view_width(), ART_VIEW_HEIGHT);
         return;
     }
     draw_whole_texture(SPOT_NAME, x_offset + SPOT_LEFT, SPOT_TOP);
     draw_frame_around(x_offset, ART_LEFT, ART_TOP, ART_WIDTH, ART_HEIGHT);
-    draw_whole_texture(pause_people_art(), x_offset + ART_LEFT, ART_TOP);
+    draw_art_or_its_thumb(x_offset + ART_LEFT, ART_TOP, ART_WIDTH, ART_HEIGHT);
     renderer_draw_filled_rect(area(x_offset + CARD_LEFT, CARD_TOP, CARD_WIDTH, BAND_HEIGHT), color_of(0xd3, 0x76, 0x3a));
     pause_draw_slice("note_box", x_offset + CARD_LEFT, BOX_TOP, CARD_WIDTH, BOX_HEIGHT, 1.0f);
     draw_whole_texture(pause_people_card(), x_offset + CARD_LEFT, CARD_TOP);
@@ -761,11 +808,12 @@ void pause_people_draw_dialog(float x_offset)
         return;
     }
     renderer_draw_filled_rect(area(x_offset, 0.0f, (float)RENDERER_WIDTH, (float)RENDERER_HEIGHT), color_of(0, 0, 0));
-    draw_texture_in(pause_people_art(), x_offset, FULL_ART_TOP, (float)RENDERER_WIDTH, (float)RENDERER_HEIGHT - 2.0f * FULL_ART_TOP);
+    draw_art_or_its_thumb(x_offset, FULL_ART_TOP, (float)RENDERER_WIDTH, (float)RENDERER_HEIGHT - 2.0f * FULL_ART_TOP);
 }
 
 void pause_people_draw(float x_offset)
 {
+    pause_people_read_ahead();
     draw_tabs(x_offset);
     draw_strip(x_offset);
     draw_detail(x_offset);
