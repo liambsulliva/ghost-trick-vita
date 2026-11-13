@@ -1006,6 +1006,36 @@ The port drew the reach (the chain `func_0205fa2c` moves, and the straight beam 
 
 Guard: `soul_chain_cloud` lays the blobs out from the chain's points and both beam paths in `script_view.c` draw them under the strip with the soul body's blob texture, so every ghost and every reach shares it. `tests/unit/test_soul_chain.c` checks that the blobs cover the line to its tip, vary in size, change with the step, send dots above the line, and that a collapsed chain has none. Not ported: the body flowing along the line during a jump, which the footage shows as one thick mass leaving droplets behind.
 
+### 139. Jowd's, Missile's and Sissel's buttons outlived the scene that asked for them
+
+The port kept every registered button across a script change, so `Jawed:On` from the prison escape (st03_game012, the only script that sends it) still showed Jowd's button in Chapter 10's office, and Missile's switch showed in scenes that never offer it. No script sends `Jawed:Off`, and every scene that uses the switch sends `Missile:On` and `Cicel:On` again at its own start (st02_game034 and 035, st13_game013 and 021, st14_game020, 022 and 033), so the three character slots (5, 6 and 7, the ones `func_02010f20` skips for All:On) cannot outlive a script. This lifetime is read from the scripts; the native teardown that clears the slots is not identified.
+
+Guard: `tear_down_script` drops the three character buttons and keeps the rest. `tests/unit/test_demo_soul_view_styles.c` changes script with all buttons up and checks that only the character ones are gone.
+
+### 140. A route could not scroll the camera to an object, and the follow pulled a scroll back
+
+Chapter 15's junkyard (st02_game034) waits in `sys_missile`'s `check` `camera_pos` handler until the player scrolls the camera to the bottom right (op 0x65 on registers 0x14 and 0x15). The `camera` step only held Right for the camera tutorial. Scrolling by hand also failed: the normal-play follow recentred the camera on the soul's core each tick. Native follows only in the normal play state of `func_0203696c`, which a d-pad or touch scroll leaves through `func_020110b8`.
+
+Guard: a `camera` step with an object holds the d-pad toward it until its actor is inside the view's margins or the camera is clamped (`script_soul_route_camera_push`, pressed by `script_route_pad`), and `follow_core_with_camera` stands still on a tick the player scrolled. `tests/unit/test_route_pad.c` scrolls to an object 600 pixels away and checks the step ends with it in view.
+
+### 141. Op 0xa6 did not take the soul to a core
+
+Native's case 0xa6 in `func_02023fdc` calls `func_020610ac`, which sends the soul along its chain to the named object's core; Missile's arrival in the junkyard uses it. The port skipped the op, so the scene waited on a soul that never came.
+
+Guard: op 0xa6 calls `script_soul_travel_to_core`, the same drag a player's pick ends in. `tests/unit/test_soul_placed_on_core.c` runs the op in the ghost view and checks the soul's core.
+
+### 142. A route step could not wait for two cores to come close
+
+`near` measures actors' first points along x, as op 0x92 does. A rolling object keeps its actor point and moves only its core (the junkyard's trash can lid), so a link that depends on Missile's reach could not be timed.
+
+Guard: the wait word `cores:<object>:<other>:<pixels>` holds while the two first cores are within that distance in both axes. `tests/unit/test_route_pad.c` covers it.
+
+Lessons from routing Chapter 15's first three scenes (`st02_game030_Expand`, `st02_game032_Expand` and `st02_game034_Expand`, route steps 1344 to 1389):
+
+- The death countdown ticks only in normal play outside the view (`func_02046ce8`), so every tick a route idles in the living world brings the death closer. The junkyard offers a balloon (`click` `cicel_talk`, op 0x4e) that starts Missile's demo at once; left alone, the demo starts 580 ticks later and the countdown ends before the last swap. The route taps it.
+- A swap moves the two objects, not Missile: after the tire and lid swap Missile is still in `b1_03tire`, which now plays the lid's motions, and the door's swap target is `b1_floor_ex`. Read the `EXCHANGE` handlers for the object names.
+- The lid falls flat inside `b1_03tire_act020` with no act change; the last ghost-on waits `ticks:200` after the ghost-off, the footage's four seconds. A wait word for an object's shape is still missing.
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 

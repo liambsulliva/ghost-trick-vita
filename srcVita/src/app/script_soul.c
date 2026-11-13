@@ -30,6 +30,8 @@
 #define SOUL_TIP_LENGTH_FOR_SHORTEST_PICKUP 4.0f
 #define SOUL_TIP_LENGTH_FOR_ANY_PICKUP 32.0f
 #define ROUTE_ACT_JUST_BEGAN_TICKS 30u
+#define ROUTE_CAMERA_MARGIN_X 96
+#define ROUTE_CAMERA_MARGIN_Y 72
 #define ROUTE_NEAR_PIXELS_SEPARATOR ':'
 #define ROUTE_NEAR_NAME_MAX 64
 #define NO_CORE (-1)
@@ -241,6 +243,17 @@ static void drag_soul_to(struct script_machine *machine, int object_index, int s
     soul->drag_slot = slot;
     soul->drag_stream_ticks = machine->objects[object_index].is_dead ? SOUL_LIGHTNING_TICKS : stream_ticks_for_distance(sqrtf((target_x - soul->drag_from_x) * (target_x - soul->drag_from_x) + (target_y - soul->drag_from_y) * (target_y - soul->drag_from_y)));
     soul->drag_ticks_left = SOUL_BEAM_TICKS + soul->drag_stream_ticks;
+}
+
+void script_soul_travel_to_core(struct script_machine *machine, int object_index, int slot)
+{
+    const struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (object_index < 0 || object_index >= machine->object_count || (soul->active_object == object_index && soul->active_slot == slot)) {
+        return;
+    }
+    drag_soul_to(machine, object_index, slot);
 }
 
 static float core_mark_opacity(const struct script_actor *actor)
@@ -1772,11 +1785,12 @@ void script_soul_drag_camera(struct script_machine *machine, float delta_x, floa
     if (whole_x != 0 || whole_y != 0) {
         script_machine_scroll_camera(machine, whole_x, whole_y);
     }
+    soul->free_camera_moved_this_tick = 1;
 }
 
 static void move_free_camera(struct script_machine *machine)
 {
-    const struct script_soul *soul;
+    struct script_soul *soul;
 
     soul = &machine->soul;
     if (soul->held_x == 0.0f && soul->held_y == 0.0f) {
@@ -1786,6 +1800,7 @@ static void move_free_camera(struct script_machine *machine)
         return;
     }
     script_machine_scroll_camera(machine, (int)lroundf(soul->held_x * CAMERA_FREE_SPEED_PIXELS), (int)lroundf(soul->held_y * CAMERA_FREE_SPEED_PIXELS));
+    soul->free_camera_moved_this_tick = 1;
 }
 
 static void follow_point_in_ghost_view(struct script_machine *machine, float point_x, float point_y, int left, int right, int top, int bottom)
@@ -1900,6 +1915,8 @@ static void follow_core_with_camera(struct script_machine *machine)
         follow_point_in_ghost_view(machine, soul->tip_x, soul->tip_y, GHOST_TIP_FOLLOW_LEFT, GHOST_TIP_FOLLOW_RIGHT, GHOST_TIP_FOLLOW_TOP, GHOST_TIP_FOLLOW_BOTTOM);
     } else if (soul->is_on && !soul->view_was_panned) {
         follow_core_in_ghost_view(machine, core_x, core_y);
+    } else if (!soul->is_on && soul->free_camera_moved_this_tick) {
+        soul->camera_follow_x = 0.0f;
     } else if (!soul->is_on) {
         follow_core_in_normal_play(machine, core_x, core_y);
     }
@@ -2046,16 +2063,11 @@ static int soul_can_reach_core(const struct script_machine *machine, int object_
     return first_hop_toward(machine, object_index, slot, &hop_object, &hop_slot);
 }
 
-static int actors_are_near_along_x(const struct script_machine *machine, const char *first_name, const char *second_name_and_pixels)
+static int two_objects_and_pixels(const struct script_machine *machine, const char *first_name, const char *second_name_and_pixels, int *first_index, int *second_index, int *pixels)
 {
     char second_name[ROUTE_NEAR_NAME_MAX];
     const char *separator;
-    const struct script_actor *first;
-    const struct script_actor *second;
     size_t length;
-    int first_index;
-    int second_index;
-    int difference;
 
     if (second_name_and_pixels == NULL) {
         return 0;
@@ -2070,21 +2082,49 @@ static int actors_are_near_along_x(const struct script_machine *machine, const c
     }
     memcpy(second_name, second_name_and_pixels, length);
     second_name[length] = '\0';
-    first_index = script_machine_index_of_object(machine, first_name);
-    second_index = script_machine_index_of_object(machine, second_name);
-    if (first_index == SCRIPT_NO_OBJECT || second_index == SCRIPT_NO_OBJECT) {
+    *first_index = script_machine_index_of_object(machine, first_name);
+    *second_index = script_machine_index_of_object(machine, second_name);
+    *pixels = atoi(separator + 1);
+    return *first_index != SCRIPT_NO_OBJECT && *second_index != SCRIPT_NO_OBJECT && machine->objects[*first_index].actor.exists && machine->objects[*second_index].actor.exists;
+}
+
+static int actors_are_near_along_x(const struct script_machine *machine, const char *first_name, const char *second_name_and_pixels)
+{
+    const struct script_actor *first;
+    const struct script_actor *second;
+    int first_index;
+    int second_index;
+    int pixels;
+    int difference;
+
+    if (!two_objects_and_pixels(machine, first_name, second_name_and_pixels, &first_index, &second_index, &pixels)) {
         return 0;
     }
     first = &machine->objects[first_index].actor;
     second = &machine->objects[second_index].actor;
-    if (!first->exists || !second->exists) {
-        return 0;
-    }
     difference = (second->x + second->points[0][0]) - (first->x + first->points[0][0]);
     if (difference < 0) {
         difference = -difference;
     }
-    return difference <= atoi(separator + 1);
+    return difference <= pixels;
+}
+
+static int first_cores_are_within(const struct script_machine *machine, const char *first_name, const char *second_name_and_pixels)
+{
+    int first_index;
+    int second_index;
+    int pixels;
+    float first_x;
+    float first_y;
+    float second_x;
+    float second_y;
+
+    if (!two_objects_and_pixels(machine, first_name, second_name_and_pixels, &first_index, &second_index, &pixels)) {
+        return 0;
+    }
+    core_position(machine, first_index, 0, &first_x, &first_y);
+    core_position(machine, second_index, 0, &second_x, &second_y);
+    return (second_x - first_x) * (second_x - first_x) + (second_y - first_y) * (second_y - first_y) <= (float)pixels * (float)pixels;
 }
 
 static int route_token_holds(const struct script_machine *machine, const struct script_route_wait_token *token)
@@ -2135,6 +2175,8 @@ static int route_token_holds(const struct script_machine *machine, const struct 
         return object_index != SCRIPT_NO_OBJECT && second != NULL && machine->objects[object_index].current_act != NULL && strcmp(machine->objects[object_index].current_act, second) == 0 && machine->tick - machine->objects[object_index].act_began_tick <= ROUTE_ACT_JUST_BEGAN_TICKS;
     case SCRIPT_ROUTE_WAIT_NEAR:
         return actors_are_near_along_x(machine, first, second);
+    case SCRIPT_ROUTE_WAIT_CORES:
+        return first_cores_are_within(machine, first, second);
     case SCRIPT_ROUTE_WAIT_REACH:
         object_index = script_machine_index_of_object(machine, first);
         return object_index != SCRIPT_NO_OBJECT && soul_can_reach_core(machine, object_index, second != NULL ? atoi(second) : 0);
@@ -2368,6 +2410,8 @@ static int answer_the_phone_book(struct script_machine *machine, const struct sc
 
 static int route_step_is_done(struct script_machine *machine, const struct script_route_step *step)
 {
+    int camera_push_x;
+    int camera_push_y;
     struct script_soul *soul;
 
     soul = &machine->soul;
@@ -2385,7 +2429,7 @@ static int route_step_is_done(struct script_machine *machine, const struct scrip
     case SCRIPT_ROUTE_TAP_BALLOON:
         return soul->taps_taken != soul->route_taps_when_step_began;
     case SCRIPT_ROUTE_CAMERA:
-        return !soul->camera_tutorial_is_on;
+        return !soul->camera_tutorial_is_on && !script_soul_route_camera_push(machine, &camera_push_x, &camera_push_y);
     case SCRIPT_ROUTE_PHONE_CALL:
     case SCRIPT_ROUTE_PHONE_STAY:
         return answer_the_phone_book(machine, step);
@@ -2677,6 +2721,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     move_free_camera(machine);
     pan_the_ghost_view(machine);
     follow_core_with_camera(machine);
+    soul->free_camera_moved_this_tick = 0;
     age_the_player_mark(machine);
     step_the_rewind_select(machine);
     step_the_time_leap(machine);
@@ -2890,6 +2935,38 @@ int script_soul_route_hop(const struct script_machine *machine, int target_objec
         return 0;
     }
     return first_hop_toward(machine, target_object, target_slot, hop_object, hop_slot);
+}
+
+int script_soul_route_camera_push(const struct script_machine *machine, int *push_x, int *push_y)
+{
+    const struct script_route_step *step;
+    const struct script_actor *actor;
+    int object_index;
+    int across;
+    int down;
+
+    *push_x = 0;
+    *push_y = 0;
+    step = script_soul_route_step(machine);
+    if (step == NULL || step->action != SCRIPT_ROUTE_CAMERA || step->object[0] == '\0') {
+        return 0;
+    }
+    object_index = script_machine_index_of_object(machine, step->object);
+    if (object_index == SCRIPT_NO_OBJECT) {
+        return 0;
+    }
+    actor = &machine->objects[object_index].actor;
+    across = actor->x - (machine->camera_x - machine->world_origin_x);
+    down = actor->y - (machine->camera_y - machine->world_origin_y);
+    *push_x = across < ROUTE_CAMERA_MARGIN_X ? -1 : (across > DS_VIEW_WIDTH - ROUTE_CAMERA_MARGIN_X ? 1 : 0);
+    *push_y = down < ROUTE_CAMERA_MARGIN_Y ? -1 : (down > DS_VIEW_HEIGHT - ROUTE_CAMERA_MARGIN_Y ? 1 : 0);
+    if (!script_machine_camera_can_scroll(machine, *push_x, 0)) {
+        *push_x = 0;
+    }
+    if (!script_machine_camera_can_scroll(machine, 0, *push_y)) {
+        *push_y = 0;
+    }
+    return *push_x != 0 || *push_y != 0;
 }
 
 int script_soul_route_hop_aim(const struct script_machine *machine, int target_object, int target_slot, float *aim_x, float *aim_y)

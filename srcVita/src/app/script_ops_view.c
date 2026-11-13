@@ -554,6 +554,11 @@ void script_machine_pan_camera_back_to(struct script_machine *machine, int x, in
     begin_pan(machine, x, y, SOUL_CAMERA_RETURN_SPEED_FIXED, 0);
 }
 
+int script_machine_camera_can_scroll(const struct script_machine *machine, int delta_x, int delta_y)
+{
+    return clamped_x(machine, machine->camera_x + delta_x) != machine->camera_x || clamped_y(machine, machine->camera_y + delta_y) != machine->camera_y;
+}
+
 void script_machine_scroll_camera(struct script_machine *machine, int delta_x, int delta_y)
 {
     machine->camera_x = clamped_x(machine, machine->camera_x + delta_x);

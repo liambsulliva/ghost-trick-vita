@@ -1710,6 +1710,8 @@ static void update_object(struct script_machine *machine, struct script_object *
     }
 }
 
+#define CHARACTER_BUTTONS ((1u << SCRIPT_PILL_JOWD) | (1u << SCRIPT_PILL_MISSILE) | (1u << SCRIPT_PILL_CICEL))
+
 static void tear_down_script(struct script_machine *machine)
 {
     unsigned int pills_registered;
@@ -1750,7 +1752,7 @@ static void tear_down_script(struct script_machine *machine)
     countdown_interval = machine->countdown_interval;
     script_flags_write_known(&machine->flags, COUNTDOWN_KEPT_ACROSS_A_SCRIPT_CHANGE_FLAG, 0);
     script_soul_reset(machine);
-    machine->soul.pills_registered = pills_registered;
+    machine->soul.pills_registered = pills_registered & ~CHARACTER_BUTTONS;
     machine->soul.rollback_is_on = rollback_is_on;
     machine->soul.trick_is_on = trick_is_on;
     if (countdown_is_kept) {

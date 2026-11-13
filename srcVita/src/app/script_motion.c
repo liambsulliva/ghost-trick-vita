@@ -1041,6 +1041,10 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
         }
         break;
     case 0xa6:
+        object = script_machine_current_object(machine, vm);
+        if (object != NULL) {
+            script_soul_travel_to_core(machine, (int)(object - machine->objects), (int)words[0]);
+        }
         break;
     case 0x116:
         vm->selected_object = SCRIPT_NO_SELECTION;

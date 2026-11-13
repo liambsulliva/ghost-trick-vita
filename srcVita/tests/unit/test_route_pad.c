@@ -19,6 +19,10 @@
 #define TICKS_FOR_A_DEAD_TALK_TO_START 5
 #define OPEN_CHOICE_OP 0x3b
 #define GATE_OUT_OF_REACH 300
+#define CAMERA_TARGET_AWAY 600
+#define TICKS_FOR_A_CAMERA_SCROLL 900
+#define CAMERA_STEP_MARGIN 96
+#define CAMERA_VIEW_WIDTH 256
 
 static struct script_machine machine;
 static struct script_route_pad route_pad;
@@ -370,8 +374,43 @@ static void test_a_near_wait_holds_while_two_actors_are_close_along_x(void)
     CHECK_INT(machine.soul.route_step, 1);
 }
 
+static void test_a_cores_wait_holds_while_two_first_cores_are_within_a_distance(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_WAIT, "-", "cores:gate:body:16");
+    route.steps[0].dwell_ticks = TICKS_FOR_A_MOVE;
+    machine.objects[1].actor.x = BODY_X + 17;
+    run_ticks(TICKS_FOR_A_DEAD_TALK_TO_START);
+    CHECK_INT(machine.soul.route_step, 0);
+    machine.objects[1].actor.x = BODY_X + 12;
+    machine.objects[1].actor.y = ROW_Y + 12;
+    run_ticks(TICKS_FOR_A_DEAD_TALK_TO_START);
+    CHECK_INT(machine.soul.route_step, 0);
+    machine.objects[1].actor.y = ROW_Y + 10;
+    run_ticks(TICKS_FOR_A_MOVE + TICKS_FOR_A_DEAD_TALK_TO_START);
+    CHECK_INT(machine.soul.route_step, 1);
+}
+
+static void test_a_camera_step_scrolls_until_its_object_is_in_view(void)
+{
+    int camera_before;
+    int across;
+
+    start_with_one_step(SCRIPT_ROUTE_CAMERA, "gate", "playable");
+    machine.objects[1].actor.x = BODY_X + CAMERA_TARGET_AWAY;
+    camera_before = machine.camera_x;
+    run_ticks(TICKS_FOR_A_PILL_TO_SLIDE_IN);
+    CHECK(machine.camera_x > camera_before);
+    CHECK_INT(machine.soul.route_step, 0);
+    run_ticks(TICKS_FOR_A_CAMERA_SCROLL);
+    across = machine.objects[1].actor.x - (machine.camera_x - machine.world_origin_x);
+    CHECK(across >= CAMERA_STEP_MARGIN && across <= CAMERA_VIEW_WIDTH - CAMERA_STEP_MARGIN);
+    CHECK_INT(machine.soul.route_step, 1);
+    CHECK_INT(machine.soul.is_on, 0);
+}
+
 int main(void)
 {
+    test_a_camera_step_scrolls_until_its_object_is_in_view();
     test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up();
     test_the_pad_opens_the_ghost_view_once_the_next_core_comes_within_reach();
     test_the_pad_moves_the_soul_with_the_stick();
@@ -381,6 +420,7 @@ int main(void)
     test_a_missile_hop_never_steps_from_a_core_to_one_of_its_shape();
     test_a_began_wait_holds_only_just_after_the_act_starts();
     test_a_near_wait_holds_while_two_actors_are_close_along_x();
+    test_a_cores_wait_holds_while_two_first_cores_are_within_a_distance();
     test_the_pad_picks_the_route_panel_only_once_the_step_has_begun();
     test_the_pad_presses_the_rewind_button_once_it_is_up();
     test_a_dead_talk_from_a_living_core_is_a_core_talk();

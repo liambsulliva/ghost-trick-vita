@@ -70,8 +70,32 @@ static void test_placing_another_ghost_leaves_the_ghost_in_play_where_it_is(void
     CHECK_INT(machine.soul.ghost_core_slots[SCRIPT_GHOST_MISSILE], 1);
 }
 
+#define TICKS_FOR_THE_SOUL_TO_TRAVEL 200
+
+static void test_the_travel_op_takes_the_soul_to_the_core_in_the_ghost_view(void)
+{
+    static const unsigned int first_core[4] = { 0, 0, 0, 0 };
+    struct script_vm vm;
+    int tick;
+
+    set_up_two_objects();
+    machine.objects[0].actor.exists = 1;
+    machine.objects[1].actor.exists = 1;
+    machine.soul.is_on = 1;
+    machine.soul.view_demo_is_on = 1;
+    vm = vm_owned_by(1);
+    CHECK_INT(script_opcode_family(0xa6), SCRIPT_OP_ACTOR);
+    script_ops_actor_run(&machine, &vm, 0xa6, first_core);
+    for (tick = 0; tick < TICKS_FOR_THE_SOUL_TO_TRAVEL && machine.soul.active_object != 1; tick++) {
+        script_soul_step_before_tasks(&machine);
+    }
+    CHECK_INT(machine.soul.active_object, 1);
+    CHECK_INT(machine.soul.active_slot, 0);
+}
+
 int main(void)
 {
+    test_the_travel_op_takes_the_soul_to_the_core_in_the_ghost_view();
     test_each_placing_op_sets_the_core_of_its_own_ghost();
     test_placing_another_ghost_leaves_the_ghost_in_play_where_it_is();
     return test_finish("unit/soul_placed_on_core");

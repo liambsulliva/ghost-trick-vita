@@ -225,22 +225,31 @@ static void play_the_route_step(struct script_route_pad *pad, const struct scrip
     }
 }
 
-static int scroll_for_the_camera_tutorial(const struct script_machine *machine, struct input_state *frame)
+static int scroll_the_camera(const struct script_machine *machine, struct input_state *frame)
 {
     const struct script_route_step *step;
+    int push_x;
+    int push_y;
 
     step = script_soul_route_step(machine);
-    if (step == NULL || step->action != SCRIPT_ROUTE_CAMERA || !script_soul_route_step_has_begun(machine) || !machine->soul.camera_tutorial_is_on) {
+    if (step == NULL || step->action != SCRIPT_ROUTE_CAMERA || !script_soul_route_step_has_begun(machine)) {
         return 0;
     }
-    frame->held = frame->held | INPUT_RIGHT;
+    if (machine->soul.camera_tutorial_is_on) {
+        frame->held = frame->held | INPUT_RIGHT;
+        return 1;
+    }
+    if (!script_soul_route_camera_push(machine, &push_x, &push_y)) {
+        return 0;
+    }
+    frame->held = frame->held | (push_x < 0 ? INPUT_LEFT : (push_x > 0 ? INPUT_RIGHT : 0u)) | (push_y < 0 ? INPUT_UP : (push_y > 0 ? INPUT_DOWN : 0u));
     return 1;
 }
 
 void script_route_pad_frame(struct script_route_pad *pad, const struct script_machine *machine, struct input_state *frame)
 {
     memset(frame, 0, sizeof(*frame));
-    if (scroll_for_the_camera_tutorial(machine, frame)) {
+    if (scroll_the_camera(machine, frame)) {
         return;
     }
     if (press_the_rewind_button(pad, machine, frame)) {

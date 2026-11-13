@@ -141,11 +141,35 @@ static void test_a_script_change_closes_the_demo_view_the_earlier_script_opened(
     CHECK_INT(view_the_stage_was_told, 0);
 }
 
+static void test_a_script_change_keeps_the_buttons_but_not_the_character_ones(void)
+{
+    static const unsigned int leaving_words[] = { OP_SCRIPT_CHANGE, NEXT_SCRIPT_STRING, OP_WAIT, A_LONG_WAIT, OP_END };
+    static const unsigned int idle_words[] = { OP_WAIT, A_LONG_WAIT, OP_END };
+    int tick;
+
+    script_machine_init(&machine, &outputs, SCRIPT_TIMING_REMASTER, NULL);
+    CHECK(script_machine_add_source(&machine, "a", scene, make_script(scene, leaving_words, sizeof(leaving_words) / sizeof(leaving_words[0])), NULL));
+    CHECK(script_machine_add_source(&machine, "b", next_scene, make_script(next_scene, idle_words, sizeof(idle_words) / sizeof(idle_words[0])), NULL));
+    CHECK(script_machine_start(&machine, "a"));
+    script_pills_register(&machine, SCRIPT_PILL_TRICK, 1);
+    script_pills_register(&machine, SCRIPT_PILL_JOWD, 1);
+    script_pills_register(&machine, SCRIPT_PILL_MISSILE, 1);
+    script_pills_register(&machine, SCRIPT_PILL_CICEL, 1);
+    for (tick = 0; tick <= TICKS_UNTIL_THE_NEXT_SCRIPT_RUNS; tick++) {
+        script_machine_tick(&machine);
+    }
+    CHECK_INT((machine.soul.pills_registered >> SCRIPT_PILL_TRICK) & 1u, 1);
+    CHECK_INT((machine.soul.pills_registered >> SCRIPT_PILL_JOWD) & 1u, 0);
+    CHECK_INT((machine.soul.pills_registered >> SCRIPT_PILL_MISSILE) & 1u, 0);
+    CHECK_INT((machine.soul.pills_registered >> SCRIPT_PILL_CICEL) & 1u, 0);
+}
+
 int main(void)
 {
     test_the_world_is_not_styled_outside_the_view();
     test_a_scripted_soul_view_styles_every_object_and_marks_no_core();
     test_the_player_s_view_styles_every_object_too();
     test_a_script_change_closes_the_demo_view_the_earlier_script_opened();
+    test_a_script_change_keeps_the_buttons_but_not_the_character_ones();
     return test_finish("unit/demo_soul_view_styles");
 }

@@ -12224,6 +12224,374 @@
         "wait": "choice"
       },
       {
+        "script": "st02-st02_game030_Expand",
+        "action": "ghost_on",
+        "object": "telephone",
+        "pace": "normal",
+        "footage_s": 23543.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game030_Expand",
+        "action": "move",
+        "object": "kaba",
+        "pace": "quick",
+        "footage_s": 23545.0,
+        "wait": "view & usable:kaba"
+      },
+      {
+        "script": "st02-st02_game030_Expand",
+        "action": "dead_talk",
+        "object": "kaba",
+        "pace": "normal",
+        "footage_s": 23546.0,
+        "wait": "view & core:kaba"
+      },
+      {
+        "script": "st02-st02_game030_Expand",
+        "action": "touch",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 23570.0,
+        "wait": "timeleap_armed"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "ghost_on",
+        "object": "kaba_s",
+        "pace": "normal",
+        "footage_s": 23840.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "move",
+        "object": "telephone",
+        "pace": "quick",
+        "footage_s": 23852.0,
+        "wait": "view & no_talk & usable:telephone"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "move",
+        "object": "f1_yakan",
+        "pace": "quick",
+        "footage_s": 23853.0,
+        "wait": "view & usable:f1_yakan"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "ghost_off",
+        "object": "f1_yakan",
+        "pace": "quick",
+        "footage_s": 23854.0,
+        "wait": "view & core:f1_yakan"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "ghost_on",
+        "object": "f1_yakan",
+        "pace": "instant",
+        "footage_s": 23872.0,
+        "wait": "act:f1_yakan:f1_yakan_act010 & free & no_talk"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "move",
+        "object": "motor",
+        "pace": "quick",
+        "footage_s": 23873.0,
+        "wait": "view & usable:motor"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "ghost_on",
+        "object": "motor",
+        "pace": "normal",
+        "footage_s": 23935.0,
+        "wait": "flag:0x16 & free & no_talk"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "move",
+        "object": "crane",
+        "pace": "quick",
+        "footage_s": 23937.0,
+        "wait": "view & no_talk & usable:crane"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "ghost_off",
+        "object": "crane",
+        "pace": "quick",
+        "footage_s": 23938.0,
+        "wait": "view & core:crane"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "trick",
+        "object": "crane",
+        "pace": "normal",
+        "footage_s": 23939.0,
+        "wait": "core:crane & playable"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "ghost_on",
+        "object": "crane",
+        "pace": "normal",
+        "footage_s": 23944.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "move",
+        "object": "b1_tool",
+        "pace": "quick",
+        "footage_s": 23945.0,
+        "wait": "view & usable:b1_tool"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "ghost_off",
+        "object": "b1_tool",
+        "pace": "quick",
+        "footage_s": 23946.0,
+        "wait": "view & core:b1_tool"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "trick",
+        "object": "b1_tool",
+        "pace": "normal",
+        "footage_s": 23947.0,
+        "wait": "core:b1_tool & playable"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "ghost_on",
+        "object": "b1_tool",
+        "pace": "normal",
+        "footage_s": 23949.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "move",
+        "object": "b1_toy",
+        "pace": "quick",
+        "footage_s": 23952.0,
+        "wait": "view & usable:b1_toy"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "move",
+        "object": "b1_kanri_s",
+        "pace": "quick",
+        "footage_s": 23953.0,
+        "wait": "view & usable:b1_kanri_s"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "dead_talk",
+        "object": "b1_kanri_s",
+        "pace": "normal",
+        "footage_s": 23954.0,
+        "wait": "view & core:b1_kanri_s"
+      },
+      {
+        "script": "st02-st02_game032_Expand",
+        "action": "touch",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 24027.0,
+        "wait": "timeleap_armed"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "ghost_on",
+        "object": "kanri_s",
+        "pace": "normal",
+        "footage_s": 24304.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "move",
+        "object": "kenti",
+        "pace": "quick",
+        "footage_s": 24308.0,
+        "wait": "view & no_talk & usable:kenti"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "ghost_off",
+        "object": "kenti",
+        "pace": "quick",
+        "footage_s": 24310.0,
+        "wait": "view & core:kenti"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "ghost_on",
+        "object": "kenti",
+        "pace": "normal",
+        "footage_s": 24314.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "move",
+        "object": "ctoy",
+        "pace": "quick",
+        "footage_s": 24315.0,
+        "wait": "view & usable:ctoy"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "ghost_off",
+        "object": "ctoy",
+        "pace": "quick",
+        "footage_s": 24316.0,
+        "wait": "view & core:ctoy"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "tap_balloon",
+        "object": "click:cicel_talk",
+        "pace": "normal",
+        "footage_s": 24403.0,
+        "wait": "balloon:click:cicel_talk & playable"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "camera",
+        "object": "b1_taba_001",
+        "pace": "normal",
+        "footage_s": 24430.0,
+        "wait": "act:sys_missile:sys_missile_act020 & free & no_talk"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "ghost_on",
+        "object": "ctoy",
+        "pace": "normal",
+        "footage_s": 24495.0,
+        "wait": "act:sys_missile:sys_missile_act040 & free & no_talk"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "character",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 24496.0,
+        "wait": "view"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "move",
+        "object": "b1_taba_000",
+        "pace": "quick",
+        "footage_s": 24498.0,
+        "wait": "view & no_talk & usable:b1_taba_000"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "ghost_on",
+        "object": "b1_taba_000",
+        "pace": "normal",
+        "footage_s": 24547.0,
+        "wait": "act:b1_taba_000_034:b1_taba_000_034_act020 & free & no_talk"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "swap",
+        "object": "b1_taba_001",
+        "pace": "normal",
+        "footage_s": 24548.0,
+        "wait": "view & no_talk & core:b1_taba_000"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "ghost_on",
+        "object": "b1_taba_001",
+        "pace": "instant",
+        "footage_s": 24569.0,
+        "wait": "ticks:300 & free & no_talk"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "move",
+        "object": "b1_03futa",
+        "pace": "quick",
+        "footage_s": 24572.0,
+        "wait": "view & usable:b1_03futa"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "move",
+        "object": "b1_tumiki",
+        "pace": "quick",
+        "footage_s": 24578.0,
+        "wait": "view & usable:b1_tumiki"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "move",
+        "object": "b1_03tire",
+        "pace": "quick",
+        "footage_s": 24580.0,
+        "wait": "view & usable:b1_03tire"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "ghost_off",
+        "object": "b1_03tire",
+        "pace": "quick",
+        "footage_s": 24582.0,
+        "wait": "view & core:b1_03tire"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "ghost_on",
+        "object": "b1_03tire",
+        "pace": "instant",
+        "footage_s": 24588.0,
+        "wait": "act:sys_sub:sys_sub_act030 & cores:b1_03futa:b1_03tire:100 & free & no_talk"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "swap",
+        "object": "b1_03futa",
+        "pace": "normal",
+        "footage_s": 24591.0,
+        "wait": "view & core:b1_03tire"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "ghost_off",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 24598.0,
+        "wait": "view & no_talk"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "ghost_on",
+        "object": "b1_03tire",
+        "pace": "instant",
+        "footage_s": 24602.0,
+        "wait": "act:b1_03tire:b1_03tire_act020 & ticks:200 & free & no_talk"
+      },
+      {
+        "script": "st02-st02_game034_Expand",
+        "action": "swap",
+        "object": "b1_floor_ex",
+        "pace": "quick",
+        "footage_s": 24604.0,
+        "wait": "view & core:b1_03tire"
+      },
+      {
         "script": "st14-st14_game020_Expand",
         "action": "dead_talk",
         "object": "-",
