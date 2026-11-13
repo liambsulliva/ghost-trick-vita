@@ -100,10 +100,24 @@ static void test_each_ghost_has_its_native_reach(void)
     CHECK(script_soul_reach(&machine) == SCRIPT_CICEL_REACH_DS_PIXELS);
 }
 
-static void test_one_long_drag_takes_the_soul_one_core_only(void)
+static void test_one_long_drag_carries_the_soul_through_every_core_in_reach(void)
 {
     start_in_the_ghost_view_with_three_cores_in_a_row();
     drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
+    CHECK_INT(machine.soul.active_object, 2);
+}
+
+static void test_lifting_the_finger_ends_the_carried_drag(void)
+{
+    start_in_the_ghost_view_with_three_cores_in_a_row();
+    drag_from_the_body_to((float)GATE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
+    CHECK_INT(machine.soul.active_object, 1);
+    script_soul_set_touch(&machine, 0, 0.0f, 0.0f);
+    step_ticks(TICKS_TO_SETTLE);
+    script_soul_set_touch(&machine, 1, (float)(GATE_X + 30), (float)ROW_Y);
+    script_soul_step_before_tasks(&machine);
+    script_soul_set_touch(&machine, 1, PEN_PAST_EVERY_CORE_X, (float)ROW_Y);
+    step_ticks(TICKS_FOR_A_DRAG);
     CHECK_INT(machine.soul.active_object, 1);
 }
 
@@ -197,26 +211,29 @@ static void test_the_tutorial_view_holds_the_soul_until_its_check_begins(void)
     step_ticks(TICKS_TO_SETTLE);
     script_soul_run_command(&machine, "SVTUTO", "TouchCheck");
     drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
-    CHECK_INT(machine.soul.active_object, 1);
+    CHECK(machine.soul.active_object != 0);
 }
 
 static void test_the_tutorial_view_holds_the_soul_again_once_its_move_ends(void)
 {
+    int reached;
+
     start_in_the_ghost_view_with_three_cores_in_a_row();
     script_soul_run_command(&machine, "SoulVision", "On");
     step_ticks(TICKS_TO_SETTLE);
     script_soul_run_command(&machine, "SVTUTO", "MoveStart");
     drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
-    CHECK_INT(machine.soul.active_object, 1);
+    reached = machine.soul.active_object;
+    CHECK(reached != 0);
     script_soul_set_touch(&machine, 0, 0.0f, 0.0f);
     step_ticks(TICKS_TO_SETTLE);
     script_soul_run_command(&machine, "SVTUTO", "MoveEnd");
     drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
-    CHECK_INT(machine.soul.active_object, 1);
+    CHECK_INT(machine.soul.active_object, reached);
     script_soul_set_held(&machine, -1.0f, 0.0f);
     step_ticks(TICKS_FOR_A_DRAG);
     script_soul_set_held(&machine, 0.0f, 0.0f);
-    CHECK_INT(machine.soul.active_object, 1);
+    CHECK_INT(machine.soul.active_object, reached);
 }
 
 static void check_the_soul_stays_put_until_the_event_ends(const char *verb, const char *hold, const char *release)
@@ -230,7 +247,7 @@ static void check_the_soul_stays_put_until_the_event_ends(const char *verb, cons
     script_soul_run_command(&machine, verb, release);
     step_ticks(TICKS_TO_SETTLE);
     drag_from_the_body_to(PEN_PAST_EVERY_CORE_X, TICKS_FOR_A_DRAG + TICKS_TO_SETTLE);
-    CHECK_INT(machine.soul.active_object, 1);
+    CHECK(machine.soul.active_object != 0);
 }
 
 static void test_scripted_events_in_the_ghost_view_hold_the_soul(void)
@@ -303,7 +320,8 @@ static void test_a_core_left_busy_without_a_ghost_hold_still_opens_the_view(void
 int main(void)
 {
     test_each_ghost_has_its_native_reach();
-    test_one_long_drag_takes_the_soul_one_core_only();
+    test_one_long_drag_carries_the_soul_through_every_core_in_reach();
+    test_lifting_the_finger_ends_the_carried_drag();
     test_a_new_touch_on_the_tip_drags_on_from_the_new_core();
     test_a_touch_away_from_the_tip_does_not_drag();
     test_the_touch_check_tutorial_hears_click_touch_and_release();

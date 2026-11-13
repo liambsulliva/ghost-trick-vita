@@ -396,6 +396,7 @@ struct script_soul {
     int chain_pick_object;
     int chain_pick_slot;
     int touch_drags_the_tip;
+    int drag_carries_on;
     float pen_x;
     float pen_y;
     int tip_input_is_held;

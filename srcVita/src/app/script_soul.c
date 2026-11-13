@@ -576,6 +576,7 @@ static void jump_to_picked_core(struct script_machine *machine)
     }
     arrive_at_core(machine, soul->chain_pick_object, soul->chain_pick_slot);
     soul->chain_pick_object = NO_CORE;
+    soul->drag_carries_on = 1;
 }
 
 static int aim_the_chain_from_input(struct script_machine *machine)
@@ -593,7 +594,7 @@ static int aim_the_chain_from_input(struct script_machine *machine)
 
         grab_x = soul->touch_x - chain->x[SOUL_CHAIN_TIP];
         grab_y = soul->touch_y - chain->y[SOUL_CHAIN_TIP];
-        soul->touch_drags_the_tip = sqrtf(grab_x * grab_x + grab_y * grab_y) <= SOUL_TOUCH_GRAB_DS_PIXELS;
+        soul->touch_drags_the_tip = soul->drag_carries_on || sqrtf(grab_x * grab_x + grab_y * grab_y) <= SOUL_TOUCH_GRAB_DS_PIXELS;
         soul->pen_x = soul->touch_x;
         soul->pen_y = soul->touch_y;
     }
@@ -662,6 +663,7 @@ static void keep_the_chain_on_the_swap(struct script_machine *machine, float roo
     soul->chain_pick_object = NO_CORE;
     soul->tip_input_is_held = 0;
     soul->touch_drags_the_tip = 0;
+    soul->drag_carries_on = 0;
     if (script_exchange_holds_the_chain_out(machine)) {
         float core_x;
         float core_y;
@@ -687,11 +689,15 @@ static void move_soul_tip(struct script_machine *machine)
     int input_is_held;
 
     soul = &machine->soul;
+    if (!soul->touch_is_down && soul->held_x == 0.0f && soul->held_y == 0.0f) {
+        soul->drag_carries_on = 0;
+    }
     if (!soul->is_on || soul->active_object == NO_CORE) {
         soul->tip_is_out = 0;
         soul->chain_needs_reset = 1;
         soul->chain_pick_object = NO_CORE;
         soul->tip_input_is_held = 0;
+        soul->drag_carries_on = 0;
         return;
     }
     core_position(machine, soul->active_object, soul->active_slot, &root_x, &root_y);

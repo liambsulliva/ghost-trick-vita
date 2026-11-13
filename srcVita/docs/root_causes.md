@@ -1187,6 +1187,12 @@ Root cause 138's cloud of blobs under the chain and under the travel beam re-rol
 
 Guard: `soul_animation_step` in `soul_chain.c` is the one pace for every soul effect. The body, the wisps, the lightning and the chain and travel clouds all take their step from it, so no soul effect can run at its own rate. `tests/unit/test_soul_chain.c` (`test_the_cloud_keeps_pace_with_the_soul_body`) checks that the cloud holds for a whole step and changes on the next.
 
+### 166. One drag could not carry the ghost through several cores
+
+Root cause 69 read half of native's rule. `func_0205fa2c` does clear its drag flag (soul +0x7c bit 4) while the chain jumps (state 2). But when a pick connects, `func_0206001c` (state 1 with a target) moves the soul into the core and sets +0x7c bit 6. While bit 6 is set, `func_0205fa2c` skips the 16-pixel grab test and takes the stylus wherever it is. Only a release with no direction held clears the bit (`value == 0 && held == 0`); so does the soul's reset, `func_02060d5c`. So a held stylus carries on from each new core to the next one in reach, and only a fresh touch has to land within 16 pixels of the chain's end. The port dropped the drag at every arrival, so on the Vita a finger had to lift and find the tip again for each hop.
+
+Guard: a chain jump sets `drag_carries_on`, which lets the held touch grab the tip at any distance. A release with no direction held, closing the view, and the swap link all clear it. Scripted holds (a tutorial's `MoveEnd`, demos, talks) still stop the chain, as before. `tests/unit/test_soul_touch_rules.c` checks two things: one long drag reaches every core in reach, and after a lift a touch away from the tip does not drag. The tutorial tests now check that the soul moved, not that it moved exactly one core.
+
 Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
 
 - In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.
