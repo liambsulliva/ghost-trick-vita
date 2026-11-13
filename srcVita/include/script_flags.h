@@ -14,6 +14,7 @@ struct script_flags {
 
 void script_flags_clear_all(struct script_flags *flags);
 void script_flags_clear_local(struct script_flags *flags);
+void script_flags_clear_chapter(struct script_flags *flags);
 int script_flags_is_known(unsigned int flag);
 int script_flags_read(const struct script_flags *flags, unsigned int flag);
 void script_flags_write(struct script_flags *flags, unsigned int flag, int value);

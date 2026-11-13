@@ -22,6 +22,11 @@ void script_flags_clear_local(struct script_flags *flags)
     memset(flags->local, 0, sizeof(flags->local));
 }
 
+void script_flags_clear_chapter(struct script_flags *flags)
+{
+    memset(flags->chapter, 0, sizeof(flags->chapter));
+}
+
 int script_flags_is_known(unsigned int flag)
 {
     return index_of(flag) <= FLAG_INDEX_MASK;

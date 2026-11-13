@@ -163,6 +163,9 @@ static int scene_is_behind_the_story(const struct script_machine *machine, const
 
 static void begin_script(struct script_machine *machine, const struct script_source *source)
 {
+    if (!machine->scene_is_being_retried) {
+        script_flags_clear_chapter(&machine->flags);
+    }
     clear_what_the_earlier_scene_left(machine);
     machine->scene_is_behind_the_story = scene_is_behind_the_story(machine, source, scene_was_seen(machine, hash_text(FNV_OFFSET_BASIS, source->name)));
     note_scene_began(machine, source->name);

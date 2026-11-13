@@ -1133,6 +1133,12 @@ Native's monologue update `func_02054f04` sends `*` `monologue` `paragraphN` whe
 
 Guard: `script_narration_report_to_outputs` numbers a paragraph within its page and sends the two page events. `tests/unit/test_monologue_events.c` checks the numbering on a second page, both page events and that a cut page sends none.
 
+### 156. The 0x8000 flag bank was never cleared
+
+Native keeps the flags from 0x8000 at game+0xd64 and `func_02011584` zeroes its 0x20 bytes from the scene start `func_02032018` in every branch except language select and the retry (`func_020322c4`, which restores the saved flags instead). The port cleared the bank only when the machine was made, so a flag one scene set was still set chapters later: `st14_game021_Expand` and `st02_game034_Expand` set 0x8001, and `st14_game061_Expand` then skipped the talk its first ghost view plays while 0x8001 is clear (footage 30400 to 30418). No script tests a flag of this bank that it does not set itself (nine flags, read from every script), so the bank belongs to one scene and its retries.
+
+Guard: `begin_script` clears the bank unless the scene is being retried. `tests/unit/test_chapter_flags.c` checks both and that the 0x1000 bank is left alone. A retry that leaves through a root script (only where op 0xfd is missing) still clears it.
+
 Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
 
 - In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.
