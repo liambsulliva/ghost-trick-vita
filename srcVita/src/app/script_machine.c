@@ -1764,6 +1764,12 @@ static void tear_down_script(struct script_machine *machine)
     machine->soul_vision_message_at = NEVER;
     machine->film_frame_is_on = 0;
     machine->swirl_is_on = 0;
+    if (machine->demo_soul_is_on) {
+        machine->demo_soul_is_on = 0;
+        if (machine->outputs->soul_vision_changed != NULL) {
+            machine->outputs->soul_vision_changed(0, 0);
+        }
+    }
     if (machine->outputs->stage_cleared != NULL) {
         machine->outputs->stage_cleared();
     }
