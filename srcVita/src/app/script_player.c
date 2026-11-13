@@ -14,6 +14,7 @@
 #include "playback_speed.h"
 #include "packed_file.h"
 #include "scene_stage.h"
+#include "pause_clock.h"
 #include "script_bridge.h"
 #include "script_input.h"
 #include "script_route_pad.h"
@@ -1070,6 +1071,7 @@ void script_player_note_mark(const char *what, const char *name)
     if (strcmp(what, "script_begun") == 0) {
         load_script_animations(name);
         take_checkpoint(name);
+        pause_clock_note_scene(data != NULL ? data->machine.chapter_mark : 0, name);
     }
     if (strcmp(run_until_kind, "step") == 0 && strcmp(what, "route_step_done") == 0 && route_step_number_is(name, run_until_name)) {
         snprintf(run_until_kind, sizeof(run_until_kind), "reached");

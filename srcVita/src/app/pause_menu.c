@@ -4,6 +4,7 @@
 #include "file.h"
 #include "file_path.h"
 #include "memory.h"
+#include "pause_clock.h"
 #include "pause_menu.h"
 #include "pause_options.h"
 #include "pause_chapters.h"
@@ -273,6 +274,7 @@ int pause_menu_load(const char *assets_folder)
     ticks = frames > 0 ? read_table(assets_folder, TRACK_TABLE_PATH, pause_menu_read_track_text) : 0;
     words = read_table(assets_folder, LABEL_TABLE_PATH, pause_menu_read_label_text);
     widget_total = pause_widgets_load(assets_folder);
+    run_log_write("pause clock scenes=%d", pause_clock_load(assets_folder));
     phase = PAUSE_PHASE_CLOSED;
     run_log_write("pause art frames=%d idle_ticks=%d fidget_ticks=%d labels=%d widgets=%d people=%d", frames, ticks, fidget_count, words, widget_total, pause_people_load(assets_folder));
     return pause_menu_is_ready();
@@ -1127,6 +1129,7 @@ static void draw_menu(void)
         }
     }
     draw_labels(camera_x, pause_menu_label_alpha());
+    pause_clock_draw(pause_menu_label_alpha());
     draw_cat_frame(shown_step.first, FEET_X - camera_x, 1.0f);
     if (shown_step.second >= 0) {
         draw_cat_frame(shown_step.second, FEET_X - camera_x, shown_step.weight);

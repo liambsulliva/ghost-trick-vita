@@ -144,8 +144,9 @@ def raise_contrast(canvas, fields):
     area[:] = np.clip(area - CONTRAST_FLOOR * 255.0, 0.0, 255.0) * (1.0 + CONTRAST_GAIN)
 
 
-def render(assets_folder, buttons, output_path, notes=None):
-    result = subprocess.run([RENDER_BINARY, assets_folder, buttons] + ([notes] if notes else []), check=True, capture_output=True, text=True)
+def render(assets_folder, buttons, output_path, notes=None, clock=None):
+    extra = [notes or ""] + ([clock] if clock else []) if notes or clock else []
+    result = subprocess.run([RENDER_BINARY, assets_folder, buttons] + extra, check=True, capture_output=True, text=True)
     canvas = np.zeros((SCREEN_HEIGHT, SCREEN_WIDTH, 3), dtype=np.float32)
     textures = {}
     for line in result.stdout.splitlines():
@@ -174,8 +175,9 @@ def main():
     parser.add_argument("buttons", help="presses after the menu opens: u d l r x o L R, and . to wait")
     parser.add_argument("output", help="the PNG to write")
     parser.add_argument("--notes", help="notebook entries known, as list:id:level,... (1 people, 2 places)")
+    parser.add_argument("--clock", help="the scene the clock reads, as chapter:script:plate")
     arguments = parser.parse_args()
-    render(arguments.assets_folder, arguments.buttons, arguments.output, arguments.notes)
+    render(arguments.assets_folder, arguments.buttons, arguments.output, arguments.notes, arguments.clock)
     return 0
 
 

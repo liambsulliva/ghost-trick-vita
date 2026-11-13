@@ -261,7 +261,7 @@ def convert_pause_art(packs, set_description, record, table_texts, timelines, cr
     pause = set_description.get("pause")
     if pause is None:
         return {}, []
-    code = code_fingerprint_with_magick(TEXT_CODE_FILES + ["pause_art.py", "pause_people.py", "frame_layout.py", "hud_art.py"])
+    code = code_fingerprint_with_magick(TEXT_CODE_FILES + ["pause_art.py", "pause_people.py", "pause_clock.py", "frame_layout.py", "hud_art.py"])
     work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
     try:
         return pause_art.bake_pause_art(packs, TEXTURE_TOOL_PATH, work_folder, record, code, pause, set_description.get("animations", []), table_texts, timelines, crops, text_key)

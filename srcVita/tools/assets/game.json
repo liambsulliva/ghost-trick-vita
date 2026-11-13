@@ -704,7 +704,197 @@
         "stage14_00": 13
       }
     },
-    "spotlight_source": "natives/android/charfiles/3d/06_id/02_database/cmn_dbi_01_01_iml4.tex.691230823"
+    "spotlight_source": "natives/android/charfiles/3d/06_id/02_database/cmn_dbi_01_01_iml4.tex.691230823",
+    "clock": {
+      "time_points": 30,
+      "place_points": 19,
+      "evening_starts_hour": 12,
+      "chapter_times": {
+        "1": "7:02 PM",
+        "2": "7:31 PM",
+        "3": "8:04 PM",
+        "4": "8:23 PM",
+        "5": "8:34 PM",
+        "6": "9:03 PM",
+        "7": "10:05 PM",
+        "8": "10:55 PM",
+        "9": "11:13 PM",
+        "10": "11:41 PM",
+        "11": "12:10 AM",
+        "12": "12:25 AM",
+        "13": "12:51 AM",
+        "14": "1:28 AM",
+        "15": "2:55 AM",
+        "16": "4:19 AM",
+        "17": "5:10 AM"
+      },
+      "night_ends": "6:00 AM",
+      "scenes": {
+        "1": [
+          "st01-st01_game000_Expand",
+          "st01-st01_game001_Expand",
+          "st01-st01_game010_Expand",
+          "st01-st01_game011_Expand",
+          "st01-st01_game012_Expand",
+          "st01-st01_game013_Expand",
+          "st01-st01_game014_Expand",
+          "st01-st01_game015_Expand"
+        ],
+        "2": [
+          "st14-st14_game000_Expand",
+          "st06-st06_game000_Expand",
+          "st06-st06_demo000_Expand",
+          "st06-st06_game001_Expand",
+          "st06-st06_game002_Expand",
+          "st06-st06_game003_Expand",
+          "st06-st06_game006_Expand"
+        ],
+        "3": [
+          "st06-st06_game004_Expand",
+          "st05-st05_game000_Expand",
+          "st01-st01_game020_Expand",
+          "st02-st02_chapter000_Expand",
+          "st02-st02_chapter001_Expand"
+        ],
+        "4": [
+          "st02-st02_game000_Expand",
+          "st02-st02_demo003_Expand",
+          "st02-st02_game004_Expand",
+          "st01-st01_game021_Expand",
+          "st01-st01_game022_Expand",
+          "st02-st02_chapter002_Expand",
+          "st02-st02_chapter003_Expand"
+        ],
+        "5": [
+          "st02-st02_game010_Expand",
+          "st03-st03_game000_Expand",
+          "st02-st02_game020_Expand",
+          "st02-st02_demo021_Expand",
+          "st02-st02_game022_Expand",
+          "st02-st02_game023_Expand",
+          "st02-st02_chapter004_Expand"
+        ],
+        "6": [
+          "st02-st02_game024_Expand",
+          "st03-st03_game001_Expand",
+          "st03-st03_demo001_Expand",
+          "st03-st03_game010_Expand",
+          "st03-st03_game002_Expand",
+          "st11-st11_game000_Expand",
+          "st11-st11_game001_Expand"
+        ],
+        "7": [
+          "st04-st04_game000_Expand",
+          "st04-st04_demo000_Expand",
+          "st04-st04_game001_Expand",
+          "st13-st13_demo000_Expand",
+          "st13-st13_game000_Expand",
+          "st04-st04_game003_Expand",
+          "st13-st13_demo001_Expand",
+          "st04-st04_game004_Expand",
+          "st04-st04_game010_Expand",
+          "st04-st04_chapter000_Expand"
+        ],
+        "8": [
+          "st03-st03_game003_Expand",
+          "st03-st03_game031_Expand",
+          "st03-st03_demo010_Expand",
+          "st03-st03_game032_Expand",
+          "st03-st03_game011_Expand",
+          "st03-st03_game033_Expand",
+          "st03-st03_game035_Expand"
+        ],
+        "9": [
+          "st03-st03_game034_Expand",
+          "st03-st03_game012_Expand",
+          "st03-st03_game014_Expand",
+          "st03-st03_game004_Expand",
+          "st03-st03_game020_Expand",
+          "st03-st03_game021_Expand"
+        ],
+        "10": [
+          "st09-st09_game001_Expand",
+          "st09-st09_demo002_Expand",
+          "st09-st09_game003_Expand",
+          "st09-st09_game004_Expand",
+          "st07-st07_game004_Expand",
+          "st07-st07_game001_Expand"
+        ],
+        "11": [
+          "st07-st07_game000_Expand",
+          "st07-st07_game001_Expand"
+        ],
+        "12": [
+          "st09-st09_game010_Expand",
+          "st05-st05_game003_Expand",
+          "st05-st05_game999_Expand"
+        ],
+        "13": [
+          "st05-st05_game001_Expand",
+          "st09-st09_game020_Expand",
+          "st13-st13_game016_Expand",
+          "st13-st13_game015_Expand"
+        ],
+        "14": [
+          "st13-st13_game010_Expand",
+          "st13-st13_game011_Expand",
+          "st13-st13_game012_Expand",
+          "st13-st13_game013_Expand",
+          "st13-st13_game014_Expand",
+          "st09-st09_game021_Expand",
+          "st09-st09_game022_Expand"
+        ],
+        "15": [
+          "st02-st02_game030_Expand",
+          "st02-st02_demo031_Expand",
+          "st02-st02_game032_Expand",
+          "st02-st02_demo033_Expand",
+          "st02-st02_game034_Expand",
+          "st02-st02_game035_Expand",
+          "st02-st02_game036_Expand",
+          "st02-st02_chapter005_Expand"
+        ],
+        "16": [
+          "st02-st02_game037_Expand",
+          "st14-st14_game020_Expand",
+          "st14-st14_game030_Expand",
+          "st14-st14_demo030_Expand",
+          "st14-st14_game031_Expand",
+          "st14-st14_game021_Expand",
+          "st14-st14_game040_Expand",
+          "st14-st14_demo031_Expand",
+          "st14-st14_game032_Expand",
+          "st14-st14_game033_Expand",
+          "st14-st14_game034_Expand"
+        ],
+        "17": [
+          "st14-st14_game050_Expand",
+          "st14-st14_game022_Expand",
+          "st14-st14_game060_Expand",
+          "st14-st14_demo060_Expand",
+          "st14-st14_game061_Expand",
+          "st14-st14_game062_Expand"
+        ],
+        "18": [
+          "st13-st13_game020_Expand",
+          "st13-st13_game021_Expand",
+          "st13-st13_game022_Expand",
+          "st15-st15_demo000_Expand",
+          "st15-st15_demo001_Expand",
+          "st15-st15_demo090_Expand",
+          "st15-st15_demo030_Expand",
+          "st15-st15_demo010_Expand",
+          "st15-st15_demo040_Expand",
+          "st15-st15_demo050_Expand",
+          "st15-st15_demo070_Expand",
+          "st15-st15_demo060_Expand",
+          "st15-st15_demo080_Expand",
+          "st15-st15_demo100_Expand",
+          "st15-st15_demo110_Expand",
+          "st15-st15_demo120_Expand"
+        ]
+      }
+    }
   },
   "screen_textures": [
     {

@@ -11,6 +11,7 @@
 #include "memory.h"
 #include "music_engine.h"
 #include "page_tiles.h"
+#include "pause_clock.h"
 #include "pause_menu.h"
 #include "pause_options.h"
 #include "game_save.h"
@@ -642,6 +643,18 @@ static void update_general_controls(const struct input_state *input)
     }
 }
 
+static void ready_the_pause_screens(void)
+{
+    const struct scene_stage *stage;
+
+    pause_people_use_notes(everything_is_unlocked() ? pause_people_every_note() : script_player_note_levels());
+    pause_people_use_reached_chapter(highest_reached_chapter());
+    stage = scene_stage_view();
+    if (stage->plate_count > 0) {
+        pause_clock_note_plate(stage->plates[0].texture_name);
+    }
+}
+
 static int start_button_is_tapped(const struct input_state *input)
 {
     int lands;
@@ -676,14 +689,12 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
         return;
     }
     if (((input->pressed & INPUT_START) || start_is_tapped) && script_player_is_active() && !debug_controls_are_on && pause_menu_is_ready()) {
-        pause_people_use_notes(everything_is_unlocked() ? pause_people_every_note() : script_player_note_levels());
-        pause_people_use_reached_chapter(highest_reached_chapter());
+        ready_the_pause_screens();
         pause_menu_open();
         return;
     }
     if (script_player_takes_record_request() && !debug_controls_are_on && pause_menu_is_ready()) {
-        pause_people_use_notes(everything_is_unlocked() ? pause_people_every_note() : script_player_note_levels());
-        pause_people_use_reached_chapter(highest_reached_chapter());
+        ready_the_pause_screens();
         pause_menu_open_on_record();
         return;
     }

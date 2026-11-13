@@ -6,6 +6,7 @@
 #include "fakes/fake_renderer.h"
 #include "game_settings.h"
 #include "input.h"
+#include "pause_clock.h"
 #include "pause_menu.h"
 #include "pause_widgets.h"
 #include "pause_people.h"
@@ -20,8 +21,8 @@
 #define PAN_STEPS 40
 #define LOAD_ROUNDS 4
 
-static const char *const tables[] = { "pause/cat.txt", "pause/cat_track.txt", "pause/labels.txt", "pause/widgets.txt", "pause/people.txt" };
-static const char *const fixed_textures[] = { "pause_backdrop", "pause_spotlight", "pause_labels", "pause_widgets", "hud_sheet", "pause_people_thumbs", "pause_people_spot" };
+static const char *const tables[] = { "pause/cat.txt", "pause/cat_track.txt", "pause/labels.txt", "pause/widgets.txt", "pause/people.txt", "pause/clock.txt" };
+static const char *const fixed_textures[] = { "pause_backdrop", "pause_spotlight", "pause_labels", "pause_widgets", "hud_sheet", "pause_people_thumbs", "pause_people_spot", "pause_clock" };
 static char texture_names[1024][ASSET_NAME_MAX];
 static unsigned char notes[SCRIPT_NOTE_LIST_COUNT][SCRIPT_NOTE_ID_COUNT];
 static int texture_name_count;
@@ -166,6 +167,18 @@ static void add_people_textures(const char *assets_folder)
     }
 }
 
+static void note_clock(const char *spec)
+{
+    char script[ASSET_NAME_MAX];
+    char plate[ASSET_NAME_MAX];
+    int chapter;
+
+    if (sscanf(spec, "%d:%63[^:]:%63s", &chapter, script, plate) == 3) {
+        pause_clock_note_scene(chapter, script);
+        pause_clock_note_plate(plate);
+    }
+}
+
 static void read_notes(const char *spec)
 {
     int list;
@@ -232,7 +245,7 @@ int main(int argc, char **argv)
     int page;
 
     if (argc < 3) {
-        fprintf(stderr, "usage: pause_render <assets folder> <buttons: u d l r x o L R, . waits> [notes list:id:level,...]\n");
+        fprintf(stderr, "usage: pause_render <assets folder> <buttons: u d l r x o L R, . waits> [notes list:id:level,...] [clock chapter:script:plate]\n");
         return 2;
     }
     fake_files_reset();
@@ -261,6 +274,9 @@ int main(int argc, char **argv)
     }
     if (argc > 3) {
         read_notes(argv[3]);
+    }
+    if (argc > 4) {
+        note_clock(argv[4]);
     }
     pause_people_use_notes(&notes[0][0]);
     pause_menu_open();
