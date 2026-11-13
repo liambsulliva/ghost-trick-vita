@@ -1175,6 +1175,12 @@ Guard: the player keeps each plan's text, and `read_ahead_note_mark` reads only 
 
 Guard: the planner reads each frame's ticks from the `.anim` file and dates each page at the start tick plus the ticks of the frames before its first use. `tests/tools/test_read_ahead.py` (`test_each_page_of_a_long_animation_is_due_when_its_first_frame_is_shown`) checks a page after an empty frame, a tiled page, and a page used twice.
 
+### 164. The ghost view pulled the camera to the soul's core when native leaves it alone
+
+Native's ghost-view field update (`func_02032914`, the per-frame step of pGameMainSV, also run by pGameMainExchange through `func_0203447c`) centres the soul's core. It clamps the core to the room (`func_02033428`). While the core is more than 4 pixels from the view's centre (124 to 132 across, 92 to 100 down), it adds 4 pixels a tick to the camera (`func_020330c0`, `func_020330e0`). It does this only while the soul's core is not busy (`func_02058b64`) and the follow is not off (game+0xc bit 10, `CoreHoseiOff`). The tutorial view that `GameApp SoulVision On` opens (`func_0203de90`, pGameMainSVTutorial) never calls it, so the camera stays where the tutorial's script put it. The port ran the follow in every ghost view and on busy cores. In Chapter 1's tutorial the scene points the camera at the object it teaches, and the port then slid the camera back to Sissel's body. During a trick the port chased the moving object instead of holding still.
+
+Guard: the soul marks a view opened by `SoulVision` as a tutorial view, and `follow_core_with_camera` follows nothing in it or while the core is busy. `tests/unit/test_ghost_view_camera_follow.c` checks four cases: a player's view follows the core; a tutorial view does not; a busy core does not; a player's view after a tutorial follows again.
+
 Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
 
 - In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.

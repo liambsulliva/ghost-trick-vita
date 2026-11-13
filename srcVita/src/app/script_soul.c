@@ -1041,6 +1041,7 @@ static void set_soul_view_with_effect(struct script_machine *machine, int is_on,
         close_the_view_task(soul);
     }
     soul->is_on = is_on;
+    soul->view_is_a_tutorial = 0;
     if (is_on) {
         soul->view_was_entered_with_effect = with_effect;
     }
@@ -1159,6 +1160,7 @@ static void enter_scripted_soul_view(struct script_machine *machine, const char 
 {
     set_soul_view_with_effect(machine, 1, strcmp(arg, "NoEffectStart") != 0);
     machine->soul.tutorial_holds_input = 1;
+    machine->soul.view_is_a_tutorial = 1;
     machine->soul_vision_message_at = (long long)machine->tick + SOUL_VISION_MESSAGE_AFTER_TICKS;
 }
 
@@ -1935,6 +1937,9 @@ static void follow_core_with_camera(struct script_machine *machine)
 
     soul = &machine->soul;
     if (machine->auto_press == SCRIPT_AUTO_FAST || soul->camera_follow_is_off || soul->view_follow_is_off || soul->camera_is_locked || machine->pan_is_active || soul->active_object == NO_CORE) {
+        return;
+    }
+    if (soul->is_on && (soul->view_is_a_tutorial || core_is_busy(machine))) {
         return;
     }
     core_position(machine, soul->active_object, soul->active_slot, &core_x, &core_y);
