@@ -119,7 +119,7 @@ Still to do:
 1. **Finish the remaining script opcodes**, on the same data-driven code. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
 2. **A DS-faithful look.** Visual Filter's DS setting draws with nearest-neighbour sampling, but it needs the DS art baked, which no set does yet.
 3. **Every language the remaster has.** Spanish, French, German, Italian, Japanese, Korean, Simplified Chinese and Traditional Chinese, alongside English.
-4. **The rest of the settings.** Resolution, the ghost world's background color for Sissel and, once unlocked, Missile, and a "Text Skip" setting that chooses whether holding CIRCLE covers unseen text or only text already read.
+4. **The rest of the settings.** Resolution, and the ghost world's background color for Sissel and, once unlocked, Missile.
 5. **Upload to VitaDB.**
 6. **Make the APK optional.** A player with only the DS cartridge would get the whole port from the DS game's own art, text and sound, and the remaster's files would become an optional upgrade.
 
