@@ -284,16 +284,59 @@
   },
   "pause": {
     "label_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
-    "labels": ["RESUME", "SAVE", "RECORD", "TITLE", "CHAPTERS", "OPTIONS"],
-    "cat_animations": [{"name": "st01_neko_001", "mirror": true}, {"name": "st01_neko_002", "mirror": true}],
-    "cat_fidget": {"animation": 1, "play": [[0, 131], [130, 118], [110, 96]], "every": 240, "link": 164, "dissolve": 6},
+    "labels": [
+      "RESUME",
+      "SAVE",
+      "RECORD",
+      "TITLE",
+      "CHAPTERS",
+      "OPTIONS"
+    ],
+    "cat_animations": [
+      {
+        "name": "st01_neko_001",
+        "mirror": true
+      },
+      {
+        "name": "st01_neko_002",
+        "mirror": true
+      }
+    ],
+    "cat_fidget": {
+      "animation": 1,
+      "play": [
+        [
+          0,
+          131
+        ],
+        [
+          130,
+          118
+        ],
+        [
+          110,
+          96
+        ]
+      ],
+      "every": 240,
+      "link": 164,
+      "dissolve": 6
+    },
     "widgets": {
       "font": "natives/android/gui/font/outlinefont/fot-chiarostd-b.oft.1",
       "row_points": 30,
       "chapter_word": "Chapter",
       "chapter_count": 18,
       "bar_points": 26,
-      "preview": { "plate": "st01-00-02", "crop": [60, 70, 832, 468] },
+      "preview": {
+        "plate": "st01-00-02",
+        "crop": [
+          60,
+          70,
+          832,
+          468
+        ]
+      },
       "number_points": 17,
       "row": {
         "controls": "Controls",
@@ -457,21 +500,209 @@
       "band_points": 28,
       "text_points": 21,
       "phone_word": "Phone",
-      "names": ["linne", "linne_g", "cicel", "cicel_cat", "cicel_trash", "cicel_evil", "cicel_soul", "kuneri", "kuneri_s", "killer_jo", "sith", "sanbou", "killer_po", "ribbon", "missile", "missile_o", "cubanelle", "jawed", "jawed_k", "keikan_A", "keikan_B", "keiji_G", "keiji_B", "doctor", "kalon", "waitress", "kanri", "yukai_M", "yukai_W", "barten", "enma", "eimin", "daijin", "keibi_A", "keibi_B", "kanshu", "keibi_C", "Rock", "shujin_B", "leaflet", "cock", "erai", "eihei", "crew", "mother"],
-      "places": ["stage01_00", "stage02_00", "stage02_01", "stage03_00", "stage03_01", "stage03_02", "stage03_03", "stage03_04", "stage03_05", "stage03_06", "stage03_07", "stage04_00", "stage04_01", "stage05_00", "stage06_00", "stage07_00", "stage08_00", "stage09_00", "stage10_00", "stage11_00", "stage13_00", "stage14_00", "stage14_01"],
-      "order": [3, 1, 8, 10, 11, 12, 13, 14, 15, 31, 32, 33, 22, 23, 24, 17, 25, 40, 27, 41, 20, 34, 38, 39, 18, 42, 26, 28, 29, 30, 45, 44, 6],
+      "names": [
+        "linne",
+        "linne_g",
+        "cicel",
+        "cicel_cat",
+        "cicel_trash",
+        "cicel_evil",
+        "cicel_soul",
+        "kuneri",
+        "kuneri_s",
+        "killer_jo",
+        "sith",
+        "sanbou",
+        "killer_po",
+        "ribbon",
+        "missile",
+        "missile_o",
+        "cubanelle",
+        "jawed",
+        "jawed_k",
+        "keikan_A",
+        "keikan_B",
+        "keiji_G",
+        "keiji_B",
+        "doctor",
+        "kalon",
+        "waitress",
+        "kanri",
+        "yukai_M",
+        "yukai_W",
+        "barten",
+        "enma",
+        "eimin",
+        "daijin",
+        "keibi_A",
+        "keibi_B",
+        "kanshu",
+        "keibi_C",
+        "Rock",
+        "shujin_B",
+        "leaflet",
+        "cock",
+        "erai",
+        "eihei",
+        "crew",
+        "mother"
+      ],
+      "places": [
+        "stage01_00",
+        "stage02_00",
+        "stage02_01",
+        "stage03_00",
+        "stage03_01",
+        "stage03_02",
+        "stage03_03",
+        "stage03_04",
+        "stage03_05",
+        "stage03_06",
+        "stage03_07",
+        "stage04_00",
+        "stage04_01",
+        "stage05_00",
+        "stage06_00",
+        "stage07_00",
+        "stage08_00",
+        "stage09_00",
+        "stage10_00",
+        "stage11_00",
+        "stage13_00",
+        "stage14_00",
+        "stage14_01"
+      ],
+      "order": [
+        3,
+        1,
+        8,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        31,
+        32,
+        33,
+        22,
+        23,
+        24,
+        17,
+        25,
+        40,
+        27,
+        41,
+        20,
+        34,
+        38,
+        39,
+        18,
+        42,
+        26,
+        28,
+        29,
+        30,
+        45,
+        44,
+        6
+      ],
       "illustrations": {
         "table": "natives/android/gamedesign/gallery/illustgalleryuserdata.user.2",
         "image": "natives/android/gui/ui040100/tex/%s_iml4.tex.691230823"
       },
-      "skip_people": [2, 4, 5, 7, 9, 16, 19, 21, 35, 36, 37],
-      "skip_places": [5, 6, 7, 8, 9, 10, 17, 19, 23],
-      "first_people": [3, 1, 8, 10],
-      "first_places": [1],
-      "unknown_portraits": ["crew"],
-      "shared_portraits": [["cicel", "cicel_evil"]],
-      "portraits": {"cicel": 0, "linne": 1, "ribbon": 2, "cubanelle": 3, "jawed": 4, "kuneri": 6, "sith": 8, "sanbou": 9, "killer_jo": 7, "missile": 12, "enma": 13, "eimin": 14, "daijin": 15, "barten": 16, "kalon": 20, "doctor": 18, "erai": 28, "shujin_B": 26, "keiji_B": 21, "keiji_G": 22, "keikan_A": 23, "keibi_A": 24, "killer_po": 11, "kanri": 19, "yukai_M": 32, "cock": 29, "yukai_W": 33, "Rock": 25, "leaflet": 17, "mother": 27, "waitress": 30, "cicel_evil": 0},
-      "place_pictures": {"stage01_00": 0, "stage02_00": 1, "stage02_01": 2, "stage03_00": 3, "stage03_07": 4, "stage04_00": 5, "stage04_01": 6, "stage05_00": 7, "stage06_00": 8, "stage07_00": 9, "stage09_00": 10, "stage11_00": 11, "stage13_00": 12, "stage14_00": 13}
+      "skip_people": [
+        2,
+        4,
+        5,
+        7,
+        9,
+        16,
+        19,
+        21,
+        35,
+        36,
+        37
+      ],
+      "skip_places": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        17,
+        19,
+        23
+      ],
+      "first_people": [
+        3,
+        1,
+        8,
+        10
+      ],
+      "first_places": [
+        1
+      ],
+      "unknown_portraits": [
+        "crew"
+      ],
+      "shared_portraits": [
+        [
+          "cicel",
+          "cicel_evil"
+        ]
+      ],
+      "portraits": {
+        "cicel": 0,
+        "linne": 1,
+        "ribbon": 2,
+        "cubanelle": 3,
+        "jawed": 4,
+        "kuneri": 6,
+        "sith": 8,
+        "sanbou": 9,
+        "killer_jo": 7,
+        "missile": 12,
+        "enma": 13,
+        "eimin": 14,
+        "daijin": 15,
+        "barten": 16,
+        "kalon": 20,
+        "doctor": 18,
+        "erai": 28,
+        "shujin_B": 26,
+        "keiji_B": 21,
+        "keiji_G": 22,
+        "keikan_A": 23,
+        "keibi_A": 24,
+        "killer_po": 11,
+        "kanri": 19,
+        "yukai_M": 32,
+        "cock": 29,
+        "yukai_W": 33,
+        "Rock": 25,
+        "leaflet": 17,
+        "mother": 27,
+        "waitress": 30,
+        "cicel_evil": 0
+      },
+      "place_pictures": {
+        "stage01_00": 0,
+        "stage02_00": 1,
+        "stage02_01": 2,
+        "stage03_00": 3,
+        "stage03_07": 4,
+        "stage04_00": 5,
+        "stage04_01": 6,
+        "stage05_00": 7,
+        "stage06_00": 8,
+        "stage07_00": 9,
+        "stage09_00": 10,
+        "stage11_00": 11,
+        "stage13_00": 12,
+        "stage14_00": 13
+      }
     },
     "spotlight_source": "natives/android/charfiles/3d/06_id/02_database/cmn_dbi_01_01_iml4.tex.691230823"
   },
@@ -13233,43 +13464,27 @@
       },
       {
         "script": "st14-st14_game020_Expand",
-        "action": "dead_talk",
-        "object": "-",
+        "action": "ghost_on",
+        "object": "gim_tel",
         "pace": "normal",
-        "footage_s": 26654.0,
+        "footage_s": 26647.0,
         "wait": "playable & no_talk"
       },
       {
         "script": "st14-st14_game020_Expand",
-        "action": "ghost_on",
-        "object": "gim_tel",
-        "pace": "normal",
-        "footage_s": 26706.0,
-        "wait": "playable"
-      },
-      {
-        "script": "st14-st14_game020_Expand",
         "action": "move",
-        "object": "gim_tel",
-        "pace": "normal",
-        "footage_s": 26707.0,
-        "wait": "view & usable:gim_tel"
-      },
-      {
-        "script": "st14-st14_game020_Expand",
-        "action": "ghost_off",
-        "object": "gim_tel",
+        "object": "gim_pato1",
         "pace": "quick",
-        "footage_s": 26709.5,
-        "wait": "view & core:gim_tel"
+        "footage_s": 26650.0,
+        "wait": "view & usable:gim_pato1"
       },
       {
         "script": "st14-st14_game020_Expand",
-        "action": "trick",
-        "object": "gim_tel",
+        "action": "dead_talk",
+        "object": "gim_pato1",
         "pace": "normal",
-        "footage_s": 26710.0,
-        "wait": "core:gim_tel & playable"
+        "footage_s": 26651.0,
+        "wait": "view & core:gim_pato1"
       },
       {
         "script": "st14-st14_game020_Expand",
@@ -13277,151 +13492,305 @@
         "object": "gim_tel",
         "pace": "normal",
         "footage_s": 26720.0,
-        "wait": "free"
+        "wait": "act:stage_master:st14_02 & playable & no_talk"
       },
       {
         "script": "st14-st14_game020_Expand",
         "action": "character",
         "object": "-",
         "pace": "normal",
-        "footage_s": 26721.5,
+        "footage_s": 26720.5,
         "wait": "view"
       },
       {
         "script": "st14-st14_game020_Expand",
-        "action": "swap",
-        "object": "gim_pato2",
+        "action": "move",
+        "object": "gim_tama1",
         "pace": "normal",
-        "footage_s": 26722.0,
+        "footage_s": 26725.0,
+        "wait": "view & usable:gim_tama1"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "swap",
+        "object": "gim_tama3",
+        "pace": "normal",
+        "footage_s": 26727.0,
+        "wait": "view & core:gim_tama1"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "ghost_on",
+        "object": "gim_tama3",
+        "pace": "normal",
+        "footage_s": 26732.5,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "move",
+        "object": "gim_pato1",
+        "pace": "quick",
+        "footage_s": 26733.5,
+        "wait": "view & usable:gim_pato1"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "character",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 26735.0,
+        "wait": "view & core:gim_pato1"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "move",
+        "object": "gim_tama3",
+        "pace": "quick",
+        "footage_s": 26738.0,
+        "wait": "view & usable:gim_tama3"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "move",
+        "object": "gim_pato2",
+        "pace": "quick",
+        "footage_s": 26739.5,
         "wait": "view & usable:gim_pato2"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "character",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 26741.5,
+        "wait": "view & core:gim_pato2"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "move",
+        "object": "gim_tama3",
+        "pace": "quick",
+        "footage_s": 26743.0,
+        "wait": "view & usable:gim_tama3"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "swap",
+        "object": "gim_tama2",
+        "pace": "normal",
+        "footage_s": 26745.0,
+        "wait": "view & core:gim_tama3"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "ghost_on",
+        "object": "gim_tama2",
+        "pace": "normal",
+        "footage_s": 26772.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "character",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 26772.5,
+        "wait": "view"
+      },
+      {
+        "script": "st14-st14_game020_Expand",
+        "action": "move",
+        "object": "gim_tama3",
+        "pace": "quick",
+        "footage_s": 26775.0,
+        "wait": "view & usable:gim_tama3"
       },
       {
         "script": "st14-st14_game020_Expand",
         "action": "move",
         "object": "gim_valve",
-        "pace": "normal",
-        "footage_s": 26723.0,
+        "pace": "quick",
+        "footage_s": 26776.0,
         "wait": "view & usable:gim_valve"
       },
       {
         "script": "st14-st14_game020_Expand",
         "action": "move",
-        "object": "gim_lev1",
-        "pace": "normal",
-        "footage_s": 26724.0,
-        "wait": "view & usable:gim_lev1"
-      },
-      {
-        "script": "st14-st14_game020_Expand",
-        "action": "ghost_off",
-        "object": "gim_lev1",
+        "object": "gim_lan",
         "pace": "quick",
-        "footage_s": 26726.0,
-        "wait": "view & core:gim_lev1"
-      },
-      {
-        "script": "st14-st14_game020_Expand",
-        "action": "trick",
-        "object": "gim_lev1",
-        "pace": "normal",
-        "footage_s": 26727.0,
-        "wait": "core:gim_lev1 & playable"
-      },
-      {
-        "script": "st14-st14_game020_Expand",
-        "action": "ghost_on",
-        "object": "gim_lan",
-        "pace": "normal",
-        "footage_s": 26730.0,
-        "wait": "free"
-      },
-      {
-        "script": "st14-st14_game020_Expand",
-        "action": "move",
-        "object": "gim_lan",
-        "pace": "normal",
-        "footage_s": 26731.0,
+        "footage_s": 26776.7,
         "wait": "view & usable:gim_lan"
       },
       {
         "script": "st14-st14_game020_Expand",
-        "action": "ghost_off",
+        "action": "phone_call",
         "object": "gim_lan",
-        "pace": "quick",
-        "footage_s": 26733.0,
-        "wait": "view & core:gim_lan"
-      },
-      {
-        "script": "st14-st14_game020_Expand",
-        "action": "trick",
-        "object": "gim_lan",
+        "slot": 0,
         "pace": "normal",
-        "footage_s": 26734.0,
-        "wait": "core:gim_lan & playable"
+        "footage_s": 26800.0,
+        "wait": "flag:0x1020"
       },
       {
         "script": "st14-st14_game030_Expand",
         "action": "ghost_on",
         "object": "lan",
         "pace": "normal",
-        "footage_s": 26800.0,
-        "wait": "free"
+        "footage_s": 26902.0,
+        "wait": "playable & no_talk"
       },
       {
         "script": "st14-st14_game030_Expand",
         "action": "move",
-        "object": "lan",
-        "pace": "normal",
-        "footage_s": 26801.0,
-        "wait": "view & usable:lan"
+        "object": "moni",
+        "pace": "quick",
+        "footage_s": 26907.0,
+        "wait": "view & usable:moni"
+      },
+      {
+        "script": "st14-st14_game030_Expand",
+        "action": "move",
+        "object": "handle",
+        "pace": "quick",
+        "footage_s": 26909.0,
+        "wait": "view & usable:handle"
       },
       {
         "script": "st14-st14_game030_Expand",
         "action": "ghost_off",
-        "object": "lan",
+        "object": "handle",
         "pace": "quick",
-        "footage_s": 26803.0,
-        "wait": "view & core:lan"
+        "footage_s": 26910.0,
+        "wait": "view & core:handle"
       },
       {
         "script": "st14-st14_game030_Expand",
         "action": "trick",
+        "object": "handle",
+        "pace": "quick",
+        "footage_s": 26912.0,
+        "wait": "core:handle & playable"
+      },
+      {
+        "script": "st14-st14_game030_Expand",
+        "action": "ghost_on",
+        "object": "handle",
+        "pace": "normal",
+        "footage_s": 26916.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st14-st14_game030_Expand",
+        "action": "move",
+        "object": "linne",
+        "pace": "quick",
+        "footage_s": 26917.0,
+        "wait": "view & usable:linne"
+      },
+      {
+        "script": "st14-st14_game030_Expand",
+        "action": "dead_talk",
+        "object": "linne",
+        "pace": "normal",
+        "footage_s": 26919.0,
+        "wait": "view & core:linne"
+      },
+      {
+        "script": "st14-st14_game030_Expand",
+        "action": "touch",
+        "object": "-",
+        "pace": "normal",
+        "footage_s": 27173.0,
+        "wait": "timeleap_armed"
+      },
+      {
+        "script": "st14-st14_game031_Expand",
+        "action": "ghost_on",
+        "object": "linne_dead_core",
+        "pace": "instant",
+        "footage_s": 27226.0,
+        "wait": "free & no_talk & reach:gun"
+      },
+      {
+        "script": "st14-st14_game031_Expand",
+        "action": "move",
+        "object": "gun",
+        "pace": "quick",
+        "footage_s": 27227.0,
+        "wait": "view & usable:gun"
+      },
+      {
+        "script": "st14-st14_game031_Expand",
+        "action": "move",
+        "object": "handle",
+        "pace": "quick",
+        "footage_s": 27227.7,
+        "wait": "view & usable:handle"
+      },
+      {
+        "script": "st14-st14_game031_Expand",
+        "action": "move",
+        "object": "moni",
+        "pace": "quick",
+        "footage_s": 27228.4,
+        "wait": "view & usable:moni"
+      },
+      {
+        "script": "st14-st14_game031_Expand",
+        "action": "move",
         "object": "lan",
-        "pace": "normal",
-        "footage_s": 26804.0,
-        "wait": "core:lan & playable"
+        "pace": "quick",
+        "footage_s": 27229.1,
+        "wait": "view & usable:lan"
       },
       {
-        "script": "st14-st14_game030_Expand",
-        "action": "choose",
-        "object": "cancel",
-        "pace": "normal",
-        "footage_s": 26806.0,
-        "wait": "choice"
+        "script": "st14-st14_game031_Expand",
+        "action": "move",
+        "object": "valve",
+        "pace": "quick",
+        "footage_s": 27229.8,
+        "wait": "view & usable:valve"
       },
       {
-        "script": "st14-st14_game030_Expand",
-        "action": "dead_talk",
-        "object": "-",
-        "pace": "normal",
-        "footage_s": 26832.0,
-        "wait": "playable & no_talk"
+        "script": "st14-st14_game031_Expand",
+        "action": "ghost_off",
+        "object": "valve",
+        "pace": "quick",
+        "footage_s": 27230.5,
+        "wait": "view & core:valve"
       },
       {
-        "script": "st14-st14_game030_Expand",
-        "action": "dead_talk",
-        "object": "-",
-        "pace": "normal",
-        "footage_s": 26866.0,
-        "wait": "playable & no_talk"
+        "script": "st14-st14_game031_Expand",
+        "action": "trick",
+        "object": "valve",
+        "pace": "quick",
+        "footage_s": 27231.0,
+        "wait": "core:valve & playable"
       },
       {
-        "script": "st14-st14_game030_Expand",
-        "action": "dead_talk",
-        "object": "-",
+        "script": "st14-st14_game031_Expand",
+        "action": "ghost_on",
+        "object": "valve",
         "pace": "normal",
-        "footage_s": 26900.0,
-        "wait": "playable & no_talk"
+        "footage_s": 27258.0,
+        "wait": "free & no_talk"
+      },
+      {
+        "script": "st14-st14_game031_Expand",
+        "action": "move",
+        "object": "lan",
+        "pace": "quick",
+        "footage_s": 27259.0,
+        "wait": "view & usable:lan"
+      },
+      {
+        "script": "st14-st14_game031_Expand",
+        "action": "phone_call",
+        "object": "lan",
+        "slot": 0,
+        "pace": "normal",
+        "footage_s": 27276.0,
+        "wait": "flag:0x4"
       },
       {
         "script": "st14-st14_game050_Expand",

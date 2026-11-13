@@ -1737,7 +1737,6 @@ static void tear_down_script(struct script_machine *machine)
 {
     unsigned int pills_registered;
     int rollback_is_on;
-    int trick_is_on;
     int countdown_is_kept;
     int countdown_flag;
     int countdown_is_running;
@@ -1765,7 +1764,6 @@ static void tear_down_script(struct script_machine *machine)
     machine->camera_follow_object = SCRIPT_NO_SELECTION;
     pills_registered = machine->soul.pills_registered;
     rollback_is_on = machine->soul.rollback_is_on;
-    trick_is_on = machine->soul.trick_is_on;
     countdown_is_kept = script_flags_read_known(&machine->flags, COUNTDOWN_KEPT_ACROSS_A_SCRIPT_CHANGE_FLAG, &countdown_flag) && countdown_flag != 0;
     countdown_is_running = machine->soul.countdown_is_running;
     countdown_step = machine->soul.countdown_step;
@@ -1777,7 +1775,6 @@ static void tear_down_script(struct script_machine *machine)
     script_pills_register_all(machine);
     machine->soul.pills_registered = machine->soul.pills_registered & ~CHARACTER_BUTTONS;
     machine->soul.rollback_is_on = rollback_is_on;
-    machine->soul.trick_is_on = trick_is_on;
     if (countdown_is_kept) {
         machine->soul.countdown_is_running = countdown_is_running;
         machine->soul.countdown_step = countdown_step;

@@ -151,13 +151,15 @@ static void test_a_script_change_brings_the_buttons_back_but_not_the_character_o
     CHECK(script_machine_add_source(&machine, "a", scene, make_script(scene, leaving_words, sizeof(leaving_words) / sizeof(leaving_words[0])), NULL));
     CHECK(script_machine_add_source(&machine, "b", next_scene, make_script(next_scene, idle_words, sizeof(idle_words) / sizeof(idle_words[0])), NULL));
     CHECK(script_machine_start(&machine, "a"));
-    script_pills_unregister_all(&machine);
+    script_soul_run_command(&machine, "Button", "All:Off");
+    CHECK_INT(machine.soul.trick_is_on, 0);
     script_pills_register(&machine, SCRIPT_PILL_JOWD, 1);
     script_pills_register(&machine, SCRIPT_PILL_MISSILE, 1);
     script_pills_register(&machine, SCRIPT_PILL_CICEL, 1);
     for (tick = 0; tick <= TICKS_UNTIL_THE_NEXT_SCRIPT_RUNS; tick++) {
         script_machine_tick(&machine);
     }
+    CHECK_INT(machine.soul.trick_is_on, 1);
     CHECK_INT((machine.soul.pills_registered >> SCRIPT_PILL_TRICK) & 1u, 1);
     CHECK_INT((machine.soul.pills_registered >> SCRIPT_PILL_GHOST) & 1u, 1);
     CHECK_INT((machine.soul.pills_registered >> SCRIPT_PILL_JOWD) & 1u, 0);

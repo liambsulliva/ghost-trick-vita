@@ -147,6 +147,9 @@ void script_exchange_step(struct script_machine *machine)
         return;
     }
     if (!machine->soul.is_on || machine->soul.active_ghost != SCRIPT_GHOST_MISSILE || !object_is_known(machine, exchange->root_object) || !object_is_known(machine, exchange->target_object)) {
+        if (exchange->phase == SCRIPT_EXCHANGE_SETTLING) {
+            exchange->swaps_done = exchange->swaps_done + 1;
+        }
         end_the_link(machine);
         return;
     }

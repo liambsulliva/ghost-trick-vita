@@ -1040,7 +1040,7 @@ Lessons from routing Chapter 15's first three scenes (`st02_game030_Expand`, `st
 
 A scene that ends with `All:Off` left the next script with no Ghost or Trick button. 108 of the 117 game scripts never send `All:On`, and the scene after `st02_game035_Expand` (which ends with `All:Off`) sends none, so the wrap-up talk of Chapter 15 could not be entered. Chapter 1's scripts each send `All:Off` again when they want the buttons gone. The lifetime is read from the scripts; native's reset of the board at `game+0xfb8` on a script change is not identified.
 
-Guard: `tear_down_script` registers the default buttons again and then drops the character ones (root cause 139). `tests/unit/test_demo_soul_view_styles.c` checks that Trick and Ghost return after an unregister and that the character buttons do not.
+Guard: `tear_down_script` registers the default buttons again, lets tricks be pressed again (`trick_is_on`, which `All:Off` clears and Chapter 16's first scene needs) and then drops the character ones (root cause 139). `tests/unit/test_demo_soul_view_styles.c` checks that Trick and Ghost return after an unregister and that the character buttons do not.
 
 ### 144. A scene that makes and deletes objects over and over ran out of object slots
 
@@ -1098,6 +1098,22 @@ Guard: `tests/tools/test_pause_option_keys.py` checks that every literal `bar.`,
 A narration page with the show-at-once option (DS timing, which the player uses) reports every line in one tick and goes straight to waiting for a press, while the view fades each line in over 62 ticks. So the first ✕ dismissed text that was still half drawn. The same gap left a group's fade running after a press that showed the whole page. The narration now counts down the fade from each line it reports: until it ends, a press finishes every fade at once (`SCRIPT_NARRATION_TEXT_FULL`, `scene_layers_finish_text_fade_ins`) instead of moving on, and the page arrow and auto-press wait for it. Dialogue already worked this way. The honest whole-game replay is unchanged (432 steps done, the same 4 failures).
 
 Guard: `tests/unit/test_narration_skip.c` checks that a press during a shown-at-once page's fade finishes the lines without ending the page, that the second press ends it, and that the arrow waits for the fade.
+
+### 152. A swap the scene itself closed the view on was never counted
+
+`st14_game020_Expand` answers a swap and, in the same handler, leaves the ghost view (`torikae_demo`: `CustomSoulVision` `DemoModeOn`, `ReturnDemo`). `script_exchange_step` drops the link as soon as the view is gone, so the settle never finished, `swaps_done` stayed put and the route's `swap` step timed out as failed although the objects had changed places.
+
+Guard: a link dropped while settling counts its swap. `tests/unit/test_exchange.c` closes the view mid-settle. Where Missile ends is unchanged: he stays in place, in the object the scripts name with op 0xa4 (the footage of Chapters 14 and 16 agrees; native's `func_0203447c` case 3 writes both ends, `func_020100f4` and `func_020266e8`, and which of them the cursor follows is not settled by reading).
+
+Lessons from routing Chapter 16's first three scenes (`st14_game020_Expand`, `st14_game030_Expand` and `st14_game031_Expand`, route steps 1445 to 1485):
+
+- Missile sits in the emergency light `gim_pato1`; the talk is a link from the telephone (`move gim_pato1`, `dead_talk gim_pato1`, which sends `CORETALK`).
+- The footage links from the basketball back to the baseball, not the other way: Missile hops `gim_pato1` to `gim_tama1`, swaps with `gim_tama3` and is then in `gim_tama3` in the middle. For the second swap he steps aside to `gim_pato1` so Sissel can use the baseball, comes back and swaps `gim_tama3` with `gim_tama2`.
+- A ghost cannot enter a core the other ghost holds, so the order is Missile off the baseball, Sissel across it to `gim_pato2`, Missile back on.
+- Reaching the ringing phone (`gim_lan`, and `lan` in the control room) starts the call by itself (`SYSTEM` `SV_END` with the soul on that core); the route only answers the prompt of op 0x77 with `phone_call`.
+- In the control room the first talk plays by itself; the wheel is `handle`, Lynne's core is `linne`, and the rewind is a `touch` on `timeleap_armed`.
+- Four minutes before the death the soul starts on `linne_dead_core` and the gun comes into reach when Kamila levels it (`reach:gun`, pace instant); the path is gun, `handle`, `moni`, `lan` and the valve above the phone (`valve`), whose trick knocks the receiver off.
+- Op 0xfd (the checkpoint at the fate change in `st14_game021_Expand`) is not ported.
 
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.

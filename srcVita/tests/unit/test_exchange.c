@@ -179,6 +179,24 @@ static void test_leaving_the_ghost_view_drops_the_link(void)
     CHECK_INT(script_exchange_is_on(&machine), 0);
 }
 
+static void test_a_view_the_scene_closes_mid_swap_still_counts_the_swap(void)
+{
+    start_with_missile_on_the_crate();
+    script_exchange_link(&machine, BARREL, 0);
+    step_for(OUTLINE_TICKS);
+    script_exchange_confirm(&machine);
+    step_for(1);
+    run_core_op(0xa4, BARREL);
+    run_core_op(0xa5, CRATE);
+    step_for(2);
+    CHECK_INT(machine.soul.exchange.phase, SCRIPT_EXCHANGE_SETTLING);
+    machine.soul.is_on = 0;
+    step_for(1);
+    CHECK_INT(script_exchange_is_on(&machine), 0);
+    CHECK_INT(machine.soul.exchange.swaps_done, 1);
+    CHECK_INT(machine.soul.active_object, BARREL);
+}
+
 static void test_the_pills_show_only_swap_and_unlock_while_linked(void)
 {
     start_with_missile_on_the_crate();
@@ -248,6 +266,7 @@ int main(void)
     test_unlocking_tells_the_scripts_and_ends_the_link();
     test_a_swap_under_way_cannot_be_unlocked();
     test_leaving_the_ghost_view_drops_the_link();
+    test_a_view_the_scene_closes_mid_swap_still_counts_the_swap();
     test_the_pills_show_only_swap_and_unlock_while_linked();
     test_the_motion_table_names_the_shape();
     test_the_ops_are_routed_to_the_actor_family();
