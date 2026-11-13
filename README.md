@@ -4,9 +4,11 @@ A PS Vita port using the original DS game logic with the 2023 remaster's art and
 
 ## Where the port stands
 
-The whole game is routed and plays from start to finish. An automatic playthrough of 1719 route steps follows a reference playthrough from the opening of Chapter 1 to the closing credits and back to the title screen, replayed on a computer through the same input code the Vita uses. It finishes with no step failed, no scene skipped and no stand-in for the game's own logic; one step the route passes over is left out of the count. What is left is the script opcodes that still log as not ported, and checking the later chapters on the Vita itself.
+The whole game is routed and plays from start to finish. An automatic playthrough of 1719 route steps follows a reference playthrough from the opening of Chapter 1 to the closing credits and back to the title screen, replayed on a computer through the same input code the Vita uses. It finishes with no step failed, no scene skipped and no stand-in for the game's own logic; one step the route passes over is left out of the count.
 
-On the Vita itself the app installs and runs from locally converted remaster art. The one-command setup below prepares the whole game.
+The same playthrough has run on a real Vita. On 2026-11-13 the debug build played the route by itself, at up to 30 ticks a frame, and did all 1718 steps in about 53 minutes. It saved every chapter from 2 to 18 on the way and had no softlock and no crash. The title screen had not appeared in the log when the run was stopped, 47 seconds after the last step. What is left is the script opcodes that still log as not ported (16 were met on that run), a few slow stretches where large textures load, and the title screen.
+
+The app installs and runs from locally converted remaster art. The one-command setup below prepares the whole game.
 
 ## Legal disclaimer
 
@@ -31,12 +33,12 @@ Click the preview to open the [interactive treemap](https://liambsulliva.github.
 
 ## Run it on a Vita
 
-The VPK holds only the app. It has no game data in it, so it also needs art, sound and text converted from your own copy of the remaster's Android release. The app plays Chapter 1 from the DS game's own scripts, with its music, sounds, narration and dialogue. [The app's README](srcVita/README.md#controls) lists the buttons.
+The VPK holds only the app. It has no game data in it, so it also needs art, sound and text converted from your own copy of the remaster's Android release. The app plays the game from the DS game's own scripts, with its music, sounds, narration and dialogue. [The app's README](srcVita/README.md#controls) lists the buttons.
 
 You need:
 
 - Python 3, `make`, `clang` and ImageMagick 7 (the `magick` command). The converter draws the game's text with `magick`, which needs FreeType support: `magick -list format | grep OTF` should print a line.
-- About 3.6 GB of free disk space for the game files and the converted chapter.
+- About 3.6 GB of free disk space for the game files and the converted game.
 - Your own copy of the remaster's Android release, and your own dump of the USA DS cartridge.
 - VitaSDK, to build the VPK. [The app's README](srcVita/README.md#build-and-test) lists its libraries.
 - A Vita that can install homebrew with VitaShell.
@@ -103,16 +105,23 @@ The port follows the DS game's own code wherever it can. The changes below are d
 
 ## Roadmap
 
-1. **Finish the remaining script opcodes**, on the same data-driven code, and play the later chapters on the Vita. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
-2. **A DS-faithful look.** An option to simulate nearest-neighbor upscaling, so the picture looks as it did on the DS.
+Already in the port, from earlier versions of this list ([the app's README](srcVita/README.md#controls) has the details):
+
+- **The animated pause menu.** Resume, Save, Record, Title, Chapters and Options.
+- **Saving.** Save from the pause menu at any point; the game picks up again from the start of the scene it was saved in. An autosave is written as each chapter begins.
+- **A settings menu.** Text speed, brightness, volumes, the Original or Arranged soundtrack, a 30 FPS cap, High Contrast and Visual Filter.
+- **Starting from any chapter already reached**, from the Chapters grid.
+- **Fast-forward through dialogue.** Holding CIRCLE moves through talk and narration as fast as the game allows.
+- **A high-contrast mode.** Makes cores easier to pick out in crowded rooms, for players with low vision.
+
+Still to do:
+
+1. **Finish the remaining script opcodes**, on the same data-driven code. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
+2. **A DS-faithful look.** Visual Filter's DS setting draws with nearest-neighbour sampling, but it needs the DS art baked, which no set does yet.
 3. **Every language the remaster has.** Spanish, French, German, Italian, Japanese, Korean, Simplified Chinese and Traditional Chinese, alongside English.
-4. **An animated 3D pause menu.** An all-new menu whose transitions are tied to character models.
-5. **Save anywhere.** Saving at any point in the game, not only between chapters, with the game remembering where you were.
-6. **A settings menu.** Resolution, a frame rate cap, starting from any chapter already unlocked, and the ghost world's background color for Sissel and, once unlocked, Missile.
-7. **Fast-forward through dialogue.** Holding Circle speeds through talk, extending today's narration skipping. A "Text Skip" setting chooses whether that covers unseen text or only text already read.
-8. **Upload to VitaDB.**
-9. **A high-contrast mode.** Makes cores easier to pick out in crowded rooms, for players with low vision.
-10. **Make the APK optional.** A player with only the DS cartridge would get the whole port from the DS game's own art, text and sound, and the remaster's files would become an optional upgrade.
+4. **The rest of the settings.** Resolution, the ghost world's background color for Sissel and, once unlocked, Missile, and a "Text Skip" setting that chooses whether holding CIRCLE covers unseen text or only text already read.
+5. **Upload to VitaDB.**
+6. **Make the APK optional.** A player with only the DS cartridge would get the whole port from the DS game's own art, text and sound, and the remaster's files would become an optional upgrade.
 
 ## Working on the port
 
