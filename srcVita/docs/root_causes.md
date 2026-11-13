@@ -930,6 +930,22 @@ Op 0xe2 opens the red world for a demo (`func_02023fdc` case 0xe2 puts the game'
 
 Guard: `tear_down_script` closes a demo view the script left open and tells the stage. `tests/unit/test_demo_soul_view_styles.c` (`test_a_script_change_closes_the_demo_view_the_earlier_script_opened`). The replay's end-of-run state now prints what holds the soul (`soul_held`), which named the cause.
 
+### 133. Lessons from routing Chapter 10
+
+Chapter 10 is the justice minister's office: `st09_game001_Expand` (the body and the rewind), `st09_game003_Expand` (the four minutes) and `st09_game004_Expand` (the wrap-up), route steps 959 to 1047.
+
+- A trick can count only in one act of the scene's controller. `sys` handles `flag core_action` in `sys_act050`, which begins when the minister knocks the pitcher over (`mizusasi set`), and not in `sys_act040` before it, so the flap waits on `act:sys:sys_act050`.
+- A controller of the normal pause class cannot see a hop until the view closes. `sys_act060` asks itself `check move_fan` (op 0xa0 against `fan`, op 0x1c to ask again) and that handler stands still while the ghost view pauses the world; the footage has the player press Back on the fan (16836.75), so the route has that `ghost_off`.
+- A hop can close the view by itself. `paper_check`'s `has_soul tell` sends `CustomSoulVision` `DemoModeOn` and `ReturnDemo` when the soul lands on the flying paper, so no `ghost_off` follows that hop and the next `ghost_on` waits for `reach:kusuri`.
+- A flying object is a moving core like a walking guard: the papers' cores follow the core words of their motion tables, so the hop from the fan waits on `reach:paper1` (pace instant), not on a time.
+- Follow the footage where it and the walkthrough order differ: the player turns the hanging basket's base once, on the first visit (16928.75), and only rocks its top on the last.
+- "Listen in" is a balloon, not a trick: op 0x46 puts a balloon over the minister that sends `sys balloon click`, so the step is `tap_balloon balloon:click`. After the first swing the soul sits on the sword Lynne carries (`lken`), not on the statue's.
+- The ride out is `place` 16 (st07): the book entry is new, so the scene it loads was checked against the footage (the room with the candle and the star decorations), after place 14 loaded st05.
+
+Not ported and hit here: ops 0x9f, 0xfd and 0xd3 (st09_game003), and 0x49 (st09_game004).
+
+Guard: the whole-game replay without the stall breaker: 1122 steps done, 0 failed. It ends Chapter 10 with the ride to st07 (place 16) and plays the steps Chapter 11 already had in st07_game000 (1048 to 1122).
+
 ## Still open
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
