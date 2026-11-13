@@ -1151,6 +1151,12 @@ Native's ops 0x7f and 0x80 (`func_02023fdc`) call `func_02015748` and `func_0201
 
 Guard: both ops are control ops of one word that step on. `tests/unit/test_sound_slot_ops.c` runs a script through them and checks nothing is logged as not ported.
 
+### 159. The screen still never faded
+
+Native's op 0xf6 (`func_02023fdc`) finds the first `uSpriteCaptureNormal` in the scene (`func_0202fb48` with `data_020cfd28`), the still that op 0xf3 makes, and writes the op's count to both halves of its fade (`func_02026838`, +0xca and +0xcc; the constructor `func_02063e90` sets both to -1). Its update (`func_02063ef8`) then counts the second down each frame, sets the still's alpha to left × 31 / total, and deletes the still when the count reaches 0. With no still the op does nothing. `st02_game036_Expand` fades its still over 30 frames before op 0xf5, and the last chapter's `st13_game021_Expand` over 180 frames before the demo it starts. The port had no case and logged `op_not_ported`, so the still stayed up at full strength until op 0xf5 or the scene ended.
+
+Guard: `fade_the_screen_still` counts the still down from op 0xf6, sends its alpha in 31 steps and takes it down at 0. `tests/unit/test_screen_still_fade.c` checks the fade, that the alpha only falls, that the still goes away once, and that a fade with no still and a still with no fade change nothing.
+
 Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
 
 - In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.

@@ -134,6 +134,7 @@ struct script_outputs {
     void (*film_frame_changed)(int is_on);
     void (*film_scroll_paused)(int is_paused);
     void (*screen_still_changed)(int is_on);
+    void (*screen_still_faded)(float alpha);
     void (*swirl_changed)(int is_on);
     void (*movie_started)(const char *name);
     int (*movie_of_class_started)(unsigned int class_id);

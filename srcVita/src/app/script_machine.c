@@ -7,6 +7,8 @@
 #define NOTE_ADDED_TALK_LABEL "sys_add_data"
 #define MODE_BYTE_LOADING 1
 #define MODE_BYTE_NORMAL 2
+#define STILL_DOES_NOT_FADE -1
+#define STILL_ALPHA_STEPS 31
 #define MODE_BYTE_ALSO_RUNS_IDLE 3
 #define MODE_BYTE_STAFF_ROLL 0x17
 #define GAME_START_AFTER_LOAD_TICKS 3
@@ -1138,6 +1140,40 @@ static void step_staff_roll(struct script_machine *machine)
     report_staff_roll(machine);
 }
 
+static void set_screen_still(struct script_machine *machine, int is_on)
+{
+    machine->screen_still_is_on = is_on;
+    machine->still_fade_total = STILL_DOES_NOT_FADE;
+    machine->still_fade_left = STILL_DOES_NOT_FADE;
+    if (machine->outputs->screen_still_changed != NULL) {
+        machine->outputs->screen_still_changed(is_on);
+    }
+}
+
+static void fade_the_screen_still(struct script_machine *machine, int ticks)
+{
+    if (!machine->screen_still_is_on) {
+        return;
+    }
+    machine->still_fade_total = ticks;
+    machine->still_fade_left = ticks;
+}
+
+static void step_the_screen_still_fade(struct script_machine *machine)
+{
+    if (!machine->screen_still_is_on || machine->still_fade_total < 0) {
+        return;
+    }
+    machine->still_fade_left = machine->still_fade_left - 1;
+    if (machine->still_fade_left <= 0) {
+        set_screen_still(machine, 0);
+        return;
+    }
+    if (machine->outputs->screen_still_faded != NULL) {
+        machine->outputs->screen_still_faded((float)(machine->still_fade_left * STILL_ALPHA_STEPS / machine->still_fade_total) / (float)STILL_ALPHA_STEPS);
+    }
+}
+
 static enum script_step_result run_control_op(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words)
 {
     switch (op) {
@@ -1279,10 +1315,11 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0xf3:
     case 0xf5:
-        if (machine->outputs->screen_still_changed != NULL) {
-            machine->outputs->screen_still_changed(op == 0xf3);
-        }
+        set_screen_still(machine, op == 0xf3);
         return op == 0xf3 ? SCRIPT_STEP_NEXT_THEN_YIELD : SCRIPT_STEP_NEXT;
+    case 0xf6:
+        fade_the_screen_still(machine, (int)(short)words[0]);
+        return SCRIPT_STEP_NEXT;
     case 0xe1:
         if (script_machine_current_object(machine, vm) != NULL) {
             script_machine_current_object(machine, vm)->is_dead = 1;
@@ -1849,6 +1886,7 @@ static void run_native_steps_before_tasks(struct script_machine *machine)
         machine->pause_clear_at = NEVER;
     }
     script_balloons_count_down(machine);
+    step_the_screen_still_fade(machine);
     if (machine->teardown_at == (long long)machine->tick) {
         tear_down_script(machine);
         machine->teardown_at = NEVER;

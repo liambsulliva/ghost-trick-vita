@@ -557,6 +557,9 @@ struct script_machine {
     int mode_before_eyecatch;
     int countdown_interval;
     const struct script_route *route;
+    int screen_still_is_on;
+    int still_fade_total;
+    int still_fade_left;
     const int *trickless_core_infos;
     int trickless_core_info_count;
     const char *scene_name;

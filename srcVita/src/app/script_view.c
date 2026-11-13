@@ -195,6 +195,7 @@ static int film_scroll_is_paused;
 static float film_scroll;
 static int still_is_wanted;
 static int still_is_ready;
+static float still_alpha = 1.0f;
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color text_colors[SCRIPT_TALK_COLOR_COUNT] = {
     { 0.0f, 0.0f, 0.0f, 1.0f },
@@ -341,6 +342,12 @@ void script_view_screen_still_changed(int is_on)
 {
     still_is_wanted = is_on;
     still_is_ready = 0;
+    still_alpha = 1.0f;
+}
+
+void script_view_screen_still_faded(float alpha)
+{
+    still_alpha = alpha;
 }
 
 void script_view_swirl_changed(int is_on)
@@ -1722,7 +1729,7 @@ static void draw_screen_still(void)
     whole_screen.y = 0.0f;
     whole_screen.width = (float)RENDERER_WIDTH;
     whole_screen.height = (float)RENDERER_HEIGHT;
-    renderer_draw_snapshot(whole_screen, 1.0f);
+    renderer_draw_snapshot(whole_screen, still_alpha);
 }
 
 void script_view_staff_roll_changed(int is_drawn, int page, int screen_count, float scroll)
