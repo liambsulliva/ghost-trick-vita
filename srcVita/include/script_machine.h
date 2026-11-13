@@ -453,6 +453,7 @@ struct script_machine {
     unsigned int fetch_total;
     struct script_flags flags;
     int pause_bit;
+    int record_is_wanted;
     int mode_byte;
     int film_frame_is_on;
     int swirl_is_on;

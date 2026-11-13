@@ -681,6 +681,12 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
         pause_menu_open();
         return;
     }
+    if (script_player_takes_record_request() && !debug_controls_are_on && pause_menu_is_ready()) {
+        pause_people_use_notes(everything_is_unlocked() ? pause_people_every_note() : script_player_note_levels());
+        pause_people_use_reached_chapter(highest_reached_chapter());
+        pause_menu_open_on_record();
+        return;
+    }
     if ((input->pressed & INPUT_SELECT) && !script_player_is_active()) {
         set_debug_controls(!debug_controls_are_on);
     }

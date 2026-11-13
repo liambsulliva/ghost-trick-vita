@@ -1205,6 +1205,12 @@ The DS People screen (overlay 6; `func_ov006_020d6c20` draws it) shows the selec
 
 Guard: while the screen is drawn, `pause_people_read_ahead` keeps the pictures and cards of the two entries on each side of the selection read ahead. Until the full picture is ready, the frame shows the entry's thumbnail from the resident thumbnail sheet, scaled up, so the frame never stands empty. `tests/unit/test_pause_people.c` (`test_pictures_around_the_selection_are_read_ahead`) checks that a neighbour's picture is ready without ever being drawn.
 
+### 169. SELECT, the notebook pill, did nothing
+
+Native opens its notebook (pGameSubDatabase, the People and Places database) from HUD button 3. `GameApp Button Database:On` registers it (`func_020135c8`), and pGameMainNormal's update (`func_0203696c`) pushes the database screen when the button is touched. The DS reads no hardware key for it. No script in the game sends `Database:On`, so the port's SELECT (mapped to that pill) only reached `pill_not_ported` and did nothing. The port's Record screen (`pause_people.c`, root cause 147) is the database's counterpart.
+
+Guard: SELECT, or a press on the notebook pill when it shows, sets `record_is_wanted` whenever the player has the controls (any of the game's pills is on screen). The app then opens the pause menu straight on the Record screen, which fades in from black without the main menu, and CIRCLE there resumes the game. `tests/unit/test_select_wants_the_record.c` checks the request and its gate; `tests/unit/test_pause_menu.c` (`test_select_opens_straight_onto_the_record_and_circle_returns_to_the_game`) checks the direct opening and the way back.
+
 Lessons from routing the rest of Chapter 16 (`st14_game021_Expand`, `st14_game040_Expand`, `st14_game032_Expand` and `st14_game033_Expand`, route steps 1486 to 1639), Chapter 17 and the last chapter (steps 1640 to 1718, written by workers on a frozen binary and spliced unchanged):
 
 - In `st14_game021_Expand` the lever and the torpedo belong to the short window after Sith's demo: flag 0x6 is set just before its Trick Time, `t_set_up` slides the torpedo under the lift for 280 ticks, and `setup_end` then starts `st14_01`, which fires it. The lever's trick lowers the lift with the lever and the capsule on it, which brings the torpedo's tail core (slot 1) into reach. Waiting for `st14_02` is the failure branch, after the torpedo has gone.

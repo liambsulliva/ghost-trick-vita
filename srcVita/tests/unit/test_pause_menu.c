@@ -339,6 +339,33 @@ static void test_people_opens_the_notebook_screen_where_l_switches_tabs_and_circ
     CHECK_INT(pause_menu_phase(), PAUSE_PHASE_PANNING_BACK);
 }
 
+static void test_select_opens_straight_onto_the_record_and_circle_returns_to_the_game(void)
+{
+    static unsigned char notes[SCRIPT_NOTE_LIST_COUNT][SCRIPT_NOTE_ID_COUNT];
+
+    start_with_art();
+    add_text("set/pause/people.txt", "order 3 1\nplace_count 2\nface 3 pause_face_00\nthumb pause_face_00 0 0 104 78\nnote 1 3 10 pause_note_1_03_010\n");
+    CHECK(pause_menu_load("set"));
+    memset(notes, 0, sizeof(notes));
+    notes[1][3] = 11;
+    pause_people_use_notes(&notes[0][0]);
+    pause_menu_open_on_record();
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_DARKENING);
+    wait_steps(SETTLE_STEPS);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SUBMENU);
+    CHECK(pause_menu_camera_x() == -(float)RENDERER_WIDTH);
+    CHECK_TEXT(pause_people_card(), "pause_note_1_03_010");
+    CHECK(pause_menu_black_alpha() == 0.0f);
+    press(INPUT_CIRCLE);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_HIDING);
+    pause_menu_open();
+    wait_steps(SETTLE_STEPS * 4);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_CLOSED);
+    pause_menu_open();
+    wait_steps(SETTLE_STEPS);
+    CHECK_INT(pause_menu_phase(), PAUSE_PHASE_SHOWING);
+}
+
 static int saves_made;
 
 static int fake_save(void)
@@ -451,6 +478,7 @@ static void test_the_menu_stays_shut_without_its_art(void)
 
 int main(void)
 {
+    test_select_opens_straight_onto_the_record_and_circle_returns_to_the_game();
     test_a_held_direction_repeats_after_a_pause_but_only_from_a_fresh_press();
     test_a_direction_held_into_the_menu_never_repeats();
     test_the_fidget_dissolves_in_at_the_link_tick_and_back_out_to_it();

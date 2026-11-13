@@ -101,6 +101,7 @@ static int touched_item;
 static int touched_option;
 static struct pause_dialog title_dialog;
 static int title_is_wanted;
+static int opened_on_record;
 static int title_asks_to_save;
 static int chapter_wanted;
 
@@ -429,8 +430,21 @@ void pause_menu_open(void)
     shown_step.first = -1;
     shown_step.second = -1;
     shown_step.weight = 0.0f;
+    opened_on_record = 0;
     enter(PAUSE_PHASE_DARKENING);
     run_log_write("pause open");
+}
+
+void pause_menu_open_on_record(void)
+{
+    if (phase != PAUSE_PHASE_CLOSED || !pause_menu_is_ready() || !pause_people_is_loaded()) {
+        return;
+    }
+    pause_menu_open();
+    cursor = PAUSE_ITEM_PEOPLE;
+    picked = PAUSE_ITEM_PEOPLE;
+    opened_on_record = 1;
+    run_log_write("pause open_on_record");
 }
 
 int pause_menu_is_open(void)
@@ -641,7 +655,10 @@ static void advance_phase(unsigned int pressed)
         }
         break;
     case PAUSE_PHASE_WAITING_FOR_ART:
-        if (phase_ticks >= BLACK_TICKS && art_is_settled()) {
+        if (phase_ticks >= BLACK_TICKS && art_is_settled() && opened_on_record) {
+            pause_people_enter();
+            enter(PAUSE_PHASE_SUBMENU);
+        } else if (phase_ticks >= BLACK_TICKS && art_is_settled()) {
             enter(PAUSE_PHASE_SHOWING);
         }
         break;
@@ -663,7 +680,11 @@ static void advance_phase(unsigned int pressed)
             }
         } else if (people_is_picked()) {
             if (pause_people_step(pressed) == PAUSE_PEOPLE_LEAVES) {
-                enter(PAUSE_PHASE_PANNING_BACK);
+                if (opened_on_record) {
+                    begin_hiding();
+                } else {
+                    enter(PAUSE_PHASE_PANNING_BACK);
+                }
             }
         } else if (picked == PAUSE_ITEM_SAVE) {
             step_save(pressed);
@@ -925,6 +946,8 @@ float pause_menu_black_alpha(void)
     case PAUSE_PHASE_WAITING_FOR_ART:
     case PAUSE_PHASE_BLACK_BEFORE_GAME:
         return 1.0f;
+    case PAUSE_PHASE_SUBMENU:
+        return opened_on_record ? 1.0f - clamp01((float)phase_ticks / (float)SHOW_FADE_TICKS) : 0.0f;
     case PAUSE_PHASE_SHOWING:
         return 1.0f - clamp01((float)phase_ticks / (float)SHOW_FADE_TICKS);
     case PAUSE_PHASE_HIDING:

@@ -1027,6 +1027,15 @@ static void take_checkpoint(const char *name)
     }
 }
 
+int script_player_takes_record_request(void)
+{
+    if (data == NULL || phase != PHASE_RUNNING || !data->machine.record_is_wanted) {
+        return 0;
+    }
+    data->machine.record_is_wanted = 0;
+    return 1;
+}
+
 int script_player_takes_new_chapter(void)
 {
     int chapter;

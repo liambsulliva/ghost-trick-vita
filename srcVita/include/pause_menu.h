@@ -68,6 +68,7 @@ const struct pause_cat_frame *pause_cat_frame_at(int row);
 int pause_cat_page_count(void);
 
 void pause_menu_open(void);
+void pause_menu_open_on_record(void);
 int pause_menu_is_open(void);
 int pause_menu_takes_title_request(void);
 int pause_menu_takes_chapter_request(void);

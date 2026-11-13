@@ -2807,11 +2807,18 @@ void script_soul_note_ghost(struct script_machine *machine)
 
 void script_soul_note_pill(struct script_machine *machine, enum script_pill_id id)
 {
+    if (id == SCRIPT_PILL_NOTEBOOK && (script_pills_is_up(machine, id) || script_pills_any_on_screen(machine))) {
+        if (script_pills_is_up(machine, id)) {
+            script_pills_press(machine, id, 0);
+        }
+        machine->record_is_wanted = 1;
+        return;
+    }
     if (!script_pills_is_up(machine, id)) {
         return;
     }
     script_pills_press(machine, id, 0);
-    script_machine_note(machine, NULL, "pill_not_ported", id == SCRIPT_PILL_HOURGLASS ? "hourglass" : "notebook");
+    script_machine_note(machine, NULL, "pill_not_ported", "hourglass");
 }
 
 void script_soul_note_tap(struct script_machine *machine, int tap_group)
