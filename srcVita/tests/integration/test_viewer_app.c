@@ -5,6 +5,7 @@
 #include "fakes/fake_platform.h"
 #include "fakes/fake_reader.h"
 #include "fakes/fake_task.h"
+#include "fakes/fake_work_queue.h"
 #include "fakes/fake_renderer.h"
 #include "fakes/fake_texture_files.h"
 #include "file.h"
@@ -60,6 +61,7 @@ static void set_up_platform(void)
     fake_renderer_reset();
     fake_reader_reset();
     fake_task_reset();
+    fake_work_queue_reset();
     fake_audio_reset();
     fake_memory_reset();
     fake_clock_set_us(0);

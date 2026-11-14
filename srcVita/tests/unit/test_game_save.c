@@ -1,5 +1,7 @@
+#include <stdio.h>
 #include <string.h>
 #include "fakes/fake_platform.h"
+#include "fakes/fake_work_queue.h"
 #include "game_save.h"
 #include "input.h"
 #include "pause_chapters.h"
@@ -230,6 +232,31 @@ static void test_the_game_cleared_mark_reaches_every_slot_stays_through_later_sa
     CHECK_INT(game_save_load_newest(&read_back), 0);
 }
 
+static void test_saves_reach_the_card_on_the_writer_and_loads_wait_for_them(void)
+{
+    char path[64];
+
+    fake_files_reset();
+    fake_work_queue_reset();
+    fill_machine();
+    game_save_capture(&save, &machine, "first");
+    CHECK_INT(game_save_store_as_newest(&save, GAME_SAVE_AUTO), 1);
+    fake_work_queue_hold(1);
+    game_save_capture(&save, &machine, "second");
+    CHECK_INT(game_save_store_as_newest(&save, GAME_SAVE_AUTO), 1);
+    CHECK_INT(game_save_store_chapter(&save, 4), 1);
+    CHECK_INT(fake_work_queue_pending(), 2);
+    snprintf(path, sizeof(path), "%s/chapter_%02d.txt", FILE_DATA_FOLDER, 4);
+    CHECK(!fake_files_exists(path));
+    CHECK_INT(game_save_load_newest(&read_back), 1);
+    CHECK_INT(fake_work_queue_pending(), 0);
+    CHECK_TEXT(read_back.script, "second");
+    CHECK_INT((int)read_back.serial, 2);
+    CHECK(fake_files_exists(path));
+    fake_work_queue_hold(0);
+    fake_work_queue_reset();
+}
+
 int main(void)
 {
     test_a_save_survives_text_and_restores_the_machine();
@@ -241,5 +268,6 @@ int main(void)
     test_an_unsaved_chapter_starts_through_the_native_chapter_select();
     test_the_chapters_grid_plays_only_reached_chapters_after_asking();
     test_the_game_cleared_mark_reaches_every_slot_stays_through_later_saves_and_erases();
+    test_saves_reach_the_card_on_the_writer_and_loads_wait_for_them();
     return test_finish("unit/game_save");
 }

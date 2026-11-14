@@ -9,11 +9,15 @@
 #include "renderer.h"
 #include "run_log.h"
 #include "text_lines.h"
+#include "work_queue.h"
 
 #define LINE_MAX 64
 #define DARKNESS_PER_STEP 0.06f
 
 static struct game_settings current;
+static struct game_settings settings_to_write;
+static char settings_path_to_write[FILE_PATH_MAX];
+static volatile int settings_write_is_busy;
 static int default_music = GAME_MUSIC_ARRANGED;
 static char music_folders[2][FILE_PATH_MAX];
 static int has_remastered_art = 1;
@@ -130,6 +134,7 @@ void game_settings_load(const char *path)
     unsigned int size;
     int known;
 
+    work_queue_wait();
     game_settings_defaults(&current);
     known = 0;
     if (file_read_whole(path, &bytes, &size) == FILE_OK) {
@@ -139,16 +144,33 @@ void game_settings_load(const char *path)
     run_log_write("settings read=%d brightness=%d master=%d music=%d effects=%d music_type=%d", known, current.brightness, current.master, current.music, current.effects, current.music_type);
 }
 
-int game_settings_save(const char *path)
+static void write_the_settings(void *argument)
 {
     char text[GAME_SETTINGS_TEXT_MAX];
     unsigned int size;
     int result;
 
-    size = game_settings_write_text(&current, text, sizeof(text));
-    result = size > 0 && file_write_whole(path, (const unsigned char *)text, size) == FILE_OK;
+    (void)argument;
+    size = game_settings_write_text(&settings_to_write, text, sizeof(text));
+    result = size > 0 && file_write_whole(settings_path_to_write, (const unsigned char *)text, size) == FILE_OK;
     run_log_write("settings saved=%d", result);
-    return result;
+    __sync_synchronize();
+    settings_write_is_busy = 0;
+}
+
+int game_settings_save(const char *path)
+{
+    if (settings_write_is_busy) {
+        work_queue_wait();
+    }
+    settings_to_write = current;
+    snprintf(settings_path_to_write, sizeof(settings_path_to_write), "%s", path);
+    settings_write_is_busy = 1;
+    if (!work_queue_post(write_the_settings, NULL)) {
+        work_queue_wait();
+        write_the_settings(NULL);
+    }
+    return 1;
 }
 
 int game_settings_volume_gain(int level)

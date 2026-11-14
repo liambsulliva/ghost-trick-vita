@@ -972,6 +972,7 @@ void viewer_app_stop(void)
 {
     title_menu_close();
     script_player_shutdown();
+    game_save_wait();
     scene_player_shutdown();
     music_shutdown();
     sound_shutdown();

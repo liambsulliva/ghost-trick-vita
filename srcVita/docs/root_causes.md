@@ -1362,6 +1362,12 @@ The class: anything drawn over the red and black backdrop (the pause, title and 
 
 Guard: `loading_screen.c` draws a glow over the bottom 256 px above the floor, the cat's full height, in 4 px strips. It runs from the circle's inner red at the floor through its middle ring to its outer ring, at 35% opacity at the floor falling to none at the top. Measured from Mac renders across five points of the walk, the background 1 to 3 px from the cat's outline went from a median 1.06:1 to 1.22:1 (90th percentile 1.56:1 to 1.73:1). `tests/unit/test_loading_screen.c` checks that the strips cover the 256 px from the floor up, full width, red only, from the inner red down to the outer ring's red, never above 35% opacity, each fainter than the one below and drawn after the backdrop. `tools/pause_render.py --loading` draws the loading screen on the Mac, so its contrast can be measured from real pixels.
 
+### 190. A new chapter's autosave stopped the frame
+
+At each chapter start `take_checkpoint` stored the autosave and the chapter's slot on the main thread: `game_save_store_as_newest` read both save files to find the newest serial, then wrote the autosave, and `game_save_store_chapter` wrote `chapter_NN.txt`. With textures streaming, the card made those four opens cost 61 to 210 ms in one frame. Settings saves from Options did the same. Native backup writes go through the SDK's card requests (`func_0206a270` moves each page through its own buffer), off the game's frame.
+
+The class: every save write. Guard: `game_save.c` and `game_settings.c` copy what they store and post it to `work_queue.c`, one thread that runs posted work in order; the newest-serial lookup runs there too. Every load, `game_save_erase_all` and `game_settings_load` wait for the queue first, and stopping the app waits for it, so a read never sees a half-written save. A full queue runs the write in place after waiting. `tests/unit/test_game_save.c` holds the host queue and checks that the stores leave the card untouched until a load waits for them, with the serial still counting up.
+
 ## Still open
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.

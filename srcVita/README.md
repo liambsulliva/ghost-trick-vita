@@ -251,7 +251,7 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 
 The app opens on the title screen (`src/app/title_menu.c`), as does the pause menu's Title entry and the end of the story. With a save it shows Chapter Select, Continue (picked first), New Game, Options, Language and the trash can, which erases every save after asking. Without one it shows New Game, Options and Language. Once the story has been finished, a notebook button at the top left opens the People screen with every note. The d-pad, left stick or a tap moves between them, CROSS picks and CIRCLE backs out of a screen.
 
-The pause menu keeps settings in `ux0:data/ghosttrick/settings.txt`, the Manual Save and Autosave slots in `save_manual.txt` and `save_auto.txt`, and each chapter's start in `chapter_NN.txt`; the saves use `src/app/game_save.c`'s text format. A save holds the state at the start of the current script.
+The pause menu keeps settings in `ux0:data/ghosttrick/settings.txt`, the Manual Save and Autosave slots in `save_manual.txt` and `save_auto.txt`, and each chapter's start in `chapter_NN.txt`; the saves use `src/app/game_save.c`'s text format. A save holds the state at the start of the current script. Saves and settings are written by one thread that runs writes in order (`src/vita/work_queue.c`), and every load waits for it.
 
 ## Debug controls
 
