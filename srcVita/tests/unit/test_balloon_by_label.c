@@ -88,6 +88,7 @@ static void start_with_a_route_step(const char *balloon_name)
 
 static void open_a_balloon_with_only_a_label(void)
 {
+    machine.mode_byte = SCRIPT_MODE_NORMAL;
     machine.balloons[0].in_use = 1;
     machine.balloons[0].label = "m_label_only";
     machine.balloons[0].tap_group = SCRIPT_TAP_GROUP_RIGHT;

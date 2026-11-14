@@ -1400,6 +1400,14 @@ The class: anything that sets the swirl, the ops and the time leap alike, since 
 
 Guard: the HUD view carries `swirl_is_on`, and `draw_side_hud` draws nothing while it is set. `tests/unit/test_script_ui_view.c` draws the side HUD with the swirl on and off; `tests/unit/test_ui_off_hidden_picture.c` checks the view reports the swirl and not the film strip.
 
+### 196. Tap balloons answered SQUARE and TRIANGLE during scripted events
+
+Reported: a tap balloon could be opened with SQUARE or TRIANGLE while a scripted event played in the living world, which broke into the event. The port took a tap whenever the world was not paused and the picture was not hidden, in any mode. Native has two rules. The tap balloon ops 0x45, 0x46 and 0x47 (`func_02010394`, `func_02010440`, `func_020104b4`, from `func_02023fdc`) close the balloon in the left slot and open nothing while the game byte at `game+0xa` (`func_02011320`) is 2, demo mode, the mode a scripted event or a trick plays out in. The right slot's balloon (class `data_020a86a4`, ops 0x4c, 0x4e and 0x4f) runs `func_02045cf8` each tick: it shows only once that byte is 3, normal play with the player in control, and the swirl bit (`func_0203435c`) and bit 15 of `game+0xc` (`func_02045ec4`) are clear, and it hides as soon as either changes.
+
+The class: every tap balloon, both slots, and every way to tap one (SQUARE, TRIANGLE, the touch screen and the route pad). Not modelled: bit 15 of `game+0xc`, and ops 0x47 and 0x4f, which the port does not run.
+
+Guard: `script_balloons_are_live` (normal play and the picture not hidden) gates the tap, the route pad's balloon lookup and, through the HUD view's `tap_balloons_are_live`, the drawing and the touch hit test. A balloon stays open while it is not live and comes back when the player has control again. The left slot's ops close the balloon there and open nothing in demo mode. `tests/unit/test_balloons_only_in_normal_play.c`.
+
 ## Still open
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.

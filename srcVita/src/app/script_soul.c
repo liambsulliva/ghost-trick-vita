@@ -886,6 +886,7 @@ static void report_hud(struct script_machine *machine)
     view.narration_arrow_is_on = script_narration_wants_a_press(&machine->narration);
     view.soul_view_is_on = machine->soul.is_on;
     view.picture_is_hidden = script_machine_picture_is_hidden(machine);
+    view.tap_balloons_are_live = script_balloons_are_live(machine);
     view.swirl_is_on = machine->swirl_is_on;
     view.active_ghost = machine->soul.active_ghost;
     view.rewind_select_ticks = machine->soul.rewind_select_ticks;
@@ -2740,7 +2741,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         take_character_button(machine);
     }
     if (soul->tap_group_is_pending != 0) {
-        if (!machine->pause_bit && !script_machine_picture_is_hidden(machine)) {
+        if (!machine->pause_bit && script_balloons_are_live(machine)) {
             script_balloons_tap(machine, soul->tap_group_is_pending);
             soul->taps_taken = soul->taps_taken + 1;
         }
@@ -3062,6 +3063,9 @@ int script_soul_route_balloon_group(const struct script_machine *machine, const 
 {
     int balloon;
 
+    if (!script_balloons_are_live(machine)) {
+        return 0;
+    }
     balloon = balloon_named(machine, name);
     return balloon < 0 ? 0 : machine->balloons[balloon].tap_group;
 }

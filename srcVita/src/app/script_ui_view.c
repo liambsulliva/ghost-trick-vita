@@ -905,7 +905,7 @@ static void draw_tap_balloons(void)
 {
     int index;
 
-    if (hud.soul_view_is_on || hud.picture_is_hidden || the_picture_is_covered()) {
+    if (hud.soul_view_is_on || !hud.tap_balloons_are_live || the_picture_is_covered()) {
         return;
     }
     for (index = 0; index < TAP_BALLOON_MAX; index++) {
@@ -950,7 +950,7 @@ int script_ui_view_tap_balloon_kind_at(float x, float y)
 {
     int index;
 
-    if (hud.soul_view_is_on || hud.picture_is_hidden || the_picture_is_covered()) {
+    if (hud.soul_view_is_on || !hud.tap_balloons_are_live || the_picture_is_covered()) {
         return 0;
     }
     for (index = 0; index < TAP_BALLOON_MAX; index++) {

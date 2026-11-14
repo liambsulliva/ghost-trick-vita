@@ -104,6 +104,10 @@ static struct script_balloon *open_balloon(struct script_machine *machine, struc
     struct script_object *object;
     struct script_balloon *balloon;
 
+    if (tap_group == SCRIPT_TAP_GROUP_LEFT && machine->mode_byte == SCRIPT_MODE_DEMO) {
+        close_slot(machine, 0);
+        return NULL;
+    }
     object = script_machine_current_object(machine, vm);
     if (object == NULL || !object->actor.exists) {
         return NULL;
@@ -213,6 +217,11 @@ void script_balloons_tap(struct script_machine *machine, int tap_group)
             machine->outputs->balloon_closed(index);
         }
     }
+}
+
+int script_balloons_are_live(const struct script_machine *machine)
+{
+    return machine->mode_byte == SCRIPT_MODE_NORMAL && !script_machine_picture_is_hidden(machine);
 }
 
 int script_balloons_can_be_tapped(const struct script_machine *machine, int tap_group)

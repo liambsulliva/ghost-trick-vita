@@ -633,6 +633,7 @@ void script_balloons_count_down(struct script_machine *machine);
 void script_balloons_report_opened(struct script_machine *machine);
 void script_balloons_tap(struct script_machine *machine, int tap_group);
 int script_balloons_can_be_tapped(const struct script_machine *machine, int tap_group);
+int script_balloons_are_live(const struct script_machine *machine);
 void script_machine_note_press(struct script_machine *machine);
 int script_machine_text_takes_a_skip(const struct script_machine *machine);
 void script_machine_reload_scene(struct script_machine *machine);
