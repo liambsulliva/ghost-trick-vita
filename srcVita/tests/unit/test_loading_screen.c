@@ -11,6 +11,7 @@
 #include "texture_cache.h"
 
 #define FRAME_US 16666ull
+#define WALK_US 25000ull
 #define CHECK_NEAR(actual, expected) CHECK(fabsf((actual) - (expected)) < 0.001f)
 
 static const char widgets[] =
@@ -175,7 +176,9 @@ static void test_the_cat_walks_in_from_the_left_out_to_the_right_and_comes_round
     start = loading_screen_cat_feet_x();
     CHECK_NEAR(start, -60.0f);
     counts = counts_of(LOADING_TEXTURES, 0, 10);
-    loading_screen_update(&counts, 12ull * 16667ull);
+    for (frame = 0; frame < 12; frame++) {
+        loading_screen_update(&counts, WALK_US);
+    }
     CHECK_NEAR(loading_screen_cat_feet_x(), start + 3.0f * 60.0f);
     fake_renderer_clear_draws();
     loading_screen_draw();
@@ -199,6 +202,45 @@ static void test_the_cat_walks_in_from_the_left_out_to_the_right_and_comes_round
     CHECK(pause_menu_read_track_text("idle 0\n", 7u) == 1);
 }
 
+static void start_walking(void)
+{
+    start_screen();
+    fake_files_add_rgba_texture("tex/pause_cat_00.gtex", 256, 128);
+    CHECK(texture_cache_load_now("pause_cat_00")->state == CACHED_TEXTURE_READY);
+    CHECK_INT(pause_menu_read_cat_text(walk_table, (unsigned int)strlen(walk_table)), 2);
+    CHECK_INT(pause_menu_read_track_text(walk_track, (unsigned int)strlen(walk_track)), 1);
+    loading_screen_begin();
+}
+
+static void test_the_cat_walks_at_two_thirds_of_the_game_pace(void)
+{
+    struct loading_counts counts;
+    float start;
+    int frame;
+
+    start_walking();
+    start = loading_screen_cat_feet_x();
+    counts = counts_of(LOADING_TEXTURES, 0, 10);
+    for (frame = 0; frame < 60; frame++) {
+        loading_screen_update(&counts, FRAME_US + 1ull);
+    }
+    CHECK_NEAR(loading_screen_cat_feet_x(), start + 10.0f * 60.0f);
+}
+
+static void test_a_long_frame_moves_the_cat_one_drawing_at_most(void)
+{
+    struct loading_counts counts;
+    float start;
+
+    start_walking();
+    start = loading_screen_cat_feet_x();
+    counts = counts_of(LOADING_TEXTURES, 0, 10);
+    loading_screen_update(&counts, 500000ull);
+    CHECK_NEAR(loading_screen_cat_feet_x(), start);
+    loading_screen_update(&counts, 500000ull);
+    CHECK_NEAR(loading_screen_cat_feet_x(), start + 60.0f);
+}
+
 int main(void)
 {
     test_each_load_stage_fills_its_share_of_the_bar();
@@ -206,5 +248,7 @@ int main(void)
     test_the_screen_draws_a_fill_that_grows_with_progress();
     test_the_warm_up_draws_every_kind_of_primitive_unseen();
     test_the_cat_walks_in_from_the_left_out_to_the_right_and_comes_round_again();
+    test_the_cat_walks_at_two_thirds_of_the_game_pace();
+    test_a_long_frame_moves_the_cat_one_drawing_at_most();
     return test_finish("unit/loading_screen");
 }

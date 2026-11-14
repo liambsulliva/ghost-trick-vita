@@ -22,7 +22,8 @@
 #define TRACK_SLICE "loading_track"
 #define FILL_SLICE "loading_fill"
 #define WARM_UP_SIZE 1.0f
-#define WALK_TICK_US 16667ull
+#define WALK_TICK_US 25000ull
+#define WALK_TICKS_PER_FRAME_MOST 2
 
 static float shown_progress;
 static float target_progress;
@@ -82,18 +83,22 @@ static float walk_feet_x(int tick)
 static void walk_on(unsigned long long elapsed_us)
 {
     const struct pause_cat_frame *frame;
+    int ticks;
 
     if (pause_cat_walk_count() == 0) {
         return;
     }
     walk_us = walk_us + elapsed_us;
-    while (walk_us >= WALK_TICK_US) {
+    for (ticks = 0; ticks < WALK_TICKS_PER_FRAME_MOST && walk_us >= WALK_TICK_US; ticks++) {
         walk_us = walk_us - WALK_TICK_US;
         walk_tick = walk_tick + 1;
         frame = pause_cat_frame_at(pause_cat_walk_row(walk_tick));
         if (frame == NULL || walk_feet_x(walk_tick) + (float)frame->left >= (float)RENDERER_WIDTH) {
             walk_tick = 0;
         }
+    }
+    if (walk_us >= WALK_TICK_US) {
+        walk_us = 0;
     }
 }
 
