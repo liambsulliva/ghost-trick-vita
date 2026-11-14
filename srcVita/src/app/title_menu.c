@@ -366,6 +366,7 @@ static void open_submenu(int item)
 
 static void pick(void)
 {
+    picked = cursor;
     run_log_write("title pick %s", item_names[cursor]);
     switch (cursor) {
     case TITLE_ITEM_CONTINUE:
@@ -676,6 +677,25 @@ static void draw_logo(float camera_x, float alpha)
     draw_screen_texture(TITLE_LOGO_NAME, CENTRE_X - LOGO_WIDTH / 2.0f - camera_x, LOGO_CENTRE_Y - height / 2.0f, LOGO_WIDTH, alpha);
 }
 
+static int is_pressed(int item)
+{
+    if (item != picked || item == TITLE_ITEM_RECORD) {
+        return 0;
+    }
+    return phase == TITLE_PHASE_HOLDING || phase == TITLE_PHASE_HIDING || phase == TITLE_PHASE_PANNING_OUT || (phase == TITLE_PHASE_SHOWING && dialog.is_open);
+}
+
+static const char *item_style(int item, int is_icon)
+{
+    if (is_pressed(item) && pause_widgets_has(is_icon ? "slice.title_icon_pressed" : "slice.title_button_pressed")) {
+        return is_icon ? "title_icon_pressed" : "title_button_pressed";
+    }
+    if (item == cursor) {
+        return is_icon ? "title_icon_selected" : "title_button_selected";
+    }
+    return is_icon ? "title_icon" : "title_button";
+}
+
 static void draw_item(int item, float camera_x, float alpha)
 {
     const struct title_place *spot;
@@ -685,11 +705,7 @@ static void draw_item(int item, float camera_x, float alpha)
 
     spot = &places[item];
     is_icon = item == TITLE_ITEM_ERASE || item == TITLE_ITEM_RECORD;
-    if (is_icon) {
-        style = item == cursor ? "title_icon_selected" : "title_icon";
-    } else {
-        style = item == cursor ? "title_button_selected" : "title_button";
-    }
+    style = item_style(item, is_icon);
     x = spot->x - camera_x;
     pause_draw_slice(style, x - spot->width / 2.0f, spot->y - spot->height / 2.0f, spot->width, spot->height, alpha);
     if (item == TITLE_ITEM_ERASE) {

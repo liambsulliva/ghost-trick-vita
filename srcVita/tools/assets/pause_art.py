@@ -65,6 +65,12 @@ TITLE_SLICES = [
     ("title_icon", 48, 48, 11, TITLE_ORANGE, TITLE_EDGE, 3),
     ("title_icon_selected", 48, 48, 11, TITLE_BLUE, WHITE, 3),
 ]
+TITLE_PRESSED_SOURCE = "natives/android/charfiles/3d/06_id/10_select/cmn_button_01_iml4.tex.691230823"
+TITLE_PRESSED_CROP = (234, 116, 116, 116)
+TITLE_PRESSED_SLICES = [
+    ("title_button_pressed", 58, 18),
+    ("title_icon_pressed", 48, 15),
+]
 TRASH_CELL = (40, 44)
 SLICES = [
     ("row", 70, 62, 31, "black", PILL_GREY, 4),
@@ -466,6 +472,24 @@ def chamfer_pixels(work_folder, width, height, cut, fill, stroke, stroke_width):
     return supersampled(work_folder, width, height, ["-fill", fill, "-stroke", stroke, "-strokewidth", str(stroke_width * k), "-draw", shape])
 
 
+def resized_pixels(work_folder, pixels, size):
+    height, width = pixels.shape[:2]
+    source_path = os.path.join(work_folder, "pause_resize.rgba")
+    with open(source_path, "wb") as output:
+        output.write(np.ascontiguousarray(pixels).tobytes())
+    arguments = ["rgba:" + source_path, "-filter", "Box", "-resize", "%dx%d!" % (size, size)]
+    subprocess.run(["magick", "-size", "%dx%d" % (width, height), "-depth", "8"] + arguments + ["-depth", "8", "rgba:" + source_path], check=True, capture_output=True)
+    with open(source_path, "rb") as source:
+        resized = np.frombuffer(source.read(), dtype=np.uint8).reshape(size, size, 4).copy()
+    os.remove(source_path)
+    return resized
+
+
+def pressed_cells(packs, tool_path, work_folder):
+    page = remaster_page(packs, tool_path, work_folder, TITLE_PRESSED_SOURCE, TITLE_PRESSED_CROP)
+    return [("slice", "%s %d" % (name, corner), resized_pixels(work_folder, page, size)) for name, size, corner in TITLE_PRESSED_SLICES]
+
+
 def trash_pixels(work_folder):
     k = WIDGET_SUPERSAMPLE
     w, h = TRASH_CELL
@@ -511,7 +535,7 @@ def text_pixels(work_folder, font_path, points, color, text):
     return pixels
 
 
-def widget_cells(work_folder, fonts, widgets):
+def widget_cells(work_folder, fonts, widgets, extra_cells):
     font = fonts.decoded_path(widgets["font"])
     cells = []
     for style, color, points in (("row", WHITE, widgets["row_points"]), ("header", HEADER_ORANGE, widgets["row_points"]), ("bar", WHITE, widgets["bar_points"])):
@@ -532,7 +556,7 @@ def widget_cells(work_folder, fonts, widgets):
             cells.append(("flame", "%d %d" % (number, lit), flame_pixels(work_folder, font, number, lit, widgets["number_points"])))
     cells.append(("cell", "arrow_down", arrow_down_pixels(work_folder)))
     cells.append(("cell", "trash", trash_pixels(work_folder)))
-    return cells
+    return cells + extra_cells
 
 
 def pack_widget_cells(cells):
@@ -567,15 +591,15 @@ def preview_lines(widgets):
     return ["preview %s %d %d %d %d" % tuple([preview["plate"]] + list(preview["crop"]))]
 
 
-def bake_widgets(packs, work_folder, record, code, widgets):
+def bake_widgets(packs, tool_path, work_folder, record, code, widgets):
     fonts = narration.TextFonts(packs, work_folder)
     font_bytes = b"".join(fonts.pack_bytes(path) for path in sorted(set([widgets["font"]] + [language["font"] for language in widgets["languages"]])))
-    key = record.key_for(code, {"widgets": widgets, "slices": SLICES, "title_slices": TITLE_SLICES, "trash": TRASH_CELL, "flame": [FLAME_CELL, FLAME_SIZE], "glyphs": glyph_lines()}, font_bytes)
+    key = record.key_for(code, {"widgets": widgets, "slices": SLICES, "title_slices": TITLE_SLICES, "title_pressed": [TITLE_PRESSED_SOURCE, TITLE_PRESSED_CROP, TITLE_PRESSED_SLICES], "trash": TRASH_CELL, "flame": [FLAME_CELL, FLAME_SIZE], "glyphs": glyph_lines()}, font_bytes)
     relative_path = "textures/" + WIDGET_SHEET_NAME + ".gtex"
     gtex = record.read_if_current(relative_path, key)
     table = record.read_if_current(WIDGET_TABLE_PATH, key)
     if gtex is None or table is None:
-        sheet, lines = pack_widget_cells(widget_cells(work_folder, fonts, widgets))
+        sheet, lines = pack_widget_cells(widget_cells(work_folder, fonts, widgets, pressed_cells(packs, tool_path, work_folder)))
         table = ("\n".join(lines + glyph_lines() + preview_lines(widgets)) + "\n").encode("utf-8")
         gtex = asset_writers.gtex_bytes(sheet.shape[1], sheet.shape[0], asset_writers.FORMAT_RGBA8888, sheet.tobytes())
         record.store(relative_path, key, gtex)
@@ -592,7 +616,7 @@ def bake_pause_art(packs, tool_path, work_folder, record, code, pause, set_anima
     label_table, label_result = bake_labels(packs, work_folder, record, code, pause["label_font"], pause["labels"])
     files[LABEL_TABLE_PATH] = label_table
     spotlight = bake_spotlight(packs, tool_path, work_folder, record, code, pause["spotlight_source"])
-    widget_table, widget_result = bake_widgets(packs, work_folder, record, code, pause["widgets"])
+    widget_table, widget_result = bake_widgets(packs, tool_path, work_folder, record, code, pause["widgets"])
     files[WIDGET_TABLE_PATH] = widget_table
     people_table, people_results = pause_people.bake_people(packs, tool_path, work_folder, record, code, pause["people"], pause["widgets"]["font"], text_key)
     gallery_lines, gallery_results = pause_gallery.bake_gallery(packs, tool_path, work_folder, record, code, pause["people"]["illustrations"]) if "illustrations" in pause["people"] else ([], [])

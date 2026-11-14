@@ -26,6 +26,7 @@
 static const char widget_text[] =
     "slice title_button 18 0 0 64 56\nslice title_button_selected 18 64 0 64 56\n"
     "slice title_icon 14 128 0 48 48\nslice title_icon_selected 14 176 0 48 48\n"
+    "slice title_button_pressed 18 0 192 58 58\nslice title_icon_pressed 15 64 192 48 48\n"
     "slice button 28 0 64 64 56\nslice button_selected 28 64 64 64 56\nslice back 17 128 64 42 34\nslice box 22 0 128 56 56\nslice choice 17 64 128 42 34\n"
     "text title.continue 0 200 120 40\ntext title.chapter_select 0 240 200 40\ntext title.new_game 0 280 130 40\ntext title.options 0 320 110 40\ntext title.language 0 360 120 40\n"
     "text row.yes 0 400 40 30\ntext row.no 0 430 40 30\ntext row.reset_ask 0 460 200 30\ntext row.new_game_ask 0 490 200 30\n"
@@ -378,6 +379,57 @@ static void test_the_screen_fades_in_from_black_and_a_pick_flashes_white_holds_t
     CHECK_INT(title_menu_takes_request(&chapter), TITLE_REQUEST_NEW_GAME);
 }
 
+static int slice_draws(float x, float y, float width)
+{
+    const struct fake_draw *draw;
+    int count;
+    int index;
+
+    fake_renderer_clear_draws();
+    title_menu_draw();
+    count = 0;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        draw = fake_renderer_draw(index);
+        if (!draw->is_filled_rect && draw->texture_area.y == y / 512.0f && draw->texture_area.x >= x / 512.0f && draw->texture_area.x < (x + width) / 512.0f) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+static void test_a_picked_button_looks_pressed_through_the_hold_and_the_fade(void)
+{
+    start_with_art(1);
+    open_until_shown();
+    CHECK_INT(slice_draws(0.0f, 192.0f, 58.0f), 0);
+    CHECK_INT(slice_draws(64.0f, 0.0f, 64.0f), 3);
+    press(INPUT_CROSS);
+    CHECK_INT(title_menu_phase(), TITLE_PHASE_HOLDING);
+    CHECK_INT(slice_draws(0.0f, 192.0f, 58.0f), 3);
+    CHECK_INT(slice_draws(64.0f, 0.0f, 64.0f), 0);
+    wait_steps(HOLD_STEPS + FADE_STEPS / 2);
+    CHECK_INT(title_menu_phase(), TITLE_PHASE_HIDING);
+    CHECK_INT(slice_draws(0.0f, 192.0f, 58.0f), 3);
+    CHECK_INT(slice_draws(64.0f, 0.0f, 64.0f), 0);
+}
+
+static void test_the_trash_looks_pressed_while_its_ask_is_open_and_not_after_no(void)
+{
+    start_with_art(1);
+    open_until_shown();
+    press(INPUT_LEFT);
+    press(INPUT_DOWN);
+    press(INPUT_DOWN);
+    press(INPUT_RIGHT);
+    CHECK_INT(title_menu_cursor(), TITLE_ITEM_ERASE);
+    CHECK_INT(slice_draws(64.0f, 192.0f, 48.0f), 0);
+    press(INPUT_CROSS);
+    CHECK_INT(slice_draws(64.0f, 192.0f, 48.0f), 3);
+    press(INPUT_CIRCLE);
+    CHECK_INT(slice_draws(64.0f, 192.0f, 48.0f), 0);
+    CHECK_INT(slice_draws(176.0f, 0.0f, 48.0f), 3);
+}
+
 static void test_moving_the_cursor_plays_the_cursor_sound_and_a_submenu_pick_the_pick_sound(void)
 {
     start_with_art(1);
@@ -414,6 +466,8 @@ int main(void)
     test_a_cleared_game_shows_the_notebook_only_once_the_people_screen_is_loaded();
     test_the_screen_fades_in_from_black_and_a_pick_flashes_white_holds_then_fades_to_black();
     test_moving_the_cursor_plays_the_cursor_sound_and_a_submenu_pick_the_pick_sound();
+    test_a_picked_button_looks_pressed_through_the_hold_and_the_fade();
+    test_the_trash_looks_pressed_while_its_ask_is_open_and_not_after_no();
     test_the_menu_is_not_ready_without_its_art();
     return test_finish("unit/title_menu");
 }
