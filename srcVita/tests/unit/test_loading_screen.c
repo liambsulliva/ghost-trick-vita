@@ -5,6 +5,7 @@
 #include "fakes/fake_renderer.h"
 #include "fakes/fake_texture_files.h"
 #include "loading_screen.h"
+#include "pause_menu.h"
 #include "pause_widgets.h"
 #include "test_support.h"
 #include "texture_cache.h"
@@ -16,6 +17,16 @@ static const char widgets[] =
     "text bar.loading 0 0 120 30\n"
     "slice loading_track 8 0 30 24 16\n"
     "slice loading_fill 5 64 30 16 10\n";
+
+static const char walk_table[] =
+    "pages 1\n"
+    "frame t_walk 0 2 0 0 0 100 80 -40 -70\n"
+    "frame t_walk 1 2 0 102 0 100 80 -30 -72\n";
+
+static const char walk_track[] =
+    "idle 0\n"
+    "stride 60.000\n"
+    "walk 0\nwalk 0\nwalk 1\nwalk 1\n";
 
 static struct loading_counts counts_of(enum loading_stage stage, int done, int total)
 {
@@ -130,11 +141,70 @@ static void test_the_warm_up_draws_every_kind_of_primitive_unseen(void)
     }
 }
 
+static int cat_draws_at(float x)
+{
+    const struct fake_draw *draw;
+    int found;
+    int index;
+
+    found = 0;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        draw = fake_renderer_draw(index);
+        if (!draw->is_filled_rect && fabsf(draw->screen_area.x - x) < 0.5f && fabsf(draw->screen_area.width - 100.0f) < 0.01f) {
+            found = found + 1;
+        }
+    }
+    return found;
+}
+
+static void test_the_cat_walks_in_from_the_left_out_to_the_right_and_comes_round_again(void)
+{
+    struct loading_counts counts;
+    float start;
+    float last;
+    float farthest;
+    int came_round;
+    int frame;
+
+    start_screen();
+    fake_files_add_rgba_texture("tex/pause_cat_00.gtex", 256, 128);
+    CHECK(texture_cache_load_now("pause_cat_00")->state == CACHED_TEXTURE_READY);
+    CHECK_INT(pause_menu_read_cat_text(walk_table, (unsigned int)strlen(walk_table)), 2);
+    CHECK_INT(pause_menu_read_track_text(walk_track, (unsigned int)strlen(walk_track)), 1);
+    loading_screen_begin();
+    start = loading_screen_cat_feet_x();
+    CHECK_NEAR(start, -60.0f);
+    counts = counts_of(LOADING_TEXTURES, 0, 10);
+    loading_screen_update(&counts, 12ull * 16667ull);
+    CHECK_NEAR(loading_screen_cat_feet_x(), start + 3.0f * 60.0f);
+    fake_renderer_clear_draws();
+    loading_screen_draw();
+    CHECK_INT(cat_draws_at(start + 3.0f * 60.0f - 40.0f), 1);
+    loading_screen_begin();
+    last = start;
+    farthest = start;
+    came_round = 0;
+    for (frame = 0; frame < 400 && !came_round; frame++) {
+        loading_screen_update(&counts, FRAME_US + 1ull);
+        if (loading_screen_cat_feet_x() < last) {
+            came_round = 1;
+            CHECK_NEAR(loading_screen_cat_feet_x(), start);
+        }
+        last = loading_screen_cat_feet_x();
+        farthest = last > farthest ? last : farthest;
+    }
+    CHECK(came_round);
+    CHECK(farthest - 40.0f >= (float)RENDERER_WIDTH - 60.0f);
+    CHECK(farthest - 30.0f < (float)RENDERER_WIDTH);
+    CHECK(pause_menu_read_track_text("idle 0\n", 7u) == 1);
+}
+
 int main(void)
 {
     test_each_load_stage_fills_its_share_of_the_bar();
     test_the_bar_eases_forward_and_never_goes_back();
     test_the_screen_draws_a_fill_that_grows_with_progress();
     test_the_warm_up_draws_every_kind_of_primitive_unseen();
+    test_the_cat_walks_in_from_the_left_out_to_the_right_and_comes_round_again();
     return test_finish("unit/loading_screen");
 }

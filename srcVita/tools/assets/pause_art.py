@@ -166,12 +166,27 @@ def pin_frames(cells):
         dx, dy = ref_toe - toe, ref_bottom - bottom
         best = min(range(-BODY_SEARCH, BODY_SEARCH + 1), key=lambda k: (int(np.logical_xor(body_band(shifted(mask, dx, dy + k), ref_toe, ref_bottom), target).sum()), abs(k)))
         pins.append((dx, dy + best))
-    ref_mask = masks[reference]
-    lower = ref_mask[ref_bottom - BODY_BAND[0]:ref_bottom + 1]
-    columns = lower.sum(0)
-    anchor_x = round(float((np.arange(len(columns)) * columns).sum() / columns.sum())) + origin[0]
-    anchor_y = ref_bottom + 1 + origin[1]
+    anchor_x, anchor_y = paw_anchor(masks[reference], ref_bottom, origin)
     return [(c["left"] + dx - anchor_x, c["top"] + dy - anchor_y) for c, (dx, dy) in zip(cells, pins)]
+
+
+def paw_anchor(mask, bottom, origin):
+    columns = mask[bottom - BODY_BAND[0]:bottom + 1].sum(0)
+    return round(float((np.arange(len(columns)) * columns).sum() / columns.sum())) + origin[0], bottom + 1 + origin[1]
+
+
+def walk_frames(cells):
+    origin = (min(c["left"] for c in cells), min(c["top"] for c in cells))
+    size = (max(c["top"] + c["pixels"].shape[0] for c in cells) - origin[1], max(c["left"] + c["pixels"].shape[1] for c in cells) - origin[0])
+    first = placed_mask(cells[0]["pixels"], cells[0]["left"], cells[0]["top"], origin, size)
+    anchor_x, anchor_y = paw_anchor(first, paw_point(first)[1], origin)
+    return [(c["left"] - anchor_x, c["top"] - anchor_y) for c in cells]
+
+
+def walk_stride(frames, mirror):
+    xs = [frame["x"] for frame in frames]
+    stride = xs[-1] - xs[0] + ((xs[1] - xs[0]) + (xs[-1] - xs[-2])) / 2.0
+    return (-stride if mirror else stride) * CAT_SCREEN_PIXELS_PER_DS_PIXEL
 
 
 def grid_for(placed):
@@ -256,7 +271,7 @@ def cat_frames(packs, tool_path, work_folder, timelines, crops, animations):
             pixels = cell_pixels(pages[frame["texture"]], frame, animation["mirror"])
             left, top = source_left_top(frame, pixels, animation["mirror"])
             cells.append({"pixels": pixels, "left": left, "top": top, "ticks": frame["ticks"], "key": frame_key(frame)})
-        per_animation.append((animation["name"], cells, pin_frames(cells)))
+        per_animation.append((animation["name"], cells, walk_frames(cells) if animation.get("walk") else pin_frames(cells)))
     return per_animation
 
 
@@ -387,7 +402,7 @@ def cat_animation_entries(set_animations, table_texts, wanted):
     missing = [entry["name"] for entry in wanted if entry["name"] not in by_name or TABLE_PREFIX + entry["name"] not in table_texts]
     if missing:
         raise ValueError("pause cat animations not in the set: " + ", ".join(missing))
-    return [{"name": TABLE_PREFIX + entry["name"], "timeline": by_name[entry["name"]]["timeline"], "mirror": entry["mirror"], "text": table_texts[TABLE_PREFIX + entry["name"]]} for entry in wanted]
+    return [{"name": TABLE_PREFIX + entry["name"], "timeline": by_name[entry["name"]]["timeline"], "mirror": entry["mirror"], "walk": entry.get("walk", False), "text": table_texts[TABLE_PREFIX + entry["name"]]} for entry in wanted]
 
 
 def tick_rows(rows, name):
@@ -412,6 +427,10 @@ def cat_track_text(cat_table, animations, fidget):
     turn = played_ticks(tick_rows(rows, animations[fidget["animation"]]["name"]), fidget["play"])
     lines = ["every %d" % fidget["every"], "link %d" % fidget["link"], "dissolve %d" % fidget["dissolve"]]
     lines += ["idle %d" % row for row in idle] + ["fidget %d" % row for row in turn]
+    for animation in animations:
+        if animation.get("walk"):
+            lines += ["stride %.3f" % walk_stride(frames_from_text(animation["text"]), animation["mirror"])]
+            lines += ["walk %d" % row for row in tick_rows(rows, animation["name"])]
     return ("\n".join(lines) + "\n").encode("ascii")
 
 

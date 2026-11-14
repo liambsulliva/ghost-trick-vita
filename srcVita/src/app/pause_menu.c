@@ -68,6 +68,9 @@ static int fidget_count;
 static int fidget_every;
 static int fidget_link;
 static int dissolve_ticks;
+static int walk_rows[PAUSE_CAT_TICKS_MOST];
+static int walk_count;
+static float walk_stride;
 static struct pause_label labels[PAUSE_MENU_ITEM_COUNT];
 static int label_count;
 static float arrow_x;
@@ -185,10 +188,16 @@ int pause_menu_read_track_text(const char *text, unsigned int text_size)
     fidget_every = 0;
     fidget_link = 0;
     dissolve_ticks = 0;
+    walk_count = 0;
+    walk_stride = 0.0f;
     offset = 0;
     while (offset < text_size) {
         offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
-        if (sscanf(line, "idle %d", &row) == 1) {
+        if (sscanf(line, "walk %d", &row) == 1) {
+            add_row(walk_rows, &walk_count, row);
+        } else if (sscanf(line, "stride %f", &walk_stride) == 1) {
+            continue;
+        } else if (sscanf(line, "idle %d", &row) == 1) {
             add_row(idle_rows, &idle_count, row);
         } else if (sscanf(line, "fidget %d", &row) == 1) {
             add_row(fidget_rows, &fidget_count, row);
@@ -261,6 +270,7 @@ int pause_menu_load(const char *assets_folder)
     cat_pages = 0;
     idle_count = 0;
     fidget_count = 0;
+    walk_count = 0;
     label_count = 0;
     arrow_size = 0.0f;
     frames = read_table(assets_folder, CAT_TABLE_PATH, pause_menu_read_cat_text);
@@ -286,6 +296,21 @@ const struct pause_cat_frame *pause_cat_frame_at(int row)
 int pause_cat_page_count(void)
 {
     return cat_pages;
+}
+
+int pause_cat_walk_count(void)
+{
+    return walk_stride > 0.0f ? walk_count : 0;
+}
+
+int pause_cat_walk_row(int tick)
+{
+    return walk_count > 0 && tick >= 0 ? walk_rows[tick % walk_count] : -1;
+}
+
+float pause_cat_walk_stride(void)
+{
+    return walk_stride;
 }
 
 void pause_cat_track_restart(void)
@@ -946,6 +971,11 @@ static void draw_cat_frame(int row, float feet_x, float alpha)
     }
     cat_page_name(name, sizeof(name), frame->page);
     draw_part(texture_cache_use_or_start_loading(name), whole(feet_x) + (float)frame->left, FEET_Y + (float)frame->top, frame->x, frame->y, frame->width, frame->height, alpha);
+}
+
+void pause_cat_draw(int row, float feet_x, float alpha)
+{
+    draw_cat_frame(row, feet_x, alpha);
 }
 
 static float cursor_weight(int item)

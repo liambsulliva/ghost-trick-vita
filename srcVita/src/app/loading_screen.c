@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "loading_screen.h"
+#include "pause_menu.h"
 #include "pause_widgets.h"
 #include "renderer.h"
 #include "texture_cache.h"
@@ -21,10 +22,13 @@
 #define TRACK_SLICE "loading_track"
 #define FILL_SLICE "loading_fill"
 #define WARM_UP_SIZE 1.0f
+#define WALK_TICK_US 16667ull
 
 static float shown_progress;
 static float target_progress;
 static unsigned long long shown_us;
+static unsigned long long walk_us;
+static int walk_tick;
 
 static float share_of(int done, int total)
 {
@@ -56,8 +60,46 @@ void loading_screen_begin(void)
     shown_progress = 0.0f;
     target_progress = 0.0f;
     shown_us = 0;
+    walk_us = 0;
+    walk_tick = 0;
     texture_cache_use_or_start_loading(BACKDROP);
     texture_cache_use_or_start_loading(PAUSE_WIDGET_SHEET);
+}
+
+static float walk_start_x(void)
+{
+    const struct pause_cat_frame *first;
+
+    first = pause_cat_frame_at(pause_cat_walk_row(0));
+    return first == NULL ? 0.0f : -(float)(first->left + (int)first->width);
+}
+
+static float walk_feet_x(int tick)
+{
+    return walk_start_x() + (float)(tick / pause_cat_walk_count()) * pause_cat_walk_stride();
+}
+
+static void walk_on(unsigned long long elapsed_us)
+{
+    const struct pause_cat_frame *frame;
+
+    if (pause_cat_walk_count() == 0) {
+        return;
+    }
+    walk_us = walk_us + elapsed_us;
+    while (walk_us >= WALK_TICK_US) {
+        walk_us = walk_us - WALK_TICK_US;
+        walk_tick = walk_tick + 1;
+        frame = pause_cat_frame_at(pause_cat_walk_row(walk_tick));
+        if (frame == NULL || walk_feet_x(walk_tick) + (float)frame->left >= (float)RENDERER_WIDTH) {
+            walk_tick = 0;
+        }
+    }
+}
+
+float loading_screen_cat_feet_x(void)
+{
+    return pause_cat_walk_count() == 0 ? 0.0f : walk_feet_x(walk_tick);
 }
 
 void loading_screen_update(const struct loading_counts *counts, unsigned long long elapsed_us)
@@ -66,6 +108,7 @@ void loading_screen_update(const struct loading_counts *counts, unsigned long lo
     float step;
 
     shown_us = shown_us + elapsed_us;
+    walk_on(elapsed_us);
     progress = loading_screen_progress(counts);
     if (progress > target_progress) {
         target_progress = progress;
@@ -114,6 +157,9 @@ void loading_screen_draw(void)
     backdrop = texture_cache_use_or_start_loading(BACKDROP);
     if (backdrop != NULL) {
         pause_draw_from(BACKDROP, 0.0f, 0.0f, (float)backdrop->width, (float)backdrop->height, 0.0f, 0.0f, (float)RENDERER_WIDTH, (float)RENDERER_HEIGHT, alpha);
+    }
+    if (pause_cat_walk_count() > 0) {
+        pause_cat_draw(pause_cat_walk_row(walk_tick), walk_feet_x(walk_tick), alpha);
     }
     pause_draw_floor(alpha);
     pause_draw_text(LOADING_TEXT, TEXT_LEFT, FLOOR_TOP + FLOOR_HEIGHT / 2.0f, PAUSE_ANCHOR_LEFT, alpha);

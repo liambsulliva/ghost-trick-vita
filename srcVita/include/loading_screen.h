@@ -18,6 +18,7 @@ float loading_screen_progress(const struct loading_counts *counts);
 void loading_screen_begin(void);
 void loading_screen_update(const struct loading_counts *counts, unsigned long long elapsed_us);
 float loading_screen_shown_progress(void);
+float loading_screen_cat_feet_x(void);
 void loading_screen_draw(void);
 void loading_screen_warm_up_the_renderer(void);
 

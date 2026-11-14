@@ -36,6 +36,32 @@ class CatTrackTextTest(unittest.TestCase):
         self.assertEqual([line for line in lines if line.startswith("fidget")], ["fidget 2", "fidget 2", "fidget 2", "fidget 3", "fidget 2", "fidget 2"])
 
 
+class WalkTest(unittest.TestCase):
+    def walk_text(self, xs):
+        return "".join("frame t_walk_00 2 %.1f -90 37 50 0 0 0.3 0.5\n" % x for x in xs)
+
+    def test_a_walk_keeps_the_art_s_own_steps_instead_of_pinning_the_paws(self):
+        cells = [{"pixels": standing_cat(0), "left": -30 + 8 * step, "top": -60 + step % 2} for step in range(4)]
+        places = pause_art.walk_frames(cells)
+        self.assertEqual([left - places[0][0] for left, _ in places], [0, 8, 16, 24])
+        self.assertEqual([top - places[0][1] for _, top in places], [0, 1, 0, 1])
+
+    def test_the_stride_carries_one_cycle_on_to_where_the_next_one_starts(self):
+        frames = pause_art.frames_from_text(self.walk_text([-174.0, -173.0, -150.0, -140.0]))
+        ds = (-140.0 + 174.0) + (1.0 + 10.0) / 2.0
+        self.assertAlmostEqual(pause_art.walk_stride(frames, False), ds * pause_art.CAT_SCREEN_PIXELS_PER_DS_PIXEL)
+        self.assertAlmostEqual(pause_art.walk_stride(frames, True), -ds * pause_art.CAT_SCREEN_PIXELS_PER_DS_PIXEL)
+
+    def test_the_track_lists_the_walk_s_rows_tick_by_tick_after_its_stride(self):
+        table = cat_table([("t_idle", 1), ("t_walk", 2), ("t_walk", 1)])
+        animations = [{"name": "t_idle"}, {"name": "t_idle"}, {"name": "t_walk", "walk": True, "mirror": False, "text": self.walk_text([-10.0, -8.0, -4.0])}]
+        fidget = {"animation": 1, "play": [[0, 0]], "every": 9, "link": 0, "dissolve": 0}
+        lines = pause_art.cat_track_text(table, animations, fidget).decode("ascii").splitlines()
+        stride = lines.index(next(line for line in lines if line.startswith("stride")))
+        self.assertEqual(lines[stride + 1:], ["walk 1", "walk 1", "walk 2"])
+        self.assertAlmostEqual(float(lines[stride].split()[1]), 9.0 * pause_art.CAT_SCREEN_PIXELS_PER_DS_PIXEL, places=2)
+
+
 class GridTest(unittest.TestCase):
     def test_the_grid_covers_every_frame_and_its_anchor_scales_to_a_whole_pixel(self):
         placed = [(np.zeros((168, 204, 4)), -100, -168), (np.zeros((40, 300, 4)), -150, -10)]

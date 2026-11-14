@@ -300,6 +300,11 @@
       {
         "name": "st01_neko_002",
         "mirror": true
+      },
+      {
+        "name": "st01_neko_007",
+        "mirror": false,
+        "walk": true
       }
     ],
     "cat_fidget": {

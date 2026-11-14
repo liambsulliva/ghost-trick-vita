@@ -66,6 +66,10 @@ void pause_cat_track_restart(void);
 struct pause_cat_step pause_cat_track_next(void);
 const struct pause_cat_frame *pause_cat_frame_at(int row);
 int pause_cat_page_count(void);
+int pause_cat_walk_count(void);
+int pause_cat_walk_row(int tick);
+float pause_cat_walk_stride(void);
+void pause_cat_draw(int row, float feet_x, float alpha);
 
 void pause_menu_open(void);
 void pause_menu_open_on_record(void);
