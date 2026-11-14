@@ -335,6 +335,9 @@ struct script_soul {
     int leaving_shows_the_mark;
     float camera_follow_x;
     int free_camera_moved_this_tick;
+    int free_camera_holds;
+    float free_camera_core_x;
+    float free_camera_core_y;
     float camera_carry_x;
     float camera_carry_y;
     int camera_was_saved;

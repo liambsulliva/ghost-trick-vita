@@ -245,6 +245,68 @@ static void test_the_right_stick_pans_the_ghost_view_only_while_the_player_holds
     CHECK_INT(camera_x_after_holding_the_right_stick(TICKS_FOR_A_DRAG), camera_before);
 }
 
+static void give_a_wide_room(void)
+{
+    machine.room = 0;
+    machine.room_bounds[0].width = 1024;
+    machine.room_bounds[0].height = 192;
+}
+
+static void run_frames(int ticks, unsigned int held, float stick_x, float right_stick_x)
+{
+    struct input_state frame;
+    int tick;
+
+    for (tick = 0; tick < ticks; tick++) {
+        memset(&frame, 0, sizeof(frame));
+        frame.pressed = tick == 0 ? held : 0u;
+        frame.held = held;
+        frame.stick_x = stick_x;
+        frame.right_stick_x = right_stick_x;
+        script_input_frame(&pad, &machine, &frame);
+        script_soul_step_before_tasks(&machine);
+    }
+}
+
+static void test_a_living_world_pan_stays_until_the_core_moves(void)
+{
+    int panned_to;
+
+    start();
+    give_a_wide_room();
+    machine.object_count = 1;
+    place_core(0, "shadanki", GATE_X);
+    script_soul_set_first_core(&machine, 0, 0);
+    run_frames(TICKS_FOR_A_DRAG, INPUT_RIGHT, 0.0f, 0.0f);
+    panned_to = machine.camera_x;
+    CHECK(panned_to - machine.world_origin_x > GATE_X);
+    run_frames(2 * TICKS_FOR_A_DRAG, 0u, 0.0f, 0.0f);
+    CHECK_INT(machine.camera_x, panned_to);
+    machine.objects[0].actor.x = GATE_X - 20;
+    run_frames(2 * TICKS_FOR_A_DRAG, 0u, 0.0f, 0.0f);
+    CHECK(machine.camera_x < panned_to);
+}
+
+static void test_a_ghost_view_pan_while_aiming_is_not_pulled_back_to_the_tip(void)
+{
+    int camera_before;
+    int panned_to;
+
+    start();
+    give_a_wide_room();
+    machine.object_count = 1;
+    place_core(0, "body", BODY_X);
+    script_soul_set_first_core(&machine, 0, 0);
+    script_soul_step_before_tasks(&machine);
+    machine.soul.is_on = 1;
+    camera_before = machine.camera_x;
+    run_frames(TICKS_FOR_A_DRAG, 0u, -1.0f, 1.0f);
+    panned_to = machine.camera_x;
+    CHECK(panned_to > camera_before + TICKS_FOR_A_DRAG);
+    run_frames(TICKS_FOR_A_DRAG, 0u, 0.0f, 0.0f);
+    CHECK_INT(machine.camera_x, panned_to);
+}
+
 int main(void)
 {
     test_the_d_pad_and_cross_choose_a_panel();
@@ -254,5 +316,7 @@ int main(void)
     test_a_direction_in_the_living_world_pans_the_camera_and_leaves_the_ghost_view_shut();
     test_the_camera_stays_put_while_a_scripted_event_holds_the_player();
     test_the_right_stick_pans_the_ghost_view_only_while_the_player_holds_the_chain();
+    test_a_living_world_pan_stays_until_the_core_moves();
+    test_a_ghost_view_pan_while_aiming_is_not_pulled_back_to_the_tip();
     return test_finish("unit/script_input");
 }

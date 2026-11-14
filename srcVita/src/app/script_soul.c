@@ -74,6 +74,7 @@
 #define WHITE_WIPE_OUT_TICKS 90
 #define WHITE_WIPE_GREY_AFTER_TICKS 42
 #define CAMERA_FREE_SPEED_PIXELS 4
+#define FREE_CAMERA_CORE_SLACK 1.0f
 #define BALLOON_NAMED_BY_LABEL "label"
 
 
@@ -1908,7 +1909,8 @@ static void pan_the_ghost_view(struct script_machine *machine)
         soul->view_was_panned = 0;
         return;
     }
-    if (soul->tip_input_is_held) {
+    soul->free_camera_holds = 0;
+    if (soul->tip_input_is_held && (soul->held_x != 0.0f || soul->held_y != 0.0f || soul->touch_drags_the_tip)) {
         soul->view_was_panned = 0;
     }
     if ((soul->view_pan_x == 0.0f && soul->view_pan_y == 0.0f) || soul->camera_is_locked || a_scripted_event_holds_the_soul(machine)) {
@@ -1938,13 +1940,19 @@ static void follow_core_with_camera(struct script_machine *machine)
 
         core_position(machine, soul->exchange.target_object, soul->exchange.target_slot, &target_x, &target_y);
         follow_core_in_ghost_view(machine, (core_x + target_x) / 2.0f, (core_y + target_y) / 2.0f);
-    } else if (soul->is_on && soul->tip_input_is_held && soul->tip_is_out) {
+    } else if (soul->is_on && soul->tip_input_is_held && soul->tip_is_out && !soul->view_was_panned) {
         follow_point_in_ghost_view(machine, soul->tip_x, soul->tip_y, GHOST_TIP_FOLLOW_LEFT, GHOST_TIP_FOLLOW_RIGHT, GHOST_TIP_FOLLOW_TOP, GHOST_TIP_FOLLOW_BOTTOM);
     } else if (soul->is_on && !soul->view_was_panned) {
         follow_core_in_ghost_view(machine, core_x, core_y);
     } else if (!soul->is_on && soul->free_camera_moved_this_tick) {
         soul->camera_follow_x = 0.0f;
+        soul->free_camera_holds = 1;
+        soul->free_camera_core_x = core_x;
+        soul->free_camera_core_y = core_y;
+    } else if (!soul->is_on && soul->free_camera_holds && fabsf(core_x - soul->free_camera_core_x) <= FREE_CAMERA_CORE_SLACK && fabsf(core_y - soul->free_camera_core_y) <= FREE_CAMERA_CORE_SLACK) {
+        return;
     } else if (!soul->is_on) {
+        soul->free_camera_holds = 0;
         follow_core_in_normal_play(machine, core_x, core_y);
     }
 }

@@ -100,7 +100,7 @@ After updating this repository, run the setup script again and copy the files ac
 The port follows the DS game's own code wherever it can. The changes below are deliberate. They make it play better on the Vita, and they are not in the original:
 
 - **Narration can be hurried.** A CROSS press while Sissel's narration fades in shows the whole page at once, as it does for speech bubbles. The next press moves on, even on pages the original times by itself.
-- **The right stick pans the ghost view.** While the player holds the chain, the left stick moves the soul and the right stick pans the camera. The camera stays where it was panned until the soul is aimed again.
+- **The right stick pans the ghost view.** While the player holds the chain, the left stick moves the soul and the right stick pans the camera. The camera stays where it was panned until the soul is aimed again. In the living world, a pan stays until the core moves.
 - **Holding CIRCLE moves through dialogue.** While talk or narration shows, a held CIRCLE finishes each page and moves on as fast as the game allows. It never picks a choice.
 - **Timed system lines can be skipped.** Lines the original closes by itself after a short hold, such as "New info is added", also close on a CROSS press or a held CIRCLE, like any other dialogue.
 - **Save at any point.** The pause menu's Save keeps the game whenever the player has the controls, not only at the game's own checkpoints. Loading picks up again from the start of the scene it was saved in.
