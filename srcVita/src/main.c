@@ -4,6 +4,7 @@
 #include <psp2/kernel/processmgr.h>
 #include "clock.h"
 #include "command_file.h"
+#include "command_reader.h"
 #include "device_stats.h"
 #include "build_info.h"
 #include "file.h"
@@ -177,10 +178,9 @@ static int run_pending_commands(void)
     struct command command;
     int quit_requested;
 
-    if (file_read_whole(COMMANDS_PATH, &text, &text_size) != FILE_OK) {
+    if (!command_reader_take(&text, &text_size)) {
         return 0;
     }
-    file_delete(COMMANDS_PATH);
 
     quit_requested = 0;
     offset = 0;
@@ -234,6 +234,11 @@ static void run_main_loop(void)
     frame_stats_reset(&stats);
     frame_timer_start(&frame_timer);
     screen_watch_start();
+#ifdef DEBUG_BUILD
+    if (!command_reader_start(COMMANDS_PATH)) {
+        run_log_write("command reader_not_started");
+    }
+#endif
 
     while (!quit_requested) {
         if (frame_number % KEEP_AWAKE_FRAMES == 0) {

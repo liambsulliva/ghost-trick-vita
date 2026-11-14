@@ -115,18 +115,22 @@ class ReadAheadTest(unittest.TestCase):
         self.assertEqual([(offset, texture) for _, offset, texture in schedules["scene"]], [(1, "ball_00"), (35, "ball_00-mono")])
 
 
-    def test_each_script_names_the_script_the_replay_played_after_it(self):
+    def test_each_script_names_the_next_script_with_animations_the_replay_played(self):
         with tempfile.TemporaryDirectory() as folder:
+            for name in ("first", "second"):
+                write(folder, name + ".motions", "motion 1a2b t_ball 1\n")
             write(folder, "cues.tsv", "\n".join([
                 "0\tmark script_begun route",
                 "5\tmark script_begun st01-st01_root",
                 "10\tmark script_begun first",
                 "50\tmark script_begun first",
                 "90\tmark script_begun st01-st01_root",
+                "92\tmark script_begun chapter",
                 "95\tmark script_begun second",
+                "150\tmark script_begun phone",
                 "200\tmark script_begun first",
             ]) + "\n")
-            nexts = read_ahead.next_scripts_from_cues(os.path.join(folder, "cues.tsv"))
+            nexts = read_ahead.next_scripts_from_cues(os.path.join(folder, "cues.tsv"), folder)
         self.assertEqual(nexts, {"first": "second", "second": "first"})
 
     def test_the_plan_names_the_next_script_before_its_textures(self):

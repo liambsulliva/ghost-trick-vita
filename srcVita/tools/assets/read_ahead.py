@@ -190,13 +190,13 @@ def bundle_text(scripts_folder, animation_folder, script_name):
     return "".join(parts)
 
 
-def next_scripts_from_cues(cues_path):
+def next_scripts_from_cues(cues_path, scripts_folder):
     nexts = {}
     script_name = None
     for line in read_lines(cues_path):
         _, _, text = line.partition("\t")
         fields = text.split()
-        if len(fields) > 2 and fields[0] == "mark" and fields[1] == "script_begun" and fields[2] != "route" and "_root" not in fields[2]:
+        if len(fields) > 2 and fields[0] == "mark" and fields[1] == "script_begun" and os.path.exists(os.path.join(scripts_folder, fields[2] + MOTIONS_EXTENSION)):
             if script_name is not None and fields[2] != script_name:
                 nexts.setdefault(script_name, fields[2])
             script_name = fields[2]
@@ -214,7 +214,7 @@ def main():
     parser.add_argument("animation_folder", help="baked animations folder")
     arguments = parser.parse_args()
     schedules = schedules_from_cues(arguments.cues, arguments.scripts_folder, arguments.animation_folder)
-    nexts = next_scripts_from_cues(arguments.cues)
+    nexts = next_scripts_from_cues(arguments.cues, arguments.scripts_folder)
     for path in os.listdir(arguments.scripts_folder):
         if path.endswith(MOTIONS_EXTENSION):
             schedules.setdefault(path[:-len(MOTIONS_EXTENSION)], [])
