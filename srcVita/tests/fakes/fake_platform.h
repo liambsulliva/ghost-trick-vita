@@ -11,6 +11,8 @@ void fake_files_add(const char *path, const unsigned char *data, unsigned int si
 const unsigned char *fake_files_contents(const char *path, unsigned int *size);
 int fake_files_exists(const char *path);
 void fake_files_fail_writes(int should_fail);
+int fake_files_read_misses_under(const char *folder);
+void fake_files_fail_folder_listing(int should_fail);
 
 void fake_memory_reset(void);
 void fake_memory_set_largest_block(unsigned int bytes);

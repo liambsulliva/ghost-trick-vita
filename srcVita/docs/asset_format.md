@@ -19,6 +19,7 @@ scripts/rooms.txt
 scripts/audio_names.txt
 scripts/text_lines.txt
 scripts/balloons.txt
+scripts/scripts.pack
 animations/t_<table_name>.anim
 ```
 
@@ -204,7 +205,7 @@ A `music` step with `loop` 1 seeks to the first number after playing the frame n
 
 ## Scripts: `.lmg`
 
-`scripts/<script_name>.lmg` is a DS scene script, byte for byte the decompressed file from your own USA DS ROM, in the format `docs/lmg_format.md` describes. `script_player.c` reads them before a run starts, one file per frame, and never during a tick. `scripts/` stays flat: a script's path becomes its name by turning `/` into `-` and dropping a final `.xml`, so `area9/area9_start.xml` becomes `area9-area9_start`. The result follows the name rule above, and the converter refuses a path whose name would not. `tests/fixtures/script_name_pairs.h` holds invented examples of the rule.
+`scripts/<script_name>.lmg` is a DS scene script, byte for byte the decompressed file from your own USA DS ROM, in the format `docs/lmg_format.md` describes. `script_player.c` reads them before a run starts, on a background task, and never during a tick. `scripts/` stays flat: a script's path becomes its name by turning `/` into `-` and dropping a final `.xml`, so `area9/area9_start.xml` becomes `area9-area9_start`. The result follows the name rule above, and the converter refuses a path whose name would not. `tests/fixtures/script_name_pairs.h` holds invented examples of the rule.
 
 A set lists its scripts in a `scripts` section. A set with no such section needs no ROM.
 
@@ -225,6 +226,10 @@ A set lists its scripts in a `scripts` section. A set with no such section needs
 Every script change in a baked file has to name a file in `files` or `never_taken`, or sit inside the `stop_at_act` act. Otherwise the bake stops and names the change.
 
 The converter reads the ROM named by `--ds-rom`, by default `extracted/ds_rom/game.nds`. A missing ROM gives one warning, keeps any scripts already baked, and everything else still converts. A ROM with any game code but `BGTE` is refused, because no other region's scripts have been compared with the trace. The conversion then stops before it converts anything, and existing output stays as it was. A script that fails its checks stops the bake the same way: no script from that run is stored, and the last good ones stay.
+
+## Script pack: `scripts.pack`
+
+`scripts/scripts.pack` holds a copy of every file in `scripts/` except itself, `tiles.txt` and half-written `.new` files, so the app opens one file for a whole chain instead of one per table and script. Opening a file on the Vita's card costs about 50 ms whatever its size, and the chain is about 500 files. Layout, little-endian: `GTSP`, version (u32, 1), file count (u32), then for each file its name length (u16), its name in ASCII, its data's offset from the start of the pack (u32) and its size (u32), then the data. Names are sorted. The converter, `read_ahead.py` and `route_pacing.py` each rewrite the pack after they write into `scripts/` (`tools/assets/script_pack.py`), and only when its bytes differ. A folder with no `chain.txt` has no pack. When the pack is missing or unreadable the app opens the loose files, after listing the folder once so it never opens a file the folder lacks. The app keeps the pack in memory for the chain's run, so each scene's `.anims` comes from memory too.
 
 ## Script tables
 

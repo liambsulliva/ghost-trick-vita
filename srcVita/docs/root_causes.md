@@ -1319,13 +1319,28 @@ Guard: `class_movies.py` ports the hash, and `game.json` names each movie row by
 
 The loading screen's walk advanced by elapsed time with no limit. While a chain loads, the app reads one script file per frame, and the Vita's log shows each read taking 40 to 90 ms, so the screen drew 12 to 15 frames a second and the cat skipped several drawings at once. The pause and title menus already cap their catch-up (`PAUSE_TICKS_PER_UPDATE_MOST`); the loading screen was the one clock-driven animation without a cap.
 
-Guard: `walk_on` advances at most two walk ticks (one drawing) per frame and drops the time left over, so a long frame slows the cat instead of moving it on. The walk also runs at 40 ticks a second, two thirds of the game's pace, as the user asked. `tests/unit/test_loading_screen.c` checks the pace and that a half-second frame moves the cat by one drawing at most. Open: the reads themselves still block the frame; moving them to the background reader would let the cat walk at full frame rate.
+Guard: `walk_on` advances at most two walk ticks (one drawing) per frame and drops the time left over, so a long frame slows the cat instead of moving it on. The walk also runs at 40 ticks a second, two thirds of the game's pace, as the user asked. `tests/unit/test_loading_screen.c` checks the pace and that a half-second frame moves the cat by one drawing at most. The reads themselves moved off the frame in root cause 186.
 
 ### 185. Uploads from a clean copy of the repo sent the whole set again
 
 `upload-assets` and `upload-eboot` run through the vitacompanion MCP seemed to hang. Builds run from `git archive HEAD` copies so that other sessions' uncommitted work stays out, but the upload record lived in `srcVita/build/uploaded_assets.json`, which such a copy lacks. With no record, the uploader treated all 30,796 files as new, each costing about a second, and a call gave no output until it ended hours later. `upload-eboot` run right after a quit failed with `550 File not found` while the app was still tearing down. Every file was also read back twice, and each new file also tried to delete two old-layout copies that cannot exist, each miss costing about 140 ms on a texture bucket.
 
 Guard: the record now sits beside the asset set (its real path plus `.uploaded.json`), so every checkout that links `extracted` shares it, and the old build-folder record is read when it is missing. A refused write is tried up to 10 times, a second apart. One hash-checked read-back is followed by a size check after the rename. Old-layout copies are removed only for files uploaded before, and progress is printed every 100 files. `tests/tools/test_vita_loop.py` checks the shared and taken-over record, the retried write, the single read-back and the skipped deletes.
+
+### 186. Loading a chain held each frame for one file
+
+Native reads each scene's script from the ROM archive when the scene starts. The port reads the whole chain up front: the tables, then each script's `.cues`, `.lmg`, `.motions` and `.ahead`, 497 steps for the game's 163 scripts. `read_next_file` ran one step per frame on the main thread, so the loading screen drew only as fast as the files came: 8 to 20 fps for 30 s on the Vita, with a 1.65 s frame for `talk.txt` (0.43 s read, 1.2 s parse) and a 0.76 s frame for the six tables of step 6. Opening a file on the Vita's card takes about 50 ms whatever its size: the median chain read was 52 ms, even for files under 5 KB. About 140 steps also opened a file the bake never wrote (106 scripts have no `.cues`, 37 no `.motions`), at about 60 ms each. The ten seconds the preload waits for sounds and music counted from `script_player_play`, so a long read used them up. Chapter 18's load logged `audio_wait_gave_up` 19 ms into the preload and started its first scene with 128 sounds still loading.
+
+Guard: the bake packs `scripts/` into `scripts/scripts.pack` (`tools/assets/script_pack.py`, run by every step that writes there), and the app reads the whole chain from that one file. `step_the_chain_read` runs the read on a background task (`background_task.h`, a thread on core 0 on the Vita, a holdable fake in tests). The frame only polls the task, and `begin_loading_animations` still runs on the main thread once the task ends. Stopping or replaying the player cancels the read and waits for it before freeing anything. Without a usable pack, the task lists the scripts folder once (`file_list_folder`) and never opens a name the listing lacks. The audio wait now counts from `begin_loading_animations`. On the Vita the game's chain now loads in 3.6 s (1.6 s for the 15 MB pack) at 55 to 60 fps, against 26 s for loose files off the frame. The pack stays in memory while the chain runs, so a scene's `.anims` no longer touches the card. `tests/integration/test_viewer_app.c` checks:
+- no chain file is read on the frame while the task is held;
+- a chain loads from its pack alone, without the folder listing;
+- a broken pack falls back to the loose files;
+- no missing file under `scripts/` is opened;
+- loading still works with no listing;
+- a stop during the read waits for it;
+- a 20 s read still leaves the audio its full wait.
+
+`tests/unit/test_script_pack.c` and `tests/tools/test_script_pack.py` check the pack format, what it leaves out, that an unchanged folder leaves it alone, and that the read-ahead step repacks.
 
 ## Still open
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

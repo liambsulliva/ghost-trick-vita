@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bake_record
 import packed_file
+import script_pack
 
 AHEAD_EXTENSION = ".ahead"
 BUNDLE_EXTENSION = ".anims"
@@ -208,6 +209,7 @@ def main():
         bundle = bundle_text(arguments.scripts_folder, arguments.animation_folder, script_name)
         bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + BUNDLE_EXTENSION), packed_file.packed(bundle.encode("ascii")))
         print("read ahead %s: %d textures, %d animations" % (script_name, len(entries), bundle.count("animation ")))
+    script_pack.write_pack(arguments.scripts_folder)
     return 0
 
 

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "clock.h"
@@ -21,6 +22,11 @@ static unsigned long long tick_per_read_us;
 static unsigned int largest_block_bytes;
 static int blocks_in_use;
 static int writes_should_fail;
+#define MISSED_PATH_MAX 256
+
+static char missed_paths[MISSED_PATH_MAX][FILE_PATH_MAX];
+static int read_misses;
+static int folder_listing_fails;
 static char fake_log_path[FILE_PATH_MAX];
 
 void fake_clock_set_us(unsigned long long now_us)
@@ -142,6 +148,8 @@ void fake_files_reset(void)
         fake_files[index].size = 0;
     }
     writes_should_fail = 0;
+    read_misses = 0;
+    folder_listing_fails = 0;
 }
 
 void fake_files_fail_writes(int should_fail)
@@ -179,6 +187,10 @@ int file_read_whole(const char *path, unsigned char **data, unsigned int *size)
 
     file = find_file(path);
     if (file == NULL) {
+        if (read_misses < MISSED_PATH_MAX) {
+            snprintf(missed_paths[read_misses], FILE_PATH_MAX, "%s", path);
+            read_misses = read_misses + 1;
+        }
         return FILE_ERR_OPEN;
     }
     if (file->size == 0) {
@@ -260,5 +272,47 @@ int file_delete(const char *path)
 int file_make_folder(const char *path)
 {
     (void)path;
+    return FILE_OK;
+}
+
+int fake_files_read_misses_under(const char *folder)
+{
+    int count;
+    int index;
+
+    count = 0;
+    for (index = 0; index < read_misses; index++) {
+        if (strncmp(missed_paths[index], folder, strlen(folder)) == 0) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+void fake_files_fail_folder_listing(int should_fail)
+{
+    folder_listing_fails = should_fail;
+}
+
+int file_list_folder(const char *path, file_name_visitor visit, void *context)
+{
+    unsigned int path_length;
+    int index;
+
+    if (folder_listing_fails) {
+        return FILE_ERR_OPEN;
+    }
+    path_length = (unsigned int)strlen(path);
+    for (index = 0; index < FAKE_FILE_COUNT; index++) {
+        const char *name;
+
+        if (!fake_files[index].in_use || strncmp(fake_files[index].path, path, path_length) != 0 || fake_files[index].path[path_length] != '/') {
+            continue;
+        }
+        name = &fake_files[index].path[path_length + 1];
+        if (strchr(name, '/') == NULL) {
+            visit(context, name);
+        }
+    }
     return FILE_OK;
 }

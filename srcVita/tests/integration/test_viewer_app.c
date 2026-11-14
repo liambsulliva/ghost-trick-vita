@@ -4,11 +4,13 @@
 #include "fakes/fake_audio.h"
 #include "fakes/fake_platform.h"
 #include "fakes/fake_reader.h"
+#include "fakes/fake_task.h"
 #include "fakes/fake_renderer.h"
 #include "fakes/fake_texture_files.h"
 #include "file.h"
 #include "game_save.h"
 #include "fixtures/fixture_facts.h"
+#include "fixtures/script_pack_bytes.h"
 #include "fixtures/sine_mono_ogg.h"
 #include "fixtures/sine_stereo_ogg.h"
 #include "input.h"
@@ -57,6 +59,7 @@ static void set_up_platform(void)
     fake_files_reset();
     fake_renderer_reset();
     fake_reader_reset();
+    fake_task_reset();
     fake_audio_reset();
     fake_memory_reset();
     fake_clock_set_us(0);
@@ -2533,8 +2536,147 @@ static void test_the_play_script_command_leaves_the_title_and_starts_the_opening
     viewer_app_stop();
 }
 
+static void set_up_a_two_script_chain(void)
+{
+    set_up_platform();
+    set_up_title_assets(1);
+    add_text_file("assets/scripts/chain.txt", "timing remaster\nentry route\nfile route\nfile st01-st01_root\n");
+    add_text_file("assets/scripts/route.lmg", "not a script");
+    add_text_file("assets/scripts/st01-st01_root.lmg", "not a script");
+    add_text_file("assets/scripts/st01-st01_root.cues", "");
+}
+
+static enum loading_stage loading_stage_now(void)
+{
+    struct loading_counts counts;
+
+    script_player_load_counts(&counts);
+    return counts.stage;
+}
+
+static void test_the_chain_is_read_off_the_frame(void)
+{
+    set_up_a_two_script_chain();
+    viewer_app_start("assets");
+    fake_task_hold(1);
+    CHECK(viewer_app_play_script("route"));
+    run_frames(3);
+    CHECK(fake_task_is_pending());
+    CHECK_INT(loading_stage_now(), LOADING_READING);
+    CHECK(strstr(log_text(), "script read name=chain.txt") == NULL);
+    fake_task_run_pending();
+    CHECK_HAS_TEXT(log_text(), "script read name=chain.txt");
+    CHECK_HAS_TEXT(log_text(), "script chain files=2");
+    run_frames(1);
+    CHECK(loading_stage_now() != LOADING_READING);
+    viewer_app_stop();
+}
+
+static void test_the_chain_read_never_opens_a_file_the_folder_lacks(void)
+{
+    int misses_before;
+
+    set_up_a_two_script_chain();
+    viewer_app_start("assets");
+    misses_before = fake_files_read_misses_under("assets/scripts/");
+    CHECK(viewer_app_play_script("route"));
+    run_frames(2);
+    CHECK_HAS_TEXT(log_text(), "script chain files=2");
+    CHECK_HAS_TEXT(log_text(), "script folder_listed names=4 listed=1");
+    CHECK_INT(fake_files_read_misses_under("assets/scripts/scripts.pack"), 1);
+    CHECK_INT(fake_files_read_misses_under("assets/scripts/"), misses_before + 1);
+    viewer_app_stop();
+}
+
+static void test_without_a_folder_listing_the_chain_still_loads(void)
+{
+    int misses_before;
+
+    set_up_a_two_script_chain();
+    fake_files_fail_folder_listing(1);
+    viewer_app_start("assets");
+    misses_before = fake_files_read_misses_under("assets/scripts/");
+    CHECK(viewer_app_play_script("route"));
+    run_frames(2);
+    CHECK_HAS_TEXT(log_text(), "script chain files=2");
+    CHECK(fake_files_read_misses_under("assets/scripts/") > misses_before);
+    viewer_app_stop();
+}
+
+static void test_a_long_chain_read_leaves_the_audio_its_whole_wait(void)
+{
+    set_up_a_two_script_chain();
+    add_text_file("assets/scripts/chain.preload", "sound never_answers\n");
+    viewer_app_start("assets");
+    fake_task_hold(1);
+    CHECK(viewer_app_play_script("route"));
+    run_frames(1);
+    fake_clock_advance_us(20000000ULL);
+    fake_task_run_pending();
+    run_frames(3);
+    CHECK(strstr(log_text(), "script audio_wait_gave_up") == NULL);
+    CHECK(script_player_status() == SCENE_PLAYER_PRELOADING);
+    viewer_app_stop();
+}
+
+static void test_the_chain_is_read_from_its_pack_in_one_open(void)
+{
+    static unsigned char pack[1024];
+    static const char *const names[] = { "chain.txt", "route.lmg", "st01-st01_root.lmg", "st01-st01_root.cues" };
+    static const char *const datas[] = { "timing remaster\nentry route\nfile route\nfile st01-st01_root\n", "not a script", "not a script", "" };
+    int misses_before;
+
+    set_up_platform();
+    set_up_title_assets(1);
+    fake_files_add("assets/scripts/scripts.pack", pack, make_script_pack(pack, names, datas, 4));
+    viewer_app_start("assets");
+    misses_before = fake_files_read_misses_under("assets/scripts/");
+    CHECK(viewer_app_play_script("route"));
+    run_frames(2);
+    CHECK_HAS_TEXT(log_text(), "script pack_read bytes=");
+    CHECK_HAS_TEXT(log_text(), "valid=1");
+    CHECK_HAS_TEXT(log_text(), "script chain files=2");
+    CHECK_HAS_TEXT(log_text(), "script read name=st01-st01_root.lmg bytes=12 us=0 from=pack");
+    CHECK(strstr(log_text(), "script folder_listed") == NULL);
+    CHECK_INT(fake_files_read_misses_under("assets/scripts/"), misses_before);
+    viewer_app_stop();
+}
+
+static void test_a_broken_pack_falls_back_to_the_loose_files(void)
+{
+    set_up_a_two_script_chain();
+    add_text_file("assets/scripts/scripts.pack", "GTSP broken");
+    viewer_app_start("assets");
+    CHECK(viewer_app_play_script("route"));
+    run_frames(2);
+    CHECK_HAS_TEXT(log_text(), "valid=0");
+    CHECK_HAS_TEXT(log_text(), "script folder_listed");
+    CHECK_HAS_TEXT(log_text(), "script chain files=2");
+    viewer_app_stop();
+}
+
+static void test_stopping_while_the_chain_reads_waits_for_the_read(void)
+{
+    set_up_a_two_script_chain();
+    viewer_app_start("assets");
+    fake_task_hold(1);
+    CHECK(viewer_app_play_script("route"));
+    run_frames(1);
+    CHECK(fake_task_is_pending());
+    viewer_app_stop();
+    CHECK(!fake_task_is_pending());
+    CHECK_HAS_TEXT(log_text(), "script chain_read steps=");
+}
+
 int main(void)
 {
+    test_the_chain_is_read_off_the_frame();
+    test_the_chain_read_never_opens_a_file_the_folder_lacks();
+    test_without_a_folder_listing_the_chain_still_loads();
+    test_stopping_while_the_chain_reads_waits_for_the_read();
+    test_a_long_chain_read_leaves_the_audio_its_whole_wait();
+    test_the_chain_is_read_from_its_pack_in_one_open();
+    test_a_broken_pack_falls_back_to_the_loose_files();
     test_the_app_boots_into_the_title_screen_and_new_game_starts_the_opening();
     test_a_save_puts_continue_on_the_title_instead_of_resuming_at_boot();
     test_without_title_art_the_app_plays_the_opening();

@@ -8,6 +8,7 @@ import zlib
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bake_record
+import script_pack
 
 TICKS_PER_SECOND = 60
 PACING_FILE_NAME = "route_pacing.txt"
@@ -175,6 +176,7 @@ def main():
         print("route pacing pass %d: %d steps stretched, %d extra ticks, %d kept short%s" % (pass_number, len(dwells), sum(dwells[index] - base_dwell(route, route["steps"][index]) for index in dwells), len(windows_too_short), "" if changed else ", settled"))
         if not changed:
             keep_settled(arguments.kept, pacing_path)
+            script_pack.write_pack(arguments.scripts)
             for index in sorted(drift):
                 step = route["steps"][index]
                 print("  footage runs %.1f s longer before step %d %s %s" % (drift[index] / TICKS_PER_SECOND, index, step["action"], step.get("object", "-")))

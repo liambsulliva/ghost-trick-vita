@@ -4,6 +4,8 @@
 #include "animation.h"
 #include "animation_library.h"
 #include "background_reader.h"
+#include "background_task.h"
+#include "crc32.h"
 #include "clock.h"
 #include "file.h"
 #include "file_path.h"
@@ -24,6 +26,7 @@
 #include "game_save.h"
 #include "game_settings.h"
 #include "script_player.h"
+#include "script_pack.h"
 #include "script_ui_view.h"
 #include "script_view.h"
 #include "script_tables.h"
@@ -41,6 +44,7 @@
 #define CHAIN_FILE_NAME "chain"
 #define FIXED_TABLE_COUNT 8
 #define FILES_PER_SCRIPT 3
+#define LISTED_NAME_MAX 4096
 #define FAST_FORWARD_FRAME_US 16667ULL
 #define FAST_FORWARD_FRAME_SLACK_US 600ULL
 #define FAST_FORWARD_LEAST_BUDGET_US 2000ULL
@@ -96,7 +100,15 @@ static enum script_player_phase phase;
 static int is_available;
 static int is_active;
 static int is_paused;
-static int read_step;
+static volatile int read_step;
+static volatile int chain_read_is_cancelled;
+static int chain_read_is_started;
+static unsigned int listed_name_hashes[LISTED_NAME_MAX];
+static int listed_name_count;
+static int folder_is_listed;
+static unsigned char *pack_bytes;
+static struct script_pack pack;
+static int pack_is_open;
 static int auto_play_is_on;
 static float next_chapter_card_age_ticks;
 static int is_holding_for_art;
@@ -109,6 +121,7 @@ static int preload_passes;
 static int most_textures_loading;
 static const char *preload_music_name;
 static unsigned long long preload_started_us;
+static unsigned long long audio_wait_started_us;
 static unsigned long long time_owed_us;
 static unsigned long long longest_tick_us;
 static int ticks_per_frame_when_fast;
@@ -156,12 +169,118 @@ static int unpack_if_packed(const char *name, const char *extension, unsigned ch
     return FILE_OK;
 }
 
+static unsigned int hash_of_file_name(const char *name, const char *extension)
+{
+    return crc32_add(crc32_add(0, (const unsigned char *)name, (unsigned int)strlen(name)), (const unsigned char *)extension, (unsigned int)strlen(extension));
+}
+
+static void list_one_name(void *context, const char *name)
+{
+    (void)context;
+    if (listed_name_count >= LISTED_NAME_MAX) {
+        folder_is_listed = 0;
+        return;
+    }
+    listed_name_hashes[listed_name_count] = hash_of_file_name(name, "");
+    listed_name_count = listed_name_count + 1;
+}
+
+static int compare_hashes(const void *left, const void *right)
+{
+    unsigned int left_hash;
+    unsigned int right_hash;
+
+    left_hash = *(const unsigned int *)left;
+    right_hash = *(const unsigned int *)right;
+    return left_hash < right_hash ? -1 : left_hash > right_hash;
+}
+
+static void list_the_folder(void)
+{
+    unsigned long long started_us;
+
+    started_us = clock_now_us();
+    listed_name_count = 0;
+    folder_is_listed = 1;
+    if (file_list_folder(folder, list_one_name, NULL) != FILE_OK) {
+        folder_is_listed = 0;
+    }
+    if (folder_is_listed) {
+        qsort(listed_name_hashes, (size_t)listed_name_count, sizeof(listed_name_hashes[0]), compare_hashes);
+    }
+    run_log_write("script folder_listed names=%d listed=%d us=%llu", listed_name_count, folder_is_listed, clock_now_us() - started_us);
+}
+
+static int folder_may_hold(const char *name, const char *extension)
+{
+    unsigned int hash;
+
+    if (!folder_is_listed) {
+        return 1;
+    }
+    hash = hash_of_file_name(name, extension);
+    return bsearch(&hash, listed_name_hashes, (size_t)listed_name_count, sizeof(listed_name_hashes[0]), compare_hashes) != NULL;
+}
+
+static void forget_the_pack(void)
+{
+    pack_is_open = 0;
+    mem_free(pack_bytes);
+    pack_bytes = NULL;
+}
+
+static void read_the_pack(void)
+{
+    char path[FILE_PATH_MAX];
+    unsigned int size;
+    unsigned long long started_us;
+
+    forget_the_pack();
+    started_us = clock_now_us();
+    if (!file_path_join(path, folder, SCRIPT_PACK_FILE_NAME, SCRIPT_PACK_EXTENSION) || file_read_whole(path, &pack_bytes, &size) != FILE_OK) {
+        pack_bytes = NULL;
+        return;
+    }
+    pack_is_open = script_pack_open(&pack, pack_bytes, size);
+    run_log_write("script pack_read bytes=%u files=%u valid=%d us=%llu", size, pack.count, pack_is_open, clock_now_us() - started_us);
+    if (!pack_is_open) {
+        forget_the_pack();
+    }
+}
+
+static int copy_from_the_pack(const char *name, const char *extension, unsigned char **bytes, unsigned int *size)
+{
+    const unsigned char *data;
+
+    if (!script_pack_find(&pack, name, extension, &data, size) || *size == 0) {
+        return FILE_ERR_OPEN;
+    }
+    *bytes = mem_alloc(*size);
+    if (*bytes == NULL) {
+        return FILE_ERR_MEMORY;
+    }
+    memcpy(*bytes, data, *size);
+    return FILE_OK;
+}
+
 static int read_named_file(const char *name, const char *extension, unsigned char **bytes, unsigned int *size)
 {
     char path[FILE_PATH_MAX];
     unsigned long long started_us;
     int result;
 
+    if (pack_is_open) {
+        started_us = clock_now_us();
+        result = copy_from_the_pack(name, extension, bytes, size);
+        if (result != FILE_OK) {
+            return result;
+        }
+        run_log_write("script read name=%s%s bytes=%u us=%llu from=pack", name, extension, *size, clock_now_us() - started_us);
+        return unpack_if_packed(name, extension, bytes, size);
+    }
+    if (!folder_may_hold(name, extension)) {
+        return FILE_ERR_OPEN;
+    }
     if (!file_path_join(path, folder, name, extension)) {
         return FILE_ERR_OPEN;
     }
@@ -345,7 +464,7 @@ static void read_talk_book(void)
     data->machine.talk_book = data->talk_book;
 }
 
-static void read_next_file(void)
+static int read_next_file(void)
 {
     int script_index;
 
@@ -386,8 +505,7 @@ static void read_next_file(void)
         script_index = (read_step - FIXED_TABLE_COUNT) / FILES_PER_SCRIPT;
         if (script_index >= data->tables.file_count) {
             run_log_write("script chain files=%d timing=%s", data->tables.file_count, data->tables.timing == SCRIPT_TIMING_DS ? "ds" : "remaster");
-            begin_loading_animations();
-            return;
+            return 0;
         }
         switch ((read_step - FIXED_TABLE_COUNT) % FILES_PER_SCRIPT) {
         case 0:
@@ -403,6 +521,50 @@ static void read_next_file(void)
         break;
     }
     read_step = read_step + 1;
+    return 1;
+}
+
+static void read_the_chain(void *argument)
+{
+    unsigned long long started_us;
+
+    (void)argument;
+    started_us = clock_now_us();
+    read_the_pack();
+    if (!pack_is_open) {
+        list_the_folder();
+    }
+    while (!chain_read_is_cancelled && read_next_file()) {
+    }
+    run_log_write("script chain_read steps=%d us=%llu", read_step, clock_now_us() - started_us);
+}
+
+static void finish_the_chain_read(void)
+{
+    if (chain_read_is_started) {
+        chain_read_is_cancelled = 1;
+        background_task_wait();
+        chain_read_is_started = 0;
+    }
+    chain_read_is_cancelled = 0;
+}
+
+static void step_the_chain_read(void)
+{
+    if (!chain_read_is_started) {
+        chain_read_is_cancelled = 0;
+        chain_read_is_started = 1;
+        if (!background_task_start(read_the_chain, NULL)) {
+            run_log_write("script chain_read on_frame");
+            read_the_chain(NULL);
+        }
+    }
+    if (background_task_is_running()) {
+        return;
+    }
+    background_task_wait();
+    chain_read_is_started = 0;
+    begin_loading_animations();
 }
 
 static void request_audio(void)
@@ -454,6 +616,7 @@ static void begin_loading_animations(void)
     time_jump = script_tables_find_movie(&data->tables, "time_jump");
     data->machine.time_jump_movie_ticks = time_jump != NULL ? time_jump->frame_count * time_jump->ticks_per_frame : 0;
     request_audio();
+    audio_wait_started_us = clock_now_us();
     preload_row = 0;
     preload_passes = 0;
     if (data->tables.rows_dropped > 0) {
@@ -505,7 +668,7 @@ static int audio_is_ready(void)
     int is_ready;
 
     is_ready = sound_prepare_is_done() && (preload_music_name == NULL || music_prepare_is_done(preload_music_name));
-    if (!is_ready && clock_now_us() - preload_started_us > LONGEST_AUDIO_PRELOAD_US) {
+    if (!is_ready && clock_now_us() - audio_wait_started_us > LONGEST_AUDIO_PRELOAD_US) {
         run_log_write("script audio_wait_gave_up name=%s", entry);
         return 1;
     }
@@ -741,6 +904,7 @@ static void free_data(void)
         return;
     }
     read_ahead_clear();
+    forget_the_pack();
     for (index = 0; index < data->file_bytes_count; index++) {
         mem_free(data->file_bytes[index]);
     }
@@ -777,6 +941,7 @@ int script_player_is_available(void)
 
 void script_player_play(const char *entry_name)
 {
+    finish_the_chain_read();
     snprintf(entry, sizeof(entry), "%s", entry_name);
     latest_acted_route_step = -1;
     latest_route_action_began_at = 0;
@@ -874,7 +1039,7 @@ void script_player_load_counts(struct loading_counts *counts)
 void script_player_update(unsigned long long elapsed_us)
 {
     if (phase == PHASE_READING) {
-        read_next_file();
+        step_the_chain_read();
         return;
     }
     if (phase == PHASE_LOADING_ANIMATIONS) {
@@ -915,6 +1080,7 @@ void script_player_stop(void)
     if (!is_active) {
         return;
     }
+    finish_the_chain_read();
     music_request_stop(MUSIC_QUICK_FADE_TICKS);
     sound_request_stop();
     scene_stage_set_fade(0.0f);
@@ -1129,6 +1295,7 @@ unsigned int script_player_route_action_began_at(void)
 
 void script_player_shutdown(void)
 {
+    finish_the_chain_read();
     free_data();
     phase = PHASE_IDLE;
     is_active = 0;

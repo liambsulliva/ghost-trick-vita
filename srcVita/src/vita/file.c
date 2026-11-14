@@ -1,3 +1,4 @@
+#include <psp2/io/dirent.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 #include "clock.h"
@@ -113,5 +114,23 @@ int file_delete(const char *path)
 int file_make_folder(const char *path)
 {
     sceIoMkdir(path, NEW_FOLDER_MODE);
+    return FILE_OK;
+}
+
+int file_list_folder(const char *path, file_name_visitor visit, void *context)
+{
+    SceUID folder;
+    SceIoDirent entry;
+
+    folder = sceIoDopen(path);
+    if (folder < 0) {
+        return FILE_ERR_OPEN;
+    }
+    while (sceIoDread(folder, &entry) > 0) {
+        if (!SCE_S_ISDIR(entry.d_stat.st_mode)) {
+            visit(context, entry.d_name);
+        }
+    }
+    sceIoDclose(folder);
     return FILE_OK;
 }
