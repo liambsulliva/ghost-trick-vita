@@ -241,6 +241,65 @@ static void test_a_long_frame_moves_the_cat_one_drawing_at_most(void)
     CHECK_NEAR(loading_screen_cat_feet_x(), start + 60.0f);
 }
 
+static void test_a_faint_glow_in_the_pause_circle_reds_rises_from_the_floor_behind_the_cat(void)
+{
+    const struct fake_draw *draw;
+    struct loading_counts counts;
+    float floor_top;
+    float covered;
+    float last_alpha;
+    float last_red;
+    float last_top;
+    int index;
+    int strips;
+    int backdrop_at;
+    int first_strip_at;
+
+    start_screen();
+    counts = counts_of(LOADING_READING, 0, 10);
+    loading_screen_update(&counts, 1000000ull);
+    fake_renderer_clear_draws();
+    loading_screen_draw();
+    floor_top = (float)RENDERER_HEIGHT - PAUSE_BAR_HEIGHT;
+    strips = 0;
+    covered = 0.0f;
+    last_alpha = 1.0f;
+    last_red = 1.0f;
+    last_top = floor_top;
+    backdrop_at = -1;
+    first_strip_at = -1;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        draw = fake_renderer_draw(index);
+        if (!draw->is_filled_rect && backdrop_at < 0) {
+            backdrop_at = index;
+        }
+        if (!draw->is_filled_rect || draw->screen_area.y >= floor_top || draw->screen_area.y + draw->screen_area.height > floor_top || draw->color.alpha >= 1.0f) {
+            continue;
+        }
+        if (first_strip_at < 0) {
+            first_strip_at = index;
+            CHECK(draw->color.red > 0.95f);
+        }
+        CHECK_NEAR(draw->screen_area.x, 0.0f);
+        CHECK_NEAR(draw->screen_area.width, (float)RENDERER_WIDTH);
+        CHECK_NEAR(draw->screen_area.y + draw->screen_area.height, last_top);
+        CHECK(draw->color.alpha <= 0.35f && draw->color.alpha < last_alpha);
+        CHECK(draw->color.red <= last_red && draw->color.red >= 74.0f / 255.0f - 0.001f);
+        CHECK_NEAR(draw->color.green, 0.0f);
+        CHECK_NEAR(draw->color.blue, 0.0f);
+        last_alpha = draw->color.alpha;
+        last_red = draw->color.red;
+        last_top = draw->screen_area.y;
+        covered = covered + draw->screen_area.height;
+        strips = strips + 1;
+    }
+    CHECK(strips > 16);
+    CHECK_NEAR(covered, 256.0f);
+    CHECK(last_alpha < 0.01f);
+    CHECK(last_red < 80.0f / 255.0f);
+    CHECK(backdrop_at >= 0 && backdrop_at < first_strip_at);
+}
+
 int main(void)
 {
     test_each_load_stage_fills_its_share_of_the_bar();
@@ -250,5 +309,6 @@ int main(void)
     test_the_cat_walks_in_from_the_left_out_to_the_right_and_comes_round_again();
     test_the_cat_walks_at_two_thirds_of_the_game_pace();
     test_a_long_frame_moves_the_cat_one_drawing_at_most();
+    test_a_faint_glow_in_the_pause_circle_reds_rises_from_the_floor_behind_the_cat();
     return test_finish("unit/loading_screen");
 }

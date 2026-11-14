@@ -16,6 +16,7 @@
 #include "texture_file.h"
 #include "pause_chapters.h"
 #include "title_menu.h"
+#include "loading_screen.h"
 
 #define SET "set"
 #define PATH_MOST 512
@@ -26,6 +27,7 @@
 static const char *const tables[] = { "pause/cat.txt", "pause/cat_track.txt", "pause/labels.txt", "pause/widgets.txt", "pause/people.txt", "pause/clock.txt" };
 static const char *const fixed_textures[] = { "pause_backdrop", "pause_spotlight", "pause_labels", "pause_widgets", "hud_sheet", "pause_people_thumbs", "pause_people_spot", "pause_clock", "title_logo", "hud_button_art" };
 static int drawing_the_title;
+static int drawing_the_loading_screen;
 static int title_has_save;
 static int title_is_cleared;
 static char texture_names[1024][ASSET_NAME_MAX];
@@ -89,7 +91,14 @@ static void press(unsigned int buttons)
     input.pressed = buttons;
     texture_cache_upload_finished_reads(16);
     texture_cache_begin_frame();
-    if (drawing_the_title) {
+    if (drawing_the_loading_screen) {
+        struct loading_counts counts;
+
+        counts.stage = LOADING_TEXTURES;
+        counts.done = 1;
+        counts.total = 2;
+        loading_screen_update(&counts, PAUSE_TICK_US);
+    } else if (drawing_the_title) {
         title_menu_update(&input, PAUSE_TICK_US);
     } else {
         pause_menu_update(&input, PAUSE_TICK_US);
@@ -98,7 +107,9 @@ static void press(unsigned int buttons)
 
 static void draw_menu(void)
 {
-    if (drawing_the_title) {
+    if (drawing_the_loading_screen) {
+        loading_screen_draw();
+    } else if (drawing_the_title) {
         title_menu_draw();
     } else {
         pause_menu_draw();
@@ -131,6 +142,10 @@ static const char *read_title_mode(const char *buttons)
     static const char *const modes[] = { "title:", "title_save:", "title_clear:" };
     unsigned int index;
 
+    if (strncmp(buttons, "loading:", 8) == 0) {
+        drawing_the_loading_screen = 1;
+        return buttons + 8;
+    }
     for (index = 0; index < sizeof(modes) / sizeof(modes[0]); index++) {
         if (strncmp(buttons, modes[index], strlen(modes[index])) == 0) {
             drawing_the_title = 1;
@@ -301,7 +316,7 @@ int main(int argc, char **argv)
     int page;
 
     if (argc < 3) {
-        fprintf(stderr, "usage: pause_render <assets folder> <[title: | title_save: | title_clear:]buttons: u d l r x o L R, . waits> [notes list:id:level,...] [clock chapter:script:plate]\n");
+        fprintf(stderr, "usage: pause_render <assets folder> <[title: | title_save: | title_clear: | loading:]buttons: u d l r x o L R, . waits> [notes list:id:level,...] [clock chapter:script:plate]\n");
         return 2;
     }
     fake_files_reset();
@@ -336,7 +351,9 @@ int main(int argc, char **argv)
     }
     pause_people_use_notes(&notes[0][0]);
     buttons = read_title_mode(argv[2]);
-    if (drawing_the_title) {
+    if (drawing_the_loading_screen) {
+        loading_screen_begin();
+    } else if (drawing_the_title) {
         title_menu_use(title_save_exists, title_game_is_cleared, title_erases);
         pause_chapters_use(every_chapter_is_reached);
         title_menu_open();

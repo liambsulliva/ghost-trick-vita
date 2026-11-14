@@ -24,6 +24,23 @@
 #define WARM_UP_SIZE 1.0f
 #define WALK_TICK_US 25000ull
 #define WALK_TICKS_PER_FRAME_MOST 2
+#define GLOW_HEIGHT 256.0f
+#define GLOW_STRIP 4.0f
+#define GLOW_OPACITY 0.35f
+#define GLOW_STOP_COUNT 3
+
+struct glow_stop {
+    float at;
+    float red;
+    float green;
+    float blue;
+};
+
+static const struct glow_stop glow_stops[GLOW_STOP_COUNT] = {
+    { 0.0f, 255.0f / 255.0f, 0.0f, 0.0f },
+    { 0.5f, 99.0f / 255.0f, 0.0f, 0.0f },
+    { 1.0f, 74.0f / 255.0f, 0.0f, 0.0f }
+};
 
 static float shown_progress;
 static float target_progress;
@@ -149,6 +166,35 @@ static struct renderer_color color(float red, float green, float blue, float alp
     return tint;
 }
 
+static struct renderer_color glow_at(float rise, float alpha)
+{
+    const struct glow_stop *low;
+    const struct glow_stop *high;
+    float share;
+    int index;
+
+    index = 1;
+    while (index < GLOW_STOP_COUNT - 1 && rise > glow_stops[index].at) {
+        index = index + 1;
+    }
+    low = &glow_stops[index - 1];
+    high = &glow_stops[index];
+    share = (rise - low->at) / (high->at - low->at);
+    share = share < 0.0f ? 0.0f : (share > 1.0f ? 1.0f : share);
+    return color(low->red + (high->red - low->red) * share, low->green + (high->green - low->green) * share, low->blue + (high->blue - low->blue) * share, GLOW_OPACITY * (1.0f - rise) * alpha);
+}
+
+static void draw_glow(float alpha)
+{
+    float top;
+    float rise;
+
+    for (top = FLOOR_TOP - GLOW_STRIP; top > FLOOR_TOP - GLOW_HEIGHT - GLOW_STRIP; top = top - GLOW_STRIP) {
+        rise = (FLOOR_TOP - top - GLOW_STRIP / 2.0f) / GLOW_HEIGHT;
+        renderer_draw_filled_rect(area(0.0f, top, (float)RENDERER_WIDTH, GLOW_STRIP), glow_at(rise, alpha));
+    }
+}
+
 void loading_screen_draw(void)
 {
     const struct cached_texture *backdrop;
@@ -163,6 +209,7 @@ void loading_screen_draw(void)
     if (backdrop != NULL) {
         pause_draw_from(BACKDROP, 0.0f, 0.0f, (float)backdrop->width, (float)backdrop->height, 0.0f, 0.0f, (float)RENDERER_WIDTH, (float)RENDERER_HEIGHT, alpha);
     }
+    draw_glow(alpha);
     if (pause_cat_walk_count() > 0) {
         pause_cat_draw(pause_cat_walk_row(walk_tick), walk_feet_x(walk_tick), alpha);
     }

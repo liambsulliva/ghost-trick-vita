@@ -1354,6 +1354,14 @@ Fast-forward runs on the debug build showed 50 to 320 ms frames whose update, dr
 
 Guard: `command_reader.c` looks for the file on a thread of its own, ten times a second, and hands the text over under a mutex. The frame only takes what is waiting. `tests/tools/test_main_loop_io.py` fails if `run_main_loop`, `run_pending_commands`, `run_one_command` or `publish_frame_stats` calls a file function, and a host fake keeps the synchronous read for `tests/integration/test_main_loop.c`.
 
+### 189. The loading screen's cat was lost against the backdrop
+
+The DS has no loading screen (root cause 172), so this is the port's own screen. The cat that walks along its floor is drawn from the pause menu's frames, which are pure black (0, 0, 0). On the pause screen it sits in the database spotlight's circle: an inner disc of pure red at half opacity, a (99, 0, 0) ring and a (74, 0, 0) ring. On the loading screen it walked straight over the dark red backdrop. The background around its outline gave a median contrast of 1.06:1, so the black cat nearly vanished into the black and dark red behind it.
+
+The class: anything drawn over the red and black backdrop (the pause, title and loading screens) gets its contrast from what is behind it, so it has to be measured, not judged by eye. WCAG's 3:1 for graphics can't be had with the circle's colours at low opacity. The two outer reds give a black shape at most 1.53:1 and 1.29:1 even fully opaque, and the inner red reaches 3:1 only near full opacity. The user chose a subtle glow anyway. The cat carries no information, which WCAG treats as decorative, and the "Now Loading" text and the bar say what is happening.
+
+Guard: `loading_screen.c` draws a glow over the bottom 256 px above the floor, the cat's full height, in 4 px strips. It runs from the circle's inner red at the floor through its middle ring to its outer ring, at 35% opacity at the floor falling to none at the top. Measured from Mac renders across five points of the walk, the background 1 to 3 px from the cat's outline went from a median 1.06:1 to 1.22:1 (90th percentile 1.56:1 to 1.73:1). `tests/unit/test_loading_screen.c` checks that the strips cover the 256 px from the floor up, full width, red only, from the inner red down to the outer ring's red, never above 35% opacity, each fainter than the one below and drawn after the backdrop. `tools/pause_render.py --loading` draws the loading screen on the Mac, so its contrast can be measured from real pixels.
+
 ## Still open
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
