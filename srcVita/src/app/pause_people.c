@@ -9,6 +9,7 @@
 #include "memory.h"
 #include "pause_people.h"
 #include "pause_widgets.h"
+#include "record_reveal.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "script_machine.h"
@@ -33,6 +34,7 @@
 #define NOTES_MOST 512
 #define THUMBS_MOST 96
 #define FIRST_MOST 8
+#define REVEAL_FACES_MOST 8
 #define DEFAULT_LEVEL 10
 #define PEOPLE_LIST 1
 #define PLACES_LIST 2
@@ -76,6 +78,12 @@ struct note_card {
     char texture[ASSET_NAME_MAX];
 };
 
+struct reveal_face {
+    int stage;
+    int id;
+    char name[ASSET_NAME_MAX];
+};
+
 struct art_entry {
     char name[ASSET_NAME_MAX];
     float x;
@@ -100,6 +108,8 @@ static int firsts[2][FIRST_MOST];
 static int first_counts[2];
 static int place_count;
 static char arts[2][ID_MOST][ASSET_NAME_MAX];
+static struct reveal_face reveal_faces[REVEAL_FACES_MOST];
+static int reveal_face_count;
 static struct note_card cards[NOTES_MOST];
 static int card_count;
 static struct thumb thumbs[THUMBS_MOST];
@@ -163,6 +173,16 @@ static void read_art(int side, const char *text)
     }
 }
 
+static void read_reveal_face(const char *text)
+{
+    struct reveal_face face;
+
+    if (reveal_face_count < REVEAL_FACES_MOST && sscanf(text, "%d %d %95s", &face.stage, &face.id, face.name) == 3 && face.stage > 0 && face.id > 0 && face.id < ID_MOST) {
+        reveal_faces[reveal_face_count] = face;
+        reveal_face_count = reveal_face_count + 1;
+    }
+}
+
 static void read_card(const char *text)
 {
     struct note_card card;
@@ -206,6 +226,8 @@ static void forget_table(void)
     first_counts[1] = 0;
     place_count = 0;
     memset(arts, 0, sizeof(arts));
+    reveal_face_count = 0;
+    record_reveal_forget_rules();
     card_count = 0;
     thumb_count = 0;
     is_loaded = 0;
@@ -240,6 +262,10 @@ int pause_people_read_text(const char *text, unsigned int text_size)
             read_card(line + 5);
         } else if (text_line_starts_with(line, "thumb ")) {
             read_thumb(line + 6);
+        } else if (text_line_starts_with(line, "reveal_face ")) {
+            read_reveal_face(line + 12);
+        } else if (text_line_starts_with(line, "reveal ")) {
+            (void)record_reveal_read_rule(line + 7);
         } else if (text_line_starts_with(line, "art ")) {
             read_art_entry(line + 4);
         }
@@ -570,8 +596,27 @@ static const char *card_for(int side, int id, int level)
     return best != NULL ? best->texture : NULL;
 }
 
+static const char *revealed_face(int id)
+{
+    const struct reveal_face *best;
+    int index;
+
+    best = NULL;
+    for (index = 0; index < reveal_face_count; index++) {
+        const struct reveal_face *face = &reveal_faces[index];
+
+        if (face->id == id && face->stage <= record_reveal_stage() && (best == NULL || face->stage > best->stage)) {
+            best = face;
+        }
+    }
+    return best != NULL ? best->name : NULL;
+}
+
 static const char *art_for(int side, int id)
 {
+    if (side == PAUSE_PEOPLE_TAB_PEOPLE && revealed_face(id) != NULL) {
+        return revealed_face(id);
+    }
     if (id <= 0 || id >= ID_MOST || arts[side][id][0] == '\0') {
         return NULL;
     }

@@ -4,6 +4,7 @@
 #include "file.h"
 #include "game_save.h"
 #include "memory.h"
+#include "record_reveal.h"
 #include "run_log.h"
 #include "text_lines.h"
 #include "work_queue.h"
@@ -404,6 +405,7 @@ int game_save_erase_all(void)
         chapter_path(path, sizeof(path), chapter);
         erased = (file_delete(path) == FILE_OK) || erased;
     }
+    record_reveal_forget(RECORD_REVEAL_PATH);
     run_log_write("save erased=%d", erased);
     return erased;
 }

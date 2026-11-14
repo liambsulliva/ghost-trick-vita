@@ -31,6 +31,7 @@
 #include "script_view.h"
 #include "sound_engine.h"
 #include "system_sounds.h"
+#include "record_reveal.h"
 #include "texture_cache.h"
 #include "title_menu.h"
 #include "ui_list.h"
@@ -459,6 +460,7 @@ static void start_settings(void)
     game_settings_set_music_folders(original_folder, arranged_folder);
     game_settings_set_default_music(DEFAULT_MUSIC_TYPE);
     game_settings_load(GAME_SETTINGS_PATH);
+    (void)record_reveal_load(RECORD_REVEAL_PATH);
     game_settings_apply();
 }
 

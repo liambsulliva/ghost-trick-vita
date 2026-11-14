@@ -31,6 +31,7 @@
 #include "script_view.h"
 #include "script_tables.h"
 #include "sound_engine.h"
+#include "record_reveal.h"
 #include "texture_cache.h"
 #include "ds_units.h"
 
@@ -1160,6 +1161,7 @@ void script_player_update(unsigned long long elapsed_us)
         read_ahead_step(data->machine.tick);
         if (!art_gate_holds(elapsed_us)) {
             run_ticks(elapsed_us);
+            (void)record_reveal_watch(data->machine.talk.message != NULL ? data->machine.talk.message->label : NULL, &data->machine.note_levels[0][0], RECORD_REVEAL_PATH);
             if (phase == PHASE_RUNNING && art_wait_us < ART_WAIT_MOST_US && shown_art_is_loading()) {
                 is_holding_for_art = 1;
             }
