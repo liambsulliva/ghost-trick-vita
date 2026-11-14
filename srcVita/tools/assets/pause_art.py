@@ -56,6 +56,16 @@ METER_STEPS = 10
 FLAME_CELL = (40, 52)
 FLAME_SIZE = 34
 ARROW_DOWN_CELL = (20, 14)
+TITLE_ORANGE = "#ee6a1f"
+TITLE_EDGE = "#f8dcb4"
+TITLE_BLUE = "#62cdf2"
+TITLE_SLICES = [
+    ("title_button", 64, 56, 15, TITLE_ORANGE, TITLE_EDGE, 3),
+    ("title_button_selected", 64, 56, 15, TITLE_BLUE, WHITE, 3),
+    ("title_icon", 48, 48, 11, TITLE_ORANGE, TITLE_EDGE, 3),
+    ("title_icon_selected", 48, 48, 11, TITLE_BLUE, WHITE, 3),
+]
+TRASH_CELL = (40, 44)
 SLICES = [
     ("row", 70, 62, 31, "black", PILL_GREY, 4),
     ("row_selected", 70, 62, 31, "black", PILL_RED, 4),
@@ -428,6 +438,25 @@ def slice_pixels(work_folder, width, height, radius, fill, stroke, stroke_width)
     return supersampled(work_folder, width, height, ["-fill", fill, "-stroke", stroke, "-strokewidth", str(stroke_width * k), "-draw", shape])
 
 
+def chamfer_pixels(work_folder, width, height, cut, fill, stroke, stroke_width):
+    k = WIDGET_SUPERSAMPLE
+    inset = stroke_width * k / 2
+    right, bottom, c = width * k - 1 - inset, height * k - 1 - inset, cut * k
+    points = [(inset + c, inset), (right - c, inset), (right, inset + c), (right, bottom - c), (right - c, bottom), (inset + c, bottom), (inset, bottom - c), (inset, inset + c)]
+    shape = "polygon " + " ".join("%d,%d" % point for point in points)
+    return supersampled(work_folder, width, height, ["-fill", fill, "-stroke", stroke, "-strokewidth", str(stroke_width * k), "-draw", shape])
+
+
+def trash_pixels(work_folder):
+    k = WIDGET_SUPERSAMPLE
+    w, h = TRASH_CELL
+    body = "polygon %d,%d %d,%d %d,%d %d,%d" % (7 * k, 13 * k, 33 * k, 13 * k, 30 * k, 42 * k, 10 * k, 42 * k)
+    lid = "roundrectangle %d,%d %d,%d %d,%d" % (3 * k, 7 * k, 37 * k, 11 * k, k, k)
+    handle = "roundrectangle %d,%d %d,%d %d,%d" % (15 * k, 2 * k, 25 * k, 7 * k, k, k)
+    slots = ["-fill", TITLE_ORANGE] + sum((["-draw", "rectangle %d,%d %d,%d" % (x * k, 17 * k, (x + 2) * k, 38 * k)] for x in (13, 19, 25)), [])
+    return supersampled(work_folder, w, h, ["-fill", WHITE, "-stroke", "none", "-draw", body, "-draw", lid, "-draw", handle] + slots)
+
+
 def flame_pixels(work_folder, font_path, number, lit, points):
     k = WIDGET_SUPERSAMPLE
     cx, cy = FLAME_CELL[0] * k / 2, FLAME_CELL[1] * k / 2
@@ -471,14 +500,19 @@ def widget_cells(work_folder, fonts, widgets):
             cells.append(("text", style + "." + key, text_pixels(work_folder, font, points - TWO_LINE_POINTS_LESS if "\n" in text else points, color, text)))
     for number in range(1, widgets["chapter_count"] + 1):
         cells.append(("text", "row.chapter_%d" % number, text_pixels(work_folder, font, widgets["row_points"], WHITE, "%s %d" % (widgets["chapter_word"], number))))
+    for key, text in widgets.get("title", {}).items():
+        cells.append(("text", "title." + key, text_pixels(work_folder, font, widgets["title_points"], WHITE, text)))
     for language in widgets["languages"]:
         cells.append(("text", "language." + language["key"], text_pixels(work_folder, fonts.decoded_path(language["font"]), widgets["bar_points"], WHITE, language["text"])))
     for name, width, height, radius, fill, stroke, stroke_width in SLICES:
         cells.append(("slice", "%s %d" % (name, radius), slice_pixels(work_folder, width, height, radius, fill, stroke, stroke_width)))
+    for name, width, height, cut, fill, stroke, stroke_width in TITLE_SLICES:
+        cells.append(("slice", "%s %d" % (name, cut + stroke_width), chamfer_pixels(work_folder, width, height, cut, fill, stroke, stroke_width)))
     for number in range(1, METER_STEPS + 1):
         for lit in (0, 1):
             cells.append(("flame", "%d %d" % (number, lit), flame_pixels(work_folder, font, number, lit, widgets["number_points"])))
     cells.append(("cell", "arrow_down", arrow_down_pixels(work_folder)))
+    cells.append(("cell", "trash", trash_pixels(work_folder)))
     return cells
 
 
@@ -517,7 +551,7 @@ def preview_lines(widgets):
 def bake_widgets(packs, work_folder, record, code, widgets):
     fonts = narration.TextFonts(packs, work_folder)
     font_bytes = b"".join(fonts.pack_bytes(path) for path in sorted(set([widgets["font"]] + [language["font"] for language in widgets["languages"]])))
-    key = record.key_for(code, {"widgets": widgets, "slices": SLICES, "flame": [FLAME_CELL, FLAME_SIZE], "glyphs": glyph_lines()}, font_bytes)
+    key = record.key_for(code, {"widgets": widgets, "slices": SLICES, "title_slices": TITLE_SLICES, "trash": TRASH_CELL, "flame": [FLAME_CELL, FLAME_SIZE], "glyphs": glyph_lines()}, font_bytes)
     relative_path = "textures/" + WIDGET_SHEET_NAME + ".gtex"
     gtex = record.read_if_current(relative_path, key)
     table = record.read_if_current(WIDGET_TABLE_PATH, key)

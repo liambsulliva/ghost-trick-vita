@@ -1048,6 +1048,15 @@ int script_player_takes_record_request(void)
     return 1;
 }
 
+int script_player_takes_title_request(void)
+{
+    if (data == NULL || phase != PHASE_FINISHED || !data->machine.title_is_wanted) {
+        return 0;
+    }
+    data->machine.title_is_wanted = 0;
+    return 1;
+}
+
 int script_player_takes_new_chapter(void)
 {
     int chapter;

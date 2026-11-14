@@ -21,15 +21,18 @@ static int reached[PAUSE_CHAPTERS_MOST + 1];
 static int selected;
 static struct pause_dialog dialog;
 static int touched_option;
+static const char *warning;
 
 void pause_chapters_use(pause_chapter_reached_function chapter_is_reached)
 {
     checker = chapter_is_reached;
 }
 
-void pause_chapters_enter(void)
+void pause_chapters_enter(const char *warning_key)
 {
     int chapter;
+
+    warning = warning_key;
 
     selected = 1;
     for (chapter = 1; chapter <= PAUSE_CHAPTERS_MOST; chapter++) {
@@ -53,7 +56,7 @@ static void ask(void)
 {
     dialog.line_count = 1;
     dialog.lines[0] = "row.chapters_ask";
-    dialog.note = "bar.title_warning";
+    dialog.note = warning;
     dialog.option_count = 2;
     dialog.options[0] = "row.yes";
     dialog.options[1] = "row.no";

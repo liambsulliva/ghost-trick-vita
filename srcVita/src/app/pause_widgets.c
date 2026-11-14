@@ -33,6 +33,9 @@
 #define DIALOG_BUTTON_HEIGHT 56.0f
 #define DIALOG_BUTTON_SPACE 40.0f
 #define DIALOG_SHADE (150.0f / 255.0f)
+#define FLOOR_LINE_HEIGHT 2.0f
+#define FLOOR_LINE_RED (110.0f / 255.0f)
+#define FLOOR_LINE_OTHER (16.0f / 255.0f)
 
 struct widget {
     char key[PAUSE_WIDGET_KEY_MAX];
@@ -396,6 +399,34 @@ void pause_draw_bar(float x_offset, const char *before_key, const char *glyph, c
         pause_draw_glyph(glyph, x + BAR_GLYPH_ROOM / 2.0f, middle, BACK_GLYPH_SIZE - 4.0f, 1.0f);
         pause_draw_text(after_key, x + BAR_GLYPH_ROOM, middle, PAUSE_ANCHOR_LEFT, 1.0f);
     }
+}
+
+void pause_draw_floor(float line_alpha)
+{
+    struct renderer_rect area;
+    struct renderer_color color;
+
+    area.x = 0.0f;
+    area.y = PAUSE_BAR_TOP;
+    area.width = SCREEN_WIDTH;
+    area.height = PAUSE_BAR_HEIGHT;
+    color.red = 0.0f;
+    color.green = 0.0f;
+    color.blue = 0.0f;
+    color.alpha = 1.0f;
+    renderer_draw_filled_rect(area, color);
+    area.y = PAUSE_BAR_TOP - FLOOR_LINE_HEIGHT / 2.0f;
+    area.height = FLOOR_LINE_HEIGHT;
+    color.red = FLOOR_LINE_RED;
+    color.green = FLOOR_LINE_OTHER;
+    color.blue = FLOOR_LINE_OTHER;
+    color.alpha = line_alpha;
+    renderer_draw_filled_rect(area, color);
+}
+
+void pause_draw_bar_note(float x_offset, const char *key)
+{
+    draw_text_in_box(key, SCREEN_WIDTH / 2.0f + x_offset, PAUSE_BAR_TOP + PAUSE_BAR_HEIGHT / 2.0f, SCREEN_WIDTH - 2.0f * BAR_TEXT_MARGIN, PAUSE_BAR_HEIGHT - 2.0f * BAR_TEXT_INSET);
 }
 
 int pause_is_on_back_pill(float x, float y)

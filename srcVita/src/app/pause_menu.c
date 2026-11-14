@@ -4,6 +4,7 @@
 #include "file.h"
 #include "file_path.h"
 #include "memory.h"
+#include "menu_input.h"
 #include "pause_clock.h"
 #include "pause_menu.h"
 #include "pause_options.h"
@@ -13,7 +14,6 @@
 #include "pause_widgets.h"
 #include "renderer.h"
 #include "run_log.h"
-#include "stick_aim.h"
 #include "text_lines.h"
 #include "texture_cache.h"
 
@@ -30,7 +30,6 @@
 #define SCREEN_HEIGHT ((float)RENDERER_HEIGHT)
 #define FLOOR_HEIGHT PAUSE_BAR_HEIGHT
 #define FLOOR_TOP (SCREEN_HEIGHT - FLOOR_HEIGHT)
-#define FLOOR_LINE_HEIGHT 2.0f
 #define CENTRE_X (SCREEN_WIDTH / 2.0f)
 #define FEET_X CENTRE_X
 #define FEET_Y (FLOOR_TOP + 9.0f)
@@ -51,9 +50,6 @@
 #define ARROW_LEFT_BACK 27.0f
 #define ARROW_SHOWN_FROM 0.5f
 #define TOUCH_MARGIN 14.0f
-#define REPEAT_DELAY_US 400000ull
-#define REPEAT_EVERY_US 90000ull
-#define DIRECTION_BUTTONS (INPUT_UP | INPUT_DOWN | INPUT_LEFT | INPUT_RIGHT)
 
 #define TRACK_IDLE 0
 #define TRACK_FIDGET 1
@@ -93,10 +89,7 @@ static int previous_cursor;
 static int cursor_ticks;
 static int picked;
 static int widget_total;
-static int stick_was_out;
-static unsigned int repeat_directions;
-static int repeat_is_armed;
-static unsigned long long repeat_held_us;
+static struct menu_input cursor_input;
 static int touch_was_down;
 static int touched_item;
 static int touched_option;
@@ -418,9 +411,7 @@ void pause_menu_open(void)
     previous_cursor = -1;
     cursor_ticks = CURSOR_TICKS;
     picked = PAUSE_ITEM_RESUME;
-    stick_was_out = 1;
-    repeat_directions = 0;
-    repeat_is_armed = 0;
+    menu_input_reset(&cursor_input);
     touch_was_down = 1;
     touched_item = -1;
     touched_option = PAUSE_DIALOG_NOTHING;
@@ -637,7 +628,7 @@ static void step_showing(unsigned int pressed)
             pause_save_enter();
             run_log_write("pause pick %s", item_names[picked]);
         } else if (picked == PAUSE_ITEM_CHAPTERS) {
-            pause_chapters_enter();
+            pause_chapters_enter("bar.title_warning");
             run_log_write("pause pick %s", item_names[picked]);
         } else {
             run_log_write("pause pick %s submenu=not_ported", item_names[picked]);
@@ -753,63 +744,6 @@ void pause_menu_step(unsigned int pressed)
     }
 }
 
-static unsigned int stick_presses(const struct input_state *input)
-{
-    int pressed_x;
-    int pressed_y;
-    int stick_is_out;
-    unsigned int pressed;
-
-    pressed = 0;
-    stick_is_out = input->stick_x != 0.0f || input->stick_y != 0.0f;
-    if (stick_is_out && !stick_was_out) {
-        stick_aim_first_push(input->stick_x, input->stick_y, &pressed_x, &pressed_y);
-        pressed = (pressed_x < 0 ? INPUT_LEFT : 0) | (pressed_x > 0 ? INPUT_RIGHT : 0) | (pressed_y < 0 ? INPUT_UP : 0) | (pressed_y > 0 ? INPUT_DOWN : 0);
-    }
-    stick_was_out = stick_is_out;
-    return pressed;
-}
-
-static unsigned int held_directions(const struct input_state *input)
-{
-    unsigned int held;
-    int pushed_x;
-    int pushed_y;
-
-    held = input->held & DIRECTION_BUTTONS;
-    if (input->stick_x != 0.0f || input->stick_y != 0.0f) {
-        stick_aim_first_push(input->stick_x, input->stick_y, &pushed_x, &pushed_y);
-        held |= (pushed_x < 0 ? INPUT_LEFT : 0) | (pushed_x > 0 ? INPUT_RIGHT : 0) | (pushed_y < 0 ? INPUT_UP : 0) | (pushed_y > 0 ? INPUT_DOWN : 0);
-    }
-    return held;
-}
-
-static unsigned int repeat_presses(const struct input_state *input, unsigned int fresh, unsigned long long elapsed_us)
-{
-    unsigned int held;
-    unsigned long long before;
-
-    held = held_directions(input);
-    if (held == 0 || held != repeat_directions) {
-        repeat_directions = held;
-        repeat_is_armed = held != 0 && (fresh & DIRECTION_BUTTONS) != 0;
-        repeat_held_us = 0;
-        return 0;
-    }
-    if (!repeat_is_armed) {
-        return 0;
-    }
-    before = repeat_held_us;
-    repeat_held_us = repeat_held_us + elapsed_us;
-    if (repeat_held_us < REPEAT_DELAY_US) {
-        return 0;
-    }
-    if (before < REPEAT_DELAY_US || (repeat_held_us - REPEAT_DELAY_US) / REPEAT_EVERY_US != (before - REPEAT_DELAY_US) / REPEAT_EVERY_US) {
-        return held;
-    }
-    return 0;
-}
-
 static float label_centre_x(int item)
 {
     return CENTRE_X + (float)side_of(item) * row_x[row_of(item)];
@@ -900,8 +834,8 @@ void pause_menu_update(const struct input_state *input, unsigned long long elaps
     if (steps > PAUSE_TICKS_PER_UPDATE_MOST) {
         steps = PAUSE_TICKS_PER_UPDATE_MOST;
     }
-    pressed = input->pressed | stick_presses(input) | touch_presses(input);
-    pressed = pressed | repeat_presses(input, pressed, elapsed_us);
+    pressed = input->pressed | menu_input_stick_presses(&cursor_input, input) | touch_presses(input);
+    pressed = pressed | menu_input_repeat_presses(&cursor_input, input, pressed, elapsed_us);
     pause_menu_step(pressed);
     while (steps > 1ull) {
         pause_menu_step(0);
@@ -1060,21 +994,6 @@ static void draw_labels(float camera_x, float alpha)
     }
 }
 
-static void draw_floor(void)
-{
-    struct renderer_color color;
-
-    color.red = 0.0f;
-    color.green = 0.0f;
-    color.blue = 0.0f;
-    color.alpha = 1.0f;
-    renderer_draw_filled_rect(rect(0.0f, FLOOR_TOP, SCREEN_WIDTH, FLOOR_HEIGHT), color);
-    color.red = 110.0f / 255.0f;
-    color.green = 16.0f / 255.0f;
-    color.blue = 16.0f / 255.0f;
-    renderer_draw_filled_rect(rect(0.0f, FLOOR_TOP - FLOOR_LINE_HEIGHT / 2.0f, SCREEN_WIDTH, FLOOR_LINE_HEIGHT), color);
-}
-
 static void draw_black(float alpha)
 {
     struct renderer_color color;
@@ -1114,7 +1033,7 @@ static void draw_menu(void)
     } else if (camera_x != 0.0f && picked == PAUSE_ITEM_CHAPTERS) {
         pause_chapters_draw(side_x);
     }
-    draw_floor();
+    pause_draw_floor(1.0f);
     if (camera_x != 0.0f) {
         if (picked == PAUSE_ITEM_OPTIONS) {
             pause_options_draw_bar(side_x);

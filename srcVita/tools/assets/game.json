@@ -381,7 +381,8 @@
         "off": "Off",
         "on": "On",
         "original": "Original",
-        "arranged": "Arranged"
+        "arranged": "Arranged",
+        "new_game_ask": "Start a new game from the beginning?"
       },
       "header": {
         "controls": "Controls",
@@ -440,7 +441,14 @@
         "title_warning": "Progress will be lost without saving.",
         "people_tab": "People",
         "phone_tab": "Phone Book",
-        "do_touch": "Drag the soul, tap pills and balloons"
+        "do_touch": "Drag the soul, tap pills and balloons",
+        "title_continue": "Pick up from your newest save.",
+        "title_chapters": "Play a chapter you have reached from its start.",
+        "title_new_game": "Start the story from the beginning.",
+        "title_options": "Change the game's settings.",
+        "title_language": "Choose the display language.",
+        "title_erase": "Erase all save data.",
+        "title_record": "Read every People and Places note."
       },
       "languages": [
         {
@@ -488,7 +496,15 @@
           "text": "\ud55c\uad6d\uc5b4",
           "font": "natives/android/gui/font/outlinefont/fotk-yoongulimpro740.oft.1"
         }
-      ]
+      ],
+      "title_points": 34,
+      "title": {
+        "continue": "Continue",
+        "chapter_select": "Chapter Select",
+        "new_game": "New Game",
+        "options": "Options",
+        "language": "Language"
+      }
     },
     "people": {
       "message_file": "natives/android/gamedesign/text/database/database.msg.22",
@@ -903,6 +919,12 @@
       "source": "natives/android/charfiles/3d/06_id/11_title/load_back_iml3.tex.691230823",
       "width": 960,
       "height": 544
+    },
+    {
+      "name": "title_logo",
+      "source": "natives/android/charfiles/3d/06_id/11_title/title_up_iml4.tex.691230823.en",
+      "width": 720,
+      "height": 232
     },
     {
       "name": "hud_button_art",

@@ -10,9 +10,6 @@
 #define BACKDROP "pause_backdrop"
 #define FLOOR_HEIGHT PAUSE_BAR_HEIGHT
 #define FLOOR_TOP PAUSE_BAR_TOP
-#define FLOOR_LINE_HEIGHT 2.0f
-#define FLOOR_LINE_RED (110.0f / 255.0f)
-#define FLOOR_LINE_OTHER (16.0f / 255.0f)
 #define TEXT_LEFT 28.0f
 #define TRACK_LEFT 300.0f
 #define TRACK_RIGHT_MARGIN 28.0f
@@ -118,8 +115,7 @@ void loading_screen_draw(void)
     if (backdrop != NULL) {
         pause_draw_from(BACKDROP, 0.0f, 0.0f, (float)backdrop->width, (float)backdrop->height, 0.0f, 0.0f, (float)RENDERER_WIDTH, (float)RENDERER_HEIGHT, alpha);
     }
-    renderer_draw_filled_rect(area(0.0f, FLOOR_TOP, (float)RENDERER_WIDTH, FLOOR_HEIGHT), color(0.0f, 0.0f, 0.0f, 1.0f));
-    renderer_draw_filled_rect(area(0.0f, FLOOR_TOP - FLOOR_LINE_HEIGHT / 2.0f, (float)RENDERER_WIDTH, FLOOR_LINE_HEIGHT), color(FLOOR_LINE_RED, FLOOR_LINE_OTHER, FLOOR_LINE_OTHER, alpha));
+    pause_draw_floor(alpha);
     pause_draw_text(LOADING_TEXT, TEXT_LEFT, FLOOR_TOP + FLOOR_HEIGHT / 2.0f, PAUSE_ANCHOR_LEFT, alpha);
     track_width = (float)RENDERER_WIDTH - TRACK_RIGHT_MARGIN - TRACK_LEFT;
     track_top = FLOOR_TOP + (FLOOR_HEIGHT - TRACK_HEIGHT) / 2.0f;

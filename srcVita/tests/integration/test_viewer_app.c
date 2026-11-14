@@ -7,6 +7,7 @@
 #include "fakes/fake_renderer.h"
 #include "fakes/fake_texture_files.h"
 #include "file.h"
+#include "game_save.h"
 #include "fixtures/fixture_facts.h"
 #include "fixtures/sine_mono_ogg.h"
 #include "fixtures/sine_stereo_ogg.h"
@@ -17,6 +18,8 @@
 #include "scene_view.h"
 #include "test_support.h"
 #include "texture_cache.h"
+#include "script_player.h"
+#include "title_menu.h"
 #include "viewer_app.h"
 
 #define FRAME_US 16667
@@ -2441,8 +2444,101 @@ static void test_long_run_keeps_memory_bounded(void)
     CHECK_INT(fake_renderer_textures_alive(), 0);
 }
 
+static void set_up_title_assets(int with_title_art)
+{
+    add_texture("room_a", ROOM_A_WIDTH, 54);
+    add_text_file("assets/manifest.txt", "background room_a\n");
+    add_text_file("assets/scripts/chain.txt", "route\n");
+    if (!with_title_art) {
+        return;
+    }
+    add_text_file("assets/pause/widgets.txt", "slice title_button 18 0 0 64 56\nslice title_button_selected 18 64 0 64 56\ntext title.new_game 0 64 100 30\ntext title.continue 0 96 100 30\n");
+    add_texture("pause_widgets", 256, 256);
+    add_texture("pause_backdrop", 960, 544);
+    add_texture("title_logo", 720, 232);
+    add_texture("hud_button_art", 64, 64);
+    add_texture("hud_sheet", 8, 8);
+}
+
+static void run_frames_until_the_title_shows(void)
+{
+    int frame;
+
+    for (frame = 0; frame < 120 && title_menu_phase() != TITLE_PHASE_SHOWING; frame++) {
+        run_frames(1);
+    }
+    CHECK_INT(title_menu_phase(), TITLE_PHASE_SHOWING);
+}
+
+static void test_the_app_boots_into_the_title_screen_and_new_game_starts_the_opening(void)
+{
+    int frame;
+
+    set_up_platform();
+    set_up_title_assets(1);
+    viewer_app_start("assets");
+    CHECK(title_menu_is_open());
+    CHECK(!script_player_is_active());
+    CHECK_HAS_TEXT(log_text(), "title open save=0");
+    run_frames_until_the_title_shows();
+    draw_frame();
+    CHECK(fake_renderer_draw_count() > 2);
+    press(INPUT_CROSS);
+    for (frame = 0; frame < 120 && title_menu_is_open(); frame++) {
+        run_frames(1);
+    }
+    CHECK(!title_menu_is_open());
+    CHECK(script_player_is_active());
+    CHECK_HAS_TEXT(log_text(), "script started name=route");
+    viewer_app_stop();
+}
+
+static void test_a_save_puts_continue_on_the_title_instead_of_resuming_at_boot(void)
+{
+    static struct game_save save;
+
+    set_up_platform();
+    set_up_title_assets(1);
+    memset(&save, 0, sizeof(save));
+    snprintf(save.script, sizeof(save.script), "%s", "st01-st01_root");
+    CHECK(game_save_store_as_newest(&save, GAME_SAVE_AUTO));
+    viewer_app_start("assets");
+    CHECK(title_menu_is_open());
+    CHECK(title_menu_shows(TITLE_ITEM_CONTINUE));
+    CHECK_INT(title_menu_cursor(), TITLE_ITEM_CONTINUE);
+    CHECK(!script_player_is_active());
+    viewer_app_stop();
+}
+
+static void test_without_title_art_the_app_plays_the_opening(void)
+{
+    set_up_platform();
+    set_up_title_assets(0);
+    viewer_app_start("assets");
+    CHECK(!title_menu_is_open());
+    CHECK(script_player_is_active());
+    CHECK_HAS_TEXT(log_text(), "title needs_art");
+    viewer_app_stop();
+}
+
+static void test_the_play_script_command_leaves_the_title_and_starts_the_opening(void)
+{
+    set_up_platform();
+    set_up_title_assets(1);
+    viewer_app_start("assets");
+    CHECK(title_menu_is_open());
+    CHECK(viewer_app_play_script("route"));
+    CHECK(!title_menu_is_open());
+    CHECK(script_player_is_active());
+    viewer_app_stop();
+}
+
 int main(void)
 {
+    test_the_app_boots_into_the_title_screen_and_new_game_starts_the_opening();
+    test_a_save_puts_continue_on_the_title_instead_of_resuming_at_boot();
+    test_without_title_art_the_app_plays_the_opening();
+    test_the_play_script_command_leaves_the_title_and_starts_the_opening();
     test_app_without_assets_shows_placeholder_and_says_so();
     test_browsing_draws_a_small_background_centred_with_the_character_over_it();
     test_browsing_plays_animation_over_time_and_reports_coverage();

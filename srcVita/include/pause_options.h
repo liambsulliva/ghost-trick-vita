@@ -6,6 +6,7 @@
 
 void pause_options_show_unlock(int is_shown);
 void pause_options_enter(void);
+void pause_options_enter_on_language(void);
 int pause_options_step(unsigned int pressed);
 unsigned int pause_options_touch(int lands, int lifts, int is_down, float x, float y);
 void pause_options_tick(void);

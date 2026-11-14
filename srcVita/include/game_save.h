@@ -28,6 +28,7 @@ struct game_save {
     int trick_is_on;
     int rollback_is_on;
     int has_soul_state;
+    int game_cleared;
     unsigned char game_flags[SCRIPT_FLAG_BYTES];
     unsigned char chapter_flags[SCRIPT_FLAG_BYTES];
     unsigned char game_bank_saved[SCRIPT_GAME_FLAG_BANK_BYTES];
@@ -44,6 +45,7 @@ int game_save_store(const struct game_save *save, enum game_save_slot slot);
 int game_save_store_as_newest(struct game_save *save, enum game_save_slot slot);
 int game_save_load(struct game_save *save, enum game_save_slot slot);
 int game_save_load_newest(struct game_save *save);
+int game_save_mark_cleared(void);
 int game_save_erase_all(void);
 int game_save_store_chapter(const struct game_save *save, int chapter);
 int game_save_load_chapter(struct game_save *save, int chapter);

@@ -31,6 +31,7 @@
 #include "script_view.h"
 #include "sound_engine.h"
 #include "texture_cache.h"
+#include "title_menu.h"
 #include "ui_list.h"
 #include "viewer_app.h"
 
@@ -239,6 +240,7 @@ int viewer_app_play_scene(const char *name)
 
 int viewer_app_play_script(const char *name)
 {
+    title_menu_close();
     pending_background_index = NO_PENDING_BACKGROUND;
     scene_player_stop();
     script_player_play(name);
@@ -372,7 +374,7 @@ static void replay_chapter(int chapter)
     script_player_resume(&save);
 }
 
-static void continue_or_play_opening(void)
+static void continue_newest_save(void)
 {
     static struct game_save save;
 
@@ -383,6 +385,51 @@ static void continue_or_play_opening(void)
     pending_background_index = NO_PENDING_BACKGROUND;
     scene_player_stop();
     script_player_resume(&save);
+}
+
+static int newest_save_exists(void)
+{
+    static struct game_save save;
+
+    return game_save_load_newest(&save);
+}
+
+static int newest_save_is_cleared(void)
+{
+    static struct game_save save;
+
+    return game_save_load_newest(&save) && save.game_cleared;
+}
+
+static void open_title(void)
+{
+    leave_scene_for_browsing();
+    pending_background_index = NO_PENDING_BACKGROUND;
+    if (!title_menu_is_ready()) {
+        run_log_write("title needs_art");
+        play_opening();
+        return;
+    }
+    title_menu_open();
+}
+
+static void take_title_request(void)
+{
+    int chapter;
+
+    switch (title_menu_takes_request(&chapter)) {
+    case TITLE_REQUEST_CONTINUE:
+        continue_newest_save();
+        break;
+    case TITLE_REQUEST_NEW_GAME:
+        play_opening();
+        break;
+    case TITLE_REQUEST_CHAPTER:
+        replay_chapter(chapter);
+        break;
+    case TITLE_REQUEST_NONE:
+        break;
+    }
 }
 
 static void read_page_tiles(const char *script_folder)
@@ -481,11 +528,12 @@ void viewer_app_start(const char *folder)
     pause_options_show_unlock(DEV_TOOLS_ARE_BUILT);
     pause_save_use(script_player_save_manual, slot_has_save);
     pause_chapters_use(chapter_has_save);
+    title_menu_use(newest_save_exists, newest_save_is_cleared, game_save_erase_all);
     illustrations_known_chapter = highest_reached_chapter();
     if (script_player_is_available()) {
         hud_is_visible = 0;
         debug_controls_are_on = 0;
-        continue_or_play_opening();
+        open_title();
         return;
     }
     run_log_write("opening needs_scripts entry=%s", SCRIPT_ENTRY_NAME);
@@ -687,12 +735,17 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
     if (input->pressed != 0) {
         run_log_write("input pressed buttons=0x%04x", input->pressed);
     }
+    if (title_menu_is_open()) {
+        title_menu_update(input, elapsed_us);
+        take_title_request();
+        return;
+    }
     toast_new_illustrations();
     toast_update(elapsed_us);
     if (pause_menu_is_open()) {
         pause_menu_update(input, elapsed_us);
         if (pause_menu_takes_title_request() && opening_can_play()) {
-            play_opening();
+            open_title();
         }
         chapter = pause_menu_takes_chapter_request();
         if (chapter > 0) {
@@ -726,6 +779,11 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
         script_player_update(elapsed_us);
     } else if (DEV_TOOLS_ARE_BUILT) {
         scene_player_update(elapsed_us);
+    }
+    if (script_player_takes_title_request()) {
+        (void)game_save_mark_cleared();
+        open_title();
+        return;
     }
     update_loading_screen(elapsed_us);
 }
@@ -862,6 +920,11 @@ static void draw_game_picture(void)
 
 void viewer_app_draw(void)
 {
+    if (title_menu_is_open()) {
+        title_menu_draw();
+        draw_brightness();
+        return;
+    }
     if (!pause_menu_shows_game()) {
         pause_menu_draw();
         draw_brightness();
@@ -904,6 +967,7 @@ void viewer_app_draw(void)
 
 void viewer_app_stop(void)
 {
+    title_menu_close();
     script_player_shutdown();
     scene_player_shutdown();
     music_shutdown();

@@ -6,7 +6,7 @@ A PS Vita port using the original DS game logic with the 2023 remaster's art and
 
 The whole game is routed and plays from start to finish. An automatic playthrough of 1719 route steps follows a reference playthrough from the opening of Chapter 1 to the closing credits and back to the title screen, replayed on a computer through the same input code the Vita uses. It finishes with no step failed, no scene skipped and no stand-in for the game's own logic; one step the route passes over is left out of the count.
 
-The same playthrough has run on a real Vita. On 2026-11-13 the debug build played the route by itself, at up to 30 ticks a frame, and did all 1718 steps in about 53 minutes. It saved every chapter from 2 to 18 on the way and had no softlock and no crash. The title screen had not appeared in the log when the run was stopped, 47 seconds after the last step. What is left is the script opcodes that still log as not ported (16 were met on that run), a few slow stretches where large textures load, and the title screen.
+The same playthrough has run on a real Vita. On 2026-11-13 the debug build played the route by itself, at up to 30 ticks a frame, and did all 1718 steps in about 53 minutes. It saved every chapter from 2 to 18 on the way and had no softlock and no crash. The title screen had not appeared in the log when the run was stopped, 47 seconds after the last step. The port now boots into a title screen and returns to it at the story's end, so far checked on the Mac only. What is left is the script opcodes that still log as not ported (16 were met on that run) and a few slow stretches where large textures load.
 
 The app installs and runs from locally converted remaster art. The one-command setup below prepares the whole game.
 
@@ -103,6 +103,7 @@ The port follows the DS game's own code wherever it can. The changes below are d
 - **The right stick pans the ghost view.** While the player holds the chain, the left stick moves the soul and the right stick pans the camera. The camera stays where it was panned until the soul is aimed again.
 - **Holding CIRCLE moves through dialogue.** While talk or narration shows, a held CIRCLE finishes each page and moves on as fast as the game allows. It never picks a choice.
 - **Save at any point.** The pause menu's Save keeps the game whenever the player has the controls, not only at the game's own checkpoints. Loading picks up again from the start of the scene it was saved in.
+- **New Game and Options on the title screen.** The DS title offers Chapter Select, Continue, Language and erase, and a new game only when there is no save. The port also always offers New Game, which asks first over a save, and Options.
 - **A high-contrast mode.** An Options setting that makes cores easier to pick out in crowded rooms, for players with low vision.
 - **Vita buttons instead of touch alone.** Every touch action also has a button, and the on-screen prompts show the Vita's buttons rather than the remaster's keyboard keys. [The app's README](srcVita/README.md#controls) lists them.
 

@@ -11,7 +11,7 @@
 typedef int (*pause_chapter_reached_function)(int chapter);
 
 void pause_chapters_use(pause_chapter_reached_function chapter_is_reached);
-void pause_chapters_enter(void);
+void pause_chapters_enter(const char *warning_key);
 int pause_chapters_step(unsigned int pressed);
 unsigned int pause_chapters_touch(int lands, int lifts, float x, float y);
 int pause_chapters_selected(void);

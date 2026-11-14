@@ -140,6 +140,7 @@ static int settings_changed;
 static struct pause_dialog restore_dialog;
 static enum row_job dialog_job;
 static int unlock_row_is_shown;
+static int leaves_with_dropdown;
 
 void pause_options_show_unlock(int is_shown)
 {
@@ -210,6 +211,7 @@ void pause_options_enter(void)
     touched_row = -1;
     touched_option = PAUSE_DIALOG_NOTHING;
     settings_changed = 0;
+    leaves_with_dropdown = 0;
     restore_dialog.is_open = 0;
     restore_dialog.line_count = 1;
     restore_dialog.lines[0] = "row.restore_ask";
@@ -480,6 +482,10 @@ int pause_options_step(unsigned int pressed)
         }
         return PAUSE_OPTIONS_STAYS;
     }
+    if (leaves_with_dropdown && !dropdown_is_open) {
+        pause_options_leave();
+        return PAUSE_OPTIONS_LEAVES;
+    }
     if (dropdown_is_open) {
         return step_dropdown(pressed);
     }
@@ -557,6 +563,18 @@ void pause_options_tick(void)
     if (fabsf(target - scroll) < SCROLL_SNAP) {
         scroll = target;
     }
+}
+
+static int dropdown_row(void);
+
+void pause_options_enter_on_language(void)
+{
+    pause_options_enter();
+    selected = dropdown_row();
+    scroll = scroll_target();
+    dropdown_is_open = 1;
+    dropdown_hovered = game_settings_now()->language;
+    leaves_with_dropdown = 1;
 }
 
 static int row_at(float y)

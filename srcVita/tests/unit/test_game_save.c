@@ -173,7 +173,7 @@ static void test_an_unsaved_chapter_starts_through_the_native_chapter_select(voi
 static void test_the_chapters_grid_plays_only_reached_chapters_after_asking(void)
 {
     pause_chapters_use(fake_chapter_reached);
-    pause_chapters_enter();
+    pause_chapters_enter("bar.title_warning");
     CHECK_INT(pause_chapters_selected(), 2);
     pause_chapters_step(INPUT_RIGHT);
     CHECK_INT(pause_chapters_selected(), 3);
@@ -201,6 +201,35 @@ static void test_the_chapters_grid_plays_only_reached_chapters_after_asking(void
     CHECK_INT(pause_chapters_touch(1, 0, 60.0f + 290.0f + 10.0f, 115.0f), INPUT_CROSS);
 }
 
+static void test_the_game_cleared_mark_reaches_every_slot_stays_through_later_saves_and_erases(void)
+{
+    fake_files_reset();
+    fill_machine();
+    game_save_capture(&save, &machine, "first");
+    CHECK_INT(game_save_store_as_newest(&save, GAME_SAVE_MANUAL), 1);
+    game_save_capture(&save, &machine, "second");
+    CHECK_INT(game_save_store_as_newest(&save, GAME_SAVE_AUTO), 1);
+    CHECK_INT(game_save_load_newest(&read_back), 1);
+    CHECK_INT(read_back.game_cleared, 0);
+    CHECK_INT(game_save_mark_cleared(), 1);
+    CHECK_INT(game_save_load(&read_back, GAME_SAVE_MANUAL), 1);
+    CHECK_INT(read_back.game_cleared, 1);
+    CHECK_TEXT(read_back.script, "first");
+    CHECK_INT(game_save_load(&read_back, GAME_SAVE_AUTO), 1);
+    CHECK_INT(read_back.game_cleared, 1);
+    CHECK_INT((int)read_back.serial, 2);
+    CHECK_INT(game_save_mark_cleared(), 0);
+    game_save_capture(&save, &machine, "third");
+    CHECK_INT(save.game_cleared, 0);
+    CHECK_INT(game_save_store_as_newest(&save, GAME_SAVE_AUTO), 1);
+    CHECK_INT(game_save_load_newest(&read_back), 1);
+    CHECK_TEXT(read_back.script, "third");
+    CHECK_INT(read_back.game_cleared, 1);
+    CHECK_INT(game_save_erase_all(), 1);
+    CHECK_INT(game_save_mark_cleared(), 0);
+    CHECK_INT(game_save_load_newest(&read_back), 0);
+}
+
 int main(void)
 {
     test_a_save_survives_text_and_restores_the_machine();
@@ -211,5 +240,6 @@ int main(void)
     test_chapter_slots_store_by_number_and_erase_with_the_rest();
     test_an_unsaved_chapter_starts_through_the_native_chapter_select();
     test_the_chapters_grid_plays_only_reached_chapters_after_asking();
+    test_the_game_cleared_mark_reaches_every_slot_stays_through_later_saves_and_erases();
     return test_finish("unit/game_save");
 }

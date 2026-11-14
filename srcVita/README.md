@@ -20,7 +20,7 @@ No game data lives in this folder. Converted assets, captures, reference video a
 | `tools/assets/` | The asset converter |
 | `tools/assets/extract_text_key.py` | Finds the text key in your own copy of the Android package |
 | `tools/vita_loop.py` | Installs, launches and reads back from the Vita |
-| `tools/pause_render.py` | Draws the pause menu on the Mac from the baked set, after a list of button presses, through `tests/golden/pause_render.c` |
+| `tools/pause_render.py` | Draws the pause menu, or with `--title` the title screen, on the Mac from the baked set, after a list of button presses, through `tests/golden/pause_render.c` |
 | `tools/audio_check.py` | Judges a run log's audio timing and checksums, with no listener |
 | `tools/mutation_check.py` | Breaks the code on purpose to prove the tests notice |
 | `docs/asset_format.md` | The file formats shared by the converter and the app |
@@ -249,6 +249,8 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 | SELECT | Opens the pause menu straight on the Record (People) screen while the player has the controls (whenever the game's pills show), as the notebook pill does; CIRCLE there goes back to the game |
 | START | Open the pause menu, as does a tap on the pause button at the top right: Resume, Save, Record, Title, Chapters and Options |
 
+The app opens on the title screen (`src/app/title_menu.c`), as does the pause menu's Title entry and the end of the story. With a save it shows Chapter Select, Continue (picked first), New Game, Options, Language and the trash can, which erases every save after asking. Without one it shows New Game, Options and Language. Once the story has been finished, a notebook button at the top left opens the People screen with every note. The d-pad, left stick or a tap moves between them, CROSS picks and CIRCLE backs out of a screen.
+
 The pause menu keeps settings in `ux0:data/ghosttrick/settings.txt`, the Manual Save and Autosave slots in `save_manual.txt` and `save_auto.txt`, and each chapter's start in `chapter_NN.txt`; the saves use `src/app/game_save.c`'s text format. A save holds the state at the start of the current script.
 
 ## Debug controls
@@ -267,7 +269,7 @@ Nothing halts the game. An op, table word, effect id or GameApp pair the VM does
 
 `script_soul.c` is the player's side: soul view, core selection, tricks and the game events that only native code sends. Pressing the trick button sends `core|ready` at once and `core|action` 8 ticks later, as the DS does. A dead person's core sends `timeleap|start` instead.
 
-In the debug build's commands file, `play_script route` restarts the opening. X replays it when it finishes.
+In the debug build's commands file, `play_script route` starts the opening, from the title screen too. X replays it when it finishes.
 
 `make -C srcVita golden` compares the VM's fetches with the saved DS trace, on a machine that has one in `extracted/trace/vm_golden/`. It exits 2 with a message otherwise.
 

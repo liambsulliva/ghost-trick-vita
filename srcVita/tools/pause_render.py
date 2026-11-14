@@ -173,11 +173,15 @@ def main():
     parser = argparse.ArgumentParser(description="Draws the pause menu on the Mac from the baked assets, after a list of button presses.")
     parser.add_argument("assets_folder", help="a converted set folder, such as ../extracted/vita_assets/game")
     parser.add_argument("buttons", help="presses after the menu opens: u d l r x o L R, and . to wait")
+    parser.add_argument("--title", choices=["none", "save", "cleared"], help="draw the title screen instead, with no save, a save, or a save of a cleared game")
     parser.add_argument("output", help="the PNG to write")
     parser.add_argument("--notes", help="notebook entries known, as list:id:level,... (1 people, 2 places)")
     parser.add_argument("--clock", help="the scene the clock reads, as chapter:script:plate")
     arguments = parser.parse_args()
-    render(arguments.assets_folder, arguments.buttons, arguments.output, arguments.notes, arguments.clock)
+    buttons = arguments.buttons
+    if arguments.title is not None:
+        buttons = {"none": "title:", "save": "title_save:", "cleared": "title_clear:"}[arguments.title] + buttons
+    render(arguments.assets_folder, buttons, arguments.output, arguments.notes, arguments.clock)
     return 0
 
 

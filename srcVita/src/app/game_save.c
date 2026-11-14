@@ -74,6 +74,9 @@ unsigned int game_save_write_text(const struct game_save *save, char *text, unsi
     used = add_text(text, text_size, used, "chapter_mark %d\n", save->chapter_mark);
     used = add_text(text, text_size, used, "phone_book_place %d\n", save->phone_book_place);
     used = add_text(text, text_size, used, "fate_level %d\n", save->fate_level);
+    if (save->game_cleared) {
+        used = add_text(text, text_size, used, "game_cleared %d\n", 1);
+    }
     if (save->has_soul_state) {
         used = add_text(text, text_size, used, "pills_registered %d\n", (int)save->pills_registered);
         used = add_text(text, text_size, used, "trick_is_on %d\n", save->trick_is_on);
@@ -130,6 +133,8 @@ int game_save_read_text(struct game_save *save, const char *text, unsigned int t
             save->phone_book_place = atoi(value);
         } else if (strcmp(line, "fate_level") == 0) {
             save->fate_level = atoi(value);
+        } else if (strcmp(line, "game_cleared") == 0) {
+            save->game_cleared = atoi(value) != 0;
         } else if (strcmp(line, "pills_registered") == 0) {
             save->pills_registered = (unsigned int)strtoul(value, NULL, 10);
             save->has_soul_state = 1;
@@ -176,7 +181,12 @@ int game_save_store_as_newest(struct game_save *save, enum game_save_slot slot)
 {
     static struct game_save newest;
 
-    save->serial = game_save_load_newest(&newest) ? newest.serial + 1u : 1u;
+    if (game_save_load_newest(&newest)) {
+        save->serial = newest.serial + 1u;
+        save->game_cleared = save->game_cleared || newest.game_cleared;
+    } else {
+        save->serial = 1u;
+    }
     return game_save_store(save, slot);
 }
 
@@ -280,6 +290,23 @@ int game_save_load_newest(struct game_save *save)
         memset(save, 0, sizeof(*save));
     }
     return has_auto;
+}
+
+int game_save_mark_cleared(void)
+{
+    static struct game_save save;
+    int slot;
+    int marked;
+
+    marked = 0;
+    for (slot = 0; slot < GAME_SAVE_SLOT_COUNT; slot++) {
+        if (game_save_load(&save, (enum game_save_slot)slot) && !save.game_cleared) {
+            save.game_cleared = 1;
+            marked = game_save_store(&save, (enum game_save_slot)slot) || marked;
+        }
+    }
+    run_log_write("save game_cleared marked=%d", marked);
+    return marked;
 }
 
 int game_save_erase_all(void)

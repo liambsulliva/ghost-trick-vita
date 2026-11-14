@@ -14,6 +14,8 @@
 #include "run_log.h"
 #include "texture_cache.h"
 #include "texture_file.h"
+#include "pause_chapters.h"
+#include "title_menu.h"
 
 #define SET "set"
 #define PATH_MOST 512
@@ -22,7 +24,10 @@
 #define LOAD_ROUNDS 4
 
 static const char *const tables[] = { "pause/cat.txt", "pause/cat_track.txt", "pause/labels.txt", "pause/widgets.txt", "pause/people.txt", "pause/clock.txt" };
-static const char *const fixed_textures[] = { "pause_backdrop", "pause_spotlight", "pause_labels", "pause_widgets", "hud_sheet", "pause_people_thumbs", "pause_people_spot", "pause_clock" };
+static const char *const fixed_textures[] = { "pause_backdrop", "pause_spotlight", "pause_labels", "pause_widgets", "hud_sheet", "pause_people_thumbs", "pause_people_spot", "pause_clock", "title_logo", "hud_button_art" };
+static int drawing_the_title;
+static int title_has_save;
+static int title_is_cleared;
 static char texture_names[1024][ASSET_NAME_MAX];
 static unsigned char notes[SCRIPT_NOTE_LIST_COUNT][SCRIPT_NOTE_ID_COUNT];
 static int texture_name_count;
@@ -84,7 +89,57 @@ static void press(unsigned int buttons)
     input.pressed = buttons;
     texture_cache_upload_finished_reads(16);
     texture_cache_begin_frame();
-    pause_menu_update(&input, PAUSE_TICK_US);
+    if (drawing_the_title) {
+        title_menu_update(&input, PAUSE_TICK_US);
+    } else {
+        pause_menu_update(&input, PAUSE_TICK_US);
+    }
+}
+
+static void draw_menu(void)
+{
+    if (drawing_the_title) {
+        title_menu_draw();
+    } else {
+        pause_menu_draw();
+    }
+}
+
+static int title_save_exists(void)
+{
+    return title_has_save;
+}
+
+static int title_game_is_cleared(void)
+{
+    return title_is_cleared;
+}
+
+static int title_erases(void)
+{
+    title_has_save = 0;
+    return 1;
+}
+
+static int every_chapter_is_reached(int chapter)
+{
+    return chapter > 0;
+}
+
+static const char *read_title_mode(const char *buttons)
+{
+    static const char *const modes[] = { "title:", "title_save:", "title_clear:" };
+    unsigned int index;
+
+    for (index = 0; index < sizeof(modes) / sizeof(modes[0]); index++) {
+        if (strncmp(buttons, modes[index], strlen(modes[index])) == 0) {
+            drawing_the_title = 1;
+            title_has_save = index > 0;
+            title_is_cleared = index > 1;
+            return buttons + strlen(modes[index]);
+        }
+    }
+    return buttons;
 }
 
 static void wait_steps(int count)
@@ -220,12 +275,12 @@ static void print_draws(void)
 
     for (round = 0; round < LOAD_ROUNDS; round++) {
         fake_renderer_clear_draws();
-        pause_menu_draw();
+        draw_menu();
         texture_cache_upload_finished_reads(64);
         texture_cache_begin_frame();
     }
     fake_renderer_clear_draws();
-    pause_menu_draw();
+    draw_menu();
     for (index = 0; index < fake_renderer_draw_count(); index++) {
         draw = fake_renderer_draw(index);
         if (draw->is_contrast) {
@@ -241,11 +296,12 @@ static void print_draws(void)
 int main(int argc, char **argv)
 {
     char name[ASSET_NAME_MAX];
+    const char *buttons;
     unsigned int index;
     int page;
 
     if (argc < 3) {
-        fprintf(stderr, "usage: pause_render <assets folder> <buttons: u d l r x o L R, . waits> [notes list:id:level,...] [clock chapter:script:plate]\n");
+        fprintf(stderr, "usage: pause_render <assets folder> <[title: | title_save: | title_clear:]buttons: u d l r x o L R, . waits> [notes list:id:level,...] [clock chapter:script:plate]\n");
         return 2;
     }
     fake_files_reset();
@@ -279,9 +335,16 @@ int main(int argc, char **argv)
         note_clock(argv[4]);
     }
     pause_people_use_notes(&notes[0][0]);
-    pause_menu_open();
+    buttons = read_title_mode(argv[2]);
+    if (drawing_the_title) {
+        title_menu_use(title_save_exists, title_game_is_cleared, title_erases);
+        pause_chapters_use(every_chapter_is_reached);
+        title_menu_open();
+    } else {
+        pause_menu_open();
+    }
     wait_steps(SETTLE_STEPS);
-    press_each(argv[2]);
+    press_each(buttons);
     for (index = 0; index < (unsigned int)texture_name_count; index++) {
         const struct cached_texture *entry = texture_cache_use_or_start_loading(texture_names[index]);
         fprintf(stderr, "texture %s state=%d width=%u\n", texture_names[index], entry ? (int)entry->state : -1, entry ? entry->width : 0u);

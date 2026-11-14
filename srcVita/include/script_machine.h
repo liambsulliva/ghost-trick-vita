@@ -1,6 +1,9 @@
 #ifndef SCRIPT_MACHINE_H
 #define SCRIPT_MACHINE_H
 
+#define SCRIPT_TITLE_SCENE "GOTO TITLE"
+#define SCRIPT_GAME_TITLE_SCENE "GOTO GAMETITLE"
+
 #include "script_choice.h"
 #include "script_file.h"
 #include "script_flags.h"
@@ -457,6 +460,7 @@ struct script_machine {
     struct script_flags flags;
     int pause_bit;
     int record_is_wanted;
+    int title_is_wanted;
     int mode_byte;
     int film_frame_is_on;
     int swirl_is_on;

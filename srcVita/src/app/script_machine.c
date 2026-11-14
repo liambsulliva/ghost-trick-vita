@@ -1773,6 +1773,7 @@ static void load_pending_script(struct script_machine *machine)
     source = find_source(machine, name);
     if (source == NULL) {
         machine->is_finished = 1;
+        machine->title_is_wanted = strcmp(name, SCRIPT_TITLE_SCENE) == 0 || strcmp(name, SCRIPT_GAME_TITLE_SCENE) == 0;
         if (machine->outputs->marked != NULL) {
             machine->outputs->marked("script_change_past_baked_files", name);
         }
