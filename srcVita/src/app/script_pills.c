@@ -308,12 +308,12 @@ int script_pills_any_on_screen(const struct script_machine *machine)
     return 0;
 }
 
-int script_pills_player_has_control(const struct script_machine *machine)
+int script_pills_pause_is_offered(const struct script_machine *machine)
 {
     enum pill_group group;
 
     group = current_group(machine);
-    return group == GROUP_NORMAL || group == GROUP_DEMO_MODE_PLAY || (group == GROUP_GHOST && !machine->soul.view_demo_is_on);
+    return group == GROUP_NORMAL || group == GROUP_DEMO_MODE_PLAY;
 }
 
 void script_pills_fill_view(const struct script_machine *machine, struct script_hud_view *view)
@@ -321,7 +321,7 @@ void script_pills_fill_view(const struct script_machine *machine, struct script_
     int index;
 
     view->pulse_ticks = (int)machine->soul.pill_pulse_ticks;
-    view->player_has_control = script_pills_player_has_control(machine);
+    view->pause_is_offered = script_pills_pause_is_offered(machine);
     for (index = 0; index < SCRIPT_PILL_COUNT; index++) {
         const struct script_pill *pill;
 

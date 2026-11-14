@@ -648,7 +648,7 @@ void script_pills_step(struct script_machine *machine);
 void script_pills_press(struct script_machine *machine, enum script_pill_id id, int ticks_after_press);
 int script_pills_is_up(const struct script_machine *machine, enum script_pill_id id);
 int script_pills_any_on_screen(const struct script_machine *machine);
-int script_pills_player_has_control(const struct script_machine *machine);
+int script_pills_pause_is_offered(const struct script_machine *machine);
 void script_pills_register(struct script_machine *machine, enum script_pill_id id, int is_on);
 void script_pills_register_all(struct script_machine *machine);
 void script_pills_unregister_all(struct script_machine *machine);

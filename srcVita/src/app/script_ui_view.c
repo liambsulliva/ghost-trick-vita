@@ -1157,7 +1157,7 @@ static int ui_is_showing(void)
 {
     int index;
 
-    if (tables == NULL || !hud.player_has_control || hud.is_hidden_for_movie || hud.picture_is_hidden || the_picture_is_covered()) {
+    if (tables == NULL || !hud.pause_is_offered || hud.is_hidden_for_movie || hud.picture_is_hidden || the_picture_is_covered()) {
         return 0;
     }
     for (index = 0; index < SCRIPT_PILL_COUNT; index++) {

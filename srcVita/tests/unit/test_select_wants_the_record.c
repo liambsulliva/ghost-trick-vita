@@ -36,19 +36,20 @@ static void test_a_scripted_event_takes_the_pause_and_the_record_away(void)
     machine.mode_byte = SCRIPT_MODE_NORMAL;
     machine.soul.rollback_is_on = 1;
     machine.soul.pills[SCRIPT_PILL_HOURGLASS].state = PILL_IS_SHOWN;
-    CHECK(script_pills_player_has_control(&machine));
+    CHECK(script_pills_pause_is_offered(&machine));
     machine.mode_byte = SCRIPT_MODE_DEMO;
-    CHECK(!script_pills_player_has_control(&machine));
+    CHECK(!script_pills_pause_is_offered(&machine));
     script_soul_note_pill(&machine, SCRIPT_PILL_NOTEBOOK);
     CHECK_INT(machine.record_is_wanted, 0);
     machine.mode_byte = SCRIPT_MODE_NORMAL;
+    CHECK(script_pills_pause_is_offered(&machine));
     machine.soul.is_on = 1;
-    CHECK(script_pills_player_has_control(&machine));
-    machine.soul.view_demo_is_on = 1;
-    CHECK(!script_pills_player_has_control(&machine));
-    machine.soul.view_demo_is_on = 0;
+    CHECK(!script_pills_pause_is_offered(&machine));
+    machine.soul.pills[SCRIPT_PILL_BACK].state = PILL_IS_SHOWN;
+    script_soul_note_pill(&machine, SCRIPT_PILL_NOTEBOOK);
+    CHECK_INT(machine.record_is_wanted, 0);
     machine.demo_soul_is_on = 1;
-    CHECK(!script_pills_player_has_control(&machine));
+    CHECK(!script_pills_pause_is_offered(&machine));
 }
 
 int main(void)

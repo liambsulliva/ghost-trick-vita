@@ -92,7 +92,7 @@ static void test_pills_hide_under_a_card_or_a_full_fade(void)
     memset(&tables, 0, sizeof(tables));
     script_ui_view_start(&tables);
     memset(&view, 0, sizeof(view));
-    view.player_has_control = 1;
+    view.pause_is_offered = 1;
     show_pill(&view, SCRIPT_PILL_GHOST, PILL_FULLY_SHOWN, 0);
     script_ui_view_hud_changed(&view);
     scene_stage_hide_card();
@@ -218,7 +218,7 @@ static void test_the_start_button_shows_top_right_with_the_ui_and_steps_aside_fo
     scene_stage_hide_card();
     scene_stage_set_fade(0.0f);
     memset(&view, 0, sizeof(view));
-    view.player_has_control = 1;
+    view.pause_is_offered = 1;
     script_ui_view_hud_changed(&view);
     CHECK(!script_ui_view_start_button_is_shown());
     CHECK(!script_ui_view_start_button_is_at(910.0f, 30.0f));
@@ -232,11 +232,11 @@ static void test_the_start_button_shows_top_right_with_the_ui_and_steps_aside_fo
     CHECK(!script_ui_view_start_button_is_at(910.0f, 30.0f));
     CHECK_INT(script_ui_view_pill_at(910.0f, 30.0f), SCRIPT_PILL_HOURGLASS);
     CHECK(script_ui_view_start_button_is_at(830.0f, 30.0f));
-    view.player_has_control = 0;
+    view.pause_is_offered = 0;
     script_ui_view_hud_changed(&view);
     CHECK(!script_ui_view_start_button_is_shown());
     CHECK(!script_ui_view_start_button_is_at(830.0f, 30.0f));
-    view.player_has_control = 1;
+    view.pause_is_offered = 1;
     view.picture_is_hidden = 1;
     script_ui_view_hud_changed(&view);
     CHECK(!script_ui_view_start_button_is_shown());

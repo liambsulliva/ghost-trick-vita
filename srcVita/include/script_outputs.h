@@ -77,7 +77,7 @@ struct script_hud_view {
     int soul_view_is_on;
     int picture_is_hidden;
     int tap_balloons_are_live;
-    int player_has_control;
+    int pause_is_offered;
     int swirl_is_on;
     int active_ghost;
     int rewind_select_ticks;

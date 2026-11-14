@@ -1414,7 +1414,7 @@ Reported: the pause button showed, and START opened the pause menu, during scrip
 
 The class: every way into the pause menu from play, START, a tap on the button and SELECT or the notebook pill onto the Record.
 
-Guard: `script_pills_player_has_control` is true in the normal group, the demo-mode play group and the player's own soul view (not a scripted view demo). The HUD view carries it as `player_has_control`; the pause button draws and answers a tap only with it, START opens the menu only while the button shows (`viewer_app.c`), and the Record request needs it too. `tests/unit/test_select_wants_the_record.c`, `tests/unit/test_script_ui_view.c` and `tests/integration/test_viewer_app.c` (`test_start_opens_the_pause_menu_only_while_its_button_shows`).
+Guard: `script_pills_player_has_control` (root cause 201 renames it `script_pills_pause_is_offered` and takes the soul view out) is true in the normal group, the demo-mode play group and the player's own soul view (not a scripted view demo). The HUD view carries it as `player_has_control`; the pause button draws and answers a tap only with it, START opens the menu only while the button shows (`viewer_app.c`), and the Record request needs it too. `tests/unit/test_select_wants_the_record.c`, `tests/unit/test_script_ui_view.c` and `tests/integration/test_viewer_app.c` (`test_start_opens_the_pause_menu_only_while_its_button_shows`).
 
 ### 198. A picked title button never looked pressed
 
@@ -1435,6 +1435,14 @@ The class: any texture read whose single unpack block the heap cannot place, at 
 Reported: on the loading screen, Sissel's cat inched forward in bursts. The DS has no loading screen (root cause 172), so there is no native walk to follow; the walk is the remaster's cycle `st01_neko_007`, baked unpinned so its own forward motion stays in the art (root cause 184 capped the catch-up). Measured from the baked frames, that motion is uneven: the silhouette's centre moves on by 0 to 23 px per drawing against a mean of 10 px, the paws with it, and the four drawings round the loop point (18, 19, 0 and 1) barely move at all, a fifth of a second standing in every second. `walk_feet_x` added nothing inside a cycle and a whole stride at the wrap, so the screen showed the art's spurts as they were. The catch-up cap, the 2-tick drawings and the whole-pixel snap were checked and are even.
 
 The class: any animation the port carries along a path while its own drawings also move it. The art's motion per drawing has to be measured in the bake and taken out, or the two add up unevenly. Guard: `bake_cat` in `pause_art.py` measures each walk drawing's lead (`body_lead`, where its solid pixels balance, from the paw anchor) and writes it as a `lead` line in `pause/cat.txt`. `cat_track_text` turns the leads into a `pace` (the stride over the cycle's ticks) and a shift on every `walk` line (`walk_shifts`), so lead plus shift rises by one pace each tick and by one stride round the loop. `walk_feet_x` in `loading_screen.c` adds the tick's shift and the part of a tick that has passed, so the body glides at a constant speed between drawings and across the wrap. A track without shifts walks as before. `tests/unit/test_loading_screen.c` walks uneven drawings through irregular frame times and checks the drawn body moves by the pace for the time passed, within a pixel, over several crossings. `tests/tools/test_pause_art.py` checks the lead and that the baked shifts even out the body tick by tick and round the loop. The game set needs a rebake for the shifts to reach the Vita.
+
+### 201. The pause button and START stayed live in Ghost view
+
+Reported: the pause button showed, and START and SELECT opened the pause menu, in Ghost view, where the world is already stopped. Root cause 197 counted the player's own soul view as having the controls, so the pause rode along with the Ghost-view pills. The pause is the port's own (the DS has none, root cause 170), and Ghost view already holds the world, so it belongs to the living world only.
+
+The class: every way into the pause menu, START, a tap on the button and SELECT or the notebook pill onto the Record, in every ghost view, Sissel's and Missile's.
+
+Guard: `script_pills_pause_is_offered` (renamed from `script_pills_player_has_control`) is true only in the normal group and the demo-mode play group, never while the soul view is on. The HUD view's `pause_is_offered` gates the button, its tap and START, and the Record request asks it too. `tests/unit/test_select_wants_the_record.c` opens the soul view and checks that neither the pause nor the Record is offered.
 
 ### 202. The lavender body showed outside the puzzle's start
 
