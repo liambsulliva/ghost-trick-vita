@@ -5,6 +5,8 @@ The converter turns the remaster's Android files into small, simple files the Vi
 ```
 manifest.txt
 textures/<texture_name>.gtex
+textures_ds/<texture_name>.gtex
+textures_ds/names.txt
 animations/<animation_name>.anim
 scenes/<scene_name>.scene
 music/<track_name>.ogg
@@ -76,6 +78,12 @@ A 20-byte header followed by pixel data, with every number a little-endian 32-bi
 | 2 | DXT1 | (width / 4) x (height / 4) x 8 | Fully opaque art |
 
 Width and height must both be multiples of 4 for DXT formats. Pixels run left to right, top to bottom, with straight (not premultiplied) alpha. Color under transparent pixels is filled from the nearest visible pixels, so bilinear filtering does not leave dark edges.
+
+## DS art: `textures_ds/`
+
+A set with `"ds_art": true` also bakes the DS cartridge's own room plates, for Visual Filter's DS setting. Each is block 4 of `cpac_2d.bin`, at the index the DS room table (`data_02083328`, read by `func_02009a28`) gives as the plate id: a 4-byte width and height, a 256-colour BGR555 palette at byte 512, then one byte per pixel from byte 1024, in 16 by 16 blocks of 8 by 8 tiles. Colour 0 is clear. The plate is stored at the DS's own size, uncompressed (format 0), under the remaster plate's name, and its ghost-world versions get the same ramps as the remaster's.
+
+`textures_ds/names.txt` lists every name the folder holds, one per line. The manifest lists `art ds` when it has any. While Visual Filter is on DS, the texture cache reads those names from `textures_ds/` and samples them nearest-neighbour; every other name still comes from `textures/`. Changing the setting drops the loaded copies of those names, so they load again from the other folder.
 
 ## Animations: `.anim`
 

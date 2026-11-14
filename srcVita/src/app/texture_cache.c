@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "page_tiles.h"
 #include "background_reader.h"
@@ -10,6 +11,7 @@
 #include "run_log.h"
 #include "crc32.h"
 #include "texture_cache.h"
+#include "text_lines.h"
 #include "texture_file.h"
 #include "work_queue.h"
 
@@ -65,6 +67,10 @@ struct fill_job {
 
 static struct fill_job fill_jobs[FILL_JOB_MAX];
 static int fills_running;
+static char sharp_folder[FILE_PATH_MAX];
+static char sharp_names[TEXTURE_CACHE_SHARP_NAME_MAX][ASSET_NAME_MAX];
+static int sharp_name_count;
+static int sharp_art_is_on;
 
 static struct cached_texture *start_loading(const char *name, enum texture_wanter wanter);
 
@@ -343,16 +349,34 @@ static int join_texture_path(char *path, const char *file_name)
     return file_path_join(path, bucket_folder, file_name, ".gtex");
 }
 
+static int compare_names(const void *left, const void *right)
+{
+    return strcmp((const char *)left, (const char *)right);
+}
+
+static void art_name_of(const char *name, char *file_name)
+{
+    snprintf(file_name, ASSET_NAME_MAX, "%s", name);
+    if (name_asks_for_grayscale(file_name)) {
+        file_name[strlen(file_name) - strlen(TEXTURE_CACHE_GRAYSCALE_SUFFIX)] = '\0';
+    }
+}
+
+static int has_sharp_art(const char *file_name)
+{
+    return sharp_name_count > 0 && bsearch(file_name, sharp_names, (size_t)sharp_name_count, sizeof(sharp_names[0]), compare_names) != NULL;
+}
+
 static void start_read(struct cached_texture *entry)
 {
     char path[FILE_PATH_MAX];
     char file_name[ASSET_NAME_MAX];
+    int path_is_joined;
 
-    snprintf(file_name, sizeof(file_name), "%s", entry->name);
-    if (name_asks_for_grayscale(file_name)) {
-        file_name[strlen(file_name) - strlen(TEXTURE_CACHE_GRAYSCALE_SUFFIX)] = '\0';
-    }
-    if (!join_texture_path(path, file_name)) {
+    art_name_of(entry->name, file_name);
+    entry->is_sharp = sharp_art_is_on && has_sharp_art(file_name);
+    path_is_joined = entry->is_sharp ? file_path_join(path, sharp_folder, file_name, ".gtex") : join_texture_path(path, file_name);
+    if (!path_is_joined) {
         mark_missing(entry, "path_too_long", 0);
         return;
     }
@@ -493,6 +517,9 @@ static int start_filling_off_the_frame(struct cached_texture *entry, const struc
         return 0;
     }
     entry->texture = renderer_texture_create_compressed_empty((int)header->width, (int)header->height, format, &destination);
+    if (entry->texture != RENDERER_NO_TEXTURE && entry->is_sharp) {
+        renderer_texture_set_sharp(entry->texture);
+    }
     if (entry->texture == RENDERER_NO_TEXTURE || destination == NULL) {
         job->is_used = 0;
         if (entry->texture != RENDERER_NO_TEXTURE) {
@@ -563,6 +590,9 @@ static int upload_read_data(struct cached_texture *entry, const struct finished_
         retry_later(entry, "gpu_memory");
         return 0;
     }
+    if (entry->is_sharp) {
+        renderer_texture_set_sharp(entry->texture);
+    }
     entry->memory_bytes = memory_bytes;
     entry->state = CACHED_TEXTURE_READY;
     totals.bytes_in_use = totals.bytes_in_use + entry->memory_bytes;
@@ -590,6 +620,9 @@ void texture_cache_init(const char *texture_folder, unsigned int budget_bytes)
     read_ahead_checked_frame = 0;
     memset(&totals, 0, sizeof(totals));
     snprintf(folder, sizeof(folder), "%s", texture_folder);
+    sharp_folder[0] = '\0';
+    sharp_name_count = 0;
+    sharp_art_is_on = 0;
     budget = budget_bytes;
     current_frame = 1;
     next_request_id = 1;
@@ -893,4 +926,61 @@ void texture_cache_clear(void)
             release_entry(&entries[index]);
         }
     }
+}
+
+int texture_cache_read_sharp_art(const char *art_folder)
+{
+    char path[FILE_PATH_MAX];
+    char line[ASSET_NAME_MAX];
+    unsigned char *bytes;
+    unsigned int size;
+    unsigned int offset;
+
+    sharp_name_count = 0;
+    snprintf(sharp_folder, sizeof(sharp_folder), "%s", art_folder);
+    if (!file_path_join(path, art_folder, TEXTURE_CACHE_SHARP_NAMES_FILE, ".txt") || file_read_whole(path, &bytes, &size) != FILE_OK) {
+        return 0;
+    }
+    offset = 0;
+    while (offset < size && sharp_name_count < TEXTURE_CACHE_SHARP_NAME_MAX) {
+        offset = text_lines_read_next((const char *)bytes, size, offset, line, sizeof(line));
+        if (line[0] != '\0') {
+            snprintf(sharp_names[sharp_name_count], ASSET_NAME_MAX, "%s", line);
+            sharp_name_count = sharp_name_count + 1;
+        }
+    }
+    mem_free(bytes);
+    qsort(sharp_names, (size_t)sharp_name_count, sizeof(sharp_names[0]), compare_names);
+    return sharp_name_count;
+}
+
+void texture_cache_use_sharp_art(int is_on)
+{
+    char file_name[ASSET_NAME_MAX];
+    int index;
+    int released;
+
+    is_on = is_on != 0 && sharp_name_count > 0;
+    if (is_on == sharp_art_is_on) {
+        return;
+    }
+    wait_for_fills();
+    released = 0;
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
+        if (!entries[index].in_use) {
+            continue;
+        }
+        art_name_of(entries[index].name, file_name);
+        if (has_sharp_art(file_name)) {
+            release_entry(&entries[index]);
+            released = released + 1;
+        }
+    }
+    sharp_art_is_on = is_on;
+    run_log_write("texture sharp_art on=%d released=%d", is_on, released);
+}
+
+int texture_cache_sharp_art_is_on(void)
+{
+    return sharp_art_is_on;
 }

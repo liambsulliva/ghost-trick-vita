@@ -18,6 +18,7 @@ import bubble_art
 import class_movies
 import ds_music
 import ds_rom
+import ds_rooms
 import effect_movies
 import frame_layout
 import hud_art
@@ -36,6 +37,7 @@ import texture_encoder
 import timeline_file
 
 MOVIE_CODE_FILES = ["convert_assets.py", "texture_encoder.py"]
+DS_PLATE_CODE_FILES = ["asset_writers.py", "ds_rooms.py", "texture_encoder.py"]
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
 REPOSITORY_FOLDER = os.path.dirname(SRC_VITA_FOLDER)
@@ -333,6 +335,18 @@ def ds_music_output_files(set_description, rom_path, music_results, record):
     return ds_music.music_files(section, sdat, music_results, record, set_description.get("scripts", {}).get("music_ids", {}))
 
 
+def convert_ds_plates(set_description, rom_path, work_folder, record, remaster_sizes):
+    if not set_description.get("ds_art") or not os.path.exists(rom_path):
+        return [], []
+    with ds_rom.DsRom(rom_path) as rom:
+        pack_bytes = rom.read_file(ds_rooms.PACK_PATH)
+    soul_view = set_description.get("soul_view", {})
+    paths, names, missing = ds_rooms.bake_plates(set_description.get("plates", []), pack_bytes, soul_view.get("ramp"), soul_view.get("ghost_ramps"), work_folder, record, code_fingerprint_with_magick(DS_PLATE_CODE_FILES), remaster_sizes)
+    if missing:
+        print("plates with no DS art of the remaster's size: %d (%s)" % (len(missing), ", ".join(missing[:12])))
+    return paths, names
+
+
 def art_sets_of(set_description):
     sets = []
     if set_description.get("plates"):
@@ -465,6 +479,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
             composed_results, composed_failures = convert_composed_textures(packs, set_description.get("composed_textures", []), work_folder, record)
             talk_files, talk_results, talk_failures, _ = talk_assets.bake_talk(packs, set_description, text_key, work_folder, record, text_code_fingerprint())
             talk_results = talk_results + convert_hud_sheet(packs, set_description, work_folder, record)
+            ds_paths, ds_names = convert_ds_plates(set_description, ds_rom_path, work_folder, record, plate_size_lookup(texture_results, plates))
         finally:
             delete_work_folder(work_folder)
         failures = failures + text_failures + composed_failures + talk_failures
@@ -473,7 +488,10 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         for movie in set_description.get("movies", []):
             talk_results = talk_results + bake_movie_frames(packs, record, movie)
         texture_results = sorted(texture_results + text_results + composed_results + talk_results, key=lambda result: result["name"])
+        set_description["ds_art"] = ds_names
         files = audio_output_files(music_results, sound_results)
+        if ds_names:
+            files[ds_rooms.NAMES_FILE] = ds_rooms.names_text(ds_names).encode("ascii")
         files.update(ds_music_output_files(set_description, ds_rom_path, music_results, record))
         files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in animation_texts.items()})
         table_texts, motion_lines = script_assets.table_animations(set_description, output_folder, timelines, crops)
@@ -487,7 +505,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         tile_table = page_tiles.table_text(texture_results)
         if tile_table:
             files[page_tiles.TABLE_PATH] = tile_table.encode("ascii")
-        write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts), script_paths)
+        write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts), list(script_paths) + ds_paths)
     finally:
         record.save()
     print_summary(record, texture_results, animation_texts, music_results, sound_results)

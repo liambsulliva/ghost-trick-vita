@@ -95,6 +95,14 @@ static GLuint start_new_texture(void)
     return texture;
 }
 
+void renderer_texture_set_sharp(renderer_texture texture)
+{
+    flush_batch();
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+}
+
 static renderer_texture finish_new_texture(GLuint texture)
 {
     if (glGetError() != GL_NO_ERROR || vglGetTexDataPointer(GL_TEXTURE_2D) == NULL) {

@@ -266,7 +266,7 @@ def plates_and_rooms(packs, scripts, arm9, soul_ramp, ghost_ramps=None):
                 continue
             name = os.path.basename(plate_paths[plate_id])[:-len(".user")].lower()
             if name not in plates:
-                plates[name] = {"name": name, "source": plate_source(plate_paths[plate_id])}
+                plates[name] = {"name": name, "source": plate_source(plate_paths[plate_id]), "ds_plate": plate_id}
                 if soul_ramp is not None:
                     plates[name]["soul_plate"] = name + "-soul"
             for ghost, rooms in ghost_rooms.items():

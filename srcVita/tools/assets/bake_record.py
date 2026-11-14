@@ -7,7 +7,7 @@ import asset_writers
 import gtex_pack
 
 RECORD_FILE_NAME = ".bake_record.json"
-TEXTURE_FOLDER_PREFIX = "textures/"
+TEXTURE_FOLDER_PREFIXES = ("textures/", "textures_ds/")
 TEXTURE_FILE_SUFFIX = ".gtex"
 TEMPORARY_SUFFIX = ".new"
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
@@ -136,7 +136,7 @@ class BakeRecord:
         return self.entries.get(relative_path, {}).get("details", {})
 
     def store(self, relative_path, key, data, details=None):
-        if relative_path.startswith(TEXTURE_FOLDER_PREFIX) and relative_path.endswith(TEXTURE_FILE_SUFFIX):
+        if relative_path.startswith(TEXTURE_FOLDER_PREFIXES) and relative_path.endswith(TEXTURE_FILE_SUFFIX):
             data = gtex_pack.pack_gtex(data)
         path = os.path.join(self.output_folder, relative_path)
         os.makedirs(os.path.dirname(path), exist_ok=True)

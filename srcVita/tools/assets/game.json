@@ -61,6 +61,7 @@
       "st15": "natives/android/gamedesign/text/st15/st15_%04d.msg.22"
     }
   },
+  "ds_art": true,
   "ds_music": {
     "archive": "sound_data.sdat",
     "sequences": {

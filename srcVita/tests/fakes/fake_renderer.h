@@ -31,6 +31,7 @@ void fake_renderer_fail_uploads(int should_fail);
 int fake_renderer_texture_is_filled(renderer_texture texture);
 int fake_renderer_unfilled_draws(void);
 int fake_renderer_texture_is_alive(renderer_texture texture);
+int fake_renderer_texture_is_sharp(renderer_texture texture);
 void fake_renderer_fail_snapshots(int should_fail);
 int fake_renderer_snapshots_taken(void);
 int fake_renderer_snapshot_is_open(void);

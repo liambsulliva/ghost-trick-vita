@@ -7,6 +7,7 @@
 #define renderer_texture_create_compressed_empty real_renderer_texture_create_compressed_empty
 #define renderer_texture_fill_compressed real_renderer_texture_fill_compressed
 #define renderer_texture_destroy real_renderer_texture_destroy
+#define renderer_texture_set_sharp real_renderer_texture_set_sharp
 #define renderer_live_texture_count real_renderer_live_texture_count
 #define renderer_draw_sprite real_renderer_draw_sprite
 #define renderer_draw_flat_sprite real_renderer_draw_flat_sprite
@@ -307,11 +308,18 @@ void glBindTexture(GLenum target, GLuint texture)
     bound_texture = texture;
 }
 
+static GLint min_filters[64];
+static GLint mag_filters[64];
+
 void glTexParameteri(GLenum target, GLenum name, GLint value)
 {
     (void)target;
-    (void)name;
-    (void)value;
+    if (bound_texture < 64u && name == GL_TEXTURE_MIN_FILTER) {
+        min_filters[bound_texture] = value;
+    }
+    if (bound_texture < 64u && name == GL_TEXTURE_MAG_FILTER) {
+        mag_filters[bound_texture] = value;
+    }
 }
 
 void glTexImage2D(GLenum target, GLint level, GLint internal_format, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *data)
@@ -628,6 +636,23 @@ static void test_a_30_fps_cap_waits_out_one_more_vblank_each_frame(void)
     CHECK_INT(vblank_waits, 2);
 }
 
+static void test_a_sharp_texture_samples_its_nearest_texel(void)
+{
+    static const unsigned char pixels[16] = { 0 };
+    renderer_texture smooth;
+    renderer_texture sharp;
+
+    start_renderer();
+    smooth = real_renderer_texture_create(pixels, 2, 2);
+    sharp = real_renderer_texture_create(pixels, 2, 2);
+    real_renderer_texture_set_sharp(sharp);
+    CHECK(smooth < 64u && sharp < 64u);
+    CHECK_INT(min_filters[smooth], GL_LINEAR);
+    CHECK_INT(mag_filters[smooth], GL_LINEAR);
+    CHECK_INT(min_filters[sharp], GL_NEAREST);
+    CHECK_INT(mag_filters[sharp], GL_NEAREST);
+}
+
 static void test_high_contrast_lowers_the_floor_then_scales_and_puts_blending_back(void)
 {
     start_renderer();
@@ -668,6 +693,7 @@ int main(void)
 {
     test_an_empty_compressed_texture_is_filled_with_the_swizzle_vitagl_uses();
     test_a_30_fps_cap_waits_out_one_more_vblank_each_frame();
+    test_a_sharp_texture_samples_its_nearest_texel();
     test_high_contrast_lowers_the_floor_then_scales_and_puts_blending_back();
     test_the_target_is_one_rgb565_texture_the_size_of_the_screen();
     test_the_target_costs_under_three_mib_of_video_memory();

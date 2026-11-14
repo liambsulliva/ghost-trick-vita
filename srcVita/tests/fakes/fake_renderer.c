@@ -16,6 +16,7 @@ static int texture_widths[FAKE_TEXTURE_MAX];
 static int texture_is_alive[FAKE_TEXTURE_MAX];
 static int textures_created;
 static int texture_is_filled[FAKE_TEXTURE_MAX];
+static int texture_is_sharp[FAKE_TEXTURE_MAX];
 static int unfilled_draws;
 static int uploads_should_fail;
 static int vblanks_per_frame = 1;
@@ -28,6 +29,7 @@ void fake_renderer_reset(void)
     memset(texture_widths, 0, sizeof(texture_widths));
     memset(texture_is_alive, 0, sizeof(texture_is_alive));
     memset(texture_is_filled, 0, sizeof(texture_is_filled));
+    memset(texture_is_sharp, 0, sizeof(texture_is_sharp));
     unfilled_draws = 0;
     textures_created = 0;
     draw_count = 0;
@@ -224,6 +226,17 @@ int fake_renderer_unfilled_draws(void)
 void renderer_texture_destroy(renderer_texture texture)
 {
     texture_is_alive[texture] = 0;
+    texture_is_sharp[texture] = 0;
+}
+
+void renderer_texture_set_sharp(renderer_texture texture)
+{
+    texture_is_sharp[texture] = 1;
+}
+
+int fake_renderer_texture_is_sharp(renderer_texture texture)
+{
+    return texture < FAKE_TEXTURE_MAX && texture_is_sharp[texture];
 }
 
 unsigned int renderer_live_texture_count(void)

@@ -42,6 +42,7 @@
 #define NEW_ILLUSTRATIONS_TOAST "bar.new_illustrations"
 #define DEFAULT_MUSIC_TYPE GAME_MUSIC_ORIGINAL
 #define ORIGINAL_MUSIC_SUBFOLDER "music_ds"
+#define DS_TEXTURE_SUBFOLDER "textures_ds"
 #define ARRANGED_MUSIC_SUBFOLDER "music"
 #ifdef DEBUG_BUILD
 #define DEV_TOOLS_ARE_BUILT 1
@@ -281,6 +282,7 @@ static void load_manifest(void)
     }
     art_sets = manifest->art_sets != 0 ? manifest->art_sets : ASSET_ART_REMASTERED;
     game_settings_set_bundled_art(art_sets & ASSET_ART_REMASTERED, art_sets & ASSET_ART_DS);
+    texture_cache_use_sharp_art(game_settings_visual_filter() == GAME_FILTER_DS);
     run_log_write("manifest loaded scenes=%d backgrounds=%d animations=%d art=%d", manifest->scene_count, manifest->background_count, manifest->animation_count, art_sets);
 }
 
@@ -482,6 +484,7 @@ static void draw_brightness(void)
 void viewer_app_start(const char *folder)
 {
     char texture_folder[FILE_PATH_MAX];
+    char ds_texture_folder[FILE_PATH_MAX];
     char animation_folder[FILE_PATH_MAX];
     char scene_folder[FILE_PATH_MAX];
     char music_folder[FILE_PATH_MAX];
@@ -506,6 +509,8 @@ void viewer_app_start(const char *folder)
 
     texture_cache_init(texture_folder, TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
     texture_cache_set_bucket_count(TEXTURE_FOLDER_BUCKETS);
+    asset_subfolder_path(ds_texture_folder, DS_TEXTURE_SUBFOLDER);
+    run_log_write("ds art names=%d", texture_cache_read_sharp_art(ds_texture_folder));
     animation_library_init(animation_folder);
     animation_library_set_in_use_check(scene_stage_plays_animation);
     scene_player_init(scene_folder);
