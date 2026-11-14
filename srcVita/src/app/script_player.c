@@ -35,6 +35,7 @@
 #include "texture_cache.h"
 #include "ds_units.h"
 
+#define TICK_LONG_US 8000ull
 #define MICROSECONDS_PER_VM_TICK 16666ULL
 #define AUDIO_MOST_SPEED_OUT_OF_256 (32 * PLAYBACK_SPEED_NORMAL)
 #define AUDIO_SPEED_SMOOTHING 8
@@ -849,6 +850,7 @@ static void step_next_chapter_card(unsigned long long elapsed_us)
 static int run_one_tick(void)
 {
     unsigned long long started_us;
+    unsigned long long route_us;
     unsigned long long tick_us;
 
     started_us = clock_now_us();
@@ -858,6 +860,7 @@ static int run_one_tick(void)
         script_route_pad_frame(&route_pad, &data->machine, &frame);
         script_input_frame(&route_input, &data->machine, &frame);
     }
+    route_us = clock_now_us() - started_us;
     data->machine.text_speed = talk_speed_of(game_settings_now()->text_speed);
     script_machine_tick(&data->machine);
     tick_us = clock_now_us() - started_us;
@@ -865,6 +868,9 @@ static int run_one_tick(void)
         longest_tick_us = tick_us;
     }
     script_bridge_finish_tick();
+    if (clock_now_us() - started_us > TICK_LONG_US) {
+        run_log_write("script tick_long tick=%u route_us=%llu machine_us=%llu bridge_us=%llu", data->machine.tick, route_us, tick_us - route_us, clock_now_us() - started_us - tick_us);
+    }
     if (data->machine.is_finished) {
         finish_run();
         return 0;
