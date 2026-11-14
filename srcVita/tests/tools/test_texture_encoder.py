@@ -156,6 +156,12 @@ class TexToGtexTests(unittest.TestCase):
         self.assertGreater(blue[2], 2 * max(blue[0], blue[1]))
         self.assertEqual(green[3], blue[3])
 
+    def test_a_hue_turn_on_art_that_is_not_soul_red_is_refused(self):
+        block = synthetic_files.astc_constant_block(60, 220, 230, 128)
+        tex = synthetic_files.tex_file(6, 6, synthetic_files.FORMAT_ASTC_6X6, block, 16)
+        with self.assertRaises(ValueError):
+            texture_encoder.convert_tex_to_gtex(TOOL_PATH, self.folder.name, "cyan_m", tex, 8, 8, hue_turn=120)
+
     def test_tex_size_reader(self):
         tex = synthetic_files.tex_file(4, 8, synthetic_files.FORMAT_RGBA8, bytes(128), 16)
         self.assertEqual(texture_encoder.read_tex_size(tex), (4, 8))

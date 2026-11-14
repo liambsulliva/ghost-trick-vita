@@ -65,7 +65,23 @@ def encode_rgba(work_folder, name, width, height, rgba_pixels, compression):
     return block_data_from_dds(dds_bytes, width, height, compression)
 
 
+SOUL_RED_SHARE = 2
+
+
+def is_soul_red(rgba_pixels):
+    red = green = blue = 0
+    for offset in range(0, len(rgba_pixels), 4):
+        alpha = rgba_pixels[offset + 3]
+        red = red + rgba_pixels[offset] * alpha
+        green = green + rgba_pixels[offset + 1] * alpha
+        blue = blue + rgba_pixels[offset + 2] * alpha
+    return red > 0 and red >= SOUL_RED_SHARE * green and red >= SOUL_RED_SHARE * blue
+
+
 def apply_hue_turn(rgba_path, width, height, degrees):
+    with open(rgba_path, "rb") as source:
+        if not is_soul_red(source.read()):
+            raise ValueError("a ghost hue turn needs soul red art: " + os.path.basename(rgba_path))
     turned_path = rgba_path + ".turned"
     subprocess.run(["magick", "-size", "%dx%d" % (width, height), "-depth", "8", "rgba:" + rgba_path, "-modulate", "100,100,%s" % format(100 + degrees / 1.8, ".4f"), "-depth", "8", "rgba:" + turned_path], check=True)
     os.replace(turned_path, rgba_path)

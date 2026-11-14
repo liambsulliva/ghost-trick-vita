@@ -1040,18 +1040,6 @@ static void draw_lightning(float from_x, float from_y, float to_x, float to_y);
 static void draw_lightning_stream(float from_x, float from_y, float to_x, float to_y);
 static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y);
 
-static const char *soul_beam_texture(void)
-{
-    switch (scene_stage_soul_ghost()) {
-    case SCENE_GHOST_MISSILE:
-        return SOUL_BEAM_TEXTURE "-missile";
-    case SCENE_GHOST_BOSS:
-        return SOUL_BEAM_TEXTURE "-boss";
-    default:
-        return SOUL_BEAM_TEXTURE;
-    }
-}
-
 static void draw_chain_cloud(const float *screen_x, const float *screen_y)
 {
     struct soul_chain_blob blobs[SOUL_CHAIN_CLOUD_BLOBS];
@@ -1074,7 +1062,7 @@ static void draw_chain_beam(void)
     int triangle_count;
     int index;
 
-    texture = texture_cache_use_or_start_loading(soul_beam_texture());
+    texture = texture_cache_use_or_start_loading(SOUL_BEAM_TEXTURE);
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
         return;
     }
@@ -1399,7 +1387,7 @@ static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y)
         line_y[index] = from_y + (to_y - from_y) * (float)index / (float)SOUL_CHAIN_TIP;
     }
     draw_chain_cloud(line_x, line_y);
-    texture = texture_cache_use_or_start_loading(soul_beam_texture());
+    texture = texture_cache_use_or_start_loading(SOUL_BEAM_TEXTURE);
     if (texture != NULL && texture->state == CACHED_TEXTURE_READY) {
         renderer_draw_beam(texture->texture, from_x, from_y, to_x, to_y, SOUL_BEAM_HALF_WIDTH, white);
     }

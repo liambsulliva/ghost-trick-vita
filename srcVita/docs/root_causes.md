@@ -452,7 +452,7 @@ Guard: `send_table_message` in `script_motion.c` sends it through `script_machin
 
 Native gives each ghost its own art for the soul line and the silhouettes: `func_02059cac` and `func_02052a7c` choose one of three classes by the active ghost (`func_0201132c` for Missile, `func_020328e4` for the boss). The port drew Sissel's red soul beam and red object tints in every ghost's view.
 
-Guard: the converter bakes a hue-turned copy of every screen texture marked `ghost_variants` (`soul_beam-missile` turned 120 degrees, `soul_beam-boss` 240) and flags every soul-view class whose tint is soul red (red at least twice green and blue); the view picks the beam by the active ghost and turns flagged tints to green for Missile and blue for the boss. `tests/tools/test_ghost_plates.py` checks the flag rule over every class in game.json and the per-ghost jobs, `tests/tools/test_texture_encoder.py` the hue turn, and `tests/unit/test_soul_ghost_turn.c` the table flag.
+Guard: the converter bakes a hue-turned copy of every screen texture marked `ghost_variants` (Missile turned 120 degrees, the boss 240; the beam is not one, root cause 179) and flags every soul-view class whose tint is soul red (red at least twice green and blue); the view turns flagged tints to green for Missile and blue for the boss. `tests/tools/test_ghost_plates.py` checks the flag rule over every class in game.json and the per-ghost jobs, `tests/tools/test_texture_encoder.py` the hue turn, and `tests/unit/test_soul_ghost_turn.c` the table flag.
 
 ### 68. Every ghost reached as far as Missile
 
@@ -1284,6 +1284,12 @@ Guard: `switch_character` in `script_soul.c` plays sound 31, and in the ghost vi
 The converter bakes the sounds the scripts name plus a hand-kept list of the kinds the app plays on its own (`NATIVE_SOUND_KINDS`). Adding the switch's sound 31 to the app without adding it to that list would have played nothing: the sound table had no row for it. The list was a second copy of facts that live in the C code.
 
 Guard: `tests/tools/test_native_sound_kinds.py` reads every `*SOUND*` number defined in `src/app/*.c` and fails when one is not in `NATIVE_SOUND_KINDS`, leaving out 0 and 0x21, which native's player (`func_0202a0c0`) plays as silence.
+
+### 179. Missile's drag was purple
+
+Root cause 67 marked the soul beam `ghost_variants`, so Missile's view drew `soul_beam-missile`, the beam turned 120 degrees in hue. The turn assumes soul red art, but the remaster's only tentacle art (`soultentacle_iml4`) is cyan, so the turn made it purple. The footage draws Missile's drag the same as Sissel's: a cyan and white strip over the blue cloud. The DS gives each ghost its own class (`func_02059cac`), but the remaster ships one texture for all three, and the port follows the remaster's art.
+
+Guard: the soul beam is no longer marked, and every view draws `soul_beam`. The converter's hue turn (`apply_hue_turn`) refuses art that is not soul red (red at least twice green and blue, weighted by alpha), so a later mark on other art fails the bake. `tests/tools/test_texture_encoder.py` checks that cyan art is refused.
 
 ## Still open
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
