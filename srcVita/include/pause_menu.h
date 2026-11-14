@@ -69,6 +69,8 @@ int pause_cat_page_count(void);
 int pause_cat_walk_count(void);
 int pause_cat_walk_row(int tick);
 float pause_cat_walk_stride(void);
+float pause_cat_walk_shift(int tick);
+float pause_cat_walk_pace(void);
 void pause_cat_draw(int row, float feet_x, float alpha);
 
 void pause_menu_open(void);

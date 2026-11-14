@@ -70,7 +70,9 @@ static int fidget_link;
 static int dissolve_ticks;
 static int walk_rows[PAUSE_CAT_TICKS_MOST];
 static int walk_count;
+static float walk_shifts[PAUSE_CAT_TICKS_MOST];
 static float walk_stride;
+static float walk_pace;
 static struct pause_label labels[PAUSE_MENU_ITEM_COUNT];
 static int label_count;
 static float arrow_x;
@@ -181,6 +183,8 @@ int pause_menu_read_track_text(const char *text, unsigned int text_size)
 {
     char line[LINE_MAX];
     unsigned int offset;
+    float shift;
+    int found;
     int row;
 
     idle_count = 0;
@@ -190,12 +194,17 @@ int pause_menu_read_track_text(const char *text, unsigned int text_size)
     dissolve_ticks = 0;
     walk_count = 0;
     walk_stride = 0.0f;
+    walk_pace = 0.0f;
     offset = 0;
     while (offset < text_size) {
         offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
-        if (sscanf(line, "walk %d", &row) == 1) {
+        found = sscanf(line, "walk %d %f", &row, &shift);
+        if (found >= 1) {
+            if (walk_count < PAUSE_CAT_TICKS_MOST) {
+                walk_shifts[walk_count] = found == 2 ? shift : 0.0f;
+            }
             add_row(walk_rows, &walk_count, row);
-        } else if (sscanf(line, "stride %f", &walk_stride) == 1) {
+        } else if (sscanf(line, "stride %f", &walk_stride) == 1 || sscanf(line, "pace %f", &walk_pace) == 1) {
             continue;
         } else if (sscanf(line, "idle %d", &row) == 1) {
             add_row(idle_rows, &idle_count, row);
@@ -311,6 +320,16 @@ int pause_cat_walk_row(int tick)
 float pause_cat_walk_stride(void)
 {
     return walk_stride;
+}
+
+float pause_cat_walk_shift(int tick)
+{
+    return walk_count > 0 && tick >= 0 ? walk_shifts[tick % walk_count] : 0.0f;
+}
+
+float pause_cat_walk_pace(void)
+{
+    return walk_pace;
 }
 
 void pause_cat_track_restart(void)

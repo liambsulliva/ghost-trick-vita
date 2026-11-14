@@ -29,6 +29,26 @@ static const char walk_track[] =
     "stride 60.000\n"
     "walk 0\nwalk 0\nwalk 1\nwalk 1\n";
 
+#define UNEVEN_DRAWINGS 4
+#define UNEVEN_WIDTH 50.0f
+#define UNEVEN_PACE 7.5f
+
+static const char uneven_table[] =
+    "pages 1\n"
+    "frame t_walk 0 2 0 0 0 50 80 -40 -70\n"
+    "frame t_walk 1 2 0 52 0 50 80 -39 -70\n"
+    "frame t_walk 2 2 0 104 0 50 80 -10 -70\n"
+    "frame t_walk 3 2 0 156 0 50 80 14 -70\n";
+
+static const char uneven_track[] =
+    "idle 0\n"
+    "stride 60.000\n"
+    "pace 7.500\n"
+    "walk 0 0.000\nwalk 0 7.500\nwalk 1 14.000\nwalk 1 21.500\n"
+    "walk 2 0.000\nwalk 2 7.500\nwalk 3 -9.000\nwalk 3 -1.500\n";
+
+static const unsigned long long uneven_frames_us[] = { 16666ull, 33333ull, 20000ull, 41000ull, 16667ull, 50000ull, 25000ull };
+
 static struct loading_counts counts_of(enum loading_stage stage, int done, int total)
 {
     struct loading_counts counts;
@@ -241,6 +261,67 @@ static void test_a_long_frame_moves_the_cat_one_drawing_at_most(void)
     CHECK_NEAR(loading_screen_cat_feet_x(), start + 60.0f);
 }
 
+static int drawn_body_x(float *body_x)
+{
+    const struct fake_draw *draw;
+    int index;
+    int drawing;
+
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        draw = fake_renderer_draw(index);
+        if (!draw->is_filled_rect && fabsf(draw->screen_area.width - UNEVEN_WIDTH) < 0.01f) {
+            drawing = (int)(draw->texture_area.x * 256.0f / 52.0f + 0.5f);
+            *body_x = draw->screen_area.x + UNEVEN_WIDTH / 2.0f;
+            return drawing >= 0 && drawing < UNEVEN_DRAWINGS && fabsf(draw->screen_area.x - floorf(draw->screen_area.x)) < 0.001f;
+        }
+    }
+    return 0;
+}
+
+static void test_the_cat_s_body_moves_on_evenly_whatever_each_drawing_carries(void)
+{
+    struct loading_counts counts;
+    unsigned long long elapsed_us;
+    float last;
+    float body_x;
+    float moved;
+    int came_round;
+    int compared;
+    int frame;
+
+    start_screen();
+    fake_files_add_rgba_texture("tex/pause_cat_00.gtex", 256, 128);
+    CHECK(texture_cache_load_now("pause_cat_00")->state == CACHED_TEXTURE_READY);
+    CHECK_INT(pause_menu_read_cat_text(uneven_table, (unsigned int)strlen(uneven_table)), UNEVEN_DRAWINGS);
+    CHECK_INT(pause_menu_read_track_text(uneven_track, (unsigned int)strlen(uneven_track)), 1);
+    loading_screen_begin();
+    counts = counts_of(LOADING_TEXTURES, 0, 10);
+    loading_screen_update(&counts, 1000000ull);
+    fake_renderer_clear_draws();
+    loading_screen_draw();
+    CHECK(drawn_body_x(&last));
+    came_round = 0;
+    compared = 0;
+    for (frame = 0; frame < 600; frame++) {
+        elapsed_us = uneven_frames_us[frame % (int)(sizeof(uneven_frames_us) / sizeof(uneven_frames_us[0]))];
+        loading_screen_update(&counts, elapsed_us);
+        fake_renderer_clear_draws();
+        loading_screen_draw();
+        CHECK(drawn_body_x(&body_x));
+        moved = body_x - last;
+        last = body_x;
+        if (moved < 0.0f) {
+            came_round = came_round + 1;
+            continue;
+        }
+        CHECK(fabsf(moved - UNEVEN_PACE * (float)elapsed_us / (float)WALK_US) < 1.01f);
+        compared = compared + 1;
+    }
+    CHECK(came_round >= 2);
+    CHECK(compared > 590);
+    CHECK(pause_menu_read_track_text("idle 0\n", 7u) == 1);
+}
+
 static void test_a_faint_glow_in_the_pause_circle_reds_rises_from_the_floor_behind_the_cat(void)
 {
     const struct fake_draw *draw;
@@ -309,6 +390,7 @@ int main(void)
     test_the_cat_walks_in_from_the_left_out_to_the_right_and_comes_round_again();
     test_the_cat_walks_at_two_thirds_of_the_game_pace();
     test_a_long_frame_moves_the_cat_one_drawing_at_most();
+    test_the_cat_s_body_moves_on_evenly_whatever_each_drawing_carries();
     test_a_faint_glow_in_the_pause_circle_reds_rises_from_the_floor_behind_the_cat();
     return test_finish("unit/loading_screen");
 }

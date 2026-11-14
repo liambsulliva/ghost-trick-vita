@@ -195,6 +195,20 @@ def walk_stride(frames, mirror):
     return (-stride if mirror else stride) * CAT_SCREEN_PIXELS_PER_DS_PIXEL
 
 
+def body_lead(image, offset_x):
+    columns = (image[:, :, 3] >= SOLID).sum(0)
+    return float((np.arange(len(columns)) * columns).sum() / columns.sum()) + offset_x
+
+
+def walk_leads(cat_table):
+    return {int(parts[1]): float(parts[2]) for parts in (line.split() for line in cat_table.decode("ascii").splitlines()) if parts and parts[0] == "lead"}
+
+
+def walk_shifts(rows, leads, stride):
+    pace = stride / len(rows)
+    return pace, [tick * pace - (leads.get(row, 0.0) - leads.get(rows[0], 0.0)) for tick, row in enumerate(rows)]
+
+
 def grid_for(placed):
     left = min(l for _, l, _ in placed)
     top = min(t for _, _, t in placed)
@@ -289,7 +303,8 @@ def bake_cat(packs, tool_path, work_folder, record, code, timelines, crops, anim
     if table is not None:
         page_count = int(table.decode("ascii").splitlines()[0].split()[1])
         return table, [bake_record.result_of_own_size(CAT_PAGE_PREFIX + "%02d" % n, record.read_if_current("textures/" + CAT_PAGE_PREFIX + "%02d.gtex" % n, key)) for n in range(page_count)]
-    images, rows, seen = [], [], {}
+    images, rows, seen, leads = [], [], {}, []
+    walks = {animation["name"] for animation in animations if animation.get("walk")}
     baked = cat_frames(packs, tool_path, work_folder, timelines, crops, animations)
     grid_shape = grid_for([(cell["pixels"], left, top) for _, cells, pins in baked for cell, (left, top) in zip(cells, pins)])
     for name, cells, pins in baked:
@@ -299,12 +314,15 @@ def bake_cat(packs, tool_path, work_folder, record, code, timelines, crops, anim
                 image, offset_x, offset_y = scaled_grid(work_folder, grid_shape, cell["pixels"], left, top)
                 seen[unique] = (len(images), offset_x, offset_y)
                 images.append(image)
+            if name in walks:
+                leads.append((len(rows), body_lead(images[seen[unique][0]], seen[unique][1])))
             rows.append((name, index, cell["ticks"]) + seen[unique])
     pages, placements = pack_cells(images)
     lines = ["pages %d" % len(pages)]
     for name, index, ticks, image_index, offset_x, offset_y in rows:
         page, x, y, w, h = placements[image_index]
         lines.append("frame %s %d %d %d %d %d %d %d %d %d" % (name, index, ticks, page, x, y, w, h, offset_x, offset_y))
+    lines += ["lead %d %.3f" % lead for lead in leads]
     table = ("\n".join(lines) + "\n").encode("ascii")
     results = []
     for number, page in enumerate(pages):
@@ -435,8 +453,11 @@ def cat_track_text(cat_table, animations, fidget):
     lines += ["idle %d" % row for row in idle] + ["fidget %d" % row for row in turn]
     for animation in animations:
         if animation.get("walk"):
-            lines += ["stride %.3f" % walk_stride(frames_from_text(animation["text"]), animation["mirror"])]
-            lines += ["walk %d" % row for row in tick_rows(rows, animation["name"])]
+            stride = walk_stride(frames_from_text(animation["text"]), animation["mirror"])
+            walk = tick_rows(rows, animation["name"])
+            pace, shifts = walk_shifts(walk, walk_leads(cat_table), stride)
+            lines += ["stride %.3f" % stride, "pace %.3f" % pace]
+            lines += ["walk %d %.3f" % (row, shift) for row, shift in zip(walk, shifts)]
     return ("\n".join(lines) + "\n").encode("ascii")
 
 

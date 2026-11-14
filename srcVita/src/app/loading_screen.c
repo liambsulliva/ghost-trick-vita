@@ -92,9 +92,9 @@ static float walk_start_x(void)
     return first == NULL ? 0.0f : -(float)(first->left + (int)first->width);
 }
 
-static float walk_feet_x(int tick)
+static float walk_feet_x(int tick, unsigned long long part_us)
 {
-    return walk_start_x() + (float)(tick / pause_cat_walk_count()) * pause_cat_walk_stride();
+    return walk_start_x() + (float)(tick / pause_cat_walk_count()) * pause_cat_walk_stride() + pause_cat_walk_shift(tick) + pause_cat_walk_pace() * (float)part_us / (float)WALK_TICK_US;
 }
 
 static void walk_on(unsigned long long elapsed_us)
@@ -110,7 +110,7 @@ static void walk_on(unsigned long long elapsed_us)
         walk_us = walk_us - WALK_TICK_US;
         walk_tick = walk_tick + 1;
         frame = pause_cat_frame_at(pause_cat_walk_row(walk_tick));
-        if (frame == NULL || walk_feet_x(walk_tick) + (float)frame->left >= (float)RENDERER_WIDTH) {
+        if (frame == NULL || walk_feet_x(walk_tick, 0) + (float)frame->left >= (float)RENDERER_WIDTH) {
             walk_tick = 0;
         }
     }
@@ -121,7 +121,7 @@ static void walk_on(unsigned long long elapsed_us)
 
 float loading_screen_cat_feet_x(void)
 {
-    return pause_cat_walk_count() == 0 ? 0.0f : walk_feet_x(walk_tick);
+    return pause_cat_walk_count() == 0 ? 0.0f : walk_feet_x(walk_tick, walk_us);
 }
 
 void loading_screen_update(const struct loading_counts *counts, unsigned long long elapsed_us)
@@ -211,7 +211,7 @@ void loading_screen_draw(void)
     }
     draw_glow(alpha);
     if (pause_cat_walk_count() > 0) {
-        pause_cat_draw(pause_cat_walk_row(walk_tick), walk_feet_x(walk_tick), alpha);
+        pause_cat_draw(pause_cat_walk_row(walk_tick), walk_feet_x(walk_tick, walk_us), alpha);
     }
     pause_draw_floor(alpha);
     pause_draw_text(LOADING_TEXT, TEXT_LEFT, FLOOR_TOP + FLOOR_HEIGHT / 2.0f, PAUSE_ANCHOR_LEFT, alpha);

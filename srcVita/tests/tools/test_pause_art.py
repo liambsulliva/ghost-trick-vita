@@ -58,8 +58,31 @@ class WalkTest(unittest.TestCase):
         fidget = {"animation": 1, "play": [[0, 0]], "every": 9, "link": 0, "dissolve": 0}
         lines = pause_art.cat_track_text(table, animations, fidget).decode("ascii").splitlines()
         stride = lines.index(next(line for line in lines if line.startswith("stride")))
-        self.assertEqual(lines[stride + 1:], ["walk 1", "walk 1", "walk 2"])
+        self.assertEqual([line.split()[:2] for line in lines[stride + 2:]], [["walk", "1"], ["walk", "1"], ["walk", "2"]])
         self.assertAlmostEqual(float(lines[stride].split()[1]), 9.0 * pause_art.CAT_SCREEN_PIXELS_PER_DS_PIXEL, places=2)
+        self.assertAlmostEqual(float(lines[stride + 1].split()[1]), 3.0 * pause_art.CAT_SCREEN_PIXELS_PER_DS_PIXEL, places=2)
+
+    def test_a_drawing_s_lead_is_where_its_solid_pixels_balance(self):
+        image = np.zeros((4, 10, 4), dtype=np.uint8)
+        image[:, 2:4, 3] = 255
+        image[:2, 8, 3] = 255
+        image[:, 6, 3] = 100
+        self.assertAlmostEqual(pause_art.body_lead(image, -30), (2 * 4 + 3 * 4 + 8 * 2) / 10.0 - 30)
+
+    def test_the_shifts_carry_the_body_on_by_the_same_amount_every_tick_and_round_the_loop(self):
+        table = cat_table([("t_idle", 1), ("t_walk", 2), ("t_walk", 2), ("t_walk", 2), ("t_walk", 2)]) + b"lead 1 -15.000\nlead 2 -14.500\nlead 3 21.250\nlead 4 40.000\n"
+        animations = [{"name": "t_idle"}, {"name": "t_idle"}, {"name": "t_walk", "walk": True, "mirror": False, "text": self.walk_text([-10.0, -9.0, 2.0, 5.0])}]
+        fidget = {"animation": 1, "play": [[0, 0]], "every": 9, "link": 0, "dissolve": 0}
+        lines = [line.split() for line in pause_art.cat_track_text(table, animations, fidget).decode("ascii").splitlines()]
+        stride = next(float(line[1]) for line in lines if line[0] == "stride")
+        pace = next(float(line[1]) for line in lines if line[0] == "pace")
+        leads = pause_art.walk_leads(table)
+        body = [leads[int(line[1])] + float(line[2]) for line in lines if line[0] == "walk"]
+        body.append(body[0] + stride)
+        self.assertEqual(len(body), 9)
+        self.assertAlmostEqual(pace, stride / 8.0, places=2)
+        for before, after in zip(body, body[1:]):
+            self.assertAlmostEqual(after - before, pace, places=2)
 
 
 class GridTest(unittest.TestCase):
