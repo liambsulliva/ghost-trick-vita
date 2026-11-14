@@ -2657,11 +2657,31 @@ static void test_a_broken_pack_falls_back_to_the_loose_files(void)
     viewer_app_stop();
 }
 
-static void set_up_a_chain_of_two_scenes_with_animations(const char *first_plan)
+static int line_holds(const char *text, const char *start, const char *needle)
 {
+    const char *line;
+    const char *end;
+    const char *found;
+
+    line = strstr(text, start);
+    if (line == NULL) {
+        return 0;
+    }
+    end = strchr(line, '\n');
+    found = strstr(line, needle);
+    return found != NULL && (end == NULL || found < end);
+}
+
+static void set_up_a_chain_of_scenes_entered_at(const char *entry_name, const char *first_plan)
+{
+    char chain[256];
+
     set_up_platform();
     set_up_title_assets(1);
-    add_text_file("assets/scripts/chain.txt", "timing remaster\nentry first_Expand\nfile first_Expand\nfile second_Expand\nfile third_Expand\n");
+    snprintf(chain, sizeof(chain), "timing remaster\nentry %s\nfile root\nfile first_Expand\nfile second_Expand\nfile third_Expand\n", entry_name);
+    add_text_file("assets/scripts/chain.txt", chain);
+    add_text_file("assets/scripts/root.lmg", "not a script");
+    add_text_file("assets/scripts/root.ahead", "next first_Expand\n");
     add_text_file("assets/scripts/third_Expand.lmg", "not a script");
     add_text_file("assets/scripts/third_Expand.motions", "motion 5e6f t_three 1\n");
     add_text_file("assets/scripts/third_Expand.anims", "animation t_three\nloops 1\nframe three_00 4 0 0 10 10 0 0 1 1\n");
@@ -2674,9 +2694,23 @@ static void set_up_a_chain_of_two_scenes_with_animations(const char *first_plan)
     add_text_file("assets/scripts/first_Expand.anims", "animation t_one\nloops 1\nframe one_00 4 0 0 10 10 0 0 1 1\n");
     add_text_file("assets/scripts/second_Expand.anims", "animation t_two\nloops 1\nframe two_00 4 0 0 10 10 0 0 1 1\nframe two_01 4 0 0 10 10 0 0 1 1\n");
     viewer_app_start("assets");
-    CHECK(viewer_app_play_script("first_Expand"));
+    CHECK(viewer_app_play_script(entry_name));
     run_frames(2);
-    CHECK_HAS_TEXT(log_text(), "script chain files=3");
+    CHECK_HAS_TEXT(log_text(), "script chain files=4");
+}
+
+static void set_up_a_chain_of_two_scenes_with_animations(const char *first_plan)
+{
+    set_up_a_chain_of_scenes_entered_at("first_Expand", first_plan);
+}
+
+static void test_the_first_scene_after_a_root_is_parsed_while_the_chain_loads(void)
+{
+    set_up_a_chain_of_scenes_entered_at("root", "");
+    script_player_note_mark("script_begun", "root");
+    script_player_note_mark("script_begun", "first_Expand");
+    CHECK(line_holds(log_text(), "script animations name=first_Expand added=1 us=", "prepared=1"));
+    viewer_app_stop();
 }
 
 static void test_the_next_scenes_animations_are_parsed_off_the_frame_before_it_begins(void)
@@ -2688,8 +2722,7 @@ static void test_the_next_scenes_animations_are_parsed_off_the_frame_before_it_b
     CHECK(fake_task_is_pending());
     fake_task_run_pending();
     script_player_note_mark("script_begun", "second_Expand");
-    CHECK_HAS_TEXT(log_text(), "script animations name=second_Expand added=1 us=");
-    CHECK_HAS_TEXT(log_text(), "prepared=1");
+    CHECK(line_holds(log_text(), "script animations name=second_Expand added=1 us=", "prepared=1"));
     CHECK(strstr(log_text(), "script read name=second_Expand.anims") != NULL);
     viewer_app_stop();
 }
@@ -2701,7 +2734,8 @@ static void test_a_scene_the_plan_did_not_expect_drops_the_prepared_animations(v
     script_player_note_mark("script_begun", "third_Expand");
     CHECK_HAS_TEXT(log_text(), "script animations prepared=second_Expand dropped_for=third_Expand");
     CHECK_HAS_TEXT(log_text(), "script animations name=third_Expand added=1 us=");
-    CHECK(strstr(log_text(), "prepared=1") == NULL);
+    CHECK(!line_holds(log_text(), "script animations name=third_Expand added=1 us=", "prepared=1"));
+    CHECK(strstr(log_text(), "name=second_Expand added") == NULL);
     CHECK(animation_library_load("t_two") == NULL);
     viewer_app_stop();
 }
@@ -2731,6 +2765,7 @@ static void test_stopping_while_the_chain_reads_waits_for_the_read(void)
 
 int main(void)
 {
+    test_the_first_scene_after_a_root_is_parsed_while_the_chain_loads();
     test_the_chain_is_read_off_the_frame();
     test_the_chain_read_never_opens_a_file_the_folder_lacks();
     test_without_a_folder_listing_the_chain_still_loads();

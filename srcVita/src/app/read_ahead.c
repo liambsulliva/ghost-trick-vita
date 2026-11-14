@@ -97,6 +97,31 @@ static void read_the_plan_of(const char *script_name)
     }
 }
 
+const char *read_ahead_next_script_of(const char *script_name)
+{
+    static char named_next[READ_AHEAD_NAME_MAX];
+    char line[READ_AHEAD_LINE_MAX];
+    unsigned int offset;
+    int index;
+
+    named_next[0] = '\0';
+    for (index = 0; index < plan_count; index++) {
+        if (strcmp(plans[index].script_name, script_name) != 0) {
+            continue;
+        }
+        offset = 0;
+        while (offset < plans[index].text_size) {
+            offset = text_lines_read_next(plans[index].text, plans[index].text_size, offset, line, sizeof(line));
+            if (sscanf(line, READ_AHEAD_NEXT_SCAN, named_next) == 1) {
+                return named_next;
+            }
+        }
+        named_next[0] = '\0';
+        return named_next;
+    }
+    return named_next;
+}
+
 const char *read_ahead_next_script(void)
 {
     return next_script;

@@ -672,6 +672,23 @@ static void apply_auto_play(void)
     data->machine.route_is_driving = auto_play_is_on;
 }
 
+static void prepare_the_first_scene(void)
+{
+    unsigned char *bytes;
+    unsigned int size;
+
+    if (script_tables_has_motions(&data->tables, entry)) {
+        start_preparing(entry);
+        return;
+    }
+    if (data->ahead_bytes_count < SCRIPT_CHAIN_FILE_MAX && read_named_file(entry, ".ahead", &bytes, &size) == FILE_OK) {
+        data->ahead_bytes[data->ahead_bytes_count] = bytes;
+        data->ahead_bytes_count = data->ahead_bytes_count + 1;
+        read_ahead_add_text(entry, (const char *)bytes, size);
+    }
+    start_preparing(read_ahead_next_script_of(entry));
+}
+
 static void begin_loading_animations(void)
 {
     const struct script_movie *time_jump;
@@ -702,6 +719,7 @@ static void begin_loading_animations(void)
     if (data->tables.rows_dropped > 0) {
         run_log_write("script problem reason=table_rows_dropped count=%d", data->tables.rows_dropped);
     }
+    prepare_the_first_scene();
     phase = PHASE_LOADING_ANIMATIONS;
 }
 

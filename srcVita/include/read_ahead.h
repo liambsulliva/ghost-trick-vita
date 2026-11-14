@@ -12,6 +12,7 @@ void read_ahead_note_mark(const char *what, const char *name, unsigned int tick)
 int read_ahead_step(unsigned int tick);
 int read_ahead_entry_count(void);
 const char *read_ahead_next_script(void);
+const char *read_ahead_next_script_of(const char *script_name);
 void read_ahead_set_lookahead_scale(int scale);
 
 #endif

@@ -193,13 +193,22 @@ def bundle_text(scripts_folder, animation_folder, script_name):
 def next_scripts_from_cues(cues_path, scripts_folder):
     nexts = {}
     script_name = None
+    waiting_for_a_scene = []
     for line in read_lines(cues_path):
         _, _, text = line.partition("\t")
         fields = text.split()
-        if len(fields) > 2 and fields[0] == "mark" and fields[1] == "script_begun" and os.path.exists(os.path.join(scripts_folder, fields[2] + MOTIONS_EXTENSION)):
-            if script_name is not None and fields[2] != script_name:
-                nexts.setdefault(script_name, fields[2])
-            script_name = fields[2]
+        if len(fields) <= 2 or fields[0] != "mark" or fields[1] != "script_begun":
+            continue
+        if not os.path.exists(os.path.join(scripts_folder, fields[2] + MOTIONS_EXTENSION)):
+            if fields[2] not in waiting_for_a_scene:
+                waiting_for_a_scene.append(fields[2])
+            continue
+        for waiting in waiting_for_a_scene:
+            nexts.setdefault(waiting, fields[2])
+        waiting_for_a_scene = []
+        if script_name is not None and fields[2] != script_name:
+            nexts.setdefault(script_name, fields[2])
+        script_name = fields[2]
     return nexts
 
 
@@ -218,8 +227,12 @@ def main():
     for path in os.listdir(arguments.scripts_folder):
         if path.endswith(MOTIONS_EXTENSION):
             schedules.setdefault(path[:-len(MOTIONS_EXTENSION)], [])
+    for script_name in nexts:
+        schedules.setdefault(script_name, [])
     for script_name, entries in sorted(schedules.items()):
         bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + AHEAD_EXTENSION), ahead_text(entries, nexts.get(script_name)).encode("ascii"))
+        if not os.path.exists(os.path.join(arguments.scripts_folder, script_name + MOTIONS_EXTENSION)):
+            continue
         bundle = bundle_text(arguments.scripts_folder, arguments.animation_folder, script_name)
         bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + BUNDLE_EXTENSION), packed_file.packed(bundle.encode("ascii")))
         print("read ahead %s: %d textures, %d animations" % (script_name, len(entries), bundle.count("animation ")))

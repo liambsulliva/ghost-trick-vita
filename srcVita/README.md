@@ -106,7 +106,7 @@ make -C srcVita read-ahead
 
 It replays the game's scripts on the Mac at auto-play pace and writes two files beside each script in `scripts/`:
 
-- `<script>.ahead` lists every texture the scene's actors and effects use, keyed to the scene's last `game` act and the ticks since it. The app reads each texture a few seconds before it is due, so a room change or a new animation finds its art already loaded. Its first line, `next <script>`, names the scene the paced replay played next.
+- `<script>.ahead` lists every texture the scene's actors and effects use, keyed to the scene's last `game` act and the ticks since it. The app reads each texture a few seconds before it is due, so a room change or a new animation finds its art already loaded. Its first line, `next <script>`, names the scene the paced replay played next. A script with no animations of its own, such as a chain's root, gets an `.ahead` holding only that line, and the app starts parsing that first scene while the chain's loading screen is up.
 - `<script>.anims` holds all of the scene's animations in one file, so starting a new animation never waits on the memory card. While a scene plays, the app unpacks and parses the next scene's bundle on a background task and adds it when that scene begins. A scene the plan did not name is loaded as before, on its first frame.
 
 It also paces the route into `scripts/route_pacing.txt`. Pacing depends on the passes before it, so a fresh run does not reproduce a settled one: each settled pacing is kept in `tools/assets/game_pacing.txt`, and the next run starts from it while the route is unchanged.
