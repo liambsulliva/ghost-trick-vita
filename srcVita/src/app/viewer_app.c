@@ -30,6 +30,7 @@
 #include "toast.h"
 #include "script_view.h"
 #include "sound_engine.h"
+#include "system_sounds.h"
 #include "texture_cache.h"
 #include "title_menu.h"
 #include "ui_list.h"
@@ -529,6 +530,8 @@ void viewer_app_start(const char *folder)
     pause_save_use(script_player_save_manual, slot_has_save);
     pause_chapters_use(chapter_has_save);
     title_menu_use(newest_save_exists, newest_save_is_cleared, game_save_erase_all);
+    (void)system_sounds_load(script_folder);
+    title_menu_use_sound(system_sounds_play);
     illustrations_known_chapter = highest_reached_chapter();
     if (script_player_is_available()) {
         hud_is_visible = 0;

@@ -1291,6 +1291,12 @@ Root cause 67 marked the soul beam `ghost_variants`, so Missile's view drew `sou
 
 Guard: the soul beam is no longer marked, and every view draws `soul_beam`. The converter's hue turn (`apply_hue_turn`) refuses art that is not soul red (red at least twice green and blue, weighted by alpha), so a later mark on other art fails the bake. `tests/tools/test_texture_encoder.py` checks that cyan art is refused.
 
+### 180. The title's picks were silent and left at once
+
+Native pGameTitle (`func_ov005_020d3b08`) plays sound kind 1 on every cursor move and 0x1a on every pick. A pick that starts play flashes the screen white (`uWhiteInMB` over byte +0x45, 4 frames), holds for byte +0x44 ticks (120, about 2 s), then fades to black over 60 frames (`uFadeOutMB`) before `func_ov005_020d40dc` maps the pick. The constructor `func_02041990` sets both bytes. The port played no sound and faded to white over 16 ticks. The kind-to-sound table lives in the scripts' `audio_names.txt`, which only loads when a script plays, so no screen outside a script could play a kind at all.
+
+Guard: `system_sounds.c` reads the sound rows of `audio_names.txt` at boot and plays a kind by name, for any screen outside a script. The title plays kind 1 on a direction press and 0x1a on every pick, and a pick that leaves holds in `TITLE_PHASE_HOLDING` (the 4-tick white flash, then the hold) before `TITLE_PHASE_HIDING` fades to black. Kinds 1 and 26 are in `NATIVE_SOUND_KINDS`, which `tests/tools/test_native_sound_kinds.py` checks against the app's defines. `tests/unit/test_title_menu.c` checks the sounds, the flash, the hold, the black fade and that the request comes only after it; `tests/unit/test_system_sounds.c` checks the lookup. Not ported: native's pressed button look (`func_02067dd0`), the label animation 0x1f and `func_0202fad4`, which are unread.
+
 ## Still open
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.

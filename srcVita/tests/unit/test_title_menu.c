@@ -15,7 +15,13 @@
 #include "title_menu.h"
 
 #define SETTLE_STEPS 40
-#define LEAVE_STEPS 60
+#define LEAVE_STEPS 200
+#define FLASH_STEPS 4
+#define HOLD_STEPS 120
+#define FADE_STEPS 60
+#define CURSOR_SOUND 1
+#define PICK_SOUND 26
+#define SOUND_LOG_MAX 16
 
 static const char widget_text[] =
     "slice title_button 18 0 0 64 56\nslice title_button_selected 18 64 0 64 56\n"
@@ -29,6 +35,16 @@ static const char widget_text[] =
 static int save_is_there;
 static int clear_is_marked;
 static int erase_calls;
+static int sounds[SOUND_LOG_MAX];
+static int sound_count;
+
+static void on_sound(int kind)
+{
+    if (sound_count < SOUND_LOG_MAX) {
+        sounds[sound_count] = kind;
+    }
+    sound_count = sound_count + 1;
+}
 
 static int has_save(void)
 {
@@ -70,6 +86,8 @@ static void start_with_art(int with_save)
     clear_is_marked = 0;
     erase_calls = 0;
     title_menu_use(has_save, is_cleared, erase);
+    title_menu_use_sound(on_sound);
+    sound_count = 0;
     pause_chapters_use(chapter_reached);
 }
 
@@ -132,7 +150,7 @@ static void test_without_a_save_only_new_game_options_and_language_show(void)
     CHECK(!title_menu_shows(TITLE_ITEM_RECORD));
     CHECK_INT(title_menu_cursor(), TITLE_ITEM_NEW_GAME);
     press(INPUT_CROSS);
-    CHECK_INT(title_menu_phase(), TITLE_PHASE_HIDING);
+    CHECK_INT(title_menu_phase(), TITLE_PHASE_HOLDING);
     CHECK_INT(title_menu_takes_request(&chapter), TITLE_REQUEST_NONE);
     wait_steps(LEAVE_STEPS);
     CHECK_INT(title_menu_phase(), TITLE_PHASE_LEAVING);
@@ -222,7 +240,7 @@ static void test_a_new_game_over_a_save_asks_first(void)
     press(INPUT_CROSS);
     press(INPUT_LEFT);
     press(INPUT_CROSS);
-    CHECK_INT(title_menu_phase(), TITLE_PHASE_HIDING);
+    CHECK_INT(title_menu_phase(), TITLE_PHASE_HOLDING);
     wait_steps(LEAVE_STEPS);
     CHECK_INT(title_menu_takes_request(&chapter), TITLE_REQUEST_NEW_GAME);
 }
@@ -251,7 +269,7 @@ static void test_chapter_select_pans_to_the_grid_and_plays_a_reached_chapter(voi
     CHECK(pause_chapters_dialog_is_open());
     press(INPUT_LEFT);
     press(INPUT_CROSS);
-    CHECK_INT(title_menu_phase(), TITLE_PHASE_HIDING);
+    CHECK_INT(title_menu_phase(), TITLE_PHASE_HOLDING);
     wait_steps(LEAVE_STEPS);
     CHECK_INT(title_menu_takes_request(&chapter), TITLE_REQUEST_CHAPTER);
     CHECK_INT(chapter, 2);
@@ -306,9 +324,17 @@ static void test_a_cleared_game_shows_the_notebook_only_once_the_people_screen_i
     CHECK(!title_menu_shows(TITLE_ITEM_RECORD));
 }
 
-static void test_the_screen_fades_in_from_black_and_leaves_through_white(void)
+static const struct fake_draw *cover(void)
+{
+    fake_renderer_clear_draws();
+    title_menu_draw();
+    return fake_renderer_draw(fake_renderer_draw_count() - 1);
+}
+
+static void test_the_screen_fades_in_from_black_and_a_pick_flashes_white_holds_then_fades_to_black(void)
 {
     const struct fake_draw *draw;
+    int chapter;
 
     start_with_art(0);
     title_menu_open();
@@ -323,14 +349,47 @@ static void test_the_screen_fades_in_from_black_and_leaves_through_white(void)
     title_menu_draw();
     CHECK(fake_renderer_draw_count() > 4);
     CHECK(!fake_renderer_draw(fake_renderer_draw_count() - 1)->is_filled_rect || fake_renderer_draw(fake_renderer_draw_count() - 1)->color.alpha < 1.0f);
+    sound_count = 0;
     press(INPUT_CROSS);
-    wait_steps(LEAVE_STEPS);
-    fake_renderer_clear_draws();
-    title_menu_draw();
-    draw = fake_renderer_draw(fake_renderer_draw_count() - 1);
+    CHECK_INT(sound_count, 1);
+    CHECK_INT(sounds[0], PICK_SOUND);
+    draw = cover();
     CHECK(draw->is_filled_rect);
     CHECK(draw->color.red == 1.0f);
+    CHECK(draw->color.alpha > 0.5f);
+    wait_steps(FLASH_STEPS);
+    draw = cover();
+    CHECK(!draw->is_filled_rect || draw->color.alpha == 0.0f);
+    wait_steps(HOLD_STEPS - FLASH_STEPS - 2);
+    CHECK_INT(title_menu_phase(), TITLE_PHASE_HOLDING);
+    wait_steps(2);
+    CHECK_INT(title_menu_phase(), TITLE_PHASE_HIDING);
+    wait_steps(FADE_STEPS / 2);
+    draw = cover();
+    CHECK(draw->is_filled_rect);
+    CHECK(draw->color.red == 0.0f);
+    CHECK(draw->color.alpha > 0.4f && draw->color.alpha < 0.6f);
+    CHECK_INT(title_menu_takes_request(&chapter), TITLE_REQUEST_NONE);
+    wait_steps(FADE_STEPS / 2 + 1);
+    draw = cover();
+    CHECK(draw->is_filled_rect);
+    CHECK(draw->color.red == 0.0f);
     CHECK(draw->color.alpha == 1.0f);
+    CHECK_INT(title_menu_takes_request(&chapter), TITLE_REQUEST_NEW_GAME);
+}
+
+static void test_moving_the_cursor_plays_the_cursor_sound_and_a_submenu_pick_the_pick_sound(void)
+{
+    start_with_art(1);
+    open_until_shown();
+    sound_count = 0;
+    press(INPUT_LEFT);
+    CHECK_INT(sound_count, 1);
+    CHECK_INT(sounds[0], CURSOR_SOUND);
+    press(INPUT_CROSS);
+    CHECK_INT(title_menu_phase(), TITLE_PHASE_PANNING_OUT);
+    CHECK_INT(sound_count, 2);
+    CHECK_INT(sounds[1], PICK_SOUND);
 }
 
 static void test_the_menu_is_not_ready_without_its_art(void)
@@ -353,7 +412,8 @@ int main(void)
     test_options_opens_the_pause_options_screen();
     test_tapping_an_entry_selects_it_and_lifting_on_it_picks_it();
     test_a_cleared_game_shows_the_notebook_only_once_the_people_screen_is_loaded();
-    test_the_screen_fades_in_from_black_and_leaves_through_white();
+    test_the_screen_fades_in_from_black_and_a_pick_flashes_white_holds_then_fades_to_black();
+    test_moving_the_cursor_plays_the_cursor_sound_and_a_submenu_pick_the_pick_sound();
     test_the_menu_is_not_ready_without_its_art();
     return test_finish("unit/title_menu");
 }

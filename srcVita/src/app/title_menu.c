@@ -21,7 +21,11 @@
 #define SHOW_FADE_TICKS 10
 #define PAN_TICKS 18
 #define LABEL_FADE_TICKS 8
-#define HIDE_TICKS 16
+#define FLASH_TICKS 4
+#define HOLD_TICKS 120
+#define HIDE_TICKS 60
+#define CURSOR_SOUND_KIND 1
+#define PICK_SOUND_KIND 26
 
 #define LOGO_CENTRE_Y 118.0f
 #define LOGO_WIDTH 600.0f
@@ -64,6 +68,7 @@ static const char *const bar_keys[TITLE_MENU_ITEM_COUNT] = { "bar.title_chapters
 static title_save_check_function save_exists;
 static title_save_check_function game_is_cleared;
 static title_save_check_function erase_every_save;
+static title_sound_function play_sound;
 static struct title_place places[TITLE_MENU_ITEM_COUNT];
 static int shown[TITLE_MENU_ITEM_COUNT];
 static enum title_menu_phase phase;
@@ -84,6 +89,18 @@ void title_menu_use(title_save_check_function has_save, title_save_check_functio
     save_exists = has_save;
     game_is_cleared = is_cleared;
     erase_every_save = erase_saves;
+}
+
+void title_menu_use_sound(title_sound_function play)
+{
+    play_sound = play;
+}
+
+static void sound(int kind)
+{
+    if (play_sound != NULL) {
+        play_sound(kind);
+    }
 }
 
 int title_menu_is_ready(void)
@@ -271,6 +288,9 @@ static int next_in_direction(int from, float dx, float dy)
 
 static void steer(unsigned int pressed)
 {
+    if (pressed & (INPUT_UP | INPUT_DOWN | INPUT_LEFT | INPUT_RIGHT)) {
+        sound(CURSOR_SOUND_KIND);
+    }
     if (pressed & INPUT_UP) {
         cursor = next_in_direction(cursor, 0.0f, -1.0f);
     } else if (pressed & INPUT_DOWN) {
@@ -299,7 +319,8 @@ static void leave_with(enum title_menu_request wanted, int chapter)
     request = wanted;
     request_chapter = chapter;
     run_log_write("title leave request=%d chapter=%d", (int)wanted, chapter);
-    enter(TITLE_PHASE_HIDING);
+    sound(PICK_SOUND_KIND);
+    enter(TITLE_PHASE_HOLDING);
 }
 
 static void erase_saves(void)
@@ -352,15 +373,18 @@ static void pick(void)
         break;
     case TITLE_ITEM_NEW_GAME:
         if (shown[TITLE_ITEM_CONTINUE]) {
+            sound(PICK_SOUND_KIND);
             ask(JOB_NEW_GAME, "row.new_game_ask", NULL);
         } else {
             leave_with(TITLE_REQUEST_NEW_GAME, 0);
         }
         break;
     case TITLE_ITEM_ERASE:
+        sound(PICK_SOUND_KIND);
         ask(JOB_ERASE, "row.reset_ask", "bar.reset_warning");
         break;
     default:
+        sound(PICK_SOUND_KIND);
         open_submenu(cursor);
         break;
     }
@@ -421,6 +445,11 @@ static void advance_phase(unsigned int pressed)
         if (phase_ticks >= PAN_TICKS) {
             enter(TITLE_PHASE_SHOWING);
             phase_ticks = SHOW_FADE_TICKS;
+        }
+        break;
+    case TITLE_PHASE_HOLDING:
+        if (phase_ticks >= HOLD_TICKS) {
+            enter(TITLE_PHASE_HIDING);
         }
         break;
     case TITLE_PHASE_HIDING:
@@ -601,6 +630,8 @@ float title_menu_cover_alpha(void)
         return 1.0f;
     case TITLE_PHASE_SHOWING:
         return 1.0f - clamp01((float)phase_ticks / (float)SHOW_FADE_TICKS);
+    case TITLE_PHASE_HOLDING:
+        return 1.0f - clamp01((float)phase_ticks / (float)FLASH_TICKS);
     case TITLE_PHASE_HIDING:
         return clamp01((float)phase_ticks / (float)HIDE_TICKS);
     default:
@@ -711,7 +742,7 @@ static void draw_cover(float alpha)
     if (alpha <= 0.0f) {
         return;
     }
-    shade = phase == TITLE_PHASE_HIDING || phase == TITLE_PHASE_LEAVING ? 1.0f : 0.0f;
+    shade = phase == TITLE_PHASE_HOLDING ? 1.0f : 0.0f;
     color.red = shade;
     color.green = shade;
     color.blue = shade;

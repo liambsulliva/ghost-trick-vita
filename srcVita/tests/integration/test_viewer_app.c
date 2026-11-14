@@ -2484,7 +2484,7 @@ static void test_the_app_boots_into_the_title_screen_and_new_game_starts_the_ope
     draw_frame();
     CHECK(fake_renderer_draw_count() > 2);
     press(INPUT_CROSS);
-    for (frame = 0; frame < 120 && title_menu_is_open(); frame++) {
+    for (frame = 0; frame < 240 && title_menu_is_open(); frame++) {
         run_frames(1);
     }
     CHECK(!title_menu_is_open());
