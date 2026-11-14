@@ -1380,6 +1380,12 @@ Root cause 187 prepared each scene's animations while the scene before it played
 
 Guard: `next_scripts_from_cues` in `read_ahead.py` also gives every script without animations the first scene with animations the paced replay played after it, and the step writes an `.ahead` holding only that `next` line for each of them (163 plans in the game set, up from 147, and no `.anims` for them). When the chain has loaded, `prepare_the_first_scene` in `script_player.c` starts the entry's own bundle if it has one, or else the one its `.ahead` names, on the background task while the loading screen finishes. A root that starts a different scene on resume drops the guess and loads as before. `tests/integration/test_viewer_app.c` enters a chain at a root and checks that the first scene's animations come in prepared, and `tests/tools/test_read_ahead.py` checks the roots' `next`.
 
+### 193. Pressing Start froze the screen while shaders compiled
+
+The loading screen's warm-up (root cause 172's guard) draws every renderer primitive once, clear, so vitaGL compiles each shader before play. Its first call came on the loading screen's first frame, right after the title closed, and that frame's draw took 139 ms (180 ms in all) in the run of build `83f57590-ff`: the screen stopped just as the player pressed Start. vitaGL compiles a shader the first time a draw state is used, so the compile costs a frame wherever it happens; it needs a frame nobody sees.
+
+Guard: while the title screen's black cover is fully up (`title_menu_cover_alpha` at 1, as it is while the title waits for its art), `viewer_app_draw` runs the same warm-up, so the compiles happen behind black before the title shows. The loading screen keeps its call for runs that skip the title. `tests/integration/test_viewer_app.c` checks that the warm-up's five clear draws come while the title is still covered.
+
 ## Still open
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.

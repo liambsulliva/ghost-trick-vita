@@ -2498,6 +2498,41 @@ static void test_the_app_boots_into_the_title_screen_and_new_game_starts_the_ope
     viewer_app_stop();
 }
 
+static int unseen_draw_count(void)
+{
+    int count;
+    int index;
+
+    count = 0;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        if (fake_renderer_draw(index)->color.alpha == 0.0f) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+static void test_the_renderer_warms_up_behind_the_titles_black_cover_before_it_shows(void)
+{
+    const struct cached_texture *backdrop;
+    int frame;
+
+    set_up_platform();
+    set_up_title_assets(1);
+    viewer_app_start("assets");
+    CHECK(title_menu_is_open());
+    backdrop = texture_cache_use_or_start_loading("pause_backdrop");
+    for (frame = 0; frame < 120 && backdrop->state != CACHED_TEXTURE_READY; frame++) {
+        run_frames(1);
+    }
+    CHECK_INT(backdrop->state, CACHED_TEXTURE_READY);
+    CHECK(title_menu_cover_alpha() >= 1.0f);
+    fake_renderer_clear_draws();
+    viewer_app_draw();
+    CHECK(unseen_draw_count() >= 5);
+    viewer_app_stop();
+}
+
 static void test_a_save_puts_continue_on_the_title_instead_of_resuming_at_boot(void)
 {
     static struct game_save save;
@@ -2765,6 +2800,7 @@ static void test_stopping_while_the_chain_reads_waits_for_the_read(void)
 
 int main(void)
 {
+    test_the_renderer_warms_up_behind_the_titles_black_cover_before_it_shows();
     test_the_first_scene_after_a_root_is_parsed_while_the_chain_loads();
     test_the_chain_is_read_off_the_frame();
     test_the_chain_read_never_opens_a_file_the_folder_lacks();

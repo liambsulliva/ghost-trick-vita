@@ -925,6 +925,9 @@ void viewer_app_draw(void)
 {
     if (title_menu_is_open()) {
         title_menu_draw();
+        if (title_menu_cover_alpha() >= 1.0f) {
+            loading_screen_warm_up_the_renderer();
+        }
         draw_brightness();
         return;
     }
