@@ -6,7 +6,22 @@
 #define STICK_DEAD_ZONE 0.25f
 #define STICK_STEADY_RAW_UNITS 3
 #define STICK_REST_FRAMES 60
-#define STICK_REST_REACH 0.45f
+#define STICK_REST_REACH 0.85f
+#define STICK_RAW_MOST 255.0f
+
+static float share_of_room(float raw, float centre)
+{
+    float room;
+
+    room = raw < centre ? centre : STICK_RAW_MOST - centre;
+    if (room > STICK_HALF_RANGE) {
+        room = STICK_HALF_RANGE;
+    }
+    if (room < 1.0f) {
+        room = 1.0f;
+    }
+    return (raw - centre) / room;
+}
 
 static void aim_from_centre(float raw_x, float raw_y, float centre_x, float centre_y, float *stick_x, float *stick_y)
 {
@@ -17,8 +32,8 @@ static void aim_from_centre(float raw_x, float raw_y, float centre_x, float cent
 
     *stick_x = 0.0f;
     *stick_y = 0.0f;
-    x = (raw_x - centre_x) / STICK_HALF_RANGE;
-    y = (raw_y - centre_y) / STICK_HALF_RANGE;
+    x = share_of_room(raw_x, centre_x);
+    y = share_of_room(raw_y, centre_y);
     length = sqrtf(x * x + y * y);
     if (length <= STICK_DEAD_ZONE) {
         return;
