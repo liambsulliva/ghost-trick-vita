@@ -15,6 +15,7 @@ import asset_writers
 import audio_file
 import bake_record
 import bubble_art
+import class_movies
 import ds_music
 import ds_rom
 import effect_movies
@@ -125,7 +126,7 @@ def bake_movie_frames(packs, record, movie):
 
 
 def bake_movie_frames_in(packs, work_folder, record, movie):
-    source = packs.read_by_key(movie["pack_key"])
+    source = packs.read(class_movies.movie_path(movie["file"]))
     source_path = os.path.join(work_folder, movie["name"] + ".mov")
     with open(source_path, "wb") as output:
         output.write(source)
@@ -434,6 +435,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
     packs = pack_files.PackSet(apk_folder)
     set_description = chapter_assets.expand_set(set_description, packs, ds_rom_path, text_key)
     set_description = effect_movies.add_to_set(set_description, packs)
+    set_description = class_movies.add_to_set(set_description)
     animations = set_description.get("animations", [])
     plates = set_description.get("plates", [])
     timelines = load_timelines(packs, animations)
@@ -453,6 +455,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
     record = bake_record.BakeRecord(output_folder)
     try:
         script_paths = script_assets.bake_or_keep_scripts(set_description, ds_rom_path, output_folder, record)
+        class_movies.check_every_class_has_a_movie(set_description, output_folder, script_paths)
         work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
         try:
             texture_results, failures = convert_all_textures(packs, jobs, work_folder, record)

@@ -2038,10 +2038,7 @@
   "movies": [
     {
       "name": "time_jump",
-      "pack_key": [
-        1055199497,
-        206956949
-      ],
+      "file": "timejump_1920x1080",
       "fps": 20,
       "width": 640,
       "height": 360,
@@ -2049,38 +2046,143 @@
     },
     {
       "name": "short_jump",
-      "pack_key": [
-        395138614,
-        3624828312
-      ],
+      "file": "shortjump_1920x1080",
       "fps": 20,
       "width": 640,
       "height": 360,
-      "class_id": "034157e8",
+      "class": "pGameMainMovieRollbackShort",
       "sound": 82
     },
     {
-      "name": "time_jump_b",
-      "pack_key": [
-        861545708,
-        2080337922
-      ],
+      "name": "long_jump",
+      "file": "longjump_1920x1080",
       "fps": 20,
       "width": 640,
       "height": 360,
-      "class_id": "7b0ddf0f",
+      "class": "pGameMainMovieRollback",
+      "sound": 82
+    },
+    {
+      "name": "missile_jump",
+      "file": "sjumpmis_1920x1080",
+      "fps": 20,
+      "width": 640,
+      "height": 360,
+      "class": "pGameMainMovieRollbackMissile",
+      "sound": 82
+    },
+    {
+      "name": "final_jump",
+      "file": "timeloop_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieRollbackFinal"
+    },
+    {
+      "name": "time_jump_b",
+      "file": "timejump_b_1920x1080",
+      "fps": 20,
+      "width": 640,
+      "height": 360,
+      "class": "pGameMainMovieForward",
       "sound": 82
     },
     {
       "name": "tell_move",
-      "pack_key": [
-        3908734962,
-        697356822
-      ],
+      "file": "tellmove_1920_1080",
       "fps": 20,
       "width": 640,
       "height": 360,
-      "class_id": "41ee4e1e"
+      "class": "pGameMainMovieTelephone"
+    },
+    {
+      "name": "track_demo",
+      "file": "st04demo01_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieTrackDemo"
+    },
+    {
+      "name": "meteor",
+      "file": "st13demo01_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieMeteor"
+    },
+    {
+      "name": "meteor_sepia",
+      "file": "st13demo03_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieMeteorSepia"
+    },
+    {
+      "name": "meteor_short",
+      "file": "st13demo04_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieMeteorShort"
+    },
+    {
+      "name": "submarine_tilt",
+      "file": "st14demo01_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieSubmarineTilt"
+    },
+    {
+      "name": "torpedo",
+      "file": "st14demo02_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieTorpedo"
+    },
+    {
+      "name": "torpedo_near",
+      "file": "st14demo03_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieTorpedoNear"
+    },
+    {
+      "name": "room_shoot",
+      "file": "st14demo04_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieRoomShoot"
+    },
+    {
+      "name": "submarine",
+      "file": "st14demo05_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieSubmarine"
+    },
+    {
+      "name": "submarine_short",
+      "file": "st14demo05b_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieSubmarineShort"
+    },
+    {
+      "name": "escape_pod",
+      "file": "st14demo06_1440x1080",
+      "fps": 20,
+      "width": 480,
+      "height": 360,
+      "class": "pGameMainMovieEscapePod"
     }
   ],
   "ui_clips": true,

@@ -82,11 +82,51 @@ static void test_no_movie_never_waits(void)
     CHECK(!script_view_movie_is_waiting_for_frames());
 }
 
+static void test_a_narrower_movie_keeps_its_shape_between_black_bars(void)
+{
+    static const char effects[] = "movie meteor 2 3 14f605fb -1\n";
+    const struct fake_draw *draw;
+    char path[64];
+    int frame;
+    int index;
+    int found;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    for (frame = 0; frame < 2; frame++) {
+        snprintf(path, sizeof(path), "tex/movie_meteor_%03d.gtex", frame);
+        fake_files_add_rgba_texture(path, 4, 3);
+    }
+    texture_cache_init("tex", 1u << 20);
+    script_tables_clear(&tables);
+    CHECK(script_tables_read_effects(&tables, effects, (unsigned int)strlen(effects)));
+    script_view_start(&tables);
+    script_view_movie_started("meteor");
+    CHECK(script_view_movie_is_waiting_for_frames());
+    finish_every_read();
+    fake_renderer_clear_draws();
+    script_view_draw_on_covers();
+    found = 0;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        draw = fake_renderer_draw(index);
+        if (draw->texture != 0 && !draw->is_filled_rect) {
+            found = 1;
+            CHECK(draw->screen_area.height == (float)RENDERER_HEIGHT);
+            CHECK(draw->screen_area.width > (float)RENDERER_HEIGHT * 4.0f / 3.0f - 1.0f);
+            CHECK(draw->screen_area.width < (float)RENDERER_HEIGHT * 4.0f / 3.0f + 1.0f);
+            CHECK(draw->screen_area.x > 0.0f);
+        }
+    }
+    CHECK(found);
+}
+
 int main(void)
 {
     test_a_movie_waits_until_its_first_frames_are_loaded();
     test_a_playing_movie_waits_for_the_frame_it_reached();
     test_no_movie_never_waits();
+    test_a_narrower_movie_keeps_its_shape_between_black_bars();
     fake_files_reset();
     return test_finish("unit/movie_waits_for_frames");
 }

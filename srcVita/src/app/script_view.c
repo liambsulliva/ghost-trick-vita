@@ -1556,6 +1556,23 @@ int script_view_movie_is_waiting_for_frames(void)
     return is_waiting;
 }
 
+static struct renderer_rect movie_area_keeping_its_shape(const struct cached_texture *texture)
+{
+    struct renderer_rect area;
+    float scale;
+
+    scale = (float)RENDERER_HEIGHT / (float)texture->height;
+    area.width = (float)texture->width * scale;
+    area.height = (float)RENDERER_HEIGHT;
+    area.x = ((float)RENDERER_WIDTH - area.width) / 2.0f;
+    area.y = 0.0f;
+    if (area.width >= (float)RENDERER_WIDTH) {
+        area.width = (float)RENDERER_WIDTH;
+        area.x = 0.0f;
+    }
+    return area;
+}
+
 static void draw_movie(void)
 {
     const struct cached_texture *texture;
@@ -1589,7 +1606,8 @@ static void draw_movie(void)
         renderer_draw_filled_rect(area, movie_black);
         return;
     }
-    renderer_draw_sprite(texture->texture, area, whole_texture(), white);
+    renderer_draw_filled_rect(area, movie_black);
+    renderer_draw_sprite(texture->texture, movie_area_keeping_its_shape(texture), whole_texture(), white);
 }
 
 static void draw_phone_split_under_the_film(const struct phone_split_layout *split)
