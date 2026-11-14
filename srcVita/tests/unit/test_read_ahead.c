@@ -64,8 +64,24 @@ static void test_nothing_is_read_for_another_scene_or_before_a_scene(void)
     CHECK_INT(fake_reader_pending_count(), 0);
 }
 
+static void test_a_plan_names_the_script_that_comes_next(void)
+{
+    static const char plan[] = "next second\nahead * 4 page_a\n";
+
+    set_up();
+    CHECK_INT(read_ahead_add_text("first", plan, (unsigned int)strlen(plan)), 1);
+    read_ahead_note_mark("script_begun", "first", 0);
+    CHECK_TEXT(read_ahead_next_script(), "second");
+    CHECK_INT(read_ahead_entry_count(), 1);
+    read_ahead_note_mark("script_begun", "scene", 10);
+    CHECK_TEXT(read_ahead_next_script(), "");
+    read_ahead_note_mark("script_begun", "st01-st01_root", 20);
+    CHECK_TEXT(read_ahead_next_script(), "");
+}
+
 int main(void)
 {
+    test_a_plan_names_the_script_that_comes_next();
     test_pages_due_soon_after_the_act_are_read_ahead();
     test_the_window_moves_on_and_drops_pages_already_due();
     test_nothing_is_read_for_another_scene_or_before_a_scene();

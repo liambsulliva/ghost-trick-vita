@@ -190,8 +190,21 @@ def bundle_text(scripts_folder, animation_folder, script_name):
     return "".join(parts)
 
 
-def ahead_text(entries):
-    return "".join("ahead %s %d %s\n" % entry for entry in entries)
+def next_scripts_from_cues(cues_path):
+    nexts = {}
+    script_name = None
+    for line in read_lines(cues_path):
+        _, _, text = line.partition("\t")
+        fields = text.split()
+        if len(fields) > 2 and fields[0] == "mark" and fields[1] == "script_begun" and fields[2] != "route" and "_root" not in fields[2]:
+            if script_name is not None and fields[2] != script_name:
+                nexts.setdefault(script_name, fields[2])
+            script_name = fields[2]
+    return nexts
+
+
+def ahead_text(entries, next_script=None):
+    return ("next %s\n" % next_script if next_script else "") + "".join("ahead %s %d %s\n" % entry for entry in entries)
 
 
 def main():
@@ -201,11 +214,12 @@ def main():
     parser.add_argument("animation_folder", help="baked animations folder")
     arguments = parser.parse_args()
     schedules = schedules_from_cues(arguments.cues, arguments.scripts_folder, arguments.animation_folder)
+    nexts = next_scripts_from_cues(arguments.cues)
     for path in os.listdir(arguments.scripts_folder):
         if path.endswith(MOTIONS_EXTENSION):
             schedules.setdefault(path[:-len(MOTIONS_EXTENSION)], [])
     for script_name, entries in sorted(schedules.items()):
-        bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + AHEAD_EXTENSION), ahead_text(entries).encode("ascii"))
+        bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + AHEAD_EXTENSION), ahead_text(entries, nexts.get(script_name)).encode("ascii"))
         bundle = bundle_text(arguments.scripts_folder, arguments.animation_folder, script_name)
         bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + BUNDLE_EXTENSION), packed_file.packed(bundle.encode("ascii")))
         print("read ahead %s: %d textures, %d animations" % (script_name, len(entries), bundle.count("animation ")))

@@ -2655,6 +2655,65 @@ static void test_a_broken_pack_falls_back_to_the_loose_files(void)
     viewer_app_stop();
 }
 
+static void set_up_a_chain_of_two_scenes_with_animations(const char *first_plan)
+{
+    set_up_platform();
+    set_up_title_assets(1);
+    add_text_file("assets/scripts/chain.txt", "timing remaster\nentry first_Expand\nfile first_Expand\nfile second_Expand\nfile third_Expand\n");
+    add_text_file("assets/scripts/third_Expand.lmg", "not a script");
+    add_text_file("assets/scripts/third_Expand.motions", "motion 5e6f t_three 1\n");
+    add_text_file("assets/scripts/third_Expand.anims", "animation t_three\nloops 1\nframe three_00 4 0 0 10 10 0 0 1 1\n");
+    add_text_file("assets/scripts/first_Expand.lmg", "not a script");
+    add_text_file("assets/scripts/second_Expand.lmg", "not a script");
+    add_text_file("assets/scripts/first_Expand.motions", "motion 1a2b t_one 1\n");
+    add_text_file("assets/scripts/second_Expand.motions", "motion 3c4d t_two 1\n");
+    add_text_file("assets/scripts/first_Expand.ahead", first_plan);
+    add_text_file("assets/scripts/second_Expand.ahead", "");
+    add_text_file("assets/scripts/first_Expand.anims", "animation t_one\nloops 1\nframe one_00 4 0 0 10 10 0 0 1 1\n");
+    add_text_file("assets/scripts/second_Expand.anims", "animation t_two\nloops 1\nframe two_00 4 0 0 10 10 0 0 1 1\nframe two_01 4 0 0 10 10 0 0 1 1\n");
+    viewer_app_start("assets");
+    CHECK(viewer_app_play_script("first_Expand"));
+    run_frames(2);
+    CHECK_HAS_TEXT(log_text(), "script chain files=3");
+}
+
+static void test_the_next_scenes_animations_are_parsed_off_the_frame_before_it_begins(void)
+{
+    set_up_a_chain_of_two_scenes_with_animations("next second_Expand\n");
+    fake_task_hold(1);
+    script_player_note_mark("script_begun", "first_Expand");
+    CHECK_HAS_TEXT(log_text(), "script animations name=first_Expand added=1");
+    CHECK(fake_task_is_pending());
+    fake_task_run_pending();
+    script_player_note_mark("script_begun", "second_Expand");
+    CHECK_HAS_TEXT(log_text(), "script animations name=second_Expand added=1 us=");
+    CHECK_HAS_TEXT(log_text(), "prepared=1");
+    CHECK(strstr(log_text(), "script read name=second_Expand.anims") != NULL);
+    viewer_app_stop();
+}
+
+static void test_a_scene_the_plan_did_not_expect_drops_the_prepared_animations(void)
+{
+    set_up_a_chain_of_two_scenes_with_animations("next second_Expand\n");
+    script_player_note_mark("script_begun", "first_Expand");
+    script_player_note_mark("script_begun", "third_Expand");
+    CHECK_HAS_TEXT(log_text(), "script animations prepared=second_Expand dropped_for=third_Expand");
+    CHECK_HAS_TEXT(log_text(), "script animations name=third_Expand added=1 us=");
+    CHECK(strstr(log_text(), "prepared=1") == NULL);
+    CHECK(animation_library_load("t_two") == NULL);
+    viewer_app_stop();
+}
+
+static void test_stopping_while_the_next_animations_are_parsed_waits_and_frees_them(void)
+{
+    set_up_a_chain_of_two_scenes_with_animations("next second_Expand\n");
+    fake_task_hold(1);
+    script_player_note_mark("script_begun", "first_Expand");
+    CHECK(fake_task_is_pending());
+    viewer_app_stop();
+    CHECK(!fake_task_is_pending());
+}
+
 static void test_stopping_while_the_chain_reads_waits_for_the_read(void)
 {
     set_up_a_two_script_chain();
@@ -2677,6 +2736,9 @@ int main(void)
     test_a_long_chain_read_leaves_the_audio_its_whole_wait();
     test_the_chain_is_read_from_its_pack_in_one_open();
     test_a_broken_pack_falls_back_to_the_loose_files();
+    test_the_next_scenes_animations_are_parsed_off_the_frame_before_it_begins();
+    test_a_scene_the_plan_did_not_expect_drops_the_prepared_animations();
+    test_stopping_while_the_next_animations_are_parsed_waits_and_frees_them();
     test_the_app_boots_into_the_title_screen_and_new_game_starts_the_opening();
     test_a_save_puts_continue_on_the_title_instead_of_resuming_at_boot();
     test_without_title_art_the_app_plays_the_opening();

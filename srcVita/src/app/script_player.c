@@ -109,6 +109,10 @@ static int folder_is_listed;
 static unsigned char *pack_bytes;
 static struct script_pack pack;
 static int pack_is_open;
+static struct animation_bundle prepared_bundle;
+static char prepared_name[ASSET_NAME_MAX];
+static int prepare_is_started;
+static volatile int prepared_is_whole;
 static int auto_play_is_on;
 static float next_chapter_card_age_ticks;
 static int is_holding_for_art;
@@ -419,6 +423,78 @@ static void remember_loaded_bundle(const char *name)
     loaded_bundle_evictions[index] = animation_library_evicted_count();
 }
 
+static void prepare_the_next_bundle(void *argument)
+{
+    unsigned char *bytes;
+    unsigned int size;
+
+    (void)argument;
+    prepared_is_whole = 0;
+    if (read_named_file(prepared_name, ".anims", &bytes, &size) != FILE_OK) {
+        return;
+    }
+    prepared_is_whole = animation_bundle_prepare(&prepared_bundle, (const char *)bytes, size);
+    mem_free(bytes);
+}
+
+static void settle_the_prepared_bundle(void)
+{
+    if (prepare_is_started) {
+        background_task_wait();
+        prepare_is_started = 0;
+    }
+}
+
+static void drop_the_prepared_bundle(void)
+{
+    settle_the_prepared_bundle();
+    animation_bundle_free(&prepared_bundle);
+    prepared_name[0] = '\0';
+    prepared_is_whole = 0;
+}
+
+static int add_the_prepared_bundle(const char *name)
+{
+    unsigned long long started_us;
+    int added;
+
+    if (prepared_name[0] == '\0') {
+        return 0;
+    }
+    if (strcmp(prepared_name, name) != 0) {
+        run_log_write("script animations prepared=%s dropped_for=%s", prepared_name, name);
+        drop_the_prepared_bundle();
+        return 0;
+    }
+    started_us = clock_now_us();
+    settle_the_prepared_bundle();
+    if (!prepared_is_whole) {
+        drop_the_prepared_bundle();
+        return 0;
+    }
+    added = animation_library_add_prepared(&prepared_bundle);
+    run_log_write("script animations name=%s added=%d us=%llu prepared=1", name, added, clock_now_us() - started_us);
+    prepared_name[0] = '\0';
+    remember_loaded_bundle(name);
+    return 1;
+}
+
+static void start_preparing(const char *name)
+{
+    if (name[0] == '\0' || data == NULL || chain_read_is_started || strcmp(prepared_name, name) == 0) {
+        return;
+    }
+    if (bundle_is_still_whole(name) || !script_tables_has_motions(&data->tables, name)) {
+        return;
+    }
+    drop_the_prepared_bundle();
+    snprintf(prepared_name, sizeof(prepared_name), "%s", name);
+    prepare_is_started = background_task_start(prepare_the_next_bundle, NULL);
+    if (!prepare_is_started) {
+        prepared_name[0] = '\0';
+    }
+}
+
 static void load_script_animations(const char *name)
 {
     unsigned char *bytes;
@@ -427,19 +503,23 @@ static void load_script_animations(const char *name)
 
     if (bundle_is_still_whole(name)) {
         run_log_write("script animations name=%s kept", name);
+        start_preparing(read_ahead_next_script());
         return;
     }
     if (data != NULL && !script_tables_has_motions(&data->tables, name)) {
         run_log_write("script animations name=%s none", name);
         return;
     }
-    started_us = clock_now_us();
-    if (read_named_file(name, ".anims", &bytes, &size) != FILE_OK) {
-        return;
+    if (!add_the_prepared_bundle(name)) {
+        started_us = clock_now_us();
+        if (read_named_file(name, ".anims", &bytes, &size) != FILE_OK) {
+            return;
+        }
+        run_log_write("script animations name=%s added=%d us=%llu", name, animation_library_add_bundle((const char *)bytes, size), clock_now_us() - started_us);
+        mem_free(bytes);
+        remember_loaded_bundle(name);
     }
-    run_log_write("script animations name=%s added=%d us=%llu", name, animation_library_add_bundle((const char *)bytes, size), clock_now_us() - started_us);
-    mem_free(bytes);
-    remember_loaded_bundle(name);
+    start_preparing(read_ahead_next_script());
 }
 
 static void begin_loading_animations(void);
@@ -900,6 +980,7 @@ static void free_data(void)
 {
     int index;
 
+    drop_the_prepared_bundle();
     if (data == NULL) {
         return;
     }

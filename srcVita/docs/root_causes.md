@@ -1342,6 +1342,12 @@ Guard: the bake packs `scripts/` into `scripts/scripts.pack` (`tools/assets/scri
 
 `tests/unit/test_script_pack.c` and `tests/tools/test_script_pack.py` check the pack format, what it leaves out, that an unchanged folder leaves it alone, and that the read-ahead step repacks.
 
+### 187. Every scene began with a frame spent parsing its animations
+
+At each `script_begun`, `load_script_animations` unpacked the scene's `.anims` bundle and parsed every animation in it on the main thread. In the fast-forward run that frame took 34 to 173 ms: 7 to 15 ms to unpack 260 to 527 KB of text, the parse, and for the largest bundles a run of evictions. It happened at the start of each of the game's 147 scenes with a bundle. Native has no such step: its animations are read from the ROM as an actor needs them.
+
+Guard: the read-ahead step records which scene the paced replay played after each one, as a `next <script>` line in its `.ahead` (`next_scripts_from_cues` in `read_ahead.py`, `read_ahead_next_script` in the app). Once a scene's own bundle is in, the player starts the next scene's unpack and parse on the background task (`animation_bundle_prepare`, which only parses and never touches the library). When that scene begins, `animation_library_add_prepared` only inserts the parsed animations, freeing any already loaded. A scene that differs from the plan drops the prepared bundle and loads its own as before, and so does a scene the replay never reaches: the whole-game paced replay leaves a `next` in 127 of the 147 plans. Stopping the player waits for the task and frees what it parsed. `tests/unit/test_animation_bundle.c` checks that a prepared bundle is parsed apart from the library and added later, that a duplicate is freed, and that a dropped bundle frees everything. `tests/integration/test_viewer_app.c` checks the hand-off, a scene the plan did not expect, and a stop mid-parse. `tests/unit/test_read_ahead.c` and `tests/tools/test_read_ahead.py` check the `next` line.
+
 ## Still open
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.

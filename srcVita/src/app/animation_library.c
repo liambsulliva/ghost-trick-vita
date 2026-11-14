@@ -337,6 +337,89 @@ int animation_library_add_bundle(const char *text, unsigned int text_size)
     return added;
 }
 
+static struct animation *parse_bundled_animation(const char *start, const char *end)
+{
+    char name[ASSET_NAME_MAX];
+    struct animation *animation;
+
+    if (!read_bundled_name(start, end, name)) {
+        return NULL;
+    }
+    animation = mem_alloc(sizeof(struct animation));
+    if (animation == NULL) {
+        return NULL;
+    }
+    if (animation_parse(start, (unsigned int)(end - start), animation) != ANIMATION_OK) {
+        mem_free(animation);
+        run_log_write("animation invalid_in_bundle name=%s", name);
+        return NULL;
+    }
+    snprintf(animation->name, sizeof(animation->name), "%s", name);
+    return animation;
+}
+
+int animation_bundle_prepare(struct animation_bundle *bundle, const char *text, unsigned int text_size)
+{
+    const char *end;
+    const char *start;
+
+    end = text + text_size;
+    bundle->count = 0;
+    start = next_animation_start(text, end);
+    while (start < end && bundle->count < ANIMATION_BUNDLE_MAX) {
+        const char *next;
+        struct animation *animation;
+
+        next = next_animation_start(start + sizeof(BUNDLE_ANIMATION_PREFIX) - 1u, end);
+        animation = parse_bundled_animation(start, next);
+        if (animation != NULL) {
+            bundle->animations[bundle->count] = animation;
+            bundle->count = bundle->count + 1;
+        }
+        start = next;
+    }
+    return start >= end;
+}
+
+void animation_bundle_free(struct animation_bundle *bundle)
+{
+    int index;
+
+    for (index = 0; index < bundle->count; index++) {
+        animation_free_frames(bundle->animations[index]);
+        mem_free(bundle->animations[index]);
+    }
+    bundle->count = 0;
+}
+
+int animation_library_add_prepared(struct animation_bundle *bundle)
+{
+    int index;
+    int missing;
+    int added;
+
+    missing = 0;
+    for (index = 0; index < bundle->count; index++) {
+        missing = missing + (find_loaded(bundle->animations[index]->name) == NULL);
+    }
+    evict_to_make_room_for(missing);
+    added = 0;
+    for (index = 0; index < bundle->count; index++) {
+        struct animation *animation;
+
+        animation = bundle->animations[index];
+        if (find_loaded(animation->name) != NULL || (loaded_count >= ANIMATION_LIBRARY_MAX && !evict_least_recent_unused())) {
+            animation_free_frames(animation);
+            mem_free(animation);
+            continue;
+        }
+        add_loaded(animation);
+        added = added + 1;
+    }
+    bundle->count = 0;
+    return added;
+}
+
 int animation_library_is_full(void)
 {
     return loaded_count >= ANIMATION_LIBRARY_MAX;

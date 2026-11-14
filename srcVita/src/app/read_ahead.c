@@ -9,6 +9,7 @@
 #define READ_AHEAD_LINE_MAX 192
 #define READ_AHEAD_ANCHOR_PREFIX "game"
 #define READ_AHEAD_LINE_SCAN "ahead %47s %u " ASSET_NAME_SCAN
+#define READ_AHEAD_NEXT_SCAN "next %47s"
 
 struct read_ahead_entry {
     char anchor[READ_AHEAD_NAME_MAX];
@@ -27,6 +28,7 @@ static int entry_count;
 static struct read_ahead_plan plans[READ_AHEAD_PLAN_MAX];
 static int plan_count;
 static char current_script[READ_AHEAD_NAME_MAX];
+static char next_script[READ_AHEAD_NAME_MAX];
 static char current_anchor[READ_AHEAD_NAME_MAX];
 static unsigned int anchor_tick;
 
@@ -35,6 +37,7 @@ void read_ahead_clear(void)
     entry_count = 0;
     plan_count = 0;
     current_script[0] = '\0';
+    next_script[0] = '\0';
     current_anchor[0] = '\0';
     anchor_tick = 0;
 }
@@ -50,6 +53,9 @@ static int read_entries_of(const struct read_ahead_plan *plan, int is_kept)
     offset = 0;
     while (offset < plan->text_size) {
         offset = text_lines_read_next(plan->text, plan->text_size, offset, line, sizeof(line));
+        if (is_kept && sscanf(line, READ_AHEAD_NEXT_SCAN, next_script) == 1) {
+            continue;
+        }
         if (sscanf(line, READ_AHEAD_LINE_SCAN, entry.anchor, &entry.offset_ticks, entry.texture_name) != 3) {
             continue;
         }
@@ -82,12 +88,18 @@ static void read_the_plan_of(const char *script_name)
     int index;
 
     entry_count = 0;
+    next_script[0] = '\0';
     for (index = 0; index < plan_count; index++) {
         if (strcmp(plans[index].script_name, script_name) == 0) {
             read_entries_of(&plans[index], 1);
             return;
         }
     }
+}
+
+const char *read_ahead_next_script(void)
+{
+    return next_script;
 }
 
 int read_ahead_entry_count(void)
