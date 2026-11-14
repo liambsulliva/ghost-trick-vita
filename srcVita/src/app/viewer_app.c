@@ -756,7 +756,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
         }
         return;
     }
-    if (((input->pressed & INPUT_START) || start_is_tapped) && script_player_is_active() && !debug_controls_are_on && pause_menu_is_ready()) {
+    if (((input->pressed & INPUT_START) || start_is_tapped) && script_player_is_active() && script_ui_view_start_button_is_shown() && !debug_controls_are_on && pause_menu_is_ready()) {
         ready_the_pause_screens();
         pause_menu_open();
         return;

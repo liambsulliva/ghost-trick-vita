@@ -2799,7 +2799,7 @@ void script_soul_note_ghost(struct script_machine *machine)
 
 void script_soul_note_pill(struct script_machine *machine, enum script_pill_id id)
 {
-    if (id == SCRIPT_PILL_NOTEBOOK && (script_pills_is_up(machine, id) || script_pills_any_on_screen(machine))) {
+    if (id == SCRIPT_PILL_NOTEBOOK && (script_pills_is_up(machine, id) || (script_pills_any_on_screen(machine) && script_pills_player_has_control(machine)))) {
         if (script_pills_is_up(machine, id)) {
             script_pills_press(machine, id, 0);
         }

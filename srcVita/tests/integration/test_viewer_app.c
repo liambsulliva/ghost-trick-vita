@@ -21,7 +21,9 @@
 #include "scene_view.h"
 #include "test_support.h"
 #include "texture_cache.h"
+#include "pause_menu.h"
 #include "script_player.h"
+#include "script_ui_view.h"
 #include "title_menu.h"
 #include "viewer_app.h"
 
@@ -2573,6 +2575,32 @@ static void test_the_play_script_command_leaves_the_title_and_starts_the_opening
     viewer_app_stop();
 }
 
+static void test_start_opens_the_pause_menu_only_while_its_button_shows(void)
+{
+    static char cat_text[1024];
+    unsigned int used;
+    int row;
+
+    set_up_platform();
+    set_up_title_assets(1);
+    used = (unsigned int)snprintf(cat_text, sizeof(cat_text), "pages 1\n");
+    for (row = 0; row < 12; row++) {
+        used += (unsigned int)snprintf(cat_text + used, sizeof(cat_text) - used, "frame t_cat %d 1 0 %d 0 30 40 -15 -38\n", row, row * 32);
+    }
+    add_text_file("assets/pause/cat.txt", cat_text);
+    add_text_file("assets/pause/cat_track.txt", "every 5\nlink 3\ndissolve 2\nidle 0\nidle 1\nfidget 10\n");
+    add_text_file("assets/pause/labels.txt", "label 0 0 0 100 50\nlabel 1 0 64 90 50\nlabel 2 0 128 110 50\nlabel 3 0 192 80 50\nlabel 4 0 256 120 50\nlabel 5 0 320 115 50\narrows 0 384 40\nselected_column 320\n");
+    viewer_app_start("assets");
+    CHECK(pause_menu_is_ready());
+    CHECK(viewer_app_play_script("route"));
+    run_frames(2);
+    CHECK(script_player_is_active());
+    CHECK(!script_ui_view_start_button_is_shown());
+    press(INPUT_START);
+    CHECK(!pause_menu_is_open());
+    viewer_app_stop();
+}
+
 static void set_up_a_two_script_chain(void)
 {
     set_up_platform();
@@ -2816,6 +2844,7 @@ int main(void)
     test_a_save_puts_continue_on_the_title_instead_of_resuming_at_boot();
     test_without_title_art_the_app_plays_the_opening();
     test_the_play_script_command_leaves_the_title_and_starts_the_opening();
+    test_start_opens_the_pause_menu_only_while_its_button_shows();
     test_app_without_assets_shows_placeholder_and_says_so();
     test_browsing_draws_a_small_background_centred_with_the_character_over_it();
     test_browsing_plays_animation_over_time_and_reports_coverage();

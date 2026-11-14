@@ -1408,7 +1408,13 @@ The class: every tap balloon, both slots, and every way to tap one (SQUARE, TRIA
 
 Guard: `script_balloons_are_live` (normal play and the picture not hidden) gates the tap, the route pad's balloon lookup and, through the HUD view's `tap_balloons_are_live`, the drawing and the touch hit test. A balloon stays open while it is not live and comes back when the player has control again. The left slot's ops close the balloon there and open nothing in demo mode. `tests/unit/test_balloons_only_in_normal_play.c`.
 
-## Still open
+### 197. The pause button and START stayed live during scripted events
+
+Reported: the pause button showed, and START opened the pause menu, during scripted events and cutscenes (seen in Chapter 6). START opened the menu whenever a script was playing, button or not, and the button showed whenever any pill was on screen. The hourglass pill is wanted in every group but none (`soul->rollback_is_on`), and effects can put pills up, so a scripted event in demo mode kept the button up. The DS has no pause button (root cause 170), so native gives no rule for it. The port follows the HUD board's rule for the player's own buttons: the mode update asks `func_0204f850` for the normal group in normal play (`func_02036f5c`) and offers the Ghost button in demo mode only while a trick plays out (`func_02034260`), as root cause 127 ported.
+
+The class: every way into the pause menu from play, START, a tap on the button and SELECT or the notebook pill onto the Record.
+
+Guard: `script_pills_player_has_control` is true in the normal group, the demo-mode play group and the player's own soul view (not a scripted view demo). The HUD view carries it as `player_has_control`; the pause button draws and answers a tap only with it, START opens the menu only while the button shows (`viewer_app.c`), and the Record request needs it too. `tests/unit/test_select_wants_the_record.c`, `tests/unit/test_script_ui_view.c` and `tests/integration/test_viewer_app.c` (`test_start_opens_the_pause_menu_only_while_its_button_shows`).
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
