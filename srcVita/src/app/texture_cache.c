@@ -6,6 +6,7 @@
 #include "file.h"
 #include "file_path.h"
 #include "memory.h"
+#include "read_buffer.h"
 #include "run_log.h"
 #include "crc32.h"
 #include "texture_cache.h"
@@ -464,7 +465,7 @@ static void finish_filled_textures(void)
         job->entry->state = CACHED_TEXTURE_READY;
         totals.loads = totals.loads + 1;
         log_loaded(job->entry, job->file_bytes, job->upload_us, job->open_us, job->read_us, job->unpack_us, job->fill_us);
-        mem_free(job->data);
+        read_buffer_release(job->data);
         job->is_used = 0;
         fills_running = fills_running - 1;
     }
@@ -577,7 +578,7 @@ static void handle_finished_read(const struct finished_read *finished)
     reads_in_flight = reads_in_flight - 1;
     entry = find_entry_by_request(finished->request_id);
     if (entry == NULL || !upload_read_data(entry, finished)) {
-        mem_free(finished->data);
+        read_buffer_release(finished->data);
     }
     start_waiting_reads();
 }
@@ -597,6 +598,7 @@ void texture_cache_init(const char *texture_folder, unsigned int budget_bytes)
     if (!background_reader_start()) {
         run_log_write("reader thread_failed");
     }
+    run_log_write("reader large_buffer bytes=%u free=%d", READ_BUFFER_RESERVED_BYTES, read_buffer_reserve_is_free());
 }
 
 static int waiting_read_count(void)

@@ -1386,6 +1386,12 @@ The loading screen's warm-up (root cause 172's guard) draws every renderer primi
 
 Guard: while the title screen's black cover is fully up (`title_menu_cover_alpha` at 1, as it is while the title waits for its art), `viewer_app_draw` runs the same warm-up, so the compiles happen behind black before the title shows. The loading screen keeps its call for runs that skip the title. `tests/integration/test_viewer_app.c` checks that the warm-up's five clear draws come while the title is still covered.
 
+### 194. A 16 MB effect page could not be read once the heap broke up
+
+In the run of build `ebb1558a-ff`, `fx_st03_mansui_00_00` (a 4096 x 4096 effect page that unpacks to 16 MB) loaded three times between 803 s and 908 s, then from 1250 s every read failed with `reason=heap`: 2,431 retries while the heap had 38 MB free, too broken up for 16 MB in one block. The texture stayed loading, so fast forward fell to one tick a frame for the rest of the chapter and, at normal speed, the effect would not have been drawn. The game set has 33 such pages (`fx_st13_kaze_00_*` and others), all 16 MB, and every other texture is 8 MB or less.
+
+The class: any read that needs one block larger than a long-running heap can promise. Guard: `read_buffer.c` sets aside one 16 MB block when the reader starts. An unpack over 4 MB takes it if it is free and asks the heap only if it is not, and every holder of a read hands it back through `read_buffer_release` (the texture cache after its upload, the fill job after its swizzle). The log line `reader large_buffer` says whether the block was set aside. `tests/unit/test_read_buffer.c` caps the fake heap's largest block below 16 MB and checks that a large unpack still gets one, that a second waits for the heap while the first holds it, and that small reads never take it.
+
 ## Still open
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.

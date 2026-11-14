@@ -2,6 +2,7 @@
 #include <psp2/kernel/threadmgr.h>
 #include "clock.h"
 #include "memory.h"
+#include "read_buffer.h"
 #include "texture_file.h"
 #include "background_reader.h"
 #include "file.h"
@@ -34,7 +35,7 @@ static int unpack_texture(struct finished_read *finished)
     int was_unpacked;
 
     unpacked_size = texture_file_unpacked_size(finished->data);
-    unpacked = mem_alloc(unpacked_size);
+    unpacked = read_buffer_take(unpacked_size);
     if (unpacked == NULL) {
         mem_free(finished->data);
         finished->data = NULL;
@@ -43,7 +44,7 @@ static int unpack_texture(struct finished_read *finished)
     was_unpacked = texture_file_unpack(finished->data, finished->size, unpacked, unpacked_size);
     mem_free(finished->data);
     if (!was_unpacked) {
-        mem_free(unpacked);
+        read_buffer_release(unpacked);
         finished->data = NULL;
         return FILE_ERR_READ;
     }
@@ -103,6 +104,7 @@ int background_reader_start(void)
     if (reader_started) {
         return 1;
     }
+    (void)read_buffer_reserve();
     queue_lock = sceKernelCreateMutex("reader_queue", 0, 0, NULL);
     work_available = sceKernelCreateSema("reader_work", 0, 0, BACKGROUND_READER_QUEUE_MAX, NULL);
     read_finished = sceKernelCreateSema("reader_done", 0, 0, BACKGROUND_READER_QUEUE_MAX, NULL);
