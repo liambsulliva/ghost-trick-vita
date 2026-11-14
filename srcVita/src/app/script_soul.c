@@ -886,6 +886,7 @@ static void report_hud(struct script_machine *machine)
     view.narration_arrow_is_on = script_narration_wants_a_press(&machine->narration);
     view.soul_view_is_on = machine->soul.is_on;
     view.picture_is_hidden = script_machine_picture_is_hidden(machine);
+    view.swirl_is_on = machine->swirl_is_on;
     view.active_ghost = machine->soul.active_ghost;
     view.rewind_select_ticks = machine->soul.rewind_select_ticks;
     view.rewind_press_ticks = machine->soul.rewind_press_ticks;

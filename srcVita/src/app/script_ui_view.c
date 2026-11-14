@@ -673,7 +673,7 @@ static void draw_side_hud(float screen_fade)
     struct renderer_color tint;
     float dim;
 
-    if (!hud.side_is_on || screen_fade >= 1.0f) {
+    if (!hud.side_is_on || hud.swirl_is_on || screen_fade >= 1.0f) {
         return;
     }
     dim = hud.world_is_running ? 1.0f : SIDE_DIM;

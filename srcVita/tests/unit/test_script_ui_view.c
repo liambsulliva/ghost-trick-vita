@@ -194,6 +194,17 @@ static void test_the_side_label_and_hourglass_draw_under_the_talk(void)
     fake_renderer_clear_draws();
     script_ui_view_draw_under_talk(0.0f);
     CHECK_INT(fake_renderer_draw_count(), 0);
+    view.is_hidden_for_movie = 0;
+    view.swirl_is_on = 1;
+    script_ui_view_hud_changed(&view);
+    fake_renderer_clear_draws();
+    script_ui_view_draw_under_talk(0.0f);
+    CHECK_INT(fake_renderer_draw_count(), 0);
+    view.swirl_is_on = 0;
+    script_ui_view_hud_changed(&view);
+    fake_renderer_clear_draws();
+    script_ui_view_draw_under_talk(0.0f);
+    CHECK(fake_renderer_draw_count() > 0);
 }
 
 static void test_the_start_button_shows_top_right_with_the_ui_and_steps_aside_for_the_hourglass(void)

@@ -78,9 +78,11 @@ static void test_a_swirl_takes_the_ui_away_at_once(void)
     CHECK(swirl_reports == 1);
     CHECK(!script_pills_any_on_screen(&machine));
     check_the_ui_is_away();
+    CHECK(last_view.swirl_is_on);
     script_machine_set_swirl(&machine, 0);
     CHECK(swirl_reports == 2);
     check_the_ui_is_back();
+    CHECK(!last_view.swirl_is_on);
 }
 
 static void test_a_film_strip_takes_the_ui_away(void)
@@ -88,6 +90,7 @@ static void test_a_film_strip_takes_the_ui_away(void)
     start_play_with_pills_up();
     machine.film_frame_is_on = 1;
     check_the_ui_is_away();
+    CHECK(!last_view.swirl_is_on);
     machine.film_frame_is_on = 0;
     check_the_ui_is_back();
 }

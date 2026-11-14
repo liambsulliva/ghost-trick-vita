@@ -76,6 +76,7 @@ struct script_hud_view {
     int narration_arrow_is_on;
     int soul_view_is_on;
     int picture_is_hidden;
+    int swirl_is_on;
     int active_ghost;
     int rewind_select_ticks;
     int rewind_press_ticks;

@@ -1392,6 +1392,14 @@ In the run of build `ebb1558a-ff`, `fx_st03_mansui_00_00` (a 4096 x 4096 effect 
 
 The class: any read that needs one block larger than a long-running heap can promise. Guard: `read_buffer.c` sets aside one 16 MB block when the reader starts. An unpack over 4 MB takes it if it is free and asks the heap only if it is not, and every holder of a read hands it back through `read_buffer_release` (the texture cache after its upload, the fill job after its swizzle). The log line `reader large_buffer` says whether the block was set aside. `tests/unit/test_read_buffer.c` caps the fake heap's largest block below 16 MB and checks that a large unpack still gets one, that a second waits for the heap while the first holds it, and that small reads never take it.
 
+### 195. The Minutes Before Death label and hourglass stayed up over the red swirl
+
+Reported from the device: when the game leaps back to four minutes before a death, the side label and the hourglass stayed drawn over the red swirling backdrop. Root cause 127 hid the pills and tap balloons under the swirl, but the side HUD was gated only on its flag (0x1020), a movie and the screen fade. Native keeps the swirl as bit 15 of `game+8` (`func_0200f084`, ops 0xdf and 0xe0), and every world draw asks `func_0203435c` before drawing; where native draws the fate hourglass is not traced, so the side HUD follows that world rule: it is part of the play screen the swirl replaces.
+
+The class: anything that sets the swirl, the ops and the time leap alike, since all of them go through `script_machine_set_swirl`. The film strip and narration do not hide the side HUD; no native rule for them is traced, so they keep it as before.
+
+Guard: the HUD view carries `swirl_is_on`, and `draw_side_hud` draws nothing while it is set. `tests/unit/test_script_ui_view.c` draws the side HUD with the swirl on and off; `tests/unit/test_ui_off_hidden_picture.c` checks the view reports the swirl and not the film strip.
+
 ## Still open
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
