@@ -15,7 +15,7 @@ static struct script_machine machine;
 static struct script_talk_book book;
 static unsigned char scene[SCRIPT_FILE_HEADER_SIZE + 256];
 
-static const char strings[] = "\0\0talk_paused_end\0talk_press_end\0talk_long\0";
+static const char strings[] = "\0\0talk_paused_end\0talk_press_end\0talk_long\0talk_held_end\0";
 
 static const struct script_outputs outputs = { 0 };
 
@@ -66,7 +66,10 @@ static void start_talk_then_set_a_flag(const char *label)
         "line 0 0 3 0 0 0\n"
         "talk talk_long\n"
         "page - 0 0 0 0 1 0\n"
-        "line 0 0 24 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n";
+        "line 0 0 24 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n"
+        "talk talk_held_end\n"
+        "page - 0 0 0 3 1 0\n"
+        "line 0 0 3 0 0 0\n";
     unsigned int words[WORD_MAX];
     unsigned int count;
 
@@ -151,21 +154,40 @@ static void test_text_speed_halves_or_doubles_the_glyphs_shown_each_tick(void)
     CHECK_INT(ticks_revealing_at(SCRIPT_TEXT_FAST), normal / 2);
 }
 
-static int ticks_until_the_talk_closes(unsigned int held)
+static int ticks_until_closed(const char *label, unsigned int held, unsigned int pressed_once_at)
 {
     static struct script_input pad;
     struct input_state frame;
     int tick;
 
-    start_talk_then_set_a_flag("talk_long");
+    start_talk_then_set_a_flag(label);
     memset(&pad, 0, sizeof(pad));
     memset(&frame, 0, sizeof(frame));
     frame.held = held;
     for (tick = 0; tick < 600 && !flag_is_set(SHOWN_FLAG); tick++) {
+        frame.pressed = (unsigned int)tick == pressed_once_at ? INPUT_CROSS : 0u;
         script_input_frame(&pad, &machine, &frame);
         script_machine_tick(&machine);
     }
     return tick;
+}
+
+static int ticks_until_the_talk_closes(unsigned int held)
+{
+    return ticks_until_closed("talk_long", held, 600u);
+}
+
+static void test_a_line_that_closes_after_a_hold_also_closes_on_a_press_or_held_circle(void)
+{
+    int waited;
+    int pressed;
+
+    waited = ticks_until_closed("talk_held_end", 0u, 600u);
+    CHECK(waited < 600);
+    CHECK(waited > 90);
+    pressed = ticks_until_closed("talk_held_end", 0u, 40u);
+    CHECK(pressed < waited - 30);
+    CHECK(ticks_until_closed("talk_held_end", INPUT_CIRCLE, 600u) < waited - 30);
 }
 
 static void test_holding_circle_finishes_and_closes_talk_as_fast_as_it_can(void)
@@ -184,5 +206,6 @@ int main(void)
     test_a_page_that_ends_on_a_press_holds_the_script();
     test_text_speed_halves_or_doubles_the_glyphs_shown_each_tick();
     test_holding_circle_finishes_and_closes_talk_as_fast_as_it_can();
+    test_a_line_that_closes_after_a_hold_also_closes_on_a_press_or_held_circle();
     return test_finish("unit/talk_wait");
 }

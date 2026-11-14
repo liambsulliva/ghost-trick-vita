@@ -474,7 +474,11 @@ static void step_waiting(struct script_machine *machine)
         return;
     }
     if (page->ending == SCRIPT_TALK_ENDS_AFTER_HOLD) {
-        if (talk->timer >= SYSTEM_LINE_HOLD_TICKS) {
+        if (talk->press_is_pending) {
+            talk->press_is_pending = 0;
+            play_sound(machine, SOUND_KIND_PAGE_PRESS);
+            schedule_close(machine);
+        } else if (talk->timer >= SYSTEM_LINE_HOLD_TICKS) {
             schedule_close(machine);
         }
         return;
@@ -577,7 +581,7 @@ int script_talk_wants_a_press(const struct script_machine *machine)
     const struct script_talk_page *page;
 
     page = current_page(machine);
-    return page == NULL || page->ending == SCRIPT_TALK_ENDS_ON_PRESS || machine->talk.phase != SCRIPT_TALK_WAITING;
+    return page == NULL || page->ending == SCRIPT_TALK_ENDS_ON_PRESS || page->ending == SCRIPT_TALK_ENDS_AFTER_HOLD || machine->talk.phase != SCRIPT_TALK_WAITING;
 }
 
 int script_talk_holds_the_script(const struct script_machine *machine)
