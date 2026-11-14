@@ -1750,7 +1750,11 @@ static void tear_down_script(struct script_machine *machine)
 
 void script_machine_set_swirl(struct script_machine *machine, int is_on)
 {
-    if (is_on && !machine->swirl_is_on) {
+    is_on = is_on != 0;
+    if (is_on == machine->swirl_is_on) {
+        return;
+    }
+    if (is_on) {
         script_pills_hide_at_once(machine);
     }
     machine->swirl_is_on = is_on;

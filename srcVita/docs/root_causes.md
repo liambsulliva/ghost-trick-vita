@@ -1452,6 +1452,14 @@ The class: every past-dead body of either class in every chapter, at any entry t
 
 Guard: `script_ghost_copy.c` makes a body's copy only while the soul sits on a start core (`script_class_is_soul_start`). A body that first shows with the soul on any other core, or while the film frame is on, is retired for good, as native's body+0x10 retires a body, and a film frame retires a copy already showing. `tests/unit/test_ghost_copy.c` checks the retry, the film frame, a body that waits for the soul to reach its start core, and Missile's classes. A whole-game replay shows each of the 14 bodies it reaches only from the tick the soul reaches its start core until it fades after the soul leaves, and none during a film frame.
 
+### 203. Most dead talks played over the living world, not the red swirl
+
+Reported: in Chapter 11 the talk with Kamila (`deadtalk` in st07_game000) stayed on the room instead of the red swirling backdrop. The port turned the swirl on only from script ops 0xdf and 0xe0 and the time leap, so a talk had it only when its own `DEADTALK` handler ran op 0xe0 (Kamila's does not, nor do Jowd's, Lynne's, Missile's CORETALK and most others). Native puts it up in the dead-talk state itself: entering `pGameMainDeadTalk` (`func_0203bd18`, mode 0x15, then `func_0203b648`) calls the swirl setter `func_0200f084(game, 1, ...)`, the state's update (`func_0203bd84`) waits for the swirl's opening effect (`data_020cfb44`) to end before `func_0203bfc8` sends `DEADTALK` or `CORETALK`, and leaving the state (`func_0203baac`) calls `func_0200f084(game, 0, ...)`. `DeadTalk|Finish` and `Abort` leave it (`func_0203c03c`) and `Restart` enters it again. `func_0200f084` does nothing when the bit already holds the asked value, so a script's own 0xe0 inside a talk changes nothing.
+
+The class: every dead talk and core talk in every chapter: the 54 the whole-game replay starts, from Chapter 2's st06_game002 to st14_game061, whether the route, a dead core or `DeadTalk|Restart` starts it.
+
+Guard: `start_dead_talk` turns the swirl on and `DeadTalk|Finish` and `Abort` turn it off, and `script_machine_set_swirl` ignores a call that changes nothing, as `func_0200f084` does. The opening effect's wait is not ported; the talk starts on the same tick. `tests/unit/test_dead_talk.c` checks a talk's swirl through Finish, Abort and Restart, and that a second Finish reports nothing. The whole-game replay plays the same steps with the swirl on for each talk.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

@@ -1390,6 +1390,7 @@ static void start_dead_talk(struct script_machine *machine, int object_index)
     }
     machine->soul.dead_talk_is_on = 1;
     machine->soul.dead_talk_object = object_index;
+    script_machine_set_swirl(machine, 1);
     if (machine->film_frame_is_on) {
         machine->film_frame_is_on = 0;
         if (machine->outputs->film_frame_changed != NULL) {
@@ -1424,8 +1425,10 @@ static void run_dead_talk_command(struct script_machine *machine, const char *ar
 {
     if (strcmp(arg, "Finish") == 0) {
         machine->soul.dead_talk_is_on = 0;
+        script_machine_set_swirl(machine, 0);
     } else if (strcmp(arg, "Abort") == 0) {
         machine->soul.dead_talk_is_on = 0;
+        script_machine_set_swirl(machine, 0);
         run_custom_soul_command(machine, "NoEffectFinish");
         return_from_soul_view(machine, SCRIPT_MODE_DEMO);
     } else if (strcmp(arg, "Restart") == 0) {
