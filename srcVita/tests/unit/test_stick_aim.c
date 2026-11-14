@@ -7,6 +7,8 @@
 #define RAW_TOP_EDGE 0
 #define RAW_INSIDE_DEAD_ZONE 150
 #define HUNDREDTHS 100.0f
+#define RAW_RESTING_LEFT_OF_CENTRE 80
+#define FRAMES_TO_SETTLE 120
 
 static int hundredths(float value)
 {
@@ -73,8 +75,43 @@ static void test_the_first_push_presses_its_strongest_axis(void)
     CHECK_INT(pressed_y, 1);
 }
 
+static void test_a_stick_resting_off_centre_stops_pushing_once_it_settles(void)
+{
+    struct stick_aim_rest rest = { 0 };
+    float stick_x;
+    float stick_y;
+    int frame;
+
+    for (frame = 0; frame < FRAMES_TO_SETTLE; frame++) {
+        stick_aim_read(&rest, RAW_RESTING_LEFT_OF_CENTRE + frame % 2, RAW_CENTRE, &stick_x, &stick_y);
+    }
+    CHECK_INT(hundredths(stick_x), 0);
+    CHECK_INT(hundredths(stick_y), 0);
+    stick_aim_read(&rest, RAW_LEFT_EDGE, RAW_CENTRE, &stick_x, &stick_y);
+    CHECK(stick_x < 0.0f);
+    stick_aim_read(&rest, RAW_RIGHT_EDGE, RAW_CENTRE, &stick_x, &stick_y);
+    CHECK_INT(hundredths(stick_x), 100);
+}
+
+static void test_a_held_full_push_is_never_taken_for_the_rest(void)
+{
+    struct stick_aim_rest rest = { 0 };
+    float stick_x;
+    float stick_y;
+    int frame;
+
+    for (frame = 0; frame < FRAMES_TO_SETTLE; frame++) {
+        stick_aim_read(&rest, RAW_LEFT_EDGE, RAW_CENTRE, &stick_x, &stick_y);
+    }
+    CHECK_INT(hundredths(stick_x), -100);
+    stick_aim_read(&rest, RAW_CENTRE, RAW_CENTRE, &stick_x, &stick_y);
+    CHECK_INT(hundredths(stick_x), 0);
+}
+
 int main(void)
 {
+    test_a_stick_resting_off_centre_stops_pushing_once_it_settles();
+    test_a_held_full_push_is_never_taken_for_the_rest();
     test_a_resting_stick_aims_nowhere();
     test_a_full_push_aims_at_full_strength_along_its_direction();
     test_strength_grows_from_the_edge_of_the_dead_zone();

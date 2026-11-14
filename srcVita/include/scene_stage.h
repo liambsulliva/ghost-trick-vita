@@ -7,6 +7,7 @@
 #include "scene_layers.h"
 
 #define SCENE_PLATE_MAX 16
+#define SCENE_GHOST_CICEL 0
 #define SCENE_GHOST_MISSILE 1
 #define SCENE_GHOST_BOSS 2
 #define SCENE_OBJECT_MAX 128

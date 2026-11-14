@@ -111,6 +111,7 @@ enum tutorial_mode {
 #define SOUL_VIEW_ENTER_TICKS 33
 #define SOUL_VIEW_LEAVE_TICKS 13
 #define SOUL_LEAVE_SOUND_KIND 15
+#define CHARACTER_SWITCH_SOUND_KIND 31
 #define QUIET_LEAVING_FLAG 0x1003
 
 static const char *const core_verbs[SCRIPT_CORE_SLOT_COUNT] = { "core", "core1" };
@@ -153,6 +154,7 @@ static int core_is_for_the_dead(const struct script_machine *machine, int object
 }
 
 static void take_character_button(struct script_machine *machine);
+static void switch_character(struct script_machine *machine, int ghost);
 
 static void arrive_at_core(struct script_machine *machine, int object_index, int slot)
 {
@@ -2842,10 +2844,43 @@ static void take_character_button(struct script_machine *machine)
     }
     if (script_pills_is_up(machine, SCRIPT_PILL_MISSILE)) {
         script_pills_press(machine, SCRIPT_PILL_MISSILE, PILL_HOLD_AFTER_VIEW_CHANGE);
-        script_soul_make_ghost_active(machine, SCRIPT_GHOST_MISSILE);
+        switch_character(machine, SCRIPT_GHOST_MISSILE);
     } else if (script_pills_is_up(machine, SCRIPT_PILL_CICEL)) {
         script_pills_press(machine, SCRIPT_PILL_CICEL, PILL_HOLD_AFTER_VIEW_CHANGE);
-        script_soul_make_ghost_active(machine, SCRIPT_GHOST_CICEL);
+        switch_character(machine, SCRIPT_GHOST_CICEL);
+    }
+}
+
+static void restart_the_view_at_the_new_core(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    soul->chain_needs_reset = 1;
+    soul->chain_pick_object = NO_CORE;
+    soul->tip_is_out = 0;
+    soul->drag_carries_on = 0;
+    soul->view_was_panned = 0;
+    soul->mark_age_ticks = MARK_IS_OFF;
+    if (machine->auto_press != SCRIPT_AUTO_FAST) {
+        soul->view_change_ticks_left = SOUL_VIEW_ENTER_TICKS;
+    }
+    if (machine->outputs->soul_vision_changed != NULL) {
+        machine->outputs->soul_vision_changed(1, machine->auto_press != SCRIPT_AUTO_FAST);
+    }
+}
+
+static void switch_character(struct script_machine *machine, int ghost)
+{
+    if (ghost == machine->soul.active_ghost) {
+        return;
+    }
+    script_soul_make_ghost_active(machine, ghost);
+    if (machine->outputs->sound_played != NULL) {
+        machine->outputs->sound_played(CHARACTER_SWITCH_SOUND_KIND);
+    }
+    if (machine->soul.is_on) {
+        restart_the_view_at_the_new_core(machine);
     }
 }
 

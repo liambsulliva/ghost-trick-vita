@@ -2,7 +2,7 @@
 #include "script_machine.h"
 #include "test_support.h"
 
-#define STEPS_FOR_A_PILL_TO_SLIDE_IN 40
+#define STEPS_FOR_A_PILL_TO_SLIDE_IN 80
 #define NORMAL_PLAY_MODE 3
 
 static struct script_machine machine;

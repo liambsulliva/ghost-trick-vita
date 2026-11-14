@@ -8,6 +8,8 @@
 static unsigned int previous_buttons;
 static int touch_is_sampling;
 static int stick_is_sampling;
+static struct stick_aim_rest left_stick_rest;
+static struct stick_aim_rest right_stick_rest;
 
 static unsigned int add_button_if_held(unsigned int vita_buttons, unsigned int vita_button, unsigned int app_button)
 {
@@ -65,9 +67,15 @@ void input_poll(struct input_state *state)
         sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG);
         stick_is_sampling = 1;
     }
-    sceCtrlPeekBufferPositive(0, &pad, 1);
-    stick_aim_from_raw(pad.lx, pad.ly, &state->stick_x, &state->stick_y);
-    stick_aim_from_raw(pad.rx, pad.ry, &state->right_stick_x, &state->right_stick_y);
+    if (sceCtrlPeekBufferPositive(0, &pad, 1) < 1) {
+        pad.buttons = 0;
+        pad.lx = STICK_AIM_RAW_CENTRE;
+        pad.ly = STICK_AIM_RAW_CENTRE;
+        pad.rx = STICK_AIM_RAW_CENTRE;
+        pad.ry = STICK_AIM_RAW_CENTRE;
+    }
+    stick_aim_read(&left_stick_rest, pad.lx, pad.ly, &state->stick_x, &state->stick_y);
+    stick_aim_read(&right_stick_rest, pad.rx, pad.ry, &state->right_stick_x, &state->right_stick_y);
     buttons = read_app_buttons(pad.buttons);
     state->pressed = buttons & ~previous_buttons;
     state->held = buttons;

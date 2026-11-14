@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+#include "ghost_tint.h"
 #include "page_tiles.h"
 #include "iris_pattern.h"
 #include "memory.h"
@@ -33,15 +34,6 @@ struct screen_view {
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static const struct renderer_color black = { 0.0f, 0.0f, 0.0f, 1.0f };
-static struct renderer_color turned_for_the_ghost(struct renderer_color color, int ghost);
-#define GHOST_SCANLINE_PITCH 3.0f
-#define GHOST_SCANLINE_HEIGHT 1.0f
-#define GHOST_SCANLINE_ALPHA 0.28f
-#define GHOST_SCANLINE_ROWS_MAX 256
-#define GHOST_SWEEP_HEIGHT 3.0f
-#define GHOST_SWEEP_FRAMES 240u
-static const struct renderer_color missile_sweep_color = { 0.2f, 1.0f, 0.2f, 0.55f };
-static const struct renderer_color boss_sweep_color = { 0.15f, 0.35f, 1.0f, 0.55f };
 static const struct renderer_color missing_texture_color = { 1.0f, 0.0f, 1.0f, 0.6f };
 static const struct renderer_color ghost_copy_lavender = { 16.0f / 31.0f, 16.0f / 31.0f, 1.0f, 1.0f };
 
@@ -335,7 +327,7 @@ static struct renderer_color object_paint(const struct scene_stage *stage, const
         color.blue = object->soul_blue;
         color.alpha = object->soul_alpha;
         if (object->soul_turns_with_ghost) {
-            color = turned_for_the_ghost(color, scene_stage_soul_ghost());
+            color = ghost_tint_turned(color, scene_stage_soul_ghost());
         }
         *is_flat = object->soul_is_flat;
         return color;
@@ -932,63 +924,10 @@ void scene_view_draw_world(const struct scene_stage *stage)
     draw_world_layers(stage);
 }
 
-static struct renderer_color turned_for_the_ghost(struct renderer_color color, int ghost)
-{
-    struct renderer_color turned;
-
-    turned = color;
-    if (ghost == SCENE_GHOST_MISSILE) {
-        turned.red = color.blue;
-        turned.green = color.red;
-        turned.blue = color.green;
-    } else if (ghost == SCENE_GHOST_BOSS) {
-        turned.red = color.green;
-        turned.green = color.blue;
-        turned.blue = color.red;
-    }
-    return turned;
-}
-
-static void draw_ghost_scanlines(const struct scene_stage *stage)
-{
-    static unsigned int sweep_frame;
-    struct renderer_rect screen;
-    struct renderer_rect rows[GHOST_SCANLINE_ROWS_MAX];
-    struct renderer_rect sweep;
-    struct renderer_color shade;
-    struct renderer_color glow;
-    int count;
-    float y;
-
-    if (!stage->soul_mode_is_on || (stage->soul_ghost != SCENE_GHOST_MISSILE && stage->soul_ghost != SCENE_GHOST_BOSS)) {
-        return;
-    }
-    screen = whole_screen_area();
-    count = 0;
-    for (y = screen.y; y < screen.y + screen.height && count < GHOST_SCANLINE_ROWS_MAX; y = y + GHOST_SCANLINE_PITCH) {
-        rows[count].x = screen.x;
-        rows[count].y = y;
-        rows[count].width = screen.width;
-        rows[count].height = GHOST_SCANLINE_HEIGHT;
-        count = count + 1;
-    }
-    shade = black;
-    shade.alpha = GHOST_SCANLINE_ALPHA;
-    renderer_draw_filled_rects(rows, count, shade);
-    sweep_frame = sweep_frame + 1u;
-    sweep.x = screen.x;
-    sweep.width = screen.width;
-    sweep.height = GHOST_SWEEP_HEIGHT;
-    sweep.y = screen.y + (float)(sweep_frame % GHOST_SWEEP_FRAMES) * screen.height / (float)GHOST_SWEEP_FRAMES;
-    glow = stage->soul_ghost == SCENE_GHOST_MISSILE ? missile_sweep_color : boss_sweep_color;
-    renderer_draw_filled_rect(sweep, glow);
-}
-
 void scene_view_draw_covers(const struct scene_stage *stage)
 {
     struct renderer_color fade_color;
 
-    draw_ghost_scanlines(stage);
     draw_layers_over_the_world(stage);
     draw_dissolve(&stage->effects);
     draw_text_lines(stage);

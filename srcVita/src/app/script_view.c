@@ -1414,7 +1414,7 @@ static void draw_soul(void)
     if (!soul_is_on || tables == NULL) {
         return;
     }
-    soul_transition_draw_ghost_lines();
+    soul_transition_draw_ghost_lines(scene_stage_soul_ghost());
     draw_core_marks();
     if (!cursor_is_shown) {
         return;
@@ -1782,7 +1782,7 @@ void script_view_draw_on_covers(void)
     if (film_frame_is_on && still_is_ready) {
         draw_film_belts();
     }
-    soul_transition_draw();
+    soul_transition_draw(scene_stage_soul_ghost());
     draw_staff_roll();
     script_ui_view_draw_under_talk(scene_stage_view()->fade_amount);
     if (talk_is_showing && talk.page != NULL && talk.book != NULL) {

@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdlib.h>
+#include "ghost_tint.h"
 #include "renderer.h"
 #include "soul_transition.h"
 #include "texture_cache.h"
@@ -38,7 +39,8 @@
 #define FINE_LINE_SAMPLES_PER_ROW 16
 #define FINE_LINE_ALPHA 41
 #define FINE_LINE_DIM_CHANNEL 24
-#define FINE_LINE_BRIGHT_RED 255
+#define FINE_LINE_BRIGHT_CHANNEL 255
+#define GHOST_KINDS 3
 
 enum transition_kind {
     TRANSITION_NONE,
@@ -50,7 +52,8 @@ static enum transition_kind kind;
 static int tick;
 static int snapshot_is_ready;
 static int sweep_native_y = SWEEP_NATIVE_Y_START;
-static renderer_texture fine_lines_texture;
+static renderer_texture fine_lines_textures[GHOST_KINDS];
+static const struct renderer_color sissel_red = { 1.0f, 0.0f, 0.0f, 1.0f };
 
 void soul_transition_begin_entering(void)
 {
@@ -75,10 +78,19 @@ void soul_transition_stop(void)
 
 void soul_transition_release_textures(void)
 {
-    if (fine_lines_texture != RENDERER_NO_TEXTURE) {
-        renderer_texture_destroy(fine_lines_texture);
+    int ghost;
+
+    for (ghost = 0; ghost < GHOST_KINDS; ghost++) {
+        if (fine_lines_textures[ghost] != RENDERER_NO_TEXTURE) {
+            renderer_texture_destroy(fine_lines_textures[ghost]);
+        }
+        fine_lines_textures[ghost] = RENDERER_NO_TEXTURE;
     }
-    fine_lines_texture = RENDERER_NO_TEXTURE;
+}
+
+static int known_ghost(int ghost)
+{
+    return ghost >= 0 && ghost < GHOST_KINDS ? ghost : 0;
 }
 
 void soul_transition_restart_sweep(void)
@@ -182,14 +194,13 @@ static void draw_spun_layers(int step)
     }
 }
 
-void soul_transition_draw(void)
+void soul_transition_draw(int ghost)
 {
-    static const struct renderer_color red = { 1.0f, 0.0f, 0.0f, 1.0f };
     static const struct renderer_color black = { 0.0f, 0.0f, 0.0f, 1.0f };
 
     if (kind == TRANSITION_ENTERING) {
         if (tick >= 1 && tick <= LAST_SPOKE_TICK) {
-            draw_spokes(tick, red);
+            draw_spokes(tick, ghost_tint_turned(sissel_red, known_ghost(ghost)));
         } else if (tick > TICK_BEFORE_FIRST_SPUN_LAYER && snapshot_is_ready) {
             draw_spun_layers(tick - TICK_BEFORE_FIRST_SPUN_LAYER);
         }
@@ -225,29 +236,42 @@ static float bright_share_of_row(int row)
     return (float)bright_samples / (float)FINE_LINE_SAMPLES_PER_ROW;
 }
 
-static void make_fine_lines_texture(void)
+static unsigned char channel_byte(float share)
+{
+    return (unsigned char)(share * (float)FINE_LINE_BRIGHT_CHANNEL + 0.5f);
+}
+
+static renderer_texture make_fine_lines_texture(int ghost)
 {
     static unsigned char rows[RENDERER_HEIGHT * 4];
     int row;
 
     for (row = 0; row < RENDERER_HEIGHT; row++) {
-        rows[row * 4] = (unsigned char)(bright_share_of_row(row) * (float)FINE_LINE_BRIGHT_RED);
-        rows[row * 4 + 1] = FINE_LINE_DIM_CHANNEL;
-        rows[row * 4 + 2] = FINE_LINE_DIM_CHANNEL;
+        struct renderer_color sissel_row;
+        struct renderer_color ghost_row;
+
+        sissel_row.red = bright_share_of_row(row);
+        sissel_row.green = (float)FINE_LINE_DIM_CHANNEL / (float)FINE_LINE_BRIGHT_CHANNEL;
+        sissel_row.blue = sissel_row.green;
+        sissel_row.alpha = 1.0f;
+        ghost_row = ghost_tint_turned(sissel_row, ghost);
+        rows[row * 4] = channel_byte(ghost_row.red);
+        rows[row * 4 + 1] = channel_byte(ghost_row.green);
+        rows[row * 4 + 2] = channel_byte(ghost_row.blue);
         rows[row * 4 + 3] = FINE_LINE_ALPHA;
     }
-    fine_lines_texture = renderer_texture_create(rows, 1, RENDERER_HEIGHT);
+    return renderer_texture_create(rows, 1, RENDERER_HEIGHT);
 }
 
-void soul_transition_draw_ghost_lines(void)
+void soul_transition_draw_ghost_lines(int ghost)
 {
     static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
-    static const struct renderer_color pure_red = { 1.0f, 0.0f, 0.0f, 1.0f };
     struct renderer_rect area;
     struct renderer_rect whole_texture;
 
-    if (fine_lines_texture == RENDERER_NO_TEXTURE) {
-        make_fine_lines_texture();
+    ghost = known_ghost(ghost);
+    if (fine_lines_textures[ghost] == RENDERER_NO_TEXTURE) {
+        fine_lines_textures[ghost] = make_fine_lines_texture(ghost);
     }
     area.x = 0.0f;
     area.y = 0.0f;
@@ -257,8 +281,8 @@ void soul_transition_draw_ghost_lines(void)
     whole_texture.y = 0.0f;
     whole_texture.width = 1.0f;
     whole_texture.height = 1.0f;
-    renderer_draw_sprite(fine_lines_texture, area, whole_texture, white);
+    renderer_draw_sprite(fine_lines_textures[ghost], area, whole_texture, white);
     area.y = SCREEN_CENTER_Y - VITA_PIXELS_PER_DS_PIXEL * (float)sweep_native_y - SWEEP_FOOTAGE_NUDGE - SWEEP_HEIGHT / 2.0f;
     area.height = SWEEP_HEIGHT;
-    renderer_draw_filled_rect(area, pure_red);
+    renderer_draw_filled_rect(area, ghost_tint_turned(sissel_red, ghost));
 }
