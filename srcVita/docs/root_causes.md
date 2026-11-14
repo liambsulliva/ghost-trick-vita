@@ -1321,6 +1321,12 @@ The loading screen's walk advanced by elapsed time with no limit. While a chain 
 
 Guard: `walk_on` advances at most two walk ticks (one drawing) per frame and drops the time left over, so a long frame slows the cat instead of moving it on. The walk also runs at 40 ticks a second, two thirds of the game's pace, as the user asked. `tests/unit/test_loading_screen.c` checks the pace and that a half-second frame moves the cat by one drawing at most. Open: the reads themselves still block the frame; moving them to the background reader would let the cat walk at full frame rate.
 
+### 185. Uploads from a clean copy of the repo sent the whole set again
+
+`upload-assets` and `upload-eboot` run through the vitacompanion MCP seemed to hang. Builds run from `git archive HEAD` copies so that other sessions' uncommitted work stays out, but the upload record lived in `srcVita/build/uploaded_assets.json`, which such a copy lacks. With no record, the uploader treated all 30,796 files as new, each costing about a second, and a call gave no output until it ended hours later. `upload-eboot` run right after a quit failed with `550 File not found` while the app was still tearing down. Every file was also read back twice, and each new file also tried to delete two old-layout copies that cannot exist, each miss costing about 140 ms on a texture bucket.
+
+Guard: the record now sits beside the asset set (its real path plus `.uploaded.json`), so every checkout that links `extracted` shares it, and the old build-folder record is read when it is missing. A refused write is tried up to 10 times, a second apart. One hash-checked read-back is followed by a size check after the rename. Old-layout copies are removed only for files uploaded before, and progress is printed every 100 files. `tests/tools/test_vita_loop.py` checks the shared and taken-over record, the retried write, the single read-back and the skipped deletes.
+
 ## Still open
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.

@@ -44,6 +44,10 @@ SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD_FOLDER = os.path.join(SRC_VITA_FOLDER, "build")
 ASSETS_FOLDER = DATA_FOLDER + "/assets"
 UPLOAD_RECORD_PATH = os.path.join(BUILD_FOLDER, "uploaded_assets.json")
+UPLOAD_RECORD_SUFFIX = ".uploaded.json"
+UPLOAD_PROGRESS_EVERY = 100
+STORE_TRIES = 10
+SECONDS_BETWEEN_STORE_TRIES = 1
 PARTIAL_FILE_SUFFIX = ".new"
 SECONDS_FOR_APP_TEARDOWN = 3
 SECONDS_FOR_DEVICE_REPLY = 3
@@ -127,19 +131,29 @@ def download_or_none(path):
         connection.close()
 
 
+def store_with_retries(connection, path, data):
+    for attempt in range(STORE_TRIES):
+        try:
+            connection.storbinary("STOR " + path, io.BytesIO(data))
+            return
+        except ftplib.error_perm:
+            if attempt == STORE_TRIES - 1:
+                raise
+            time.sleep(SECONDS_BETWEEN_STORE_TRIES)
+
+
 def upload_verified(connection, local_path, remote_path):
     with open(local_path, "rb") as source:
         data = source.read()
     temporary_path = remote_path + PARTIAL_FILE_SUFFIX
-    connection.storbinary("STOR " + temporary_path, io.BytesIO(data))
+    store_with_retries(connection, temporary_path, data)
     read_back = download_bytes(connection, temporary_path)
     if sha256_of_bytes(read_back) != sha256_of_bytes(data):
         raise RuntimeError("read-back hash differs for " + temporary_path + "; not retrying")
     delete_if_present(connection, remote_path)
     connection.rename(temporary_path, remote_path)
-    read_back = download_bytes(connection, remote_path)
-    if sha256_of_bytes(read_back) != sha256_of_bytes(data):
-        raise RuntimeError("final hash differs for " + remote_path + "; not retrying")
+    if remote_size_or_none(connection, remote_path) != len(data):
+        raise RuntimeError("size after rename differs for " + remote_path + "; not retrying")
     return sha256_of_bytes(data)
 
 
@@ -210,19 +224,27 @@ def sha256_of_file(path):
     return digest.hexdigest()
 
 
-def load_upload_record():
-    if not os.path.exists(UPLOAD_RECORD_PATH):
-        return {}
-    with open(UPLOAD_RECORD_PATH, encoding="utf-8") as source:
-        return json.load(source)
+def upload_record_path_of(folder):
+    if folder is None:
+        return UPLOAD_RECORD_PATH
+    return os.path.realpath(folder).rstrip(os.sep) + UPLOAD_RECORD_SUFFIX
 
 
-def save_upload_record(record):
-    os.makedirs(os.path.dirname(UPLOAD_RECORD_PATH), exist_ok=True)
-    temporary_path = UPLOAD_RECORD_PATH + ".new"
+def load_upload_record(folder=None):
+    for path in (upload_record_path_of(folder), UPLOAD_RECORD_PATH):
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as source:
+                return json.load(source)
+    return {}
+
+
+def save_upload_record(record, folder=None):
+    path = upload_record_path_of(folder)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    temporary_path = path + ".new"
     with open(temporary_path, "w", encoding="utf-8") as output:
         json.dump(record, output, indent=0, sort_keys=True)
-    os.replace(temporary_path, UPLOAD_RECORD_PATH)
+    os.replace(temporary_path, path)
 
 
 def list_local_files(folder):
@@ -287,7 +309,7 @@ def upload_assets(folder, checks_the_device=False):
     if not os.path.isfile(os.path.join(folder, "manifest.txt")):
         print("no manifest.txt in: " + folder)
         return 1
-    record = load_upload_record()
+    record = load_upload_record(folder)
     uploaded = 0
     skipped = 0
     moved = 0
@@ -310,21 +332,24 @@ def upload_assets(folder, checks_the_device=False):
             if record.get(relative_path) == digest and move_earlier_copy(connection, relative_path, remote_path, os.path.getsize(local_path)):
                 moved = moved + 1
                 continue
-            record.pop(relative_path, None)
-            save_upload_record(record)
+            was_uploaded_before = record.pop(relative_path, None) is not None
+            save_upload_record(record, folder)
             upload_verified(connection, local_path, remote_path)
             record[relative_path] = digest
-            save_upload_record(record)
-            for earlier_path in earlier_device_paths_of_asset(relative_path):
-                delete_if_present(connection, ASSETS_FOLDER + "/" + earlier_path)
+            save_upload_record(record, folder)
+            if was_uploaded_before:
+                for earlier_path in earlier_device_paths_of_asset(relative_path):
+                    delete_if_present(connection, ASSETS_FOLDER + "/" + earlier_path)
             uploaded = uploaded + 1
             uploaded_bytes = uploaded_bytes + os.path.getsize(local_path)
+            if uploaded % UPLOAD_PROGRESS_EVERY == 0:
+                print("assets uploaded so far", uploaded, "seconds", int(time.time() - started), flush=True)
         for loop_path in loop_files_the_set_no_longer_has([relative_path for _, relative_path in local_files]):
             if not checks_the_device and loop_path not in record:
                 continue
             delete_if_present(connection, ASSETS_FOLDER + "/" + loop_path)
             if record.pop(loop_path, None) is not None:
-                save_upload_record(record)
+                save_upload_record(record, folder)
     finally:
         connection.close()
     print("assets moved", moved)

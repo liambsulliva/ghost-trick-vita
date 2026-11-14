@@ -641,7 +641,7 @@ PYTHON_MUTATIONS = [
     ("tools/vita_loop.py", 'if relative_path.startswith("music/") and relative_path.endswith(".ogg"):', 'if relative_path.startswith("music/"):'),
     ("tools/vita_loop.py", "if loop_path not in relative_paths:", "if True:"),
     ("tools/vita_loop.py", 'delete_if_present(connection, ASSETS_FOLDER + "/" + loop_path)\n', "pass\n"),
-    ("tools/vita_loop.py", "if record.pop(loop_path, None) is not None:\n                save_upload_record(record)\n", "pass\n"),
+    ("tools/vita_loop.py", "if record.pop(loop_path, None) is not None:\n                save_upload_record(record, folder)\n", "pass\n"),
     ("tools/assets/convert_assets.py", "sys.exit(EXIT_CODE_BASE_FOR_SIGNALS + signal_number)", "sys.exit(1)"),
     ("tools/assets/ds_rom.py", "if header[GAME_CODE_OFFSET:GAME_CODE_OFFSET + GAME_CODE_SIZE] != ACCEPTED_GAME_CODE:", "if False:"),
     ("../tools/lz.py", "return lz11_decompress(data)", "return lz10_decompress(data)"),

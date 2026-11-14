@@ -221,20 +221,20 @@ class UploadAssetsTests(DeviceFreeTestCase):
         self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
         self.assertEqual(self.ftp.files[vita_loop.ASSETS_FOLDER + "/music/song.ogg"], b"new song")
         self.assertNotIn(vita_loop.ASSETS_FOLDER + "/music/song.loop", self.ftp.files)
-        self.assertNotIn("music/song.loop", vita_loop.load_upload_record())
+        self.assertNotIn("music/song.loop", vita_loop.load_upload_record(self.set_folder))
 
     def test_loop_points_a_track_lost_are_removed_even_when_the_track_is_unchanged(self):
         self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
         os.remove(os.path.join(self.set_folder, "music", "song.loop"))
         self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
         self.assertNotIn(vita_loop.ASSETS_FOLDER + "/music/song.loop", self.ftp.files)
-        self.assertNotIn("music/song.loop", vita_loop.load_upload_record())
+        self.assertNotIn("music/song.loop", vita_loop.load_upload_record(self.set_folder))
 
     def test_loop_points_the_set_still_has_stay_on_the_device(self):
         self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
         self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
         self.assertEqual(self.ftp.files[vita_loop.ASSETS_FOLDER + "/music/song.loop"], b"1 2")
-        self.assertIn("music/song.loop", vita_loop.load_upload_record())
+        self.assertIn("music/song.loop", vita_loop.load_upload_record(self.set_folder))
 
     def test_a_sound_is_never_given_a_loop_file_to_remove(self):
         self.assertEqual(vita_loop.loop_files_the_set_no_longer_has(["sounds/ping.ogg", "music/a.ogg", "music/a.loop", "music/b.ogg"]), ["music/b.loop"])
@@ -285,7 +285,7 @@ class UploadAssetsTests(DeviceFreeTestCase):
         with mock.patch.object(vita_loop, "upload_verified", side_effect=RuntimeError):
             with self.assertRaises(RuntimeError):
                 vita_loop.upload_assets(self.set_folder)
-        self.assertNotIn("textures/a.gtex", vita_loop.load_upload_record())
+        self.assertNotIn("textures/a.gtex", vita_loop.load_upload_record(self.set_folder))
 
     def test_a_folder_without_a_manifest_fails_before_using_the_device(self):
         empty_folder = os.path.join(self.folder.name, "empty")
@@ -293,6 +293,50 @@ class UploadAssetsTests(DeviceFreeTestCase):
         self.assertEqual(vita_loop.upload_assets(empty_folder), 1)
         self.assertIn("no manifest.txt", self.output.getvalue())
         self.open_ftp.assert_not_called()
+
+    def test_a_clean_copy_reached_through_a_link_uses_the_same_record(self):
+        vita_loop.upload_assets(self.set_folder)
+        linked_set = os.path.join(self.folder.name, "clean_copy_set")
+        os.symlink(self.set_folder, linked_set)
+        with mock.patch.object(self.ftp, "storbinary", wraps=self.ftp.storbinary) as storbinary:
+            self.assertEqual(vita_loop.upload_assets(linked_set), 0)
+        storbinary.assert_not_called()
+        self.assertIn("uploaded 0 skipped 7", self.output.getvalue())
+
+    def test_the_record_lives_beside_the_set_not_in_the_checkout_build(self):
+        vita_loop.upload_assets(self.set_folder)
+        self.assertTrue(os.path.isfile(os.path.realpath(self.set_folder) + vita_loop.UPLOAD_RECORD_SUFFIX))
+        self.assertFalse(os.path.exists(vita_loop.UPLOAD_RECORD_PATH))
+
+    def test_a_record_left_in_the_build_folder_is_taken_over(self):
+        vita_loop.upload_assets(self.set_folder)
+        record = vita_loop.load_upload_record(self.set_folder)
+        os.remove(vita_loop.upload_record_path_of(self.set_folder))
+        os.makedirs(os.path.dirname(vita_loop.UPLOAD_RECORD_PATH))
+        with open(vita_loop.UPLOAD_RECORD_PATH, "w", encoding="utf-8") as output:
+            vita_loop.json.dump(record, output)
+        self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
+        self.assertIn("uploaded 0 skipped 7", self.output.getvalue())
+
+    def test_an_upload_reads_each_file_back_once(self):
+        with mock.patch.object(self.ftp, "retrbinary", wraps=self.ftp.retrbinary) as retrbinary:
+            vita_loop.upload_assets(self.set_folder)
+        self.assertEqual(retrbinary.call_count, 7)
+
+    def test_a_new_file_does_not_look_for_copies_from_earlier_layouts(self):
+        self.write_file("textures/movie_a_001.gtex", b"frame")
+        earlier = [vita_loop.ASSETS_FOLDER + "/" + path for path in vita_loop.earlier_device_paths_of_asset("textures/movie_a_001.gtex")]
+        with mock.patch.object(self.ftp, "delete", wraps=self.ftp.delete) as delete:
+            vita_loop.upload_assets(self.set_folder)
+        self.assertEqual([call.args[0] for call in delete.call_args_list if call.args[0] in earlier], [])
+
+    def test_a_changed_file_removes_its_copies_from_earlier_layouts(self):
+        self.write_file("textures/movie_a_001.gtex", b"frame")
+        vita_loop.upload_assets(self.set_folder)
+        self.ftp.files[vita_loop.ASSETS_FOLDER + "/textures/movie_a/movie_a_001.gtex"] = b"old frame"
+        self.write_file("textures/movie_a_001.gtex", b"new frame")
+        vita_loop.upload_assets(self.set_folder)
+        self.assertNotIn(vita_loop.ASSETS_FOLDER + "/textures/movie_a/movie_a_001.gtex", self.ftp.files)
 
     def test_an_interrupted_record_write_keeps_the_old_record(self):
         vita_loop.save_upload_record({"a": "1"})
@@ -305,6 +349,33 @@ class UploadAssetsTests(DeviceFreeTestCase):
             with self.assertRaises(OSError):
                 vita_loop.save_upload_record({"b": "2"})
         self.assertEqual(vita_loop.load_upload_record(), {"a": "1"})
+
+
+class UploadEbootTests(DeviceFreeTestCase):
+    def test_a_store_refused_while_the_app_tears_down_is_tried_again(self):
+        build_folder = os.path.join(self.folder.name, "build")
+        os.makedirs(build_folder)
+        for name in ("param.sfo", "eboot.bin"):
+            with open(os.path.join(build_folder, name), "wb") as output:
+                output.write(name.encode("ascii"))
+        self.patch(vita_loop, "BUILD_FOLDER", build_folder)
+        store = self.ftp.storbinary
+        refusals = iter([True, True])
+
+        def refuse_twice(command, source):
+            if next(refusals, False):
+                raise ftplib.error_perm("550 File not found.")
+            store(command, source)
+
+        self.patch(self.ftp, "storbinary", side_effect=refuse_twice)
+        self.assertEqual(vita_loop.upload_eboot(), 0)
+        self.assertEqual(self.ftp.files[vita_loop.APP_FOLDER + "/eboot.bin"], b"eboot.bin")
+
+    def test_a_store_refused_every_time_still_fails(self):
+        self.patch(self.ftp, "storbinary", side_effect=ftplib.error_perm("550 File not found."))
+        with self.assertRaises(ftplib.error_perm):
+            vita_loop.store_with_retries(self.ftp, "/x.new", b"x")
+        self.assertEqual(self.sleep.call_count, vita_loop.STORE_TRIES - 1)
 
 
 class LaunchTests(DeviceFreeTestCase):
