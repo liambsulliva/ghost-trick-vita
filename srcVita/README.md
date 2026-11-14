@@ -121,7 +121,7 @@ The converter bakes only what changed. `.bake_record.json` in the output folder 
 
 An animation can have up to 1024 frames, and the app allocates each animation's frame list to the size its own file needs.
 
-vitaGL rounds compressed textures up to power-of-two sizes, so a texture can take about twice its file size in memory. The cache counts the rounded size, and the converter crops each atlas page to the cells in use.
+vitaGL rounds compressed textures up to power-of-two sizes, so a texture can take about twice its file size in memory. The cache counts the rounded size, and the converter crops each atlas page to the cells in use. A compressed texture of 512 KB or more is only allocated on the frame; vitaGL's own swizzle fills it on the work queue's thread, and the texture counts as loading until it is filled.
 
 ## Run on the Vita
 

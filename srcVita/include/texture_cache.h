@@ -1,4 +1,5 @@
 #ifndef TEXTURE_CACHE_H
+#define TEXTURE_CACHE_FILL_OFF_FRAME_LEAST_BYTES (512u * 1024u)
 #define TEXTURE_CACHE_H
 
 #define TEXTURE_CACHE_GRAYSCALE_SUFFIX "-mono"
@@ -32,6 +33,7 @@ struct cached_texture {
     int in_use;
     unsigned int retry_at_frame;
     unsigned int retries;
+    int fill_is_running;
 };
 
 struct texture_cache_totals {

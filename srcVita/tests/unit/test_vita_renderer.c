@@ -4,6 +4,8 @@
 #define renderer_end_frame real_renderer_end_frame
 #define renderer_texture_create real_renderer_texture_create
 #define renderer_texture_create_compressed real_renderer_texture_create_compressed
+#define renderer_texture_create_compressed_empty real_renderer_texture_create_compressed_empty
+#define renderer_texture_fill_compressed real_renderer_texture_fill_compressed
 #define renderer_texture_destroy real_renderer_texture_destroy
 #define renderer_live_texture_count real_renderer_live_texture_count
 #define renderer_draw_sprite real_renderer_draw_sprite
@@ -116,6 +118,42 @@ GLboolean vglInitExtended(int pool_size, int width, int height, int ram_threshol
     (void)ram_threshold;
     (void)msaa;
     return GL_FALSE;
+}
+
+struct swizzle_call {
+    int bits;
+    uint32_t width;
+    uint32_t height;
+    uint32_t stride;
+    uint32_t tile_size;
+};
+
+static struct swizzle_call last_swizzle;
+
+void SwizzleTexData128Bpp(uint8_t *destination, uint8_t *source, uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint32_t stride, uint32_t tile_size)
+{
+    (void)destination;
+    (void)source;
+    (void)x;
+    (void)y;
+    last_swizzle.bits = 128;
+    last_swizzle.width = width;
+    last_swizzle.height = height;
+    last_swizzle.stride = stride;
+    last_swizzle.tile_size = tile_size;
+}
+
+void SwizzleTexData64Bpp(uint8_t *destination, uint8_t *source, uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint32_t stride, uint32_t tile_size)
+{
+    (void)destination;
+    (void)source;
+    (void)x;
+    (void)y;
+    last_swizzle.bits = 64;
+    last_swizzle.width = width;
+    last_swizzle.height = height;
+    last_swizzle.stride = stride;
+    last_swizzle.tile_size = tile_size;
 }
 
 void vglSwapBuffers(GLboolean has_commondialog)
@@ -602,8 +640,33 @@ static void test_high_contrast_lowers_the_floor_then_scales_and_puts_blending_ba
     CHECK_INT(blend_equation, GL_FUNC_ADD);
 }
 
+static void test_an_empty_compressed_texture_is_filled_with_the_swizzle_vitagl_uses(void)
+{
+    unsigned char blocks[16];
+    void *destination;
+    renderer_texture texture;
+
+    texture = real_renderer_texture_create_compressed_empty(2048, 1772, RENDERER_COMPRESSED_DXT5, &destination);
+    CHECK(texture != RENDERER_NO_TEXTURE);
+    CHECK(destination != NULL);
+    real_renderer_texture_fill_compressed(destination, blocks, 2048, 1772, RENDERER_COMPRESSED_DXT5);
+    CHECK_INT(last_swizzle.bits, 128);
+    CHECK_INT((int)last_swizzle.width, 512);
+    CHECK_INT((int)last_swizzle.height, 443);
+    CHECK_INT((int)last_swizzle.stride, 512);
+    CHECK_INT((int)last_swizzle.tile_size, 512);
+    real_renderer_texture_fill_compressed(destination, blocks, 1024, 300, RENDERER_COMPRESSED_DXT1);
+    CHECK_INT(last_swizzle.bits, 64);
+    CHECK_INT((int)last_swizzle.width, 256);
+    CHECK_INT((int)last_swizzle.height, 75);
+    CHECK_INT((int)last_swizzle.stride, 256);
+    CHECK_INT((int)last_swizzle.tile_size, 128);
+    real_renderer_texture_destroy(texture);
+}
+
 int main(void)
 {
+    test_an_empty_compressed_texture_is_filled_with_the_swizzle_vitagl_uses();
     test_a_30_fps_cap_waits_out_one_more_vblank_each_frame();
     test_high_contrast_lowers_the_floor_then_scales_and_puts_blending_back();
     test_the_target_is_one_rgb565_texture_the_size_of_the_screen();

@@ -5,6 +5,7 @@
 #include "fakes/fake_reader.h"
 #include "fakes/fake_renderer.h"
 #include "fakes/fake_texture_files.h"
+#include "fakes/fake_work_queue.h"
 #include "file.h"
 #include "run_log.h"
 #include "test_support.h"
@@ -579,9 +580,61 @@ static void test_cache_clear_destroys_every_texture(void)
     CHECK_INT(fake_renderer_textures_alive(), 0);
 }
 
+static void test_large_compressed_pages_are_filled_off_the_frame_and_shown_only_once_filled(void)
+{
+    const struct cached_texture *big;
+    const struct cached_texture *small;
+    renderer_texture texture;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    fake_work_queue_reset();
+    fake_work_queue_hold(1);
+    fake_files_add_dxt5_texture("tex/big.gtex", 1024, 512);
+    fake_files_add_dxt5_texture("tex/small.gtex", 12, 8);
+    texture_cache_init("tex", 8u * 1024u * 1024u);
+    big = texture_cache_use_or_start_loading("big");
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(big->state, CACHED_TEXTURE_LOADING);
+    CHECK_INT(fake_renderer_textures_created(), 1);
+    CHECK(!fake_renderer_texture_is_filled(big->texture));
+    CHECK_INT(fake_work_queue_pending(), 1);
+    CHECK_INT(texture_cache_loading_count(), 1);
+    small = texture_cache_use_or_start_loading("small");
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(small->state, CACHED_TEXTURE_READY);
+    CHECK_INT(fake_work_queue_pending(), 1);
+    fake_work_queue_run_pending();
+    CHECK_INT(big->state, CACHED_TEXTURE_LOADING);
+    texture_cache_upload_finished_reads(1);
+    CHECK_INT(big->state, CACHED_TEXTURE_READY);
+    CHECK(fake_renderer_texture_is_filled(big->texture));
+    texture_cache_clear();
+
+    texture_cache_init("tex", 8u * 1024u * 1024u);
+    big = texture_cache_load_now("big");
+    CHECK_INT(big->state, CACHED_TEXTURE_READY);
+    CHECK(fake_renderer_texture_is_filled(big->texture));
+    CHECK_INT(fake_work_queue_pending(), 0);
+    texture_cache_clear();
+
+    texture_cache_init("tex", 8u * 1024u * 1024u);
+    big = texture_cache_use_or_start_loading("big");
+    texture_cache_upload_finished_reads(1);
+    texture = big->texture;
+    CHECK_INT(fake_work_queue_pending(), 1);
+    texture_cache_clear();
+    CHECK_INT(fake_work_queue_pending(), 0);
+    CHECK(fake_renderer_texture_is_filled(texture));
+    CHECK(!fake_renderer_texture_is_alive(texture));
+    fake_work_queue_reset();
+}
+
 int main(void)
 {
     test_requested_texture_stays_loading_until_its_read_finishes();
+    test_large_compressed_pages_are_filled_off_the_frame_and_shown_only_once_filled();
     test_grayscale_name_reads_the_plain_file();
     test_requesting_twice_only_reads_once();
     test_uploads_respect_the_limit_per_frame();

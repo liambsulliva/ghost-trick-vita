@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdint.h>
 #include <string.h>
 #include <psp2/display.h>
 #include <psp2/gxm.h>
@@ -220,6 +221,60 @@ renderer_texture renderer_texture_create_compressed(const unsigned char *blocks,
     texture = start_new_texture();
     glCompressedTexImage2D(GL_TEXTURE_2D, 0, gl_format, width, height, 0, block_bytes, blocks);
     return finish_new_texture(texture);
+}
+
+void SwizzleTexData128Bpp(uint8_t *destination, uint8_t *source, uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint32_t stride, uint32_t tile_size);
+void SwizzleTexData64Bpp(uint8_t *destination, uint8_t *source, uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint32_t stride, uint32_t tile_size);
+
+static GLenum compressed_gl_format(enum renderer_compressed_format format)
+{
+    return format == RENDERER_COMPRESSED_DXT1 ? GL_COMPRESSED_RGB_S3TC_DXT1_EXT : GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+}
+
+static uint32_t power_of_two_at_least(uint32_t value)
+{
+    uint32_t power;
+
+    power = 1u;
+    while (power < value) {
+        power = power << 1;
+    }
+    return power;
+}
+
+renderer_texture renderer_texture_create_compressed_empty(int width, int height, enum renderer_compressed_format format, void **blocks_out)
+{
+    GLuint texture;
+    renderer_texture made;
+
+    *blocks_out = NULL;
+    texture = start_new_texture();
+    glCompressedTexImage2D(GL_TEXTURE_2D, 0, compressed_gl_format(format), width, height, 0, 0, NULL);
+    made = finish_new_texture(texture);
+    if (made != RENDERER_NO_TEXTURE) {
+        *blocks_out = vglGetTexDataPointer(GL_TEXTURE_2D);
+    }
+    return made;
+}
+
+void renderer_texture_fill_compressed(void *destination, const unsigned char *blocks, int width, int height, enum renderer_compressed_format format)
+{
+    uint32_t block_columns;
+    uint32_t block_rows;
+    uint32_t tile_blocks;
+
+    block_columns = ((uint32_t)width + 3u) / 4u;
+    block_rows = ((uint32_t)height + 3u) / 4u;
+    tile_blocks = power_of_two_at_least((uint32_t)width);
+    if (power_of_two_at_least((uint32_t)height) < tile_blocks) {
+        tile_blocks = power_of_two_at_least((uint32_t)height);
+    }
+    tile_blocks = (tile_blocks + 3u) / 4u;
+    if (format == RENDERER_COMPRESSED_DXT1) {
+        SwizzleTexData64Bpp(destination, (uint8_t *)blocks, 0, 0, block_columns, block_rows, block_columns, tile_blocks);
+        return;
+    }
+    SwizzleTexData128Bpp(destination, (uint8_t *)blocks, 0, 0, block_columns, block_rows, block_columns, tile_blocks);
 }
 
 void renderer_texture_destroy(renderer_texture texture)

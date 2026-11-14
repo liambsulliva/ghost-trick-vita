@@ -10,6 +10,7 @@
 #include "crc32.h"
 #include "texture_cache.h"
 #include "texture_file.h"
+#include "work_queue.h"
 
 #define READS_WAITING_MOST_WHEN_READING_AHEAD 2
 #define MEMORY_KEPT_FREE_BYTES (92u * 1024u * 1024u)
@@ -21,6 +22,7 @@
 #define READ_AHEAD_LEAST_ROOM_BYTES (4u * 1024u * 1024u)
 #define NAME_BUCKET_COUNT 4096u
 #define NO_ENTRY (-1)
+#define FILL_JOB_MAX 8
 
 enum texture_wanter {
     WANTED_BY_DRAWING,
@@ -41,6 +43,27 @@ static unsigned int next_request_id;
 static unsigned int reads_in_flight;
 static int cache_full_was_logged;
 static struct texture_cache_totals totals;
+
+struct fill_job {
+    int is_used;
+    volatile int is_done;
+    struct cached_texture *entry;
+    unsigned char *data;
+    void *destination;
+    const unsigned char *blocks;
+    int width;
+    int height;
+    enum renderer_compressed_format format;
+    unsigned int file_bytes;
+    unsigned long long upload_us;
+    unsigned long long open_us;
+    unsigned long long read_us;
+    unsigned long long unpack_us;
+    unsigned long long fill_us;
+};
+
+static struct fill_job fill_jobs[FILL_JOB_MAX];
+static int fills_running;
 
 static struct cached_texture *start_loading(const char *name, enum texture_wanter wanter);
 
@@ -369,51 +392,50 @@ static renderer_texture create_texture_from_file(const struct texture_file_heade
     return renderer_texture_create(pixel_data, width, height);
 }
 
-static void upload_read_data(struct cached_texture *entry, const struct finished_read *finished)
+static int compressed_format_of(const struct texture_file_header *header, enum renderer_compressed_format *format)
 {
-    struct texture_file_header header;
-    unsigned long long upload_started_us;
-    unsigned long long upload_us;
-    unsigned long long wait_us;
-    unsigned int memory_bytes;
-    int result;
+    if (header->format == TEXTURE_FILE_FORMAT_DXT5) {
+        *format = RENDERER_COMPRESSED_DXT5;
+        return 1;
+    }
+    if (header->format == TEXTURE_FILE_FORMAT_DXT1) {
+        *format = RENDERER_COMPRESSED_DXT1;
+        return 1;
+    }
+    return 0;
+}
 
-    if (finished->result == FILE_ERR_MEMORY) {
-        retry_later(entry, "heap");
-        return;
-    }
-    if (finished->result != FILE_OK) {
-        mark_missing(entry, "read", finished->result);
-        return;
-    }
-    result = texture_file_read_header(finished->data, finished->size, &header);
-    if (result != TEXTURE_FILE_OK) {
-        mark_missing(entry, "header", result);
-        return;
-    }
-    memory_bytes = texture_file_memory_bytes(&header);
-    upload_started_us = clock_now_us();
-    if (!make_room_for(memory_bytes, entry->was_drawn ? WANTED_BY_DRAWING : WANTED_BY_READ_AHEAD)) {
-        if (!entry->was_drawn) {
-            totals.read_ahead_dropped = totals.read_ahead_dropped + 1u;
-            stop_using_entry(entry);
-            return;
+static void run_fill_job(void *argument)
+{
+    struct fill_job *job;
+    unsigned long long started_us;
+
+    job = argument;
+    started_us = clock_now_us();
+    renderer_texture_fill_compressed(job->destination, job->blocks, job->width, job->height, job->format);
+    job->fill_us = clock_now_us() - started_us;
+    __sync_synchronize();
+    job->is_done = 1;
+}
+
+static struct fill_job *claim_fill_job(void)
+{
+    int index;
+
+    for (index = 0; index < FILL_JOB_MAX; index++) {
+        if (!fill_jobs[index].is_used) {
+            memset(&fill_jobs[index], 0, sizeof(fill_jobs[index]));
+            fill_jobs[index].is_used = 1;
+            return &fill_jobs[index];
         }
     }
-    entry->texture = create_texture_from_file(&header, &finished->data[TEXTURE_FILE_HEADER_SIZE]);
-    if (entry->texture == RENDERER_NO_TEXTURE) {
-        free_texture_memory_for_a_retry();
-        retry_later(entry, "gpu_memory");
-        return;
-    }
-    entry->width = header.width;
-    entry->height = header.height;
-    entry->memory_bytes = memory_bytes;
-    entry->state = CACHED_TEXTURE_READY;
-    totals.bytes_in_use = totals.bytes_in_use + entry->memory_bytes;
-    totals.loads = totals.loads + 1;
+    return NULL;
+}
 
-    upload_us = clock_now_us() - upload_started_us;
+static void log_loaded(const struct cached_texture *entry, unsigned int file_bytes, unsigned long long upload_us, unsigned long long open_us, unsigned long long read_us, unsigned long long unpack_us, unsigned long long fill_us)
+{
+    unsigned long long wait_us;
+
     wait_us = clock_now_us() - entry->requested_at_us;
     if (upload_us > totals.longest_upload_us) {
         totals.longest_upload_us = upload_us;
@@ -421,7 +443,131 @@ static void upload_read_data(struct cached_texture *entry, const struct finished
     if (wait_us > totals.longest_wait_us) {
         totals.longest_wait_us = wait_us;
     }
-    run_log_write("texture loaded name=%s width=%u height=%u file_bytes=%u memory=%u wait_us=%llu upload_us=%llu open_us=%llu read_us=%llu unpack_us=%llu", entry->name, header.width, header.height, header.pixel_data_size, memory_bytes, wait_us, upload_us, finished->open_us, finished->read_us, finished->unpack_us);
+    run_log_write("texture loaded name=%s width=%u height=%u file_bytes=%u memory=%u wait_us=%llu upload_us=%llu open_us=%llu read_us=%llu unpack_us=%llu fill_us=%llu", entry->name, entry->width, entry->height, file_bytes, entry->memory_bytes, wait_us, upload_us, open_us, read_us, unpack_us, fill_us);
+}
+
+static void finish_filled_textures(void)
+{
+    struct fill_job *job;
+    int index;
+
+    if (fills_running == 0) {
+        return;
+    }
+    for (index = 0; index < FILL_JOB_MAX; index++) {
+        job = &fill_jobs[index];
+        if (!job->is_used || !job->is_done) {
+            continue;
+        }
+        __sync_synchronize();
+        job->entry->fill_is_running = 0;
+        job->entry->state = CACHED_TEXTURE_READY;
+        totals.loads = totals.loads + 1;
+        log_loaded(job->entry, job->file_bytes, job->upload_us, job->open_us, job->read_us, job->unpack_us, job->fill_us);
+        mem_free(job->data);
+        job->is_used = 0;
+        fills_running = fills_running - 1;
+    }
+}
+
+static void wait_for_fills(void)
+{
+    if (fills_running > 0) {
+        work_queue_wait();
+        finish_filled_textures();
+    }
+}
+
+static int start_filling_off_the_frame(struct cached_texture *entry, const struct texture_file_header *header, const struct finished_read *finished, unsigned long long upload_started_us)
+{
+    enum renderer_compressed_format format;
+    struct fill_job *job;
+    void *destination;
+
+    if (header->pixel_data_size < TEXTURE_CACHE_FILL_OFF_FRAME_LEAST_BYTES || !compressed_format_of(header, &format)) {
+        return 0;
+    }
+    job = claim_fill_job();
+    if (job == NULL) {
+        return 0;
+    }
+    entry->texture = renderer_texture_create_compressed_empty((int)header->width, (int)header->height, format, &destination);
+    if (entry->texture == RENDERER_NO_TEXTURE || destination == NULL) {
+        job->is_used = 0;
+        if (entry->texture != RENDERER_NO_TEXTURE) {
+            renderer_texture_destroy(entry->texture);
+            entry->texture = RENDERER_NO_TEXTURE;
+        }
+        return 0;
+    }
+    job->entry = entry;
+    job->data = finished->data;
+    job->destination = destination;
+    job->blocks = &finished->data[TEXTURE_FILE_HEADER_SIZE];
+    job->width = (int)header->width;
+    job->height = (int)header->height;
+    job->format = format;
+    job->file_bytes = header->pixel_data_size;
+    job->open_us = finished->open_us;
+    job->read_us = finished->read_us;
+    job->unpack_us = finished->unpack_us;
+    job->upload_us = clock_now_us() - upload_started_us;
+    entry->fill_is_running = 1;
+    fills_running = fills_running + 1;
+    if (!work_queue_post(run_fill_job, job)) {
+        run_fill_job(job);
+    }
+    return 1;
+}
+
+static int upload_read_data(struct cached_texture *entry, const struct finished_read *finished)
+{
+    struct texture_file_header header;
+    unsigned long long upload_started_us;
+    unsigned int memory_bytes;
+    int result;
+
+    if (finished->result == FILE_ERR_MEMORY) {
+        retry_later(entry, "heap");
+        return 0;
+    }
+    if (finished->result != FILE_OK) {
+        mark_missing(entry, "read", finished->result);
+        return 0;
+    }
+    result = texture_file_read_header(finished->data, finished->size, &header);
+    if (result != TEXTURE_FILE_OK) {
+        mark_missing(entry, "header", result);
+        return 0;
+    }
+    memory_bytes = texture_file_memory_bytes(&header);
+    upload_started_us = clock_now_us();
+    if (!make_room_for(memory_bytes, entry->was_drawn ? WANTED_BY_DRAWING : WANTED_BY_READ_AHEAD)) {
+        if (!entry->was_drawn) {
+            totals.read_ahead_dropped = totals.read_ahead_dropped + 1u;
+            stop_using_entry(entry);
+            return 0;
+        }
+    }
+    entry->width = header.width;
+    entry->height = header.height;
+    if (start_filling_off_the_frame(entry, &header, finished, upload_started_us)) {
+        entry->memory_bytes = memory_bytes;
+        totals.bytes_in_use = totals.bytes_in_use + entry->memory_bytes;
+        return 1;
+    }
+    entry->texture = create_texture_from_file(&header, &finished->data[TEXTURE_FILE_HEADER_SIZE]);
+    if (entry->texture == RENDERER_NO_TEXTURE) {
+        free_texture_memory_for_a_retry();
+        retry_later(entry, "gpu_memory");
+        return 0;
+    }
+    entry->memory_bytes = memory_bytes;
+    entry->state = CACHED_TEXTURE_READY;
+    totals.bytes_in_use = totals.bytes_in_use + entry->memory_bytes;
+    totals.loads = totals.loads + 1;
+    log_loaded(entry, header.pixel_data_size, clock_now_us() - upload_started_us, finished->open_us, finished->read_us, finished->unpack_us, 0);
+    return 0;
 }
 
 static void handle_finished_read(const struct finished_read *finished)
@@ -430,10 +576,9 @@ static void handle_finished_read(const struct finished_read *finished)
 
     reads_in_flight = reads_in_flight - 1;
     entry = find_entry_by_request(finished->request_id);
-    if (entry != NULL) {
-        upload_read_data(entry, finished);
+    if (entry == NULL || !upload_read_data(entry, finished)) {
+        mem_free(finished->data);
     }
-    mem_free(finished->data);
     start_waiting_reads();
 }
 
@@ -587,6 +732,7 @@ static struct cached_texture *start_loading(const char *name, enum texture_wante
     entry->requested_at_us = clock_now_us();
     entry->retry_at_frame = current_frame;
     entry->retries = 0u;
+    entry->fill_is_running = 0;
     entry->in_use = 1;
     remember_name(entry);
     start_waiting_reads();
@@ -640,7 +786,9 @@ const struct cached_texture *texture_cache_load_now(const char *name)
             }
             return entry;
         }
-        if (reads_in_flight == 0) {
+        if (fills_running > 0) {
+            wait_for_fills();
+        } else if (reads_in_flight == 0) {
             start_retries_now();
         }
         if (reads_in_flight > 0) {
@@ -657,6 +805,7 @@ void texture_cache_upload_finished_reads(unsigned int upload_limit)
     struct finished_read finished;
     unsigned int uploads;
 
+    finish_filled_textures();
     uploads = 0;
     while (uploads < upload_limit && background_reader_take_finished(&finished)) {
         handle_finished_read(&finished);
@@ -736,6 +885,7 @@ void texture_cache_clear(void)
         background_reader_wait_for_finished(&finished);
         handle_finished_read(&finished);
     }
+    wait_for_fills();
     for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
         if (entries[index].in_use) {
             release_entry(&entries[index]);

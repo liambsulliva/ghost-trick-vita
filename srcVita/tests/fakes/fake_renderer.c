@@ -15,6 +15,8 @@ static int batched_rect_count;
 static int texture_widths[FAKE_TEXTURE_MAX];
 static int texture_is_alive[FAKE_TEXTURE_MAX];
 static int textures_created;
+static int texture_is_filled[FAKE_TEXTURE_MAX];
+static int unfilled_draws;
 static int uploads_should_fail;
 static int vblanks_per_frame = 1;
 
@@ -25,6 +27,8 @@ void fake_renderer_reset(void)
     vblanks_per_frame = 1;
     memset(texture_widths, 0, sizeof(texture_widths));
     memset(texture_is_alive, 0, sizeof(texture_is_alive));
+    memset(texture_is_filled, 0, sizeof(texture_is_filled));
+    unfilled_draws = 0;
     textures_created = 0;
     draw_count = 0;
     batched_rect_count = 0;
@@ -168,6 +172,7 @@ renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int w
     textures_created = textures_created + 1;
     texture_widths[textures_created] = width;
     texture_is_alive[textures_created] = 1;
+    texture_is_filled[textures_created] = 1;
     return (renderer_texture)textures_created;
 }
 
@@ -176,6 +181,44 @@ renderer_texture renderer_texture_create_compressed(const unsigned char *blocks,
     (void)block_bytes;
     (void)format;
     return renderer_texture_create(blocks, width, height);
+}
+
+renderer_texture renderer_texture_create_compressed_empty(int width, int height, enum renderer_compressed_format format, void **blocks_out)
+{
+    renderer_texture texture;
+
+    (void)format;
+    *blocks_out = NULL;
+    texture = renderer_texture_create(NULL, width, height);
+    if (texture != RENDERER_NO_TEXTURE) {
+        texture_is_filled[texture] = 0;
+        *blocks_out = &texture_is_filled[texture];
+    }
+    return texture;
+}
+
+void renderer_texture_fill_compressed(void *destination, const unsigned char *blocks, int width, int height, enum renderer_compressed_format format)
+{
+    (void)blocks;
+    (void)width;
+    (void)height;
+    (void)format;
+    *(int *)destination = 1;
+}
+
+int fake_renderer_texture_is_filled(renderer_texture texture)
+{
+    return texture_is_filled[texture];
+}
+
+int fake_renderer_texture_is_alive(renderer_texture texture)
+{
+    return texture_is_alive[texture];
+}
+
+int fake_renderer_unfilled_draws(void)
+{
+    return unfilled_draws;
 }
 
 void renderer_texture_destroy(renderer_texture texture)
@@ -208,6 +251,9 @@ static struct fake_draw *record_draw(renderer_texture texture, int is_filled_rec
 {
     struct fake_draw *draw;
 
+    if (texture != RENDERER_NO_TEXTURE && texture < FAKE_TEXTURE_MAX && !texture_is_filled[texture]) {
+        unfilled_draws = unfilled_draws + 1;
+    }
     draw = next_free_draw();
     if (draw == NULL) {
         return NULL;
