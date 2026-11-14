@@ -92,12 +92,60 @@ static void test_leaving_the_start_core_holds_then_fades_the_body_and_the_core(v
     CHECK_INT(shown(BODY), 0);
 }
 
-static void test_a_start_core_the_soul_never_held_stays_lit(void)
+static void test_a_start_core_the_soul_never_held_stays_lit_and_its_body_waits(void)
 {
     start_a_puzzle_with_the_soul_on_its_start_core();
     machine.soul.active_object = NO_CORE_HELD;
     run_ticks(HOLD_TICKS + VANISH_TICKS + 10);
     CHECK_INT(shown(START_CORE), SCRIPT_GHOST_COPY_LEVEL_FULL);
+    CHECK_INT(shown(BODY), -1);
+    machine.soul.active_object = START_CORE;
+    run_ticks(1);
+    CHECK_INT(shown(BODY), SCRIPT_GHOST_COPY_LEVEL_FULL);
+}
+
+static void test_a_retry_that_starts_the_soul_on_another_core_shows_no_body(void)
+{
+    start_a_puzzle_with_the_soul_on_its_start_core();
+    machine.soul.active_object = LAMP;
+    run_ticks(1);
+    CHECK_INT(shown(BODY), 0);
+    machine.soul.active_object = START_CORE;
+    run_ticks(HOLD_TICKS);
+    CHECK_INT(shown(BODY), 0);
+}
+
+static void test_a_film_frame_puts_the_body_away_for_good(void)
+{
+    start_a_puzzle_with_the_soul_on_its_start_core();
+    machine.film_frame_is_on = 1;
+    run_ticks(1);
+    CHECK_INT(shown(BODY), 0);
+    machine.film_frame_is_on = 0;
+    run_ticks(HOLD_TICKS);
+    CHECK_INT(shown(BODY), 0);
+    start_a_puzzle_with_the_soul_on_its_start_core();
+    run_ticks(1);
+    machine.film_frame_is_on = 1;
+    run_ticks(1);
+    CHECK_INT(shown(BODY), 0);
+    machine.film_frame_is_on = 0;
+    run_ticks(FADE_IN_TICKS * 2);
+    CHECK_INT(shown(BODY), 0);
+}
+
+static void test_missiles_body_follows_the_same_rule(void)
+{
+    start_a_puzzle_with_the_soul_on_its_start_core();
+    machine.objects[START_CORE].actor.class_id = SCRIPT_CLASS_GMK_SOUL_DEAD_MISSILE;
+    machine.objects[BODY].actor.class_id = SCRIPT_CLASS_HUM_PAST_DEAD_MISSILE;
+    machine.soul.active_object = LAMP;
+    run_ticks(1);
+    CHECK_INT(shown(BODY), 0);
+    start_a_puzzle_with_the_soul_on_its_start_core();
+    machine.objects[START_CORE].actor.class_id = SCRIPT_CLASS_GMK_SOUL_DEAD_MISSILE;
+    machine.objects[BODY].actor.class_id = SCRIPT_CLASS_HUM_PAST_DEAD_MISSILE;
+    run_ticks(1);
     CHECK_INT(shown(BODY), SCRIPT_GHOST_COPY_LEVEL_FULL);
 }
 
@@ -106,6 +154,9 @@ int main(void)
     test_a_past_dead_body_shows_a_full_copy_and_never_draws_itself();
     test_a_body_shown_again_fades_its_copy_back_in();
     test_leaving_the_start_core_holds_then_fades_the_body_and_the_core();
-    test_a_start_core_the_soul_never_held_stays_lit();
+    test_a_start_core_the_soul_never_held_stays_lit_and_its_body_waits();
+    test_a_retry_that_starts_the_soul_on_another_core_shows_no_body();
+    test_a_film_frame_puts_the_body_away_for_good();
+    test_missiles_body_follows_the_same_rule();
     return test_finish("unit/ghost_copy");
 }

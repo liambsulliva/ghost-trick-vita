@@ -120,10 +120,54 @@ static void watch_the_soul_leave_its_start(struct script_machine *machine, int i
     }
 }
 
-void script_ghost_copies_update(struct script_machine *machine)
+static void retire_the_copy(struct script_ghost_copy *copy)
+{
+    copy->exists = 1;
+    copy->is_gone = 1;
+    copy->level = 0;
+}
+
+enum soul_place {
+    SOUL_NOWHERE,
+    SOUL_ON_A_START_CORE,
+    SOUL_ELSEWHERE
+};
+
+static enum soul_place where_the_soul_is(const struct script_machine *machine)
 {
     int index;
 
+    index = machine->soul.active_object;
+    if (index < 0 || index >= machine->object_count || !machine->objects[index].actor.exists) {
+        return SOUL_NOWHERE;
+    }
+    return script_class_is_soul_start(machine->objects[index].actor.class_id) ? SOUL_ON_A_START_CORE : SOUL_ELSEWHERE;
+}
+
+static void place_a_past_dead_copy(struct script_machine *machine, struct script_actor *actor, enum soul_place soul_place)
+{
+    if (actor->ghost_copy.exists) {
+        if (machine->film_frame_is_on && !actor->ghost_copy.is_gone) {
+            retire_the_copy(&actor->ghost_copy);
+        }
+        return;
+    }
+    if (!actor->is_visible) {
+        return;
+    }
+    if (machine->film_frame_is_on || soul_place == SOUL_ELSEWHERE) {
+        retire_the_copy(&actor->ghost_copy);
+    } else if (soul_place == SOUL_ON_A_START_CORE) {
+        make_the_copy(&actor->ghost_copy);
+    }
+}
+
+void script_ghost_copies_update(struct script_machine *machine)
+{
+    enum soul_place soul_place;
+    int index;
+
+    soul_place = where_the_soul_is(machine);
     for (index = 0; index < machine->object_count; index++) {
         struct script_actor *actor;
 
@@ -133,8 +177,8 @@ void script_ghost_copies_update(struct script_machine *machine)
         }
         if (script_class_is_soul_start(actor->class_id)) {
             watch_the_soul_leave_its_start(machine, index);
-        } else if (script_class_is_past_dead(actor->class_id) && !actor->ghost_copy.exists && actor->is_visible) {
-            make_the_copy(&actor->ghost_copy);
+        } else if (script_class_is_past_dead(actor->class_id)) {
+            place_a_past_dead_copy(machine, actor, soul_place);
         }
     }
     for (index = 0; index < machine->object_count; index++) {
