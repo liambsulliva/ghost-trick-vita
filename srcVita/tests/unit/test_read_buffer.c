@@ -62,9 +62,29 @@ static void test_a_second_large_read_uses_the_heap_while_the_block_is_held(void)
     read_buffer_forget_reserve();
 }
 
+static void test_a_room_picture_the_broken_heap_refuses_gets_the_free_reserved_block(void)
+{
+    unsigned char *picture;
+    unsigned char *next;
+
+    fake_memory_reset();
+    read_buffer_forget_reserve();
+    CHECK(read_buffer_reserve());
+    fake_memory_set_largest_block(1024u * 1024u);
+    picture = read_buffer_take(1869860u);
+    CHECK(picture != NULL);
+    CHECK(!read_buffer_reserve_is_free());
+    next = read_buffer_take(1869860u);
+    CHECK(next == NULL);
+    read_buffer_release(picture);
+    CHECK(read_buffer_reserve_is_free());
+    read_buffer_forget_reserve();
+}
+
 int main(void)
 {
     test_a_large_unpack_gets_the_reserved_block_when_the_heap_has_no_room();
+    test_a_room_picture_the_broken_heap_refuses_gets_the_free_reserved_block();
     test_small_reads_never_hold_the_reserved_block();
     test_a_second_large_read_uses_the_heap_while_the_block_is_held();
     return test_finish("unit/read_buffer");

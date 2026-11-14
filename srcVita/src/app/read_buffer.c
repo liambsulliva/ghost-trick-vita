@@ -21,12 +21,23 @@ void read_buffer_forget_reserve(void)
     reserved_is_taken = 0;
 }
 
+static int take_reserved(unsigned int size)
+{
+    return size <= READ_BUFFER_RESERVED_BYTES && reserved != NULL && __sync_bool_compare_and_swap(&reserved_is_taken, 0, 1);
+}
+
 unsigned char *read_buffer_take(unsigned int size)
 {
-    if (size >= READ_BUFFER_LARGE_LEAST_BYTES && size <= READ_BUFFER_RESERVED_BYTES && reserved != NULL && __sync_bool_compare_and_swap(&reserved_is_taken, 0, 1)) {
+    unsigned char *data;
+
+    if (size >= READ_BUFFER_LARGE_LEAST_BYTES && take_reserved(size)) {
         return reserved;
     }
-    return mem_alloc(size);
+    data = mem_alloc(size);
+    if (data == NULL && take_reserved(size)) {
+        return reserved;
+    }
+    return data;
 }
 
 void read_buffer_release(unsigned char *data)
