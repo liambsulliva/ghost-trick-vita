@@ -11,6 +11,12 @@
 #define LOG_FOR_TOOLS_LAUNCH_MARKER "--- launch"
 
 static unsigned long long log_start_us;
+static void (*note_line_now)(const char *line);
+
+void run_log_watch(void (*note_line)(const char *line))
+{
+    note_line_now = note_line;
+}
 
 void run_log_open(const char *path)
 {
@@ -31,6 +37,9 @@ void run_log_write(const char *format, ...)
     vsnprintf(message, sizeof(message), format, arguments);
     va_end(arguments);
 
+    if (note_line_now != NULL) {
+        note_line_now(message);
+    }
     elapsed_ms = (clock_now_us() - log_start_us) / 1000;
     line_length = snprintf(line, sizeof(line), "[%7llu.%03llu] %s\n", elapsed_ms / 1000, elapsed_ms % 1000, message);
     if (line_length < 0) {

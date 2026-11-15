@@ -2372,6 +2372,11 @@ static int route_wait_holds(const struct script_machine *machine, const char *wa
     return 1;
 }
 
+int script_soul_route_wait_holds(const struct script_machine *machine, const char *wait)
+{
+    return route_wait_holds(machine, wait);
+}
+
 static float core_distance(const struct script_machine *machine, int first_object, int first_slot, int second_object, int second_slot)
 {
     float first_x;

@@ -13,7 +13,8 @@ CC      := $(PREFIX)-gcc
 CFLAGS  := -Wall -Wextra -O2 -Iinclude -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -DBUILD_ID=\"$(BUILD_ID)\"
 DATA_SEGMENT_CLEAR_OF_SCE_TABLES := 0x81200000
 TEXTURE_FOLDER_BUCKETS := 64
-CFLAGS += -DTEXTURE_FOLDER_BUCKETS=$(TEXTURE_FOLDER_BUCKETS)u
+DEVICE_DEFINES := -DTEXTURE_FOLDER_BUCKETS=$(TEXTURE_FOLDER_BUCKETS)u
+CFLAGS += $(DEVICE_DEFINES)
 LDFLAGS := -Wl,-q -Wl,--section-start=.init_array=$(DATA_SEGMENT_CLEAR_OF_SCE_TABLES)
 LIBS    := -lvitaGL -lstdc++ -lSceAppMgr_stub -lSceAppUtil_stub -lmathneon \
            -lSceCommonDialog_stub -lm -lSceGxm_stub -lSceDisplay_stub \
@@ -29,7 +30,7 @@ CFLAGS += -DDEBUG_BUILD
 OBJECT_FOLDER := build/obj_debug
 endif
 
-DEBUG_ONLY_NAMES := bmp_image command_file command_reader fps_overlay log_sink screen_burst screen_capture screen_changes screen_watch
+DEBUG_ONLY_NAMES := bmp_image command_file command_reader fps_overlay log_sink screen_burst screen_capture screen_changes screen_watch smoke_run
 DEBUG_ONLY_SRCS := $(foreach name,$(DEBUG_ONLY_NAMES),$(wildcard src/app/$(name).c src/vita/$(name).c))
 SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
 ifneq ($(DEBUG),1)
@@ -141,6 +142,42 @@ build/packed_vectors/manifest.txt: tests/tools/make_packed_vectors.py tools/asse
 build/tests/%: build/test_objects/tests/%.o $(APP_TEST_OBJECTS) $(FAKE_TEST_OBJECTS) $(STB_VORBIS_TEST_OBJECT)
 	@mkdir -p $(dir $@)
 	$(HOST_CC) $(HOST_CFLAGS) $^ -o $@
+
+SMOKE_HOST := build/smoke_host/smoke_host
+SMOKE_OBJECT_FOLDER := build/smoke_host/objects
+SMOKE_FAKE_NAMES := fake_command_reader fake_reader fake_system_state fake_task fake_work_queue
+SMOKE_SRCS := tests/smoke/smoke_host.c tests/smoke/smoke_renderer.c tests/smoke/smoke_audio.c $(APP_SRCS) $(foreach name,$(SMOKE_FAKE_NAMES),tests/fakes/$(name).c)
+SMOKE_OBJECTS := $(patsubst %.c,$(SMOKE_OBJECT_FOLDER)/%.o,$(SMOKE_SRCS))
+
+$(SMOKE_OBJECT_FOLDER)/%.o: %.c $(TEST_HEADERS) $(wildcard tests/smoke/*.h)
+	@mkdir -p $(dir $@)
+	$(HOST_CC) $(HOST_CFLAGS) $(DEVICE_DEFINES) -Itests/fakes -Itests/smoke -c $< -o $@
+
+$(SMOKE_OBJECT_FOLDER)/tests/smoke/smoke_host.o: src/main.c
+
+$(SMOKE_OBJECT_FOLDER)/stb_vorbis.o: $(STB_VORBIS_SOURCE)
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c99 -w -O2 -ffp-contract=off -include alloca.h $(STB_VORBIS_DEFINES) -c $< -o $@
+
+$(SMOKE_HOST): $(SMOKE_OBJECTS) $(SMOKE_OBJECT_FOLDER)/stb_vorbis.o
+	@mkdir -p $(dir $@)
+	$(HOST_CC) $(HOST_CFLAGS) $^ -o $@
+
+SMOKE_PACKAGE_FOLDER := build/smoke/package
+
+.PHONY: smoke smoke-package smoke-mutations
+
+smoke:
+	python3 -I tools/smoke_test.py $(if $(filter 1,$(SMOKE_QUICK)),--quick,) $(SMOKE_ARGUMENTS)
+
+smoke-package: check-sdk build/$(TARGET).vpk
+	@test "$(DEBUG)" = 1 || { echo "smoke-package links the debug build; pass DEBUG=1"; exit 2; }
+	@mkdir -p $(SMOKE_PACKAGE_FOLDER)
+	cp build/$(TARGET).elf $(SMOKE_PACKAGE_FOLDER)/$(TARGET)-debug.elf
+	cp build/$(TARGET).vpk $(SMOKE_PACKAGE_FOLDER)/$(TARGET)-debug.vpk
+
+smoke-mutations:
+	python3 -I tools/smoke_mutations.py $(SMOKE_ARGUMENTS)
 
 .SECONDARY:
 

@@ -1807,6 +1807,22 @@ The class: one optional list too long, and the reader throws away everything.
 
 Guard: the parser keeps the names that fit, checks the rest for safe characters and counts them in `names_left_out`, which the `manifest loaded` line logs. `viewer_app_show_animation` only refuses a name the manifest lacks when no name was left out. `tests/unit/test_asset_manifest.c` parses a list one past the table and expects the set to load. The smoke test's `boot_title` flow fails when the manifest cannot be read (`make smoke`, and `make smoke-mutations` breaks the path to prove it).
 
+### 248. Visual Filter on the title quit the app instead of switching sets
+
+Found by the smoke test's `visual_filter_relaunch` flow, the first run of the whole app on the Mac with both sets: after Visual Filter changed on the title screen, the settings were saved and the app exited without starting again, so the player was dropped to the LiveArea. `main` asked `viewer_app_wants_relaunch()` after `viewer_app_stop()`, and stopping closes the title menu, whose request the answer is read from. The relaunch through `sceAppMgrLoadExec` is the port's own; native has one set and no such switch.
+
+The class: asking a module a question after it was stopped.
+
+Guard: `main` reads the answer before the stop and logs it as `exit clean relaunch=`. The flow runs the change on an install with both sets and requires the launch to end in a relaunch into the other set; `make smoke-mutations` puts the two lines back in the old order and requires the flow to fail.
+
+### 249. A softlock looked like a slow test
+
+Found while proving the smoke test: with CROSS broken on purpose, each whole-chapter flow ran for a quarter of an hour before its `until` line gave up, because a line that waits for the chapter's end must allow a whole chapter's frames. A test that takes that long to say a softlock happened will not be run.
+
+The class: one time limit for a long wait, sized for the good case.
+
+Guard: the flow runner's `stall <frames> <text>` line fails a flow once that many frames pass with no log line holding the text; the fast-forward flows watch `route_step_done` with 20000 frames, fourteen times the longest gap in a good run, and a broken story now fails in under a minute. `tests/unit/test_smoke_run.c` covers the line.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

@@ -727,6 +727,7 @@ int script_soul_route_hop_aim(const struct script_machine *machine, int target_o
 unsigned int script_soul_route_searches(void);
 unsigned int script_soul_tip_tests(void);
 int script_soul_route_wait_reaches(const struct script_machine *machine, const char *wait);
+int script_soul_route_wait_holds(const struct script_machine *machine, const char *wait);
 int script_soul_route_balloon_group(const struct script_machine *machine, const char *name);
 int script_soul_page_wants_a_press(const struct script_machine *machine);
 int script_soul_game_over_waits(const struct script_machine *machine);

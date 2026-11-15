@@ -23,6 +23,7 @@
 #include "timing.h"
 #include "viewer_app.h"
 #ifdef DEBUG_BUILD
+#include <stdlib.h>
 #include "command_file.h"
 #include "command_reader.h"
 #include "file_path.h"
@@ -30,7 +31,14 @@
 #include "screen_burst.h"
 #include "screen_capture.h"
 #include "screen_watch.h"
+#include "asset_language.h"
+#include "game_save.h"
+#include "pause_menu.h"
+#include "pause_options.h"
+#include "pause_people.h"
 #include "script_view.h"
+#include "smoke_run.h"
+#include "title_menu.h"
 #endif
 
 #define LONG_FRAME_US 50000u
@@ -163,6 +171,8 @@ static int run_one_command(const struct command *command)
         injected_drag = *command;
         injected_drag_frame = 0;
         run_log_write("command drag from=%d,%d to=%d,%d frames=%d delay=%d", command->touch_x, command->touch_y, command->touch_end_x, command->touch_end_y, command->number, command->delay_frames);
+    } else if (command->kind == COMMAND_SMOKE) {
+        run_log_write("command smoke_inside_a_flow name=%s", command->name);
     } else if (command->kind == COMMAND_BURST) {
         screen_burst_run_for_seconds(command->number, command->ms_between_pictures);
     } else if (command->kind == COMMAND_QUIT) {
@@ -190,11 +200,145 @@ static int run_pending_commands(void)
     offset = 0;
     while (offset < text_size) {
         offset = command_parse_next_line((const char *)text, text_size, offset, &command);
+        if (command.kind == COMMAND_SMOKE) {
+            smoke_run_begin(command.name, (const char *)&text[offset], text_size - offset);
+            break;
+        }
         if (run_one_command(&command)) {
             quit_requested = 1;
         }
     }
     mem_free(text);
+    return quit_requested;
+}
+
+static int setting_is(const char *argument)
+{
+    static const char *const names[] = { "brightness", "master", "music", "effects", "music_type", "language", "unlock_all", "fps_cap", "vsync", "high_contrast", "visual_filter", "text_speed", "hint_delay" };
+    const struct game_settings *settings = game_settings_now();
+    const int values[] = { settings->brightness, settings->master, settings->music, settings->effects, settings->music_type, settings->language, settings->unlock_all, settings->fps_cap, settings->vsync, settings->high_contrast, settings->visual_filter, settings->text_speed, settings->hint_delay };
+    char name[32];
+    int wanted;
+    unsigned int index;
+
+    if (sscanf(argument, "%31s %d", name, &wanted) != 2) {
+        return SMOKE_PROBE_UNKNOWN;
+    }
+    for (index = 0; index < sizeof(names) / sizeof(names[0]); index++) {
+        if (strcmp(names[index], name) == 0) {
+            return values[index] == wanted;
+        }
+    }
+    return SMOKE_PROBE_UNKNOWN;
+}
+
+static int save_exists(const char *argument)
+{
+    static struct game_save save;
+
+    if (strcmp(argument, "auto") == 0) {
+        return game_save_load(&save, GAME_SAVE_AUTO);
+    }
+    if (strcmp(argument, "manual") == 0) {
+        return game_save_load(&save, GAME_SAVE_MANUAL);
+    }
+    return SMOKE_PROBE_UNKNOWN;
+}
+
+static int smoke_condition_holds(const char *word, const char *argument)
+{
+    struct texture_cache_totals totals;
+
+    if (strcmp(word, "title") == 0) {
+        return title_menu_is_open() && title_menu_phase() == TITLE_PHASE_SHOWING;
+    }
+    if (strcmp(word, "title_submenu") == 0) {
+        return title_menu_is_open() && title_menu_phase() == TITLE_PHASE_SUBMENU;
+    }
+    if (strcmp(word, "title_cursor") == 0) {
+        return title_menu_cursor() == atoi(argument);
+    }
+    if (strcmp(word, "title_dialog") == 0) {
+        return title_menu_dialog_is_open();
+    }
+    if (strcmp(word, "pause") == 0) {
+        return pause_menu_is_open() && pause_menu_phase() == PAUSE_PHASE_SHOWING;
+    }
+    if (strcmp(word, "pause_submenu") == 0) {
+        return pause_menu_is_open() && pause_menu_phase() == PAUSE_PHASE_SUBMENU;
+    }
+    if (strcmp(word, "pause_cursor") == 0) {
+        return pause_menu_cursor() == atoi(argument);
+    }
+    if (strcmp(word, "pause_open") == 0) {
+        return pause_menu_is_open();
+    }
+    if (strcmp(word, "game") == 0) {
+        return script_player_is_active() && script_player_status() == SCENE_PLAYER_RUNNING && !pause_menu_is_open() && !title_menu_is_open();
+    }
+    if (strcmp(word, "loading") == 0) {
+        return script_player_is_active() && script_player_status() == SCENE_PLAYER_PRELOADING;
+    }
+    if (strcmp(word, "paused") == 0) {
+        return script_player_is_paused();
+    }
+    if (strcmp(word, "script") == 0) {
+        return strcmp(script_player_script_name(), argument) == 0;
+    }
+    if (strcmp(word, "tick") == 0) {
+        return script_player_tick() >= (unsigned int)strtoul(argument, NULL, 10);
+    }
+    if (strcmp(word, "shows") == 0) {
+        return script_player_shows(argument);
+    }
+    if (strcmp(word, "options_row") == 0) {
+        return pause_options_selected_row() == atoi(argument);
+    }
+    if (strcmp(word, "record_tab") == 0) {
+        return pause_people_tab() == atoi(argument);
+    }
+    if (strcmp(word, "route") == 0) {
+        return script_player_route_wait_holds(argument);
+    }
+    if (strcmp(word, "set") == 0) {
+        return strcmp(argument, asset_sets_running_filter() == GAME_FILTER_DS ? "ds" : "remastered") == 0;
+    }
+    if (strcmp(word, "language") == 0) {
+        return strcmp(argument, asset_language_code(asset_language_now())) == 0;
+    }
+    if (strcmp(word, "setting") == 0) {
+        return setting_is(argument);
+    }
+    if (strcmp(word, "save") == 0) {
+        return save_exists(argument);
+    }
+    if (strcmp(word, "assets") == 0) {
+        return viewer_app_has_assets();
+    }
+    if (strcmp(word, "textures_missing_most") == 0) {
+        texture_cache_read_totals(&totals);
+        return totals.missing <= (unsigned int)strtoul(argument, NULL, 10);
+    }
+    return SMOKE_PROBE_UNKNOWN;
+}
+
+static int run_smoke_lines(void)
+{
+    char line[SMOKE_RUN_LINE_MAX];
+    struct command command;
+    int quit_requested;
+
+    quit_requested = 0;
+    smoke_run_note_frame();
+    while (smoke_run_next_command(line, sizeof(line))) {
+        command_parse_next_line(line, (unsigned int)strlen(line), 0, &command);
+        if (run_one_command(&command)) {
+            quit_requested = 1;
+        }
+        if (command.kind == COMMAND_PRESS || command.kind == COMMAND_TOUCH || command.kind == COMMAND_DRAG || command.kind == COMMAND_DRAG_SOUL) {
+            break;
+        }
+    }
     return quit_requested;
 }
 #endif
@@ -241,6 +385,8 @@ static void run_main_loop(void)
     frame_timer_start(&frame_timer);
 #ifdef DEBUG_BUILD
     screen_watch_start();
+    run_log_watch(smoke_run_note_log_line);
+    smoke_run_use_probe(smoke_condition_holds);
     if (!command_reader_start(COMMANDS_PATH)) {
         run_log_write("command reader_not_started");
     }
@@ -335,8 +481,11 @@ static void run_main_loop(void)
             publish_frame_stats(&stats);
         }
 #ifdef DEBUG_BUILD
-        if (frame_number % COMMAND_POLL_FRAMES == 0) {
+        if (frame_number % COMMAND_POLL_FRAMES == 0 && !smoke_run_is_active()) {
             quit_requested = run_pending_commands();
+        }
+        if (run_smoke_lines()) {
+            quit_requested = 1;
         }
 #endif
     }
@@ -346,6 +495,7 @@ static void run_main_loop(void)
 int main(void)
 {
     int full_resolution;
+    int relaunch_is_wanted;
 
     keep_awake_tick();
     file_make_folder(FILE_DATA_FOLDER);
@@ -369,11 +519,12 @@ int main(void)
 
     run_main_loop();
 
+    relaunch_is_wanted = viewer_app_wants_relaunch();
     viewer_app_stop();
     renderer_shutdown();
-    run_log_write("exit clean");
+    run_log_write("exit clean relaunch=%d", relaunch_is_wanted);
     run_log_flush();
-    if (viewer_app_wants_relaunch()) {
+    if (relaunch_is_wanted) {
         sceAppMgrLoadExec(RELAUNCH_PATH, NULL, NULL);
     }
     sceKernelExitProcess(0);

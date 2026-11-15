@@ -98,6 +98,7 @@ static struct game_save pending_resume;
 static int has_pending_resume;
 static int autosaved_chapter_mark = -1;
 static int newly_reached_chapter;
+static char script_now[ASSET_NAME_MAX];
 
 static void take_checkpoint(const char *name);
 static enum script_player_phase phase;
@@ -1445,11 +1446,12 @@ void script_player_note_mark(const char *what, const char *name)
         read_ahead_note_mark(what, name, data->machine.tick);
     }
     if (strcmp(what, "script_begun") == 0) {
+        snprintf(script_now, sizeof(script_now), "%s", name);
         load_script_animations(name);
         take_checkpoint(name);
         pause_clock_note_scene(data != NULL ? data->machine.chapter_mark : 0, name);
     }
-    if (strcmp(run_until_kind, "step") == 0 && strcmp(what, "route_step_done") == 0 && route_step_number_is(name, run_until_name)) {
+    if (((strcmp(run_until_kind, "step") == 0 && strcmp(what, "route_step_done") == 0) || (strcmp(run_until_kind, "ready") == 0 && strcmp(what, "route_step_ready") == 0)) && route_step_number_is(name, run_until_name)) {
         snprintf(run_until_kind, sizeof(run_until_kind), "reached");
         return;
     }
@@ -1461,6 +1463,36 @@ void script_player_note_mark(const char *what, const char *name)
 unsigned int script_player_tick(void)
 {
     return data != NULL ? data->machine.tick : 0;
+}
+
+const char *script_player_script_name(void)
+{
+    return script_now;
+}
+
+int script_player_route_wait_holds(const char *wait)
+{
+    return data != NULL && phase == PHASE_RUNNING && script_soul_route_wait_holds(&data->machine, wait);
+}
+
+int script_player_shows(const char *what)
+{
+    if (data == NULL || phase != PHASE_RUNNING) {
+        return 0;
+    }
+    if (strcmp(what, "talk") == 0) {
+        return data->machine.talk_is_open;
+    }
+    if (strcmp(what, "narration") == 0) {
+        return data->machine.narration.is_running;
+    }
+    if (strcmp(what, "choice") == 0) {
+        return data->machine.choice.is_open;
+    }
+    if (strcmp(what, "ghost_view") == 0) {
+        return data->machine.soul.is_on;
+    }
+    return -1;
 }
 
 static void remember_latest_route_action(void)

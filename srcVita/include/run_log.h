@@ -6,5 +6,6 @@
 void run_log_open(const char *path);
 void run_log_write(const char *format, ...);
 void run_log_flush(void);
+void run_log_watch(void (*note_line)(const char *line));
 
 #endif
