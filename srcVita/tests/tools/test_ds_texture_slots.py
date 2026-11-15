@@ -10,6 +10,8 @@ SRC_VITA = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 GAME_DESCRIPTION = os.path.join(SRC_VITA, "tools", "assets", "game.json")
 APP_SOURCES = os.path.join(SRC_VITA, "src", "app", "*.c")
 SLOT_DEFINE = re.compile(r'#define \w*TEXTURE "([a-z_0-9]+)"')
+APP_HEADERS = os.path.join(SRC_VITA, "include", "*.h")
+FLIPBOOK_DEFINE = re.compile(r'#define \w*FLIPBOOK "([a-z_0-9]+)"')
 NO_TEXTURE = "-"
 KNOWN_CARTRIDGE_GAPS = {
     "card_hand_seconds": "the DS watch has two hands, textures 190 and 191",
@@ -27,8 +29,6 @@ KNOWN_CARTRIDGE_GAPS = {
     "phone_cap": "not found",
     "phone_strip": "not found",
     "side_label": "not in cpac_3d",
-    "swirl_back": "not found",
-    "swirl_particle": "not found",
     "talk_cursor": "the DS shows none",
     "ui_hourglass": "the DS has three whole frames, the app wants parts",
     "ui_mark": "not found",
@@ -46,6 +46,19 @@ def slots_the_app_asks_for():
     return names
 
 
+def flipbooks_the_app_asks_for():
+    names = set()
+    for path in glob.glob(APP_SOURCES) + glob.glob(APP_HEADERS):
+        with open(path, encoding="utf-8") as source:
+            names.update(FLIPBOOK_DEFINE.findall(source.read()))
+    return names
+
+
+def ds_flipbook_names():
+    with open(GAME_DESCRIPTION, encoding="utf-8") as source:
+        return {entry["name"] for entry in json.load(source).get("ds_backdrops", [])}
+
+
 def ds_texture_names():
     with open(GAME_DESCRIPTION, encoding="utf-8") as source:
         return {entry["name"] for entry in json.load(source)["ds_textures"]}
@@ -56,6 +69,11 @@ class DsTextureSlotTests(unittest.TestCase):
         asked = slots_the_app_asks_for()
         self.assertTrue({"soul_blob", "soul_glow", "soul_orb", "soul_beam", "banner_trick", "card_clock", "digit_label"} <= asked)
         self.assertEqual(asked - ds_texture_names(), set(KNOWN_CARTRIDGE_GAPS))
+
+    def test_every_flipbook_the_app_draws_by_name_has_a_ds_source(self):
+        asked = flipbooks_the_app_asks_for()
+        self.assertIn("swirl_waves", asked)
+        self.assertEqual(asked - ds_flipbook_names(), set())
 
     def test_a_known_gap_is_a_slot_the_app_asks_for_and_has_no_entry(self):
         self.assertTrue(set(KNOWN_CARTRIDGE_GAPS) <= slots_the_app_asks_for())

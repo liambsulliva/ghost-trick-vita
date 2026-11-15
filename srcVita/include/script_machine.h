@@ -637,6 +637,7 @@ int script_machine_start(struct script_machine *machine, const char *name);
 void script_machine_start_from_black(struct script_machine *machine);
 void script_machine_tick(struct script_machine *machine);
 void script_machine_set_swirl(struct script_machine *machine, int is_on);
+void script_machine_set_swirl_with_effect(struct script_machine *machine, int is_on, int with_effect);
 int script_machine_picture_is_hidden(const struct script_machine *machine);
 
 void script_machine_pan_camera_back_to(struct script_machine *machine, int x, int y);

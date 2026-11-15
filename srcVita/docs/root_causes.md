@@ -1983,6 +1983,16 @@ Guard: `ds_one_screen.py` runs over every message `ds_set_text.MessageBook` and 
 
 Left as the cartridge has them: "slide the screen" and "Touch the screen" (the Vita has a touch screen), "the button displayed on-screen", the German "Die Sanduhr da oben" (the remaster keeps it), and the system lines that ask to reinsert the DS Card, which DS mode never shows. The cut leaves the bullet talk's next page, "Now I know what it's shaped like", as the cartridge has it. Not checked on the device.
 
+### 262. The dead talk's swirl, its waves and its opening drew nothing in DS mode
+
+Seen on the Vita: in DS mode a dead talk showed a black screen with no red swirl, no moving lines and no opening, while its sounds played. The swirl setter `func_0200f084` with its effect flag makes three things: the opening `uTimeMoveEffect` (`func_0205c044`; `func_0205e4f4`, `func_0205e5fc`, `func_0205e6d0`), the backdrop through `func_0200a200`, and `uDeadKaiwaParticle` (`func_0204e2b4`, drawn by `func_0204e6ec`). The glow and particles are `cpac_3d.bin` textures 176 and 175, the originals of the remaster's art, but `swirl_back` and `swirl_particle` had no `ds_textures` entry. The waves are a 2D affine BG, `cBgCtrl::uBgDeadKaiwa` (`func_0200aaac`, `func_0200ab84`), read from `cpac_2d.bin` block 4 entry 1, which takes the next of its 16 palettes every 16 frames and turns 32/65536 of a turn a frame; no set ported it. The opening (spokes, spun capture and a red ring from frame 3 to 13) was never ported (root cause 203), in either set. Its flag is the dead-talk state's +8: 0 on a normal start, so the opening plays, and 3 for `DeadTalk|Restart` (`func_0203c03c`), so it does not.
+
+The class: art a native BG layer or a code-driven effect draws, rather than an effect file or a texture slot, which a slot audit cannot see.
+
+Guard: `ds_backdrops.py` bakes any palette-cycled cartridge BG named in `ds_backdrops` as a flipbook, one frame a palette, and `swirl_waves.c` draws it wrapped and turning at the native rate under the glow, which then shows at 20/31. The swirl setter carries the native effect flag (`script_machine_set_swirl_with_effect`; on for a normal dead talk and a flagged op 0xe0, off for a restart), and `soul_transition` plays the opening, `TRANSITION_TIME_MOVE`, in both sets. `tests/tools/test_ds_texture_slots.py` requires every flipbook the app names to have a DS source; `test_ds_backdrops.py`, `test_swirl_waves.c`, `test_soul_transition.c` and `test_route_pad.c` cover the bake, the drawing, the ring and when the opening fires.
+
+Not done: the ring's screen size is read from native units (4096 to 96 DS pixels) and may be too large if native projects in perspective; the glow's size and turn and the particles keep the remaster's values; system sounds 14 and 15 and the closing `uSoulCloseEffect` are not added. Not checked on the device or in melonDS.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

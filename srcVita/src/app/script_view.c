@@ -13,6 +13,7 @@
 #include "script_view.h"
 #include "soul_chain.h"
 #include "soul_transition.h"
+#include "swirl_waves.h"
 #include "texture_cache.h"
 #include "ds_units.h"
 
@@ -136,6 +137,7 @@
 #define SWIRL_PARTICLE_REACH 560.0f
 #define SWIRL_PARTICLE_SIZE_LEAST 10.0f
 #define SWIRL_PARTICLE_SIZE_SPREAD 16.0f
+#define SWIRL_GLOW_ALPHA_OVER_WAVES 20
 #define SOUL_MOTION_DOT_COUNT 14
 #define SOUL_BEAM_TEXTURE "soul_beam"
 #define SOUL_BEAM_HALF_WIDTH 16.0f
@@ -213,6 +215,7 @@ static float mark_y;
 static float flash_alpha;
 static int film_frame_is_on;
 static int swirl_is_on;
+static unsigned int swirl_started_at_tick;
 static struct rain_field rain;
 static int phone_split_index = -1;
 static int phone_split_signal_age;
@@ -348,7 +351,17 @@ void script_view_screen_still_faded(float alpha)
 
 void script_view_swirl_changed(int is_on)
 {
+    if (is_on && !swirl_is_on) {
+        swirl_started_at_tick = age_ticks;
+    }
     swirl_is_on = is_on;
+}
+
+void script_view_swirl_effect_played(int is_on)
+{
+    if (is_on) {
+        soul_transition_begin_time_move();
+    }
 }
 
 void script_view_movie_started(const char *name)
@@ -1469,9 +1482,14 @@ static void draw_swirl(void)
     float center_x;
     float center_y;
     int index;
+    struct renderer_color glow;
 
     if (!swirl_is_on) {
         return;
+    }
+    glow = white;
+    if (tables != NULL && swirl_waves_draw(script_tables_find_flipbook(tables, SWIRL_WAVES_FLIPBOOK), age_ticks - swirl_started_at_tick)) {
+        glow.alpha = (float)SWIRL_GLOW_ALPHA_OVER_WAVES / (float)NATIVE_ALPHA_FULL;
     }
     texture = texture_cache_use_or_start_loading(SWIRL_TEXTURE);
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
@@ -1482,7 +1500,7 @@ static void draw_swirl(void)
     angle = (float)age_ticks * SWIRL_TURN_PER_TICK;
     reach_x = cosf(angle) * SWIRL_SIZE / 2.0f;
     reach_y = sinf(angle) * SWIRL_SIZE / 2.0f;
-    renderer_draw_beam(texture->texture, center_x - reach_x, center_y - reach_y, center_x + reach_x, center_y + reach_y, SWIRL_SIZE / 2.0f, white);
+    renderer_draw_beam(texture->texture, center_x - reach_x, center_y - reach_y, center_x + reach_x, center_y + reach_y, SWIRL_SIZE / 2.0f, glow);
     for (index = 0; index < SWIRL_PARTICLE_COUNT; index++) {
         float phase;
         float direction;

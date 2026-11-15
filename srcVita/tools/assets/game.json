@@ -2488,6 +2488,26 @@
       ]
     },
     {
+      "name": "swirl_back",
+      "width": 128,
+      "height": 128,
+      "parts": [
+        {
+          "texture": 176
+        }
+      ]
+    },
+    {
+      "name": "swirl_particle",
+      "width": 32,
+      "height": 32,
+      "parts": [
+        {
+          "texture": 175
+        }
+      ]
+    },
+    {
       "name": "ui_choice_buttons",
       "width": 512,
       "height": 236,
@@ -2739,6 +2759,16 @@
       }
     }
   },
+  "ds_backdrops": [
+    {
+      "name": "swirl_waves",
+      "block": 4,
+      "entry": 1,
+      "palette_count": 16,
+      "map_columns": 32,
+      "ticks_per_frame": 16
+    }
+  ],
   "flipbooks": [
     {
       "name": "soul_dim",

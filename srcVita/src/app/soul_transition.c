@@ -41,11 +41,21 @@
 #define FINE_LINE_DIM_CHANNEL 24
 #define FINE_LINE_BRIGHT_CHANNEL 255
 #define GHOST_KINDS 3
+#define RING_FIRST_TICK 3
+#define RING_START_RADIUS 0x4cd
+#define RING_RADIUS_PER_TICK 0x52
+#define RING_WIDTH 0x52
+#define RING_ALPHA_START_SPEED 0x2000
+#define RING_ALPHA_SLOWING -0x19a
+#define RING_ALPHA_SHIFT 12
+#define RING_SEGMENTS 32
+#define RING_DS_PIXELS_PER_UNIT ((float)DS_VIEW_HEIGHT / 2.0f)
 
 enum transition_kind {
     TRANSITION_NONE,
     TRANSITION_ENTERING,
-    TRANSITION_LEAVING
+    TRANSITION_LEAVING,
+    TRANSITION_TIME_MOVE
 };
 
 static enum transition_kind kind;
@@ -53,6 +63,7 @@ static int tick;
 static int snapshot_is_ready;
 static int sweep_native_y = SWEEP_NATIVE_Y_START;
 static renderer_texture fine_lines_textures[GHOST_KINDS];
+static renderer_texture ring_texture;
 static const struct renderer_color sissel_red = { 1.0f, 0.0f, 0.0f, 1.0f };
 
 void soul_transition_begin_entering(void)
@@ -66,6 +77,13 @@ void soul_transition_begin_entering(void)
 void soul_transition_begin_leaving(void)
 {
     kind = TRANSITION_LEAVING;
+    tick = 0;
+    snapshot_is_ready = 0;
+}
+
+void soul_transition_begin_time_move(void)
+{
+    kind = TRANSITION_TIME_MOVE;
     tick = 0;
     snapshot_is_ready = 0;
 }
@@ -86,6 +104,10 @@ void soul_transition_release_textures(void)
         }
         fine_lines_textures[ghost] = RENDERER_NO_TEXTURE;
     }
+    if (ring_texture != RENDERER_NO_TEXTURE) {
+        renderer_texture_destroy(ring_texture);
+    }
+    ring_texture = RENDERER_NO_TEXTURE;
 }
 
 static int known_ghost(int ghost)
@@ -109,14 +131,14 @@ void soul_transition_advance(void)
         return;
     }
     tick = tick + 1;
-    if ((kind == TRANSITION_ENTERING && tick > LAST_SPUN_LAYER_TICK) || (kind == TRANSITION_LEAVING && tick > LAST_SPOKE_TICK)) {
+    if ((kind != TRANSITION_LEAVING && tick > LAST_SPUN_LAYER_TICK) || (kind == TRANSITION_LEAVING && tick > LAST_SPOKE_TICK)) {
         soul_transition_stop();
     }
 }
 
 int soul_transition_wants_snapshot(void)
 {
-    return kind == TRANSITION_ENTERING && tick >= SNAPSHOT_TICK && !snapshot_is_ready;
+    return (kind == TRANSITION_ENTERING || kind == TRANSITION_TIME_MOVE) && tick >= SNAPSHOT_TICK && !snapshot_is_ready;
 }
 
 void soul_transition_snapshot_taken(void)
@@ -194,11 +216,83 @@ static void draw_spun_layers(int step)
     }
 }
 
+int soul_transition_ring_at(int at_tick, float *radius, float *half_width, float *alpha)
+{
+    int steps;
+    int level;
+    float units_to_pixels;
+
+    if (at_tick < RING_FIRST_TICK || at_tick > LAST_SPOKE_TICK) {
+        return 0;
+    }
+    steps = at_tick - RING_FIRST_TICK + 1;
+    level = (steps * RING_ALPHA_START_SPEED + RING_ALPHA_SLOWING * steps * (steps - 1) / 2) >> RING_ALPHA_SHIFT;
+    if (level < 1) {
+        return 0;
+    }
+    if (level > NATIVE_ALPHA_FULL) {
+        level = NATIVE_ALPHA_FULL;
+    }
+    units_to_pixels = RING_DS_PIXELS_PER_UNIT * VITA_PIXELS_PER_DS_PIXEL / (float)NATIVE_FIXED_ONE;
+    *radius = (float)(RING_START_RADIUS + RING_RADIUS_PER_TICK * steps) * units_to_pixels;
+    *half_width = (float)(RING_WIDTH / 2) * units_to_pixels;
+    *alpha = (float)level / (float)NATIVE_ALPHA_FULL;
+    return 1;
+}
+
+static struct renderer_vertex ring_point(float radius, int segment)
+{
+    struct renderer_vertex vertex;
+    float radians;
+
+    radians = (float)segment * 2.0f * 3.14159265f / (float)RING_SEGMENTS;
+    vertex.x = SCREEN_CENTER_X + radius * cosf(radians);
+    vertex.y = SCREEN_CENTER_Y + radius * sinf(radians);
+    vertex.u = 0.5f;
+    vertex.v = 0.5f;
+    return vertex;
+}
+
+static void draw_ring(int ghost)
+{
+    static const unsigned char white_texel[4] = { 255, 255, 255, 255 };
+    struct renderer_vertex corners[RING_SEGMENTS * 6];
+    struct renderer_color tint;
+    float radius;
+    float half_width;
+    float alpha;
+    int segment;
+
+    if (!soul_transition_ring_at(tick, &radius, &half_width, &alpha)) {
+        return;
+    }
+    if (ring_texture == RENDERER_NO_TEXTURE) {
+        ring_texture = renderer_texture_create(white_texel, 1, 1);
+    }
+    for (segment = 0; segment < RING_SEGMENTS; segment++) {
+        struct renderer_vertex *quad;
+
+        quad = &corners[segment * 6];
+        quad[0] = ring_point(radius - half_width, segment);
+        quad[1] = ring_point(radius + half_width, segment);
+        quad[2] = ring_point(radius - half_width, segment + 1);
+        quad[3] = ring_point(radius + half_width, segment);
+        quad[4] = ring_point(radius + half_width, segment + 1);
+        quad[5] = ring_point(radius - half_width, segment + 1);
+    }
+    tint = ghost_tint_turned(sissel_red, ghost);
+    tint.alpha = alpha;
+    renderer_draw_triangles(ring_texture, corners, RING_SEGMENTS * 2, tint);
+}
+
 void soul_transition_draw(int ghost)
 {
     static const struct renderer_color black = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-    if (kind == TRANSITION_ENTERING) {
+    if (kind == TRANSITION_TIME_MOVE) {
+        draw_ring(known_ghost(ghost));
+    }
+    if (kind == TRANSITION_ENTERING || kind == TRANSITION_TIME_MOVE) {
         if (tick >= 1 && tick <= LAST_SPOKE_TICK) {
             draw_spokes(tick, ghost_tint_turned(sissel_red, known_ghost(ghost)));
         } else if (tick > TICK_BEFORE_FIRST_SPUN_LAYER && snapshot_is_ready) {

@@ -1027,6 +1027,7 @@ static const struct script_outputs bridge_outputs = {
     .soul_flash_changed = script_view_soul_flash_changed,
     .film_frame_changed = script_view_film_frame_changed,
     .swirl_changed = on_swirl_changed,
+    .swirl_effect_played = script_view_swirl_effect_played,
     .film_scroll_paused = script_view_film_scroll_paused,
     .screen_still_changed = script_view_screen_still_changed,
     .screen_still_faded = script_view_screen_still_faded,

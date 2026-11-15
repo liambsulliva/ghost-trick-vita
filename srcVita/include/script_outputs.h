@@ -161,6 +161,7 @@ struct script_outputs {
     void (*screen_still_changed)(int is_on);
     void (*screen_still_faded)(float alpha);
     void (*swirl_changed)(int is_on);
+    void (*swirl_effect_played)(int is_on);
     void (*movie_started)(const char *name);
     int (*movie_of_class_started)(unsigned int class_id);
     void (*soul_sparks_changed)(int elapsed_ticks, float x, float y);

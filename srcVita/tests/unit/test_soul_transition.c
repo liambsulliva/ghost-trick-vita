@@ -150,6 +150,50 @@ static void test_each_ghost_gets_its_own_line_texture(void)
     soul_transition_release_textures();
 }
 
+static void test_a_time_move_rings_and_spokes_then_spins_the_capture(void)
+{
+    float radius;
+    float half_width;
+    float alpha;
+    float last_radius;
+    int tick;
+
+    start_with_spoke_art();
+    soul_transition_begin_time_move();
+    last_radius = 0.0f;
+    for (tick = 1; tick <= SPOKE_TICKS; tick++) {
+        soul_transition_advance();
+        if (tick < 3) {
+            CHECK_INT(draws_at_this_tick(), 1);
+            CHECK(!soul_transition_ring_at(tick, &radius, &half_width, &alpha));
+        } else {
+            CHECK_INT(draws_at_this_tick(), 2);
+            CHECK(soul_transition_ring_at(tick, &radius, &half_width, &alpha));
+            CHECK(fake_renderer_draw(0)->color.red > 0.99f && fake_renderer_draw(0)->color.green < 0.01f);
+            CHECK(fake_renderer_draw(0)->color.alpha > 0.0f && fake_renderer_draw(0)->color.alpha <= 16.0f / 31.0f + 0.001f);
+            CHECK(radius > last_radius);
+            last_radius = radius;
+        }
+        if (soul_transition_wants_snapshot()) {
+            CHECK_INT(tick, 11);
+            soul_transition_snapshot_taken();
+        }
+    }
+    CHECK(soul_transition_ring_at(3, &radius, &half_width, &alpha));
+    CHECK(radius > 82.0f && radius < 89.0f);
+    CHECK(half_width > 2.5f && half_width < 2.8f);
+    CHECK(alpha > 1.9f / 31.0f && alpha < 2.1f / 31.0f);
+    soul_transition_advance();
+    CHECK_INT(draws_at_this_tick(), 0);
+    for (tick = 14; tick <= ENTERING_LAST_TICK; tick++) {
+        soul_transition_advance();
+        CHECK_INT(draws_at_this_tick(), SPUN_LAYERS);
+    }
+    soul_transition_advance();
+    CHECK_INT(draws_at_this_tick(), 0);
+    soul_transition_release_textures();
+}
+
 int main(void)
 {
     test_missiles_view_draws_no_sissel_red();
@@ -158,5 +202,6 @@ int main(void)
     test_spun_layers_stay_away_without_a_snapshot();
     test_a_late_frame_still_takes_the_snapshot();
     test_leaving_is_two_black_frames_then_black_spokes();
+    test_a_time_move_rings_and_spokes_then_spins_the_capture();
     return test_finish("unit/soul_transition");
 }
