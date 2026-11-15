@@ -234,6 +234,20 @@ route-check: build/tests/golden/script_replay
 	@mkdir -p build/golden
 	build/tests/golden/script_replay --scripts $(PLAN_SCRIPTS) --timing remaster --auto-paced --marks --stop-tick $(PLAN_STOP_TICK) > build/golden/route_marks.txt
 	python3 -I tools/route_check.py build/golden/route_marks.txt $(PLAN_SCRIPTS)/route_steps.txt --most-passed-over $(STEPS_THE_STORY_PASSES_OVER) --must-reach GOTO
+	$(if $(filter game,$(PLAN_SET)),python3 -I tests/tools/check_undrawn_effects.py $(PLAN_SCRIPTS))
+
+HOST_RENDER_FAKES := tests/fakes/fake_audio.c tests/fakes/fake_command_reader.c tests/fakes/fake_reader.c tests/fakes/fake_system_state.c tests/fakes/fake_task.c tests/fakes/fake_work_queue.c
+HOST_RENDER_SRCS := $(APP_SRCS) $(HOST_RENDER_FAKES) $(wildcard tests/host/*.c) tests/golden/scene_render.c
+
+build/host/stb_vorbis.o: $(STB_VORBIS_SOURCE)
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c99 -w -O2 -ffp-contract=off -include alloca.h -DNDEBUG $(STB_VORBIS_DEFINES) -c $< -o $@
+
+build/host/scene_render: $(HOST_RENDER_SRCS) build/host/stb_vorbis.o $(TEST_HEADERS) $(wildcard tests/host/*.h)
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c99 -D_POSIX_C_SOURCE=200809L -D_DARWIN_C_SOURCE -Wall -Wextra -Werror -g -O2 -Iinclude -Itests -Itests/fakes -DDEBUG_BUILD -DTEXTURE_FOLDER_BUCKETS=$(TEXTURE_FOLDER_BUCKETS)u $(HOST_RENDER_SRCS) build/host/stb_vorbis.o -lm -o $@
+
+scene-render: build/host/scene_render
 
 check-libs: check-sdk $(OBJS)
 	@$(foreach library,$(LIBS),if $(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) $(filter-out $(library),$(LIBS)) -o build/without_one_library.elf 2>/dev/null; then echo "the link does not need $(library)"; exit 1; fi;)

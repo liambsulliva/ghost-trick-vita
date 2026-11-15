@@ -1226,6 +1226,7 @@ Guard: the START pill is built like the hourglass pill, with the pause icon on t
 Native has no clock on its pause screen. The story's times are shown only on the chapter cards: the remaster cards `cmn_ch_00_NN` read 7:02 PM for Chapter 1 through 5:10 AM for Chapter 17, and the final chapter's card has no time. The places are named only in the notebook (pGameSubDatabase): the `database.msg` keys `database_stageNN_YY_sub2_*` name a place for each stage and part, such as Junkyard for stage 1 and Pigeon Man's Office for stage 2. The port's pause menu showed neither, which left the player without the game's sense of the night passing.
 
 Guard: `tools/assets/pause_clock.py` bakes the clock from `game.json` `pause.clock`. Each scene gets a time, moved on from its chapter's card time toward the next chapter's in story order. The scene lists come from the replay marks through `tools/clock_scenes.py`; the last chapter with a time runs on to `night_ends`. The script also bakes outlined glyphs for the digits, colon, AM and PM, and each place name, into the `pause_clock` sheet and `pause/clock.txt`. At run time `pause_clock.c` takes the time from each `script_begun` mark. It takes the place from the room's first plate when the menu opens (`stNN-YY` gives `stageNN_YY`, else `stageNN_00`, else the last place is kept). The menu draws both at the top left, laid out from the mockup the user supplied. A chapter with no times, the final chapter, shows only the place. `tests/unit/test_pause_clock.c` checks the twelve-hour text, the per-scene times and the place lookup. `tests/tools/test_pause_clock.py` checks the interpolation and the baked table. `tests/golden/pause_render.c` takes a `chapter:script:plate` argument so the clock can be rendered on the Mac.
+
 ### 172. Loading a chapter showed a black screen and the debug line
 
 The DS loads a scene's files from the cartridge in a few frames behind a fade, so native has no loading screen. The port reads every table, script, animation and texture of a chain before it runs (`script_player`'s reading, animation and preloading phases), and on the Vita that takes seconds. During that time the screen was black apart from the debug HUD line ("loading N textures"). vitaGL also compiles each shader the first time a draw state is used, so the first sprite, beam, triangle batch and filled rect of a run each stalled a frame once the scene had started.
@@ -1671,6 +1672,7 @@ Found when `route-check` failed on vita-app with 1341 of 1730 steps and no `GOTO
 The class: a pacing stretch on a step timed against something moving in the room. `route_pacing.py` dropped a stretch only when its own step never began, so a stretch that made a later step fail was kept and the bake settled on a broken replay. 12 `instant` steps were stretched.
 
 Guard: `paced_dwells` never stretches a step whose pace is `instant`, and each pass drops the last stretch before any `route_step_failed` in the same scene, so the bake cannot settle on it; a settled bake prints the steps that still failed. `tests/tools/test_route_pacing.py` checks both, and that no `instant` step in `game.json`'s route can be stretched. The kept `game_pacing.txt` is baked again for the current route, so a fresh setup starts from pacing that passes.
+
 ### 226. Headers declared functions that only their own file called
 
 Found in the 1.0 audit: 15 functions were declared in `include/` and called only inside the file that defines them (`script_machine_end_block`, `game_save_store`, `pause_menu_step`, `title_menu_step`, the two audio thread steps and nine more), and `work_queue_is_busy` had no caller at all. Three constants and the machine's `noted_effects` bytes were written once and never read. None of it changed behaviour, but each one made a header promise something no caller used, and a later change had to keep it working.
@@ -1704,6 +1706,7 @@ Found when checking what the released build leaves on a player's card: `run_log.
 The class: a development aid that is on in the player's build because nothing separates it from the game.
 
 Guard: in the player's build `run_log_write` and `run_log_flush` do nothing, `run_log_open` deletes both log files, and `log_sink` is in `DEBUG_ONLY_NAMES`, so the writer thread and its 256 KB of buffers are not linked. `check_player_link.py --never-linked` fails `make test` if the player's link reaches `log_sink_start`, `log_sink_write` or `log_sink_flush` (`tests/tools/test_player_link.py`). Bug reports use the debug package, which the release workflow publishes as `ghosttrick-<tag>-debug.vpk`.
+
 ### 230. Every language but English showed English text
 
 The Options and title Language lists offered nine languages, but picking any but English logged `not_ported` and kept English. The converter read only the English slot of the remaster's message files (`ENGLISH_SLOT`), drew every line in the English fonts, took the `.en` copy of every picture with words in it, and wrote one set of text files and textures. Yet every message file holds all nine languages: Japanese in slot 0, English 1, French 2, Italian 3, German 4, Spanish 5, Korean 11, Traditional Chinese 12 and Simplified Chinese 13. The APK has each language's fonts and its own copy of the title logo and the 18 chapter cards.
@@ -1799,7 +1802,7 @@ The class: a converter output longer than a fixed table in the app.
 
 Guard: `asset_writers.manifest_text` refuses more scene, background or animation names than the app holds, so the bake stops instead of writing a set the app rejects. `tests/tools/test_asset_writers.py` reads the limits from `include/asset_manifest.h` and fails when the two disagree. The DS set no longer lists its animations, the same as the remastered set.
 
-### 247. A manifest list past the app's table stopped the whole set
+### 241. A manifest list past the app's table stopped the whole set
 
 The app side of root cause 240. `asset_manifest_parse` returned an error at the first name past `ASSET_MANIFEST_SCENE_MAX`, `ASSET_MANIFEST_BACKGROUND_MAX` or `ASSET_MANIFEST_ANIMATION_MAX`, and `viewer_app` then ran with no assets at all, though the game finds every file by its path and only the debug browser reads those lists. Root cause 240 stops the converter writing such a set; a set already on a card still had it. No native function reads the manifest, which is the port's own.
 
@@ -1807,7 +1810,7 @@ The class: one optional list too long, and the reader throws away everything.
 
 Guard: the parser keeps the names that fit, checks the rest for safe characters and counts them in `names_left_out`, which the `manifest loaded` line logs. `viewer_app_show_animation` only refuses a name the manifest lacks when no name was left out. `tests/unit/test_asset_manifest.c` parses a list one past the table and expects the set to load. The smoke test's `boot_title` flow fails when the manifest cannot be read (`make smoke`, and `make smoke-mutations` breaks the path to prove it).
 
-### 248. Visual Filter on the title quit the app instead of switching sets
+### 242. Visual Filter on the title quit the app instead of switching sets
 
 Found by the smoke test's `visual_filter_relaunch` flow, the first run of the whole app on the Mac with both sets: after Visual Filter changed on the title screen, the settings were saved and the app exited without starting again, so the player was dropped to the LiveArea. `main` asked `viewer_app_wants_relaunch()` after `viewer_app_stop()`, and stopping closes the title menu, whose request the answer is read from. The relaunch through `sceAppMgrLoadExec` is the port's own; native has one set and no such switch.
 
@@ -1815,7 +1818,7 @@ The class: asking a module a question after it was stopped.
 
 Guard: `main` reads the answer before the stop and logs it as `exit clean relaunch=`. The flow runs the change on an install with both sets and requires the launch to end in a relaunch into the other set; `make smoke-mutations` puts the two lines back in the old order and requires the flow to fail.
 
-### 249. A softlock looked like a slow test
+### 243. A softlock looked like a slow test
 
 Found while proving the smoke test: with CROSS broken on purpose, each whole-chapter flow ran for a quarter of an hour before its `until` line gave up, because a line that waits for the chapter's end must allow a whole chapter's frames. A test that takes that long to say a softlock happened will not be run.
 
@@ -1823,13 +1826,103 @@ The class: one time limit for a long wait, sized for the good case.
 
 Guard: the flow runner's `stall <frames> <text>` line fails a flow once that many frames pass with no log line holding the text; the fast-forward flows watch `route_step_done` with 20000 frames, fourteen times the longest gap in a good run, and a broken story now fails in under a minute. `tests/unit/test_smoke_run.c` covers the line.
 
-### 250. Three looping sounds loop past their own end and play once
+### 244. Three looping sounds loop past their own end and play once
 
 Found by the smoke test's `set remastered loop points` check, and by `sound bad_loop_file` in the whole-story flows of Chapters 4, 7, 8 and 11: `sounds/gim_189.loop` held `2 41438` for a sound of 41438 frames, `gim_232` `2 92927` of 92927 and `gim_279` `0 61393` of 61393. The app takes the second number as the last frame of the loop and refuses a loop whose last frame is not below the frame count, so the three played once. The loop points are the remaster's: the bake copies the srcd wrapper's two words at 53 and 57. Of the APK's 79 looping streams, 67 at 44100 Hz and the 2 at 48000 Hz end the loop on their last frame, frame count minus one; 7 end it earlier; only these three give the frame count itself. So the word at 57 is the last frame, as `audio_file.py` reads it, and the three are the remaster's own off-by-one, which its player clamps where ours refused. No native function is involved: the DS plays these sounds from its sequence archive, and the converter's DS paths already end on `loop_end - 1`.
 
 The class: a loop end copied from a source without checking it against the sound actually written beside it.
 
 Guard: `audio_file.loop_text` takes the baked Ogg and clamps the loop's last frame to the frame count its last page gives, minus one, and refuses a loop that starts past the end. Every `.loop` the converter writes passes through it (remaster music and sounds, DS music and DS sounds). The app's two readers share `loop_file_read` in `src/app/loop_file.c`, so music and sounds apply one rule. `tests/tools/test_audio_file.py` and `tests/tools/test_end_to_end.py` bake a loop ending at and past the frame count and require it to end on the last frame; `tests/unit/test_loop_file.c` refuses a last frame at or past the frame count; the smoke test's loop point check fails a set holding one; `tools/mutation_check.py` moves the clamp and the bound by one and requires the tests to fail.
+
+### 245. Modes inside ported ops logged a note and did nothing
+
+Found by reading the whole-game replay's marks for `_not_ported`: an op that is ported can still hold a mode that is not, and the note names only the first object that reaches it. Four were reached.
+
+- `GameApp` `EventFrame` (3 sends). Native's command (`func_02013518`) clears bit 2 of `game+0xc` for `On` and otherwise sets it and closes the film frame (`func_02010d18`), as op 0x70 does. Only `func_02010ca4` and `func_02010cdc` read that bit, and ops 0x6f and 0x71 clear it before they call them, so `On` changes nothing to see.
+- Beam ramp mode 2 (op 0xbc, st14_game020's `spot`). Native's `func_0205a458` ramps the beam's own position for mode 2, its width for 1, its far end for 4 and its alpha for 8, and ignores any other mode. The port kept the position fixed.
+- Light circle modes 8 and 16 (op 0xbf, st03_game012's `demo_light`). Native's `func_02059f3c` writes `mbFixPos` for 8, and for 16 the node `mCenterPosId` together with the object that ran the op. `func_0206241c` then moves the circle to that object's node every frame, and `func_02062468` draws it at screen coordinates when `mbFixPos` is 1, at the soul's core when it is 2 (`func_02010194`) and in the world otherwise. The create op 0xbe carries the same two fields in its tenth and eleventh words, which the port never read: 14 of the game's 37 creates pin the circle to the screen or to the soul's core, and 8 follow a node.
+- Framing with a negative speed (op 0xca, st03_game012). Native's `func_0200f634` then also moves the camera's height to the middle of the core and the followed actor, 20 rows above centre (`data_020a2f28`), at the speed's size. The port kept the height.
+
+The class: a switch inside a ported op whose default case logs. The note is keyed by the object's name, so one note can hide several modes.
+
+Guard: `tests/tools/check_script_modes.py` reads the engine's own tables and scans every script of both sets for a `GameApp` verb, an `EyeCatch` kind, a beam or light mode, or a motion-table word the engine has no case for; it finds none, so no script in the game reaches `eyecatch_kind_not_ported` or `motion_word_not_ported`. `tests/tools/test_script_modes.py` checks the scan on made-up scripts. `tests/unit/test_event_frame_command.c`, `test_light_ops.c`, `test_pinned_light_draw.c` and `test_framing_both_ways.c` run each mode.
+
+### 246. Visual findings could only be checked on the device
+
+The Chapter 1 list in the README dated from 2026-11-07 and nothing on the Mac could show whether an item still held, so fixed items stayed listed. `tests/golden/scene_render.c` now plays the real app code on the Mac with auto-play: `tests/host/host_platform.c` reads the baked set from disk and `tests/host/host_renderer.c` draws the renderer's calls in software (the Vita's blend, tint and flat modes, DXT1 and DXT5). It reaches a tick, route step, script or act with fast-forward and saves frames at normal speed.
+
+Checked with it against `chapter1_720p60.mp4` (the footage's 4:3 picture is 720 px wide at the port's own 2.8125 px per DS pixel, so the two overlay directly):
+
+- The stairs walk is not slow. From the room appearing to "It's done." takes 12.3 s in both, and the camera's drop starts 3.7 s in, in both.
+- The stairs room's camera is not off. The port's picture sits exactly 120 px left of the footage's, which is `(960 - 720) / 2`: the camera is at the room's left edge, so the wide view slides to stay inside the art, as `docs/asset_format.md` says. Where the room is wide enough (the corpse's corner, 12 s later) the shift is 0.
+
+Guard: none in `make test`; the tool needs the baked set. Run it before listing or closing a visual finding.
+
+### 247. The split-screen's black left panel was measured on a picture the device never draws
+
+The README said the phone call's split screen kept its left panel black for about 1.4 s. Drawn every tick from tick 99700 (the device draws every frame), the port's left panel darkens over 6 ticks as the right panel slides in (99796 to 99801), is fully black for 9 ticks (99802 to 99810) and opens from the middle over 10 (99811 to 99820). The footage at 60 fps from 1907.55 s darkens over 7 frames, is fully black for 10 and opens over 7. The doors are `phone_split.c`'s 16 steps of 16.875 px, so the opening's length in a fixed window depends on the window's height; both open within the same third of a second. Nothing to fix in the port.
+
+What did differ was the renderer. A strip started at tick 99780, 10 ticks before the split takes its snapshot (`PHONE_SPLIT_CAPTURE_AGE`, age 13), showed the whole picture black for 20 ticks. `scene_render`'s fast-forward only updates and never draws, so no art is requested on the way; the first ten frames drawn could not load the room before the snapshot was taken, and the snapshot kept the empty screen. A strip started at 99700 shows the room. The class: any snapshot the app takes on a set tick (the split's capture, the ghost view's entry at tick 11, a film still) taken within the first frames after the fast-forward. Drawing through the fast-forward would fix it, but the software renderer takes about 50 ms a frame, which makes a whole-chapter strip take hours.
+
+Guard: none in code. The tool's README row says to start a strip at least a second before the moment under test.
+
+### 248. Props in the phone view were tinted, not silhouetted, so see-through art stayed see-through
+
+In the ghost talk after the first phone ride (st01_game014, footage 1949 s, port tick 102214), the footage draws Lynne's umbrella (`lkasa`) as one solid red shape, about (200, 30, 4) all over. The port drew it dark in the middle, (57, 15, 7), and redder at the stripes, with the scaffolding showing through. In the phone view every object that is not human takes the phone-view prop style, and that style was the row of class 0x789c5740 (`PHONE_VIEW_PROP_CLASS_ID`), which is not flat: its red multiplied the remaster art's own colours and alpha. The umbrella art is green and white and partly clear, so it came out dark and see-through. Native draws ghost-view silhouettes as one colour wherever the sprite has a pixel (the DS sprite's palette is swapped, `func_02052a7c` picks the class by the ghost); the port's flat paint is how it draws the human and core silhouettes already.
+
+The class: any object in any phone view whose remaster art has colour or partial alpha, in every chapter with a phone ride.
+
+Guard: the phone view's style is its own named row, `object phone_view` in `soul.txt` (`game.json` `soul_view.objects`), flat and turning with the ghost, found by `script_tables_phone_view_style`; the bridge no longer borrows a gimmick class's row. `soul_text` gives object rows the same red-turns flag as class rows. `tests/unit/test_soul_ghost_turn.c` reads the row; `tests/tools/test_ghost_plates.py` fails when any named silhouette row of the game is not flat or its turn flag does not follow its colour. Rendered again, the umbrella is (184 to 223, 30, 19), solid.
+
+### 249. The core ring was a guessed soft glow
+
+Effect 4 (kind 0x23, `cicelcore` and `shadankicore` in st01_game000, `mark` and `mark1`/`mark2` in st03, `core_a` in st13) drew `soul_glow`, a soft disc that grew from 75% to full size every 60 ticks. No remaster effect list has a row for kind 0x23. Native gives ids 4, 7, 8 and 9 the same key (slot33 0x4a0, `func_02066b80`) and loops id 4 (slot88). The footage at 124 to 129 s, measured per frame with a radial profile around the core, shows a thin white ring that restarts every 70 frames: radius 40 footage px on its first frame, 57 by its third at full strength, then about 0.6 px a frame out to 82 while it fades almost linearly to a tenth, and gone after frame 44. The remaster's art for it is the ring cell of `ig_010207_00` (the sheet the player mark already uses, `ui_mark`): its line sits at radius 85.5 of 182 px.
+
+The class: effect rows drawn from an invented pulse rather than the remaster's art and a measured timing. The other `ring` rows (7, 11, 12 and 13, the tutorial's touch markers, kinds 0x100 to 0x104 in the remaster) are the same guess and are not measured yet.
+
+Guard: `effects.txt` takes `pulse` lines (period, then tick, size and alpha keys, run in a straight line between keys and hidden after the last), and a ring row whose texture names a pulse draws by it. Effect 4 draws `core_ring`, the cropped ring cell, with the keys 0 (64 px, 0.65), 3 (91 px, 1.0) and 44 (131 px, 0.105) over 70 ticks. `tests/unit/test_effect_pulse.c` reads and runs a pulse; `tests/tools/test_table_effects.py` fails when a `ring` row draws neither a pulse nor a flipbook and is not in `RING_ROWS_STILL_ON_THE_GUESSED_GLOW`. Rendered every tick from 6600, the port's ring restarts at 6679 and 6749, is 43 Vita px (57 footage px) at its third tick and 61 (81) at its forty-third, and is gone after its forty-fourth.
+
+### 250. The remastered set keyed effect art by a shifted DS kind, so stage 6 drew one effect's art for another
+
+Item 10 of the known issues asked for a fresh look at effects 8 and 9. The remaster's own id-to-kind table (`remaster_tables.json` `effect_kinds`, read from `libruntime.so`) differs from the cartridge's (`data_02086624`) in 85 ids. A remastered set built with the ROM read the DS kind and turned it into a remaster list row with one rule, "one later from 0x86" (`effect_list_row_of_kind`). The real shift starts at 0x84, 0xd8 does not move, and the kinds from 0xf6 up are renumbered. So id 209 (DS 0x84, the remaster's 0x85) was looked up at 0x84 and found nothing, and id 61 (DS 0x85, the remaster's 0x86) was looked up at 0x85 and took `st06_ef_doughnat`, the art of 209 in st06_game001's list. Effect rows are kept per id, so every scene that spawns 61 (`ST06_EXCLAMATION`, also from st03_demo010's tables) drew the doughnut, and 209 drew nothing. `check_remaster_tables.py` already listed 61 and 209 as remaster changes; only the converter's lookup ignored them. A build with `--apk-only` keyed by the remaster's table and was right.
+
+Fresh look, with the remaster's own kinds over all 144 effect lists: kind 0xd8 (effect 8, `efc_tsunagu`) and 0xcf (effect 9, `efc_chain`) have no row in any list, nor do 0x23 (4, drawn since root cause 244), 0x24 (5), 0x03 (6), 0x21 (42), 0x22 (43), 0x86 (61), 0x8d (62) or 0x83 (207). These effects have no art in the remaster. 32 more spawned ids are class effects with no port (50, 54, 56, 57, 59, 64, 65, 99 to 102, 118, 119, 146 to 151, 165 to 168, 191 to 193, 227 to 229, 242, 243 and 270).
+
+The class: any effect id whose remaster kind differs from the DS kind in a set built with the ROM, and any spawned id the README does not name when it draws nothing.
+
+Guard: the remastered set always takes list rows from the remaster's table (`convert_assets.remaster_effect_rows`, read only when an effect needs a row, and an error naming `remaster_tables.py` when it is missing), and `set_up_game.py` reads the tables whenever it builds that set. `Arm9Tables` has no list-row lookup any more. `tests/tools/test_table_effects.py` keys 61 and 209 by a remaster table and fails if the DS lookup comes back. `tests/tools/check_undrawn_effects.py`, run by `make route-check` for the remastered set, fails when a spawned id has no row and is not in its list (the README's), or when a listed id gains one; `tests/tools/test_undrawn_effects.py` checks it. The DS set draws only decoded cartridge art and logs the rest, so it is not checked.
+
+### 251. "Soul view class gates" were drawn long ago
+
+The README listed "Soul view class gates. They are not drawn." The words come from the 2026-11-06 README's "Object tints and class gates are not drawn": which classes draw in which view. Root cause 44 moved that rule into `script_classes.c` (`script_class_draws_in_living_view`, `script_class_draws_in_soul_view`), and the bridge applies it to every actor (`scene_stage_set_object_views`); the tints are root causes 243 and earlier. `tests/unit/test_ghost_copy.c` checks the gates. Nothing is left to draw, so the line is gone.
+
+### 252. "Film-still bubbles 40% too wide" compared a 4:3 frame with the wide screen
+
+The README said film-still bubbles were about 40% too wide and their close squashed. In the film still after the rescue (footage 1013 s, port tick 51553), the talk box's height, its text's size and the text's place from the box's left edge match within a few pixels once the footage's 4:3 picture is scaled to 720 by 540. The box spans the picture in both: 716 of the footage's 720 px with rounded corners just inside its edges, and all 960 px of the port, whose scene fills the wide screen (the README's display rule). 960 over 716 is the 1.34 the line measured. The opening's "So long, sister." balloon is about 330 Vita px wide in both.
+
+The close, at 60 fps around "(Unconscious, eh?)" (footage 791.0 s, port tick 40163): in both the box slides down off the bottom while the portrait slides out to the left; the footage's box is gone after 6 frames and its portrait after 6 or 7, the port's after 7 and 8. Neither squashes.
+
+Guard: none needed; the README states the wide-screen rule once.
+
+### 253. Opening narration pacing was measured with the talk pages included
+
+The README said the opening's narration ran about 9.6 s longer in total than the footage, its first page alone about 4 s, and talk pages cycled every 2.8 s against 2.5 s. Measured from the first narration page to the swirl, the port takes 74 s and the footage 75 s; the first page takes 7 s and 8 s. Talk pages wait for the player's press in both games, so their length is how fast the player presses: the footage's player held two pages for 3.5 and 4.0 s, and the port's auto-play holds them for 3.0 and 2.8 s by its own pacing. Neither is game behaviour.
+
+Guard: none needed; auto-play's pacing is a test harness choice.
+
+### 254. "A second speech bubble is missing" did not hold up shot by shot
+
+The README said a second speech bubble went missing late in Chapter 1, in the footage's 1200 to 1250 s and 1320 to 1380 s. Shot by shot, every balloon there is drawn in the port (ticks 62000 to 72000): "So long, sister.", the top box "Just a few more steps!", Lynne's "!", "Oof!", both "Hold it!", "Who's there?!", the second "!", the "×××" balloon together with "That's because I put it up.", "You hear something?", "........" and "Oh!". Two balloons share the screen in both wherever the footage shows two. What does differ is how a thought balloon opens: the footage's rises from the speaker as a dot and shows "···" while it grows, the port's wobbles blank. That is listed in the README on its own.
+
+Guard: none; the README line now names the opening.
+
+### 255. "Short black or white holds" were one movie end, not a pattern
+
+The README said the port had short black or white holds the footage does not have. The whole chapter was rendered every 20 ticks (`scene_render game tick:30 5440 20`, 5440 frames to tick 107386) and each frame's luma kept; a hold is a run of frames all at or under 56 (black) or all at or over 225 (white), the same test as the footage's 60 fps scan. The port has 23 black and 9 white holds. Placed on the footage's time through five anchors (ticks 6679, 40163, 51553, 64460 and 99796 at 124.5, 791.0, 1013.0, 1246.0 and 1907.6 s), each lies within a few seconds of a footage hold of the same kind: the opening's cards, the swirl cuts into and out of the ghost view, the film stills' white flashes, the chapter card, the rewind clock and the closing scenes. The footage has holds the port does not: the player opening the People screen at 1679 and 1697 s, which the route does not do.
+
+One pairing differs inside the hold. At the forward time jump (port tick 73049, footage 1409.5 s) the footage holds white about 0.75 s and fades to black, while the port goes from the movie's last white frame to 16 black ticks during the scene load and only then fades from white. That is the README's one remaining line about holds.
+
+Guard: none in code; the README names the movie end.
 
 ## Still open
 
@@ -1840,12 +1933,13 @@ Guard: `audio_file.loop_text` takes the baked Ogg and clamps the loop's last fra
 - Telephone, Lynne and the dead core have no name entry in the tables read so far.
 - Action selection for player mark layouts: 14 shapes exist and the port uses 4 by a position rule.
 - Effect classes with no port yet, named from the class registry in the RAM dump: `uTimeOverChainEffect` (id 50, the time-over sequence; constructor `func_020473ec`, 0xd8 bytes), `uPhoneBorderEffect` (id 59), `uBlackDarkness` (ids 151, 228, 229), `uLanternLightBlackSt02_01` (id 119, 57 sites in stage 2), `uNightVisionGoggle` (57), `uElectricTorch` (56). Class ids group by factory in `data_020ac194`; key any port by factory, as the chapter cards are.
-- Plain effect kinds with no row in any remaster effect list: kind 3 (id 6, the ripple, 50 sites in nine stages), 0x83 (id 207, the dog's bark) and 0x84 (id 209). Where the remaster draws them from is not found.
+- Plain effect kinds with no row in any remaster effect list (root cause 250 lists them all): kind 3 (id 6, the ripple, 50 sites in nine stages), 0x83 (id 207, the dog's bark) and 0x86 (id 61, `ST06_EXCLAMATION`). Where the remaster draws them from is not found.
 - Telephone lines and neon (root cause 78): free units are tracked but not drawn. The line art comes from `func_0205693c` on the sprite set at `data_020cf724`, with `uTelephoneCore`'s icon at `data_020cfe2c`; neither set is mapped to a remaster texture yet.
 - Op 0x9f (case at `0x020253bc`): on a `uGimmick`, writes `words[2]` into the top half of core `words[1]`'s `+0x14` word (`func_02026700`); the enable bit 0 of that word is ops 0x9d and 0x9e. What reads the top half is not found, so it is not ported (state nothing reads).
 - Op 0x48 (case at `0x02024ae2`): writes `words[1] << 12` to `+0x124` of the balloon in slot 0 (`game+0xdfc`, `func_020106ec`). Its meaning is not traced; it is only seen after the routed chapters (st01_game020).
 - Op 0x5b (14 scripts, always after op 0x4d) is native `func_02010874`: it clears the eight balloon slot words at `game+0xe1c` and closes the balloons with the force bit set (`func_020109c8`); the port closes every balloon, as op 0x57 does. Whether a closing animation plays is not traced.
 - Ops 0x49 (st02_game000, object kaba) and 0xfd (st01_game012, st01_game021, st02_game022 and 11 more) are hit by the whole-game replay and not ported; 0x49 sets byte +0x11c of the slot-0 balloon (`func_0201070c`). 0xfd is the rollback checkpoint, not save data: `func_02011b04` copies the scene name (`game+0x1c`) to `game+0x1058` and builds a checkpoint object at `game+0x1098`, the one the rollback menu's second entry needs; the port's retry always reloads the scene.
+- The port draws one light circle at a time, the last one created. Native keeps up to 16 and shrinks a circle that sits inside a larger one (`func_02062510`); st03_game012 creates three names (`demo_light`, `core_light` and `joedo_light`). Root cause 240 places the drawn one only.
 - Op 0x119 (case at `0x02025540`) links the current actor's motion controller (+0x114) to a named actor's (`func_02059894`, `func_020598a4`). It is not ported and logs `op_not_ported`.
 - `no_motion_row` for `sofa`, `table`, `ftendoor`, `souldead` and `carcass` is expected: their tables (`st06_sofa`, `table_wait`, `st05_tendoor_wait`, `onlycore_000`) belong to objects that are only a core or whose art is in the room plate, so nothing is drawn natively either.
 - Soul reach (root cause 68): the st05 hop from the dictionary to the lamp (route step 218) is 182 units in the port but one hop in the footage, far past Sissel's native 48, so one of those cores sits in the wrong place or a core between them is missing. The route still places the soul there.

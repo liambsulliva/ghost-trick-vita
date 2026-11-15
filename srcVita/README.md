@@ -21,6 +21,7 @@ No game data lives in this folder. Converted assets, captures, reference video a
 | `tools/assets/extract_text_key.py` | Finds the text key in your own copy of the Android package |
 | `tools/vita_loop.py` | Installs, launches and reads back from the Vita |
 | `tools/pause_render.py` | Draws the pause menu, or with `--title` the title screen or `--loading` the loading screen, on the Mac from the baked set, after a list of button presses, through `tests/golden/pause_render.c` |
+| `tests/golden/scene_render.c` | Plays the game on the Mac from a baked set with auto-play and saves the screen as PPM pictures at a tick, route step, script or act: `make scene-render`, then run `build/host/scene_render <set folder> <output folder> tick:N [frames] [frames between]` from `extracted/vita_assets`. Its fast-forward draws nothing, so the room's art loads only once saving starts: start a strip at least a second before the moment under test, or a snapshot (the split screen, the ghost view's entry, a film still) can catch an empty screen. `tests/host/` holds its disk files and software renderer |
 | `tools/audio_check.py` | Judges a run log's audio timing and checksums, with no listener |
 | `tools/mutation_check.py` | Breaks the code on purpose to prove the tests notice |
 | `tools/smoke_test.py`, `tests/smoke/` | The [smoke test](#smoke-test): its driver, its flows and the Mac build of the whole app it runs them in |
@@ -28,7 +29,7 @@ No game data lives in this folder. Converted assets, captures, reference video a
 
 A good first read is `src/app/viewer_app.c`, then `script_player.c`, `script_machine.c` and `scene_view.c`.
 
-The scene fills the Vita's 960 by 544 screen at 2.8125 screen pixels per DS pixel, so wide rooms show about 85 more DS pixels across than the DS did. Art that stops short of the screen, such as room 11's close-up and the chapter card, is centred with black around it and never stretched. `docs/asset_format.md` has the rule.
+The scene fills the Vita's 960 by 544 screen at 2.8125 screen pixels per DS pixel, so wide rooms show about 85 more DS pixels across than the DS did, and talk boxes span the whole screen as they span the DS picture. Art that stops short of the screen, such as room 11's close-up and the chapter card, is centred with black around it and never stretched. `docs/asset_format.md` has the rule.
 
 ## Build and test
 
@@ -411,40 +412,25 @@ In the debug build's commands file, `play_script route` starts the opening, from
 
 ## Known issues
 
-These are the known differences from the original. Bug-fix releases work through them. Items under "Built, not proven" are written but have not been checked on the device.
-
-**Built, not proven**
-
-- The chain's bend and trail. This needs a faster burst.
-- The camera panning with the tip while it is held.
-- Tap balloons advancing only while play runs.
-- The Back pill, shown only in a ghost view the player opened.
-- Effect 31, the loops on the corpse in ghost view, drawn as the remaster movie `cmn_shig_01` (native kind 0x1d, from the st01_game000 effect list) and shown only in ghost view.
+These are the known differences from the original. Bug-fix releases work through them.
 
 **Chapter 1 differences**, found against the reference footage
 
-- The umbrella is dim and see-through in the phone view.
-- A second speech bubble is missing late in the chapter.
-- Some core labels are on the wrong side, or on one line instead of two.
-- The thin pill words.
+- Thought balloons open differently. In the footage (1309.6 s, the "×××" balloon) a small dot rises from the speaker and grows into the balloon with "···" in it for about a fifth of a second before the words show, and a dot stays by its tail; the port wobbles a blank ellipse for about 12 ticks, then shows the words.
+- Chapter 1's cores draw no label. The port keeps one label per object, listed by hand in `game.json` for stages 6 and 14 only. Native takes each core's name and action from its info row (`data_0209c448`, the remaster's `iCoreInfo` rows), which the port already tracks per core for the Trick press. In the footage the label rises from the core and runs along a line, name above and action below, to the left for a core right of centre ("Soul", 1087 s) and to the right otherwise. While the soul stays in a core the footage shows the ring and label for 120 frames in every 260 (621 to 641 s), also during talks; the port shows them once for 165 ticks and drops them while a talk is up.
+- The pill words ("Ghost", "Trick", "Back") are drawn in the talk font with a hairline outline. The footage's are a bold serif face with a dark outline, at the same size; which remaster font or texture draws them is not found.
+- The film still after "(Unconscious, eh?)" (footage 795 s, port tick 40220) turns from grey to full colour after about 30 ticks; the footage keeps it grey, with only Lynne in colour.
 - The soul's fly-in from the trick pill.
-- Film-still bubbles are about 40% too wide, and the bubble close is squashed.
-- The camera is about 110 px off in the stairs room.
-- The split-screen's left panel is black for about 1.4 s at its start.
-- Short black or white holds that the footage does not have.
-- The stairs walk is slow.
-- Pacing: narration pages in the opening run about 9.6 s longer in total than the footage (the first page alone about 4 s). Talk pages cycle about every 2.8 s, against 2.5 s.
+- When the forward time-jump movie (`time_jump_b`, `pGameMainMovieForward`) ends on white, the port draws 16 black ticks (73050 to 73065, the HUD over black, then plain black) while the next scene loads, then fades that scene in from white. The footage (1409.5 s) stays white across the load. `draw_movie` drops a finished movie and nothing holds its last frame; what native shows between the movie's end and the next fade is not traced.
 
 **Effects**
 
-- Effect 4, the core ring, is drawn as a soft glow. The footage shows a thin white ring that pulses every 70 frames.
-- Effects 8 (`efc_tsunagu`, kind 0xd8) and 9 (`efc_chain`, kind 0xce) have no art in any remaster effect list. `coreactionexchangecore` is an unconfirmed candidate for 8. Notes are in `extracted/audit_notes_2026-11-06/effects_8_9.md`.
-- Effects without art are noted in the log and not drawn.
+- Effects 8 (`efc_tsunagu`) and 9 (`efc_chain`) have no art in the remaster: none of its 144 effect lists has a row for their kinds (0xd8 and 0xcf), so they are not drawn.
+- Effects 5, 6 (the ripple), 42, 43, 61, 62 and 207 (the dog's bark) have no art in the remaster either and are not drawn.
+- These class effects have no port and are not drawn: 50, 54, 56, 57, 59, 64, 65, 99 to 102, 118, 119, 146 to 151, 165 to 168, 191 to 193, 227 to 229, 242, 243 and 270.
 
 **Not in the port**
 
-- **Soul view class gates.** They are not drawn.
-- **Some `EyeCatch` banners.** Trick, DestinyUpdate, DestinyLock and NumberGet are drawn; any other kind logs `eyecatch_kind_not_ported` and draws nothing.
 - **Touch.** The back touch pad is not read. The front screen works alongside the buttons: tap pills, balloons, Rewind Time and talk, drag the soul in Ghost view, and drag the camera where the game allows it.
 The VM's timing comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.
 

@@ -801,6 +801,8 @@ static void draw_fx_movie(struct view_effect *effect)
 static void draw_effect(const struct view_effect *effect)
 {
     const struct script_flipbook *book;
+    const struct script_pulse *keyed_pulse;
+    struct renderer_color tint;
     float screen_x;
     float screen_y;
     float pulse;
@@ -810,6 +812,14 @@ static void draw_effect(const struct view_effect *effect)
     book = script_tables_find_flipbook(tables, effect->row->texture_name);
     if (book != NULL) {
         draw_flipbook(book, (unsigned int)effect->age_ticks, screen_x, screen_y, effect->row->width, effect->row->height, white);
+        return;
+    }
+    keyed_pulse = script_tables_find_pulse(tables, effect->row->texture_name);
+    if (keyed_pulse != NULL) {
+        tint = white;
+        if (script_pulse_at(keyed_pulse, (unsigned int)effect->age_ticks, &size, &tint.alpha)) {
+            draw_named_texture(effect->row->texture_name, screen_x - size / 2.0f, screen_y - size / 2.0f, size, size, tint);
+        }
         return;
     }
     pulse = (float)((unsigned int)effect->age_ticks % RING_PULSE_TICKS) / (float)RING_PULSE_TICKS;

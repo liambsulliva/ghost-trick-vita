@@ -55,8 +55,8 @@ static void test_a_new_beam_holds_its_shape_until_animated(void)
     beam = &effects.beams[0];
     CHECK(beam->in_use);
     CHECK_TEXT(beam->name, "left");
-    CHECK(beam->apex_x == 56.0f);
-    CHECK(beam->apex_y == 128.0f);
+    CHECK(beam->apex_x.value == 56.0f);
+    CHECK(beam->apex_y.value == 128.0f);
     CHECK(beam->base_x.value == 58.0f);
     CHECK(beam->base_y.value == 367.0f);
     CHECK(beam->half_width.value == 3.0f);
@@ -88,7 +88,7 @@ static void test_an_animated_beam_moves_in_a_straight_line_and_stops_at_its_targ
     CHECK(beam->half_width.value == 30.0f);
     advance_ticks(100);
     CHECK(beam->base_x.value == 116.0f);
-    CHECK(beam->apex_x == 56.0f);
+    CHECK(beam->apex_x.value == 56.0f);
 }
 
 static void test_animating_mid_flight_continues_from_where_the_beam_is(void)
@@ -156,7 +156,7 @@ static void test_creating_a_beam_with_a_used_name_replaces_it(void)
     advance_ticks(10);
     scene_effects_create_beam(&effects, "left", 7.0f, 0.0f, 9.0f, 100.0f, 2.0f);
     advance_ticks(10);
-    CHECK(effects.beams[0].apex_x == 7.0f);
+    CHECK(effects.beams[0].apex_x.value == 7.0f);
     CHECK(effects.beams[0].base_x.value == 9.0f);
     CHECK(!effects.beams[1].in_use);
 }
@@ -329,8 +329,41 @@ static void test_an_iris_mask_fades_out_by_its_alpha_ramp(void)
     CHECK(effects.iris_y.value == 20.0f);
 }
 
+static void test_a_beam_apex_moves_in_a_straight_line_and_leaves_the_base(void)
+{
+    const struct scene_beam *beam;
+
+    set_up();
+    scene_effects_create_beam(&effects, "spot", 112.0f, -32.0f, 112.0f, 172.0f, 10.0f);
+    beam = &effects.beams[0];
+    scene_effects_move_beam_apex(&effects, "spot", 112.0f, -80.0f, 120);
+    advance_ticks(60);
+    CHECK(nearly(beam->apex_y.value, -56.0f));
+    advance_ticks(60);
+    CHECK(beam->apex_x.value == 112.0f);
+    CHECK(beam->apex_y.value == -80.0f);
+    CHECK(beam->base_y.value == 172.0f);
+}
+
+static void test_a_placed_iris_jumps_there_and_a_new_iris_is_not_pinned(void)
+{
+    set_up();
+    scene_effects_create_iris(&effects, 10.0f, 20.0f, 30.0f, 1.0f);
+    scene_effects_pin_iris(&effects, 1);
+    scene_effects_move_iris(&effects, 100.0f, 100.0f, 50);
+    scene_effects_place_iris(&effects, 40.0f, 70.0f);
+    advance_ticks(10);
+    CHECK(effects.iris_x.value == 40.0f);
+    CHECK(effects.iris_y.value == 70.0f);
+    CHECK(effects.iris_is_on_the_screen);
+    scene_effects_create_iris(&effects, 10.0f, 20.0f, 30.0f, 1.0f);
+    CHECK(!effects.iris_is_on_the_screen);
+}
+
 int main(void)
 {
+    test_a_beam_apex_moves_in_a_straight_line_and_leaves_the_base();
+    test_a_placed_iris_jumps_there_and_a_new_iris_is_not_pinned();
     test_a_fresh_set_of_effects_shows_nothing();
     test_a_new_beam_holds_its_shape_until_animated();
     test_an_animated_beam_moves_in_a_straight_line_and_stops_at_its_target();

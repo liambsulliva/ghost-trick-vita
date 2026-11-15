@@ -516,6 +516,10 @@ def remaster_source(apk_folder):
     return {"apk_folder": apk_folder, "tables": chapter_assets.RemasterTables(remaster_tables.load_tables(apk_folder)), "log": lambda kind, detail: logged.update([kind]), "logged": logged}
 
 
+def remaster_effect_rows(apk_folder):
+    return chapter_assets.RemasterEffectRows(lambda: chapter_assets.RemasterTables(remaster_tables.load_tables(apk_folder)))
+
+
 def print_remaster_log(remaster):
     if remaster is not None and remaster["logged"]:
         print("left out of the Android scripts: " + ", ".join("%s %d" % item for item in sorted(remaster["logged"].items())))
@@ -525,7 +529,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
     remove_old_work_folders()
     packs = pack_files.PackSet(apk_folder)
     remaster = remaster_source(apk_folder) if ds_rom_path is None and "chapter" in set_description else None
-    set_description = chapter_assets.expand_set(set_description, packs, ds_rom_path, text_key, remaster)
+    set_description = chapter_assets.expand_set(set_description, packs, ds_rom_path, text_key, remaster, remaster_effect_rows(apk_folder))
     print_remaster_log(remaster)
     set_description = effect_movies.add_to_set(set_description, packs)
     set_description = class_movies.add_to_set(set_description)

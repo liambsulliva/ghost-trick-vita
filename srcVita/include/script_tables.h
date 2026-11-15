@@ -13,6 +13,8 @@
 #define SCRIPT_TEXT_ROW_MAX 2048
 #define SCRIPT_BALLOON_ROW_MAX 1024
 #define SCRIPT_FLIPBOOK_MAX 8
+#define SCRIPT_PULSE_MAX 8
+#define SCRIPT_PULSE_KEY_MAX 8
 #define SCRIPT_MOVIE_MAX 32
 #define SCRIPT_CORE_LABEL_MAX 64
 #define SCRIPT_FLIPBOOK_PAGE_MAX 3
@@ -117,6 +119,19 @@ struct script_flipbook {
     int rows;
     float cell_width;
     float cell_height;
+};
+
+struct script_pulse_key {
+    int tick;
+    float size;
+    float alpha;
+};
+
+struct script_pulse {
+    char name[ASSET_NAME_MAX];
+    int period_ticks;
+    int key_count;
+    struct script_pulse_key keys[SCRIPT_PULSE_KEY_MAX];
 };
 
 struct script_soul_style {
@@ -224,6 +239,8 @@ struct script_tables {
     int effect_row_count;
     struct script_flipbook flipbooks[SCRIPT_FLIPBOOK_MAX];
     int flipbook_count;
+    struct script_pulse pulses[SCRIPT_PULSE_MAX];
+    int pulse_count;
     struct script_fx_movie fx_movies[SCRIPT_FX_MOVIE_MAX];
     int fx_movie_count;
     struct script_fx_frame fx_frames[SCRIPT_FX_FRAME_MAX];
@@ -272,6 +289,8 @@ const struct script_fx_movie *script_tables_find_fx_movie(const struct script_ta
 const struct script_movie *script_tables_find_movie_of_class(const struct script_tables *tables, unsigned int class_id);
 const struct script_movie *script_tables_find_movie(const struct script_tables *tables, const char *name);
 const struct script_flipbook *script_tables_find_flipbook(const struct script_tables *tables, const char *name);
+const struct script_pulse *script_tables_find_pulse(const struct script_tables *tables, const char *name);
+int script_pulse_at(const struct script_pulse *pulse, unsigned int age_ticks, float *size, float *alpha);
 int script_tables_read_soul(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_route(struct script_tables *tables, const char *text, unsigned int text_size);
 int script_tables_read_route_pacing(struct script_tables *tables, const char *text, unsigned int text_size);
@@ -279,6 +298,7 @@ int script_tables_read_ui_clips(struct script_tables *tables, const char *text, 
 int script_tables_read_core_labels(struct script_tables *tables, const char *text, unsigned int text_size);
 const struct script_core_label *script_tables_find_core_label(const struct script_tables *tables, const char *object_name);
 const struct script_soul_style *script_tables_soul_style(const struct script_tables *tables, unsigned int class_id, int is_human, int has_core, int is_active, int is_dead);
+const struct script_soul_style *script_tables_phone_view_style(const struct script_tables *tables);
 const struct script_effect_row *script_tables_find_effect(const struct script_tables *tables, int id);
 const char *script_tables_music_name(const struct script_tables *tables, int id);
 const char *script_tables_sound_name(const struct script_tables *tables, int kind);

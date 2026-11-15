@@ -71,6 +71,8 @@ void scene_effects_advance(struct scene_effects *effects, unsigned long long ela
 
     for (index = 0; index < SCENE_BEAM_MAX; index++) {
         if (effects->beams[index].in_use) {
+            ramp_advance(&effects->beams[index].apex_x, elapsed_us);
+            ramp_advance(&effects->beams[index].apex_y, elapsed_us);
             ramp_advance(&effects->beams[index].base_x, elapsed_us);
             ramp_advance(&effects->beams[index].base_y, elapsed_us);
             ramp_advance(&effects->beams[index].half_width, elapsed_us);
@@ -102,8 +104,8 @@ void scene_effects_create_beam(struct scene_effects *effects, const char *name, 
         return;
     }
     snprintf(beam->name, sizeof(beam->name), "%s", name);
-    beam->apex_x = apex_x;
-    beam->apex_y = apex_y;
+    ramp_set(&beam->apex_x, apex_x);
+    ramp_set(&beam->apex_y, apex_y);
     ramp_set(&beam->base_x, base_x);
     ramp_set(&beam->base_y, base_y);
     ramp_set(&beam->cover_alpha, 1.0f);
@@ -123,6 +125,19 @@ void scene_effects_animate_beam(struct scene_effects *effects, const char *name,
     ramp_begin(&beam->base_x, base_x, ticks);
     ramp_begin(&beam->base_y, base_y, ticks);
     ramp_begin(&beam->half_width, half_width, ticks);
+}
+
+void scene_effects_move_beam_apex(struct scene_effects *effects, const char *name, float apex_x, float apex_y, int ticks)
+{
+    struct scene_beam *beam;
+
+    beam = find_beam(effects, name);
+    if (beam == NULL) {
+        run_log_write("scene beam_missing name=%s", name);
+        return;
+    }
+    ramp_begin(&beam->apex_x, apex_x, ticks);
+    ramp_begin(&beam->apex_y, apex_y, ticks);
 }
 
 void scene_effects_ramp_beam_cover(struct scene_effects *effects, const char *name, float cover_alpha, int ticks)
@@ -205,6 +220,7 @@ void scene_effects_start_iris(struct scene_effects *effects, float x, float y, f
         ramp_set(&effects->iris_alpha, 1.0f);
     }
     effects->iris_is_on = 1;
+    effects->iris_is_on_the_screen = 0;
     ramp_set(&effects->iris_x, x);
     ramp_set(&effects->iris_y, y);
     ramp_begin(&effects->iris_radius, radius, ticks);
@@ -213,6 +229,7 @@ void scene_effects_start_iris(struct scene_effects *effects, float x, float y, f
 void scene_effects_create_iris(struct scene_effects *effects, float x, float y, float radius, float alpha)
 {
     effects->iris_is_on = 1;
+    effects->iris_is_on_the_screen = 0;
     ramp_set(&effects->iris_x, x);
     ramp_set(&effects->iris_y, y);
     ramp_set(&effects->iris_radius, radius);
@@ -227,6 +244,17 @@ void scene_effects_ramp_iris_radius(struct scene_effects *effects, float radius,
 void scene_effects_ramp_iris_alpha(struct scene_effects *effects, float alpha, int ticks)
 {
     ramp_begin(&effects->iris_alpha, alpha, ticks);
+}
+
+void scene_effects_place_iris(struct scene_effects *effects, float x, float y)
+{
+    ramp_set(&effects->iris_x, x);
+    ramp_set(&effects->iris_y, y);
+}
+
+void scene_effects_pin_iris(struct scene_effects *effects, int is_on_the_screen)
+{
+    effects->iris_is_on_the_screen = is_on_the_screen;
 }
 
 void scene_effects_move_iris(struct scene_effects *effects, float x, float y, int ticks)

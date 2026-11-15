@@ -144,10 +144,6 @@ class Arm9Tables:
     def effect_kind(self, effect_id):
         return effect_kind_of(self.arm9, effect_id)
 
-    def effect_list_row(self, effect_id):
-        kind = self.effect_kind(effect_id)
-        return None if kind >= FIRST_CLASS_EFFECT_KIND else effect_list_row_of_kind(kind)
-
     def effect_factory(self, kind):
         return effect_factory_of(self.arm9, kind)
 
@@ -191,6 +187,17 @@ class RemasterTables:
     def face_rows(self, packs):
         listed = dict(resource_list.read_list(packs, "texture", FACE_LIST_NAME))
         return {face_id: (listed.get(row[0]), row[2]) for face_id, row in enumerate(self.tables["face_rows"]) if face_id}
+
+
+class RemasterEffectRows:
+    def __init__(self, load_tables):
+        self.load_tables = load_tables
+        self.tables = None
+
+    def effect_list_row(self, effect_id):
+        if self.tables is None:
+            self.tables = self.load_tables()
+        return self.tables.effect_list_row(effect_id)
 
 
 def scripts_of(source):
@@ -893,7 +900,7 @@ def room_rows(scripts, tables, soul_ramp, ghost_ramps, name_of_plate):
     return list(plates.values()), room_plates, room_sizes
 
 
-def expand_set(set_description, packs, rom_path, text_key, remaster=None):
+def expand_set(set_description, packs, rom_path, text_key, remaster=None, effect_rows=None):
     if "chapter" not in set_description:
         return set_description
     refuse_a_closing_card_beside_the_game_s_own_cards(set_description)
@@ -923,7 +930,7 @@ def expand_set(set_description, packs, rom_path, text_key, remaster=None):
         expanded["effects"] = list(set_description.get("effects", [])) + card_effects
     staff_textures, expanded["staff_roll_text"] = staff_roll_rows(packs, scripts)
     expanded["screen_textures"] = list(expanded.get("screen_textures", [])) + staff_textures
-    expanded["effect_movies"] = list(set_description.get("effect_movies", [])) + spawned_effect_movies(packs, scripts, arm9, effect_ids_with_rows(expanded))
+    expanded["effect_movies"] = list(set_description.get("effect_movies", [])) + spawned_effect_movies(packs, scripts, remaster["tables"] if remaster is not None else effect_rows, effect_ids_with_rows(expanded))
     file_cache = {}
     entries_cache = {}
     first_source_of_label = {}

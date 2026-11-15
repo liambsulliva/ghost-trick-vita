@@ -16,8 +16,8 @@ struct scene_ramp {
 
 struct scene_beam {
     char name[ASSET_NAME_MAX];
-    float apex_x;
-    float apex_y;
+    struct scene_ramp apex_x;
+    struct scene_ramp apex_y;
     struct scene_ramp base_x;
     struct scene_ramp base_y;
     struct scene_ramp half_width;
@@ -33,6 +33,7 @@ struct scene_effects {
     float mask_fade_alpha;
     int mask_fade_is_white;
     int iris_is_on;
+    int iris_is_on_the_screen;
     struct scene_ramp iris_x;
     struct scene_ramp iris_y;
     struct scene_ramp iris_radius;
@@ -48,6 +49,7 @@ void scene_effects_reset(struct scene_effects *effects);
 void scene_effects_advance(struct scene_effects *effects, unsigned long long elapsed_us);
 void scene_effects_create_beam(struct scene_effects *effects, const char *name, float apex_x, float apex_y, float base_x, float base_y, float half_width);
 void scene_effects_animate_beam(struct scene_effects *effects, const char *name, float base_x, float base_y, float half_width, int ticks);
+void scene_effects_move_beam_apex(struct scene_effects *effects, const char *name, float apex_x, float apex_y, int ticks);
 void scene_effects_ramp_beam_cover(struct scene_effects *effects, const char *name, float cover_alpha, int ticks);
 void scene_effects_delete_beam(struct scene_effects *effects, const char *name);
 void scene_effects_set_cover_mask(struct scene_effects *effects, int should_be_on, int is_opaque, float fade_alpha, int fade_is_white);
@@ -60,6 +62,8 @@ void scene_effects_start_iris(struct scene_effects *effects, float x, float y, f
 void scene_effects_create_iris(struct scene_effects *effects, float x, float y, float radius, float alpha);
 void scene_effects_ramp_iris_radius(struct scene_effects *effects, float radius, int ticks);
 void scene_effects_ramp_iris_alpha(struct scene_effects *effects, float alpha, int ticks);
+void scene_effects_place_iris(struct scene_effects *effects, float x, float y);
+void scene_effects_pin_iris(struct scene_effects *effects, int is_on_the_screen);
 void scene_effects_move_iris(struct scene_effects *effects, float x, float y, int ticks);
 void scene_effects_dim_to(struct scene_effects *effects, float brightness, int ticks);
 void scene_effects_flash(struct scene_effects *effects, float brightness, int ticks);

@@ -400,7 +400,7 @@ def soul_text(soul_view):
     for class_id, style in soul_view.get("classes", {}).items():
         lines.append("class %s %s %d" % (class_id, " ".join(asset_writers.format_number(value) for value in style), 1 if is_soul_red(style) else 0))
     for object_name, style in soul_view.get("objects", {}).items():
-        lines.append("object %s %s" % (object_name, " ".join(asset_writers.format_number(value) for value in style)))
+        lines.append("object %s %s %d" % (object_name, " ".join(asset_writers.format_number(value) for value in style), 1 if is_soul_red(style) else 0))
     return "\n".join(lines) + "\n"
 
 
@@ -423,6 +423,10 @@ def route_steps_text(route):
         check_route_field_widths(step)
         lines.append("step %s %s %s %d %d %s\n" % (step["script"], step["action"], step.get("object", "-"), step.get("place", step.get("slot", 0)), route["dwell_ticks"][step.get("pace", "normal")], step.get("wait", "-").replace(" & ", "&")))
     return "".join(lines)
+
+
+def pulses_text(pulses):
+    return "".join("pulse %s %d %s\n" % (pulse["name"], pulse["period_ticks"], " ".join("%d %s %s" % (key[0], asset_writers.format_number(key[1]), asset_writers.format_number(key[2])) for key in pulse["keys"])) for pulse in pulses)
 
 
 def flipbooks_text(flipbooks):
@@ -600,7 +604,7 @@ def table_files(set_description, output_folder, motion_lines, narration_lines, t
         texts[ROUTE_FILE] = route_steps_text(set_description["route"])
     if set_description.get("ui_clips"):
         texts[UI_CLIPS_FILE] = ui_clips.clips_text()
-    texts[EFFECTS_FILE] = movies_text(set_description.get("movies", [])) + flipbooks_text(set_description.get("flipbooks", [])) + effects_text(set_description.get("effects", [])) + set_description.get("effect_movie_text", "") + set_description.get("staff_roll_text", "")
+    texts[EFFECTS_FILE] = movies_text(set_description.get("movies", [])) + flipbooks_text(set_description.get("flipbooks", [])) + pulses_text(set_description.get("pulses", [])) + effects_text(set_description.get("effects", [])) + set_description.get("effect_movie_text", "") + set_description.get("staff_roll_text", "")
     if "chapter" in set_description:
         texts[PRELOAD_FILE] = chapter_preload_text(set_description, section, narration_lines, extra_textures)
     else:

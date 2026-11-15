@@ -52,6 +52,18 @@ class GhostTurnTest(unittest.TestCase):
             red, green, blue = (float(value) for value in line[2:5])
             self.assertEqual(line[-1] == "1", red >= 2 * max(green, blue), line[1])
 
+    def test_every_named_silhouette_of_the_game_is_flat_and_red_ones_turn(self):
+        game_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tools", "assets", "game.json")
+        with open(game_path) as source:
+            soul_view = json.load(source)["soul_view"]
+        self.assertIn("phone_view", soul_view["objects"])
+        lines = [line.split() for line in script_assets.soul_text(soul_view).splitlines() if line.startswith("object ")]
+        self.assertEqual(len(lines), len(soul_view["objects"]))
+        for line in lines:
+            red, green, blue = (float(value) for value in line[2:5])
+            self.assertEqual(line[6], "1", line[1])
+            self.assertEqual(line[7] == "1", red >= 2 * max(green, blue), line[1])
+
     def test_a_texture_with_ghost_variants_bakes_a_turned_copy_for_each_ghost(self):
         jobs = {}
         convert_assets.add_screen_texture_jobs(jobs, [{"name": "beam", "source": "s", "width": 8, "height": 4, "ghost_variants": True}, {"name": "plain", "source": "p", "width": 8, "height": 4}])

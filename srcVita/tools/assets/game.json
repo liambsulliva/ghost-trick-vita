@@ -176,11 +176,11 @@
     {
       "id": 4,
       "kind": "ring",
-      "texture": "soul_glow",
+      "texture": "core_ring",
       "ticks": 0,
       "end_zoom": 1,
-      "width": 110,
-      "height": 110
+      "width": 131,
+      "height": 131
     },
     {
       "id": 7,
@@ -970,6 +970,18 @@
       "source": "natives/android/gui/ui010200/tex/ig_010207_00_iml4.tex.691230823",
       "width": 512,
       "height": 256
+    },
+    {
+      "name": "core_ring",
+      "source": "natives/android/gui/ui010200/tex/ig_010207_00_iml4.tex.691230823",
+      "crop": [
+        197,
+        1,
+        182,
+        182
+      ],
+      "width": 128,
+      "height": 128
     },
     {
       "name": "narration_arrow",
@@ -1856,6 +1868,13 @@
         0.88,
         1,
         1
+      ],
+      "phone_view": [
+        0.85,
+        0.12,
+        0.07,
+        1,
+        1
       ]
     }
   },
@@ -1942,6 +1961,29 @@
       }
     }
   },
+  "pulses": [
+    {
+      "name": "core_ring",
+      "period_ticks": 70,
+      "keys": [
+        [
+          0,
+          64,
+          0.65
+        ],
+        [
+          3,
+          91,
+          1
+        ],
+        [
+          44,
+          131,
+          0.105
+        ]
+      ]
+    }
+  ],
   "flipbooks": [
     {
       "name": "soul_dim",
