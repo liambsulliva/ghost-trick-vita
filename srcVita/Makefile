@@ -15,7 +15,7 @@ DATA_SEGMENT_CLEAR_OF_SCE_TABLES := 0x81200000
 TEXTURE_FOLDER_BUCKETS := 64
 CFLAGS += -DTEXTURE_FOLDER_BUCKETS=$(TEXTURE_FOLDER_BUCKETS)u
 LDFLAGS := -Wl,-q -Wl,--section-start=.init_array=$(DATA_SEGMENT_CLEAR_OF_SCE_TABLES)
-LIBS    := -lvitaGL -lstdc++ -lSceAppMgr_stub -lmathneon \
+LIBS    := -lvitaGL -lstdc++ -lSceAppMgr_stub -lSceAppUtil_stub -lmathneon \
            -lSceCommonDialog_stub -lm -lSceGxm_stub -lSceDisplay_stub \
            -lvitashark -lSceShaccCgExt -ltaihen_stub -lSceShaccCg_stub \
            -lSceKernelDmacMgr_stub -lSceCtrl_stub -lSceTouch_stub \

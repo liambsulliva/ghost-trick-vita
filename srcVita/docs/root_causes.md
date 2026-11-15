@@ -1733,6 +1733,14 @@ The class: anything the script gives a sequence, a later screen that replays it 
 
 Guard: the converter reads each 0xf8 site, follows a `0x2d` call, and bakes `staffpage <page> <screens> <fade in> <hold> <fade out>` plus `staffmusic <name>` from the music started before the first page (`staff_roll_rows` in `chapter_assets.py`). It stops the bake if a page is not followed by a fade in, the page's wait and a fade out, or is started twice with different fades. `script_staff_page_row_read` reads the row for both the script tables and `staff_credits.c`. The credits player runs every baked page in page order on the native `script_staff_roll` machine and the fade arithmetic of `script_fades.c` (`script_fade_start`, `script_fade_step`), and draws pages through the same `script_view_draw_staff_page` the ending uses. It skips the scenes, waits in black until a page's screens are loaded, and plays the baked music. It hands back whatever music the menu had (`music_remember`, `music_restore`) when the roll ends, on CIRCLE or on a tap of the back pill. The Options row is greyed only when the set bakes no staff pages, as the DS set does. Tests: `tests/tools/test_staff_roll_rows.py`, `tests/unit/test_staff_credits.c` (page order, fades from and to black, waiting for art, the hold, music and its hand-back) and `tests/unit/test_pause_options.c` (the row is selectable, CROSS plays, CIRCLE and the last page return to Options).
 
+### 233. The Vita build stopped linking when the system language arrived beside the audit's shorter link line
+
+Found when the setup script built the package: `system_state_language` calls `sceAppUtilInit` and `sceAppUtilSystemParamGetInt`, and the audit (root cause 228) had dropped `-lSceAppUtil_stub` because nothing on its branch called them yet. The two changes merged cleanly and every Mac test passed, since the host build links fakes, but `arm-vita-eabi-gcc` failed with undefined references.
+
+The class: a Vita library the link line lacks for a header the device code includes. Only a VitaSDK link shows it, and the Mac suites never run one.
+
+Guard: `-lSceAppUtil_stub` is back in `LIBS`. `tests/tools/test_link_libraries.py` maps each `psp2/` header the sources include to its stub library and fails when the link line lacks it, or when a new header is not in the map; headers whose functions the default link spec supplies (`psp2/io/`, `psp2/kernel/`) are listed apart.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
