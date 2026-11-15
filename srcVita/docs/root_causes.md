@@ -1562,6 +1562,22 @@ The class: every route search: move steps, the pad's aim and `reach:` waits, in 
 
 Guard: `first_core_a_push_picks` (`script_soul.c`) gathers, once per push, the cores within the reach plus `SOUL_TIP_PICKUP_FAR` plus 1 px of its root, keeping the scene's order so ties still go to the same core. Each simulated tick tests only those. A push with none returns at once. The player's own pick, `core_picked_by_a_tip`, runs the same test over every core. The whole-game replay's marks are byte for byte the same as before. `tests/unit/test_route_pad.c` (`test_a_hop_search_tests_only_the_cores_a_tip_can_reach`) adds ten cores far out of reach and checks that one hop search makes under 400 tip tests; testing every core makes 1596.
 
+### 215. Hints had to follow a player through a route written for auto-play
+
+The route moves on by counting: a trick step is done when any trick fires or is refused, a tap step when any tap is taken. That is safe while auto-play makes exactly the route's presses, but a player presses anything. The hint system (`script_hints.c`) needs to know which route step the player is on, so it follows the player's own actions: each trick, balloon tap, swap, character button, talk with the dead and phone answer is matched against the route's next step that acts on an object, and only that step.
+
+Running that follower beside auto-play over the whole game showed three ways the route's counting hides what happened:
+
+- A CROSS on a core with no trick is refused (root cause 205), and the route still counts it. st06_game004, st01_game020 and st03_game000 have such steps, so the follower counts a refused press as its trick too.
+- A talk with the dead starts again after each choice in it. Matching by action alone let the first talk's restarts finish the next talk's step in st02_game036, so a talk is matched by its object.
+- A retry after a death does not rewind the route: auto-play keeps its step across the reload (`route_step_after_retry`). The follower keeps its place too and goes to a step only when that step waits on `retried`.
+
+Native: none. The game has no hints. The balloon is drawn and tapped through the tap balloons' own path (`script_balloons_are_live`, root cause 196), but it is kept out of the eight native balloon slots, because scripts test and close those slots (ops 0x4b, 0x50, 0x4d).
+
+The class: every routed scene, and anything else that reads the route to learn where a player is.
+
+Guard: at every finished route step the replay asks whether the follower is behind or ahead of auto-play and marks `hint_behind_route` or `hint_ahead_of_route`, and `make route-check` fails on either. The whole-game replay has none. It marks `hint_has_no_target` for a step a hint could not point at when it begins: 25 of the object steps (18 balloons, 5 character buttons and 2 phone answers), and no trick, swap or talk with the dead. `tests/unit/test_hints.c` covers the clock, the tap button choice, the one hint per scene, the camera pan, the retry and the steps with no object. `tests/tools/test_hud_art.py` checks that the "?" cell the converter draws on `hud_sheet` is the cell the app reads.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

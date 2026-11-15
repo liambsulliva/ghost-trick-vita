@@ -871,6 +871,7 @@ static int run_one_tick(void)
     }
     route_us = clock_now_us() - started_us;
     data->machine.text_speed = talk_speed_of(game_settings_now()->text_speed);
+    data->machine.hints.delay_ticks = game_settings_hint_delay_ticks();
     script_machine_tick(&data->machine);
     tick_us = clock_now_us() - started_us;
     if (tick_us > longest_tick_us) {

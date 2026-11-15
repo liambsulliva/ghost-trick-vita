@@ -73,6 +73,8 @@
 #define SOUL_WISP_RADIUS_SPREAD 10.0f
 #define SOUL_WISP_RADIUS_SMALLEST 1.0f
 #define CORE_GLOW_SIZE 84.0f
+#define HINT_PULSE_FAINTEST 0.25f
+#define HINT_PULSE_GROWTH 0.8f
 #define CORE_ORB_SIZE 40.0f
 #define MARK_ART_TEXTURE "ui_mark"
 #define MARK_ART_WIDTH 512.0f
@@ -241,6 +243,10 @@ static float cursor_y;
 static float cursor_from_x;
 static float cursor_from_y;
 static struct view_core_mark core_marks[VIEW_CORE_MARK_MAX];
+static int hint_pulse_is_on;
+static float hint_pulse_x;
+static float hint_pulse_y;
+static float hint_pulse_level;
 
 void script_view_start(const struct script_tables *new_tables)
 {
@@ -254,6 +260,7 @@ void script_view_start(const struct script_tables *new_tables)
     talk_is_showing = 0;
     soul_is_on = 0;
     cursor_is_shown = 0;
+    hint_pulse_is_on = 0;
     age_ticks = 0;
     memset(effects, 0, sizeof(effects));
     phone_split_index = -1;
@@ -375,6 +382,14 @@ void script_view_soul_sparks_changed(int elapsed_ticks, float x, float y)
     sparks_elapsed_ticks = elapsed_ticks;
     sparks_x = x;
     sparks_y = y;
+}
+
+void script_view_hint_changed(const struct script_hint_view *view)
+{
+    hint_pulse_is_on = view->pulse_is_on;
+    hint_pulse_x = view->pulse_x;
+    hint_pulse_y = view->pulse_y;
+    hint_pulse_level = view->pulse_level;
 }
 
 void script_view_core_marked(int object_index, int slot, float x, float y, int is_dead, float opacity)
@@ -1022,6 +1037,21 @@ static void draw_core_marks(void)
     }
 }
 
+static void draw_hint_pulse(void)
+{
+    struct renderer_color tint;
+    float screen_x;
+    float screen_y;
+
+    if (!hint_pulse_is_on) {
+        return;
+    }
+    tint = white;
+    tint.alpha = HINT_PULSE_FAINTEST + (1.0f - HINT_PULSE_FAINTEST) * hint_pulse_level;
+    scene_view_world_to_screen(scene_stage_view(), hint_pulse_x, hint_pulse_y, &screen_x, &screen_y);
+    draw_centered(SOUL_GLOW_TEXTURE, screen_x, screen_y, CORE_GLOW_SIZE * (1.0f + HINT_PULSE_GROWTH * hint_pulse_level), tint);
+}
+
 static void draw_blob(float center_x, float center_y, float radius)
 {
     float size;
@@ -1457,6 +1487,7 @@ static void draw_soul(void)
     }
     soul_transition_draw_ghost_lines(scene_stage_soul_ghost());
     draw_core_marks();
+    draw_hint_pulse();
     if (!cursor_is_shown) {
         return;
     }

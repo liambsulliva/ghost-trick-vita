@@ -47,6 +47,7 @@ enum script_soul_motion {
 
 #define SCRIPT_BALLOON_KIND_TAP_MARKS 100
 #define SCRIPT_BALLOON_KIND_TAP_DOTS 101
+#define SCRIPT_BALLOON_KIND_TAP_HINT 102
 
 enum script_pill_id {
     SCRIPT_PILL_GHOST,
@@ -90,6 +91,19 @@ struct script_hud_view {
     int phone_book_count;
     int phone_book_cursor;
     int phone_book_places[SCRIPT_PHONE_BOOK_MOST];
+};
+
+struct script_hint_view {
+    int bubble_is_up;
+    int bubble_tap_group;
+    float bubble_x;
+    float bubble_y;
+    const char *flash_object;
+    float flash_alpha;
+    int pulse_is_on;
+    float pulse_x;
+    float pulse_y;
+    float pulse_level;
 };
 
 struct script_outputs {
@@ -158,6 +172,7 @@ struct script_outputs {
     void (*effect_stepping_changed)(const char *name, int is_stopped);
     void (*staff_roll_changed)(int is_drawn, int page, int screen_count, float scroll);
     void (*credits_changed)(int is_on);
+    void (*hint_changed)(const struct script_hint_view *view);
 };
 
 #endif

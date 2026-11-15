@@ -455,6 +455,38 @@ struct script_soul {
     struct script_exchange exchange;
 };
 
+enum script_hint_phase {
+    SCRIPT_HINT_WAITING,
+    SCRIPT_HINT_OFFERED,
+    SCRIPT_HINT_PANNING_OUT,
+    SCRIPT_HINT_HOLDING,
+    SCRIPT_HINT_PANNING_BACK,
+    SCRIPT_HINT_SHOWN,
+    SCRIPT_HINT_SPENT
+};
+
+struct script_hints {
+    int delay_ticks;
+    const char *script;
+    int next_step;
+    int stuck_ticks;
+    enum script_hint_phase phase;
+    int was_used;
+    int tap_group;
+    int tap_is_pending;
+    int target_step;
+    int target_object;
+    int target_slot;
+    int phase_ticks;
+    int pan_ticks;
+    int flash_clock;
+    int pulse_clock;
+    int home_camera_x;
+    int home_camera_y;
+    int goal_camera_x;
+    int goal_camera_y;
+};
+
 #define COUNTDOWN_KEPT_ACROSS_A_SCRIPT_CHANGE_FLAG 0x1008u
 
 struct script_machine {
@@ -590,6 +622,7 @@ struct script_machine {
     int soul_slot_kept_for_the_retry;
     int demo_soul_is_on;
     unsigned int random_state;
+    struct script_hints hints;
 };
 
 void script_machine_init(struct script_machine *machine, const struct script_outputs *outputs, enum script_timing timing, const char *stop_act);
@@ -710,6 +743,21 @@ void script_soul_effect_signalled(struct script_machine *machine, const char *na
 int script_soul_waits_on_the_player(const struct script_machine *machine);
 int script_soul_world_is_playable(const struct script_machine *machine);
 int script_soul_demo_mode_offers_the_ghost_view(const struct script_machine *machine);
+int script_soul_player_has_control(const struct script_machine *machine);
+void script_machine_nearest_camera(const struct script_machine *machine, int *x, int *y);
+void script_hints_script_began(struct script_machine *machine, const char *script, int is_a_retry);
+void script_hints_scene_retried(struct script_machine *machine);
+void script_hints_player_did(struct script_machine *machine, enum script_route_action action, const char *object_name);
+void script_hints_act_began(struct script_machine *machine, const char *object_name, const char *act_name);
+void script_hints_note_tap(struct script_machine *machine);
+int script_hints_have_passed_step(const struct script_machine *machine, int step_index);
+int script_hints_are_ahead_of_step(const struct script_machine *machine, int step_index);
+int script_hints_can_point_at_step(const struct script_machine *machine, int step_index);
+int script_hints_take_tap(struct script_machine *machine, int tap_group);
+int script_hints_hold_the_soul(const struct script_machine *machine);
+int script_hints_bubble_is_up(const struct script_machine *machine);
+void script_hints_step(struct script_machine *machine);
+void script_hints_report(struct script_machine *machine);
 void script_exchange_reset(struct script_machine *machine);
 int script_exchange_is_on(const struct script_machine *machine);
 int script_exchange_holds_the_chain_out(const struct script_machine *machine);

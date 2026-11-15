@@ -21,6 +21,14 @@ enum game_text_speed {
     GAME_TEXT_SPEED_COUNT
 };
 
+enum game_hint_delay {
+    GAME_HINTS_OFF,
+    GAME_HINTS_AFTER_2_MINUTES,
+    GAME_HINTS_AFTER_5_MINUTES,
+    GAME_HINTS_AFTER_10_MINUTES,
+    GAME_HINT_DELAY_COUNT
+};
+
 enum game_music_type {
     GAME_MUSIC_ORIGINAL,
     GAME_MUSIC_ARRANGED
@@ -38,6 +46,7 @@ struct game_settings {
     int high_contrast;
     int visual_filter;
     int text_speed;
+    int hint_delay;
 };
 
 void game_settings_defaults(struct game_settings *settings);
@@ -54,5 +63,6 @@ float game_settings_darkness(void);
 void game_settings_set_bundled_art(int has_remastered, int has_ds);
 int game_settings_filter_is_pinned(void);
 int game_settings_visual_filter(void);
+int game_settings_hint_delay_ticks(void);
 
 #endif

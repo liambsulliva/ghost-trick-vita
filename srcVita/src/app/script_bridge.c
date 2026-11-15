@@ -829,6 +829,13 @@ static void on_hud_changed(const struct script_hud_view *view)
     script_ui_view_hud_changed(view);
 }
 
+static void on_hint_changed(const struct script_hint_view *view)
+{
+    script_ui_view_hint_changed(view);
+    script_view_hint_changed(view);
+    scene_stage_set_object_flash(view->flash_object, view->flash_alpha);
+}
+
 static void on_soul_vision_changed(int is_on, int with_effect)
 {
     soul_vision_is_on = is_on;
@@ -966,6 +973,7 @@ static const struct script_outputs bridge_outputs = {
     .world_origin_changed = on_world_origin_changed,
     .ui_clip_started = on_ui_clip_started,
     .hud_changed = on_hud_changed,
+    .hint_changed = on_hint_changed,
     .screen_filter_changed = on_screen_filter_changed,
     .mask_fade_color_changed = on_mask_fade_color_changed,
     .actor_changed = timed_actor_changed,

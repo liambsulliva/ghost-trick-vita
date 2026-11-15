@@ -116,6 +116,7 @@ static int set_object_without_reading_ahead(const char *object_name, const char 
         object->hides_in_living_view = 0;
         object->hides_in_soul_view = 0;
         object->ghost_copy_level = SCENE_NO_GHOST_COPY;
+        object->flash_alpha = 0.0f;
     }
     snprintf(object->name, sizeof(object->name), "%s", object_name);
     animation_player_start(&object->player, animation);
@@ -194,6 +195,20 @@ void scene_stage_set_object_ghost_copy(const char *object_name, int level)
     object = find_object(object_name);
     if (object != NULL) {
         object->ghost_copy_level = level;
+    }
+}
+
+void scene_stage_set_object_flash(const char *object_name, float alpha)
+{
+    struct scene_object *object;
+    int index;
+
+    for (index = 0; index < SCENE_OBJECT_MAX; index++) {
+        stage.objects[index].flash_alpha = 0.0f;
+    }
+    object = object_name != NULL ? find_object(object_name) : NULL;
+    if (object != NULL) {
+        object->flash_alpha = alpha;
     }
 }
 
