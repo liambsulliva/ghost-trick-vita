@@ -1542,6 +1542,16 @@ The class: every object whose motion changes to another animation while that ani
 
 Guard: a held pose belongs to the animation that drew it. When the object shows another animation, the hold is forgotten and the object draws nothing until its new frame is ready, as the art gate holds the game meanwhile. A stall inside one animation still holds its last frame. Each such absence of 2 frames or more logs `pose absent object=… frames=… waited_for=…` beside `pose held`, so the stutter sweep can count both. `tests/unit/test_held_pose_keeps_its_animation.c` switches a running Lynne to a lamp whose page is loading and checks that Lynne is not drawn while it loads, that the lamp draws once it is ready and the absence is logged, that a stalled frame of the same animation still holds, and that a hold forgotten for another animation does not come back. The replay's watch lines now also print each watched actor's visibility and ghost copy level.
 
+### 213. The credits' scenes filled the wide screen while the staff pages kept the 4:3 frame
+
+The staff roll draws each page at the DS screen's size, 720 by 540 px in the middle of the Vita screen, but the scenes, movies and fades between and under the pages drew across all 960 px. So the frame jumped between 4:3 and the full width through the credits.
+
+Native: the DS is 4:3 throughout, so the frame is the port's choice. Native marks the credits with its own state: op 0xf8 starts each page (`func_0203dbf0`), and the chain of st15 scripts that follow run their scenes between pages until `GOTO TITLE` (`func_02031e30` clears the ending mode, `game+0x103c`, on the way). The ending mode alone is not the credits: op 0x6a (`func_02011288`) also turns it on partway through the last scene of the story (st13_game022), before any page, and `func_0203dcc0` turns it off each time a page leaves.
+
+The class: every frame of the credits, the pages and every scene, movie and fade between them, and nothing before the first page or after the title.
+
+Guard: the machine keeps `credits_are_on` from the first staff page until the script chain asks for the title, and reports it through `credits_changed`. `script_view_draw_on_covers` draws black bars, last, either side of the DS frame, sized from the same width the staff pages use (`SCENE_VIEW_DS_SCREEN_WIDTH` times `VITA_PIXELS_PER_DS_PIXEL`). `tests/unit/test_credits_side_bars.c` plays a page, a scene after it and `GOTO TITLE`, and checks the credits stay on through the scene and end at the title, that the ending mode alone does not start them, and that the bars leave a 4:3 frame the width of a staff page and go away when the credits end or the view restarts.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

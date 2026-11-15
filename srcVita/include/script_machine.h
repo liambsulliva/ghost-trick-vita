@@ -553,6 +553,7 @@ struct script_machine {
     struct script_staff_roll staff_roll;
     int mode_byte_under_the_staff_roll;
     int ending_mode_is_on;
+    int credits_are_on;
     int phone_view_is_on;
     int phone_book_place;
     int phone_book_is_open;

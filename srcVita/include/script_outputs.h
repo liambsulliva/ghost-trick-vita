@@ -157,6 +157,7 @@ struct script_outputs {
     void (*effect_fade_out_started)(const char *name, int ticks);
     void (*effect_stepping_changed)(const char *name, int is_stopped);
     void (*staff_roll_changed)(int is_drawn, int page, int screen_count, float scroll);
+    void (*credits_changed)(int is_on);
 };
 
 #endif

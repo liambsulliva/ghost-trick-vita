@@ -186,6 +186,7 @@ struct view_core_mark {
 };
 
 static int staff_roll_is_drawn;
+static int credits_are_on;
 static int staff_roll_page;
 static int staff_roll_screen_count;
 static float staff_roll_scroll;
@@ -257,6 +258,7 @@ void script_view_start(const struct script_tables *new_tables)
     memset(effects, 0, sizeof(effects));
     phone_split_index = -1;
     staff_roll_is_drawn = 0;
+    credits_are_on = 0;
     rain_field_seed(&rain);
     scene_stage_set_soul_mode(0);
 }
@@ -1795,6 +1797,38 @@ void script_view_staff_roll_changed(int is_drawn, int page, int screen_count, fl
     staff_roll_scroll = scroll;
 }
 
+void script_view_credits_changed(int is_on)
+{
+    credits_are_on = is_on;
+}
+
+static float ds_frame_width(void)
+{
+    return SCENE_VIEW_DS_SCREEN_WIDTH * VITA_PIXELS_PER_DS_PIXEL;
+}
+
+static float ds_frame_left(void)
+{
+    return ((float)RENDERER_WIDTH - ds_frame_width()) / 2.0f;
+}
+
+static void draw_credits_side_bars(void)
+{
+    struct renderer_rect bar;
+
+    if (!credits_are_on || ds_frame_left() <= 0.0f) {
+        return;
+    }
+    bar.x = 0.0f;
+    bar.y = 0.0f;
+    bar.width = ds_frame_left();
+    bar.height = (float)RENDERER_HEIGHT;
+    renderer_draw_filled_rect(bar, movie_black);
+    bar.x = ds_frame_left() + ds_frame_width();
+    bar.width = (float)RENDERER_WIDTH - bar.x;
+    renderer_draw_filled_rect(bar, movie_black);
+}
+
 static void draw_staff_roll(void)
 {
     char name[ASSET_NAME_MAX];
@@ -1805,7 +1839,7 @@ static void draw_staff_roll(void)
     if (!staff_roll_is_drawn) {
         return;
     }
-    left = ((float)RENDERER_WIDTH - SCENE_VIEW_DS_SCREEN_WIDTH * VITA_PIXELS_PER_DS_PIXEL) / 2.0f;
+    left = ds_frame_left();
     top = ((float)RENDERER_HEIGHT - SCENE_VIEW_DS_SCREEN_HEIGHT * VITA_PIXELS_PER_DS_PIXEL) / 2.0f;
     for (screen = 0; screen < staff_roll_screen_count; screen++) {
         const struct cached_texture *texture;
@@ -1823,7 +1857,7 @@ static void draw_staff_roll(void)
         }
         area.x = left;
         area.y = top + span.top * VITA_PIXELS_PER_DS_PIXEL;
-        area.width = SCENE_VIEW_DS_SCREEN_WIDTH * VITA_PIXELS_PER_DS_PIXEL;
+        area.width = ds_frame_width();
         area.height = span.row_count * VITA_PIXELS_PER_DS_PIXEL;
         uv.x = 0.0f;
         uv.y = span.first_row / (float)SCRIPT_STAFF_SCREEN_HEIGHT;
@@ -1847,4 +1881,5 @@ void script_view_draw_on_covers(void)
     }
     script_ui_view_draw();
     draw_movie();
+    draw_credits_side_bars();
 }
