@@ -21,7 +21,7 @@ No game data lives in this folder. Converted assets, captures, reference video a
 | `tools/assets/extract_text_key.py` | Finds the text key in your own copy of the Android package |
 | `tools/vita_loop.py` | Installs, launches and reads back from the Vita |
 | `tools/pause_render.py` | Draws the pause menu, or with `--title` the title screen or `--loading` the loading screen, on the Mac from the baked set, after a list of button presses, through `tests/golden/pause_render.c` |
-| `tests/golden/scene_render.c` | Plays the game on the Mac from a baked set with auto-play and saves the screen as PPM pictures at a tick, route step, script or act: `make scene-render`, then run `build/host/scene_render <set folder> <output folder> tick:N [frames] [frames between]` from `extracted/vita_assets`. `tests/host/` holds its disk files and software renderer |
+| `tests/golden/scene_render.c` | Plays the game on the Mac from a baked set with auto-play and saves the screen as PPM pictures at a tick, route step, script or act: `make scene-render`, then run `build/host/scene_render <set folder> <output folder> tick:N [frames] [frames between]` from `extracted/vita_assets`. Its fast-forward draws nothing, so the room's art loads only once saving starts: start a strip at least a second before the moment under test, or a snapshot (the split screen, the ghost view's entry, a film still) can catch an empty screen. `tests/host/` holds its disk files and software renderer |
 | `tools/audio_check.py` | Judges a run log's audio timing and checksums, with no listener |
 | `tools/mutation_check.py` | Breaks the code on purpose to prove the tests notice |
 | `docs/asset_format.md` | The file formats shared by the converter and the app |
@@ -349,7 +349,6 @@ These are the known differences from the original. Bug-fix releases work through
 - The thin pill words.
 - The soul's fly-in from the trick pill.
 - Film-still bubbles are about 40% too wide, and the bubble close is squashed.
-- The split-screen's left panel is black for about 1.4 s at its start.
 - Short black or white holds that the footage does not have.
 - Pacing: narration pages in the opening run about 9.6 s longer in total than the footage (the first page alone about 4 s). Talk pages cycle about every 2.8 s, against 2.5 s.
 

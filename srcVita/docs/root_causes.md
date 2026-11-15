@@ -1815,6 +1815,14 @@ Checked with it against `chapter1_720p60.mp4` (the footage's 4:3 picture is 720 
 
 Guard: none in `make test`; the tool needs the baked set. Run it before listing or closing a visual finding.
 
+### 242. The split-screen's black left panel was measured on a picture the device never draws
+
+The README said the phone call's split screen kept its left panel black for about 1.4 s. Drawn every tick from tick 99700 (the device draws every frame), the port's left panel darkens over 6 ticks as the right panel slides in (99796 to 99801), is fully black for 9 ticks (99802 to 99810) and opens from the middle over 10 (99811 to 99820). The footage at 60 fps from 1907.55 s darkens over 7 frames, is fully black for 10 and opens over 7. The doors are `phone_split.c`'s 16 steps of 16.875 px, so the opening's length in a fixed window depends on the window's height; both open within the same third of a second. Nothing to fix in the port.
+
+What did differ was the renderer. A strip started at tick 99780, 10 ticks before the split takes its snapshot (`PHONE_SPLIT_CAPTURE_AGE`, age 13), showed the whole picture black for 20 ticks. `scene_render`'s fast-forward only updates and never draws, so no art is requested on the way; the first ten frames drawn could not load the room before the snapshot was taken, and the snapshot kept the empty screen. A strip started at 99700 shows the room. The class: any snapshot the app takes on a set tick (the split's capture, the ghost view's entry at tick 11, a film still) taken within the first frames after the fast-forward. Drawing through the fast-forward would fix it, but the software renderer takes about 50 ms a frame, which makes a whole-chapter strip take hours.
+
+Guard: none in code. The tool's README row says to start a strip at least a second before the moment under test.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
