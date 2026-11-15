@@ -31,6 +31,27 @@ def dead_symbols_by_object(map_text):
     return dead
 
 
+def live_symbols(map_text):
+    names = set()
+    section = None
+    for line in map_text.splitlines():
+        if line.startswith("# Symbols"):
+            section = "symbols"
+        elif line.startswith("# "):
+            if section == "symbols" and not line.startswith("# Address"):
+                section = None
+        elif section == "symbols":
+            match = OBJECT_LINE.search(line)
+            if match:
+                name = match.group(2).strip()
+                names.add(name[1:] if name.startswith("_") else name)
+    return names
+
+
+def linked_but_never_allowed(map_text, never_linked):
+    return sorted(set(never_linked) & live_symbols(map_text))
+
+
 def exported_symbols(object_path):
     listing = subprocess.run(["nm", "-gU", object_path], capture_output=True, text=True, check=True).stdout
     return {line.split()[-1] for line in listing.splitlines() if line.strip()}
@@ -76,6 +97,7 @@ def main():
     parser.add_argument("map_file")
     parser.add_argument("listed")
     parser.add_argument("--game-objects", required=True, help="text every game object path contains")
+    parser.add_argument("--never-linked", nargs="*", default=[], help="functions the player build must not reach, such as the run log's file writer")
     parser.add_argument("--device-sources", nargs="*", default=[], help="device layer sources the host link replaces with fakes")
     arguments = parser.parse_args()
     with open(arguments.map_file, encoding="utf-8", errors="replace") as map_file:
@@ -85,6 +107,7 @@ def main():
         return 0
     found = unreached_names(map_text, arguments.game_objects, words_in(arguments.device_sources))
     lines = problems(found, read_list(arguments.listed))
+    lines.extend("the player build reaches %s, which only the debug build may use" % name for name in linked_but_never_allowed(map_text, arguments.never_linked))
     for line in lines:
         print(line)
     print("player link check: %d unreached, %d problems" % (len(found), len(lines)))

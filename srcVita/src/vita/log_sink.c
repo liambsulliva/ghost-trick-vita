@@ -13,10 +13,9 @@
 #define FLUSH_POLL_US 1000
 #define DROPPED_NOTE_MAX 64
 #define LOG_FILE_MOST_BYTES (128u * 1024u * 1024u)
-#define EARLIER_PART_SUFFIX ".earlier"
 
 static char sink_path[FILE_PATH_MAX];
-static char earlier_part_path[FILE_PATH_MAX + sizeof(EARLIER_PART_SUFFIX)];
+static char earlier_part_path[FILE_PATH_MAX + sizeof(LOG_SINK_EARLIER_PART_SUFFIX)];
 static unsigned long long bytes_in_file;
 static char queue[QUEUE_SIZE];
 static char writer_buffer[QUEUE_SIZE];
@@ -105,7 +104,7 @@ void log_sink_start(const char *path)
     SceUID thread;
 
     snprintf(sink_path, sizeof(sink_path), "%s", path);
-    snprintf(earlier_part_path, sizeof(earlier_part_path), "%s%s", path, EARLIER_PART_SUFFIX);
+    snprintf(earlier_part_path, sizeof(earlier_part_path), "%s%s", path, LOG_SINK_EARLIER_PART_SUFFIX);
     sceIoRemove(earlier_part_path);
     bytes_in_file = size_of_file(sink_path);
     queued_bytes = 0;

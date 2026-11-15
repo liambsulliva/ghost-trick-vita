@@ -1697,6 +1697,14 @@ The class: any library left on the link line after its last caller went.
 
 Guard: `make check-libs` relinks without each library in turn and fails if a link still succeeds. The imports of the linked app are the same as before; only the order of the stub sections changed.
 
+### 229. The player's build wrote up to 256 MB of log to the memory card
+
+Found when checking what the released build leaves on a player's card: `run_log.c` and `src/vita/log_sink.c` were in both builds, so every player's Vita wrote `ux0:data/ghosttrick/run.log` at about 2 MB an hour on the title screen and more in play, kept up to 128 MB in it and 128 MB more in `run.log.earlier`, and formatted each line on the game's own thread. Native writes no log; the run log is the port's own development tool.
+
+The class: a development aid that is on in the player's build because nothing separates it from the game.
+
+Guard: in the player's build `run_log_write` and `run_log_flush` do nothing, `run_log_open` deletes both log files, and `log_sink` is in `DEBUG_ONLY_NAMES`, so the writer thread and its 256 KB of buffers are not linked. `check_player_link.py --never-linked` fails `make test` if the player's link reaches `log_sink_start`, `log_sink_write` or `log_sink_flush` (`tests/tools/test_player_link.py`). Bug reports use the debug package, which the release workflow publishes as `ghosttrick-<tag>-debug.vpk`.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

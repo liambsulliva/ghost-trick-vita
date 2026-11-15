@@ -2,8 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 #include "clock.h"
+#include "file.h"
 #include "log_sink.h"
 #include "run_log.h"
+
+#ifdef DEBUG_BUILD
 
 #define LOG_FOR_TOOLS_LAUNCH_MARKER "--- launch"
 
@@ -43,3 +46,25 @@ void run_log_flush(void)
 {
     log_sink_flush();
 }
+
+#else
+
+void run_log_open(const char *path)
+{
+    char earlier_part_path[RUN_LOG_LINE_MAX];
+
+    file_delete(path);
+    snprintf(earlier_part_path, sizeof(earlier_part_path), "%s%s", path, LOG_SINK_EARLIER_PART_SUFFIX);
+    file_delete(earlier_part_path);
+}
+
+void run_log_write(const char *format, ...)
+{
+    (void)format;
+}
+
+void run_log_flush(void)
+{
+}
+
+#endif

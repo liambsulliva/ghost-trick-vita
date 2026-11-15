@@ -29,7 +29,7 @@ CFLAGS += -DDEBUG_BUILD
 OBJECT_FOLDER := build/obj_debug
 endif
 
-DEBUG_ONLY_NAMES := bmp_image command_file command_reader fps_overlay screen_burst screen_capture screen_changes screen_watch
+DEBUG_ONLY_NAMES := bmp_image command_file command_reader fps_overlay log_sink screen_burst screen_capture screen_changes screen_watch
 DEBUG_ONLY_SRCS := $(foreach name,$(DEBUG_ONLY_NAMES),$(wildcard src/app/$(name).c src/vita/$(name).c))
 SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
 ifneq ($(DEBUG),1)
@@ -98,6 +98,9 @@ $(LIVEAREA_SOURCE)/icon0.png: tools/make_livearea.py
 release:
 	$(MAKE) RELEASE=1 build/$(TARGET).vpk
 
+release-debug:
+	$(MAKE) DEBUG=1 RELEASE=1 build/$(TARGET).vpk
+
 .PHONY: FORCE
 FORCE:
 
@@ -162,7 +165,7 @@ $(PLAYER_LINK_MAP): $(PLAYER_OBJECTS) $(PLAYER_OBJECT_FOLDER)/stb_vorbis.o
 	$(HOST_CC) $^ -Wl,-dead_strip -Wl,-map,$@ -o $(PLAYER_OBJECT_FOLDER)/player
 
 $(PLAYER_LINK_CHECK): $(PLAYER_LINK_MAP) tests/player_link/unreached.txt tests/tools/check_player_link.py $(PLAYER_DEVICE_SRCS)
-	python3 -I tests/tools/check_player_link.py $(PLAYER_LINK_MAP) tests/player_link/unreached.txt --game-objects $(PLAYER_OBJECT_FOLDER)/src/ --device-sources $(PLAYER_DEVICE_SRCS)
+	python3 -I tests/tools/check_player_link.py $(PLAYER_LINK_MAP) tests/player_link/unreached.txt --game-objects $(PLAYER_OBJECT_FOLDER)/src/ --never-linked log_sink_start log_sink_write log_sink_flush --device-sources $(PLAYER_DEVICE_SRCS)
 	@touch $@
 
 test: $(PLAYER_LINK_CHECK) $(TEST_BINS)

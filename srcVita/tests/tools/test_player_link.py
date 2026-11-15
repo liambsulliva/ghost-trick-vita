@@ -25,6 +25,14 @@ def exports(object_path):
     return {"_toast_show", "_toast_is_showing", "_toast_seen_by_the_device", "_fake_renderer_reset"} if object_path else set()
 
 
+class NeverLinkedTest(unittest.TestCase):
+    def test_a_live_function_on_the_never_list_is_reported(self):
+        self.assertEqual(check_player_link.linked_but_never_allowed(MAP_TEXT, ["toast_show", "toast_is_showing"]), ["toast_show"])
+
+    def test_a_dead_stripped_function_on_the_never_list_passes(self):
+        self.assertEqual(check_player_link.linked_but_never_allowed(MAP_TEXT, ["toast_is_showing", "fake_renderer_reset"]), [])
+
+
 class PlayerLinkTest(unittest.TestCase):
     def found(self):
         return check_player_link.unreached_names(MAP_TEXT, "/src/", {"toast_seen_by_the_device"}, exports)

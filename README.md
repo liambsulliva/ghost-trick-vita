@@ -81,7 +81,7 @@ Launch the app. If it was already open, quit it with START first, because it rea
 
 If you see something else:
 
-| What you see                                                    | What is wrong                                                    | Look in the log for                      |
+| What you see                                                    | What is wrong                                                    | Look in the debug build's log for        |
 | --------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------- |
 | Black or a crash before anything else appears                   | `ur0:data/libshacccg.suprx` is probably missing                  |                                          |
 | A checker pattern and `no assets in ux0:data/ghosttrick/assets` | `manifest.txt` is missing, misplaced or out of date (for the DS set, in `assets_ds`) | `manifest missing`, `manifest invalid`, `asset sets` |
@@ -89,7 +89,7 @@ If you see something else:
 | Magenta blocks                                                  | `textures/` is missing or out of date                            | `texture missing`                        |
 | Rooms with nothing in them                                      | `animations/` is missing or out of date                          | `animation missing`, `animation invalid` |
 
-The log is `ux0:data/ghosttrick/run.log`. It keeps earlier launches, so read below the last `--- launch` line.
+The app writes no log, to save space on the memory card. To see why something went wrong, install the same version's debug package, `ghosttrick-<version>-debug.vpk` from the Releases page (or `make -C srcVita DEBUG=1`), over it and launch it again. It writes `ux0:data/ghosttrick/run.log`, keeping earlier launches, so read below the last `--- launch` line. Installing the regular package again deletes the log.
 
 ### Update to a new version
 
@@ -97,7 +97,7 @@ Pull this repository at the new version's tag, run the setup script again, insta
 
 ## Report a bug
 
-Open an issue on GitHub with what you saw, the chapter and scene, and the part of `ux0:data/ghosttrick/run.log` below the last `--- launch` line. Please leave game text and art out of the issue.
+Open an issue on GitHub with what you saw and the chapter and scene. If you can, install the debug package (see [Check that it worked](#check-that-it-worked)), make the bug happen again and add the part of its `ux0:data/ghosttrick/run.log` below the last `--- launch` line. Please leave game text and art out of the issue.
 
 ## Changes from the original
 
