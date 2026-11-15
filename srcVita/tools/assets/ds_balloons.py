@@ -3,6 +3,7 @@ import struct
 import asset_writers
 import bake_record
 import chapter_assets
+import ds_alert_balloons
 import ds_rom
 import ds_set_text
 import ds_text
@@ -302,4 +303,5 @@ def bake(set_description, scripts, arm9, cartridge, rom_path, record):
     if refused:
         print("ds balloons left out: %d (%s)" % (len(refused), ", ".join(refused[:12])))
     paths, sizes = store_images(images, palette, record)
-    return rows, paths, sizes
+    alert_rows, alert_paths, alert_sizes = ds_alert_balloons.bake(set_description, scripts, cartridge, record)
+    return rows + alert_rows, paths + alert_paths, dict(sizes, **alert_sizes)

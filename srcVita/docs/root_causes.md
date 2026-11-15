@@ -1963,6 +1963,16 @@ Guard: `card_clock`, `card_wave`, `card_hand_hour`, `card_hand_minute`, `card_to
 
 Not done: the middle line (time from textures 177 to 189, place from room labels 687 on, chosen by `func_020265fc` through `data_0209b7b4`) has no app slot; the DS has no seconds hand; `hud_disc`, the death count and `wipe_time_passing` are not traced. Which hand is hour and which minute is read from their length. Not checked on the device or in melonDS.
 
+### 260. The "!" and "?" balloons did not draw in DS mode; only their sound played
+
+Native `func_02044b48` (`uBalloonPicture` start), given no text, makes a `uSwfPlayForBalloon` and plays `cpac_3d.bin` block 3 effect 0x8c (the "?" cloud) for kind 4 and 0x85 (the "!" burst) for every other kind, through `func_02066074`, `func_0204235c` and `func_0201e888(reader, 3, kind)`. Each is a 40-frame movie: the burst (item 2) shows at frame 10, the mark (item 1) at frame 14, both centred on the balloon, and the movie removes itself at frame 39. `ds_set` took its balloon table only from the worded op 0x51 bake (root cause 255), so op 0x52 kinds 2, 4 and 5 had no row and logged `no_balloon_row`.
+
+The class: balloon rows with no text, which native draws with an effect movie rather than a composed texture, and which the DS set never built. The remastered set has a row for kind 5 only.
+
+Guard: `ds_alert_balloons.py` builds one row for each op 0x52 kind in the game chain from the cartridge movie (delay, part order, settled position, grow) and bakes its textures at DS size; `ds_balloons.bake` adds them. It names any kind it cannot place (mirrored kinds 3 and 6, unused by the chain). `tests/tools/test_ds_alert_balloons.py` fails unless every op 0x52 kind has a row with decoded art in every language, and unless `ds_balloons.bake` returns those rows. Checked against a melonDS capture of the opening "!" over Lynne.
+
+Not done: the movie's own end at frame 39 (the app keeps the parts until the balloon's timer ends), the 0.8 to 1.2 to 1.0 overshoot, the burst's 0.9 alpha and the mark's wobble; the row format has no field for them. Not checked on the device.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
