@@ -98,6 +98,8 @@ Converting needs the text key, which the setup script finds in your own copy of 
 
 Narration and bubble text are rendered by the converter, not the app. `convert_assets.py` reads the English text from the remaster's `.msg` files, decodes its `.oft` fonts into its temporary work folder, and draws each line with `magick` into its own DXT5 texture. The app draws these like any other texture, so it has no fonts. `magick` needs FreeType support, which `magick -list format | grep OTF` shows. Decoded fonts are deleted when the converter finishes, fails or is stopped with SIGINT, SIGTERM or SIGHUP, even twice. A SIGKILL can leave them in the system's temporary folder, and the next conversion removes any such folder older than an hour. The output folder holds each line only as a picture, and no story text or font reaches the output folder or git. The file formats and scene steps are in `docs/asset_format.md`.
 
+`game.json`'s `talk.pages_left_out` names talk pages the port does not bake, by `.msg` entry name. Every language is a slot of the same entry, so a page left out is gone in all of them, and the pages after it keep their own DS face and box, which are read by the page's place in the original message. A name that matches no talk page stops the bake. It holds pages 05 to 07 of `m01_0460`, the cot tutorial's "you first have to return to the land of the living" before a trick and Sissel's reply, which the ghost-view trick (see Controls) makes untrue; the talk goes from the cot's trick straight to Back being the way out. `tests/tools/test_talk_pages_left_out.py` covers it.
+
 After every bake, run the loading step:
 
 ```bash

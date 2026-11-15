@@ -358,6 +358,10 @@ def faces_the_set_will_use(packs, set_description, text_key):
 def parse_all_pages(packs, section, text_key):
     raw_pages = read_all_pages(packs, section, text_key)
     faces = read_ds_faces(section)
+    left_out = set(section.get("pages_left_out", []))
+    every_name = {name for pages in section["entries"].values() for _, name in pages}
+    if left_out - every_name:
+        raise message_file.MissingEntryError("pages_left_out names no talk page: " + ", ".join(sorted(left_out - every_name)))
     parsed = {}
     characters = set()
     used_faces = []
@@ -365,6 +369,8 @@ def parse_all_pages(packs, section, text_key):
     for label, pages in raw_pages.items():
         parsed[label] = []
         for page_index, raw_text in enumerate(pages):
+            if section["entries"][label][page_index][1] in left_out:
+                continue
             try:
                 sections = parse_page(raw_text)
             except message_file.MessageFileError:
