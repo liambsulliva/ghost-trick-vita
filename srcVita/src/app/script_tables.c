@@ -233,6 +233,8 @@ static int read_fx_movie_line(struct script_tables *tables, const char *line)
     }
     movie->first_frame = tables->fx_frame_count;
     movie->frame_count = 0;
+    movie->first_piece = tables->fx_piece_count;
+    movie->piece_count = 0;
     movie->first_jump = tables->fx_jump_count;
     movie->jump_count = 0;
     for (status = 0; status < SCRIPT_FX_STATUS_MAX; status++) {
@@ -294,8 +296,29 @@ static int read_fx_status_line(struct script_tables *tables, const char *line)
     return 1;
 }
 
+static int read_fx_piece_line(struct script_tables *tables, const char *line)
+{
+    struct script_fx_piece *piece;
+
+    if (tables->fx_movie_count == 0) {
+        return 0;
+    }
+    if (tables->fx_piece_count >= SCRIPT_FX_PIECE_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
+        return 1;
+    }
+    piece = &tables->fx_pieces[tables->fx_piece_count];
+    if (sscanf(line, "fxpiece %d %f %f %f %f %f %f %f %f", &piece->page, &piece->u0, &piece->v0, &piece->u1, &piece->v1, &piece->s0, &piece->t0, &piece->s1, &piece->t1) != 9 || piece->page < 0) {
+        return 0;
+    }
+    tables->fx_piece_count = tables->fx_piece_count + 1;
+    tables->fx_movies[tables->fx_movie_count - 1].piece_count = tables->fx_movies[tables->fx_movie_count - 1].piece_count + 1;
+    return 1;
+}
+
 static int read_fx_frame_line(struct script_tables *tables, const char *line)
 {
+    struct script_fx_movie *movie;
     struct script_fx_frame *frame;
     float *c;
 
@@ -306,13 +329,18 @@ static int read_fx_frame_line(struct script_tables *tables, const char *line)
         tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
+    movie = &tables->fx_movies[tables->fx_movie_count - 1];
     frame = &tables->fx_frames[tables->fx_frame_count];
     c = frame->corners;
-    if (sscanf(line, "fxframe %d %f %f %f %f %f %f %f %f %f %f %f %f", &frame->page, &frame->u0, &frame->v0, &frame->u1, &frame->v1, &c[0], &c[1], &c[2], &c[3], &c[4], &c[5], &c[6], &c[7]) != 13) {
+    if (sscanf(line, "fxframe %d %d %f %f %f %f %f %f %f %f", &frame->first_piece, &frame->piece_count, &c[0], &c[1], &c[2], &c[3], &c[4], &c[5], &c[6], &c[7]) != 10) {
         return 0;
     }
+    if (frame->first_piece < 0 || frame->piece_count < 0 || frame->first_piece + frame->piece_count > movie->piece_count) {
+        return 0;
+    }
+    frame->first_piece = movie->first_piece + frame->first_piece;
     tables->fx_frame_count = tables->fx_frame_count + 1;
-    tables->fx_movies[tables->fx_movie_count - 1].frame_count = tables->fx_movies[tables->fx_movie_count - 1].frame_count + 1;
+    movie->frame_count = movie->frame_count + 1;
     return 1;
 }
 
@@ -349,6 +377,9 @@ static int read_effect_line(struct script_tables *tables, const char *line)
     }
     if (text_line_starts_with(line, "fxmovie ")) {
         return read_fx_movie_line(tables, line);
+    }
+    if (text_line_starts_with(line, "fxpiece ")) {
+        return read_fx_piece_line(tables, line);
     }
     if (text_line_starts_with(line, "fxframe ")) {
         return read_fx_frame_line(tables, line);

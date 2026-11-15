@@ -17,6 +17,7 @@
 #include "ds_units.h"
 
 #define VIEW_EFFECT_MAX 16
+#define FX_PIECES_PER_DRAW 64
 #define VIEW_EFFECT_NAME_MAX 32
 #define BOX_BOTTOM_TEXTURE "talk_box_bottom"
 #define BOX_TOP_TEXTURE "talk_box_top"
@@ -677,26 +678,69 @@ static void draw_flipbook(const struct script_flipbook *book, unsigned int age, 
     renderer_draw_sprite(texture->texture, area, uv, tint);
 }
 
-static void draw_fx_frame(const struct script_fx_movie *movie, const struct script_fx_frame *frame, const struct view_effect *effect)
+static void fx_point_at(const float *screen_corners, float s, float t, struct renderer_vertex *vertex)
+{
+    float top_x;
+    float top_y;
+    float bottom_x;
+    float bottom_y;
+
+    top_x = screen_corners[0] + (screen_corners[2] - screen_corners[0]) * s;
+    top_y = screen_corners[1] + (screen_corners[3] - screen_corners[1]) * s;
+    bottom_x = screen_corners[6] + (screen_corners[4] - screen_corners[6]) * s;
+    bottom_y = screen_corners[7] + (screen_corners[5] - screen_corners[7]) * s;
+    vertex->x = top_x + (bottom_x - top_x) * t;
+    vertex->y = top_y + (bottom_y - top_y) * t;
+}
+
+static const struct cached_texture *fx_page_texture(const struct script_fx_movie *movie, int page)
 {
     char name[ASSET_NAME_MAX];
     const struct cached_texture *texture;
-    struct renderer_vertex corners[6];
-    struct renderer_color tint;
-    float screen_x;
-    float screen_y;
-    float sine;
-    float cosine;
-    int index;
 
-    fx_page_name(movie, frame->page, name);
+    fx_page_name(movie, page, name);
     if (scene_stage_view()->mono_mode_is_on && !soul_is_on) {
         strncat(name, TEXTURE_CACHE_GRAYSCALE_SUFFIX, sizeof(name) - strlen(name) - 1u);
     }
     texture = texture_cache_use_or_start_loading(name);
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
-        return;
+        return NULL;
     }
+    return texture;
+}
+
+static void add_fx_piece(const struct script_fx_piece *piece, const float *screen_corners, struct renderer_vertex *corners)
+{
+    fx_point_at(screen_corners, piece->s0, piece->t0, &corners[0]);
+    fx_point_at(screen_corners, piece->s1, piece->t0, &corners[1]);
+    fx_point_at(screen_corners, piece->s1, piece->t1, &corners[2]);
+    fx_point_at(screen_corners, piece->s0, piece->t1, &corners[5]);
+    corners[0].u = piece->u0;
+    corners[0].v = piece->v0;
+    corners[1].u = piece->u1;
+    corners[1].v = piece->v0;
+    corners[2].u = piece->u1;
+    corners[2].v = piece->v1;
+    corners[5].u = piece->u0;
+    corners[5].v = piece->v1;
+    corners[3] = corners[2];
+    corners[4] = corners[0];
+}
+
+static void draw_fx_frame(const struct script_fx_movie *movie, const struct script_fx_frame *frame, const struct view_effect *effect)
+{
+    struct renderer_vertex corners[FX_PIECES_PER_DRAW * 6];
+    const struct cached_texture *texture;
+    const struct script_fx_piece *piece;
+    struct renderer_color tint;
+    float screen_corners[8];
+    float screen_x;
+    float screen_y;
+    float sine;
+    float cosine;
+    int batched;
+    int index;
+
     scene_view_world_to_screen(scene_stage_view(), effect->x, effect->y, &screen_x, &screen_y);
     sine = sinf(effect->aim_degrees * FX_DEGREES_TO_RADIANS);
     cosine = cosf(effect->aim_degrees * FX_DEGREES_TO_RADIANS);
@@ -706,30 +750,37 @@ static void draw_fx_frame(const struct script_fx_movie *movie, const struct scri
 
         x = frame->corners[index * 2];
         y = frame->corners[index * 2 + 1];
-        corners[index].x = screen_x + (x * cosine - y * sine) * VITA_PIXELS_PER_DS_PIXEL;
-        corners[index].y = screen_y + (x * sine + y * cosine) * VITA_PIXELS_PER_DS_PIXEL;
+        screen_corners[index * 2] = screen_x + (x * cosine - y * sine) * VITA_PIXELS_PER_DS_PIXEL;
+        screen_corners[index * 2 + 1] = screen_y + (x * sine + y * cosine) * VITA_PIXELS_PER_DS_PIXEL;
     }
-    corners[0].u = frame->u0;
-    corners[0].v = frame->v0;
-    corners[1].u = frame->u1;
-    corners[1].v = frame->v0;
-    corners[2].u = frame->u1;
-    corners[2].v = frame->v1;
-    corners[3].u = frame->u0;
-    corners[3].v = frame->v1;
-    corners[4] = corners[0];
-    corners[5] = corners[3];
-    corners[3] = corners[2];
     tint = white;
     if (effect->fade_ticks > 0) {
         tint.alpha = (float)effect->fade_ticks_left / (float)effect->fade_ticks;
     }
-    renderer_draw_triangles(texture->texture, corners, 2, tint);
+    batched = 0;
+    texture = NULL;
+    for (index = 0; index < frame->piece_count; index++) {
+        piece = &tables->fx_pieces[frame->first_piece + index];
+        if (batched > 0 && (piece->page != tables->fx_pieces[frame->first_piece + index - 1].page || batched == FX_PIECES_PER_DRAW)) {
+            if (texture != NULL) {
+                renderer_draw_triangles(texture->texture, corners, batched * 2, tint);
+            }
+            batched = 0;
+        }
+        if (batched == 0) {
+            texture = fx_page_texture(movie, piece->page);
+        }
+        add_fx_piece(piece, screen_corners, &corners[batched * 6]);
+        batched = batched + 1;
+    }
+    if (batched > 0 && texture != NULL) {
+        renderer_draw_triangles(texture->texture, corners, batched * 2, tint);
+    }
 }
 
 static void draw_fx_movie_frame(const struct view_effect *effect, const struct script_fx_movie *movie, int frame)
 {
-    if (frame >= 0 && frame < movie->frame_count && tables->fx_frames[movie->first_frame + frame].page >= 0) {
+    if (frame >= 0 && frame < movie->frame_count && tables->fx_frames[movie->first_frame + frame].piece_count > 0) {
         draw_fx_frame(movie, &tables->fx_frames[movie->first_frame + frame], effect);
     }
 }

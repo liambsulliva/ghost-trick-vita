@@ -3,7 +3,7 @@
 #include "script_tables.h"
 #include "test_support.h"
 
-#define BLANK_FRAME "fxframe -1 0 0 0 0 0 0 0 0 0 0 0 0\n"
+#define BLANK_FRAME "fxframe 0 0 0 0 0 0 0 0 0 0\n"
 #define FOUR_FRAMES BLANK_FRAME BLANK_FRAME BLANK_FRAME BLANK_FRAME
 #define TICKS_TO_RUN 400
 
@@ -129,6 +129,31 @@ static void test_a_rolled_jump_is_taken_about_one_time_in_its_sides(void)
     CHECK(visits_to_the_rare_frame < 250);
 }
 
+static void test_each_frame_names_its_own_movie_s_pieces(void)
+{
+    const struct script_fx_movie *movie;
+    const struct script_fx_frame *frame;
+    const struct script_fx_piece *piece;
+    const char *text;
+
+    text = "fxmovie puff 1 1 0 -1 1\nfxpiece 0 0 0 0.5 0.5 0 0 1 1\nfxframe 0 1 0 0 8 0 8 8 0 8\n"
+           "fxmovie wind 1 1 0 -1 2\nfxpiece 0 0 0 0.25 0.25 0 0 0.5 0.5\nfxpiece 1 0.5 0.5 1 1 0.5 0.5 1 1\nfxframe 0 2 0 0 16 0 16 16 0 16\nfxframe 1 1 0 0 16 0 16 16 0 16\n" BLANK_FRAME;
+    movie = movie_of(text, "wind");
+    CHECK(movie != NULL);
+    CHECK_INT(movie->first_piece, 1);
+    CHECK_INT(movie->piece_count, 2);
+    CHECK_INT(movie->frame_count, 3);
+    frame = &tables.fx_frames[movie->first_frame];
+    CHECK_INT(frame->first_piece, 1);
+    CHECK_INT(frame->piece_count, 2);
+    piece = &tables.fx_pieces[frame[1].first_piece];
+    CHECK_INT(piece->page, 1);
+    CHECK(piece->s0 == 0.5f && piece->t1 == 1.0f);
+    CHECK_INT(frame[2].piece_count, 0);
+    script_tables_clear(&tables);
+    CHECK(!script_tables_read_effects(&tables, "fxmovie puff 1 1 0 -1 1\nfxpiece 0 0 0 1 1 0 0 1 1\nfxframe 1 1 0 0 8 0 8 8 0 8\n", 78u));
+}
+
 int main(void)
 {
     test_a_movie_with_no_jumps_plays_as_its_age_says();
@@ -136,5 +161,6 @@ int main(void)
     test_a_movie_that_reads_status_loops_until_the_game_changes_it();
     test_a_movie_with_status_labels_goes_to_the_label();
     test_a_rolled_jump_is_taken_about_one_time_in_its_sides();
+    test_each_frame_names_its_own_movie_s_pieces();
     return test_finish("unit/fx_playhead");
 }

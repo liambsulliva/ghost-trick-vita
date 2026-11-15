@@ -44,6 +44,7 @@ enum script_effect_kind {
 
 #define SCRIPT_FX_MOVIE_MAX 256
 #define SCRIPT_FX_FRAME_MAX 16384
+#define SCRIPT_FX_PIECE_MAX 40960
 #define SCRIPT_FX_JUMP_MAX 64
 #define SCRIPT_FX_STATUS_MAX 4
 #define SCRIPT_FX_NO_FRAME (-1)
@@ -54,12 +55,21 @@ enum script_effect_kind {
 #define SCRIPT_FX_AFTER_LOOP 1
 #define SCRIPT_FX_AFTER_HOLD 2
 
-struct script_fx_frame {
+struct script_fx_piece {
     int page;
     float u0;
     float v0;
     float u1;
     float v1;
+    float s0;
+    float t0;
+    float s1;
+    float t1;
+};
+
+struct script_fx_frame {
+    int first_piece;
+    int piece_count;
     float corners[8];
 };
 
@@ -79,6 +89,8 @@ struct script_fx_movie {
     int page_count;
     int first_frame;
     int frame_count;
+    int first_piece;
+    int piece_count;
     int first_jump;
     int jump_count;
     int status_frames[SCRIPT_FX_STATUS_MAX];
@@ -215,6 +227,8 @@ struct script_tables {
     struct script_fx_movie fx_movies[SCRIPT_FX_MOVIE_MAX];
     int fx_movie_count;
     struct script_fx_frame fx_frames[SCRIPT_FX_FRAME_MAX];
+    struct script_fx_piece fx_pieces[SCRIPT_FX_PIECE_MAX];
+    int fx_piece_count;
     int staff_page_screens[SCRIPT_STAFF_PAGE_MAX];
     struct script_fx_jump fx_jumps[SCRIPT_FX_JUMP_MAX];
     int fx_jump_count;

@@ -20,6 +20,7 @@ import ds_music
 import ds_rom
 import ds_rooms
 import effect_movies
+import effect_pieces
 import frame_layout
 import hud_art
 import narration
@@ -162,6 +163,14 @@ def code_fingerprint_with_magick(file_names):
 
 def texture_code_fingerprint():
     return code_fingerprint_with_magick(TEXTURE_CODE_FILES)
+
+
+def effect_code_fingerprint():
+    return code_fingerprint_with_magick(TEXTURE_CODE_FILES + ["effect_pieces.py"])
+
+
+def encode_effect_page(work_folder, name, tex_bytes, width, height):
+    return texture_encoder.convert_tex_to_gtex(TEXTURE_TOOL_PATH, work_folder, name, tex_bytes, width, height)[0]
 
 
 def composed_code_fingerprint():
@@ -475,6 +484,8 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
         try:
             texture_results, failures = convert_all_textures(packs, jobs, work_folder, record)
+            effect_results, set_description["effect_movie_text"] = effect_pieces.bake_all(packs, set_description.get("effect_movies_to_bake", []), work_folder, record, effect_code_fingerprint(), encode_effect_page)
+            texture_results = texture_results + effect_results
             narration_lines, text_results, text_failures = convert_text_textures(packs, set_description, messages, work_folder, record)
             composed_results, composed_failures = convert_composed_textures(packs, set_description.get("composed_textures", []), work_folder, record)
             talk_files, talk_results, talk_failures, _ = talk_assets.bake_talk(packs, set_description, text_key, work_folder, record, text_code_fingerprint())
