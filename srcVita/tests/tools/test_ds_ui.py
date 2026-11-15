@@ -162,5 +162,26 @@ class PillSheetTests(unittest.TestCase):
         self.assertAlmostEqual((blob["width"] - 2 * part["x"]) / blob["width"], share, delta=0.01)
 
 
+    def test_a_text_free_part_takes_each_pixel_from_the_textures_whose_words_miss_it(self):
+        dark = bytes((90, 0, 0, 255))
+        white = bytes((255, 255, 255, 255))
+        backdrop = [dark] * 12
+        cards = {}
+        for index, word in enumerate([0, 5, 11]):
+            pixels = list(backdrop)
+            pixels[word] = white
+            cards[10 + index] = image(4, 3, pixels)
+        rule = {"text_green_above": 70, "grow": 0, "differ_above": 30, "rounds": 2}
+        width, height, rgba = ds_ui.compose({"name": "t", "width": 4, "height": 3, "parts": [{"text_free_of": [10, 12], "text_rule": rule}]}, lambda index, opaque: FakePack(cards).texture(index))
+        self.assertEqual(rgba, b"".join(backdrop))
+
+    def test_the_ds_backdrop_is_cartridge_art_with_its_words_taken_out(self):
+        with open(GAME_DESCRIPTION, encoding="utf-8") as source:
+            backdrop = next(entry for entry in json.load(source)["ds_textures"] if entry["name"] == "pause_backdrop")
+        self.assertNotIn("fill", backdrop)
+        self.assertEqual([("text_free_of" in part) for part in backdrop["parts"]], [True])
+        self.assertAlmostEqual(backdrop["width"] / backdrop["height"], 16 / 9, delta=0.01)
+
+
 if __name__ == "__main__":
     unittest.main()

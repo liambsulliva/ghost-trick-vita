@@ -1947,14 +1947,28 @@
     },
     {
       "name": "pause_backdrop",
-      "width": 240,
-      "height": 136,
-      "fill": [
-        123,
-        8,
-        8
-      ],
-      "parts": []
+      "width": 256,
+      "height": 144,
+      "parts": [
+        {
+          "text_free_of": [
+            1042,
+            1135
+          ],
+          "text_rule": {
+            "text_green_above": 70,
+            "grow": 6,
+            "differ_above": 30,
+            "rounds": 3
+          },
+          "crop": [
+            0,
+            24,
+            256,
+            144
+          ]
+        }
+      ]
     },
     {
       "name": "title_logo",
