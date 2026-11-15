@@ -1867,6 +1867,12 @@ The README said the opening's narration ran about 9.6 s longer in total than the
 
 Guard: none needed; auto-play's pacing is a test harness choice.
 
+### 249. "A second speech bubble is missing" did not hold up shot by shot
+
+The README said a second speech bubble went missing late in Chapter 1, in the footage's 1200 to 1250 s and 1320 to 1380 s. Shot by shot, every balloon there is drawn in the port (ticks 62000 to 72000): "So long, sister.", the top box "Just a few more steps!", Lynne's "!", "Oof!", both "Hold it!", "Who's there?!", the second "!", the "×××" balloon together with "That's because I put it up.", "You hear something?", "........" and "Oh!". Two balloons share the screen in both wherever the footage shows two. What does differ is how a thought balloon opens: the footage's rises from the speaker as a dot and shows "···" while it grows, the port's wobbles blank. That is listed in the README on its own.
+
+Guard: none; the README line now names the opening.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

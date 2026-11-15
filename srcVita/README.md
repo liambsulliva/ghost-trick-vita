@@ -343,9 +343,10 @@ These are the known differences from the original. Bug-fix releases work through
 
 **Chapter 1 differences**, found against the reference footage
 
-- A second speech bubble is missing late in the chapter.
-- Some core labels are on the wrong side, or on one line instead of two.
-- The thin pill words.
+- Thought balloons open differently. In the footage (1309.6 s, the "×××" balloon) a small dot rises from the speaker and grows into the balloon with "···" in it for about a fifth of a second before the words show, and a dot stays by its tail; the port wobbles a blank ellipse for about 12 ticks, then shows the words.
+- Chapter 1's cores draw no label. The port keeps one label per object, listed by hand in `game.json` for stages 6 and 14 only. Native takes each core's name and action from its info row (`data_0209c448`, the remaster's `iCoreInfo` rows), which the port already tracks per core for the Trick press. In the footage the label rises from the core and runs along a line, name above and action below, to the left for a core right of centre ("Soul", 1087 s) and to the right otherwise. While the soul stays in a core the footage shows the ring and label for 120 frames in every 260 (621 to 641 s), also during talks; the port shows them once for 165 ticks and drops them while a talk is up.
+- The pill words ("Ghost", "Trick", "Back") are drawn in the talk font with a hairline outline. The footage's are a bold serif face with a dark outline, at the same size; which remaster font or texture draws them is not found.
+- The film still after "(Unconscious, eh?)" (footage 795 s, port tick 40220) turns from grey to full colour after about 30 ticks; the footage keeps it grey, with only Lynne in colour.
 - The soul's fly-in from the trick pill.
 - Short black or white holds that the footage does not have.
 
