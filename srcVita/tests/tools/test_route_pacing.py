@@ -92,6 +92,39 @@ class PacedDwellsTest(unittest.TestCase):
         self.assertEqual(route_pacing.paced_dwells(route, {1: 1050}, {0: 1000}, set(), {}), {1: 70})
 
 
+    def test_never_stretches_a_step_the_route_times_against_the_game(self):
+        route = route_with([10.0, 15.0], pace="instant")
+        self.assertEqual(route_pacing.paced_dwells(route, {1: 1000}, {0: 1000}, set(), {}), {})
+
+    def test_every_instant_step_in_the_game_route_stays_unstretched(self):
+        import json
+        with open(os.path.join(os.path.dirname(route_pacing.__file__), "game.json"), encoding="utf-8") as source:
+            route = json.load(source)["route"]
+        ready = dict((index, 0) for index in range(len(route["steps"])))
+        began = dict((index, -100000) for index in range(len(route["steps"])))
+        dwells = route_pacing.paced_dwells(route, ready, began, set(), {})
+        self.assertEqual([index for index in dwells if route["steps"][index].get("pace") == "instant"], [])
+
+
+class FailureTest(unittest.TestCase):
+    def test_reads_the_failed_steps_from_the_cues(self):
+        lines = ["10\tmark route_step_began 4:move:a:0\n", "99\tmark route_step_failed 4:move:a:0\n", "100\tmark route_hop_beyond_reach 5:move:b:0\n"]
+        self.assertEqual(route_pacing.failed_steps(lines), {4})
+
+    def test_blames_the_last_stretch_before_a_failure_in_the_same_scene(self):
+        route = route_with([1.0, 2.0, 3.0, 4.0])
+        for step in route["steps"]:
+            step["script"] = "scene"
+        self.assertEqual(route_pacing.stretches_before_a_failure(route, {0, 1}, {3}), {1})
+
+    def test_leaves_a_stretch_in_an_earlier_scene_alone(self):
+        route = route_with([1.0, 2.0, 3.0])
+        route["steps"][0]["script"] = "first"
+        route["steps"][1]["script"] = "second"
+        route["steps"][2]["script"] = "second"
+        self.assertEqual(route_pacing.stretches_before_a_failure(route, {0}, {2}), set())
+
+
 class SettlingTest(unittest.TestCase):
     def test_a_pass_never_shortens_a_dwell_the_last_pass_baked(self):
         self.assertEqual(route_pacing.never_shorter_than_before({3: 120}, {3: 270, 5: 150}, set()), {3: 270, 5: 150})

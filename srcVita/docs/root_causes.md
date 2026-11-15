@@ -1664,6 +1664,14 @@ The class: any file whose place on the Vita differs from its place in the conver
 
 Guard: the converter writes the Vita layout. `output_folders.disk_path_of` maps a texture's name to its bucket and is the one rule: `BakeRecord` stores and reads through it, the sweep keeps a texture only in its own bucket, `vita_loop.py` lists bucketed files by name and uploads them to the same place, and `pause_render.py` reads them there. A set baked flat is moved into buckets by rename the first time a newer converter opens it, so nothing is baked again. `tests/tools/test_texture_layout.py` checks the buckets against the C test's examples (`a` in `03`, `movie_time_jump_012` in `30`) and the Makefile's count, the store, the reuse after the move, the sweep and the uploader's listing.
 
+### 225. A fresh setup's pacing stopped the whole-game replay in Chapter 13
+
+Found when `route-check` failed on vita-app with 1341 of 1730 steps and no `GOTO`, while the same code passed with the older pacing. That older file named an earlier route, so the app ignored it (`script route_pacing_stale`) and every step kept its own pace. The setup's "Plan the loading" stage then baked pacing for the current route, and it stretched step 1310, a `ghost_on seesaw` the route paces `instant` in st13_game013, to 171 ticks. By the time the soul was up, the seesaw had thrown the baseball out of the tip's reach, the next moves failed and the swap to the mino never came. Pacing is a test-harness choice that only holds auto-play back to the footage's gaps; native has no route.
+
+The class: a pacing stretch on a step timed against something moving in the room. `route_pacing.py` dropped a stretch only when its own step never began, so a stretch that made a later step fail was kept and the bake settled on a broken replay. 12 `instant` steps were stretched.
+
+Guard: `paced_dwells` never stretches a step whose pace is `instant`, and each pass drops the last stretch before any `route_step_failed` in the same scene, so the bake cannot settle on it; a settled bake prints the steps that still failed. `tests/tools/test_route_pacing.py` checks both, and that no `instant` step in `game.json`'s route can be stretched. The kept `game_pacing.txt` is baked again for the current route, so a fresh setup starts from pacing that passes.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

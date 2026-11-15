@@ -19,6 +19,8 @@ MOST_PASSES = 6
 MOST_EXTRA_TICKS = 300
 GAME_SYNC_WAIT_PREFIXES = ("reach:", "act:", "flag:", "noflag:")
 GAME_DRIVEN_GAP_ACTIONS = ("phone_call",)
+TIMED_PACE = "instant"
+FAILED_MARK = "route_step_failed"
 
 
 def step_times(cue_lines):
@@ -47,6 +49,35 @@ def waits_on_the_game(step):
     return any(token.strip().startswith(GAME_SYNC_WAIT_PREFIXES) for token in step.get("wait", "").split("&"))
 
 
+def is_timed_against_the_game(step):
+    return step.get("pace", "normal") == TIMED_PACE
+
+
+def failed_steps(cue_lines):
+    failed = set()
+    for line in cue_lines:
+        fields = line.rstrip("\n").split("\t")
+        if len(fields) < 2:
+            continue
+        words = fields[1].split()
+        if len(words) >= 3 and words[0] == "mark" and words[1] == FAILED_MARK:
+            failed.add(int(words[2].split(":", 1)[0]))
+    return failed
+
+
+def stretches_before_a_failure(route, stretched, failed):
+    steps = route["steps"]
+    blamed = set()
+    for index in failed:
+        earlier = index
+        while earlier >= 0 and steps[earlier].get("script") == steps[index].get("script"):
+            if earlier in stretched:
+                blamed.add(earlier)
+                break
+            earlier -= 1
+    return blamed
+
+
 def follows_a_ride_or_a_scene_change(previous, step):
     return previous.get("action") in GAME_DRIVEN_GAP_ACTIONS or previous.get("script") != step.get("script")
 
@@ -61,7 +92,7 @@ def paced_dwells(route, ready, began, windows_too_short, drift):
     for index in range(1, len(steps)):
         step = steps[index]
         previous = steps[index - 1]
-        if "footage_s" not in step or "footage_s" not in previous or index in windows_too_short or waits_on_the_game(step) or follows_a_ride_or_a_scene_change(previous, step):
+        if "footage_s" not in step or "footage_s" not in previous or index in windows_too_short or is_timed_against_the_game(step) or waits_on_the_game(step) or follows_a_ride_or_a_scene_change(previous, step):
             continue
         if index not in ready or index - 1 not in began:
             continue
@@ -168,8 +199,11 @@ def main():
         earlier_dwells = dwells_baked_for(pacing_path, route_steps_bytes)
         replay(arguments.replay, arguments.scripts, arguments.cues, arguments.stop_tick)
         with open(arguments.cues, encoding="utf-8", errors="replace") as source:
-            ready, began = step_times(source)
+            cue_lines = source.readlines()
+        ready, began = step_times(cue_lines)
+        failed = failed_steps(cue_lines)
         windows_too_short.update(index for index in stretched if index not in began)
+        windows_too_short.update(stretches_before_a_failure(route, stretched, failed))
         drift = {}
         dwells = never_shorter_than_before(paced_dwells(route, ready, began, windows_too_short, drift), earlier_dwells, windows_too_short)
         changed = bake_record.write_if_different(pacing_path, pacing_file_text(route_steps_bytes, dwells).encode("ascii"))
@@ -177,6 +211,9 @@ def main():
         if not changed:
             keep_settled(arguments.kept, pacing_path)
             script_pack.write_pack(arguments.scripts)
+            for index in sorted(failed):
+                step = route["steps"][index]
+                print("  route step %d %s %s failed in the paced replay" % (index, step["action"], step.get("object", "-")))
             for index in sorted(drift):
                 step = route["steps"][index]
                 print("  footage runs %.1f s longer before step %d %s %s" % (drift[index] / TICKS_PER_SECOND, index, step["action"], step.get("object", "-")))
