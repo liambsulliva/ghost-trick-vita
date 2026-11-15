@@ -35,6 +35,11 @@
 #define SCRIPT_FADE_MAX 8
 #define SCRIPT_RECENT_FETCH_MAX 64
 #define SCRIPT_RUN_STEP_MAX 4096
+#define SCRIPT_TICK_PHASE_COUNT 4
+#define SCRIPT_TICK_PHASE_RUNNER 0
+#define SCRIPT_TICK_PHASE_OBJECTS 1
+#define SCRIPT_TICK_PHASE_MOTION 2
+#define SCRIPT_TICK_PHASE_REST 3
 #define SCRIPT_ACTOR_POINT_MAX 4
 #define SCRIPT_GHOST_CICEL 0
 #define SCRIPT_GHOST_MISSILE 1
@@ -558,6 +563,9 @@ struct script_machine {
     unsigned char noted_ops[SCRIPT_NOTED_OP_BYTES];
     unsigned char noted_effects[SCRIPT_NOTED_EFFECT_BYTES];
     unsigned char noted_problems[SCRIPT_NOTED_PROBLEM_BYTES];
+    unsigned long long phase_us[SCRIPT_TICK_PHASE_COUNT];
+    unsigned long long slowest_object_us;
+    int slowest_object;
     int auto_press;
     int route_is_driving;
     int fate_level;

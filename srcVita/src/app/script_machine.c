@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "clock.h"
 #include "script_machine.h"
 #include "script_opcodes.h"
 #include "ds_units.h"
@@ -1905,6 +1906,9 @@ void script_machine_reload_scene(struct script_machine *machine)
 
 void script_machine_tick(struct script_machine *machine)
 {
+    unsigned long long phase_started_us;
+    unsigned long long object_started_us;
+    unsigned long long now_us;
     int index;
 
     if (script_soul_step_eyecatch(machine)) {
@@ -1914,6 +1918,7 @@ void script_machine_tick(struct script_machine *machine)
         machine->tick = machine->tick + 1;
         return;
     }
+    phase_started_us = clock_now_us();
     run_native_steps_before_tasks(machine);
     if (machine->is_finished) {
         return;
@@ -1921,12 +1926,30 @@ void script_machine_tick(struct script_machine *machine)
     if (machine->has_runner) {
         run_vm(machine, &machine->runner);
     }
+    now_us = clock_now_us();
+    machine->phase_us[SCRIPT_TICK_PHASE_RUNNER] = now_us - phase_started_us;
+    phase_started_us = now_us;
+    machine->slowest_object = -1;
+    machine->slowest_object_us = 0;
+    object_started_us = phase_started_us;
     for (index = 0; index < machine->object_count; index++) {
         update_object(machine, &machine->objects[index]);
+        now_us = clock_now_us();
+        if (now_us - object_started_us > machine->slowest_object_us) {
+            machine->slowest_object_us = now_us - object_started_us;
+            machine->slowest_object = index;
+        }
+        object_started_us = now_us;
     }
+    now_us = clock_now_us();
+    machine->phase_us[SCRIPT_TICK_PHASE_OBJECTS] = now_us - phase_started_us;
+    phase_started_us = now_us;
     script_choice_delete_picked_control(machine);
     script_ghost_copies_update(machine);
     script_motion_update_all(machine);
+    now_us = clock_now_us();
+    machine->phase_us[SCRIPT_TICK_PHASE_MOTION] = now_us - phase_started_us;
+    phase_started_us = now_us;
     script_fades_update(machine);
     script_machine_move_anchored_effects(machine);
     script_machine_update_camera(machine);
@@ -1934,6 +1957,7 @@ void script_machine_tick(struct script_machine *machine)
     script_talk_step(machine);
     script_balloons_report_opened(machine);
     run_gameapp_queue(machine);
+    machine->phase_us[SCRIPT_TICK_PHASE_REST] = clock_now_us() - phase_started_us;
     if (machine->stop_is_requested) {
         machine->is_finished = 1;
     }

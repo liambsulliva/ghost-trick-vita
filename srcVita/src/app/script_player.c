@@ -848,6 +848,14 @@ static void step_next_chapter_card(unsigned long long elapsed_us)
     }
 }
 
+static const char *slowest_object_name(const struct script_machine *machine)
+{
+    if (machine->slowest_object < 0 || machine->objects[machine->slowest_object].name == NULL) {
+        return "-";
+    }
+    return machine->objects[machine->slowest_object].name;
+}
+
 static int run_one_tick(void)
 {
     unsigned long long started_us;
@@ -873,7 +881,7 @@ static int run_one_tick(void)
         char output_times[TICK_OUTPUT_TEXT_MAX];
 
         script_bridge_take_output_times(output_times, sizeof(output_times));
-        run_log_write("script tick_long tick=%u route_us=%llu machine_us=%llu bridge_us=%llu %s", data->machine.tick, route_us, tick_us - route_us, clock_now_us() - started_us - tick_us, output_times);
+        run_log_write("script tick_long tick=%u route_us=%llu machine_us=%llu bridge_us=%llu %s runner_us=%llu objects_us=%llu motion_us=%llu rest_us=%llu slowest_object=%s slowest_object_us=%llu", data->machine.tick, route_us, tick_us - route_us, clock_now_us() - started_us - tick_us, output_times, data->machine.phase_us[SCRIPT_TICK_PHASE_RUNNER], data->machine.phase_us[SCRIPT_TICK_PHASE_OBJECTS], data->machine.phase_us[SCRIPT_TICK_PHASE_MOTION], data->machine.phase_us[SCRIPT_TICK_PHASE_REST], slowest_object_name(&data->machine), data->machine.slowest_object_us);
     } else {
         script_bridge_forget_output_times();
     }
