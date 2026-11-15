@@ -1823,6 +1823,22 @@ What did differ was the renderer. A strip started at tick 99780, 10 ticks before
 
 Guard: none in code. The tool's README row says to start a strip at least a second before the moment under test.
 
+### 243. Props in the phone view were tinted, not silhouetted, so see-through art stayed see-through
+
+In the ghost talk after the first phone ride (st01_game014, footage 1949 s, port tick 102214), the footage draws Lynne's umbrella (`lkasa`) as one solid red shape, about (200, 30, 4) all over. The port drew it dark in the middle, (57, 15, 7), and redder at the stripes, with the scaffolding showing through. In the phone view every object that is not human takes the phone-view prop style, and that style was the row of class 0x789c5740 (`PHONE_VIEW_PROP_CLASS_ID`), which is not flat: its red multiplied the remaster art's own colours and alpha. The umbrella art is green and white and partly clear, so it came out dark and see-through. Native draws ghost-view silhouettes as one colour wherever the sprite has a pixel (the DS sprite's palette is swapped, `func_02052a7c` picks the class by the ghost); the port's flat paint is how it draws the human and core silhouettes already.
+
+The class: any object in any phone view whose remaster art has colour or partial alpha, in every chapter with a phone ride.
+
+Guard: the phone view's style is its own named row, `object phone_view` in `soul.txt` (`game.json` `soul_view.objects`), flat and turning with the ghost, found by `script_tables_phone_view_style`; the bridge no longer borrows a gimmick class's row. `soul_text` gives object rows the same red-turns flag as class rows. `tests/unit/test_soul_ghost_turn.c` reads the row; `tests/tools/test_ghost_plates.py` fails when any named silhouette row of the game is not flat or its turn flag does not follow its colour. Rendered again, the umbrella is (184 to 223, 30, 19), solid.
+
+### 244. The core ring was a guessed soft glow
+
+Effect 4 (kind 0x23, `cicelcore` and `shadankicore` in st01_game000, `mark` and `mark1`/`mark2` in st03, `core_a` in st13) drew `soul_glow`, a soft disc that grew from 75% to full size every 60 ticks. No remaster effect list has a row for kind 0x23. Native gives ids 4, 7, 8 and 9 the same key (slot33 0x4a0, `func_02066b80`) and loops id 4 (slot88). The footage at 124 to 129 s, measured per frame with a radial profile around the core, shows a thin white ring that restarts every 70 frames: radius 40 footage px on its first frame, 57 by its third at full strength, then about 0.6 px a frame out to 82 while it fades almost linearly to a tenth, and gone after frame 44. The remaster's art for it is the ring cell of `ig_010207_00` (the sheet the player mark already uses, `ui_mark`): its line sits at radius 85.5 of 182 px.
+
+The class: effect rows drawn from an invented pulse rather than the remaster's art and a measured timing. The other `ring` rows (7, 11, 12 and 13, the tutorial's touch markers, kinds 0x100 to 0x104 in the remaster) are the same guess and are not measured yet.
+
+Guard: `effects.txt` takes `pulse` lines (period, then tick, size and alpha keys, run in a straight line between keys and hidden after the last), and a ring row whose texture names a pulse draws by it. Effect 4 draws `core_ring`, the cropped ring cell, with the keys 0 (64 px, 0.65), 3 (91 px, 1.0) and 44 (131 px, 0.105) over 70 ticks. `tests/unit/test_effect_pulse.c` reads and runs a pulse; `tests/tools/test_table_effects.py` fails when a `ring` row draws neither a pulse nor a flipbook and is not in `RING_ROWS_STILL_ON_THE_GUESSED_GLOW`. Rendered every tick from 6600, the port's ring restarts at 6679 and 6749, is 43 Vita px (57 footage px) at its third tick and 61 (81) at its forty-third, and is gone after its forty-fourth.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

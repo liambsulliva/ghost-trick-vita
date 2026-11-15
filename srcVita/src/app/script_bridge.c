@@ -56,7 +56,6 @@ static float mask_fade_alpha;
 static int zoom_ticks_left;
 #define NO_SOUL_TEXTURE "-"
 #define SCREEN_FILTER_GRAYSCALE 1
-#define PHONE_VIEW_PROP_CLASS_ID 0x789c5740u
 #define ALL_SOUND_LOOPS "*"
 
 static int soul_vision_is_on;
@@ -244,7 +243,7 @@ static void on_soul_object_styled(const char *object_name, unsigned int class_id
     const struct script_soul_style *style;
 
     if (is_phone_view && !script_class_is_human(class_id)) {
-        style = script_tables_soul_style(tables, PHONE_VIEW_PROP_CLASS_ID, 0, 0, 0, 0);
+        style = script_tables_phone_view_style(tables);
     } else {
         style = script_tables_soul_style(tables, script_class_of_soul_style(class_id), script_class_is_human(class_id), has_core, is_active, is_dead);
     }

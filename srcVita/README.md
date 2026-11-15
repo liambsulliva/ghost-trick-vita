@@ -343,7 +343,6 @@ These are the known differences from the original. Bug-fix releases work through
 
 **Chapter 1 differences**, found against the reference footage
 
-- The umbrella is dim and see-through in the phone view.
 - A second speech bubble is missing late in the chapter.
 - Some core labels are on the wrong side, or on one line instead of two.
 - The thin pill words.
@@ -354,7 +353,6 @@ These are the known differences from the original. Bug-fix releases work through
 
 **Effects**
 
-- Effect 4, the core ring, is drawn as a soft glow. The footage shows a thin white ring that pulses every 70 frames.
 - Effects 8 (`efc_tsunagu`, kind 0xd8) and 9 (`efc_chain`, kind 0xce) have no art in any remaster effect list. `coreactionexchangecore` is an unconfirmed candidate for 8. Notes are in `extracted/audit_notes_2026-11-06/effects_8_9.md`.
 - Effects without art are noted in the log and not drawn.
 

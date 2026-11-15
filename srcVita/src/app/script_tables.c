@@ -6,6 +6,7 @@
 #define SOUL_CORE_CLASS_ID 0x4080f0cdu
 #define SOUL_ACTIVE_STYLE_NAME "active"
 #define SOUL_DEAD_STYLE_NAME "dead"
+#define SOUL_PHONE_VIEW_STYLE_NAME "phone_view"
 #include "text_lines.h"
 
 #define TABLE_LINE_MAX 320
@@ -370,6 +371,38 @@ static int read_flipbook_line(struct script_tables *tables, const char *line)
     return 1;
 }
 
+static int read_pulse_line(struct script_tables *tables, const char *line)
+{
+    struct script_pulse *pulse;
+    struct script_pulse_key key;
+    int used;
+
+    if (tables->pulse_count >= SCRIPT_PULSE_MAX) {
+        tables->rows_dropped = tables->rows_dropped + 1;
+        return 1;
+    }
+    pulse = &tables->pulses[tables->pulse_count];
+    memset(pulse, 0, sizeof(*pulse));
+    used = 0;
+    if (sscanf(line, "pulse " NAME_SCAN " %d%n", pulse->name, &pulse->period_ticks, &used) != 2 || pulse->period_ticks <= 0) {
+        return 0;
+    }
+    line = line + used;
+    while (sscanf(line, " %d %f %f%n", &key.tick, &key.size, &key.alpha, &used) == 3) {
+        if (pulse->key_count >= SCRIPT_PULSE_KEY_MAX || (pulse->key_count > 0 && key.tick <= pulse->keys[pulse->key_count - 1].tick) || key.tick >= pulse->period_ticks) {
+            return 0;
+        }
+        pulse->keys[pulse->key_count] = key;
+        pulse->key_count = pulse->key_count + 1;
+        line = line + used;
+    }
+    if (pulse->key_count == 0) {
+        return 0;
+    }
+    tables->pulse_count = tables->pulse_count + 1;
+    return 1;
+}
+
 static int read_effect_line(struct script_tables *tables, const char *line)
 {
     struct script_effect_row *row;
@@ -377,6 +410,9 @@ static int read_effect_line(struct script_tables *tables, const char *line)
 
     if (text_line_starts_with(line, "flipbook ")) {
         return read_flipbook_line(tables, line);
+    }
+    if (text_line_starts_with(line, "pulse ")) {
+        return read_pulse_line(tables, line);
     }
     if (text_line_starts_with(line, "movie ")) {
         return read_movie_line(tables, line);
@@ -488,6 +524,42 @@ const struct script_flipbook *script_tables_find_flipbook(const struct script_ta
     return NULL;
 }
 
+const struct script_pulse *script_tables_find_pulse(const struct script_tables *tables, const char *name)
+{
+    int index;
+
+    for (index = 0; index < tables->pulse_count; index++) {
+        if (strcmp(tables->pulses[index].name, name) == 0) {
+            return &tables->pulses[index];
+        }
+    }
+    return NULL;
+}
+
+int script_pulse_at(const struct script_pulse *pulse, unsigned int age_ticks, float *size, float *alpha)
+{
+    const struct script_pulse_key *before;
+    const struct script_pulse_key *after;
+    float along;
+    int tick;
+    int index;
+
+    tick = (int)(age_ticks % (unsigned int)pulse->period_ticks);
+    if (tick < pulse->keys[0].tick || tick > pulse->keys[pulse->key_count - 1].tick) {
+        return 0;
+    }
+    index = 1;
+    while (index < pulse->key_count && pulse->keys[index].tick < tick) {
+        index = index + 1;
+    }
+    after = &pulse->keys[index < pulse->key_count ? index : pulse->key_count - 1];
+    before = &pulse->keys[index > 0 ? index - 1 : 0];
+    along = after->tick == before->tick ? 1.0f : (float)(tick - before->tick) / (float)(after->tick - before->tick);
+    *size = before->size + (after->size - before->size) * along;
+    *alpha = before->alpha + (after->alpha - before->alpha) * along;
+    return 1;
+}
+
 static int read_trickless_line(struct script_tables *tables, const char *line)
 {
     int core_info;
@@ -596,6 +668,18 @@ const struct script_soul_style *script_tables_soul_style(const struct script_tab
         }
         if (!is_active && !is_dead && style->object_name[0] == '\0' && style->class_id == wanted_class) {
             return style;
+        }
+    }
+    return NULL;
+}
+
+const struct script_soul_style *script_tables_phone_view_style(const struct script_tables *tables)
+{
+    int index;
+
+    for (index = 0; index < tables->soul_style_count; index++) {
+        if (strcmp(tables->soul_styles[index].object_name, SOUL_PHONE_VIEW_STYLE_NAME) == 0) {
+            return &tables->soul_styles[index];
         }
     }
     return NULL;
