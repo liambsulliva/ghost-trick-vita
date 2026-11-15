@@ -1899,6 +1899,16 @@ Guard: `ds_effects.py` reads block 3 effects, and a `ds_textures` part can name 
 
 Not done: the DS fluted band (item 2) has no slot and the app draws its own red band; timing follows the remaster's keyframes, since the `bws.` script is not decoded; the banners draw at about 2.5 Vita pixels a DS pixel against 2.83 for the whole screen.
 
+### 253. DS talk text left a gap where the DS draws a button picture
+
+The DS message text carries icon codes 275 to 286. Native looks each up in `data_02084ae8` (8-byte rows: code, `cpac_3d.bin` texture, width, height; `func_0201bddc`) and places a sprite from `func_02018fa8`, one letter gap past the pen and centred 17 rows below the row top (the sprite's default place, `setPos(-(0x80 - w / 2), -0x40)`, plus the row's y + 1, less 0x90 in the top window), then moves the pen on by the width and two gaps. The DS talk baker kept the advance and drew nothing, so Ray's tutorial read "try the ___ button". The talk tint could only multiply a glyph by a text colour, so a coloured picture had no way to show either.
+
+The class: every icon on every talk page in every chapter and language.
+
+Guard: `ds_talk_icons.py` reads the table and each icon's art per cartridge language, and `TalkGlyphs` bakes each icon as its own colour cell in the talk atlas. A glyph code's tint field is now three bits at bit 13 (`script_talk.h`, `talk_assets.COLOR_SHIFT`), and tint 4 draws a cell as it is (`script_view.c`'s `text_colors`). `tests/tools/test_ds_talk_icons.py` checks the table, the placement, that an icon with no art keeps its gap, and that the baker and the app agree on the tint field. Every set's `talk.txt` must be rebaked with this change, which the converter's fingerprint does on its own.
+
+The port's choice: DS mode shows the cartridge's own pills, d-pad and buttons, not Vita buttons as the remastered set does, because DS mode's HUD draws the same cartridge pills and they work by touch; the cartridge has no CROSS, L or R picture. Not checked: the vertical place against a DS capture (melonDS cannot touch through to the tutorial), and whether icon 281 (texture 982) is the hourglass.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
