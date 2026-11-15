@@ -11,13 +11,16 @@ static struct script_narration narration;
 static int groups_shown;
 static int pages_ended;
 static int texts_finished;
+static int lines_in_order[16];
 
 static void on_report(void *listener, const char *label, enum script_narration_event event, int group)
 {
     (void)listener;
     (void)label;
-    (void)group;
     if (event == SCRIPT_NARRATION_GROUP_IN) {
+        if (groups_shown < 16) {
+            lines_in_order[groups_shown] = group;
+        }
         groups_shown = groups_shown + 1;
     }
     if (event == SCRIPT_NARRATION_TEXT_OUT || event == SCRIPT_NARRATION_CUT) {
@@ -51,13 +54,20 @@ static void step_ticks(int ticks)
     }
 }
 
-static void test_a_press_in_the_fade_in_shows_the_whole_page_then_the_next_press_moves_on(void)
+static void test_each_press_in_the_fade_in_shows_one_more_line_then_the_next_press_moves_on(void)
 {
     start_a_page_of_three_lines("page 0 0 3 62 62 62");
     step_ticks(TICKS_INTO_THE_DIM);
     CHECK_INT(groups_shown, 0);
     CHECK(script_narration_takes_a_skip(&narration));
     CHECK(!script_narration_wants_a_press(&narration));
+    script_narration_note_press(&narration);
+    step_ticks(TICKS_FOR_A_PAGE_TO_SETTLE);
+    CHECK_INT(groups_shown, 1);
+    CHECK(!script_narration_wants_a_press(&narration));
+    script_narration_note_press(&narration);
+    step_ticks(TICKS_FOR_A_PAGE_TO_SETTLE);
+    CHECK_INT(groups_shown, 2);
     script_narration_note_press(&narration);
     step_ticks(TICKS_FOR_A_PAGE_TO_SETTLE);
     CHECK_INT(groups_shown, 3);
@@ -72,12 +82,42 @@ static void test_a_press_moves_on_from_a_timed_page_without_its_wait(void)
 {
     start_a_page_of_three_lines("page 50 0 3 62 62 62");
     script_narration_note_press(&narration);
+    script_narration_note_press(&narration);
+    script_narration_note_press(&narration);
     step_ticks(TICKS_FOR_A_PAGE_TO_SETTLE);
+    CHECK_INT(groups_shown, 1);
+    script_narration_note_press(&narration);
+    step_ticks(1);
+    script_narration_note_press(&narration);
+    step_ticks(1);
     CHECK_INT(groups_shown, 3);
     CHECK_INT(pages_ended, 0);
     script_narration_note_press(&narration);
     step_ticks(TICKS_FOR_A_PAGE_TO_SETTLE);
     CHECK_INT(pages_ended, 1);
+}
+
+static void test_pressing_every_tick_shows_every_line_of_every_page_in_order(void)
+{
+    static const char text[] = "message m01_0003\npage 0 0 3 62 62 62\npage 0 0 2 62 62\n";
+    int tick;
+
+    CHECK(script_cues_parse(text, (unsigned int)strlen(text), &cues));
+    groups_shown = 0;
+    pages_ended = 0;
+    texts_finished = 0;
+    script_narration_start(&narration, &cues, &cues.messages[0], SCRIPT_TIMING_REMASTER);
+    for (tick = 0; tick < TICKS_FAR_PAST_EVERY_WAIT && narration.is_running; tick++) {
+        script_narration_note_press(&narration);
+        script_narration_step(&narration, on_report, NULL);
+    }
+    CHECK_INT(groups_shown, 5);
+    CHECK_INT(lines_in_order[0], 0);
+    CHECK_INT(lines_in_order[1], 1);
+    CHECK_INT(lines_in_order[2], 2);
+    CHECK_INT(lines_in_order[3], 3);
+    CHECK_INT(lines_in_order[4], 4);
+    CHECK_INT(pages_ended, 2);
 }
 
 static void test_a_page_left_alone_still_shows_every_line_in_its_own_time(void)
@@ -128,7 +168,8 @@ static void test_the_arrow_waits_for_the_lines_to_finish_fading_in(void)
 
 int main(void)
 {
-    test_a_press_in_the_fade_in_shows_the_whole_page_then_the_next_press_moves_on();
+    test_each_press_in_the_fade_in_shows_one_more_line_then_the_next_press_moves_on();
+    test_pressing_every_tick_shows_every_line_of_every_page_in_order();
     test_a_press_moves_on_from_a_timed_page_without_its_wait();
     test_a_page_left_alone_still_shows_every_line_in_its_own_time();
     test_a_press_while_lines_still_fade_in_finishes_them_and_a_second_press_moves_on();

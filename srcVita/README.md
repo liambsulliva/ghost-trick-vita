@@ -241,7 +241,7 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 | Left stick | Aim the soul in the soul view, more slowly with a smaller push. In the living world it pans the camera |
 | Right stick | Pan the camera in the soul view |
 | D-pad | The same as the left stick, at full speed. Neither moves anything while a cutscene, a trick or a talk has the controls |
-| CROSS | Finish or advance dialogue and narration (the first press finishes text still revealing or fading in, the next moves on), do the trick of the core you are in, or swap the two objects Missile has linked |
+| CROSS | Finish or advance dialogue and narration (in dialogue the first press finishes text still revealing or fading in and the next moves on; in narration each press shows only the next line in full, so rapid presses still step through every line in order, and the press after the last line moves on), do the trick of the core you are in, or swap the two objects Missile has linked |
 | L | Open the soul view, or go back from one you opened |
 | CIRCLE | Go back from the soul view, or unlock Missile's link. Held while dialogue or narration shows, it finishes and moves on through the text as fast as the game allows (a press each tick); it never picks a choice |
 | TRIANGLE or SQUARE | Tap the left or right balloon, when a script opens one that can be tapped; balloons show and answer only while the player has control, not during a scripted event |

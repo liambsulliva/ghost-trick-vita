@@ -1460,6 +1460,14 @@ The class: every dead talk and core talk in every chapter: the 54 the whole-game
 
 Guard: `start_dead_talk` turns the swirl on and `DeadTalk|Finish` and `Abort` turn it off, and `script_machine_set_swirl` ignores a call that changes nothing, as `func_0200f084` does. The opening effect's wait is not ported; the talk starts on the same tick. `tests/unit/test_dead_talk.c` checks a talk's swirl through Finish, Abort and Restart, and that a second Finish reports nothing. The whole-game replay plays the same steps with the swirl on for each talk.
 
+### 204. A CROSS press during narration showed the whole page at once
+
+Reported: rapid CROSS presses through narration skipped past lines, so the player could not read them one at a time. A press while a page was still revealing showed every line left on it (`show_the_whole_page`, from commit 789f966f). That was the port's own choice, made to match speech bubbles; native's handling of a press during a narration page's reveal is not traced, and the DS reveals the lines in order with its own waits (the timing in `load_page`). A press that landed while a page faded out was also kept and spent on the next page's first line.
+
+The class: every narration page in every chapter, with both timings, and every way to press (CROSS, a held CIRCLE, which presses each tick, and the route pad).
+
+Guard: a press finishes the line still fading in, or else shows the next line in full (`show_the_next_line`), and the page waits for a press only once its last line is shown. A press while the page fades out or the dim lifts is dropped. A page shown all at once (root cause 151) keeps its single finishing press. `tests/unit/test_narration_skip.c` presses through a three-line page one line at a time and presses every tick through two pages, checking that every line is reported in order.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

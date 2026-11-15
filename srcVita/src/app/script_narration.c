@@ -301,24 +301,23 @@ static void step_text_out(struct script_narration *narration, script_narration_r
     narration->group_was_reported = 0;
 }
 
-static void show_the_whole_page(struct script_narration *narration, script_narration_report report, void *listener)
+static void show_the_next_line(struct script_narration *narration, script_narration_report report, void *listener)
 {
-    int first;
-    int index;
+    int line;
 
     if (narration->state == STATE_DIM_IN) {
         tell(narration, report, listener, SCRIPT_NARRATION_DIM_FULL, 0);
     }
-    first = narration->group;
+    line = narration->group;
     if (narration->state == STATE_HOLD || (narration->state == STATE_GROUP_IN && narration->group_was_reported)) {
-        first = narration->group + 1;
+        line = narration->group + 1;
     }
-    for (index = first; index < narration->group_count; index++) {
-        tell(narration, report, listener, SCRIPT_NARRATION_GROUP_IN, index);
+    if (line < narration->group_count) {
+        tell(narration, report, listener, SCRIPT_NARRATION_GROUP_IN, line);
     }
     tell(narration, report, listener, SCRIPT_NARRATION_TEXT_FULL, 0);
     narration->state = STATE_HOLD;
-    narration->group = narration->group_count;
+    narration->group = line >= narration->group_count - 1 ? narration->group_count : line;
     narration->group_was_reported = 1;
     narration->level = LEVEL_FULL;
     narration->speed = 0;
@@ -357,14 +356,17 @@ int script_narration_step(struct script_narration *narration, script_narration_r
     if (narration->state == STATE_DIM_IN && narration->level == 0 && !(narration->options & SHOW_AT_ONCE_OPTION)) {
         tell(narration, report, listener, SCRIPT_NARRATION_DIM_IN, 0);
     }
-    if (narration->press_is_pending && page_is_still_showing(narration)) {
+    if (narration->press_is_pending && (narration->state == STATE_TEXT_OUT || narration->state == STATE_DIM_OUT)) {
         narration->press_is_pending = 0;
-        show_the_whole_page(narration, report, listener);
-        return 0;
     }
-    if (narration->press_is_pending && narration->state == STATE_HOLD && narration->fade_left > 0) {
+    if (narration->press_is_pending && narration->fade_left > 0) {
         narration->press_is_pending = 0;
         tell(narration, report, listener, SCRIPT_NARRATION_TEXT_FULL, 0);
+        return 0;
+    }
+    if (narration->press_is_pending && page_is_still_showing(narration)) {
+        narration->press_is_pending = 0;
+        show_the_next_line(narration, report, listener);
         return 0;
     }
     if (narration->fade_left > 0) {
