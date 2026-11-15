@@ -7,7 +7,6 @@
 #define PILL_SLIDING_IN 2
 #define PILL_SLIDING_OUT 3
 #define PILL_PRESSED 4
-#define PILL_PRESS_TICKS 12
 #define PILL_WAIT_BEFORE_SLIDE_IN 3
 #define FIRST_PILL_EFFECT 99
 #define PILL_EFFECT_COUNT 4
@@ -197,7 +196,7 @@ static void step_pill(struct script_pill *pill, int is_wanted, int may_slide_in)
     switch (pill->state) {
     case PILL_PRESSED:
         pill->press_ticks = pill->press_ticks + 1;
-        if (pill->press_ticks >= PILL_PRESS_TICKS) {
+        if (pill->press_ticks >= SCRIPT_PILL_PRESS_TICKS) {
             pill->state = PILL_SHOWN;
         }
         break;

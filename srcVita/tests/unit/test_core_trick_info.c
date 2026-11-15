@@ -106,6 +106,19 @@ static void test_a_core_whose_info_names_no_trick_refuses_the_press(void)
     CHECK_INT(last_sound, TRICK_REFUSED_SOUND_KIND);
 }
 
+static void test_a_refused_press_still_presses_the_trick_pill(void)
+{
+    struct script_hud_view view;
+
+    set_up_a_gimmick(GMK_COMMON_CLASS);
+    run_core_info_op(0, CORE_INFO_WITHOUT_A_TRICK);
+    press_trick();
+    memset(&view, 0, sizeof(view));
+    script_pills_fill_view(&machine, &view);
+    CHECK_INT(view.pills[SCRIPT_PILL_TRICK].is_pressed, 1);
+    CHECK_INT(machine.soul.tricks_fired, 0);
+}
+
 static void test_a_core_whose_info_names_a_trick_fires_it(void)
 {
     set_up_a_gimmick(GMK_COMMON_CLASS);
@@ -170,6 +183,7 @@ int main(void)
     test_the_op_names_the_core_info_of_a_gimmick();
     test_the_op_leaves_an_object_that_is_not_a_gimmick();
     test_a_core_whose_info_names_no_trick_refuses_the_press();
+    test_a_refused_press_still_presses_the_trick_pill();
     test_a_core_whose_info_names_a_trick_fires_it();
     return test_finish("unit/core_trick_info");
 }

@@ -11,6 +11,8 @@
 #define PILL_FULLY_SHOWN 8
 #define PAUSE_ICON_CELL_Y 421.0f
 #define PILL_ART_TEXELS 512.0f
+#define PILL_RING_PRESSED_CELL_Y 180.0f
+#define TOP_PILL_SCREEN_Y_LIMIT 100.0f
 
 static void show_pill(struct script_hud_view *view, enum script_pill_id id, int slide_step, int is_pressed)
 {
@@ -111,6 +113,51 @@ static void test_pills_hide_under_a_card_or_a_full_fade(void)
     CHECK_INT(script_ui_view_pill_at(100.0f, 510.0f), -1);
     scene_stage_hide_card();
     CHECK(pill_draws_now() > 0);
+}
+
+static int a_pressed_ring_is_drawn_at_the_top_right(void)
+{
+    int index;
+
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        const struct fake_draw *draw;
+
+        draw = fake_renderer_draw(index);
+        if (!draw->is_filled_rect && draw->screen_area.x > 800.0f && draw->screen_area.y < TOP_PILL_SCREEN_Y_LIMIT && draw->texture_area.y == PILL_RING_PRESSED_CELL_Y / PILL_ART_TEXELS) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void test_start_presses_the_start_button_down_and_it_rises_again(void)
+{
+    struct script_hud_view view;
+    int tick;
+
+    memset(&view, 0, sizeof(view));
+    view.pause_is_offered = 1;
+    show_pill(&view, SCRIPT_PILL_GHOST, PILL_FULLY_SHOWN, 0);
+    script_ui_view_hud_changed(&view);
+    scene_stage_hide_card();
+    scene_stage_set_fade(0.0f);
+    (void)pill_draws_now();
+    CHECK(!a_pressed_ring_is_drawn_at_the_top_right());
+    script_ui_view_press_start_button();
+    (void)pill_draws_now();
+    CHECK(a_pressed_ring_is_drawn_at_the_top_right());
+    for (tick = 0; tick < SCRIPT_PILL_PRESS_TICKS; tick++) {
+        script_ui_view_advance();
+    }
+    (void)pill_draws_now();
+    CHECK(!a_pressed_ring_is_drawn_at_the_top_right());
+    view.pause_is_offered = 0;
+    script_ui_view_hud_changed(&view);
+    script_ui_view_press_start_button();
+    view.pause_is_offered = 1;
+    script_ui_view_hud_changed(&view);
+    (void)pill_draws_now();
+    CHECK(!a_pressed_ring_is_drawn_at_the_top_right());
 }
 
 static int a_tap_somewhere_finds(enum script_pill_id id)
@@ -255,6 +302,7 @@ int main(void)
     test_a_sliding_or_pressed_pill_does_not_answer();
     test_pills_stay_quiet_during_a_movie();
     test_pills_hide_under_a_card_or_a_full_fade();
+    test_start_presses_the_start_button_down_and_it_rises_again();
     test_every_pill_has_a_place_and_draws();
     test_the_rewind_button_answers_only_while_it_is_up();
     test_the_start_button_shows_top_right_with_the_ui_and_steps_aside_for_the_hourglass();

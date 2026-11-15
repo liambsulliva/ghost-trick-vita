@@ -1468,6 +1468,14 @@ The class: every narration page in every chapter, with both timings, and every w
 
 Guard: a press finishes the line still fading in, or else shows the next line in full (`show_the_next_line`), and the page waits for a press only once its last line is shown. A press while the page fades out or the dim lifts is dropped. A page shown all at once (root cause 151) keeps its single finishing press. `tests/unit/test_narration_skip.c` presses through a three-line page one line at a time and presses every tick through two pages, checking that every line is reported in order.
 
+### 205. TRICK did not press down on a core with no trick, and the pause button never pressed
+
+Reported: on the Lady's Red Apartment chandelier, CROSS left the TRICK pill up. The port refused a press on a core whose trick info names no trick (root cause 157, op 0x9f) before it pressed the pill. Native's normal-play update (`func_0203696c`) presses the pill first, `func_02010ef4(game, 4, -1)`, then reads the core: no core, a held core (`func_02036f3c`, `func_020100e4`) or a trick info that names no trick (`func_02058ab8`, which plays sound 4 through `func_0202a0c0`) each return after the press. Every other pill in the same function also presses (`func_02010ef4` with ids 1, 3 and 5) before its own checks. The START pause button is the port's own (root cause 170) and drew only its raised look.
+
+The class: every press of every pill in every chapter, whatever the core or the action does after it, and the pause button from START or a tap.
+
+Guard: `take_press` presses the TRICK pill before it asks the trick info. The pause button keeps `start_press_ticks`, set by `script_ui_view_press_start_button` when START or a tap opens the menu and counted down by `script_ui_view_advance` over `SCRIPT_PILL_PRESS_TICKS`, the pills' own press length, so it shows pressed through the menu's darkening and rises when play resumes. `tests/unit/test_core_trick_info.c` (`test_a_refused_press_still_presses_the_trick_pill`) checks the refused press shows the pill pressed, and `tests/unit/test_script_ui_view.c` (`test_start_presses_the_start_button_down_and_it_rises_again`) checks the pause button's pressed ring, its rise and that a press while it is hidden does nothing.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

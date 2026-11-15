@@ -238,6 +238,7 @@ struct playing_clip {
 
 static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
 static int arrow_age_ticks;
+static int start_press_ticks;
 static struct tap_balloon tap_balloons[TAP_BALLOON_MAX];
 static const float tap_balloon_key_frames[TAP_BALLOON_KEY_COUNT] = { 0.0f, 5.0f, 10.0f, 15.0f, 19.0f };
 static const float tap_balloon_widths[TAP_BALLOON_KEY_COUNT] = { 1.24f, 0.66f, 1.24f, 0.77f, 1.0f };
@@ -282,6 +283,7 @@ void script_ui_view_clear(void)
     memset(tap_balloons, 0, sizeof(tap_balloons));
     memset(&hud, 0, sizeof(hud));
     stream_phase = 0.0f;
+    start_press_ticks = 0;
 }
 
 void script_ui_view_stop_clips(void)
@@ -355,6 +357,9 @@ void script_ui_view_advance(void)
     int index;
 
     arrow_age_ticks = arrow_age_ticks + 1;
+    if (start_press_ticks > 0) {
+        start_press_ticks = start_press_ticks - 1;
+    }
     keep_the_interface_art_resident();
     advance_tap_balloons();
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
@@ -1193,6 +1198,14 @@ static void start_pill(struct pill_layout *layout, struct script_pill_view *view
         }
     }
     view->is_on_screen = 1;
+    view->is_pressed = start_press_ticks > 0;
+}
+
+void script_ui_view_press_start_button(void)
+{
+    if (ui_is_showing()) {
+        start_press_ticks = SCRIPT_PILL_PRESS_TICKS;
+    }
 }
 
 static void draw_start_pill(void)

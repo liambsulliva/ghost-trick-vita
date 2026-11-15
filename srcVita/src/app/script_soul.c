@@ -1730,6 +1730,7 @@ static void take_press(struct script_machine *machine)
         return;
     }
     if (script_soul_world_is_playable(machine) && soul->trick_is_on && !core_is_busy(machine) && pill_answers_a_press(machine, SCRIPT_PILL_TRICK)) {
+        script_pills_press(machine, SCRIPT_PILL_TRICK, PILL_HOLD_AFTER_TRICK);
         if (core_names_no_trick(machine)) {
             soul->tricks_refused = soul->tricks_refused + 1;
             if (machine->outputs->sound_played != NULL) {
@@ -1737,7 +1738,6 @@ static void take_press(struct script_machine *machine)
             }
             return;
         }
-        script_pills_press(machine, SCRIPT_PILL_TRICK, PILL_HOLD_AFTER_TRICK);
         soul->mark_age_ticks = MARK_IS_OFF;
         fire_trick(machine);
     }
