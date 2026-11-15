@@ -293,7 +293,7 @@ In the debug build's commands file, `play_script route` starts the opening, from
 
 ## What is missing
 
-As of 2026-11-07. Items under "Built, not proven" are written but not checked on the device.
+Rechecked against the code on 2026-11-15. The device and footage findings were last checked on the device on 2026-11-07, so later engine work may have fixed some of them. Items under "Built, not proven" are written but not checked on the device.
 
 **Built, not proven**
 
@@ -301,6 +301,7 @@ As of 2026-11-07. Items under "Built, not proven" are written but not checked on
 - The camera panning with the tip while it is held.
 - Tap balloons advancing only while play runs.
 - The Back pill, shown only in a ghost view the player opened.
+- Effect 31, the loops on the corpse in ghost view, drawn as the remaster movie `cmn_shig_01` (native kind 0x1d, from the st01_game000 effect list) and shown only in ghost view.
 
 **Open Chapter 1 findings**, checked against the reference footage
 
@@ -318,15 +319,14 @@ As of 2026-11-07. Items under "Built, not proven" are written but not checked on
 
 **Effects**
 
-- Effect 31, the loops on the corpse in ghost view, is the remaster movie `cmn_shig_01` (native kind 0x1d, from the st01_game000 effect list). It is now drawn as that movie, shown only in ghost view; not yet checked on the device.
 - Effect 4, the core ring, is drawn as a soft glow. The footage shows a thin white ring that pulses every 70 frames.
 - Effects 8 (`efc_tsunagu`, kind 0xd8) and 9 (`efc_chain`, kind 0xce) have no art in any remaster effect list. `coreactionexchangecore` is an unconfirmed candidate for 8. Notes are in `extracted/audit_notes_2026-11-06/effects_8_9.md`.
 - Effects without art are noted in the log and not drawn.
 
 **Not in the port yet**
 
-- **Soul view art past the rings.** Object tints and class gates are not drawn, and every core can be reached from every other, with no range limit.
-- **Some HUD pieces.** The countdown runs and sends its events but draws nothing, and the same goes for the `EyeCatch` banners.
+- **Soul view class gates.** They are not drawn.
+- **Some `EyeCatch` banners.** Trick, DestinyUpdate, DestinyLock and NumberGet are drawn; any other kind logs `eyecatch_kind_not_ported` and draws nothing.
 - **Touch.** The back touch pad is not read. The front screen works alongside the buttons: tap pills, balloons, Rewind Time and talk, drag the soul in Ghost view, and drag the camera where the game allows it.
 The VM's timing comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.
 
