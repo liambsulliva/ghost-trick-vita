@@ -17,6 +17,7 @@ import audio_file
 import bake_record
 import bubble_art
 import class_movies
+import ds_effect_movies
 import ds_music
 import ds_rom
 import ds_rooms
@@ -674,6 +675,8 @@ def convert_ds_set_description(set_description, output_folder, ds_rom_path=DEFAU
         try:
             plate_paths, plate_names, _ = ds_rooms.bake_plates(set_description["plates"], cartridge.pack_bytes, soul_view.get("ramp"), soul_view.get("ghost_ramps"), work_folder, record, code_fingerprint_with_magick(DS_PLATE_CODE_FILES), None, DS_SET_TEXTURE_FOLDER)
             art = ds_set.bake_art(set_description, scripts, arm9, cartridge, ds_rom_path, record, work_folder)
+            set_description, effect_paths = ds_effect_movies.add_to_set(set_description, scripts, arm9, cartridge, record)
+            art["texture_paths"] = art["texture_paths"] + effect_paths
         finally:
             delete_work_folder(work_folder)
         texture_sizes = dict(ds_set.plate_sizes(set_description["plates"], plate_entries), **art["texture_sizes"])

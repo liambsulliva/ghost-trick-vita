@@ -1927,6 +1927,16 @@ Guard: `ds_balloons.py` reads the native tables from the arm9 and composes every
 
 Not done: op 0x52's "!" and other bursts (`uSwfPlayForBalloon`, effect art), op 0x45's tap balloons, the close animation, and two- or three-line and thorn layouts against a capture.
 
+### 256. DS mode drew no effect movies: not the soul's flower of lines, not Ray's light
+
+The DS set listed no effect movies, so DS mode left out every effect a script spawns as a movie, among them the flower of lines around the soul (effect 31) and Ray's light (84 and 91). Native builds every effect whose kind (`data_02086624`) is below 0x8000 as a `uScriptGameEffect`, a `uSwfPlayGame` (`func_02052ad8`, `func_02066af8`); its `func_02066074` loads the movie through `func_0204235c(kind)`, which reads `cpac_3d.bin` block 3 entry `kind` (`func_0201e888`). That entry holds a `bws.` movie (shapes, sprites, frames with matrices, 5-bit colour and percent alpha, and ActionScript-style frame scripts) and its own LZ textures. The flower is entry 29: ten two-colour quarter textures, each drawn four times turned, at 15 fps, looping.
+
+The class: effect art the cartridge keeps as SWF-like movies, which the converter did not read; the remaster bakes the same movies into frame pages.
+
+Guard: `ds_effect_movies.py` reads the `bws.` movie, walks its timeline the way the remastered movies play (`effect_file.playback_of`, now shared by both sets), renders each frame from the cartridge textures and writes the same movie rows and pages for every spawned effect id of a sprite kind that has no row of its own; `only_in_soul_view` and sounds come from `game.json` by id. Movies over 16 MB of pages, or drawing nothing at bake time, are left out and named. `tests/tools/test_ds_effect_movies.py` checks matrix order, colour, `setVertex` corners and nested playback on synthetic movies, and on the cartridge that every block 3 movie reads, that every spawned sprite-kind id gets a row and that the flower is four turned copies of one quarter.
+
+Not done: ids 42, 240, 248, 249 and 255 (full-screen, over the page limit) and 123, 141, 170 and 216 (driven by status labels the game sets). Branching frame scripts play as plain timelines. The built-in call ids are named from the remaster's records, not from the native interpreter. Not checked on the device; the pale band to a core in the capture may be `soul_beam` (root cause 250) rather than effect 84 or 91.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
