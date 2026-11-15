@@ -113,11 +113,11 @@ def export_logo(assets_folder, texture_tool, work_folder):
     return rgba_path, width, height
 
 
-def compose_command(logo_path, logo_width, logo_height, layout, output_path, field_color=FIELD_COLOR):
+def compose_command(logo_path, logo_width, logo_height, layout, output_path):
     _, canvas_width, canvas_height, box_width, box_height = layout
     return [
         "magick", "-size", "%dx%d" % (logo_width, logo_height), "-depth", "8", "rgba:" + logo_path,
-        "-background", field_color, "-flatten", "-trim", "+repage",
+        "-background", FIELD_COLOR, "-flatten", "-trim", "+repage",
         "-resize", "%dx%d" % (box_width, box_height),
         "-gravity", "center", "-extent", "%dx%d" % (canvas_width, canvas_height),
         "-colors", "256", "-define", "png:exclude-chunks=date,time", "PNG8:" + output_path,
@@ -133,26 +133,42 @@ def write_logo_images(output_folder, assets_folder, texture_tool):
             subprocess.run(compose_command(logo_path, logo_width, logo_height, layout, output_path), check=True)
 
 
-def ds_logo_and_field(rom_path):
+def ds_logo_and_backdrop(rom_path):
     import json
     import ds_set
     import ds_ui
     with open(GAME_DESCRIPTION, encoding="utf-8") as source:
         textures = {entry["name"]: entry for entry in json.load(source)["ds_textures"]}
     cartridge = ds_set.Cartridge(rom_path)
-    width, height, rgba = ds_ui.compose(textures[DS_LOGO_NAME], lambda index, opaque: cartridge.textures.texture(index, 1, not opaque))
-    return width, height, rgba, "#%02x%02x%02x" % tuple(textures[DS_BACKDROP_NAME]["fill"])
+    texture_of = lambda index, opaque: cartridge.textures.texture(index, 1, not opaque)
+    return ds_ui.compose(textures[DS_LOGO_NAME], texture_of), ds_ui.compose(textures[DS_BACKDROP_NAME], texture_of)
+
+
+def ds_compose_command(logo_path, logo_size, backdrop_path, backdrop_size, layout, output_path):
+    _, canvas_width, canvas_height, box_width, box_height = layout
+    return [
+        "magick",
+        "(", "-size", "%dx%d" % backdrop_size, "-depth", "8", "rgba:" + backdrop_path,
+        "-filter", "point", "-resize", "%dx%d^" % (canvas_width, canvas_height),
+        "-gravity", "center", "-extent", "%dx%d" % (canvas_width, canvas_height), ")",
+        "(", "-size", "%dx%d" % logo_size, "-depth", "8", "rgba:" + logo_path,
+        "-trim", "+repage", "-filter", "point", "-resize", "%dx%d" % (box_width, box_height), ")",
+        "-gravity", "center", "-composite", "-alpha", "off",
+        "-colors", "256", "-define", "png:exclude-chunks=date,time", "PNG8:" + output_path,
+    ]
 
 
 def write_ds_logo_images(output_folder, rom_path):
-    width, height, rgba, field_color = ds_logo_and_field(rom_path)
+    logo, backdrop = ds_logo_and_backdrop(rom_path)
     with tempfile.TemporaryDirectory() as work_folder:
         logo_path = os.path.join(work_folder, "logo.rgba")
-        write_file(logo_path, rgba)
+        backdrop_path = os.path.join(work_folder, "backdrop.rgba")
+        write_file(logo_path, logo[2])
+        write_file(backdrop_path, backdrop[2])
         for layout in LOGO_LAYOUTS:
             output_path = os.path.join(output_folder, layout[0])
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            subprocess.run(compose_command(logo_path, width, height, layout, output_path, field_color), check=True)
+            subprocess.run(ds_compose_command(logo_path, logo[:2], backdrop_path, backdrop[:2], layout, output_path), check=True)
 
 
 def write_procedural_images(output_folder):

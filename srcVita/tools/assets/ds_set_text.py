@@ -4,6 +4,7 @@ import struct
 import asset_writers
 import bake_record
 import chapter_assets
+import ds_one_screen
 import ds_rom
 import ds_sprites
 import ds_talk_icons
@@ -14,7 +15,7 @@ import narration
 import talk_assets
 
 TEXTURE_FOLDER = "textures"
-CODE_FILES = ["ds_set_text.py", "ds_text.py", "ds_talk_icons.py"]
+CODE_FILES = ["ds_set_text.py", "ds_text.py", "ds_talk_icons.py", "ds_one_screen.py", "ds_one_screen.json"]
 DS_STEP = 16
 SCREEN_STEP = 45
 CAMERA_LEFT_ON_SCREEN = 120
@@ -568,11 +569,12 @@ class MessageBook:
     def __init__(self, rom, scripts, language):
         self.by_script = {}
         self.anywhere = {}
+        self.one_screen = ds_one_screen.OneScreen(language)
         for path in scripts:
             message_path = ds_text.script_message_path(path, language)
             if rom.file_id_of(message_path) is None:
                 continue
-            self.by_script[path] = ds_text.read_rom_message_file(rom, message_path)
+            self.by_script[path] = self.one_screen.messages(ds_text.read_rom_message_file(rom, message_path))
             for label, message in self.by_script[path].items():
                 self.anywhere.setdefault(label, message)
 
@@ -580,7 +582,8 @@ class MessageBook:
         return self.by_script.get(path, {}).get(label, self.anywhere.get(label))
 
 
-def read_system_messages(rom, system_lines):
+def read_system_messages(rom, system_lines, language):
+    one_screen = ds_one_screen.OneScreen(language)
     messages = {}
     for label, line in system_lines.items():
         plain = lz.try_decompress(rom.read_file(line["file"]))
@@ -588,7 +591,7 @@ def read_system_messages(rom, system_lines):
             raise DsSetTextError(line["file"] + " in the DS ROM could not be decompressed")
         found = ds_text.read_message_file(plain).get(label)
         if found is not None:
-            messages[label] = found
+            messages[label] = one_screen.message(label, found)
     return messages
 
 
@@ -600,7 +603,7 @@ def bake_text(set_description, scripts, rom_path, record, work_folder):
         font = ds_text.font_from_rom(rom, ds_text.MAIN_FONT, arm9)
         palette = read_text_palette(rom.read_file(PACK_PATH))
         book = MessageBook(rom, scripts, language)
-        system_messages = read_system_messages(rom, system_lines)
+        system_messages = read_system_messages(rom, system_lines, language)
         textures = ds_textures.TexturePack(rom.read_file(ds_textures.PACK_PATH))
     faces = Faces(read_face_rows(arm9), read_head_textures(arm9))
     icons = ds_talk_icons.read_icon_art(textures, ds_talk_icons.read_icon_rows(arm9), ds_textures.LANGUAGE_NUMBERS.get(language, 1))

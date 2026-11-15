@@ -39,7 +39,7 @@ def ds_entries():
 
 
 def effect_parts():
-    return [(entry, part) for entry in ds_entries() for part in entry["parts"] if isinstance(part["texture"], dict)]
+    return [(entry, part) for entry in ds_entries() for part in entry["parts"] if isinstance(part.get("texture"), dict)]
 
 
 class EffectFileTests(unittest.TestCase):
@@ -69,12 +69,18 @@ class EffectTextureEntryTests(unittest.TestCase):
             self.assertEqual(sorted(part["texture"]), ["effect", "item"], entry["name"])
             self.assertGreater(part["texture"]["item"], ds_effects.SCRIPT_ITEM, entry["name"])
 
-    def test_every_banner_keeps_the_shape_the_app_draws_it_at(self):
+    def test_every_clip_sprite_with_a_ds_entry_keeps_the_shape_the_app_draws_it_at(self):
         entries = {entry["name"]: entry for entry in ds_entries()}
-        for kind in ui_clips.BANNER_KINDS.values():
-            entry = entries[kind["texture"]]
-            width, height = kind["size"]
-            self.assertAlmostEqual(entry["width"] / entry["height"], width / height, delta=width / height * ASPECT_TOLERANCE, msg=kind["texture"])
+        checked = set()
+        for clip in ui_clips.all_clips():
+            for element in clip["elements"]:
+                entry = entries.get(element["texture"])
+                if element["kind"] != "sprite" or entry is None:
+                    continue
+                shape = abs(element["tracks"]["w"][0][1] / element["tracks"]["h"][0][1])
+                self.assertAlmostEqual(entry["width"] / entry["height"], shape, delta=shape * ASPECT_TOLERANCE, msg=entry["name"])
+                checked.add(entry["name"])
+        self.assertTrue({"banner_trick", "banner_star", "card_clock", "card_hand_minute", "card_top_text"} <= checked)
 
 
 @unittest.skipUnless(os.path.isfile(ROM_PATH), "needs the cartridge")

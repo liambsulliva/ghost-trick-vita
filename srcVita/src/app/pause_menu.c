@@ -13,6 +13,7 @@
 #include "pause_people.h"
 #include "pause_save.h"
 #include "pause_widgets.h"
+#include "phone_book_plates.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "text_lines.h"
@@ -288,6 +289,7 @@ int pause_menu_load(const char *assets_folder)
     words = read_table(assets_folder, LABEL_TABLE_PATH, pause_menu_read_label_text);
     widget_total = pause_widgets_load(assets_folder);
     run_log_write("pause clock scenes=%d", pause_clock_load(assets_folder));
+    run_log_write("phone_book plates places=%d", phone_book_plates_load(assets_folder));
     phase = PAUSE_PHASE_CLOSED;
     run_log_write("pause art frames=%d idle_ticks=%d fidget_ticks=%d labels=%d widgets=%d people=%d", frames, ticks, fidget_count, words, widget_total, pause_people_load(assets_folder));
     return pause_menu_is_ready();
@@ -301,6 +303,7 @@ int pause_menu_reload_text(const char *assets_folder)
     arrow_size = 0.0f;
     words = read_table(assets_folder, LABEL_TABLE_PATH, pause_menu_read_label_text);
     widget_total = pause_widgets_load(assets_folder);
+    run_log_write("phone_book plates places=%d", phone_book_plates_load(assets_folder));
     run_log_write("pause text language=%s labels=%d widgets=%d clock=%d people=%d", asset_language_code(asset_language_now()), words, widget_total, pause_clock_load(assets_folder), pause_people_load(assets_folder));
     return pause_menu_is_ready();
 }

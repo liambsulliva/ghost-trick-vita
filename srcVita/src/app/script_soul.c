@@ -1450,7 +1450,7 @@ static void run_event_frame_command(struct script_machine *machine, const char *
     }
 }
 
-static void start_dead_talk(struct script_machine *machine, int object_index)
+static void start_dead_talk(struct script_machine *machine, int object_index, int with_effect)
 {
     if (object_index == NO_CORE) {
         object_index = machine->soul.active_object;
@@ -1459,7 +1459,7 @@ static void start_dead_talk(struct script_machine *machine, int object_index)
     machine->soul.dead_talk_object = object_index;
     machine->soul.dead_core_holds_the_tip = 0;
     script_hints_player_did(machine, SCRIPT_ROUTE_DEAD_TALK, object_index >= 0 && object_index < machine->object_count ? machine->objects[object_index].name : NULL);
-    script_machine_set_swirl(machine, 1);
+    script_machine_set_swirl_with_effect(machine, 1, with_effect);
     close_the_film_frame(machine);
     if (object_index != NO_CORE && !core_is_for_the_dead(machine, object_index)) {
         script_machine_send(machine, "*", "SYSTEM", "CORETALK");
@@ -1481,7 +1481,7 @@ static void start_the_dead_talk_a_tutorial_scene_waits_for(struct script_machine
         return;
     }
     if (script_machine_handles(machine, "SYSTEM", "SV_DEADCORE") && script_machine_handles(machine, "SVTUTO", "onClick")) {
-        start_dead_talk(machine, soul->active_object);
+        start_dead_talk(machine, soul->active_object, 1);
     }
 }
 
@@ -1499,7 +1499,7 @@ static void run_dead_talk_command(struct script_machine *machine, const char *ar
         if (!machine->soul.is_on) {
             set_soul_view_with_effect(machine, 1, 0);
         }
-        start_dead_talk(machine, machine->soul.dead_talk_is_on ? machine->soul.dead_talk_object : NO_CORE);
+        start_dead_talk(machine, machine->soul.dead_talk_is_on ? machine->soul.dead_talk_object : NO_CORE, 0);
     }
 }
 
@@ -2767,7 +2767,7 @@ static int route_step_is_done(struct script_machine *machine, const struct scrip
         return machine->phone_book.answers != soul->route_phone_answers_when_step_began;
     case SCRIPT_ROUTE_DEAD_TALK:
         mark_no_player_input(machine, step);
-        start_dead_talk(machine, step->object[0] != '\0' ? script_machine_index_of_object(machine, step->object) : NO_CORE);
+        start_dead_talk(machine, step->object[0] != '\0' ? script_machine_index_of_object(machine, step->object) : NO_CORE, 1);
         return 1;
     case SCRIPT_ROUTE_CHOOSE:
         return machine->choice.picks != soul->route_picks_when_step_began;

@@ -1,0 +1,56 @@
+{
+  "en": {
+    "rewrites": [
+      ["a look at the top screen?", "a look at ^the middle of|the screen^?"],
+      ["look at the top screen.", "look at the right side|of the screen."],
+      ["The top screen, eh?", "The right side, eh?"]
+    ],
+    "dropped_pages": [
+      "(I can check out the bullet's|shape on the top screen.)"
+    ],
+    "refused": ["top screen", "upper screen", "lower screen", "bottom screen"]
+  },
+  "fr": {
+    "rewrites": [
+      ["Au fait, tu as jeté un coup|d'œil sur l'écran supérieur ?", "Au fait, tu as jeté un|coup d'œil à la partie^|centrale de l'écran^ ?"],
+      ["Regarde l'écran supérieur.", "Regarde la partie droite|de l'écran."],
+      ["L'écran supérieur... ?", "La partie droite de l'écran... ?"]
+    ],
+    "dropped_pages": [
+      "(Je peux voir la forme|de la balle sur|l'écran supérieur.)"
+    ],
+    "refused": ["écran supérieur", "écran inférieur"]
+  },
+  "gr": {
+    "rewrites": [
+      ["Übrigens, hast du schon mal|auf den oberen Bildschirm|geschaut?", "Übrigens, hast du dir schon|die ^Bildschirmmitte^|angeschaut?"],
+      ["Schau auf den|oberen Bildschirm.", "Schau auf die|rechte Bildschirmseite."]
+    ],
+    "dropped_pages": [
+      "(Ich kann mir die Form der|Kugel auf dem oberen|Bildschirm ansehen.)"
+    ],
+    "refused": ["oberen bildschirm", "oberer bildschirm", "unteren bildschirm", "unterer bildschirm"]
+  },
+  "it": {
+    "rewrites": [
+      ["A proposito, hai osservato|lo schermo superiore?", "A proposito, hai dato|un'occhiata ^al centro|dello schermo^?"],
+      ["allo schermo superiore.", "a destra dello schermo."],
+      ["Lo schermo superiore, eh?", "A destra, eh?"]
+    ],
+    "dropped_pages": [
+      "(Posso controllare la forma|del proiettile sullo schermo|superiore.)"
+    ],
+    "refused": ["schermo superiore", "schermo inferiore"]
+  },
+  "sp": {
+    "rewrites": [
+      ["Por cierto, ¿has mirado|la pantalla superior?", "Por cierto, ¿has mirado|la ^parte central de|la pantalla^?"],
+      ["a la pantalla superior.", "a la parte derecha de|la pantalla."],
+      ["¿La pantalla superior, eh?", "¿La derecha de la pantalla, eh?"]
+    ],
+    "dropped_pages": [
+      "(Puedo consultar la forma|de la bala en la pantalla|superior.)"
+    ],
+    "refused": ["pantalla superior", "pantalla inferior"]
+  }
+}

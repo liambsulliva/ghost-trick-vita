@@ -1247,7 +1247,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0xdf:
     case 0xe0:
-        script_machine_set_swirl(machine, op == 0xe0);
+        script_machine_set_swirl_with_effect(machine, op == 0xe0, words[0] != 0);
         return SCRIPT_STEP_NEXT;
     case 0xf3:
     case 0xf5:
@@ -1763,6 +1763,11 @@ static void tear_down_script(struct script_machine *machine)
 
 void script_machine_set_swirl(struct script_machine *machine, int is_on)
 {
+    script_machine_set_swirl_with_effect(machine, is_on, 0);
+}
+
+void script_machine_set_swirl_with_effect(struct script_machine *machine, int is_on, int with_effect)
+{
     is_on = is_on != 0;
     if (is_on == machine->swirl_is_on) {
         return;
@@ -1773,6 +1778,9 @@ void script_machine_set_swirl(struct script_machine *machine, int is_on)
     machine->swirl_is_on = is_on;
     if (machine->outputs->swirl_changed != NULL) {
         machine->outputs->swirl_changed(is_on);
+    }
+    if (with_effect && machine->outputs->swirl_effect_played != NULL) {
+        machine->outputs->swirl_effect_played(is_on);
     }
 }
 

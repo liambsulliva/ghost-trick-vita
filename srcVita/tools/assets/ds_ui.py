@@ -1,4 +1,7 @@
 import json
+import warnings
+
+import numpy
 
 import asset_writers
 import bake_record
@@ -100,6 +103,75 @@ def flat_colored(image, color):
     return width, height, bytes(result)
 
 
+def grown(mask, steps):
+    for _ in range(steps):
+        wider = mask.copy()
+        wider[..., 1:, :] |= mask[..., :-1, :]
+        wider[..., :-1, :] |= mask[..., 1:, :]
+        wider[..., :, 1:] |= mask[..., :, :-1]
+        wider[..., :, :-1] |= mask[..., :, 1:]
+        mask = wider
+    return mask
+
+
+def text_free(images, rule):
+    size = images[0][:2]
+    kept = [image for image in images if image[:2] == size]
+    if len(kept) < 2:
+        raise DsUiError("a text-free texture needs at least two same-sized DS textures")
+    width, height = size
+    colors = numpy.stack([numpy.frombuffer(image[2], numpy.uint8).reshape(height, width, RGBA_BYTES)[..., :3] for image in kept]).astype(numpy.float32)
+    lettering = colors[..., 1] > rule["text_green_above"]
+    covered = grown(lettering, rule["grow"])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        for _ in range(rule["rounds"]):
+            estimate = numpy.nanmedian(numpy.where(covered[..., None], numpy.nan, colors), axis=0)
+            with numpy.errstate(invalid="ignore"):
+                differs = numpy.abs(colors - estimate[None]).sum(axis=-1) > rule["differ_above"]
+            covered = grown(differs | lettering, 1)
+        estimate = numpy.nanmedian(numpy.where(covered[..., None], numpy.nan, colors), axis=0)
+    hole = numpy.isnan(estimate).any(axis=-1)
+    mirrored = estimate[:, ::-1]
+    from_mirror = hole & ~hole[:, ::-1]
+    estimate[from_mirror] = mirrored[from_mirror]
+    hole &= ~from_mirror
+    estimate = numpy.nan_to_num(estimate)
+    while hole.any():
+        total = numpy.zeros_like(estimate)
+        count = numpy.zeros(hole.shape, numpy.float32)
+        for shift in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            neighbor_hole = numpy.roll(hole, shift, (0, 1))
+            total += numpy.where(neighbor_hole[..., None], 0, numpy.roll(estimate, shift, (0, 1)))
+            count += ~neighbor_hole
+        filled = hole & (count > 0)
+        estimate[filled] = total[filled] / count[filled][:, None]
+        hole &= ~filled
+    rgba = numpy.concatenate([numpy.clip(numpy.rint(estimate), 0, 255).astype(numpy.uint8), numpy.full((height, width, 1), FULL_ALPHA, numpy.uint8)], axis=-1)
+    return width, height, rgba.tobytes()
+
+
+def part_sources(part):
+    if "text_free_of" in part:
+        first, last = part["text_free_of"]
+        return list(range(first, last + 1))
+    return [part["texture"]] + ([part["flat_color_of"]] if "flat_color_of" in part else [])
+
+
+def part_image(part, texture_of):
+    if "text_free_of" in part:
+        images = []
+        for index in part_sources(part):
+            try:
+                images.append(texture_of(index, True))
+            except ds_textures.TextureRefused:
+                continue
+        if not images:
+            raise DsUiError("no DS texture in %s decodes" % part["text_free_of"])
+        return text_free(images, part["text_rule"])
+    return texture_of(part["texture"], part.get("opaque", False))
+
+
 def place_in_cell(image, cell, align):
     cell_x, cell_y, cell_width, cell_height = cell
     if image[0] > cell_width or image[1] > cell_height:
@@ -140,7 +212,7 @@ def compose(description, texture_of):
     if "fill" in description:
         canvas = bytearray(bytes(description["fill"]) + bytes((FULL_ALPHA,))) * (width * height)
     for part in parts:
-        image = texture_of(part["texture"], part.get("opaque", False))
+        image = part_image(part, texture_of)
         if "crop" in part:
             image = cropped(image, part["crop"])
         if "cut_out" in part:
@@ -163,8 +235,13 @@ def compose(description, texture_of):
 def source_of(description, pack, language):
     sources = []
     for part in description["parts"]:
-        for index in [part["texture"]] + ([part["flat_color_of"]] if "flat_color_of" in part else []):
-            stored = pack.texture_bytes(index, language)
+        for index in part_sources(part):
+            try:
+                stored = pack.texture_bytes(index, language)
+            except ds_textures.TextureRefused:
+                if "text_free_of" not in part:
+                    raise
+                stored = b""
             sources.append(len(stored).to_bytes(4, "little") + stored)
     return b"".join(sources)
 

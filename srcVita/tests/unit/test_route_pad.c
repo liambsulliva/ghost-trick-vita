@@ -216,6 +216,36 @@ static void test_a_dead_talk_from_a_dead_core_talks_to_the_dead(void)
     CHECK(!gate_got("SYSTEM", "CORETALK"));
 }
 
+static int swirl_effects_played;
+static int swirl_effect_was_on;
+
+static void on_swirl_effect_played(int is_on)
+{
+    swirl_effects_played++;
+    swirl_effect_was_on = is_on;
+}
+
+static void test_a_dead_talk_plays_the_swirl_opening_and_a_restart_does_not(void)
+{
+    static struct script_outputs effect_outputs;
+
+    effect_outputs.swirl_effect_played = on_swirl_effect_played;
+    start_with_one_step(SCRIPT_ROUTE_DEAD_TALK, "-", "ticks:1");
+    machine.outputs = &effect_outputs;
+    swirl_effects_played = 0;
+    swirl_effect_was_on = 0;
+    run_ticks(TICKS_FOR_A_DEAD_TALK_TO_START);
+    CHECK(machine.swirl_is_on);
+    CHECK_INT(swirl_effects_played, 1);
+    CHECK_INT(swirl_effect_was_on, 1);
+    script_soul_run_command(&machine, "DeadTalk", "Finish");
+    CHECK(!machine.swirl_is_on);
+    script_soul_run_command(&machine, "DeadTalk", "Restart");
+    CHECK(machine.swirl_is_on);
+    CHECK_INT(swirl_effects_played, 1);
+    machine.outputs = &no_outputs;
+}
+
 static void walk_onto_a_dead_gate_while_the_body_handles(int handler_count)
 {
     static const char *const verbs[2] = { "SYSTEM", "SVTUTO" };
@@ -467,6 +497,7 @@ static void test_a_camera_step_scrolls_until_its_object_is_in_view(void)
 
 int main(void)
 {
+    test_a_dead_talk_plays_the_swirl_opening_and_a_restart_does_not();
     test_a_camera_step_scrolls_until_its_object_is_in_view();
     test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up();
     test_the_pad_opens_the_ghost_view_once_the_next_core_comes_within_reach();

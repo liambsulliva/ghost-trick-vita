@@ -92,6 +92,7 @@ struct script_hud_view {
     int phone_book_count;
     int phone_book_cursor;
     int phone_book_places[SCRIPT_PHONE_BOOK_MOST];
+    int phone_book_note_levels[SCRIPT_PHONE_BOOK_MOST];
     struct script_choice_view choice;
 };
 
@@ -164,6 +165,7 @@ struct script_outputs {
     void (*screen_still_changed)(int is_on);
     void (*screen_still_faded)(float alpha);
     void (*swirl_changed)(int is_on);
+    void (*swirl_effect_played)(int is_on);
     void (*movie_started)(const char *name);
     int (*movie_of_class_started)(unsigned int class_id);
     void (*soul_sparks_changed)(int elapsed_ticks, float x, float y);

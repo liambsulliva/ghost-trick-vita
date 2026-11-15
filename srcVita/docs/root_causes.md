@@ -2078,6 +2078,84 @@ The class: any script that picks its scene from story flags (every stage root, `
 
 Guard: `make read-ahead` now has the whole-game replay (`script_replay --chapter-starts`) write the state it had each time it entered `chapter.xml` (`game_save_capture`, as the app's chapter autosave does) into `scripts/chapter_starts.txt`, one section per chapter from 2 to 18. Debug Chapter select marks its bare save `is_chapter_select`, and `script_player.c` replaces it with that chapter's baked start from the script pack before the chain loads. `tests/unit/test_chapter_starts.c` reads each chapter's section, opens a chapter from its baked start in the scene its story flag picks, checks that a phone ride from there lands in the same scene with the chapter mark, game flags and notes unchanged, and checks that a start without the flags rides back to the first scene. `make route-check` runs `tools/chapter_starts_check.py`: it fails when the set's `chapter_starts.txt` differs from the fresh replay's, when a chapter has no start, when a start opens a scene other than the one the story opens, or when a ride to any place in that start's Phone book opens no scene or lowers the chapter mark. All 17 starts in both sets open the story's scene.
 
+### 274. DS mode's pause, loading and title screens stood on a flat red fill
+
+Seen on the Vita: the chapter cards show the red gear backdrop, and the pause menu, the loading screen and the title stood on a plain red fill. The user asked on 2026-11-15 that they share that backdrop. The cartridge keeps no copy of it without words: the title screen (`cpac_3d.bin` texture 1042, one per language) carries the logo and copyright, and each chapter card (1047 on, drawn whole by the eyecatch, `func_02013a88`) carries its chapter and time. Every copy has the same backdrop under different words, and natively none is drawn without them.
+
+The class: a picture the DS only ever draws with words baked in, which a screen the port adds needs bare.
+
+Guard: a `ds_textures` part may name a range of textures in `text_free_of` with a `text_rule`. `ds_ui.text_free` masks each texture's lettering (green above the limit, grown by `grow` pixels, then anything far from the running median) and takes each pixel's median from the textures whose words miss it. A pixel every texture covers is filled from its mirror across the centre, then from its neighbours. `pause_backdrop` is 1042 to 1135, cropped to 16:9. The user chose this over the remaster's art on 2026-11-15, knowing the time line covers every card's centre, so a band there stays smudged. The cartridge-only LiveArea draws the logo over the same backdrop. `tests/tools/test_ds_ui.py` checks the median on synthetic cards and that the DS backdrop has no fill.
+
+### 275. The Minutes Before Death card drew its bands but no words in DS mode
+
+Seen on the Vita: the card before a death showed its bands without "4 Minutes Before Death", its clock or its hands. Native `uBeforeDeathEffect` (`func_02048100`, `func_02048188`) makes a watch, `uSwfPlayWatch` (`func_02047720`, `func_0204776c`), which plays `cpac_3d.bin` block 3 effect 202 (item 1 the red clock face, item 2 the red ring); its draw (`func_0204791c`) gives the two hands block 0 textures 190 and 191. After 24 ticks `func_02048224` makes the telop (`func_02047bc8`), effect 281, whose item 2 holds the localized lettering. That is the eyecatch banners' route (root cause 267), but `test_ds_texture_slots.py` read only `banner_*` names from `ui_clips.py`, so the card's slots, like every other texture a clip names, had neither a DS entry nor a listed gap and the guard still passed.
+
+The class: a texture slot named only in the clip tables, which the slot guard never read.
+
+Guard: `card_clock`, `card_wave`, `card_hand_hour`, `card_hand_minute`, `card_top_text` and `card_bottom_text` map onto those effect items and textures, each at the shape the clip draws it, the text in every cartridge language. `tests/tools/test_ds_texture_slots.py` now collects every texture `ui_clips.all_clips()` draws and lists the rest as known gaps; `tests/tools/test_ds_effects.py` checks that every clip sprite with a DS entry keeps the clip's shape.
+
+Not done: the middle line (time from textures 177 to 189, place from room labels 687 on, chosen by `func_020265fc` through `data_0209b7b4`) has no app slot; the DS has no seconds hand; `hud_disc`, the death count and `wipe_time_passing` are not traced. Which hand is hour and which minute is read from their length. Not checked on the device or in melonDS.
+
+### 276. The "!" and "?" balloons did not draw in DS mode; only their sound played
+
+Native `func_02044b48` (`uBalloonPicture` start), given no text, makes a `uSwfPlayForBalloon` and plays `cpac_3d.bin` block 3 effect 0x8c (the "?" cloud) for kind 4 and 0x85 (the "!" burst) for every other kind, through `func_02066074`, `func_0204235c` and `func_0201e888(reader, 3, kind)`. Each is a 40-frame movie: the burst (item 2) shows at frame 10, the mark (item 1) at frame 14, both centred on the balloon, and the movie removes itself at frame 39. `ds_set` took its balloon table only from the worded op 0x51 bake (root cause 270), so op 0x52 kinds 2, 4 and 5 had no row and logged `no_balloon_row`.
+
+The class: balloon rows with no text, which native draws with an effect movie rather than a composed texture, and which the DS set never built. The remastered set has a row for kind 5 only.
+
+Guard: `ds_alert_balloons.py` builds one row for each op 0x52 kind in the game chain from the cartridge movie (delay, part order, settled position, grow) and bakes its textures at DS size; `ds_balloons.bake` adds them. It names any kind it cannot place (mirrored kinds 3 and 6, unused by the chain). `tests/tools/test_ds_alert_balloons.py` fails unless every op 0x52 kind has a row with decoded art in every language, and unless `ds_balloons.bake` returns those rows. Checked against a melonDS capture of the opening "!" over Lynne.
+
+Not done: the movie's own end at frame 39 (the app keeps the parts until the balloon's timer ends), the 0.8 to 1.2 to 1.0 overshoot, the burst's 0.9 alpha and the mark's wobble; the row format has no field for them. Not checked on the device.
+
+### 277. DS mode's tutorial talk sent the player to a top screen the Vita does not have
+
+The user asked on 2026-11-15 that DS mode stop naming the top screen. Native prints each message as the cartridge's 1LMG file spells it, through the talk window table (`data_02084a8c`), and the DS shows the trick name, the countdown and the swap shape on its second screen. Four talk messages in every cartridge language name that screen: Ray's tour of the trick name (st01_game001 `m01_0460`), the hourglass (st01_game011 `m01_0660`) and the bullet's shape (st02_game035 `m02_3857` and `m02_3930`). The remaster rewords the first two for one screen ("the middle of the screen", "the right side of the screen") and cuts the bullet's top screen page, because one screen shows no shape. The DS set baked the cartridge's wording.
+
+The class: cartridge text that assumes the DS's two screens, in any language and any message the shared DS text bake reads.
+
+Guard: `ds_one_screen.py` runs over every message `ds_set_text.MessageBook` and `read_system_messages` read, so talk, narration, balloons and system lines all pass through it. `ds_one_screen.json` holds, per cartridge language code, phrase rewrites in the remaster's wording, the pages to cut, and the refused phrases. A rewrite matches the letters and line breaks of a page and keeps every control code inside the phrase in its order, placed where the rewrite's `^` marks say; a cut page hands its controls (speaker, sound, colour) to the next page. A message that still holds a refused phrase stops the bake. `tests/tools/test_ds_one_screen.py` bakes every script and system message of every cartridge language through `MessageBook`, fails on "top screen", "upper screen", "écran supérieur", "oberen Bildschirm", "schermo superiore" or "pantalla superior", fails on any table entry the cartridge no longer uses, and fails on a rewritten line wider than the DS talk window. `ds_text.CODE_OF_CHARACTER` now holds the cartridge's accented letters for every user (the pause menu took its copy from there).
+
+Left as the cartridge has them: "slide the screen" and "Touch the screen" (the Vita has a touch screen), "the button displayed on-screen", the German "Die Sanduhr da oben" (the remaster keeps it), and the system lines that ask to reinsert the DS Card, which DS mode never shows. The cut leaves the bullet talk's next page, "Now I know what it's shaped like", as the cartridge has it. Not checked on the device.
+
+### 278. The dead talk's swirl, its waves and its opening drew nothing in DS mode
+
+Seen on the Vita: in DS mode a dead talk showed a black screen with no red swirl, no moving lines and no opening, while its sounds played. The swirl setter `func_0200f084` with its effect flag makes three things: the opening `uTimeMoveEffect` (`func_0205c044`; `func_0205e4f4`, `func_0205e5fc`, `func_0205e6d0`), the backdrop through `func_0200a200`, and `uDeadKaiwaParticle` (`func_0204e2b4`, drawn by `func_0204e6ec`). The glow and particles are `cpac_3d.bin` textures 176 and 175, the originals of the remaster's art, but `swirl_back` and `swirl_particle` had no `ds_textures` entry. The waves are a 2D affine BG, `cBgCtrl::uBgDeadKaiwa` (`func_0200aaac`, `func_0200ab84`), read from `cpac_2d.bin` block 4 entry 1, which takes the next of its 16 palettes every 16 frames and turns 32/65536 of a turn a frame; no set ported it. The opening (spokes, spun capture and a red ring from frame 3 to 13) was never ported (root cause 203), in either set. Its flag is the dead-talk state's +8: 0 on a normal start, so the opening plays, and 3 for `DeadTalk|Restart` (`func_0203c03c`), so it does not.
+
+The class: art a native BG layer or a code-driven effect draws, rather than an effect file or a texture slot, which a slot audit cannot see.
+
+Guard: `ds_backdrops.py` bakes any palette-cycled cartridge BG named in `ds_backdrops` as a flipbook, one frame a palette, and `swirl_waves.c` draws it wrapped and turning at the native rate under the glow, which then shows at 20/31. The swirl setter carries the native effect flag (`script_machine_set_swirl_with_effect`; on for a normal dead talk and a flagged op 0xe0, off for a restart), and `soul_transition` plays the opening, `TRANSITION_TIME_MOVE`, in both sets. `tests/tools/test_ds_texture_slots.py` requires every flipbook the app names to have a DS source; `test_ds_backdrops.py`, `test_swirl_waves.c`, `test_soul_transition.c` and `test_route_pad.c` cover the bake, the drawing, the ring and when the opening fires.
+
+Not done: the ring's screen size is read from native units (4096 to 96 DS pixels) and may be too large if native projects in perspective; the glow's size and turn and the particles keep the remaster's values; system sounds 14 and 15 and the closing `uSoulCloseEffect` are not added. Not checked on the device or in melonDS.
+
+### 279. The junkyard crane drew as a stretched, blocky jib in DS mode
+
+Seen on the Vita: the crane over the junkyard showed a huge beige jib end and a band of tall lattice under the wrecking ball. The app reads a script's animations from its packed bundle (`scripts/<script>.anims`, inside `scripts.pack`), which only the read-ahead step wrote; the converter kept bundles as they were. Root cause 258 split tall DS sprite pages and changed the texture coordinates in `animations/*.anim`, but the bundles kept those of the old 994x6056 page, so on the new 833x1927 page the crane (`t_topa_wait`, resource 3773) sampled a 349x76 corner and stretched it to its 416x240 frame. 41 of the DS set's 126 bundles were stale (47 animations: the crane, its ropes, `dcraneb`, `jodo`, `bigniku`). Native draws each frame from its own cells (`func_0200b598`, `func_0200bf54`), so the port's page coordinates must match the pages it bakes.
+
+The class: an output built from other outputs and rebuilt only by a separate step, so it goes stale when they change.
+
+Guard: `write_outputs` calls `read_ahead.write_every_bundle` after writing the animations and motions and before packing the scripts, so every conversion rebuilds every bundle from what it just wrote, in both sets. `tests/tools/test_anim_bundles.py` checks that a stale bundle is rewritten, that every bundle equals `bundle_text` of its motions and animations, and that the pack carries it.
+
+Not done: the `.ahead` lists still come only from `make read-ahead`, and name only a split resource's first page; rerun it for the DS set. Not checked on the device.
+
+### 280. The DS phone book listed no contacts
+
+Seen on the Vita: in DS mode the phone book showed its title and choices over empty slots. The app drew each contact as a remastered place photo from `pause/people.txt` (`pause_people_draw_place`), a table only the remastered set bakes. Natively the book (`pGameSubPhoneBook`; list `func_02038848`, items `func_02038e04`) shows a cartridge name plate per place: `func_0203971c` picks the localized `cpac_2d.bin` sprite resource from `data_0209a7cc` (24 places by 3 levels; +1 selected, +2 touched), `func_02038e04` raises the level once the place's list-2 note level reaches the steps in `data_0209a76c`, so a place reads as its number, such as (SYS)-1729, before its name, and `func_0203936c` lays the items on a 7-slot arc.
+
+The class: a DS-mode screen whose content comes only from a table the remastered set alone bakes.
+
+Guard: `ds_phone_book.py` reads both native tables from the arm9 and bakes every place's resting and selected plates, per cartridge language, into `ds_phone_book` and `pause/phone_book.txt`; the app draws them on the native arc at twice DS size through `phone_book_plates` when that table is loaded, the remastered path unchanged. To fit five slots, the title moves up to y 72 and the hints down to y 472 when the plates draw. `tests/tools/test_ds_phone_book.py` checks that every language's text-and-menu pass bakes the book and that every place, level and state has a plate in all five languages; `tests/unit/test_phone_book_plates.c` checks the reveal levels, the plate choice and the view's note levels.
+
+Not done: five slots shown, not native's seven; the native prompt plates and Go There / Stay Here plates are decoded but not wired; the highlight and reveal animations (`func_020396ac`, `func_02039500`) are not ported. The DS set still bakes no `people.txt`, so the pause menu's People tab is empty in DS mode. Not checked on the device.
+
+### 281. DS cutscene movies skipped
+
+Seen on the Vita: in DS mode every full-screen movie skipped. The DS set baked no movie frames and wrote its movie rows without class ids, so op 0xec's `movie_of_class_started` found no movie and went on. The cartridge holds the movies as Mobiclip `.mods` files, played by `cMobiMovieImpl` (`func_ov004_020d7050`) from each movie class's start method (vtable slot 11, such as `func_ov004_020d7028`); the classes are registered by name in `__sinit_0207ef1c`. The rewind starts `pGameMainMovieRollback` (`func_0203e97c`), which on the DS plays `timejump.mods`, and `pGameMainMovieRollbackFinal` plays `longjump.mods`, both unlike the remaster's files. The files carry no audio; native plays the sound on its own.
+
+The class: every full-screen movie the DS scripts start, which the DS set never baked.
+
+Guard: `ds_movies.py` follows that chain in the cartridge code for every movie row at bake time, decodes with ffmpeg's mobiclip decoder, converts the full-range YCgCo planes itself, and bakes DXT1 frames at native size and 15 fps through the bake record. It prints any row it cannot bake and any class the scripts start that has no frames. `tests/tools/test_ds_movies.py` checks that every class id the DS scripts start has a cartridge movie, pins the native mapping and checks that the files carry no audio.
+
+Not done: Final's own sound (0x1eb with `func_0202a080`) is not played; `time_jump` and `long_jump` bake the same file twice. Not checked on the device.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
