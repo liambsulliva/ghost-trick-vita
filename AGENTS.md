@@ -16,3 +16,6 @@
 - `srcVita/README.md` holds granular detail about the port only.
 - `src/README.md` holds granular detail about the decompilation effort.
 - State each fact in one of the three, never twice.
+
+## Commits
+- Commit messages carry no co-author trailers and no tool footers; the shared `commit-msg` hook strips them.
