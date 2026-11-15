@@ -1,1 +1,0 @@
-set remastered loop points | gim_189, gim_232 and gim_279 loop to one frame past their end, so sound_engine.c read_loop_points refuses them and they play once

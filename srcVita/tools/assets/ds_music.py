@@ -59,12 +59,12 @@ def music_files(section, sdat, remaster_tracks, record, music_ids=None):
         if sequence is None:
             files[track_path(name, ".ogg")] = track["ogg"]
             if track["loop_points"] is not None:
-                files[track_path(name, ".loop")] = audio_file.loop_text(track["loop_points"]).encode("ascii")
+                files[track_path(name, ".loop")] = audio_file.loop_text(track["loop_points"], track["ogg"]).encode("ascii")
             continue
         ogg, loop_points = bake_track(sdat, sequence, name, record, code)
         files[track_path(name, ".ogg")] = ogg
         if loop_points is not None:
-            files[track_path(name, ".loop")] = audio_file.loop_text(tuple(loop_points)).encode("ascii")
+            files[track_path(name, ".loop")] = audio_file.loop_text(tuple(loop_points), ogg).encode("ascii")
     return files
 
 
@@ -81,5 +81,5 @@ def cartridge_music_files(section, sdat, music_ids, record, folder=MUSIC_FOLDER)
         ogg, loop_points = bake_track(sdat, sequence, name, record, code, folder)
         files[track_path(name, ".ogg", folder)] = ogg
         if loop_points is not None:
-            files[track_path(name, ".loop", folder)] = audio_file.loop_text(tuple(loop_points)).encode("ascii")
+            files[track_path(name, ".loop", folder)] = audio_file.loop_text(tuple(loop_points), ogg).encode("ascii")
     return files, missing

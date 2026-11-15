@@ -278,7 +278,7 @@ def sound_files(sdat_bytes, sounds, record, code=None):
         ogg, loop_points = bake_sound(sdat_bytes, archive, row, record, code)
         files[sound_path(row["name"], ".ogg")] = ogg
         if loop_points is not None:
-            files[sound_path(row["name"], ".loop")] = audio_file.loop_text(tuple(loop_points)).encode("ascii")
+            files[sound_path(row["name"], ".loop")] = audio_file.loop_text(tuple(loop_points), ogg).encode("ascii")
     return files
 
 

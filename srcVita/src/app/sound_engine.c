@@ -7,6 +7,7 @@
 #include "clock.h"
 #include "file.h"
 #include "file_path.h"
+#include "loop_file.h"
 #include "memory.h"
 #include "pcm_mix.h"
 #include "pcm_ramp.h"
@@ -32,7 +33,6 @@
 #define LOG_FOR_TOOLS_SOUND_WINDOW "sound window index=%u at=%llu grains=%u wall_us=%llu late=%u voices_max=%d started=%u dropped=%u mix_us_max=%llu block_us_max=%llu gap_us_max=%llu period_us_max=%llu"
 #define LOG_FOR_TOOLS_SOUND_STOPPED "sound stopped reason=%s submitted=%llu grains=%u late=%u"
 
-#define LOOP_TEXT_MAX 64
 #define SOUND_PCM_BUDGET_BYTES (32ull * 1024ull * 1024ull)
 
 struct sound_start {
@@ -306,26 +306,13 @@ static int read_clip_file(const char *name, unsigned char **data, unsigned int *
 
 static void read_loop_points(struct sound_clip *clip)
 {
-    char path[FILE_PATH_MAX];
-    char text[LOOP_TEXT_MAX];
-    unsigned char *data;
-    unsigned int size;
+    int result;
 
-    clip->has_loop_points = 0;
-    if (!file_path_join(path, folder, clip->name, ".loop") || file_read_whole(path, &data, &size) != FILE_OK) {
-        return;
-    }
-    if (size >= sizeof(text)) {
-        size = sizeof(text) - 1;
-    }
-    memcpy(text, data, size);
-    text[size] = '\0';
-    mem_free(data);
-    if (sscanf(text, "%u %u", &clip->loop_start, &clip->loop_last) != 2 || clip->loop_start > clip->loop_last || clip->loop_last >= clip->frame_count) {
+    result = loop_file_read(folder, clip->name, clip->frame_count, &clip->loop_start, &clip->loop_last);
+    clip->has_loop_points = result == LOOP_FILE_OK;
+    if (result == LOOP_FILE_BAD) {
         run_log_write("sound bad_loop_file name=%s", clip->name);
-        return;
     }
-    clip->has_loop_points = 1;
 }
 
 static unsigned int decode_stream_into(short *frames, unsigned int frame_limit)

@@ -63,9 +63,6 @@ fail script submit_failed
 fail script time_dropped
 fail script too_many_pending_overlays
 fail smoke fail
-known sound bad_loop_file *name=gim_189 | loop end is one past the last frame, see known_gaps.txt
-known sound bad_loop_file *name=gim_232 | loop end is one past the last frame, see known_gaps.txt
-known sound bad_loop_file *name=gim_279 | loop end is one past the last frame, see known_gaps.txt
 fail sound bad_loop_file
 fail sound decoder_failed
 fail sound dropped *reason=not_loaded*

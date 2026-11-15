@@ -1823,6 +1823,14 @@ The class: one time limit for a long wait, sized for the good case.
 
 Guard: the flow runner's `stall <frames> <text>` line fails a flow once that many frames pass with no log line holding the text; the fast-forward flows watch `route_step_done` with 20000 frames, fourteen times the longest gap in a good run, and a broken story now fails in under a minute. `tests/unit/test_smoke_run.c` covers the line.
 
+### 250. Three looping sounds loop past their own end and play once
+
+Found by the smoke test's `set remastered loop points` check, and by `sound bad_loop_file` in the whole-story flows of Chapters 4, 7, 8 and 11: `sounds/gim_189.loop` held `2 41438` for a sound of 41438 frames, `gim_232` `2 92927` of 92927 and `gim_279` `0 61393` of 61393. The app takes the second number as the last frame of the loop and refuses a loop whose last frame is not below the frame count, so the three played once. The loop points are the remaster's: the bake copies the srcd wrapper's two words at 53 and 57. Of the APK's 79 looping streams, 67 at 44100 Hz and the 2 at 48000 Hz end the loop on their last frame, frame count minus one; 7 end it earlier; only these three give the frame count itself. So the word at 57 is the last frame, as `audio_file.py` reads it, and the three are the remaster's own off-by-one, which its player clamps where ours refused. No native function is involved: the DS plays these sounds from its sequence archive, and the converter's DS paths already end on `loop_end - 1`.
+
+The class: a loop end copied from a source without checking it against the sound actually written beside it.
+
+Guard: `audio_file.loop_text` takes the baked Ogg and clamps the loop's last frame to the frame count its last page gives, minus one, and refuses a loop that starts past the end. Every `.loop` the converter writes passes through it (remaster music and sounds, DS music and DS sounds). The app's two readers share `loop_file_read` in `src/app/loop_file.c`, so music and sounds apply one rule. `tests/tools/test_audio_file.py` and `tests/tools/test_end_to_end.py` bake a loop ending at and past the frame count and require it to end on the last frame; `tests/unit/test_loop_file.c` refuses a last frame at or past the frame count; the smoke test's loop point check fails a set holding one; `tools/mutation_check.py` moves the clamp and the bound by one and requires the tests to fail.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

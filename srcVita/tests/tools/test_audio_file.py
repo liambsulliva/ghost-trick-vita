@@ -3,7 +3,13 @@ import unittest
 
 import audio_file
 
-OGG_BYTES = b"OggS" + b"\x00" * 60
+
+
+def ogg_of(frame_count):
+    return b"OggS" + b"\x00" * 2 + frame_count.to_bytes(8, "little") + b"\x00" * 50
+
+
+OGG_BYTES = ogg_of(44100)
 
 
 def wrapped(ogg_bytes=OGG_BYTES, rate=44100, channels=2, loop_flag=0, loop_start=0, loop_last=0):
@@ -32,7 +38,24 @@ class ReadStreamTests(unittest.TestCase):
     def test_loop_points_come_from_the_wrapper_when_its_flag_is_set(self):
         stream = audio_file.read_stream(wrapped(loop_flag=1, loop_start=1000, loop_last=2000), "a")
         self.assertEqual(stream["loop_points"], (1000, 2000))
-        self.assertEqual(audio_file.loop_text(stream["loop_points"]), "1000 2000\n")
+        self.assertEqual(audio_file.loop_text(stream["loop_points"], stream["ogg"]), "1000 2000\n")
+
+    def test_the_last_frame_is_the_latest_a_written_loop_ends(self):
+        self.assertEqual(audio_file.loop_text((2, 99), ogg_of(100)), "2 99\n")
+        for past_the_end in (100, 101, 5000):
+            with self.subTest(past_the_end):
+                start, last = (int(word) for word in audio_file.loop_text((2, past_the_end), ogg_of(100)).split())
+                self.assertEqual((start, last), (2, 99))
+                self.assertLess(last, audio_file.ogg_frame_count(ogg_of(100)))
+
+    def test_the_frame_count_is_read_from_the_last_page(self):
+        self.assertEqual(audio_file.ogg_frame_count(ogg_of(10) + ogg_of(41438)), 41438)
+
+    def test_a_loop_that_starts_past_the_sound_or_a_sound_with_no_page_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "100 to 200 does not fit a sound of 100 frames"):
+            audio_file.loop_text((100, 200), ogg_of(100))
+        with self.assertRaisesRegex(ValueError, "no Ogg page"):
+            audio_file.loop_text((0, 5), b"ogg")
 
     def test_loop_fields_without_the_flag_are_ignored(self):
         stream = audio_file.read_stream(wrapped(loop_flag=0, loop_start=5, loop_last=9), "a")

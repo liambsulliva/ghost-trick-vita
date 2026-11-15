@@ -7,6 +7,7 @@ import numpy
 import chapter_assets
 import ds_sounds
 import sseq_render
+import test_audio_file
 from test_sseq_render import (
     NOTE_C4, allocate_tracks, basic_bank, info_section, note, open_track, pcm16_wave, rest, sequence_file, sound_archive,
     wave_archive_file, wave_entry,
@@ -196,7 +197,7 @@ class FileTests(unittest.TestCase):
         sdat = archive_with_groups([([(0, 127), (len(held), 127)], held + short)], waves=[ramp_wave(1024)])
         record = FakeRecord()
         rows = [{"name": "sys_000", "group": 0, "index": 0}, {"name": "sys_001", "group": 0, "index": 1}]
-        with mock.patch.object(ds_sounds.ds_music, "encode_ogg", return_value=b"ogg") as encode:
+        with mock.patch.object(ds_sounds.ds_music, "encode_ogg", return_value=test_audio_file.ogg_of(1 << 30)) as encode:
             files = ds_sounds.sound_files(sdat, rows, record, code="code")
             again = ds_sounds.sound_files(sdat, rows, record, code="code")
         self.assertEqual(encode.call_count, 2)

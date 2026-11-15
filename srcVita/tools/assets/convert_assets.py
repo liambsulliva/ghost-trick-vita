@@ -393,11 +393,11 @@ def audio_output_files(music_results, sound_results):
     for result in music_results:
         files["music/" + result["name"] + ".ogg"] = result["ogg"]
         if result["loop_points"] is not None:
-            files["music/" + result["name"] + ".loop"] = audio_file.loop_text(result["loop_points"]).encode("ascii")
+            files["music/" + result["name"] + ".loop"] = audio_file.loop_text(result["loop_points"], result["ogg"]).encode("ascii")
     for result in sound_results:
         files["sounds/" + result["name"] + ".ogg"] = result["ogg"]
         if result["loop_points"] is not None:
-            files["sounds/" + result["name"] + ".loop"] = audio_file.loop_text(result["loop_points"]).encode("ascii")
+            files["sounds/" + result["name"] + ".loop"] = audio_file.loop_text(result["loop_points"], result["ogg"]).encode("ascii")
     return files
 
 

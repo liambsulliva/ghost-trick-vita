@@ -13,6 +13,7 @@ import time
 import unittest
 from unittest import mock
 
+import audio_file
 import bake_record
 import convert_assets
 import font_file
@@ -42,6 +43,7 @@ TEXTURE_FILE_HEADER_SIZE = 20
 DXT1_BLOCK_BYTES = 8
 SONG_PATH = "natives/android/streaming/sound/bgm_new/song.asrc.31"
 LOOPED_SONG_PATH = "natives/android/streaming/sound/bgm_new/looped_song.asrc.31"
+LOOP_TO_THE_LENGTH_PATH = "natives/android/streaming/sound/bgm_new/loop_to_the_length.asrc.31"
 PING_PATH = "natives/android/streaming/sound/se_resource/sys/ping.asrc.31"
 ODD_RATE_PING_PATH = "natives/android/streaming/sound/se_resource/sys/odd.asrc.31"
 ODD_RATE = 18000
@@ -83,6 +85,7 @@ def game_files():
         (PLATE_PATH, opaque_etc2_tex(128, 64), True),
         (SONG_PATH, test_audio_file.wrapped(), False),
         (LOOPED_SONG_PATH, test_audio_file.wrapped(loop_flag=1, loop_start=4, loop_last=9), True),
+        (LOOP_TO_THE_LENGTH_PATH, test_audio_file.wrapped(loop_flag=1, loop_start=2, loop_last=audio_file.ogg_frame_count(test_audio_file.OGG_BYTES)), True),
         (PING_PATH, test_audio_file.wrapped(channels=1), False),
         (ODD_RATE_PING_PATH, test_audio_file.wrapped(ogg_bytes=tone_ogg(ODD_RATE), rate=ODD_RATE), False),
     ]
@@ -481,6 +484,15 @@ class EndToEndTests(unittest.TestCase):
         set_description["sounds"] = [{"name": "hum", "source": LOOPED_SONG_PATH}]
         self.convert(set_description)
         self.assertEqual(self.read_text("sounds", "hum.loop"), "4 9\n")
+
+    def test_a_loop_the_source_ends_on_its_frame_count_is_written_ending_on_the_last_frame(self):
+        set_description = tiny_set_description()
+        set_description["music"] = [{"name": "tune", "source": LOOP_TO_THE_LENGTH_PATH}]
+        set_description["sounds"] = [{"name": "hum", "source": LOOP_TO_THE_LENGTH_PATH}]
+        self.convert(set_description)
+        for folder, name in (("music", "tune"), ("sounds", "hum")):
+            frames = audio_file.ogg_frame_count(self.read_bytes(folder, name + ".ogg"))
+            self.assertEqual(self.read_text(folder, name + ".loop"), "2 %d\n" % (frames - 1))
 
     def test_a_set_without_audio_still_converts(self):
         set_description = tiny_set_description()
