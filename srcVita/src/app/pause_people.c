@@ -71,6 +71,7 @@
 #define BAND_HEIGHT 48.0f
 #define BOX_TOP 236.0f
 #define BOX_HEIGHT 246.0f
+#define DRAG_START 12.0f
 
 struct note_card {
     int list;
@@ -130,6 +131,22 @@ static int counts[TAB_MOST];
 static int tab;
 static int selected[TAB_MOST];
 static int first_slot[TAB_MOST];
+static int drag_is_tracking;
+static int drag_is_scrolling;
+static float drag_land_x;
+static float drag_land_position;
+static float strip_shift;
+static int touched_slot;
+static int touched_art_view;
+
+static void forget_drag(void)
+{
+    drag_is_tracking = 0;
+    drag_is_scrolling = 0;
+    strip_shift = 0.0f;
+    touched_slot = -1;
+    touched_art_view = 0;
+}
 
 static int read_numbers(const char *text, int *numbers, int most)
 {
@@ -370,6 +387,7 @@ void pause_people_enter(void)
     memset(selected, 0, sizeof(selected));
     memset(first_slot, 0, sizeof(first_slot));
     is_viewing_art = 0;
+    forget_drag();
     run_log_write("pause people people=%d places=%d illustrations=%d", counts[0], counts[1], counts[2]);
 }
 
@@ -438,6 +456,7 @@ static void switch_tab(int direction)
 {
     tab = (tab + direction + pause_people_tab_count()) % pause_people_tab_count();
     is_viewing_art = 0;
+    forget_drag();
 }
 
 static float tab_left(int index)
@@ -455,6 +474,9 @@ static float shoulder_x(int is_right)
 
 int pause_people_step(unsigned int pressed)
 {
+    if (pressed != 0) {
+        forget_drag();
+    }
     if (is_viewing_art && (pressed & (INPUT_CIRCLE | INPUT_CROSS))) {
         is_viewing_art = 0;
         return PAUSE_PEOPLE_STAYS;
@@ -499,17 +521,120 @@ static float art_view_left(void)
     return floorf(((float)RENDERER_WIDTH - art_view_width()) / 2.0f + 0.5f);
 }
 
-unsigned int pause_people_touch(int lands, float x, float y)
+static float slot_pitch(void)
+{
+    return slot_left(1) - slot_left(0);
+}
+
+static int last_first_slot(void)
+{
+    return counts[tab] > PAUSE_PEOPLE_SLOTS ? counts[tab] - PAUSE_PEOPLE_SLOTS : 0;
+}
+
+static void scroll_strip_to(float position)
+{
+    float most;
+
+    most = (float)last_first_slot() * slot_pitch();
+    position = position < 0.0f ? 0.0f : position > most ? most : position;
+    first_slot[tab] = (int)floorf(position / slot_pitch());
+    strip_shift = position - (float)first_slot[tab] * slot_pitch();
+}
+
+static void settle_strip(void)
+{
+    if (strip_shift >= slot_pitch() / 2.0f) {
+        first_slot[tab] = first_slot[tab] + 1;
+    }
+    strip_shift = 0.0f;
+    if (selected[tab] < first_slot[tab]) {
+        selected[tab] = first_slot[tab];
+    }
+    if (selected[tab] >= first_slot[tab] + PAUSE_PEOPLE_SLOTS) {
+        selected[tab] = first_slot[tab] + PAUSE_PEOPLE_SLOTS - 1;
+    }
+}
+
+static int slot_at(float x, float y)
 {
     int slot;
 
-    if (!lands) {
-        return 0;
+    for (slot = 0; slot < PAUSE_PEOPLE_SLOTS; slot++) {
+        if (is_inside(x, y, slot_left(slot), THUMB_TOP, THUMB_WIDTH, THUMB_HEIGHT)) {
+            return slot;
+        }
     }
-    if (is_viewing_art) {
+    return -1;
+}
+
+static void touch_full_art(int lands, int lifts, float x)
+{
+    if (lands) {
+        drag_is_tracking = 1;
+        drag_land_x = x;
+        return;
+    }
+    if (!lifts || !drag_is_tracking) {
+        return;
+    }
+    drag_is_tracking = 0;
+    if (x - drag_land_x <= -DRAG_START) {
+        select_entry(selected[tab] + 1);
+    } else if (x - drag_land_x >= DRAG_START) {
+        select_entry(selected[tab] - 1);
+    } else {
         is_viewing_art = 0;
+    }
+}
+
+static void land_on_page(float x, float y)
+{
+    drag_is_tracking = y >= FILM_TOP && y < PAUSE_BAR_TOP;
+    drag_is_scrolling = 0;
+    drag_land_x = x;
+    drag_land_position = (float)first_slot[tab] * slot_pitch() + strip_shift;
+    touched_art_view = tab == PAUSE_PEOPLE_TAB_ART && counts[tab] > 0 && is_inside(x, y, art_view_left(), ART_VIEW_TOP, art_view_width(), ART_VIEW_HEIGHT);
+    touched_slot = slot_at(x, y);
+}
+
+static void lift_from_page(void)
+{
+    if (drag_is_scrolling) {
+        settle_strip();
+    } else if (touched_art_view) {
+        is_viewing_art = 1;
+    } else if (touched_slot >= 0) {
+        select_entry(first_slot[tab] + touched_slot);
+    }
+    forget_drag();
+}
+
+unsigned int pause_people_touch(int lands, int lifts, int is_down, float x, float y)
+{
+    int slot;
+
+    if (is_viewing_art) {
+        touch_full_art(lands, lifts, x);
         return 0;
     }
+    if (lifts) {
+        lift_from_page();
+        return 0;
+    }
+    if (!lands) {
+        if (is_down && drag_is_tracking) {
+            if (!drag_is_scrolling && fabsf(x - drag_land_x) >= DRAG_START) {
+                drag_is_scrolling = 1;
+                touched_slot = -1;
+                touched_art_view = 0;
+            }
+            if (drag_is_scrolling) {
+                scroll_strip_to(drag_land_position - (x - drag_land_x));
+            }
+        }
+        return 0;
+    }
+    forget_drag();
     if (pause_is_on_back_pill(x, y)) {
         return INPUT_CIRCLE;
     }
@@ -527,16 +652,7 @@ unsigned int pause_people_touch(int lands, float x, float y)
         switch_tab(1);
         return 0;
     }
-    if (tab == PAUSE_PEOPLE_TAB_ART && counts[tab] > 0 && is_inside(x, y, art_view_left(), ART_VIEW_TOP, art_view_width(), ART_VIEW_HEIGHT)) {
-        is_viewing_art = 1;
-        return 0;
-    }
-    for (slot = 0; slot < PAUSE_PEOPLE_SLOTS; slot++) {
-        if (is_inside(x, y, slot_left(slot), THUMB_TOP, THUMB_WIDTH, THUMB_HEIGHT)) {
-            select_entry(first_slot[tab] + slot);
-            return 0;
-        }
-    }
+    land_on_page(x, y);
     return 0;
 }
 
@@ -828,16 +944,16 @@ static void draw_strip(float x_offset)
         pause_draw_slice("sprocket", x_offset + x, FILM_TOP + SPROCKET_TOP_INSET, SPROCKET_WIDTH, SPROCKET_HEIGHT, 1.0f);
         pause_draw_slice("sprocket", x_offset + x, FILM_TOP + FILM_HEIGHT - SPROCKET_BOTTOM_INSET, SPROCKET_WIDTH, SPROCKET_HEIGHT, 1.0f);
     }
-    for (slot = 0; slot < PAUSE_PEOPLE_SLOTS; slot++) {
+    for (slot = 0; slot < PAUSE_PEOPLE_SLOTS + (strip_shift > 0.0f ? 1 : 0); slot++) {
         index = first_slot[tab] + slot;
         if (tab == PAUSE_PEOPLE_TAB_ART) {
-            draw_art_thumb(index, x_offset + slot_left(slot), THUMB_TOP);
+            draw_art_thumb(index, x_offset + slot_left(slot) - strip_shift, THUMB_TOP);
         } else {
-            draw_thumb(index < counts[tab] ? art_for(tab, rows[tab][index]) : NULL, x_offset + slot_left(slot), THUMB_TOP, THUMB_WIDTH, THUMB_HEIGHT);
+            draw_thumb(index < counts[tab] ? art_for(tab, rows[tab][index]) : NULL, x_offset + slot_left(slot) - strip_shift, THUMB_TOP, THUMB_WIDTH, THUMB_HEIGHT);
         }
     }
     if (counts[tab] > 0) {
-        draw_thumb("frame", x_offset + slot_left(selected[tab] - first_slot[tab]) - FRAME_SPILL, THUMB_TOP - FRAME_SPILL, THUMB_WIDTH + 2.0f * FRAME_SPILL, THUMB_HEIGHT + 2.0f * FRAME_SPILL);
+        draw_thumb("frame", x_offset + slot_left(selected[tab] - first_slot[tab]) - strip_shift - FRAME_SPILL, THUMB_TOP - FRAME_SPILL, THUMB_WIDTH + 2.0f * FRAME_SPILL, THUMB_HEIGHT + 2.0f * FRAME_SPILL);
     }
 }
 

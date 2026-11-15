@@ -150,23 +150,31 @@ static void test_left_right_move_within_the_tab_and_l_r_switch_tabs(void)
     CHECK_INT(pause_people_step(INPUT_CIRCLE), PAUSE_PEOPLE_LEAVES);
 }
 
+static unsigned int tap(float x, float y)
+{
+    unsigned int pressed;
+
+    pressed = pause_people_touch(1, 0, 1, x, y);
+    return pressed | pause_people_touch(0, 1, 0, x, y);
+}
+
 static void test_touch_picks_tabs_thumbs_and_the_back_pill(void)
 {
     start_people();
     know(1, 3, 10);
     know(1, 1, 20);
     pause_people_enter();
-    CHECK_INT(pause_people_touch(1, 200.0f, 100.0f), 0u);
+    CHECK_INT(tap(200.0f, 100.0f), 0u);
     CHECK_INT(pause_people_selected(), 1);
-    CHECK_INT(pause_people_touch(1, 830.0f, 100.0f), 0u);
+    CHECK_INT(tap(830.0f, 100.0f), 0u);
     CHECK_INT(pause_people_selected(), 1);
-    CHECK_INT(pause_people_touch(0, 600.0f, 30.0f), 0u);
+    CHECK_INT(pause_people_touch(0, 0, 0, 600.0f, 30.0f), 0u);
     CHECK_INT(pause_people_tab(), PAUSE_PEOPLE_TAB_PEOPLE);
-    CHECK_INT(pause_people_touch(1, 600.0f, 30.0f), 0u);
+    CHECK_INT(tap(600.0f, 30.0f), 0u);
     CHECK_INT(pause_people_tab(), PAUSE_PEOPLE_TAB_PLACES);
-    CHECK_INT(pause_people_touch(1, 262.0f, 32.0f), 0u);
+    CHECK_INT(tap(262.0f, 32.0f), 0u);
     CHECK_INT(pause_people_tab(), PAUSE_PEOPLE_TAB_PEOPLE);
-    CHECK_INT(pause_people_touch(1, 90.0f, 518.0f), INPUT_CIRCLE);
+    CHECK_INT(tap(90.0f, 518.0f), INPUT_CIRCLE);
 }
 
 static void test_illustrations_add_a_third_tab_that_opens_full_screen(void)
@@ -202,9 +210,9 @@ static void test_illustrations_add_a_third_tab_that_opens_full_screen(void)
     CHECK_INT(pause_people_is_viewing_art(), 1);
     CHECK_INT(pause_people_step(INPUT_CIRCLE), PAUSE_PEOPLE_STAYS);
     CHECK_INT(pause_people_is_viewing_art(), 0);
-    CHECK_INT(pause_people_touch(1, 480.0f, 330.0f), 0u);
+    CHECK_INT(tap(480.0f, 330.0f), 0u);
     CHECK_INT(pause_people_is_viewing_art(), 1);
-    CHECK_INT(pause_people_touch(1, 10.0f, 10.0f), 0u);
+    CHECK_INT(tap(10.0f, 10.0f), 0u);
     CHECK_INT(pause_people_is_viewing_art(), 0);
     pause_people_step(INPUT_R);
     CHECK_INT(pause_people_tab(), PAUSE_PEOPLE_TAB_PEOPLE);
@@ -253,6 +261,27 @@ static void test_pictures_around_the_selection_are_read_ahead(void)
     pause_people_use_reached_chapter(99);
 }
 
+static void test_a_sideways_drag_scrolls_the_strip_and_a_tap_still_picks(void)
+{
+    static const int ids[] = { 3, 1, 8, 10, 11, 12, 13, 14 };
+    unsigned int index;
+
+    start_people();
+    for (index = 0; index < sizeof(ids) / sizeof(ids[0]); index++) {
+        know(1, ids[index], 10);
+    }
+    pause_people_enter();
+    CHECK(pause_people_count(PAUSE_PEOPLE_TAB_PEOPLE) > PAUSE_PEOPLE_SLOTS);
+    CHECK_INT(pause_people_first_slot(), 0);
+    CHECK_INT(pause_people_touch(1, 0, 1, 600.0f, 100.0f), 0u);
+    CHECK_INT(pause_people_touch(0, 0, 1, 500.0f, 100.0f), 0u);
+    CHECK_INT(pause_people_touch(0, 0, 1, 300.0f, 100.0f), 0u);
+    CHECK_INT(pause_people_touch(0, 1, 0, 300.0f, 100.0f), 0u);
+    CHECK_INT(pause_people_first_slot(), 1);
+    CHECK_INT(tap(830.0f, 100.0f), 0u);
+    CHECK(pause_people_selected() >= 1);
+}
+
 int main(void)
 {
     test_pictures_around_the_selection_are_read_ahead();
@@ -264,6 +293,7 @@ int main(void)
     test_the_card_is_the_highest_level_baked_at_or_below_the_known_one();
     test_left_right_move_within_the_tab_and_l_r_switch_tabs();
     test_touch_picks_tabs_thumbs_and_the_back_pill();
+    test_a_sideways_drag_scrolls_the_strip_and_a_tap_still_picks();
     test_illustrations_add_a_third_tab_that_opens_full_screen();
     return test_finish("unit/pause_people");
 }

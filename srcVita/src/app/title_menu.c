@@ -542,7 +542,7 @@ static unsigned int touch_submenu(int lands, int lifts, int is_down, float x, fl
     if (picked == TITLE_ITEM_CHAPTERS) {
         return pause_chapters_touch(lands, lifts, x, y);
     }
-    return pause_people_touch(lands, x, y);
+    return pause_people_touch(lands, lifts, is_down, x, y);
 }
 
 static unsigned int touch_presses(const struct input_state *input)

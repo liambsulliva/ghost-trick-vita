@@ -867,7 +867,7 @@ static unsigned int touch_presses(const struct input_state *input)
     } else if (phase == PAUSE_PHASE_SUBMENU && picked == PAUSE_ITEM_SAVE) {
         pressed = pause_save_touch(lands, lifts, input->touch_x, input->touch_y);
     } else if (phase == PAUSE_PHASE_SUBMENU && people_is_picked()) {
-        pressed = pause_people_touch(lands, input->touch_x, input->touch_y);
+        pressed = pause_people_touch(lands, lifts, input->touch_is_down, input->touch_x, input->touch_y);
     } else if (phase == PAUSE_PHASE_SUBMENU && lands && pause_is_on_back_pill(input->touch_x, input->touch_y)) {
         pressed = INPUT_CIRCLE;
     }

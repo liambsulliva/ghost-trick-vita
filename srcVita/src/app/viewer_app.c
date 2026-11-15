@@ -24,6 +24,7 @@
 #include "record_reveal.h"
 #include "renderer.h"
 #include "run_log.h"
+#include "save_icon.h"
 #include "scene_player.h"
 #include "scene_stage.h"
 #include "scene_view.h"
@@ -780,6 +781,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
     if (input->pressed != 0) {
         run_log_write("input pressed buttons=0x%04x", input->pressed);
     }
+    save_icon_update(elapsed_us, game_save_is_writing());
     if (title_menu_is_open()) {
         title_menu_update(input, elapsed_us);
         take_title_request();
@@ -976,6 +978,7 @@ void viewer_app_draw(void)
     }
     if (!pause_menu_shows_game()) {
         pause_menu_draw();
+        save_icon_draw();
         draw_brightness();
         return;
     }
@@ -1011,6 +1014,7 @@ void viewer_app_draw(void)
         toast_draw();
     }
     pause_menu_draw();
+    save_icon_draw();
     draw_brightness();
 }
 

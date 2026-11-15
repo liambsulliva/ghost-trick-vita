@@ -34,6 +34,8 @@ pause_save_selected
 read_ahead_entry_count
 read_ahead_set_lookahead_scale
 read_buffer_forget_reserve
+save_icon_is_showing
+save_icon_reset
 scene_effects_flash
 scene_effects_set_mask
 scene_effects_start_iris

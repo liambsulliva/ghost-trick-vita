@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "record_reveal.h"
 #include "run_log.h"
+#include "save_icon.h"
 #include "text_lines.h"
 #include "work_queue.h"
 
@@ -309,6 +310,7 @@ static int queue_job(enum save_job_kind kind, const struct game_save *save, int 
     job->place = place;
     job->save = *save;
     job->is_busy = 1;
+    save_icon_show();
     if (!work_queue_post(run_job, job)) {
         work_queue_wait();
         run_job(job);
@@ -332,6 +334,18 @@ int game_save_store_chapter(const struct game_save *save, int chapter)
         return 0;
     }
     return queue_job(SAVE_JOB_CHAPTER, save, chapter);
+}
+
+int game_save_is_writing(void)
+{
+    int index;
+
+    for (index = 0; index < SAVE_JOB_MAX; index++) {
+        if (jobs[index].is_busy) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 void game_save_wait(void)
