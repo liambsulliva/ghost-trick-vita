@@ -15,10 +15,10 @@ DATA_SEGMENT_CLEAR_OF_SCE_TABLES := 0x81200000
 TEXTURE_FOLDER_BUCKETS := 64
 CFLAGS += -DTEXTURE_FOLDER_BUCKETS=$(TEXTURE_FOLDER_BUCKETS)u
 LDFLAGS := -Wl,-q -Wl,--section-start=.init_array=$(DATA_SEGMENT_CLEAR_OF_SCE_TABLES)
-LIBS    := -lvitaGL -lstdc++ -lSceLibKernel_stub -lSceAppMgr_stub -lSceAppUtil_stub -lmathneon \
-           -lc -lSceCommonDialog_stub -lm -lSceGxm_stub -lSceDisplay_stub -lSceSysmodule_stub \
+LIBS    := -lvitaGL -lstdc++ -lSceAppMgr_stub -lmathneon \
+           -lSceCommonDialog_stub -lm -lSceGxm_stub -lSceDisplay_stub \
            -lvitashark -lSceShaccCgExt -ltaihen_stub -lSceShaccCg_stub \
-           -lSceKernelDmacMgr_stub -lSceCtrl_stub -lSceTouch_stub -lSceIofilemgr_stub -lSceProcessmgr_stub \
+           -lSceKernelDmacMgr_stub -lSceCtrl_stub -lSceTouch_stub \
            -lSceAudio_stub -lScePower_stub
 
 STB_VORBIS_SOURCE := src/third_party/stb_vorbis.c
@@ -29,7 +29,12 @@ CFLAGS += -DDEBUG_BUILD
 OBJECT_FOLDER := build/obj_debug
 endif
 
+DEBUG_ONLY_NAMES := bmp_image command_file command_reader fps_overlay screen_burst screen_capture screen_changes screen_watch
+DEBUG_ONLY_SRCS := $(foreach name,$(DEBUG_ONLY_NAMES),$(wildcard src/app/$(name).c src/vita/$(name).c))
 SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
+ifneq ($(DEBUG),1)
+SRCS := $(filter-out $(DEBUG_ONLY_SRCS),$(SRCS))
+endif
 OBJS := $(patsubst src/%.c,$(OBJECT_FOLDER)/%.o,$(SRCS))
 
 LIVEAREA_FOLDER := build/sce_sys
@@ -57,7 +62,7 @@ APP_TEST_OBJECTS := $(patsubst src/app/%.c,build/test_objects/app/%.o,$(APP_SRCS
 FAKE_TEST_OBJECTS := $(patsubst tests/fakes/%.c,build/test_objects/fakes/%.o,$(FAKE_SRCS))
 TEST_RUNS := $(addprefix run-,$(TEST_BINS))
 
-.PHONY: all release clean check-sdk test test-binaries test-parallel test-all golden coverage always-rebuild $(TEST_RUNS)
+.PHONY: all release clean check-sdk check-libs test test-binaries test-parallel test-all golden coverage always-rebuild $(TEST_RUNS)
 
 all: check-sdk build/$(TARGET).vpk
 
@@ -138,14 +143,29 @@ build/tests/%: build/test_objects/tests/%.o $(APP_TEST_OBJECTS) $(FAKE_TEST_OBJE
 
 test-binaries: $(TEST_BINS)
 
-STANDARD_BUILD_CHECK := build/test_objects/standard_build_compiles
+PLAYER_OBJECT_FOLDER := build/player_objects
+PLAYER_SRCS := src/main.c $(filter-out $(DEBUG_ONLY_SRCS),$(APP_SRCS)) $(filter-out tests/fakes/fake_command_reader.c,$(FAKE_SRCS)) tests/player_link/platform.c
+PLAYER_OBJECTS := $(patsubst %.c,$(PLAYER_OBJECT_FOLDER)/%.o,$(PLAYER_SRCS))
+PLAYER_DEVICE_SRCS := $(filter-out $(DEBUG_ONLY_SRCS),$(wildcard src/vita/*.c))
+PLAYER_LINK_MAP := $(PLAYER_OBJECT_FOLDER)/player.map
+PLAYER_LINK_CHECK := $(PLAYER_OBJECT_FOLDER)/player_link_checked
 
-$(STANDARD_BUILD_CHECK): src/main.c $(APP_SRCS) $(TEST_HEADERS)
+$(PLAYER_OBJECT_FOLDER)/%.o: %.c $(TEST_HEADERS)
 	@mkdir -p $(dir $@)
-	@for source in src/main.c $(APP_SRCS); do $(HOST_CC) $(HOST_STANDARD_CFLAGS) -Itests/fakes -fsyntax-only $$source || exit 1; done
+	$(HOST_CC) $(HOST_STANDARD_CFLAGS) -fno-inline -Itests/fakes -c $< -o $@
+
+$(PLAYER_OBJECT_FOLDER)/stb_vorbis.o: $(STB_VORBIS_SOURCE)
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c99 -w -O1 -include alloca.h $(STB_VORBIS_DEFINES) -c $< -o $@
+
+$(PLAYER_LINK_MAP): $(PLAYER_OBJECTS) $(PLAYER_OBJECT_FOLDER)/stb_vorbis.o
+	$(HOST_CC) $^ -Wl,-dead_strip -Wl,-map,$@ -o $(PLAYER_OBJECT_FOLDER)/player
+
+$(PLAYER_LINK_CHECK): $(PLAYER_LINK_MAP) tests/player_link/unreached.txt tests/tools/check_player_link.py $(PLAYER_DEVICE_SRCS)
+	python3 -I tests/tools/check_player_link.py $(PLAYER_LINK_MAP) tests/player_link/unreached.txt --game-objects $(PLAYER_OBJECT_FOLDER)/src/ --device-sources $(PLAYER_DEVICE_SRCS)
 	@touch $@
 
-test: $(STANDARD_BUILD_CHECK) $(TEST_BINS)
+test: $(PLAYER_LINK_CHECK) $(TEST_BINS)
 	@failed=0; for test_binary in $(TEST_BINS); do $$test_binary || failed=1; done; exit $$failed
 
 $(TEST_RUNS): run-%: %
@@ -174,6 +194,10 @@ route-check: build/tests/golden/script_replay
 	@mkdir -p build/golden
 	build/tests/golden/script_replay --scripts $(PLAN_SCRIPTS) --timing remaster --auto-paced --marks --stop-tick $(PLAN_STOP_TICK) > build/golden/route_marks.txt
 	python3 -I tools/route_check.py build/golden/route_marks.txt $(PLAN_SCRIPTS)/route_steps.txt --most-passed-over $(STEPS_THE_STORY_PASSES_OVER) --must-reach GOTO
+
+check-libs: check-sdk $(OBJS)
+	@$(foreach library,$(LIBS),if $(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) $(filter-out $(library),$(LIBS)) -o build/without_one_library.elf 2>/dev/null; then echo "the link does not need $(library)"; exit 1; fi;)
+	@echo "every linked library is needed"
 
 clean:
 	rm -rf build

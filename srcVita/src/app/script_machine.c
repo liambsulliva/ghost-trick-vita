@@ -16,7 +16,6 @@
 #define NEVER -1
 #define GAME_APP_TARGET "GameApp"
 #define XML_SUFFIX ".xml"
-#define DEBUG_ARG_PREFIX "debug"
 #define FNV_OFFSET_BASIS 2166136261u
 
 static const char *vm_kind_name(enum script_vm_kind kind)
@@ -33,7 +32,7 @@ static const char *vm_kind_name(enum script_vm_kind kind)
     }
 }
 
-void script_machine_name_of_path(const char *path, char *name, unsigned int name_size)
+static void script_machine_name_of_path(const char *path, char *name, unsigned int name_size)
 {
     unsigned int length;
     unsigned int index;
@@ -229,7 +228,7 @@ void script_machine_note(struct script_machine *machine, const struct script_vm 
     machine->outputs->marked(reason, text);
 }
 
-void script_machine_end_block(struct script_machine *machine, struct script_vm *vm, const char *reason)
+static void script_machine_end_block(struct script_machine *machine, struct script_vm *vm, const char *reason)
 {
     script_machine_note(machine, vm, reason, "");
     vm->has_ended = 1;

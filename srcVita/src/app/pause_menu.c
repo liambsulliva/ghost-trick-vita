@@ -224,7 +224,7 @@ int pause_menu_read_track_text(const char *text, unsigned int text_size)
     return idle_count;
 }
 
-int pause_menu_read_label_text(const char *text, unsigned int text_size)
+static int pause_menu_read_label_text(const char *text, unsigned int text_size)
 {
     char line[LINE_MAX];
     struct pause_label label;
@@ -762,7 +762,7 @@ static int cat_is_on_screen(void)
     return phase >= PAUSE_PHASE_SHOWING && phase <= PAUSE_PHASE_HIDING;
 }
 
-void pause_menu_step(unsigned int pressed)
+static void pause_menu_step(unsigned int pressed)
 {
     enum pause_menu_phase before;
 

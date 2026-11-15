@@ -58,7 +58,6 @@ struct pause_label {
 
 int pause_menu_read_cat_text(const char *text, unsigned int text_size);
 int pause_menu_read_track_text(const char *text, unsigned int text_size);
-int pause_menu_read_label_text(const char *text, unsigned int text_size);
 int pause_menu_load(const char *assets_folder);
 int pause_menu_is_ready(void);
 
@@ -80,7 +79,6 @@ int pause_menu_takes_title_request(void);
 int pause_menu_takes_chapter_request(void);
 int pause_menu_shows_game(void);
 void pause_menu_update(const struct input_state *input, unsigned long long elapsed_us);
-void pause_menu_step(unsigned int pressed);
 enum pause_menu_phase pause_menu_phase(void);
 int pause_menu_cursor(void);
 float pause_menu_camera_x(void);

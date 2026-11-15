@@ -15,6 +15,5 @@ void sound_request_loop(const char *name, const char *loop_tag);
 void sound_request_stop_loop(const char *loop_tag);
 void sound_request_stop(void);
 void sound_shutdown(void);
-int sound_engine_step(void);
 
 #endif

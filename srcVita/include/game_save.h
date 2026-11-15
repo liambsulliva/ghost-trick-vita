@@ -40,8 +40,6 @@ unsigned int game_save_write_text(const struct game_save *save, char *text, unsi
 int game_save_read_text(struct game_save *save, const char *text, unsigned int text_size);
 void game_save_apply_before_start(const struct game_save *save, struct script_machine *machine);
 void game_save_apply_after_start(const struct game_save *save, struct script_machine *machine);
-const char *game_save_path(enum game_save_slot slot);
-int game_save_store(const struct game_save *save, enum game_save_slot slot);
 int game_save_store_as_newest(const struct game_save *save, enum game_save_slot slot);
 void game_save_wait(void);
 int game_save_load(struct game_save *save, enum game_save_slot slot);

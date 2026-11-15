@@ -1671,6 +1671,31 @@ Found when `route-check` failed on vita-app with 1341 of 1730 steps and no `GOTO
 The class: a pacing stretch on a step timed against something moving in the room. `route_pacing.py` dropped a stretch only when its own step never began, so a stretch that made a later step fail was kept and the bake settled on a broken replay. 12 `instant` steps were stretched.
 
 Guard: `paced_dwells` never stretches a step whose pace is `instant`, and each pass drops the last stretch before any `route_step_failed` in the same scene, so the bake cannot settle on it; a settled bake prints the steps that still failed. `tests/tools/test_route_pacing.py` checks both, and that no `instant` step in `game.json`'s route can be stretched. The kept `game_pacing.txt` is baked again for the current route, so a fresh setup starts from pacing that passes.
+### 226. Headers declared functions that only their own file called
+
+Found in the 1.0 audit: 15 functions were declared in `include/` and called only inside the file that defines them (`script_machine_end_block`, `game_save_store`, `pause_menu_step`, `title_menu_step`, the two audio thread steps and nine more), and `work_queue_is_busy` had no caller at all. Three constants and the machine's `noted_effects` bytes were written once and never read. None of it changed behaviour, but each one made a header promise something no caller used, and a later change had to keep it working.
+
+The class: any function a header exposes for a caller that has gone, in every module.
+
+Guard: `tests/tools/test_headers_expose_what_is_used.py` fails when a function declared in `include/` has no user outside its own file among the sources, the other headers and the tests. Make such a function `static`, or delete it.
+
+### 227. The player's build carried the dev tools and hashed the screen on every frame
+
+Found in the 1.0 audit: the Makefile compiled every source into both builds, so the player's build linked the command reader, the commands parser, the BMP writer, the screen capture, the burst recorder and the frame rate overlay, none of which it can reach. It also ran one of them: `screen_watch_note_frame` asked the system for the frame buffer and hashed a 16 px grid of it (2,040 reads of display memory) after every frame, to log `screen flips` once a second. That line is a development measurement, and the player's build paid for it on every frame. It also made an empty `captures` folder on the memory card.
+
+The class: any code only the debug build needs, wherever it is called from, and any game function that nothing in the player's build reaches.
+
+Guard: the sources named in the Makefile's `DEBUG_ONLY_NAMES` are left out of the player's build, and `main.c` includes and calls them only under `DEBUG_BUILD`. `make test` links the player's build on the Mac with dead stripping (`tests/tools/check_player_link.py`, parser tests in `tests/tools/test_player_link.py`) and fails when a game function is unreached and `tests/player_link/unreached.txt` does not name it, or when the list names one that is reached or gone. The list holds only what the tests and the debug build call. The link uses the test fakes for `src/vita`, so a name a device source uses counts as reached.
+
+Not measured: the saving per frame, because no device run was allowed. The Vita link dropped 5.3 KB of code.
+
+### 228. The link line named libraries nothing needed
+
+Found in the 1.0 audit: the link line named `SceAppUtil_stub`, which neither the game nor vitaGL imports, and `SceLibKernel_stub`, `SceSysmodule_stub`, `SceIofilemgr_stub`, `SceProcessmgr_stub` and `c`, which the toolchain links on its own. The rest are needed: vitaGL's fixed pipeline builds its shaders on the device, so it needs vitaShaRK, `SceShaccCgExt`, `SceShaccCg_stub` and `taihen_stub`, and it uses libmathneon, `SceCommonDialog_stub`, `SceKernelDmacMgr_stub` and the C++ runtime.
+
+The class: any library left on the link line after its last caller went.
+
+Guard: `make check-libs` relinks without each library in turn and fails if a link still succeeds. The imports of the linked app are the same as before; only the order of the stub sections changed.
 
 ## Still open
 

@@ -475,7 +475,7 @@ static void advance_phase(unsigned int pressed)
     }
 }
 
-void title_menu_step(unsigned int pressed)
+static void title_menu_step(unsigned int pressed)
 {
     if (phase == TITLE_PHASE_CLOSED) {
         return;
@@ -606,7 +606,7 @@ enum title_menu_request title_menu_takes_request(int *chapter)
     return taken;
 }
 
-float title_menu_camera_x(void)
+static float title_menu_camera_x(void)
 {
     if (phase == TITLE_PHASE_PANNING_OUT) {
         return SCREEN_WIDTH * ease_snap((float)phase_ticks / (float)PAN_TICKS);

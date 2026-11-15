@@ -6,7 +6,7 @@
 #define GHOST_COPY_HOLD_BEFORE_VANISHING 60
 #define GHOST_COPY_VANISH_TICKS 100
 
-void script_ghost_copy_fade_out(struct script_ghost_copy *copy)
+static void script_ghost_copy_fade_out(struct script_ghost_copy *copy)
 {
     copy->hold_ticks = 0;
     copy->fall_ticks = GHOST_COPY_HOLD_BEFORE_VANISHING;

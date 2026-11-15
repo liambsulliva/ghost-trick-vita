@@ -446,7 +446,7 @@ void script_hints_note_tap(struct script_machine *machine)
     machine->hints.tap_is_pending = 1;
 }
 
-int script_hints_bubble_is_up(const struct script_machine *machine)
+static int script_hints_bubble_is_up(const struct script_machine *machine)
 {
     return machine->hints.phase == SCRIPT_HINT_OFFERED && the_bubble_can_show(machine);
 }
