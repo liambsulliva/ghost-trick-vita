@@ -1,3 +1,5 @@
+import os
+import re
 import struct
 import unittest
 
@@ -81,6 +83,21 @@ class MemoryEstimateTests(unittest.TestCase):
 
 
 class ManifestWriterTests(unittest.TestCase):
+    def test_manifest_limits_are_the_apps(self):
+        header = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "include", "asset_manifest.h")
+        with open(header, "r", encoding="ascii") as source:
+            defines = dict(re.findall(r"#define ASSET_MANIFEST_([A-Z]+)_MAX (\d+)", source.read()))
+        self.assertEqual({kind.lower(): int(limit) for kind, limit in defines.items()}, asset_writers.MANIFEST_LIMITS)
+
+    def test_manifest_refuses_more_names_than_the_app_reads(self):
+        for kind, limit in asset_writers.MANIFEST_LIMITS.items():
+            lists = {"scene": [], "background": [], "animation": []}
+            lists[kind] = ["n%d" % index for index in range(limit)]
+            asset_writers.manifest_text(lists["scene"], lists["background"], lists["animation"])
+            lists[kind].append("one_more")
+            with self.assertRaises(ValueError):
+                asset_writers.manifest_text(lists["scene"], lists["background"], lists["animation"])
+
     def test_manifest_lists_each_kind(self):
         self.assertEqual(asset_writers.manifest_text(["opening"], ["st01-00"], ["st01_x_000"]), "scene opening\nbackground st01-00\nanimation st01_x_000\n")
         self.assertEqual(asset_writers.manifest_text([], ["st01-00"], [], ["remastered", "ds"]), "art remastered\nart ds\nbackground st01-00\n")

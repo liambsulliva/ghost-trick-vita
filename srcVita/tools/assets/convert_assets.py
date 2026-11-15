@@ -685,7 +685,7 @@ def convert_ds_set_description(set_description, output_folder, ds_rom_path=DEFAU
         files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in art["animation_texts"].items()})
         files.update(art["files"])
         files.update(script_assets.table_files(set_description, output_folder, art["motion_lines"], art["narration_lines"], texture_sizes, texture_sizes, list(art["animation_texts"]), art["talk_textures"]))
-        manifest = asset_writers.manifest_text([], plate_names, list(art["animation_texts"]), [DS_ART]).encode("ascii")
+        manifest = asset_writers.manifest_text([], plate_names, [], [DS_ART]).encode("ascii")
         write_outputs(output_folder, record, [], files, manifest, list(script_paths) + plate_paths + art["texture_paths"])
     finally:
         record.save()

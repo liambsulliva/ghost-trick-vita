@@ -1791,6 +1791,14 @@ The class: a word rule that is a constant while the record holds a field that fi
 
 Guard: those words now read the field (`hi<n>` after `lo<n>`, the unread field in order, `s<n>` for names). A field no rule reads must be listed in its row's `unread`, and `tests/tools/test_remaster_scripts.py` fails otherwise. It also checks that the distance op keeps both offsets. `SC_CODE32`, `SC_SETPAL` and `SC_MOVIE_MOTION_SUSPEND` keep their constants, because no field fits their samples.
 
+### 240. The DS set's manifest listed more animations than the app reads
+
+Found on the Vita: with Visual Filter on DS the app found the DS set but logged `manifest invalid code=-2` and `viewer ready has_assets=0`, and drew nothing. The DS converter listed all 5048 of its animations in `manifest.txt`, while `asset_manifest_parse` holds at most 512 and refuses the whole file past that. The remastered converter lists none, so only the DS set failed. The manifest is the port's own browse list for the asset viewer; no native function reads it, and the game finds each animation by its file path.
+
+The class: a converter output longer than a fixed table in the app.
+
+Guard: `asset_writers.manifest_text` refuses more scene, background or animation names than the app holds, so the bake stops instead of writing a set the app rejects. `tests/tools/test_asset_writers.py` reads the limits from `include/asset_manifest.h` and fails when the two disagree. The DS set no longer lists its animations, the same as the remastered set.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

@@ -8,6 +8,7 @@ NAME_MAX_LENGTH = 95
 ANIMATION_FRAME_MAX = 1024
 BLANK_TEXTURE = "-"
 ALLOWED_NAME_CHARACTERS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-")
+MANIFEST_LIMITS = {"scene": 16, "background": 512, "animation": 512}
 
 
 def check_name(name):
@@ -81,6 +82,9 @@ def anim_text(name, loops, frames):
 
 
 def manifest_text(scene_names, background_names, animation_names, art_sets=()):
+    for kind, names in (("scene", scene_names), ("background", background_names), ("animation", animation_names)):
+        if len(names) > MANIFEST_LIMITS[kind]:
+            raise ValueError("the app's manifest holds at most %d %s names, not %d" % (MANIFEST_LIMITS[kind], kind, len(names)))
     lines = ["art " + name for name in art_sets]
     for name in scene_names:
         lines.append("scene " + name)
