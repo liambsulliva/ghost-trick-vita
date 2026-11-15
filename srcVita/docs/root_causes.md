@@ -1572,6 +1572,16 @@ The class: every connection to a dead body in the ghost view, in every chapter, 
 
 Guard: `dead_core_holds_the_tip` (`script_soul.c`) is set when the soul arrives on a dead body with the view open and its time leap starts (`finish_drag_when_due`). While it holds, `move_soul_tip` treats input as it does during the lightning: the chain retracts and nothing is picked. It clears when the dead talk starts (`start_dead_talk`), when the view opens or closes (`set_soul_view_with_effect`), and when the soul is put on another core (`arrive_at_core`). `tests/unit/test_dead_core_holds_the_tip.c` pushes the stick toward a living core through the connection and checks the soul stays on the corpse, then checks the stick works again once the view reopens; before the fix the soul ended on the living core. Still open: native also holds the tip on a dead core whose talk waits for the yes/no prompt (`func_02032914`, mode 1 and 2); the prompt is not ported (root cause 92), so the port leaves the tip free there, or the player could never leave.
 
+### 216. Ray told the player to press START for the Record, which SELECT opens
+
+Reported: in Chapter 1's tutorial Ray says to press START to view the Record. On the Vita, SELECT opens it (`send_buttons` in `script_input.c` sends the notebook pill), and START opens the pause menu. The remaster's page (`m01_1200`) has no button word in it. It says `<ICON SAVE>`, and the talk baker drew that icon as a START button. The baker kept its own map from icon to glyph, separate from the input code, so nothing checked one against the other.
+
+Native: none. The DS and the remaster show touch pills here; which Vita button stands for each pill is the port's choice (`script_input.c`).
+
+The class: every `<ICON>` tag in every talk page, in every chapter and every language, since the tags are the same in each language's message files and the glyph is drawn by the baker, not taken from the text.
+
+Guard: `BUTTON_OF_ICON` (`talk_assets.py`) names the Vita button each icon stands for, and the glyphs come from it. `<ICON SAVE>` is now the SELECT button. `tests/tools/test_talk_icon_buttons.py` reads `send_buttons` and checks that every icon names the button wired to that icon's action (press, ghost, hourglass, notebook), and that no icon is missing from the map.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

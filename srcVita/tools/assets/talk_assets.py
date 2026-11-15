@@ -49,10 +49,12 @@ ICON_TAG_PATTERN = re.compile(r"<ICON (\w+)>")
 ICON_CROSS = "\ue000"
 ICON_L = "\ue001"
 ICON_R = "\ue002"
-ICON_START = "\ue003"
-CHARACTER_OF_ICON = {"TRICK": ICON_CROSS, "GHOST": ICON_L, "BACK": ICON_L, "RESTART": ICON_R, "SAVE": ICON_START}
+ICON_SELECT = "\ue003"
+BUTTON_OF_ICON = {"TRICK": "CROSS", "GHOST": "L", "BACK": "L", "RESTART": "R", "SAVE": "SELECT"}
+CHARACTER_OF_BUTTON = {"CROSS": ICON_CROSS, "L": ICON_L, "R": ICON_R, "SELECT": ICON_SELECT}
+CHARACTER_OF_ICON = {icon: CHARACTER_OF_BUTTON[button] for icon, button in BUTTON_OF_ICON.items()}
 ICON_SIZE = 26
-ICON_WIDE_SIZE = 56
+ICON_WIDE_SIZE = 66
 ICON_GAP = 4
 ICON_TOP_ABOVE_BASELINE = 23
 ANY_TAG_PATTERN = re.compile(r"<[^>]*>")
@@ -168,9 +170,9 @@ def icon_shape_arguments(character, font_path, size):
     if character == ICON_CROSS:
         reach = size * 22 // 100
         return ["-fill", "white", "-stroke", "none", "-draw", "circle %d,%d %d,%d" % (middle, middle, middle, size - 2), "-fill", "none", "-stroke", "black", "-strokewidth", str(size // 9), "-draw", "line %d,%d %d,%d" % (middle - reach, middle - reach, middle + reach, middle + reach), "-draw", "line %d,%d %d,%d" % (middle - reach, middle + reach, middle + reach, middle - reach)]
-    word = {ICON_L: "L", ICON_R: "R", ICON_START: "START"}[character]
-    wide = ICON_WIDE_SIZE * SUPERSAMPLE if character == ICON_START else size
-    return ["-fill", "white", "-stroke", "none", "-draw", "roundrectangle 0,%d %d,%d %d,%d" % (size // 10, wide - 1, size - size // 10, size // 5, size // 5), "-font", font_path, "-pointsize", str(size * 45 // 100 if character == ICON_START else size * 7 // 10), "-gravity", "center", "-fill", "black", "-annotate", "+0+0", word]
+    word = {ICON_L: "L", ICON_R: "R", ICON_SELECT: "SELECT"}[character]
+    wide = ICON_WIDE_SIZE * SUPERSAMPLE if character == ICON_SELECT else size
+    return ["-fill", "white", "-stroke", "none", "-draw", "roundrectangle 0,%d %d,%d %d,%d" % (size // 10, wide - 1, size - size // 10, size // 5, size // 5), "-font", font_path, "-pointsize", str(size * 45 // 100 if character == ICON_SELECT else size * 7 // 10), "-gravity", "center", "-fill", "black", "-annotate", "+0+0", word]
 
 
 def white_pixels_with_alpha(alpha_values):
@@ -181,7 +183,7 @@ def white_pixels_with_alpha(alpha_values):
 
 def render_icon_glyph(font_path, work_folder, character):
     baseline_row, _ = line_renderer.line_box(PIXELS_PER_EM)
-    width = ICON_WIDE_SIZE if character == ICON_START else ICON_SIZE
+    width = ICON_WIDE_SIZE if character == ICON_SELECT else ICON_SIZE
     gray_path = os.path.join(work_folder, "icon.gray")
     size = ICON_SIZE * SUPERSAMPLE
     arguments = ["magick", "-size", "%dx%d" % (width * SUPERSAMPLE, size), "xc:black"] + icon_shape_arguments(character, font_path, size) + ["-colorspace", "gray", "-filter", "Box", "-resize", "%dx%d!" % (width, ICON_SIZE), "-depth", "8", "gray:" + gray_path]
