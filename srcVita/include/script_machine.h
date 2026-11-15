@@ -352,6 +352,7 @@ struct script_soul {
     int saved_camera_x;
     int saved_camera_y;
     int rollback_is_on;
+    int rollback_is_pending;
     int is_on;
     int player_opened_soul_view;
     int active_object;
@@ -727,6 +728,7 @@ int script_soul_route_wait_reaches(const struct script_machine *machine, const c
 int script_soul_route_balloon_group(const struct script_machine *machine, const char *name);
 int script_soul_page_wants_a_press(const struct script_machine *machine);
 int script_soul_game_over_waits(const struct script_machine *machine);
+int script_soul_fate_section_is_on(const struct script_machine *machine);
 int script_soul_rewind_button_waits(const struct script_machine *machine);
 void script_soul_note_direction(struct script_machine *machine, int direction_x, int direction_y);
 void script_soul_set_held(struct script_machine *machine, float held_x, float held_y);

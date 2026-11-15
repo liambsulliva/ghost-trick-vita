@@ -170,7 +170,7 @@ static int pill_is_wanted(const struct script_machine *machine, enum script_pill
     case SCRIPT_PILL_BACK:
         return (is_registered || (soul->pills_registered & BIT(SCRIPT_PILL_GHOST)) != 0) && group == GROUP_GHOST && !soul->view_demo_is_on;
     case SCRIPT_PILL_HOURGLASS:
-        return soul->rollback_is_on && group != GROUP_NONE;
+        return soul->rollback_is_on && group != GROUP_NONE && script_soul_fate_section_is_on(machine);
     case SCRIPT_PILL_JOWD:
         return is_registered && group == GROUP_NORMAL;
     case SCRIPT_PILL_MISSILE:
