@@ -249,6 +249,7 @@ static void run_main_loop(void)
     while (!quit_requested) {
         if (viewer_app_wants_relaunch()) {
             run_log_write("relaunch for the other art set");
+            viewer_app_keep_settings_for_relaunch();
             break;
         }
         if (frame_number % KEEP_AWAKE_FRAMES == 0) {

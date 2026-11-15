@@ -1,44 +1,45 @@
 #include <stdio.h>
 #include <string.h>
-#include "asset_language.h"
-#include "system_state.h"
 #include "animation_library.h"
+#include "asset_language.h"
 #include "asset_manifest.h"
+#include "asset_sets.h"
 #include "checker_pattern.h"
 #include "clock.h"
 #include "debug_font.h"
 #include "file.h"
 #include "file_path.h"
+#include "game_save.h"
 #include "game_settings.h"
+#include "loading_screen.h"
 #include "memory.h"
 #include "music_engine.h"
-#include "loading_screen.h"
 #include "page_tiles.h"
+#include "pause_chapters.h"
 #include "pause_clock.h"
 #include "pause_menu.h"
 #include "pause_options.h"
-#include "game_save.h"
-#include "pause_chapters.h"
 #include "pause_people.h"
 #include "pause_save.h"
+#include "record_reveal.h"
 #include "renderer.h"
 #include "run_log.h"
 #include "scene_player.h"
 #include "scene_stage.h"
-#include "soul_transition.h"
 #include "scene_view.h"
 #include "script_player.h"
 #include "script_ui_view.h"
-#include "toast.h"
 #include "script_view.h"
+#include "soul_transition.h"
 #include "sound_engine.h"
 #include "system_sounds.h"
-#include "record_reveal.h"
+#include "system_state.h"
 #include "texture_cache.h"
-#include "asset_sets.h"
 #include "title_menu.h"
+#include "toast.h"
 #include "ui_list.h"
 #include "viewer_app.h"
+#include "work_queue.h"
 
 #ifndef TEXTURE_FOLDER_BUCKETS
 #define TEXTURE_FOLDER_BUCKETS 0u
@@ -1042,4 +1043,10 @@ int viewer_app_has_assets(void)
 int viewer_app_wants_relaunch(void)
 {
     return title_menu_is_open() && asset_sets_switch_is_due();
+}
+
+void viewer_app_keep_settings_for_relaunch(void)
+{
+    game_settings_save(GAME_SETTINGS_PATH);
+    work_queue_wait();
 }
