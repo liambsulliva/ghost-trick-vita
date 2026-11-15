@@ -207,6 +207,13 @@
 #define START_PILL_WIDTH (START_GLYPH_X + START_GLYPH_WIDTH + START_GLYPH_MARGIN_RIGHT)
 #define START_FILL_LEFT 30.0f
 #define START_FILL_RIGHT_MARGIN 28.75f
+#define WHOLE_PILL_TEXTURE "hud_pills"
+#define WHOLE_PILL_CELL_WIDTH 247.5f
+#define WHOLE_PILL_CELL_HEIGHT 90.0f
+#define WHOLE_PILL_STATES 2.0f
+#define WHOLE_PILL_SCREEN_MARGIN 4.0f
+#define WHOLE_PILL_LEFT_THIRD 320.0f
+#define WHOLE_PILL_RIGHT_THIRD 640.0f
 #define PAUSE_ICON_CELL_X 0.0f
 #define PAUSE_ICON_CELL_Y 421.0f
 #define PAUSE_ICON_Y (-1.0f)
@@ -1225,12 +1232,50 @@ static void draw_pill(const struct pill_layout *layout, const struct script_pill
     draw_sheet_cell(sheet, layout->glyph, x + layout->glyph_x, y + PILL_RING_HEIGHT / 2.0f - PILL_GLYPH_SIZE / 2.0f + PILL_GLYPH_NUDGE_Y, layout->glyph_width, PILL_GLYPH_SIZE);
 }
 
+static void draw_whole_pill(int index, const struct pill_layout *layout, const struct script_pill_view *view, const struct cached_texture *whole)
+{
+    struct renderer_rect area;
+    struct renderer_rect part;
+    float middle;
+    float slide;
+
+    middle = layout->x + layout->width / 2.0f;
+    slide = pill_screen_y(layout, view->slide_step) - layout->y + (view->is_pressed ? PILL_PRESSED_DROP : 0.0f);
+    area.width = WHOLE_PILL_CELL_WIDTH;
+    area.height = WHOLE_PILL_CELL_HEIGHT;
+    area.x = middle - area.width / 2.0f;
+    if (middle < WHOLE_PILL_LEFT_THIRD) {
+        area.x = layout->x;
+    } else if (middle > WHOLE_PILL_RIGHT_THIRD) {
+        area.x = layout->x + layout->width - area.width;
+    }
+    area.y = (layout->is_at_bottom ? (float)RENDERER_HEIGHT - WHOLE_PILL_SCREEN_MARGIN - area.height : WHOLE_PILL_SCREEN_MARGIN) + slide;
+    part.x = view->is_pressed ? 1.0f / WHOLE_PILL_STATES : 0.0f;
+    part.y = (float)index / (float)SCRIPT_PILL_COUNT;
+    part.width = 1.0f / WHOLE_PILL_STATES;
+    part.height = 1.0f / (float)SCRIPT_PILL_COUNT;
+    renderer_draw_sprite(whole->texture, area, part, white);
+}
+
 static void draw_pills(void)
 {
     const struct cached_texture *art;
     const struct cached_texture *sheet;
     int index;
 
+    if (texture_cache_sharp_art_is_on()) {
+        const struct cached_texture *whole;
+
+        whole = ready_texture(WHOLE_PILL_TEXTURE);
+        if (whole != NULL) {
+            for (index = 0; index < SCRIPT_PILL_COUNT; index++) {
+                if (hud.pills[index].is_on_screen) {
+                    draw_whole_pill(index, &pill_layouts[index], &hud.pills[index], whole);
+                }
+            }
+        }
+        return;
+    }
     art = ready_texture(PILL_ART_TEXTURE);
     sheet = ready_texture(PILL_SHEET_TEXTURE);
     if (art == NULL || sheet == NULL) {

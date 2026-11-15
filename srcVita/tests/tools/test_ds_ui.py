@@ -13,7 +13,7 @@ RED = bytes((255, 0, 0, 255))
 BLUE = bytes((0, 0, 255, 255))
 CLEAR = bytes(4)
 GAME_DESCRIPTION = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "tools", "assets", "game.json")
-TEXTURES_THE_APP_DRAWS_WITH_NO_PARTS_OF_ITS_OWN = ["talk_box_top", "talk_box_bottom", "ui_choice_buttons", "ui_select_button", "ui_tap_balloon", "rewind_rocks_far", "rewind_rocks_mid", "rewind_rocks_near", "soul_spokes"]
+TEXTURES_THE_APP_DRAWS_WITH_NO_PARTS_OF_ITS_OWN = ["talk_box_top", "talk_box_bottom", "ui_choice_buttons", "ui_select_button", "ui_tap_balloon", "rewind_rocks_far", "rewind_rocks_mid", "rewind_rocks_near", "soul_spokes", "hud_pills"]
 
 
 def image(width, height, pixels):
@@ -59,6 +59,16 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(pixel(rgba, 6, 3, 3), CLEAR)
         self.assertEqual(pixel(rgba, 6, 5, 5), RED)
 
+    def test_a_cell_part_is_trimmed_to_its_ink_and_set_against_the_side_its_alignment_names(self):
+        source = image(3, 2, [CLEAR, RED, CLEAR, CLEAR, CLEAR, CLEAR])
+        _, _, rgba = ds_ui.compose({"width": 8, "height": 2, "parts": [{"texture": 1, "cell": [0, 0, 4, 2], "align": [1, 1]}, {"texture": 1, "cell": [4, 0, 4, 2], "align": [0, 0]}]}, lambda index, opaque: source)
+        self.assertEqual([pixel(rgba, 8, x, 1) for x in range(4)], [CLEAR, CLEAR, CLEAR, RED])
+        self.assertEqual([pixel(rgba, 8, x, 0) for x in range(4, 8)], [RED, CLEAR, CLEAR, CLEAR])
+        with self.assertRaises(ds_ui.DsUiError):
+            ds_ui.compose({"width": 8, "height": 2, "parts": [{"texture": 1, "cell": [0, 0, 4, 2]}]}, lambda index, opaque: image(1, 1, [CLEAR]))
+        with self.assertRaises(ds_ui.DsUiError):
+            ds_ui.compose({"width": 8, "height": 2, "parts": [{"texture": 1, "cell": [0, 0, 1, 1]}]}, lambda index, opaque: image(2, 1, [RED, RED]))
+
     def test_a_part_outside_its_texture_or_a_crop_outside_its_source_is_refused(self):
         source = image(2, 1, [RED, BLUE])
         with self.assertRaises(ds_ui.DsUiError):
@@ -99,11 +109,28 @@ class DescriptionTests(unittest.TestCase):
         for description in descriptions:
             asset_writers.check_name(description["name"])
             for part in ds_ui.plain_parts(description["parts"]):
+                if "cell" in part:
+                    self.assertLessEqual(part["cell"][0] + part["cell"][2], description["width"], description["name"])
+                    self.assertLessEqual(part["cell"][1] + part["cell"][3], description["height"], description["name"])
                 if "width" in part:
                     self.assertGreater(part["width"], 0, description["name"])
                     self.assertGreater(part["height"], 0, description["name"])
                     self.assertLessEqual(part.get("x", 0) + part["width"], description["width"], description["name"])
                     self.assertLessEqual(part.get("y", 0) + part["height"], description["height"], description["name"])
+
+
+class PillSheetTests(unittest.TestCase):
+    def test_the_pill_sheet_has_a_resting_and_a_pressed_cell_for_every_pill_the_app_draws(self):
+        with open(GAME_DESCRIPTION, encoding="utf-8") as source:
+            sheet = [description for description in json.load(source)["ds_textures"] if description["name"] == "hud_pills"][0]
+        with open(os.path.join(os.path.dirname(GAME_DESCRIPTION), "..", "..", "include", "script_outputs.h"), encoding="utf-8") as header:
+            text = header.read()
+        pills = text[text.index("enum script_pill_id {"):text.index("SCRIPT_PILL_COUNT")].count("SCRIPT_PILL_")
+        cells = sorted(tuple(part["cell"]) for part in sheet["parts"])
+        self.assertEqual(len(cells), pills * 2)
+        cell_width = sheet["width"] // 2
+        cell_height = sheet["height"] // pills
+        self.assertEqual(cells, sorted((column * cell_width, row * cell_height, cell_width, cell_height) for row in range(pills) for column in range(2)))
 
 
 if __name__ == "__main__":

@@ -422,6 +422,75 @@ static void test_choice_panels_still_draw_without_their_button_art(void)
     CHECK_INT(draws_with_texture(font, 0.0f, 544.0f), 10);
 }
 
+static const struct fake_draw *the_only_draw_from(renderer_texture texture)
+{
+    const struct fake_draw *found;
+    int count;
+    int index;
+
+    found = NULL;
+    count = 0;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        const struct fake_draw *draw;
+
+        draw = fake_renderer_draw(index);
+        if (!draw->is_filled_rect && !draw->is_rect_batch && draw->texture == texture) {
+            found = draw;
+            count = count + 1;
+        }
+    }
+    return count == 1 ? found : NULL;
+}
+
+static void test_a_sharp_set_draws_each_pill_as_one_sprite_from_its_own_sheet(void)
+{
+    static struct script_tables tables;
+    struct script_hud_view view;
+    const struct cached_texture *sheet;
+    const struct fake_draw *draw;
+    int id;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    fake_files_add_rgba_texture("assets/textures/hud_pills.gtex", 8, 8);
+    texture_cache_init("assets/textures", TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
+    texture_cache_use_sharp_art(1);
+    sheet = texture_cache_load_now("hud_pills");
+    CHECK(sheet->state == CACHED_TEXTURE_READY);
+    memset(&tables, 0, sizeof(tables));
+    script_ui_view_start(&tables);
+    scene_stage_hide_card();
+    scene_stage_set_fade(0.0f);
+    for (id = 0; id < SCRIPT_PILL_COUNT; id++) {
+        memset(&view, 0, sizeof(view));
+        show_pill(&view, (enum script_pill_id)id, PILL_FULLY_SHOWN, id % 2);
+        script_ui_view_hud_changed(&view);
+        CHECK(pill_draws_now() > 0);
+        draw = the_only_draw_from(sheet->texture);
+        CHECK(draw != NULL);
+        if (draw != NULL) {
+            CHECK(draw->texture_area.y == (float)id / (float)SCRIPT_PILL_COUNT);
+            CHECK(draw->texture_area.x == (id % 2 ? 0.5f : 0.0f));
+            CHECK(draw->screen_area.x >= 0.0f);
+            CHECK(draw->screen_area.x + draw->screen_area.width <= 960.0f);
+            CHECK(draw->screen_area.y >= 0.0f);
+            CHECK(draw->screen_area.y + draw->screen_area.height <= 544.0f + 4.0f);
+        }
+    }
+    fake_files_reset();
+    fake_reader_reset();
+    texture_cache_init("assets/textures", TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
+    texture_cache_use_sharp_art(1);
+    memset(&view, 0, sizeof(view));
+    show_pill(&view, SCRIPT_PILL_GHOST, PILL_FULLY_SHOWN, 0);
+    script_ui_view_hud_changed(&view);
+    CHECK_INT(pill_draws_now(), 0);
+    texture_cache_use_sharp_art(0);
+    memset(&view, 0, sizeof(view));
+    script_ui_view_hud_changed(&view);
+}
+
 int main(void)
 {
     test_a_shown_pill_answers_a_tap_inside_it();
@@ -435,5 +504,6 @@ int main(void)
     test_the_start_button_shows_top_right_with_the_ui_and_steps_aside_for_the_hourglass();
     test_every_open_choice_panel_draws_its_button_icon_and_caption_over_the_swirl();
     test_choice_panels_still_draw_without_their_button_art();
+    test_a_sharp_set_draws_each_pill_as_one_sprite_from_its_own_sheet();
     return test_finish("unit/script_ui_view");
 }

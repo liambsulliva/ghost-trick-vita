@@ -60,7 +60,6 @@ script_talk_close_now
 script_view_soul_screen_position
 stick_aim_from_raw
 texture_cache_load_now
-texture_cache_sharp_art_is_on
 title_menu_cursor
 title_menu_dialog_is_open
 title_menu_phase

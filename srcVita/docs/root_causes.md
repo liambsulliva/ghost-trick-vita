@@ -1809,6 +1809,14 @@ Guard: `tools/assets/ds_textures.py` decodes the five texture formats the cartri
 
 What the DS really shows is read from the cartridge running in melonDS: `tools/ds_screen_dump.py` presses buttons on a schedule, saves the video memory and captures the main screen's finished picture, 3D layer included, through the DS display capture unit; `tools/ds_screen_render.py` draws both screens from a dump. The top talk box was matched against such a capture (a 208 by 48 box at x 24, built from texture 23). The bottom box uses the same texture and has not been seen in a capture, because the captures stop at the first touch tutorial: the tools press buttons but cannot touch.
 
+### 242. The DS set's HUD buttons could not be built from the remaster's pill pieces
+
+The app builds each HUD pill from pieces of two remaster textures: a ring in three slices, a fill it draws itself, an icon, a word and a Vita button. The DS has each button as one finished texture, resting and touched (`cpac_3d.bin` block 0: Ghost 542 and 547, Back 552 and 557, Trick 582 and 587, Swap 562 and 567, Cancel 572 and 577, the notebook 91 and 92, the hourglass 93 and 94, Jowd 95 and 96, the switch to Missile 97 and 98 and to Sissel 99 and 100), drawn by the HUD board `func_0204f850`. No crop of those fits the ring, word and icon cells, so the DS set had no pills at all and the player could not see which buttons were up.
+
+The class: interface art the DS keeps whole where the remaster keeps parts.
+
+Guard: a sharp set (`texture_cache_sharp_art_is_on`) draws each pill as one sprite from `hud_pills`, a sheet with one row per `script_pill_id` and a resting and a pressed column, each cell 88 by 32 DS pixels. The converter trims each cartridge texture to its ink and sets it against the side of the cell that faces the screen edge (`cell` and `align` parts in `ds_ui.py`), and the app places the cell the same way: left pills from their left edge, right pills from their right edge, the rest centred, 4 pixels from the top or bottom. With no sheet the pills draw nothing, and the remastered set is untouched. `tests/unit/test_script_ui_view.c` checks every pill draws once from its own cell and stays on screen; `tests/tools/test_ds_ui.py` checks the sheet has two cells for every pill in `script_outputs.h`. Not done: the pills carry no Vita button, the green pills of Missile's ghost world (592 to 607) are not used, and the placing has not been seen on the device.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

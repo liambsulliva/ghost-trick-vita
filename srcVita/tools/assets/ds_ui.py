@@ -49,6 +49,22 @@ def paste(canvas, canvas_width, canvas_height, image, x, y):
         canvas[start:start + width * RGBA_BYTES] = rgba[row * width * RGBA_BYTES:(row + 1) * width * RGBA_BYTES]
 
 
+def trimmed(image):
+    width, height, rgba = image
+    columns = [column for column in range(width) if any(rgba[(row * width + column) * RGBA_BYTES + 3] for row in range(height))]
+    rows = [row for row in range(height) if any(rgba[(row * width + column) * RGBA_BYTES + 3] for column in range(width))]
+    if not columns:
+        raise DsUiError("a DS texture to trim is wholly clear")
+    return cropped(image, [columns[0], rows[0], columns[-1] - columns[0] + 1, rows[-1] - rows[0] + 1])
+
+
+def place_in_cell(image, cell, align):
+    cell_x, cell_y, cell_width, cell_height = cell
+    if image[0] > cell_width or image[1] > cell_height:
+        raise DsUiError("a %dx%d part does not fit its %dx%d cell" % (image[0], image[1], cell_width, cell_height))
+    return cell_x + int((cell_width - image[0]) * align[0]), cell_y + int((cell_height - image[1]) * align[1])
+
+
 def nine_slices(part):
     left, top, width, height = part["crop"]
     corner = part["corner"]
@@ -83,6 +99,11 @@ def compose(description, texture_of):
         image = texture_of(part["texture"], part.get("opaque", False))
         if "crop" in part:
             image = cropped(image, part["crop"])
+        if "cell" in part:
+            image = trimmed(image)
+            x, y = place_in_cell(image, part["cell"], part.get("align", [0.5, 0.5]))
+            paste(canvas, width, height, image, x, y)
+            continue
         target_width = part.get("width", image[0])
         target_height = part.get("height", image[1])
         if (target_width, target_height) != image[:2] or part.get("flip_x") or part.get("flip_y"):

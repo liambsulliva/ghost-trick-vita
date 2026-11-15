@@ -96,10 +96,11 @@ What the DS set holds, and where each part comes from:
 | Narration lines and the talk font | The script's language file and the DS font, in the text palette (`cpac_2d.bin` block 0, entry 5), rendered at DS size and placed in the cartridge's text boxes, then scaled nearest-neighbour by 2.8125. Icons keep their width but are not drawn yet | `func_0201c7c8`, `func_0201c350`, `data_02084a8c`, `func_02017b60`, `func_020197b4` |
 | Faces `ds_face_<entry>` | `cpac_3d.bin` block 0, a `.tds` texture at the entry the face table names, at DS size (128 by 192, head icons 64 by 64) | `data_02085724`, `func_0201e664` |
 | Interface textures (`talk_box_top`, `talk_box_bottom`, `ui_choice_buttons`, `ui_select_button`, `ui_tap_balloon`, `rewind_rocks_*`, `soul_spokes`) | `cpac_3d.bin` block 0, the parts the set description's `ds_textures` lists, placed where the app's layout for the remastered texture of the same name reads them | `func_0201e664` |
+| HUD pills `hud_pills` | `cpac_3d.bin` block 0, each button's resting and touched texture, one row per pill and one column per state, 88 by 32 DS pixels a cell | `func_0204f850` |
 | Music `music_ds/bgm<id>_new` | `sound_data.sdat`, the sequence at the music id | `ds_music.py` |
 | Sounds `sounds/<group>_<index>` | `sound_data.sdat`'s sequence archives `SEQ_SE_SYS` and `SEQ_SE_GIM` | `func_02007250`, `func_02004a84` |
 
-All DS textures are uncompressed (format 0), and the texture cache samples every texture of a DS set nearest-neighbour. Anything the cartridge's decoders do not cover yet, such as the pause menu, the HUD pills and the pre-rendered movies, has no file in the set: the app logs it once as missing and draws nothing.
+All DS textures are uncompressed (format 0), and the texture cache samples every texture of a DS set nearest-neighbour. Anything the cartridge's decoders do not cover yet, such as the pause menu, the title and the pre-rendered movies, has no file in the set: the app logs it once as missing and draws nothing.
 
 ## Animations: `.anim`
 
