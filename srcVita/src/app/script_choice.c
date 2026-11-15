@@ -333,3 +333,35 @@ void script_choice_pick(struct script_machine *machine, int index)
         script_machine_send(machine, panel.target, panel.kind, panel.event);
     }
 }
+
+void script_choice_fill_view(const struct script_machine *machine, struct script_hud_view *view)
+{
+    struct script_choice_view *shown;
+    int index;
+
+    shown = &view->choice;
+    memset(shown, 0, sizeof(*shown));
+    if (!machine->choice.is_open) {
+        return;
+    }
+    shown->is_open = 1;
+    shown->panel_count = script_choice_panels_shown(machine);
+    shown->cursor = machine->choice.cursor;
+    shown->cancel_is_offered = machine->choice.cancel_is_offered;
+    shown->ticks_open = machine->tick - machine->choice.opened_at;
+    shown->book = machine->talk_book;
+    for (index = 0; index < shown->panel_count; index++) {
+        const struct script_choice_panel *panel;
+        int was_chosen;
+
+        panel = panel_at(&machine->choice, index);
+        if (panel == NULL) {
+            continue;
+        }
+        shown->is_shown[index] = 1;
+        shown->was_chosen[index] = script_flags_read_known(&machine->flags, panel->flag, &was_chosen) && was_chosen;
+        if (panel->caption != NULL && machine->talk_book != NULL) {
+            shown->captions[index] = script_talk_book_find(machine->talk_book, panel->caption);
+        }
+    }
+}

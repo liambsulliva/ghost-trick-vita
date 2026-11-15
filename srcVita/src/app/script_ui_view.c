@@ -3,6 +3,7 @@
 #include <string.h>
 #include "pause_people.h"
 #include "pause_widgets.h"
+#include "ds_units.h"
 #include "renderer.h"
 #include "scene_stage.h"
 #include "scene_view.h"
@@ -10,6 +11,40 @@
 #include "texture_cache.h"
 
 #define PLAYING_CLIP_MAX 4
+#define CHOICE_TEXTURE "ui_choice_buttons"
+#define CHOICE_SHEET_WIDTH 512.0f
+#define CHOICE_SHEET_HEIGHT 236.0f
+#define CHOICE_PLAIN_CELL_X 125.0f
+#define CHOICE_PLAIN_CELL_Y 125.0f
+#define CHOICE_PLAIN_CELL_SIZE 100.0f
+#define CHOICE_MARKED_CELL_X 0.0f
+#define CHOICE_MARKED_CELL_Y 117.0f
+#define CHOICE_MARKED_CELL_SIZE 116.0f
+#define CHOICE_CHECK_CELL_X 352.0f
+#define CHOICE_CHECK_CELL_Y 1.0f
+#define CHOICE_CHECK_CELL_SIZE 72.0f
+#define CHOICE_CIRCLE_CELL_X 427.0f
+#define CHOICE_CIRCLE_CELL_Y 13.0f
+#define CHOICE_CIRCLE_CELL_SIZE 60.0f
+#define CHOICE_CORNER_SHARE 0.3f
+#define CHOICE_CORNER_PIXELS 26.0f
+#define CHOICE_CENTRE_X 480.0f
+#define CHOICE_CENTRE_Y 272.0f
+#define CHOICE_ROW_PITCH_DS 42
+#define CHOICE_FOUR_PANEL_LIFT_DS 32
+#define CHOICE_LIFTED_FROM_COUNT 4
+#define CHOICE_ICON_OFFSET_DS -92.0f
+#define CHOICE_PANEL_WIDTH 600.0f
+#define CHOICE_PANEL_HEIGHT 88.0f
+#define CHOICE_MARKED_GROWTH 8.0f
+#define CHOICE_CHECK_SIZE 62.0f
+#define CHOICE_CIRCLE_SIZE 52.0f
+#define CHOICE_TEXT_SHIFT 24.0f
+#define CHOICE_TEXT_INK_MIDDLE 18.0f
+#define CHOICE_BACK_HINT_X 760.0f
+#define CHOICE_BACK_HINT_Y 470.0f
+#define CHOICE_GLYPH_SIZE 36.0f
+#define CHOICE_GLYPH_GAP 10.0f
 #define PHONE_BOOK_SHADE 0.6f
 #define PHONE_BOOK_TITLE_Y 120.0f
 #define PHONE_BOOK_PLACE_WIDTH 156.0f
@@ -356,7 +391,7 @@ static void keep_every_clip_texture_resident(void)
 
 static void keep_the_interface_art_resident(void)
 {
-    static const char *const resident_textures[] = { HOURGLASS_TEXTURE, SIDE_LABEL_TEXTURE, REWIND_BUTTON_TEXTURE, REWIND_FAR_ROCKS_TEXTURE, REWIND_MID_ROCKS_TEXTURE, REWIND_NEAR_ROCKS_TEXTURE, TAP_ART_TEXTURE, NARRATION_ARROW_TEXTURE, PILL_ART_TEXTURE, PILL_SHEET_TEXTURE };
+    static const char *const resident_textures[] = { HOURGLASS_TEXTURE, CHOICE_TEXTURE, SIDE_LABEL_TEXTURE, REWIND_BUTTON_TEXTURE, REWIND_FAR_ROCKS_TEXTURE, REWIND_MID_ROCKS_TEXTURE, REWIND_NEAR_ROCKS_TEXTURE, TAP_ART_TEXTURE, NARRATION_ARROW_TEXTURE, PILL_ART_TEXTURE, PILL_SHEET_TEXTURE };
     size_t index;
 
     for (index = 0; index < sizeof(resident_textures) / sizeof(resident_textures[0]); index++) {
@@ -1304,6 +1339,185 @@ static void draw_phone_book(void)
     draw_phone_book_hint("circle", "bar.stay_here", centre_x + PHONE_BOOK_HINT_FROM_CENTRE / 4.0f);
 }
 
+static void draw_sheet_slice(const struct cached_texture *art, float x, float y, float width, float height, float cell_x, float cell_y, float cell_width, float cell_height, struct renderer_color tint)
+{
+    draw_slice(art, x, y, width, height, cell_x / CHOICE_SHEET_WIDTH, cell_y / CHOICE_SHEET_HEIGHT, cell_width / CHOICE_SHEET_WIDTH, cell_height / CHOICE_SHEET_HEIGHT, tint);
+}
+
+static void draw_stretched_button(const struct cached_texture *art, float x, float y, float width, float height, float cell_x, float cell_y, float cell_size)
+{
+    float corner;
+    float cell_corner;
+    float cell_middle;
+    float columns_x[3];
+    float columns_width[3];
+    float rows_y[3];
+    float rows_height[3];
+    int column;
+    int row;
+
+    corner = CHOICE_CORNER_PIXELS;
+    cell_corner = cell_size * CHOICE_CORNER_SHARE;
+    cell_middle = cell_size - cell_corner * 2.0f;
+    columns_x[0] = x;
+    columns_x[1] = x + corner;
+    columns_x[2] = x + width - corner;
+    columns_width[0] = corner;
+    columns_width[1] = width - corner * 2.0f;
+    columns_width[2] = corner;
+    rows_y[0] = y;
+    rows_y[1] = y + corner;
+    rows_y[2] = y + height - corner;
+    rows_height[0] = corner;
+    rows_height[1] = height - corner * 2.0f;
+    rows_height[2] = corner;
+    for (row = 0; row < 3; row++) {
+        for (column = 0; column < 3; column++) {
+            float u;
+            float v;
+
+            u = cell_x + (column == 0 ? 0.0f : (column == 1 ? cell_corner : cell_corner + cell_middle));
+            v = cell_y + (row == 0 ? 0.0f : (row == 1 ? cell_corner : cell_corner + cell_middle));
+            draw_sheet_slice(art, columns_x[column], rows_y[row], columns_width[column], rows_height[row], u, v, column == 1 ? cell_middle : cell_corner, row == 1 ? cell_middle : cell_corner, white);
+        }
+    }
+}
+
+static void draw_caption_glyph(const struct cached_texture *font, const struct script_talk_glyph *glyph, float x, float y)
+{
+    struct renderer_rect area;
+    struct renderer_rect part;
+
+    if (glyph->width == 0) {
+        return;
+    }
+    area.x = x + (float)glyph->left;
+    area.y = y + (float)glyph->top;
+    area.width = (float)glyph->width;
+    area.height = (float)glyph->height;
+    part.x = (float)glyph->atlas_x / (float)font->width;
+    part.y = (float)glyph->atlas_y / (float)font->height;
+    part.width = (float)glyph->width / (float)font->width;
+    part.height = (float)glyph->height / (float)font->height;
+    renderer_draw_sprite(font->texture, area, part, white);
+}
+
+static float caption_line_width(const struct script_talk_book *book, const struct script_talk_line *line)
+{
+    float width;
+    int index;
+
+    width = 0.0f;
+    for (index = 0; index < line->glyph_count; index++) {
+        width = width + (float)book->glyphs[book->text[line->first_text + index] & SCRIPT_TALK_GLYPH_ID_MASK].advance;
+    }
+    return width;
+}
+
+static void draw_caption(const struct script_talk_book *book, const struct script_talk_message *caption, float centre_x, float centre_y)
+{
+    const struct cached_texture *font;
+    const struct script_talk_page *page;
+    const struct script_talk_line *first;
+    const struct script_talk_line *last;
+    float shift_y;
+    int index;
+
+    if (book == NULL || caption == NULL || caption->page_count == 0) {
+        return;
+    }
+    font = ready_texture(book->font_texture);
+    page = &book->pages[caption->first_page];
+    if (font == NULL || page->line_count == 0) {
+        return;
+    }
+    first = &book->lines[page->first_line];
+    last = &book->lines[page->first_line + page->line_count - 1];
+    shift_y = centre_y - ((float)(first->y + last->y) / 2.0f + CHOICE_TEXT_INK_MIDDLE);
+    for (index = 0; index < page->line_count; index++) {
+        const struct script_talk_line *line;
+        float x;
+        int glyph;
+
+        line = &book->lines[page->first_line + index];
+        x = centre_x - caption_line_width(book, line) / 2.0f;
+        for (glyph = 0; glyph < line->glyph_count; glyph++) {
+            const struct script_talk_glyph *shape;
+
+            shape = &book->glyphs[book->text[line->first_text + glyph] & SCRIPT_TALK_GLYPH_ID_MASK];
+            draw_caption_glyph(font, shape, x, (float)line->y + shift_y);
+            x = x + (float)shape->advance;
+        }
+    }
+}
+
+static float choice_panel_centre_y(int row, int panel_count)
+{
+    int lift;
+
+    lift = panel_count >= CHOICE_LIFTED_FROM_COUNT ? CHOICE_FOUR_PANEL_LIFT_DS : 0;
+    return CHOICE_CENTRE_Y - (float)((1 - row) * CHOICE_ROW_PITCH_DS + lift) * VITA_PIXELS_PER_DS_PIXEL;
+}
+
+static void draw_choice_panel(const struct cached_texture *art, const struct script_choice_view *choice, int row)
+{
+    float centre_y;
+    float left;
+    float icon_x;
+
+    centre_y = choice_panel_centre_y(row, choice->panel_count);
+    left = CHOICE_CENTRE_X - CHOICE_PANEL_WIDTH / 2.0f;
+    if (art != NULL) {
+        if (row == choice->cursor) {
+            draw_stretched_button(art, left - CHOICE_MARKED_GROWTH, centre_y - CHOICE_PANEL_HEIGHT / 2.0f - CHOICE_MARKED_GROWTH, CHOICE_PANEL_WIDTH + CHOICE_MARKED_GROWTH * 2.0f, CHOICE_PANEL_HEIGHT + CHOICE_MARKED_GROWTH * 2.0f, CHOICE_MARKED_CELL_X, CHOICE_MARKED_CELL_Y, CHOICE_MARKED_CELL_SIZE);
+        } else {
+            draw_stretched_button(art, left, centre_y - CHOICE_PANEL_HEIGHT / 2.0f, CHOICE_PANEL_WIDTH, CHOICE_PANEL_HEIGHT, CHOICE_PLAIN_CELL_X, CHOICE_PLAIN_CELL_Y, CHOICE_PLAIN_CELL_SIZE);
+        }
+        icon_x = CHOICE_CENTRE_X + CHOICE_ICON_OFFSET_DS * VITA_PIXELS_PER_DS_PIXEL;
+        if (choice->was_chosen[row]) {
+            draw_sheet_slice(art, icon_x - CHOICE_CHECK_SIZE / 2.0f, centre_y - CHOICE_CHECK_SIZE / 2.0f, CHOICE_CHECK_SIZE, CHOICE_CHECK_SIZE, CHOICE_CHECK_CELL_X, CHOICE_CHECK_CELL_Y, CHOICE_CHECK_CELL_SIZE, CHOICE_CHECK_CELL_SIZE, white);
+        } else {
+            draw_sheet_slice(art, icon_x - CHOICE_CIRCLE_SIZE / 2.0f, centre_y - CHOICE_CIRCLE_SIZE / 2.0f, CHOICE_CIRCLE_SIZE, CHOICE_CIRCLE_SIZE, CHOICE_CIRCLE_CELL_X, CHOICE_CIRCLE_CELL_Y, CHOICE_CIRCLE_CELL_SIZE, CHOICE_CIRCLE_CELL_SIZE, white);
+        }
+    } else {
+        struct renderer_rect area;
+        struct renderer_color fill;
+
+        area.x = left;
+        area.y = centre_y - CHOICE_PANEL_HEIGHT / 2.0f;
+        area.width = CHOICE_PANEL_WIDTH;
+        area.height = CHOICE_PANEL_HEIGHT;
+        fill.red = row == choice->cursor ? 0.77f : 0.0f;
+        fill.green = 0.0f;
+        fill.blue = 0.0f;
+        fill.alpha = 0.85f;
+        renderer_draw_filled_rect(area, fill);
+    }
+    draw_caption(choice->book, choice->captions[row], CHOICE_CENTRE_X + CHOICE_TEXT_SHIFT, centre_y);
+}
+
+static void draw_choice(void)
+{
+    const struct cached_texture *art;
+    int row;
+
+    if (!hud.choice.is_open) {
+        return;
+    }
+    art = ready_texture(CHOICE_TEXTURE);
+    for (row = 0; row < hud.choice.panel_count && row < SCRIPT_CHOICE_PANEL_MAX; row++) {
+        if (hud.choice.is_shown[row]) {
+            draw_choice_panel(art, &hud.choice, row);
+        }
+    }
+    if (hud.choice.cancel_is_offered) {
+        float width;
+
+        width = pause_draw_glyph_from_left("circle", CHOICE_BACK_HINT_X, CHOICE_BACK_HINT_Y, CHOICE_GLYPH_SIZE, 1.0f);
+        pause_draw_text("bar.back", CHOICE_BACK_HINT_X + width + CHOICE_GLYPH_GAP, CHOICE_BACK_HINT_Y, PAUSE_ANCHOR_LEFT, 1.0f);
+    }
+}
+
 void script_ui_view_draw(void)
 {
     int index;
@@ -1321,6 +1535,7 @@ void script_ui_view_draw(void)
         draw_narration_arrow();
     }
     draw_phone_book();
+    draw_choice();
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
         if (playing[index].clip != NULL) {
             int element;

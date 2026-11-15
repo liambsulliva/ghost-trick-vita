@@ -9,7 +9,7 @@
 #include "ui_clips.h"
 #include "test_support.h"
 
-static const char *const screen_art[] = { "ui_hourglass", "side_label", "ui_select_button", "rewind_rocks_far", "rewind_rocks_mid", "rewind_rocks_near", "ui_tap_balloon", "narration_arrow", "hud_button_art", "hud_sheet" };
+static const char *const screen_art[] = { "ui_hourglass", "side_label", "ui_select_button", "ui_choice_buttons", "rewind_rocks_far", "rewind_rocks_mid", "rewind_rocks_near", "ui_tap_balloon", "narration_arrow", "hud_button_art", "hud_sheet" };
 
 static void test_every_interface_texture_is_requested_before_its_screen_opens(void)
 {

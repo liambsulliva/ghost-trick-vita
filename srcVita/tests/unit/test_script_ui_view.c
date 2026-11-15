@@ -295,6 +295,133 @@ static void test_the_start_button_shows_top_right_with_the_ui_and_steps_aside_fo
     script_ui_view_hud_changed(&view);
 }
 
+static const char choice_book_text[] = "font talk_font\nglyph 0 0 8 8 0 0 9\ntalk cap_one\npage - 0 0 0 0 1 0\nline 40 440 3 0 0 0\ntalk cap_two\npage - 0 0 0 0 2 0\nline 40 422 2 0 0\nline 40 458 2 0 0\n";
+
+static void start_choice_textures(int with_button_art)
+{
+    static struct script_tables tables;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    fake_files_add_rgba_texture("assets/textures/talk_font.gtex", 8, 8);
+    if (with_button_art) {
+        fake_files_add_rgba_texture("assets/textures/ui_choice_buttons.gtex", 8, 8);
+    }
+    texture_cache_init("assets/textures", TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
+    CHECK(texture_cache_load_now("talk_font")->state == CACHED_TEXTURE_READY);
+    if (with_button_art) {
+        CHECK(texture_cache_load_now("ui_choice_buttons")->state == CACHED_TEXTURE_READY);
+    }
+    memset(&tables, 0, sizeof(tables));
+    script_ui_view_start(&tables);
+    scene_stage_hide_card();
+    scene_stage_set_fade(0.0f);
+}
+
+static void open_three_panels(struct script_hud_view *view, const struct script_talk_book *book)
+{
+    memset(view, 0, sizeof(*view));
+    view->picture_is_hidden = 1;
+    view->swirl_is_on = 1;
+    view->choice.is_open = 1;
+    view->choice.panel_count = 3;
+    view->choice.cursor = 1;
+    view->choice.book = book;
+    view->choice.is_shown[0] = 1;
+    view->choice.is_shown[1] = 1;
+    view->choice.is_shown[2] = 1;
+    view->choice.was_chosen[2] = 1;
+    view->choice.captions[0] = script_talk_book_find(book, "cap_one");
+    view->choice.captions[1] = script_talk_book_find(book, "cap_two");
+    view->choice.captions[2] = script_talk_book_find(book, "cap_one");
+}
+
+static int draws_with_texture(renderer_texture texture, float top, float bottom)
+{
+    int index;
+    int count;
+
+    count = 0;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        const struct fake_draw *draw;
+
+        draw = fake_renderer_draw(index);
+        if (!draw->is_filled_rect && draw->texture == texture && draw->screen_area.y >= top && draw->screen_area.y + draw->screen_area.height <= bottom) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+static int filled_rects_between(float top, float bottom)
+{
+    int index;
+    int count;
+
+    count = 0;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        const struct fake_draw *draw;
+
+        draw = fake_renderer_draw(index);
+        if (draw->is_filled_rect && draw->screen_area.y >= top && draw->screen_area.y + draw->screen_area.height <= bottom) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+static void test_every_open_choice_panel_draws_its_button_icon_and_caption_over_the_swirl(void)
+{
+    static struct script_talk_book book;
+    struct script_hud_view view;
+    renderer_texture art;
+    renderer_texture font;
+    static const float row_top[3] = { 80.0f, 210.0f, 330.0f };
+    static const float row_bottom[3] = { 210.0f, 330.0f, 460.0f };
+    int row;
+
+    CHECK(script_talk_book_parse(choice_book_text, sizeof(choice_book_text) - 1, &book));
+    start_choice_textures(1);
+    art = texture_cache_load_now("ui_choice_buttons")->texture;
+    font = texture_cache_load_now("talk_font")->texture;
+    open_three_panels(&view, &book);
+    script_ui_view_hud_changed(&view);
+    fake_renderer_clear_draws();
+    script_ui_view_draw();
+    for (row = 0; row < 3; row++) {
+        CHECK_INT(draws_with_texture(art, row_top[row], row_bottom[row]), 10);
+    }
+    CHECK_INT(draws_with_texture(font, row_top[0], row_bottom[0]), 3);
+    CHECK_INT(draws_with_texture(font, row_top[1], row_bottom[1]), 4);
+    CHECK_INT(draws_with_texture(font, row_top[2], row_bottom[2]), 3);
+    view.choice.is_open = 0;
+    script_ui_view_hud_changed(&view);
+    fake_renderer_clear_draws();
+    script_ui_view_draw();
+    CHECK_INT(draws_with_texture(art, 0.0f, 544.0f), 0);
+    CHECK_INT(draws_with_texture(font, 0.0f, 544.0f), 0);
+}
+
+static void test_choice_panels_still_draw_without_their_button_art(void)
+{
+    static struct script_talk_book book;
+    struct script_hud_view view;
+    renderer_texture font;
+
+    CHECK(script_talk_book_parse(choice_book_text, sizeof(choice_book_text) - 1, &book));
+    start_choice_textures(0);
+    font = texture_cache_load_now("talk_font")->texture;
+    open_three_panels(&view, &book);
+    script_ui_view_hud_changed(&view);
+    fake_renderer_clear_draws();
+    script_ui_view_draw();
+    CHECK_INT(filled_rects_between(80.0f, 210.0f), 1);
+    CHECK_INT(filled_rects_between(210.0f, 330.0f), 1);
+    CHECK_INT(filled_rects_between(330.0f, 460.0f), 1);
+    CHECK_INT(draws_with_texture(font, 0.0f, 544.0f), 10);
+}
+
 int main(void)
 {
     test_a_shown_pill_answers_a_tap_inside_it();
@@ -306,5 +433,7 @@ int main(void)
     test_every_pill_has_a_place_and_draws();
     test_the_rewind_button_answers_only_while_it_is_up();
     test_the_start_button_shows_top_right_with_the_ui_and_steps_aside_for_the_hourglass();
+    test_every_open_choice_panel_draws_its_button_icon_and_caption_over_the_swirl();
+    test_choice_panels_still_draw_without_their_button_art();
     return test_finish("unit/script_ui_view");
 }

@@ -1,6 +1,7 @@
 #ifndef SCRIPT_OUTPUTS_H
 #define SCRIPT_OUTPUTS_H
 
+#include "script_choice.h"
 #include "script_narration.h"
 #include "script_talk.h"
 
@@ -90,6 +91,7 @@ struct script_hud_view {
     int phone_book_count;
     int phone_book_cursor;
     int phone_book_places[SCRIPT_PHONE_BOOK_MOST];
+    struct script_choice_view choice;
 };
 
 struct script_outputs {

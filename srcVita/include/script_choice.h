@@ -38,7 +38,23 @@ struct script_choice {
     unsigned int opened_at;
 };
 
+struct script_talk_book;
+struct script_talk_message;
+
+struct script_choice_view {
+    int is_open;
+    int panel_count;
+    int cursor;
+    int cancel_is_offered;
+    unsigned int ticks_open;
+    const struct script_talk_book *book;
+    int is_shown[SCRIPT_CHOICE_PANEL_MAX];
+    int was_chosen[SCRIPT_CHOICE_PANEL_MAX];
+    const struct script_talk_message *captions[SCRIPT_CHOICE_PANEL_MAX];
+};
+
 struct script_machine;
+struct script_hud_view;
 
 void script_choice_clear_all(struct script_machine *machine);
 int script_choice_holds_the_script(const struct script_machine *machine);
@@ -50,5 +66,6 @@ void script_choice_move_cursor(struct script_machine *machine, int steps);
 void script_choice_note_cancel(struct script_machine *machine);
 void script_choice_take_cancel(struct script_machine *machine);
 void script_choice_delete_picked_control(struct script_machine *machine);
+void script_choice_fill_view(const struct script_machine *machine, struct script_hud_view *view);
 
 #endif

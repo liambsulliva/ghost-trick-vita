@@ -41,7 +41,14 @@ static void on_marked(const char *what, const char *name)
     }
 }
 
-static const struct script_outputs outputs = { .marked = on_marked };
+static struct script_hud_view last_hud;
+
+static void on_hud_changed(const struct script_hud_view *view)
+{
+    last_hud = *view;
+}
+
+static const struct script_outputs outputs = { .marked = on_marked, .hud_changed = on_hud_changed };
 
 static int was_marked(const char *text)
 {
@@ -263,6 +270,38 @@ static void test_a_picked_control_outlives_the_pick_by_one_object_pass(void)
     CHECK_INT(machine.choice.is_open, 0);
 }
 
+static const char caption_book_text[] = "font talk_font\nglyph 0 0 8 8 0 0 9\ntalk cap_one\npage - 0 0 0 0 1 0\nline 40 440 2 0 0\ntalk cap_two\npage - 0 0 0 0 1 0\nline 40 440 1 0\n";
+
+static void test_an_open_choice_reports_every_panel_with_its_caption(void)
+{
+    static struct script_talk_book book;
+
+    CHECK(script_talk_book_parse(caption_book_text, sizeof(caption_book_text) - 1, &book));
+    start_scene(SCRIPT_AUTO_OFF, 2, 1, NULL);
+    machine.talk_book = &book;
+    script_flags_write_known(&machine.flags, 3, 1);
+    memset(&last_hud, 0, sizeof(last_hud));
+    run_ticks(3);
+    CHECK_INT(last_hud.choice.is_open, 1);
+    CHECK_INT(last_hud.choice.panel_count, 3);
+    CHECK_INT(last_hud.choice.cancel_is_offered, 1);
+    CHECK_INT(last_hud.choice.cursor, 0);
+    CHECK(last_hud.choice.book == &book);
+    CHECK(last_hud.choice.is_shown[0] && last_hud.choice.is_shown[1] && last_hud.choice.is_shown[2]);
+    CHECK(last_hud.choice.captions[0] == script_talk_book_find(&book, "cap_one"));
+    CHECK(last_hud.choice.captions[1] == script_talk_book_find(&book, "cap_two"));
+    CHECK(last_hud.choice.captions[0] != NULL && last_hud.choice.captions[1] != NULL);
+    CHECK(last_hud.choice.captions[2] == NULL);
+    CHECK_INT(last_hud.choice.was_chosen[0], 0);
+    CHECK_INT(last_hud.choice.was_chosen[1], 1);
+    script_choice_move_cursor(&machine, 1);
+    run_ticks(1);
+    CHECK_INT(last_hud.choice.cursor, 1);
+    script_choice_pick(&machine, 0);
+    run_ticks(1);
+    CHECK_INT(last_hud.choice.is_open, 0);
+}
+
 static void test_a_scene_change_clears_the_panels(void)
 {
     start_scene(SCRIPT_AUTO_OFF, NO_TURNED_PANEL, 0, NULL);
@@ -284,5 +323,6 @@ int main(void)
     test_cancel_needs_the_cancel_panel();
     test_a_picked_control_outlives_the_pick_by_one_object_pass();
     test_a_scene_change_clears_the_panels();
+    test_an_open_choice_reports_every_panel_with_its_caption();
     return test_finish("unit/choice_panels");
 }
