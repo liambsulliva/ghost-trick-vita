@@ -444,6 +444,7 @@ struct script_soul {
     int dead_talk_is_on;
     int dead_talk_object;
     int dead_core_was_just_reached;
+    int dead_core_holds_the_tip;
     struct script_timed_event phone_event;
     char phone_split_name[SCRIPT_SOURCE_NAME_MAX];
     struct script_timed_event time_jump_event;

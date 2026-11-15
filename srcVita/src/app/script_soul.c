@@ -162,6 +162,9 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
     struct script_soul *soul;
 
     soul = &machine->soul;
+    if (soul->active_object != object_index) {
+        soul->dead_core_holds_the_tip = 0;
+    }
     soul->active_object = object_index;
     soul->active_slot = slot;
     machine->active_core_name = machine->objects[object_index].name;
@@ -404,6 +407,7 @@ static void finish_drag_when_due(struct script_machine *machine)
         if (machine->objects[soul->drag_object].is_dead) {
             start_dead_trick_light(machine);
             soul->dead_light_ticks_left = DEAD_TRICK_LIGHT_TICKS;
+            soul->dead_core_holds_the_tip = soul->is_on;
             start_time_leap(machine);
         }
     }
@@ -755,7 +759,7 @@ static void move_soul_tip(struct script_machine *machine)
         return;
     }
     input_is_held = 0;
-    if (soul->drag_ticks_left > 0) {
+    if (soul->drag_ticks_left > 0 || soul->dead_core_holds_the_tip) {
         if (soul->chain.state == SOUL_CHAIN_AIMING) {
             soul_chain_retract(&soul->chain);
         }
@@ -1092,6 +1096,7 @@ static void set_soul_view_with_effect(struct script_machine *machine, int is_on,
         close_the_view_task(soul);
     }
     soul->is_on = is_on;
+    soul->dead_core_holds_the_tip = 0;
     soul->view_is_a_tutorial = 0;
     if (is_on) {
         soul->view_was_entered_with_effect = with_effect;
@@ -1434,6 +1439,7 @@ static void start_dead_talk(struct script_machine *machine, int object_index)
     }
     machine->soul.dead_talk_is_on = 1;
     machine->soul.dead_talk_object = object_index;
+    machine->soul.dead_core_holds_the_tip = 0;
     script_machine_set_swirl(machine, 1);
     if (machine->film_frame_is_on) {
         machine->film_frame_is_on = 0;
