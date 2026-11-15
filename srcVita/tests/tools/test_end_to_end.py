@@ -22,6 +22,7 @@ import narration
 import synthetic_files
 import test_audio_file
 import texture_encoder
+import output_folders
 
 TESTS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(TESTS_FOLDER))
@@ -177,7 +178,7 @@ class EndToEndTests(unittest.TestCase):
             return source.read()
 
     def read_gtex(self, name):
-        with open(os.path.join(self.output_folder, "textures", name + ".gtex"), "rb") as source:
+        with open(os.path.join(self.output_folder, output_folders.disk_path_of("textures/" + name + ".gtex")), "rb") as source:
             return gtex_pack.unpack_gtex(source.read())
 
     def read_gtex_header(self, name):
@@ -227,7 +228,7 @@ class EndToEndTests(unittest.TestCase):
 
     def test_the_right_key_gets_through_the_command_line(self):
         self.assertEqual(self.run_converter_on_the_text_set().returncode, 0)
-        self.assertTrue(os.path.isfile(os.path.join(self.output_folder, "textures", "text_m01_0.gtex")))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_folder, output_folders.disk_path_of("textures/text_m01_0.gtex"))))
 
     def assert_key_not_printed(self, result, key):
         printed = (result.stdout + result.stderr).encode("utf-8")
@@ -518,14 +519,15 @@ class EndToEndTests(unittest.TestCase):
 
     def test_running_twice_gives_the_same_files_and_removes_stale_ones(self):
         self.convert(tiny_set_description())
-        stale_path = os.path.join(self.output_folder, "textures", "old.gtex")
+        stale_path = os.path.join(self.output_folder, output_folders.disk_path_of("textures/old.gtex"))
+        os.makedirs(os.path.dirname(stale_path), exist_ok=True)
         with open(stale_path, "wb") as output:
             output.write(b"old")
-        with open(os.path.join(self.output_folder, "textures", "plate.gtex"), "rb") as source:
+        with open(os.path.join(self.output_folder, output_folders.disk_path_of("textures/plate.gtex")), "rb") as source:
             first_plate = source.read()
         self.convert(tiny_set_description())
         self.assertFalse(os.path.exists(stale_path))
-        with open(os.path.join(self.output_folder, "textures", "plate.gtex"), "rb") as source:
+        with open(os.path.join(self.output_folder, output_folders.disk_path_of("textures/plate.gtex")), "rb") as source:
             self.assertEqual(source.read(), first_plate)
 
     def test_a_missing_pack_entry_is_reported(self):
@@ -581,8 +583,8 @@ class EndToEndTests(unittest.TestCase):
 
     def test_a_deleted_or_edited_output_is_baked_again(self):
         self.convert(tiny_set_description())
-        os.remove(os.path.join(self.output_folder, "textures", "plate.gtex"))
-        with open(os.path.join(self.output_folder, "textures", "card.gtex"), "wb") as output:
+        os.remove(os.path.join(self.output_folder, output_folders.disk_path_of("textures/plate.gtex")))
+        with open(os.path.join(self.output_folder, output_folders.disk_path_of("textures/card.gtex")), "wb") as output:
             output.write(b"edited")
         self.assertEqual(self.textures_baked_by(tiny_set_description()), ["card", "plate"])
 
@@ -602,7 +604,7 @@ class EndToEndTests(unittest.TestCase):
         smaller = tiny_set_description()
         del smaller["screen_textures"][1]
         self.convert(smaller)
-        self.assertFalse(os.path.exists(os.path.join(self.output_folder, "textures", "card_corner.gtex")))
+        self.assertFalse(os.path.exists(os.path.join(self.output_folder, output_folders.disk_path_of("textures/card_corner.gtex"))))
         self.assertEqual(self.textures_baked_by(tiny_set_description()), ["card_corner"])
 
     def test_one_bad_texture_does_not_lose_the_others(self):
@@ -751,7 +753,7 @@ class EndToEndTests(unittest.TestCase):
 
     def test_a_deleted_text_texture_is_baked_again_alone(self):
         self.bake_text_set_with()
-        os.remove(os.path.join(self.output_folder, "textures", "text_m01_1.gtex"))
+        os.remove(os.path.join(self.output_folder, output_folders.disk_path_of("textures/text_m01_1.gtex")))
         self.assertEqual(self.bake_text_set_with()["rendered"], ["text_m01_1"])
 
     def test_the_record_holds_no_form_of_the_key_no_story_and_no_font(self):
@@ -779,7 +781,7 @@ class EndToEndTests(unittest.TestCase):
         self.bake_text_set_with(old_set, story=story_text(pos_y=30, last_line="older"), narration_font_key=OTHER_FONT_KEY)
         self.bake_text_set_with()
         incremental = self.output_tree()
-        self.assertFalse(os.path.exists(os.path.join(self.output_folder, "textures", "text_old_message_0.gtex")))
+        self.assertFalse(os.path.exists(os.path.join(self.output_folder, output_folders.disk_path_of("textures/text_old_message_0.gtex"))))
         shutil.rmtree(self.output_folder)
         self.bake_text_set_with()
         self.assertEqual(incremental, self.output_tree())
@@ -803,8 +805,8 @@ class EndToEndTests(unittest.TestCase):
         after = self.output_tree()
         self.assertEqual(after["manifest.txt"], before["manifest.txt"])
         self.assertEqual(sorted(after), sorted(before))
-        self.assertEqual(after[os.path.join("textures", "text_m01_1.gtex")], before[os.path.join("textures", "text_m01_1.gtex")])
-        self.assertNotEqual(after[os.path.join("textures", "bubble_words.gtex")], before[os.path.join("textures", "bubble_words.gtex")])
+        self.assertEqual(after[output_folders.disk_path_of("textures/text_m01_1.gtex")], before[output_folders.disk_path_of("textures/text_m01_1.gtex")])
+        self.assertNotEqual(after[output_folders.disk_path_of("textures/bubble_words.gtex")], before[output_folders.disk_path_of("textures/bubble_words.gtex")])
 
     def test_a_failed_bubble_line_and_a_failed_composed_texture_are_both_named(self):
         set_description = self.text_set_with_its_own_bubble_font()

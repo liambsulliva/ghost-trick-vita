@@ -70,7 +70,7 @@ class BakeRecordTests(unittest.TestCase):
         self.assertIsNone(self.reopened().read_if_current("textures/b.gtex", self.key))
 
     def test_a_deleted_output_is_not_reused(self):
-        os.remove(os.path.join(self.folder, OUTPUT_PATH))
+        os.remove(bake_record.disk_path(self.folder, OUTPUT_PATH))
         self.assertIsNone(self.reopened().read_if_current(OUTPUT_PATH, self.key))
 
     def test_an_edited_output_is_not_reused(self):
@@ -153,13 +153,13 @@ class FileHelperTests(unittest.TestCase):
         bake_record.remove_leftover_temporary_file(self.path)
 
     def test_only_listed_files_stay(self):
-        os.makedirs(os.path.join(self.folder, "textures"))
-        for name in ("keep.gtex", "stale.gtex"):
-            with open(os.path.join(self.folder, "textures", name), "wb") as output:
+        os.makedirs(os.path.join(self.folder, "sounds"))
+        for name in ("keep.ogg", "stale.ogg"):
+            with open(os.path.join(self.folder, "sounds", name), "wb") as output:
                 output.write(b"x")
-        removed = bake_record.remove_files_not_listed(self.folder, ["textures"], {"textures/keep.gtex"})
-        self.assertEqual(removed, ["textures/stale.gtex"])
-        self.assertEqual(os.listdir(os.path.join(self.folder, "textures")), ["keep.gtex"])
+        removed = bake_record.remove_files_not_listed(self.folder, ["sounds"], {"sounds/keep.ogg"})
+        self.assertEqual(removed, ["sounds/stale.ogg"])
+        self.assertEqual(os.listdir(os.path.join(self.folder, "sounds")), ["keep.ogg"])
 
 
 if __name__ == "__main__":

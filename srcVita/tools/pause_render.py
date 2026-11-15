@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.join(TOOLS_FOLDER, "assets"))
 
 import asset_writers
 import gtex_pack
+import output_folders
 
 RENDER_BINARY = os.path.join(SRC_VITA_FOLDER, "build", "tests", "golden", "pause_render")
 RENDERER_SOURCE = os.path.join(SRC_VITA_FOLDER, "src", "vita", "renderer.c")
@@ -160,7 +161,7 @@ def render(assets_folder, buttons, output_path, notes=None, clock=None):
         elif parts[0] == "sprite":
             name = parts[1]
             if name not in textures:
-                textures[name] = read_texture(os.path.join(assets_folder, "textures", name + ".gtex"))
+                textures[name] = read_texture(os.path.join(assets_folder, output_folders.disk_path_of("textures/" + name + ".gtex")))
             draw_sprite(canvas, textures[name], parts[2:])
     raw_path = output_path + ".rgb"
     with open(raw_path, "wb") as output:

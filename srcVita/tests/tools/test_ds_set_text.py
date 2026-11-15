@@ -275,7 +275,7 @@ class BakeTests(unittest.TestCase):
         self.assertEqual(baked["bubble_rows"], [])
         self.assertEqual(sorted(baked["texture_sizes"]), sorted([line["texture"] for line in lines] + [talk_assets.FONT_TEXTURE]))
         for relative_path in baked["texture_paths"]:
-            with open(os.path.join(self.folder, relative_path), "rb") as source:
+            with open(bake_record.disk_path(self.folder, relative_path), "rb") as source:
                 data = gtex_pack.unpack_gtex(source.read())
             self.assertEqual(asset_writers.read_gtex_header(data)[2], asset_writers.FORMAT_RGBA8888)
 

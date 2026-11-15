@@ -1,10 +1,10 @@
 # Converted asset format
 
-The converter turns the remaster's Android files into small, simple files the Vita app can load. Everything it produces stays out of git, under `extracted/vita_assets/<set>/` on the Mac and `ux0:data/ghosttrick/assets/` on the Vita.
+The converter turns the remaster's Android files into small, simple files the Vita app can load. Everything it produces stays out of git, under `extracted/vita_assets/<set>/` on the Mac and `ux0:data/ghosttrick/assets/` on the Vita. The set on the Mac has exactly the layout the Vita reads, so copying its contents is the whole install. `<bucket>` is `crc32(texture_name) % 64` as two hex digits (`tools/assets/output_folders.py`, `TEXTURE_FOLDER_BUCKETS` in the Makefile), because one folder of about 24,000 files is slow to search on the Vita's card.
 
 ```
 manifest.txt
-textures/<texture_name>.gtex
+textures/<bucket>/<texture_name>.gtex
 animations/<animation_name>.anim
 scenes/<scene_name>.scene
 music/<track_name>.ogg

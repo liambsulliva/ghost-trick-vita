@@ -5,6 +5,7 @@ import threading
 
 import asset_writers
 import gtex_pack
+import output_folders
 
 RECORD_FILE_NAME = ".bake_record.json"
 TEXTURE_FOLDER_PREFIXES = ("textures/",)
@@ -48,6 +49,7 @@ def code_fingerprint(file_names, extra_text=""):
 
 
 def write_file_atomically(path, data):
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     temporary_path = path + TEMPORARY_SUFFIX
     with open(temporary_path, "wb") as output:
         output.write(data)
@@ -70,15 +72,39 @@ def remove_leftover_temporary_file(path):
         pass
 
 
+def disk_path(output_folder, relative_path):
+    return os.path.join(output_folder, output_folders.disk_path_of(relative_path))
+
+
+def move_flat_textures_into_buckets(output_folder):
+    folder = os.path.join(output_folder, output_folders.TEXTURE_FOLDER)
+    if not os.path.isdir(folder):
+        return 0
+    moved = 0
+    for file_name in sorted(os.listdir(folder)):
+        flat_path = os.path.join(folder, file_name)
+        if not os.path.isfile(flat_path) or not output_folders.is_texture_file_name(file_name):
+            continue
+        target = disk_path(output_folder, output_folders.TEXTURE_FOLDER + "/" + file_name)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        os.replace(flat_path, target)
+        moved = moved + 1
+    return moved
+
+
 def remove_files_not_listed(output_folder, folder_names, relative_paths_to_keep):
     removed = []
     for folder_name in folder_names:
         folder = os.path.join(output_folder, folder_name)
-        for file_name in sorted(os.listdir(folder)):
-            relative_path = folder_name + "/" + file_name
-            if relative_path not in relative_paths_to_keep:
-                os.remove(os.path.join(folder, file_name))
-                removed.append(relative_path)
+        for parent, folder_names_inside, file_names in os.walk(folder, topdown=False):
+            for file_name in sorted(file_names):
+                on_disk = os.path.relpath(os.path.join(parent, file_name), output_folder).replace(os.sep, "/")
+                relative_path = output_folders.relative_path_of(on_disk)
+                if relative_path not in relative_paths_to_keep or output_folders.disk_path_of(relative_path) != on_disk:
+                    os.remove(os.path.join(parent, file_name))
+                    removed.append(on_disk)
+            if parent != folder and not os.listdir(parent):
+                os.rmdir(parent)
     return removed
 
 
@@ -91,6 +117,7 @@ def entry_is_usable(entry):
 class BakeRecord:
     def __init__(self, output_folder):
         self.output_folder = output_folder
+        move_flat_textures_into_buckets(output_folder)
         self.path = os.path.join(output_folder, RECORD_FILE_NAME)
         self.lock = threading.Lock()
         self.entries = self.load_entries()
@@ -116,7 +143,7 @@ class BakeRecord:
         if entry is None or entry["key"] != key:
             return None
         try:
-            with open(os.path.join(self.output_folder, relative_path), "rb") as source:
+            with open(disk_path(self.output_folder, relative_path), "rb") as source:
                 data = source.read()
         except OSError:
             return None
@@ -138,7 +165,7 @@ class BakeRecord:
     def store(self, relative_path, key, data, details=None):
         if relative_path.startswith(TEXTURE_FOLDER_PREFIXES) and relative_path.endswith(TEXTURE_FILE_SUFFIX):
             data = gtex_pack.pack_gtex(data)
-        path = os.path.join(self.output_folder, relative_path)
+        path = disk_path(self.output_folder, relative_path)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         write_file_atomically(path, data)
         entry = {"key": key, "output": sha256_of_bytes(data)}

@@ -16,6 +16,7 @@ import convert_assets
 import script_assets
 import synthetic_files
 import test_end_to_end
+import output_folders
 
 TESTS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME_PAIRS_PATH = os.path.join(os.path.dirname(TESTS_FOLDER), "fixtures", "script_name_pairs.h")
@@ -156,7 +157,7 @@ class ScriptBakeTests(unittest.TestCase):
         self.assertIn("no DS ROM", warnings)
         self.assertNotIn("scripts:", printed)
         self.assertEqual(os.listdir(self.output_path("scripts")), [])
-        self.assertTrue(os.path.isfile(self.output_path(os.path.join("textures", "plate.gtex"))))
+        self.assertTrue(os.path.isfile(self.output_path(output_folders.disk_path_of("textures/plate.gtex"))))
 
     def test_rom_absent_keeps_existing_scripts(self):
         self.convert(hand_set(scripts_section()))

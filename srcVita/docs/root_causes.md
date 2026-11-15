@@ -1656,6 +1656,14 @@ The class: every press of the hourglass, by R or by touch, in every chapter. Bef
 
 Guard: a press sets `rollback_is_pending`. The soul's step takes it only while the pill is up, the world is not paused, and no talk, choice or game over is waiting. It then runs the game-over retry (`retry_the_fate_attempt`, marked `rollback_retry restart` or `reload`), which also turns the hourglass off as state 0x84 does and keeps the soul's core (root cause 94). The pill is wanted only while flag 0x1020 is set (`script_soul_fate_section_is_on`, the Minutes Before Death side label). The user asked for this rule. Native checks bit 13 instead, and its setter is not read. `tests/unit/test_hourglass_rollback.c` checks that the pill and a press do nothing without flag 0x1020, that a press with it reloads the attempt, and that a press during a talk is dropped.
 
+### 224. A copied set had every texture in the wrong folder
+
+Found while installing by hand over USB: the Vita build reads every texture from `textures/<crc32(name) % 64>/<name>.gtex` (`join_texture_path` in `src/app/texture_cache.c`, `TEXTURE_FOLDER_BUCKETS` 64 in the Makefile), but the converter wrote `textures/<name>.gtex`. Only the device uploader, `vita_loop.py`, moved each texture into its bucket on the way up, so every install through Vita Companion worked and every copy the README described would have shown magenta for all 24,000 textures.
+
+The class: any file whose place on the Vita differs from its place in the converted set. Two tools held the bucket rule apart from the converter, so the set was never the install.
+
+Guard: the converter writes the Vita layout. `output_folders.disk_path_of` maps a texture's name to its bucket and is the one rule: `BakeRecord` stores and reads through it, the sweep keeps a texture only in its own bucket, `vita_loop.py` lists bucketed files by name and uploads them to the same place, and `pause_render.py` reads them there. A set baked flat is moved into buckets by rename the first time a newer converter opens it, so nothing is baked again. `tests/tools/test_texture_layout.py` checks the buckets against the C test's examples (`a` in `03`, `movie_time_jump_012` in `30`) and the Makefile's count, the store, the reuse after the move, the sweep and the uploader's listing.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

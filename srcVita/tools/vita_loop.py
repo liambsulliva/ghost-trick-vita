@@ -20,7 +20,6 @@ FTP_PORT = 1337
 TEXTURE_FOLDER = "textures/"
 TEXTURE_FILE_SUFFIX = ".gtex"
 EARLIER_FOLDERED_TEXTURE_PREFIXES = (TEXTURE_FOLDER + "movie_", TEXTURE_FOLDER + "fx_")
-TEXTURE_FOLDER_BUCKETS = 64
 COMMAND_PORT = 1338
 TITLE_ID = "GHTR00001"
 APP_FOLDER = "/ux0:/app/" + TITLE_ID
@@ -255,10 +254,14 @@ def list_local_files(folder):
     for folder_name in output_folders.NAMES:
         if not os.path.isdir(os.path.join(folder, folder_name)):
             continue
-        for name in sorted(os.listdir(os.path.join(folder, folder_name))):
-            if not name.startswith(".") and not name.endswith(PARTIAL_FILE_SUFFIX):
-                files.append((os.path.join(folder, folder_name, name), folder_name + "/" + name))
-    return files
+        for parent, folder_names_inside, names in os.walk(os.path.join(folder, folder_name)):
+            folder_names_inside.sort()
+            for name in sorted(names):
+                if name.startswith(".") or name.endswith(PARTIAL_FILE_SUFFIX):
+                    continue
+                on_disk = os.path.relpath(os.path.join(parent, name), folder).replace(os.sep, "/")
+                files.append((os.path.join(parent, name), output_folders.relative_path_of(on_disk)))
+    return sorted(files, key=lambda pair: pair[1] != "manifest.txt")
 
 
 def loop_files_the_set_no_longer_has(relative_paths):
@@ -272,14 +275,11 @@ def loop_files_the_set_no_longer_has(relative_paths):
 
 
 def texture_bucket_of(name):
-    return "%02x" % (zlib.crc32(name.encode("ascii")) % TEXTURE_FOLDER_BUCKETS)
+    return output_folders.texture_bucket_of(name)
 
 
 def device_path_of_asset(relative_path):
-    if relative_path.startswith(TEXTURE_FOLDER) and relative_path.endswith(TEXTURE_FILE_SUFFIX):
-        file_name = relative_path[len(TEXTURE_FOLDER):]
-        return TEXTURE_FOLDER + texture_bucket_of(file_name[:-len(TEXTURE_FILE_SUFFIX)]) + "/" + file_name
-    return relative_path
+    return output_folders.disk_path_of(relative_path)
 
 
 def earlier_device_paths_of_asset(relative_path):

@@ -5,6 +5,7 @@ import os
 import shutil
 import tempfile
 import unittest
+import output_folders
 
 import asset_writers
 import bake_record
@@ -99,7 +100,7 @@ class ConversionTests(unittest.TestCase):
         return self.convert_set(packs, {"narration_font": FONT_PACK_PATH, "narration": requests})
 
     def read_gtex(self, name):
-        with open(os.path.join(self.work_folder, "output", "textures", name + ".gtex"), "rb") as source:
+        with open(os.path.join(self.work_folder, "output", output_folders.disk_path_of("textures/" + name + ".gtex")), "rb") as source:
             return gtex_pack.unpack_gtex(source.read())
 
     def test_each_line_gets_a_texture_and_a_place(self):
