@@ -1710,6 +1710,7 @@ static void tear_down_script(struct script_machine *machine)
     machine->phone_view_is_on = 0;
     machine->phone_book_is_open = 0;
     memset(machine->anchored_effects, 0, sizeof(machine->anchored_effects));
+    memset(machine->lights, 0, sizeof(machine->lights));
     machine->has_runner = 0;
     machine->object_count = 0;
     memset(machine->free_units, 0, sizeof(machine->free_units));
@@ -1966,6 +1967,7 @@ void script_machine_tick(struct script_machine *machine)
     phase_started_us = now_us;
     script_fades_update(machine);
     script_machine_move_anchored_effects(machine);
+    script_machine_move_lights(machine);
     script_machine_update_camera(machine);
     step_narration(machine);
     script_talk_step(machine);

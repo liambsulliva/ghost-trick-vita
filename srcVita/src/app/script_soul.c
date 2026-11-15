@@ -1433,6 +1433,23 @@ static void run_system_command(struct script_machine *machine, const char *arg)
     machine->mode_byte = mode;
 }
 
+static void close_the_film_frame(struct script_machine *machine)
+{
+    if (machine->film_frame_is_on) {
+        machine->film_frame_is_on = 0;
+        if (machine->outputs->film_frame_changed != NULL) {
+            machine->outputs->film_frame_changed(0);
+        }
+    }
+}
+
+static void run_event_frame_command(struct script_machine *machine, const char *arg)
+{
+    if (strcmp(arg, "On") != 0) {
+        close_the_film_frame(machine);
+    }
+}
+
 static void start_dead_talk(struct script_machine *machine, int object_index)
 {
     if (object_index == NO_CORE) {
@@ -1443,12 +1460,7 @@ static void start_dead_talk(struct script_machine *machine, int object_index)
     machine->soul.dead_core_holds_the_tip = 0;
     script_hints_player_did(machine, SCRIPT_ROUTE_DEAD_TALK, object_index >= 0 && object_index < machine->object_count ? machine->objects[object_index].name : NULL);
     script_machine_set_swirl(machine, 1);
-    if (machine->film_frame_is_on) {
-        machine->film_frame_is_on = 0;
-        if (machine->outputs->film_frame_changed != NULL) {
-            machine->outputs->film_frame_changed(0);
-        }
-    }
+    close_the_film_frame(machine);
     if (object_index != NO_CORE && !core_is_for_the_dead(machine, object_index)) {
         script_machine_send(machine, "*", "SYSTEM", "CORETALK");
         return;
@@ -1571,6 +1583,7 @@ static const struct gameapp_command gameapp_commands[] = {
     { "DeadTalk", run_dead_talk_command },
     { "System", run_system_command },
     { "Exchange", script_exchange_run_command },
+    { "EventFrame", run_event_frame_command },
 };
 
 static const struct gameapp_command *find_gameapp_command(const char *verb)

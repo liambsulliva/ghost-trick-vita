@@ -343,15 +343,24 @@ static void on_beam_base_ramped(const char *name, float base_x, float base_y, in
     }
 }
 
+static void on_beam_apex_ramped(const char *name, float apex_x, float apex_y, int ticks)
+{
+    write_cue("beam", name);
+    scene_effects_move_beam_apex(scene_stage_effects(), name, apex_x, apex_y, ticks);
+}
+
 static void on_beam_deleted(const char *name)
 {
     write_cue("beam", name);
     scene_effects_delete_beam(scene_stage_effects(), name);
 }
 
+static char drawn_iris_name[ASSET_NAME_MAX];
+
 static void on_iris_created(const char *name, float x, float y, float radius, float alpha)
 {
     write_cue("iris_create", name);
+    snprintf(drawn_iris_name, sizeof(drawn_iris_name), "%s", name);
     scene_effects_create_iris(scene_stage_effects(), x, y, radius, alpha);
 }
 
@@ -371,6 +380,20 @@ static void on_iris_moved(const char *name, float x, float y, int ticks)
 {
     write_cue("iris_move", name);
     scene_effects_move_iris(scene_stage_effects(), x, y, ticks);
+}
+
+static void on_iris_placed(const char *name, float x, float y)
+{
+    if (strcmp(name, drawn_iris_name) == 0) {
+        scene_effects_place_iris(scene_stage_effects(), x, y);
+    }
+}
+
+static void on_iris_pinned(const char *name, int is_on_the_screen)
+{
+    if (strcmp(name, drawn_iris_name) == 0) {
+        scene_effects_pin_iris(scene_stage_effects(), is_on_the_screen);
+    }
 }
 
 static void on_iris_deleted(const char *name)
@@ -990,11 +1013,14 @@ static const struct script_outputs bridge_outputs = {
     .beam_cover_ramped = on_beam_cover_ramped,
     .beam_width_ramped = on_beam_width_ramped,
     .beam_base_ramped = on_beam_base_ramped,
+    .beam_apex_ramped = on_beam_apex_ramped,
     .beam_deleted = on_beam_deleted,
     .iris_created = on_iris_created,
     .iris_radius_ramped = on_iris_radius_ramped,
     .iris_alpha_ramped = on_iris_alpha_ramped,
     .iris_moved = on_iris_moved,
+    .iris_placed = on_iris_placed,
+    .iris_pinned = on_iris_pinned,
     .iris_deleted = on_iris_deleted,
     .effect_spawned = timed_effect_spawned,
     .effect_deleted = on_effect_deleted,

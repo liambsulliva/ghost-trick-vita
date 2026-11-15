@@ -10,16 +10,26 @@
 #define FIXED_POINT_BITS 12
 #define RADIUS_UNITS_TO_PIXELS (3.0f / 128.0f)
 #define BEAM_MODE_WIDTH 1
+#define BEAM_MODE_APEX 2
 #define BEAM_MODE_BASE 4
 #define IRIS_MODE_RADIUS 1u
 #define IRIS_MODE_CENTRE 2u
 #define IRIS_MODE_ALPHA 4u
+#define IRIS_MODE_PLACE 8u
+#define IRIS_MODE_NODE 16u
+#define IRIS_CREATE_PLACE_WORD 9
+#define IRIS_CREATE_NODE_WORD 10
+#define IRIS_PLACE_BYTE_MASK 0xffu
+#define IRIS_PLACE_MOST_AS_A_BYTE 0xffu
+#define IRIS_NODE_FIRST_FIXED_VALUE 0x1000u
+#define LIGHT_X_WITH_NO_SOUL_CORE (-1024.0f)
 #define LIGHT_ALPHA_FRACTION_BITS 12
 #define KEEP_CAMERA_AXIS 0xffffu
 #define CAMERA_CUT_SPEED 0x3e8000
 #define BACKGROUND_TARGET "BG"
 #define SELF_TARGET_MARK '?'
 #define FRAMING_FARTHEST_FROM_CORE 120
+#define FRAMING_ABOVE_THE_MIDDLE 20
 #define SHAKE_DIRECTION_COUNT 8
 #define SHAKE_TICKS_PER_DIRECTION 4
 #define SHAKE_LEVEL_SCALED_MOST 3
@@ -224,12 +234,14 @@ static void ramp_beam(struct script_machine *machine, struct script_vm *vm, cons
         if (machine->outputs->beam_base_ramped != NULL) {
             machine->outputs->beam_base_ramped(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)), ticks);
         }
+    } else if (mode == BEAM_MODE_APEX) {
+        if (machine->outputs->beam_apex_ramped != NULL) {
+            machine->outputs->beam_apex_ramped(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)), ticks);
+        }
     } else if (mode == BEAM_MODE_COVER_ALPHA) {
         if (machine->outputs->beam_cover_ramped != NULL) {
             machine->outputs->beam_cover_ramped(name, cover_alpha_of(script_machine_u32(words, 1)), ticks);
         }
-    } else {
-        script_machine_note(machine, vm, "beam_mode_not_ported", name);
     }
 }
 
@@ -248,20 +260,112 @@ static float light_alpha(unsigned int fixed_alpha)
     return (float)(fixed_alpha >> LIGHT_ALPHA_FRACTION_BITS) / ((float)NATIVE_ALPHA_FULL);
 }
 
+static struct script_light *light_named(struct script_machine *machine, const char *name, int should_add)
+{
+    struct script_light *free_light;
+    int index;
+
+    free_light = NULL;
+    for (index = 0; index < SCRIPT_LIGHT_MAX; index++) {
+        if (machine->lights[index].name == NULL) {
+            if (free_light == NULL) {
+                free_light = &machine->lights[index];
+            }
+        } else if (strcmp(machine->lights[index].name, name) == 0) {
+            return &machine->lights[index];
+        }
+    }
+    if (!should_add || free_light == NULL) {
+        return NULL;
+    }
+    free_light->name = name;
+    free_light->place = SCRIPT_LIGHT_IN_THE_WORLD;
+    free_light->object_index = SCRIPT_LIGHT_NO_OWNER;
+    free_light->node = -1;
+    return free_light;
+}
+
+static int object_index_of(const struct script_machine *machine, const struct script_object *object)
+{
+    return object == NULL ? SCRIPT_LIGHT_NO_OWNER : (int)(object - machine->objects);
+}
+
+static int light_follows_something(const struct script_light *light)
+{
+    return light->place == SCRIPT_LIGHT_ON_THE_SOUL_CORE || (light->object_index != SCRIPT_LIGHT_NO_OWNER && light->node >= 0);
+}
+
+static void place_light(struct script_machine *machine, const struct script_light *light)
+{
+    float x;
+    float y;
+
+    if (machine->outputs->iris_pinned != NULL) {
+        machine->outputs->iris_pinned(light->name, light->place == SCRIPT_LIGHT_ON_THE_SCREEN);
+    }
+    if (machine->outputs->iris_placed == NULL || !light_follows_something(light)) {
+        return;
+    }
+    x = 0.0f;
+    y = 0.0f;
+    if (light->place == SCRIPT_LIGHT_ON_THE_SOUL_CORE) {
+        if (machine->soul.active_object >= 0 && machine->objects[machine->soul.active_object].actor.exists) {
+            script_machine_node_position(&machine->objects[machine->soul.active_object], SCRIPT_FIRST_CORE_NODE + machine->soul.active_slot, &x, &y);
+        } else {
+            x = LIGHT_X_WITH_NO_SOUL_CORE;
+        }
+    } else if (light->object_index != SCRIPT_LIGHT_NO_OWNER && light->node >= 0) {
+        const struct script_object *owner;
+
+        owner = &machine->objects[light->object_index];
+        if (owner->is_deleted || !owner->actor.exists) {
+            return;
+        }
+        script_machine_node_position(owner, light->node, &x, &y);
+    }
+    machine->outputs->iris_placed(light->name, x, y);
+}
+
+void script_machine_move_lights(struct script_machine *machine)
+{
+    int index;
+
+    for (index = 0; index < SCRIPT_LIGHT_MAX; index++) {
+        if (machine->lights[index].name != NULL && light_follows_something(&machine->lights[index])) {
+            place_light(machine, &machine->lights[index]);
+        }
+    }
+}
+
 static void create_iris(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
+    struct script_light *light;
     const char *name;
 
     name = script_machine_string(machine, vm, words[0]);
-    if (name != NULL && machine->outputs->iris_created != NULL) {
+    if (name == NULL) {
+        return;
+    }
+    if (machine->outputs->iris_created != NULL) {
         machine->outputs->iris_created(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)), radius_to_pixels(script_machine_u32(words, 5)), light_alpha(script_machine_u32(words, 7)));
     }
+    light = light_named(machine, name, 1);
+    if (light == NULL) {
+        script_machine_note(machine, vm, "too_many_lights", name);
+        return;
+    }
+    light->place = (int)(words[IRIS_CREATE_PLACE_WORD] & IRIS_PLACE_BYTE_MASK);
+    light->node = signed_word(words[IRIS_CREATE_NODE_WORD]);
+    light->object_index = light->node >= 0 ? object_index_of(machine, script_machine_current_object(machine, vm)) : SCRIPT_LIGHT_NO_OWNER;
+    place_light(machine, light);
 }
 
 static void ramp_iris(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
 {
+    struct script_light *light;
     const char *name;
     unsigned int mode;
+    unsigned int value;
     int ticks;
 
     name = script_machine_string(machine, vm, words[0]);
@@ -269,18 +373,40 @@ static void ramp_iris(struct script_machine *machine, struct script_vm *vm, cons
         return;
     }
     mode = script_machine_u32(words, 7);
+    value = script_machine_u32(words, 1);
     ticks = script_machine_u32(words, 5) == 0u ? 1 : (int)script_machine_u32(words, 5);
-    if ((mode & IRIS_MODE_RADIUS) && machine->outputs->iris_radius_ramped != NULL) {
-        machine->outputs->iris_radius_ramped(name, radius_to_pixels(script_machine_u32(words, 1)), ticks);
-    }
-    if ((mode & IRIS_MODE_CENTRE) && machine->outputs->iris_moved != NULL) {
-        machine->outputs->iris_moved(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)), ticks);
-    }
-    if ((mode & IRIS_MODE_ALPHA) && machine->outputs->iris_alpha_ramped != NULL) {
-        machine->outputs->iris_alpha_ramped(name, light_alpha(script_machine_u32(words, 1)), ticks);
-    }
-    if (mode & ~(unsigned int)(IRIS_MODE_RADIUS | IRIS_MODE_CENTRE | IRIS_MODE_ALPHA)) {
-        script_machine_note(machine, vm, "iris_mode_not_ported", name);
+    switch (mode) {
+    case IRIS_MODE_RADIUS:
+        if (machine->outputs->iris_radius_ramped != NULL) {
+            machine->outputs->iris_radius_ramped(name, radius_to_pixels(value), ticks);
+        }
+        break;
+    case IRIS_MODE_CENTRE:
+        if (machine->outputs->iris_moved != NULL) {
+            machine->outputs->iris_moved(name, fixed_to_float(value), fixed_to_float(script_machine_u32(words, 3)), ticks);
+        }
+        break;
+    case IRIS_MODE_ALPHA:
+        if (machine->outputs->iris_alpha_ramped != NULL) {
+            machine->outputs->iris_alpha_ramped(name, light_alpha(value), ticks);
+        }
+        break;
+    case IRIS_MODE_PLACE:
+    case IRIS_MODE_NODE:
+        light = light_named(machine, name, 0);
+        if (light == NULL) {
+            break;
+        }
+        if (mode == IRIS_MODE_PLACE) {
+            light->place = (int)((value > IRIS_PLACE_MOST_AS_A_BYTE ? value >> FIXED_POINT_BITS : value) & IRIS_PLACE_BYTE_MASK);
+        } else {
+            light->node = signed_word(value >= IRIS_NODE_FIRST_FIXED_VALUE ? value >> FIXED_POINT_BITS : value);
+            light->object_index = object_index_of(machine, script_machine_current_object(machine, vm));
+        }
+        place_light(machine, light);
+        break;
+    default:
+        break;
     }
 }
 
@@ -289,6 +415,14 @@ static void delete_iris(struct script_machine *machine, struct script_vm *vm, co
     const char *name;
 
     name = script_machine_string(machine, vm, words[0]);
+    if (name != NULL) {
+        struct script_light *light;
+
+        light = light_named(machine, name, 0);
+        if (light != NULL) {
+            light->name = NULL;
+        }
+    }
     if (name != NULL && machine->outputs->iris_deleted != NULL) {
         machine->outputs->iris_deleted(name);
     }
@@ -538,13 +672,14 @@ static void follow_the_current_actor(struct script_machine *machine, const struc
     }
 }
 
-static void frame_the_core_and_the_followed_actor(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+static void frame_the_core_and_the_followed_actor(struct script_machine *machine, const unsigned int *words)
 {
     float core_x;
     float core_y;
     float followed_x;
     float followed_y;
     int middle_x;
+    int target_y;
     int speed;
 
     if (machine->soul.active_object < 0 || machine->camera_follow_object == SCRIPT_NO_SELECTION || !machine->objects[machine->camera_follow_object].actor.exists) {
@@ -557,11 +692,12 @@ static void frame_the_core_and_the_followed_actor(struct script_machine *machine
         return;
     }
     speed = (int)script_machine_u32(words, 0);
+    target_y = machine->camera_y;
     if (speed < 0) {
-        script_machine_note(machine, vm, "framing_floor_not_ported", "");
+        target_y = machine->world_origin_y + (int)((core_y + followed_y) / 2.0f) - DS_VIEW_HEIGHT / 2 - FRAMING_ABOVE_THE_MIDDLE;
         speed = -speed;
     }
-    begin_pan(machine, machine->world_origin_x + middle_x - DS_VIEW_WIDTH / 2, machine->camera_y, speed, 0);
+    begin_pan(machine, machine->world_origin_x + middle_x - DS_VIEW_WIDTH / 2, target_y, speed, 0);
 }
 
 void script_machine_set_world_origin(struct script_machine *machine, int x, int y)
@@ -734,7 +870,7 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         follow_the_current_actor(machine, vm);
         break;
     case 0xca:
-        frame_the_core_and_the_followed_actor(machine, vm, words);
+        frame_the_core_and_the_followed_actor(machine, words);
         break;
     case 0xd5:
         set_camera_band(machine, signed_word(words[0]), signed_word(words[1]));

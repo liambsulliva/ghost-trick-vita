@@ -286,6 +286,18 @@ struct script_timed_event {
 };
 
 #define SCRIPT_ANCHORED_EFFECT_MAX 12
+#define SCRIPT_LIGHT_MAX 16
+#define SCRIPT_LIGHT_IN_THE_WORLD 0
+#define SCRIPT_LIGHT_ON_THE_SCREEN 1
+#define SCRIPT_LIGHT_ON_THE_SOUL_CORE 2
+#define SCRIPT_LIGHT_NO_OWNER (-1)
+
+struct script_light {
+    const char *name;
+    int place;
+    int object_index;
+    int node;
+};
 
 struct script_anchored_effect {
     const char *name;
@@ -600,6 +612,7 @@ struct script_machine {
     int game_over_is_pending;
     unsigned int game_over_talk_ended_at;
     struct script_anchored_effect anchored_effects[SCRIPT_ANCHORED_EFFECT_MAX];
+    struct script_light lights[SCRIPT_LIGHT_MAX];
     unsigned char noted_ops[SCRIPT_NOTED_OP_BYTES];
     unsigned char noted_problems[SCRIPT_NOTED_PROBLEM_BYTES];
     unsigned long long phase_us[SCRIPT_TICK_PHASE_COUNT];
@@ -649,6 +662,7 @@ void script_machine_pan_camera_back_to(struct script_machine *machine, int x, in
 void script_machine_node_position(const struct script_object *object, int node, float *x, float *y);
 int script_machine_vm_is_paused(const struct script_machine *machine, const struct script_vm *vm);
 void script_machine_move_anchored_effects(struct script_machine *machine);
+void script_machine_move_lights(struct script_machine *machine);
 void script_machine_spawn_table_effect(struct script_machine *machine, struct script_object *object, int effect_id, float offset_x, float offset_y, const char *name);
 int script_machine_camera_band_snap(const struct script_machine *machine, int object_y);
 void script_machine_note(struct script_machine *machine, const struct script_vm *vm, const char *reason, const char *detail);

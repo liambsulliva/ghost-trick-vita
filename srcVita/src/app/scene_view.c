@@ -587,8 +587,8 @@ static int find_beam_triangles_on_screen(const struct scene_effects *effects, co
     for (index = 0; index < SCENE_BEAM_MAX; index++) {
         beam = &effects->beams[index];
         if (beam->in_use) {
-            triangles[count].apex_x = world_x_to_screen(view, beam->apex_x);
-            triangles[count].apex_y = world_y_to_screen(view, beam->apex_y);
+            triangles[count].apex_x = world_x_to_screen(view, beam->apex_x.value);
+            triangles[count].apex_y = world_y_to_screen(view, beam->apex_y.value);
             triangles[count].base_x = world_x_to_screen(view, beam->base_x.value);
             triangles[count].base_y = world_y_to_screen(view, beam->base_y.value);
             triangles[count].half_width = beam->half_width.value * VITA_PIXELS_PER_DS_PIXEL;
@@ -667,8 +667,13 @@ static void draw_iris(const struct scene_effects *effects, const struct screen_v
     struct renderer_color edge;
     struct renderer_color cover;
 
-    center_x = world_x_to_screen(view, effects->iris_x.value);
-    center_y = world_y_to_screen(view, effects->iris_y.value);
+    if (effects->iris_is_on_the_screen) {
+        center_x = (float)RENDERER_WIDTH / 2.0f + (effects->iris_x.value - SCENE_VIEW_DS_SCREEN_WIDTH / 2.0f) * VITA_PIXELS_PER_DS_PIXEL;
+        center_y = (float)RENDERER_HEIGHT / 2.0f + (effects->iris_y.value - SCENE_VIEW_DS_SCREEN_HEIGHT / 2.0f) * VITA_PIXELS_PER_DS_PIXEL;
+    } else {
+        center_x = world_x_to_screen(view, effects->iris_x.value);
+        center_y = world_y_to_screen(view, effects->iris_y.value);
+    }
     radius = effects->iris_radius.value * VITA_PIXELS_PER_DS_PIXEL;
     if (effects->iris_alpha.value <= 0.0f || iris_clears_whole_screen(center_x, center_y, radius)) {
         return;

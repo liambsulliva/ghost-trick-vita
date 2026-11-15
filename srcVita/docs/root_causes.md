@@ -1791,6 +1791,19 @@ The class: a word rule that is a constant while the record holds a field that fi
 
 Guard: those words now read the field (`hi<n>` after `lo<n>`, the unread field in order, `s<n>` for names). A field no rule reads must be listed in its row's `unread`, and `tests/tools/test_remaster_scripts.py` fails otherwise. It also checks that the distance op keeps both offsets. `SC_CODE32`, `SC_SETPAL` and `SC_MOVIE_MOTION_SUSPEND` keep their constants, because no field fits their samples.
 
+### 240. Modes inside ported ops logged a note and did nothing
+
+Found by reading the whole-game replay's marks for `_not_ported`: an op that is ported can still hold a mode that is not, and the note names only the first object that reaches it. Four were reached.
+
+- `GameApp` `EventFrame` (3 sends). Native's command (`func_02013518`) clears bit 2 of `game+0xc` for `On` and otherwise sets it and closes the film frame (`func_02010d18`), as op 0x70 does. Only `func_02010ca4` and `func_02010cdc` read that bit, and ops 0x6f and 0x71 clear it before they call them, so `On` changes nothing to see.
+- Beam ramp mode 2 (op 0xbc, st14_game020's `spot`). Native's `func_0205a458` ramps the beam's own position for mode 2, its width for 1, its far end for 4 and its alpha for 8, and ignores any other mode. The port kept the position fixed.
+- Light circle modes 8 and 16 (op 0xbf, st03_game012's `demo_light`). Native's `func_02059f3c` writes `mbFixPos` for 8, and for 16 the node `mCenterPosId` together with the object that ran the op. `func_0206241c` then moves the circle to that object's node every frame, and `func_02062468` draws it at screen coordinates when `mbFixPos` is 1, at the soul's core when it is 2 (`func_02010194`) and in the world otherwise. The create op 0xbe carries the same two fields in its tenth and eleventh words, which the port never read: 14 of the game's 37 creates pin the circle to the screen or to the soul's core, and 8 follow a node.
+- Framing with a negative speed (op 0xca, st03_game012). Native's `func_0200f634` then also moves the camera's height to the middle of the core and the followed actor, 20 rows above centre (`data_020a2f28`), at the speed's size. The port kept the height.
+
+The class: a switch inside a ported op whose default case logs. The note is keyed by the object's name, so one note can hide several modes.
+
+Guard: `tests/tools/check_script_modes.py` reads the engine's own tables and scans every script of both sets for a `GameApp` verb, an `EyeCatch` kind, a beam or light mode, or a motion-table word the engine has no case for; it finds none, so no script in the game reaches `eyecatch_kind_not_ported` or `motion_word_not_ported`. `tests/tools/test_script_modes.py` checks the scan on made-up scripts. `tests/unit/test_event_frame_command.c`, `test_light_ops.c`, `test_pinned_light_draw.c` and `test_framing_both_ways.c` run each mode.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
@@ -1806,6 +1819,7 @@ Guard: those words now read the field (`hi<n>` after `lo<n>`, the unread field i
 - Op 0x48 (case at `0x02024ae2`): writes `words[1] << 12` to `+0x124` of the balloon in slot 0 (`game+0xdfc`, `func_020106ec`). Its meaning is not traced; it is only seen after the routed chapters (st01_game020).
 - Op 0x5b (14 scripts, always after op 0x4d) is native `func_02010874`: it clears the eight balloon slot words at `game+0xe1c` and closes the balloons with the force bit set (`func_020109c8`); the port closes every balloon, as op 0x57 does. Whether a closing animation plays is not traced.
 - Ops 0x49 (st02_game000, object kaba) and 0xfd (st01_game012, st01_game021, st02_game022 and 11 more) are hit by the whole-game replay and not ported; 0x49 sets byte +0x11c of the slot-0 balloon (`func_0201070c`). 0xfd is the rollback checkpoint, not save data: `func_02011b04` copies the scene name (`game+0x1c`) to `game+0x1058` and builds a checkpoint object at `game+0x1098`, the one the rollback menu's second entry needs; the port's retry always reloads the scene.
+- The port draws one light circle at a time, the last one created. Native keeps up to 16 and shrinks a circle that sits inside a larger one (`func_02062510`); st03_game012 creates three names (`demo_light`, `core_light` and `joedo_light`). Root cause 240 places the drawn one only.
 - Op 0x119 (case at `0x02025540`) links the current actor's motion controller (+0x114) to a named actor's (`func_02059894`, `func_020598a4`). It is not ported and logs `op_not_ported`.
 - `no_motion_row` for `sofa`, `table`, `ftendoor`, `souldead` and `carcass` is expected: their tables (`st06_sofa`, `table_wait`, `st05_tendoor_wait`, `onlycore_000`) belong to objects that are only a core or whose art is in the room plate, so nothing is drawn natively either.
 - Soul reach (root cause 68): the st05 hop from the dictionary to the lamp (route step 218) is 182 units in the port but one hop in the footage, far past Sissel's native 48, so one of those cores sits in the wrong place or a core between them is missing. The route still places the soul there.
