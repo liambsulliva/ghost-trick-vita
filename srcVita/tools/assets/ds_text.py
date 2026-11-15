@@ -51,7 +51,11 @@ DESCENT_BY_WIDTH_MODE = {
 SYSTEM_MESSAGE_PATH = "system/system_0000.%s.msg.xml.lz"
 DS_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!?"
 CHARACTER_OF_CODE = dict(enumerate(DS_ALPHABET))
-CHARACTER_OF_CODE.update({0x60: "é", 0x66: "ï", 0xe1: ".", 0xe5: "(", 0xe6: ")", 0xea: "\"", 0xed: ":", 0xef: ",", 0xf2: "*", 0xf3: "'", 0xf4: "-", 0xf8: "…", 0xfe: "♪", 0xff: " ", 0x10c: ";"})
+ACCENTED_FIRST_CODE = 0x40
+ACCENTED = "ÀÁÂÄÆÇÈÉÊËÌÍÎÏÑÒÓÔÖŒ\0ÙÚÛÜàáâäæçèéêëìíîïñòóôöœßùúûü\0¡¿"
+CHARACTER_OF_CODE.update({ACCENTED_FIRST_CODE + place: character for place, character in enumerate(ACCENTED) if character != "\0"})
+CHARACTER_OF_CODE.update({0xe1: ".", 0xe5: "(", 0xe6: ")", 0xea: "\"", 0xed: ":", 0xef: ",", 0xf2: "*", 0xf3: "'", 0xf4: "-", 0xf8: "…", 0xfe: "♪", 0xff: " ", 0x10c: ";"})
+CODE_OF_CHARACTER = {character: code for code, character in CHARACTER_OF_CODE.items()}
 UNKNOWN_CHARACTER = "�"
 RGBA_BYTES = 4
 

@@ -1973,6 +1973,16 @@ Guard: `ds_alert_balloons.py` builds one row for each op 0x52 kind in the game c
 
 Not done: the movie's own end at frame 39 (the app keeps the parts until the balloon's timer ends), the 0.8 to 1.2 to 1.0 overshoot, the burst's 0.9 alpha and the mark's wobble; the row format has no field for them. Not checked on the device.
 
+### 261. DS mode's tutorial talk sent the player to a top screen the Vita does not have
+
+The user asked on 2026-11-15 that DS mode stop naming the top screen. Native prints each message as the cartridge's 1LMG file spells it, through the talk window table (`data_02084a8c`), and the DS shows the trick name, the countdown and the swap shape on its second screen. Four talk messages in every cartridge language name that screen: Ray's tour of the trick name (st01_game001 `m01_0460`), the hourglass (st01_game011 `m01_0660`) and the bullet's shape (st02_game035 `m02_3857` and `m02_3930`). The remaster rewords the first two for one screen ("the middle of the screen", "the right side of the screen") and cuts the bullet's top screen page, because one screen shows no shape. The DS set baked the cartridge's wording.
+
+The class: cartridge text that assumes the DS's two screens, in any language and any message the shared DS text bake reads.
+
+Guard: `ds_one_screen.py` runs over every message `ds_set_text.MessageBook` and `read_system_messages` read, so talk, narration, balloons and system lines all pass through it. `ds_one_screen.json` holds, per cartridge language code, phrase rewrites in the remaster's wording, the pages to cut, and the refused phrases. A rewrite matches the letters and line breaks of a page and keeps every control code inside the phrase in its order, placed where the rewrite's `^` marks say; a cut page hands its controls (speaker, sound, colour) to the next page. A message that still holds a refused phrase stops the bake. `tests/tools/test_ds_one_screen.py` bakes every script and system message of every cartridge language through `MessageBook`, fails on "top screen", "upper screen", "écran supérieur", "oberen Bildschirm", "schermo superiore" or "pantalla superior", fails on any table entry the cartridge no longer uses, and fails on a rewritten line wider than the DS talk window. `ds_text.CODE_OF_CHARACTER` now holds the cartridge's accented letters for every user (the pause menu took its copy from there).
+
+Left as the cartridge has them: "slide the screen" and "Touch the screen" (the Vita has a touch screen), "the button displayed on-screen", the German "Die Sanduhr da oben" (the remaster keeps it), and the system lines that ask to reinsert the DS Card, which DS mode never shows. The cut leaves the bullet talk's next page, "Now I know what it's shaped like", as the cartridge has it. Not checked on the device.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
