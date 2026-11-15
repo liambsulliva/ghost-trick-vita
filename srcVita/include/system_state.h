@@ -9,5 +9,6 @@ struct system_state {
 };
 
 void system_state_read(struct system_state *state);
+int system_state_language(void);
 
 #endif

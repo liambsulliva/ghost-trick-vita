@@ -58,7 +58,7 @@ def place_names(packs, people, text_key):
         match = PLACE_LEVEL_PATTERN.match(entry[len(prefix):]) if entry.startswith(prefix) else None
         if match and match.group(1) in people["places"]:
             wanted.setdefault(match.group(1), []).append(entry)
-    texts = message_file.read_english_entries(data, sorted(key for keys in wanted.values() for key in keys), text_key)
+    texts = message_file.read_entries(data, sorted(key for keys in wanted.values() for key in keys), text_key)
     names = {}
     for place, keys in wanted.items():
         for key in sorted(keys, reverse=True):

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "asset_language.h"
 #include "audio_volume.h"
 #include "fakes/fake_platform.h"
 #include "fakes/fake_renderer.h"
@@ -78,6 +79,10 @@ static void test_settings_survive_a_round_trip_and_bad_values_are_clamped(void)
     CHECK_INT(game_settings_read_text(&read, clamped, (unsigned int)strlen(clamped)), 3);
     CHECK_INT(read.brightness, 1);
     CHECK_INT(read.master, GAME_SETTING_STEPS);
+    CHECK_INT(read.language, 5);
+    CHECK_INT(game_settings_read_text(&read, "language 9\n", 11u), 1);
+    CHECK_INT(read.language, 0);
+    CHECK_INT(game_settings_read_text(&read, "language -1\n", 12u), 1);
     CHECK_INT(read.language, 0);
 }
 
@@ -202,17 +207,44 @@ static void test_music_type_switches_the_music_folder_setting(void)
 static void test_the_language_list_opens_on_cross_and_circle_closes_it_first(void)
 {
     start_options();
+    game_settings_now()->language = 0;
     press_down_to(LANGUAGE_ROW);
     pause_options_step(INPUT_RIGHT);
     CHECK(!pause_options_dropdown_is_open());
     pause_options_step(INPUT_CROSS);
     CHECK(pause_options_dropdown_is_open());
-    pause_options_step(INPUT_DOWN);
-    pause_options_step(INPUT_CROSS);
-    CHECK(pause_options_dropdown_is_open());
-    CHECK_INT(game_settings_now()->language, 0);
     CHECK_INT(pause_options_step(INPUT_CIRCLE), PAUSE_OPTIONS_STAYS);
     CHECK(!pause_options_dropdown_is_open());
+    CHECK_INT(game_settings_now()->language, 0);
+}
+
+static void use_language_in_test(int language)
+{
+    (void)asset_language_use(language);
+}
+
+static void test_every_listed_language_can_be_chosen_and_is_applied(void)
+{
+    int language;
+    int index;
+
+    game_settings_on_language(use_language_in_test);
+    for (language = 0; language < ASSET_LANGUAGE_COUNT; language++) {
+        start_options();
+        game_settings_now()->language = 0;
+        press_down_to(LANGUAGE_ROW);
+        pause_options_step(INPUT_CROSS);
+        for (index = 0; index < language; index++) {
+            pause_options_step(INPUT_DOWN);
+        }
+        pause_options_step(INPUT_CROSS);
+        CHECK(!pause_options_dropdown_is_open());
+        CHECK_INT(game_settings_now()->language, language);
+        CHECK_INT(asset_language_now(), language);
+    }
+    game_settings_now()->language = 0;
+    game_settings_apply();
+    game_settings_on_language(NULL);
 }
 
 static void test_controls_opens_a_page_that_circle_closes(void)
@@ -407,6 +439,7 @@ int main(void)
     test_restore_asks_first_and_no_keeps_the_settings();
     test_music_type_switches_the_music_folder_setting();
     test_the_language_list_opens_on_cross_and_circle_closes_it_first();
+    test_every_listed_language_can_be_chosen_and_is_applied();
     test_controls_opens_a_page_that_circle_closes();
     test_a_tap_on_a_flame_sets_that_level();
     test_the_unlock_row_shows_only_when_built_in_and_flips_a_saved_setting();

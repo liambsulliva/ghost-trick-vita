@@ -10,7 +10,7 @@ WILD_POINTERS = (0, 1, 7, 0xFFFFFFFF, 0x7FFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF)
 
 
 def read_entries(data, wanted_names):
-    return message_file.read_english_entries(data, wanted_names, synthetic_files.FAKE_TEXT_KEY)
+    return message_file.read_entries(data, wanted_names, synthetic_files.FAKE_TEXT_KEY)
 
 
 def english_file(entries):
@@ -135,7 +135,7 @@ class KeyTests(unittest.TestCase):
     def test_a_file_reads_back_with_the_key_it_was_written_with(self):
         key = bytes(range(100, 116))
         data = synthetic_files.message_file_bytes([("first", ["other language", "alpha"])], key=key)
-        self.assertEqual(message_file.read_english_entries(data, ["first"], key), {"first": "alpha"})
+        self.assertEqual(message_file.read_entries(data, ["first"], key), {"first": "alpha"})
 
     def test_the_wrong_key_does_not_give_the_text(self):
         data = synthetic_files.message_file_bytes([("first", ["other language", "alpha"])], key=bytes(range(100, 116)))

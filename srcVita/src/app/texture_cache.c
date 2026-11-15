@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "asset_language.h"
 #include "page_tiles.h"
 #include "background_reader.h"
 #include "clock.h"
@@ -329,22 +330,38 @@ static int name_asks_for_grayscale(const char *name)
     return name_length > suffix_length && strcmp(&name[name_length - suffix_length], TEXTURE_CACHE_GRAYSCALE_SUFFIX) == 0;
 }
 
-static int join_texture_path(char *path, const char *file_name)
+static int join_bucketed_texture_path(char *path, const char *textures_folder, const char *file_name)
 {
     char bucket_folder[FILE_PATH_MAX];
     unsigned int bucket;
     int written;
 
     if (bucket_count == 0u) {
-        return file_path_join(path, folder, file_name, ".gtex");
+        return file_path_join(path, textures_folder, file_name, ".gtex");
     }
     bucket = crc32_add(0u, (const unsigned char *)file_name, (unsigned int)strlen(file_name)) % bucket_count;
-    written = snprintf(bucket_folder, sizeof(bucket_folder), "%s/%02x", folder, bucket);
+    written = snprintf(bucket_folder, sizeof(bucket_folder), "%s/%02x", textures_folder, bucket);
     if (written < 0 || (size_t)written >= sizeof(bucket_folder)) {
         path[0] = '\0';
         return 0;
     }
     return file_path_join(path, bucket_folder, file_name, ".gtex");
+}
+
+static int join_texture_path(char *path, const char *file_name)
+{
+    return join_bucketed_texture_path(path, folder, file_name);
+}
+
+static int join_language_texture_path(char *path, const char *file_name)
+{
+    char language_folder[FILE_PATH_MAX];
+
+    if (!asset_language_texture_folder(language_folder)) {
+        path[0] = '\0';
+        return 0;
+    }
+    return join_bucketed_texture_path(path, language_folder, file_name);
 }
 
 static void art_name_of(const char *name, char *file_name)
@@ -363,7 +380,7 @@ static void start_read(struct cached_texture *entry)
 
     art_name_of(entry->name, file_name);
     entry->is_sharp = sharp_art_is_on;
-    path_is_joined = join_texture_path(path, file_name);
+    path_is_joined = asset_language_overrides_texture(file_name) ? join_language_texture_path(path, file_name) : join_texture_path(path, file_name);
     if (!path_is_joined) {
         mark_missing(entry, "path_too_long", 0);
         return;
@@ -921,6 +938,37 @@ void texture_cache_use_sharp_art(int is_on)
 {
     sharp_art_is_on = is_on != 0;
     run_log_write("texture sharp_art on=%d", sharp_art_is_on);
+}
+
+static int release_language_textures(void)
+{
+    char file_name[ASSET_NAME_MAX];
+    int index;
+    int released;
+
+    released = 0;
+    for (index = 0; index < TEXTURE_CACHE_ENTRY_MAX; index++) {
+        if (!entries[index].in_use) {
+            continue;
+        }
+        art_name_of(entries[index].name, file_name);
+        if (asset_language_overrides_texture(file_name)) {
+            release_entry(&entries[index]);
+            released = released + 1;
+        }
+    }
+    return released;
+}
+
+void texture_cache_use_language(int language)
+{
+    int released;
+
+    wait_for_fills();
+    released = release_language_textures();
+    (void)asset_language_use(language);
+    released = released + release_language_textures();
+    run_log_write("texture language=%s released=%d", asset_language_code(language), released);
 }
 
 int texture_cache_sharp_art_is_on(void)

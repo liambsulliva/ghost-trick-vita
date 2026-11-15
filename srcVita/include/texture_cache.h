@@ -64,6 +64,7 @@ int texture_cache_drawn_loading_count(void);
 int texture_cache_read_ahead_is_behind(void);
 void texture_cache_read_totals(struct texture_cache_totals *totals);
 void texture_cache_clear(void);
+void texture_cache_use_language(int language);
 void texture_cache_use_sharp_art(int is_on);
 int texture_cache_sharp_art_is_on(void);
 

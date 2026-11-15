@@ -201,6 +201,12 @@ Texture names must differ across atlas pages, plates, screen textures, composed 
 
 Text and composed textures go through the same bake record as other textures, `.bake_record.json` in the output folder. A text line is baked again only when its decoded text, the stored bytes of its font, its size, width limit or color, or the code that draws it changes, so a repeat run decodes no font and draws nothing. A composed texture is baked again only when its source bytes, its description or its code changes. A message that only moves needs no new texture, because a line's place is part of the scene. The record holds hashes and each line's measured width. It holds no text and no font, and the text key is not part of any hash. A line or composed texture that fails is named on stderr with `failed:`, the rest still bake, and the last good scene and manifest stay.
 
+## Languages: `lang/`
+
+Every language but English is an overlay on the base set. `lang/<code>/` holds only the files whose bytes differ from English, at the same relative paths: `textures/<name>.gtex`, `scripts/<name>.txt` and `.cues`, and `pause/<name>.txt`. `lang/<code>/names.txt` lists each of them, one relative path per line. The codes are `ja`, `fr`, `it`, `de`, `es`, `zhtw`, `zhcn` and `ko`.
+
+While a language is chosen, the app reads every listed path from its folder and everything else from the base set. Texture names stay the same, so a scene, a table or the code names a texture once for every language. The one exception is the talk glyph atlas, which a language names `talk_font_<code>` in its own `scripts/talk.txt`, so an open talk can keep drawing from the old atlas. Overlay files are never packed into `scripts.pack`. On the Vita they sit at the same paths under `ux0:data/ghosttrick/assets/`, with no texture buckets.
+
 ## Manifest: `manifest.txt`
 
 Lists what the viewer can browse and play, one per line.

@@ -51,6 +51,8 @@ struct game_settings {
 
 void game_settings_defaults(struct game_settings *settings);
 void game_settings_set_default_music(int music_type);
+void game_settings_set_default_language(int language);
+void game_settings_on_language(void (*use_language)(int language));
 void game_settings_set_music_folders(const char *original_folder, const char *arranged_folder);
 int game_settings_read_text(struct game_settings *settings, const char *text, unsigned int text_size);
 unsigned int game_settings_write_text(const struct game_settings *settings, char *text, unsigned int text_size);

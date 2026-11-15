@@ -1,12 +1,15 @@
 #ifndef SCRIPT_PLAYER_H
 #define SCRIPT_PLAYER_H
 
+#define SCRIPT_PLAYER_SCRIPTS_SUBFOLDER "scripts"
+
 #include "input.h"
 #include "loading_screen.h"
 #include "scene_player.h"
 
 
 void script_player_init(const char *scripts_folder);
+void script_player_use_language(void);
 int script_player_is_available(void);
 void script_player_play(const char *entry_name);
 void script_player_update(unsigned long long elapsed_us);

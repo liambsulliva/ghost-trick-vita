@@ -454,12 +454,12 @@ def talk_rows(font, palette, windows, talk_messages, system_lines, system_messag
 
 def bake_talk_atlas(baker, glyphs):
     cells = glyphs.cells()
-    pixels, height, placed = talk_assets.build_atlas(cells)
+    pixels, width, height, placed = talk_assets.build_atlas(cells)
     relative_path = TEXTURE_FOLDER + "/" + talk_assets.FONT_TEXTURE + ".gtex"
     key = baker.record.key_for(baker.code, baker.settings, pixels)
     gtex_bytes = baker.record.read_if_current(relative_path, key)
     if gtex_bytes is None:
-        gtex_bytes = asset_writers.gtex_bytes(talk_assets.ATLAS_WIDTH, height, asset_writers.FORMAT_RGBA8888, pixels)
+        gtex_bytes = asset_writers.gtex_bytes(width, height, asset_writers.FORMAT_RGBA8888, pixels)
         baker.record.store(relative_path, key, gtex_bytes)
     baker.keep(talk_assets.FONT_TEXTURE, relative_path, gtex_bytes)
     return ["glyph %d %d %d %d %d %d %d" % (cell_x, cell_y, cell["width"], cell["height"], cell["left"], cell["top"], cell["advance"]) for cell, (cell_x, cell_y) in zip(cells, placed)]

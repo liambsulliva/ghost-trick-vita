@@ -11,6 +11,7 @@ RECORD_FILE_NAME = ".bake_record.json"
 TEXTURE_FOLDER_PREFIXES = ("textures/",)
 TEXTURE_FILE_SUFFIX = ".gtex"
 TEMPORARY_SUFFIX = ".new"
+LANGUAGE_FOLDER_PREFIX = "lang/"
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -28,6 +29,17 @@ def texture_result(name, source_size, gtex_bytes):
 
 def top_folder(relative_path):
     return relative_path.split("/")[0]
+
+
+def path_inside_language(relative_path):
+    if relative_path.startswith(LANGUAGE_FOLDER_PREFIX) and relative_path.count("/") >= 2:
+        return relative_path.split("/", 2)[2]
+    return relative_path
+
+
+def is_texture_path(relative_path):
+    inner = path_inside_language(relative_path)
+    return inner.startswith(TEXTURE_FOLDER_PREFIXES) and inner.endswith(TEXTURE_FILE_SUFFIX)
 
 
 def result_of_own_size(name, gtex_bytes):
@@ -76,19 +88,29 @@ def disk_path(output_folder, relative_path):
     return os.path.join(output_folder, output_folders.disk_path_of(relative_path))
 
 
+def texture_folders_of(output_folder):
+    folders = [output_folders.TEXTURE_FOLDER]
+    language_root = os.path.join(output_folder, output_folders.LANGUAGE_FOLDER)
+    if os.path.isdir(language_root):
+        for code in sorted(os.listdir(language_root)):
+            folders.append(output_folders.LANGUAGE_FOLDER + "/" + code + "/" + output_folders.TEXTURE_FOLDER)
+    return folders
+
+
 def move_flat_textures_into_buckets(output_folder):
-    folder = os.path.join(output_folder, output_folders.TEXTURE_FOLDER)
-    if not os.path.isdir(folder):
-        return 0
     moved = 0
-    for file_name in sorted(os.listdir(folder)):
-        flat_path = os.path.join(folder, file_name)
-        if not os.path.isfile(flat_path) or not output_folders.is_texture_file_name(file_name):
+    for texture_folder in texture_folders_of(output_folder):
+        folder = os.path.join(output_folder, texture_folder)
+        if not os.path.isdir(folder):
             continue
-        target = disk_path(output_folder, output_folders.TEXTURE_FOLDER + "/" + file_name)
-        os.makedirs(os.path.dirname(target), exist_ok=True)
-        os.replace(flat_path, target)
-        moved = moved + 1
+        for file_name in sorted(os.listdir(folder)):
+            flat_path = os.path.join(folder, file_name)
+            if not os.path.isfile(flat_path) or not output_folders.is_texture_file_name(file_name):
+                continue
+            target = disk_path(output_folder, texture_folder + "/" + file_name)
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            os.replace(flat_path, target)
+            moved = moved + 1
     return moved
 
 
@@ -163,7 +185,7 @@ class BakeRecord:
         return self.entries.get(relative_path, {}).get("details", {})
 
     def store(self, relative_path, key, data, details=None):
-        if relative_path.startswith(TEXTURE_FOLDER_PREFIXES) and relative_path.endswith(TEXTURE_FILE_SUFFIX):
+        if is_texture_path(relative_path):
             data = gtex_pack.pack_gtex(data)
         path = disk_path(self.output_folder, relative_path)
         os.makedirs(os.path.dirname(path), exist_ok=True)

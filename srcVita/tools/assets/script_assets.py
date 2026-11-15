@@ -207,6 +207,16 @@ def bake_or_keep_scripts(set_description, rom_path, output_folder, record):
     return [baked_path(path) for path in section["files"]] + cue_paths
 
 
+def bake_language_cues(set_description, rom_path, record):
+    section = set_description.get("scripts")
+    if section is None or not os.path.isfile(rom_path):
+        return []
+    code = bake_record.code_fingerprint(SCRIPT_CODE_FILES)
+    with ds_rom.DsRom(rom_path) as rom:
+        scripts = {path: read_one_script(rom, record, code, path) for path in section["files"]}
+        return bake_cue_files(rom, record, code, section, scripts)
+
+
 def read_baked_script(output_folder, path):
     baked = os.path.join(output_folder, baked_path(path))
     if not os.path.isfile(baked):

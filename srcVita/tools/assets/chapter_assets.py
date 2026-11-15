@@ -611,6 +611,33 @@ def language_path_of(path, language):
     return path[:-len(".xml")] + ".%s.xml.lz" % language
 
 
+def read_language_files(rom, paths, language):
+    plains = {}
+    for path in sorted(set(paths)):
+        language_path = language_path_of(path, language)
+        if rom.file_id_of(language_path) is not None:
+            plains[path] = lz.try_decompress(rom.read_file(language_path))
+    return plains
+
+
+def use_language_text(set_description, rom_path, base_ds, literal_system_lines):
+    talk = set_description.get("talk")
+    if talk is None:
+        return
+    language = set_description.get("scripts", {}).get("language", base_ds)
+    if language == base_ds and not literal_system_lines:
+        return
+    with ds_rom.DsRom(rom_path) as rom:
+        if language != base_ds and "language_paths" in talk:
+            plains = read_language_files(rom, talk["language_paths"].values(), language)
+            talk["language_files"] = {label: plains.get(path, talk["language_files"].get(label)) for label, path in talk["language_paths"].items()}
+        system_lines = {label: line for label, line in talk.get("system_lines", {}).items() if label not in literal_system_lines}
+        if language != base_ds and system_lines:
+            talk["system_line_texts"] = dict(talk.get("system_line_texts", {}), **read_system_line_texts(rom, system_lines))
+    if literal_system_lines:
+        talk["system_line_texts"] = dict(talk.get("system_line_texts", {}), **literal_system_lines)
+
+
 def refuse_a_closing_card_beside_the_game_s_own_cards(set_description):
     closing_card = set_description.get("scripts", {}).get("next_chapter_card_texture")
     if closing_card and "chapter_cards" in set_description:
@@ -760,6 +787,7 @@ def expand_set(set_description, packs, rom_path, text_key):
     talk = dict(set_description.get("talk", {}))
     talk["entries"] = {label: entries_for(path)[label] for label, path in talk_labels.items()}
     talk["language_files"] = {label: languages.get(path) for label, path in talk_labels.items()}
+    talk["language_paths"] = dict(talk_labels)
     talk["system_line_texts"] = system_line_texts
     talk["face_rows"] = face_rows
     talk["face_paths"] = paths

@@ -394,6 +394,7 @@ def bake_labels(packs, work_folder, record, code, font, words):
     gtex = record.read_if_current(relative_path, key)
     table = record.read_if_current(LABEL_TABLE_PATH, key)
     if gtex is None or table is None:
+        fonts.require(font, "".join(words))
         font_path = fonts.decoded_path(font)
         sizes = word_widths(font_path, words)
         width, height = 2 * LABEL_CELL[0], len(words) * LABEL_CELL[1] + ARROW_CELL
@@ -548,6 +549,8 @@ def line_layout(points, text):
 
 
 def text_pixels(work_folder, font_path, points, color, text):
+    if not text.strip():
+        return np.zeros((1, 1, 4), dtype=np.uint8)
     layout = line_layout(points, text)
     size = subprocess.run(["magick", "-background", "none", "-font", font_path, "-pointsize", str(points)] + layout + ["label:" + text, "-format", "%w %h", "info:"], check=True, capture_output=True, text=True).stdout.split()
     width, height = int(size[0]), int(size[1])
@@ -561,12 +564,15 @@ def text_pixels(work_folder, font_path, points, color, text):
 
 def widget_cells(work_folder, fonts, widgets, extra_cells):
     font = fonts.decoded_path(widgets["font"])
+    fonts.require(widgets["font"], "".join(text for style in ("row", "header", "bar", "title") for text in widgets.get(style, {}).values()) + widgets["chapter_format"])
+    for language in widgets["languages"]:
+        fonts.require(language["font"], language["text"])
     cells = []
     for style, color, points in (("row", WHITE, widgets["row_points"]), ("header", HEADER_ORANGE, widgets["row_points"]), ("bar", WHITE, widgets["bar_points"])):
         for key, text in widgets[style].items():
             cells.append(("text", style + "." + key, text_pixels(work_folder, font, points - TWO_LINE_POINTS_LESS if "\n" in text else points, color, text)))
     for number in range(1, widgets["chapter_count"] + 1):
-        cells.append(("text", "row.chapter_%d" % number, text_pixels(work_folder, font, widgets["row_points"], WHITE, "%s %d" % (widgets["chapter_word"], number))))
+        cells.append(("text", "row.chapter_%d" % number, text_pixels(work_folder, font, widgets["row_points"], WHITE, widgets["chapter_format"] % number)))
     for key, text in widgets.get("title", {}).items():
         cells.append(("text", "title." + key, text_pixels(work_folder, font, widgets["title_points"], WHITE, text)))
     for language in widgets["languages"]:

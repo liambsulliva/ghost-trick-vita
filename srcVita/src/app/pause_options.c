@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "asset_language.h"
 #include "file.h"
 #include "game_save.h"
 #include "game_settings.h"
@@ -53,7 +54,7 @@
 #define CONTROLS_GLYPH_GAP 8.0f
 #define CONTROLS_GLYPH_MOST 2
 #define CONTROLS_TEXT_END 910.0f
-#define LANGUAGE_COUNT 9
+#define LANGUAGE_COUNT ASSET_LANGUAGE_COUNT
 #define CONTROLS_COUNT 10
 
 enum row_kind {
@@ -438,12 +439,14 @@ static void act_on_row(void)
 
 static void choose_language(int index)
 {
-    if (index == 0) {
-        game_settings_now()->language = 0;
-        dropdown_is_open = 0;
+    dropdown_is_open = 0;
+    if (game_settings_now()->language == index) {
         return;
     }
-    run_log_write("pause option language=%s not_ported", languages[index]);
+    game_settings_now()->language = index;
+    run_log_write("pause option language=%s", languages[index]);
+    game_settings_apply();
+    settings_changed = 1;
 }
 
 static int step_dropdown(unsigned int pressed)

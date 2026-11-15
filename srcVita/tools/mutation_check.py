@@ -573,7 +573,7 @@ PYTHON_MUTATIONS = [
     ("tools/assets/narration.py", "NARRATION_MAX_INK_WIDTH, NARRATION_COLOR)", "SCREEN_WIDTH, NARRATION_COLOR)"),
     ("tools/assets/narration.py", 'raise NarrationError(request["name"] + ": " + str(error)) from None', "raise"),
     ("tools/assets/line_renderer.py", "SUPERSAMPLE = 4", "SUPERSAMPLE = 2"),
-    ("tools/assets/line_renderer.py", "LINE_BOX_ASCENT_EM = 1.0", "LINE_BOX_ASCENT_EM = 1.2"),
+    ("tools/assets/line_renderer.py", "LINE_BOX_ASCENT_EM = 1.125", "LINE_BOX_ASCENT_EM = 1.25"),
     ("tools/assets/line_renderer.py", "LINE_BOX_DESCENT_EM = 0.3", "LINE_BOX_DESCENT_EM = 0.4"),
     ("tools/assets/extract_text_key.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGTERM, signal.SIGHUP)"),
     ("tools/assets/extract_text_key.py", "STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)", "STOP_SIGNALS = (signal.SIGINT, signal.SIGHUP)"),

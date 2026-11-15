@@ -9,6 +9,7 @@
 #include "fakes/fake_renderer.h"
 #include "fakes/fake_texture_files.h"
 #include "file.h"
+#include "game_settings.h"
 #include "game_save.h"
 #include "fixtures/fixture_facts.h"
 #include "fixtures/script_pack_bytes.h"
@@ -2637,6 +2638,36 @@ static void test_the_chain_is_read_off_the_frame(void)
     viewer_app_stop();
 }
 
+#define TALK_BOOK_TEXT "font talk_font\nglyph 4 4 10 20 0 0 12\ntalk m01\npage - 0 0 0 0 1 0 0 0 0 0\nline 40 420 1 0\n"
+#define FRENCH_TALK_BOOK_TEXT "font talk_font_fr\nglyph 4 4 10 20 0 0 12\nglyph 20 4 10 20 0 0 12\ntalk m01\npage - 0 0 0 0 1 0 0 0 0 0\nline 40 420 2 0 1\n"
+
+static void test_a_chosen_language_reads_its_own_talk_book_and_menus(void)
+{
+    set_up_a_two_script_chain();
+    add_text_file("assets/scripts/talk.txt", TALK_BOOK_TEXT);
+    add_text_file("assets/lang/fr/names.txt", "scripts/talk.txt\npause/widgets.txt\n");
+    add_text_file("assets/lang/fr/scripts/talk.txt", FRENCH_TALK_BOOK_TEXT);
+    add_text_file("assets/lang/fr/pause/widgets.txt", "");
+    viewer_app_start("assets");
+    CHECK(viewer_app_play_script("route"));
+    run_frames(3);
+    fake_task_run_pending();
+    run_frames(2);
+    CHECK_HAS_TEXT(log_text(), "script read name=talk.txt");
+    CHECK(strstr(log_text(), "from=fr") == NULL);
+    game_settings_now()->language = 2;
+    game_settings_apply();
+    CHECK_HAS_TEXT(log_text(), "language use=fr overrides=2");
+    CHECK_HAS_TEXT(log_text(), "pause text language=fr");
+    CHECK_HAS_TEXT(log_text(), "script read name=talk.txt bytes=");
+    CHECK_HAS_TEXT(log_text(), "from=fr");
+    CHECK_HAS_TEXT(log_text(), "script talk_book language=fr");
+    game_settings_now()->language = 0;
+    game_settings_apply();
+    CHECK_HAS_TEXT(log_text(), "language use=en overrides=0");
+    viewer_app_stop();
+}
+
 static void test_the_chain_read_never_opens_a_file_the_folder_lacks(void)
 {
     int misses_before;
@@ -2831,6 +2862,7 @@ int main(void)
     test_the_renderer_warms_up_behind_the_titles_black_cover_before_it_shows();
     test_the_first_scene_after_a_root_is_parsed_while_the_chain_loads();
     test_the_chain_is_read_off_the_frame();
+    test_a_chosen_language_reads_its_own_talk_book_and_menus();
     test_the_chain_read_never_opens_a_file_the_folder_lacks();
     test_without_a_folder_listing_the_chain_still_loads();
     test_stopping_while_the_chain_reads_waits_for_the_read();

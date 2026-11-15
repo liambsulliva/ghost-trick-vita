@@ -113,7 +113,7 @@ The workflow builds in the `vitasdk/vitasdk` container. It refuses a tag whose m
 
 Converting needs the text key, which the setup script finds in your own copy of the package.
 
-Narration and bubble text are rendered by the converter, not the app. `convert_assets.py` reads the English text from the remaster's `.msg` files, decodes its `.oft` fonts into its temporary work folder, and draws each line with `magick` into its own DXT5 texture. The app draws these like any other texture, so it has no fonts. `magick` needs FreeType support, which `magick -list format | grep OTF` shows. Decoded fonts are deleted when the converter finishes, fails or is stopped with SIGINT, SIGTERM or SIGHUP, even twice. A SIGKILL can leave them in the system's temporary folder, and the next conversion removes any such folder older than an hour. The output folder holds each line only as a picture, and no story text or font reaches the output folder or git. The file formats and scene steps are in `docs/asset_format.md`.
+Narration and bubble text are rendered by the converter, not the app. `convert_assets.py` reads the text from the remaster's `.msg` files, decodes its `.oft` fonts into its temporary work folder, and draws each line with `magick` into its own DXT5 texture. The app draws these like any other texture, so it has no fonts. `magick` needs FreeType support, which `magick -list format | grep OTF` shows. Decoded fonts are deleted when the converter finishes, fails or is stopped with SIGINT, SIGTERM or SIGHUP, even twice. A SIGKILL can leave them in the system's temporary folder, and the next conversion removes any such folder older than an hour. The output folder holds each line only as a picture, and no story text or font reaches the output folder or git. The file formats and scene steps are in `docs/asset_format.md`.
 
 `game.json`'s `talk.pages_left_out` names talk pages the port does not bake, by `.msg` entry name. Every language is a slot of the same entry, so a page left out is gone in all of them, and the pages after it keep their own DS face and box, which are read by the page's place in the original message. A name that matches no talk page stops the bake. It holds pages 05 to 07 of `m01_0460`, the cot tutorial's "you first have to return to the land of the living" before a trick and Sissel's reply, which the ghost-view trick (see Controls) makes untrue; the talk goes from the cot's trick straight to Back being the way out. `tests/tools/test_talk_pages_left_out.py` covers it.
 
@@ -137,6 +137,14 @@ Music and sounds are the remaster's own Ogg Vorbis files, unchanged apart from l
 The DS scene scripts are baked from your own USA DS ROM into `scripts/`, with the tables the app needs to run them. The app always plays the opening from those scripts, so the ROM is required. Without `scripts/chain.txt` it logs `opening needs_scripts` and opens the asset browser instead. [The top-level README](../README.md#set-everything-up-with-one-command) passes the ROM to the converter, and `docs/asset_format.md` has the format.
 
 The converter bakes only what changed. `.bake_record.json` in the output folder holds hashes for each texture and script, so one is baked again only when its source bytes, its settings or the code that bakes it changes, or when its output file is missing or edited. Music, sounds, animations and the manifest are rewritten only when their bytes differ. On this Mac a clean conversion took about 4 seconds and a repeat with nothing changed about 0.2 seconds, and a repeat and a clean run gave the same files byte for byte. If a texture fails, it is named on stderr with `failed:`, the rest still bake, and the last good manifest stays.
+
+### Languages
+
+The set holds all nine of the remaster's languages: English, Japanese, French, Italian, German, Spanish, Traditional Chinese, Simplified Chinese and Korean. Every story line, name and note is the game's own text, read from that language's slot of the remaster's message files. `game.json` names `tools/assets/languages.json`, which gives each language its message slot, the DS language file whose cues it uses (English's for the four languages the USA cartridge lacks), the suffix of its art with words in it (the title logo and the chapter cards), the remaster fonts it swaps in, and the port's own words in that language: menus, help lines, HUD and pause labels, and the "New info" line. Those words are the port's translations, not game text.
+
+The converter bakes English first, then runs every text stage again for each other language. An output whose bake key matches English's is not written twice. One that differs goes into `lang/<code>/`, and `lang/<code>/names.txt` lists them. The converter fails a bake when a line uses a character its font cannot draw, and names any talk line wider than its box.
+
+Display Language in Options, and Language on the title screen, switch the language at once. Menus redraw in it, and the next talk page, narration line, bubble and card come in it; a talk already open finishes in the old language. On the first start, with no settings file, the app picks the Vita's system language when it is one of the nine, and English otherwise. The choice is saved in `settings.txt` as `language`, from 0 (English) to 8 (Korean) in the order the list shows; saves hold no text, so a save works in any language.
 
 An animation can have up to 1024 frames, and the app allocates each animation's frame list to the size its own file needs.
 
@@ -258,7 +266,7 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 |---|---|
 | Touch | Drag the soul from its flame to aim it at a core, and tap pills and balloons |
 | Left stick | Aim the soul in the soul view, more slowly with a smaller push. In the living world it pans the camera |
-| Right stick | Pan the camera in the soul view |
+| Right stick | Pan the camera, in the living world and the soul view |
 | D-pad | The same as the left stick, at full speed. Neither moves anything while a cutscene, a trick or a talk has the controls |
 | CROSS | Finish or advance dialogue and narration (in dialogue the first press finishes text still revealing or fading in and the next moves on; in narration each press shows only the next line in full, so rapid presses still step through every line in order, and the press after the last line moves on), do the trick of the core you are in (in the soul view too, which it leaves first), or swap the two objects Missile has linked |
 | L | Open the soul view, or go back from one you opened |

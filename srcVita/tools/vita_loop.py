@@ -261,6 +261,13 @@ def list_local_files(folder):
                     continue
                 on_disk = os.path.relpath(os.path.join(parent, name), folder).replace(os.sep, "/")
                 files.append((os.path.join(parent, name), output_folders.relative_path_of(on_disk)))
+    language_root = os.path.join(folder, output_folders.LANGUAGE_FOLDER)
+    for root, folder_names, file_names in os.walk(language_root):
+        folder_names.sort()
+        for name in sorted(file_names):
+            if not name.startswith(".") and not name.endswith(PARTIAL_FILE_SUFFIX):
+                local_path = os.path.join(root, name)
+                files.append((local_path, output_folders.relative_path_of(os.path.relpath(local_path, folder).replace(os.sep, "/"))))
     return sorted(files, key=lambda pair: pair[1] != "manifest.txt")
 
 

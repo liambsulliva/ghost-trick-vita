@@ -59,6 +59,7 @@ struct pause_label {
 int pause_menu_read_cat_text(const char *text, unsigned int text_size);
 int pause_menu_read_track_text(const char *text, unsigned int text_size);
 int pause_menu_load(const char *assets_folder);
+int pause_menu_reload_text(const char *assets_folder);
 int pause_menu_is_ready(void);
 
 void pause_cat_track_restart(void);

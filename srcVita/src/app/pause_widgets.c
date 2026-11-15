@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "asset_language.h"
 #include "file.h"
 #include "file_path.h"
 #include "input.h"
@@ -129,7 +130,7 @@ int pause_widgets_load(const char *assets_folder)
     int count;
 
     widget_count = 0;
-    if (!file_path_join(path, assets_folder, TABLE_PATH, "") || file_read_whole(path, &bytes, &size) != FILE_OK) {
+    if (!asset_language_join(path, assets_folder, TABLE_PATH) || file_read_whole(path, &bytes, &size) != FILE_OK) {
         return 0;
     }
     count = pause_widgets_read_text((const char *)bytes, size);

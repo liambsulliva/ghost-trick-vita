@@ -25,6 +25,8 @@ import effect_movies
 import effect_pieces
 import frame_layout
 import hud_art
+import languages
+import message_file
 import narration
 import pack_files
 import page_tiles
@@ -271,7 +273,7 @@ def convert_hud_sheet(packs, set_description, work_folder, record):
         return []
     fonts = narration.TextFonts(packs, work_folder)
     code = code_fingerprint_with_magick(TEXT_CODE_FILES + ["hud_art.py"])
-    return [hud_art.bake_hud_sheet(fonts, work_folder, record, code, hud["label_font"], hud["key_font"]), hud_art.bake_hud_disc(work_folder, record, code)]
+    return [hud_art.bake_hud_sheet(fonts, work_folder, record, code, hud["label_font"], hud["key_font"], hud.get("words")), hud_art.bake_hud_disc(work_folder, record, code)]
 
 
 def convert_pause_art(packs, set_description, record, table_texts, timelines, crops, text_key):
@@ -289,6 +291,61 @@ def convert_pause_art(packs, set_description, record, table_texts, timelines, cr
 def convert_text_textures(packs, set_description, messages, work_folder, record):
     code = text_code_fingerprint() if narration.set_uses_text(set_description) else None
     return narration.bake_text_textures(packs, set_description, messages, work_folder, record, code)
+
+
+def language_art_jobs(base_set, localized):
+    base_sources = {texture["name"]: texture.get("source") for texture in base_set.get("screen_textures", [])}
+    jobs = {}
+    add_screen_texture_jobs(jobs, [texture for texture in localized.get("screen_textures", []) if texture.get("source") != base_sources.get(texture["name"])])
+    return jobs
+
+
+def convert_language(packs, base_set, base_language, language, text_key, ds_rom_path, output_folder, record, base, tables):
+    localized = languages.localized_set(base_set, base_language, language)
+    chapter_assets.use_language_text(localized, ds_rom_path, base_language["ds"], language.get("system_lines", {}))
+    key = languages.language_key(text_key, language)
+    language_record = languages.LanguageRecord(record, language)
+    messages = narration.read_text_messages(packs, localized, key)
+    work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
+    try:
+        narration_lines, text_results, failures = convert_text_textures(packs, localized, messages, work_folder, language_record)
+        talk_files, talk_results, talk_failures, _ = talk_assets.bake_talk(packs, localized, key, work_folder, language_record, text_code_fingerprint(), talk_assets.FONT_TEXTURE + "_" + language["code"])
+        hud_results = convert_hud_sheet(packs, localized, work_folder, language_record)
+        art_results, art_failures = convert_all_textures(packs, language_art_jobs(base_set, localized), work_folder, language_record)
+    finally:
+        delete_work_folder(work_folder)
+    failures = [(language["code"] + " " + name, reason) for name, reason in failures + talk_failures + art_failures]
+    pause_files, pause_results = convert_pause_art(packs, localized, language_record, tables["table_texts"], tables["timelines"], tables["crops"], key)
+    if language["ds"] != base_language["ds"]:
+        script_assets.bake_language_cues(localized, ds_rom_path, language_record)
+    results = text_results + talk_results + hud_results + art_results + pause_results
+    texture_sizes = dict(base["texture_sizes"])
+    texture_sizes.update({result["name"]: (result["width"], result["height"]) for result in results})
+    files = dict(talk_files)
+    files.update(pause_files)
+    files.update(script_assets.table_files(localized, output_folder, tables["motion_lines"], narration_lines, texture_sizes, base["plate_sizes"], list(tables["table_texts"]), talk_assets.talk_texture_names(talk_files)))
+    overlay = languages.overlay_files(language, files, base["files"])
+    overlay_paths = set(overlay) | language_record.overlay_paths
+    overlay[languages.names_path(language)] = languages.names_text(overlay_paths, language).encode("utf-8")
+    print("language %s: %d files differ from English" % (language["code"], len(overlay_paths)))
+    return overlay, overlay_paths | {languages.names_path(language)} | language_record.same_paths, failures
+
+
+def convert_other_languages(packs, set_description, text_key, ds_rom_path, output_folder, record, base, tables):
+    if not set_description.get("languages") or not narration.set_uses_text(set_description) or text_key is None:
+        return {}, set()
+    every_language = languages.load_languages(os.path.join(ASSET_TOOLS_FOLDER, set_description["languages"]))
+    files = {}
+    paths = set()
+    failures = []
+    for language in languages.other_languages(every_language):
+        language_files, language_paths, language_failures = convert_language(packs, set_description, every_language[0], language, text_key, ds_rom_path, output_folder, record, base, tables)
+        files.update(language_files)
+        paths |= language_paths
+        failures.extend(language_failures)
+    if failures:
+        raise ConversionFailed(failures)
+    return files, paths
 
 
 def plate_size_lookup(texture_results, plates):
@@ -375,11 +432,12 @@ def outputs_of_the_read_ahead_step(output_folder):
     return set(script_assets.SCRIPTS_FOLDER + "/" + name for name in os.listdir(scripts_folder) if name.endswith((read_ahead.AHEAD_EXTENSION, read_ahead.BUNDLE_EXTENSION)) or name == route_pacing.PACING_FILE_NAME)
 
 
-def write_outputs(output_folder, record, texture_results, files, manifest, script_paths):
+def write_outputs(output_folder, record, texture_results, files, manifest, script_paths, language_paths=()):
     for relative_path, data in files.items():
         bake_record.write_if_different(bake_record.disk_path(output_folder, relative_path), data)
     wanted_paths = set(files) | set("textures/" + result["name"] + ".gtex" for result in texture_results) | set(script_paths) | outputs_of_the_read_ahead_step(output_folder) | {script_assets.SCRIPTS_FOLDER + "/" + script_pack.PACK_FILE_NAME}
     bake_record.remove_files_not_listed(output_folder, OUTPUT_FOLDER_NAMES, wanted_paths)
+    languages.remove_overlay_files_not_listed(output_folder, wanted_paths)
     script_pack.write_pack(os.path.join(output_folder, script_assets.SCRIPTS_FOLDER))
     record.forget_all_except(wanted_paths)
     bake_record.write_if_different(os.path.join(output_folder, "manifest.txt"), manifest)
@@ -502,7 +560,11 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         tile_table = page_tiles.table_text(texture_results)
         if tile_table:
             files[page_tiles.TABLE_PATH] = tile_table.encode("ascii")
-        write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts), list(script_paths))
+        base = {"files": dict(files), "texture_sizes": texture_sizes, "plate_sizes": plate_size_lookup(texture_results, plates)}
+        tables = {"table_texts": table_texts, "motion_lines": motion_lines, "timelines": timelines, "crops": crops}
+        language_files, language_paths = convert_other_languages(packs, set_description, text_key, ds_rom_path, output_folder, record, base, tables)
+        files.update(language_files)
+        write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts), list(script_paths), language_paths)
     finally:
         record.save()
     print_summary(record, texture_results, animation_texts, music_results, sound_results)

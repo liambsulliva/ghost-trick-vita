@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "asset_language.h"
 #include "fakes/fake_platform.h"
 #include "fakes/fake_reader.h"
 #include "fakes/fake_renderer.h"
@@ -33,19 +34,19 @@ static int title_is_cleared;
 static char texture_names[1024][ASSET_NAME_MAX];
 static unsigned char notes[SCRIPT_NOTE_LIST_COUNT][SCRIPT_NOTE_ID_COUNT];
 static int texture_name_count;
+static const char *language_code;
 
-static void add_disk_file(const char *assets_folder, const char *relative_path)
+static void add_file_as(const char *disk_path, const char *fake_path, int is_required)
 {
-    char disk_path[PATH_MOST];
-    char fake_path[PATH_MOST];
     unsigned char *bytes;
     FILE *source;
     long length;
 
-    snprintf(disk_path, sizeof(disk_path), "%s/%s", assets_folder, relative_path);
-    snprintf(fake_path, sizeof(fake_path), "%s/%s", SET, relative_path);
     source = fopen(disk_path, "rb");
     if (source == NULL) {
+        if (!is_required) {
+            return;
+        }
         fprintf(stderr, "missing %s\n", disk_path);
         exit(1);
     }
@@ -71,6 +72,34 @@ static void add_disk_file(const char *assets_folder, const char *relative_path)
         fake_files_add(fake_path, bytes, (unsigned int)length);
     }
     free(bytes);
+}
+
+static void add_disk_file(const char *assets_folder, const char *relative_path)
+{
+    char disk_path[PATH_MOST];
+    char fake_path[PATH_MOST];
+
+    snprintf(disk_path, sizeof(disk_path), "%s/%s", assets_folder, relative_path);
+    snprintf(fake_path, sizeof(fake_path), "%s/%s", SET, relative_path);
+    add_file_as(disk_path, fake_path, 1);
+    if (language_code != NULL) {
+        snprintf(disk_path, sizeof(disk_path), "%s/%s/%s/%s", assets_folder, ASSET_LANGUAGE_FOLDER, language_code, relative_path);
+        snprintf(fake_path, sizeof(fake_path), "%s/%s/%s/%s", SET, ASSET_LANGUAGE_FOLDER, language_code, relative_path);
+        add_file_as(disk_path, fake_path, 0);
+    }
+}
+
+static int language_of(const char *code)
+{
+    int language;
+
+    for (language = 0; language < ASSET_LANGUAGE_COUNT; language++) {
+        if (strcmp(asset_language_code(language), code) == 0) {
+            return language;
+        }
+    }
+    fprintf(stderr, "no language %s\n", code);
+    exit(2);
 }
 
 static void add_texture(const char *assets_folder, const char *name)
@@ -317,10 +346,20 @@ int main(int argc, char **argv)
     int page;
 
     if (argc < 3) {
-        fprintf(stderr, "usage: pause_render <assets folder> <[title: | title_save: | title_clear: | loading:]buttons: u d l r x o L R, . waits> [notes list:id:level,...] [clock chapter:script:plate]\n");
+        fprintf(stderr, "usage: pause_render <assets folder> <[title: | title_save: | title_clear: | loading:]buttons: u d l r x o L R, . waits> [notes list:id:level,...] [clock chapter:script:plate] [language code]\n");
         return 2;
     }
     fake_files_reset();
+    language_code = argc > 5 && argv[5][0] != '\0' ? argv[5] : NULL;
+    if (language_code != NULL) {
+        char disk_path[PATH_MOST];
+        char fake_path[PATH_MOST];
+
+        snprintf(disk_path, sizeof(disk_path), "%s/%s/%s/%s", argv[1], ASSET_LANGUAGE_FOLDER, language_code, ASSET_LANGUAGE_NAMES_FILE);
+        snprintf(fake_path, sizeof(fake_path), "%s/%s/%s/%s", SET, ASSET_LANGUAGE_FOLDER, language_code, ASSET_LANGUAGE_NAMES_FILE);
+        add_file_as(disk_path, fake_path, 1);
+    }
+    asset_language_init(SET);
     run_log_open("render.log");
     fake_renderer_reset();
     fake_reader_reset();
@@ -331,7 +370,9 @@ int main(int argc, char **argv)
         add_texture(argv[1], fixed_textures[index]);
     }
     texture_cache_init(SET "/textures", 256u << 20);
+    texture_cache_use_language(language_code != NULL ? language_of(language_code) : ASSET_LANGUAGE_ENGLISH);
     game_settings_defaults(game_settings_now());
+    game_settings_now()->language = asset_language_now();
     if (!pause_menu_load(SET)) {
         fprintf(stderr, "pause art not ready\n");
         return 1;

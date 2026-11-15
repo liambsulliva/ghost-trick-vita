@@ -27,11 +27,15 @@ class TheSetHasTheVitaLayout(unittest.TestCase):
         self.assertEqual(buckets, output_folders.TEXTURE_FOLDER_BUCKETS)
 
     def test_other_files_and_paths_keep_their_place(self):
-        for path in ("music/theme.ogg", "manifest.txt", "textures/notes.txt", "lang/ja/textures/a.gtex"):
+        for path in ("music/theme.ogg", "manifest.txt", "textures/notes.txt", "lang/ja/scripts/talk.txt"):
             self.assertEqual(output_folders.disk_path_of(path), path)
             self.assertEqual(output_folders.relative_path_of(path), path)
         self.assertEqual(output_folders.relative_path_of("textures/03/a.gtex"), "textures/a.gtex")
         self.assertEqual(output_folders.relative_path_of("textures/04/a.gtex"), "textures/04/a.gtex")
+
+    def test_a_language_overlay_texture_uses_the_same_bucket(self):
+        self.assertEqual(output_folders.disk_path_of("lang/ja/textures/a.gtex"), "lang/ja/textures/03/a.gtex")
+        self.assertEqual(output_folders.relative_path_of("lang/ja/textures/03/a.gtex"), "lang/ja/textures/a.gtex")
 
     def test_the_uploader_puts_each_file_where_the_set_has_it(self):
         self.assertEqual(vita_loop.device_path_of_asset("textures/a.gtex"), output_folders.disk_path_of("textures/a.gtex"))
@@ -69,6 +73,24 @@ class TheBakeWritesBuckets(unittest.TestCase):
         removed = bake_record.remove_files_not_listed(self.folder, ["textures"], {"textures/a.gtex"})
         self.assertEqual(sorted(removed), ["textures/05/a.gtex", "textures/30/stale.gtex", "textures/b.gtex"])
         self.assertEqual(sorted(os.listdir(os.path.join(self.folder, "textures"))), ["03"])
+
+    def test_a_flat_language_overlay_is_moved_into_buckets(self):
+        flat = os.path.join(self.folder, "lang", "fr", "textures", "a.gtex")
+        os.makedirs(os.path.dirname(flat))
+        with open(flat, "wb") as output:
+            output.write(gtex())
+        bake_record.BakeRecord(self.folder)
+        self.assertFalse(os.path.exists(flat))
+        self.assertTrue(os.path.isfile(os.path.join(self.folder, "lang", "fr", "textures", "03", "a.gtex")))
+
+    def test_the_overlay_sweep_keeps_listed_textures_in_their_bucket(self):
+        import languages
+        for path in ("lang/fr/textures/03/a.gtex", "lang/fr/textures/a.gtex", "lang/fr/textures/30/stale.gtex"):
+            os.makedirs(os.path.dirname(os.path.join(self.folder, path)), exist_ok=True)
+            with open(os.path.join(self.folder, path), "wb") as output:
+                output.write(b"x")
+        removed = languages.remove_overlay_files_not_listed(self.folder, {"lang/fr/textures/a.gtex"})
+        self.assertEqual(sorted(removed), ["lang/fr/textures/30/stale.gtex", "lang/fr/textures/a.gtex"])
 
     def test_the_uploader_lists_a_bucketed_texture_by_its_name(self):
         record = bake_record.BakeRecord(self.folder)

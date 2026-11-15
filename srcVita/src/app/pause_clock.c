@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "asset_language.h"
 #include "file.h"
 #include "file_path.h"
 #include "memory.h"
@@ -88,7 +89,7 @@ int pause_clock_load(const char *assets_folder)
     unsigned int size;
     int count;
 
-    if (!file_path_join(path, assets_folder, TABLE_PATH, "") || file_read_whole(path, &bytes, &size) != FILE_OK) {
+    if (!asset_language_join(path, assets_folder, TABLE_PATH) || file_read_whole(path, &bytes, &size) != FILE_OK) {
         pause_clock_read_text("", 0);
         return 0;
     }

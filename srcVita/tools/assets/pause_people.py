@@ -256,7 +256,7 @@ def bake_notes(packs, work_folder, record, code, people, font_path, font_bytes, 
     entry_names = message_file.read_entry_names(data, text_key)
     jobs = note_jobs(people, entry_names, people["key_prefix"])
     wanted = sorted(set(key for job in jobs for key in job["keys"]))
-    texts = message_file.read_english_entries(data, wanted, text_key)
+    texts = message_file.read_entries(data, wanted, text_key)
     settings = {key: people[key] for key in ("band_points", "text_points", "phone_word")}
     settings.update({"card": CARD_SIZE, "font": bake_record.sha256_of_bytes(font_bytes)})
     results = []

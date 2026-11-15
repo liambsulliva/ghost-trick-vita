@@ -245,6 +245,21 @@ static void test_the_right_stick_pans_the_ghost_view_only_while_the_player_holds
     CHECK_INT(camera_x_after_holding_the_right_stick(TICKS_FOR_A_DRAG), camera_before);
 }
 
+static void test_the_right_stick_pans_the_living_world_and_leaves_the_ghost_view_shut(void)
+{
+    int camera_before;
+
+    start();
+    machine.object_count = 1;
+    place_core(0, "shadanki", GATE_X);
+    camera_before = machine.camera_x;
+    CHECK(camera_x_after_holding_the_right_stick(TICKS_FOR_A_DRAG) > camera_before);
+    CHECK_INT(machine.soul.is_on, 0);
+    script_soul_run_command(&machine, "Button", "Input:Off");
+    camera_before = machine.camera_x;
+    CHECK_INT(camera_x_after_holding_the_right_stick(TICKS_FOR_A_DRAG), camera_before);
+}
+
 static void give_a_wide_room(void)
 {
     machine.room = 0;
@@ -316,6 +331,7 @@ int main(void)
     test_a_direction_in_the_living_world_pans_the_camera_and_leaves_the_ghost_view_shut();
     test_the_camera_stays_put_while_a_scripted_event_holds_the_player();
     test_the_right_stick_pans_the_ghost_view_only_while_the_player_holds_the_chain();
+    test_the_right_stick_pans_the_living_world_and_leaves_the_ghost_view_shut();
     test_a_living_world_pan_stays_until_the_core_moves();
     test_a_ghost_view_pan_while_aiming_is_not_pulled_back_to_the_tip();
     return test_finish("unit/script_input");

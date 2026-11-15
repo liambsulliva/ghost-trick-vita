@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include "asset_language.h"
+#include "system_state.h"
 #include "animation_library.h"
 #include "asset_manifest.h"
 #include "checker_pattern.h"
@@ -464,6 +466,19 @@ static int folder_has_files(const char *folder)
     return file_list_folder(folder, count_a_file, &count) == FILE_OK && count > 0;
 }
 
+static int language_in_use = -1;
+
+static void use_language(int language)
+{
+    if (language == language_in_use) {
+        return;
+    }
+    language_in_use = language;
+    texture_cache_use_language(language);
+    (void)pause_menu_reload_text(assets_folder);
+    script_player_use_language();
+}
+
 static void start_settings(void)
 {
     char original_folder[FILE_PATH_MAX];
@@ -476,6 +491,9 @@ static void start_settings(void)
     }
     game_settings_set_music_folders(original_folder, arranged_folder);
     game_settings_set_default_music(DEFAULT_MUSIC_TYPE);
+    game_settings_set_default_language(asset_language_from_system(system_state_language()));
+    language_in_use = -1;
+    game_settings_on_language(use_language);
     game_settings_load(GAME_SETTINGS_PATH);
     (void)record_reveal_load(RECORD_REVEAL_PATH);
     game_settings_apply();
@@ -510,12 +528,13 @@ void viewer_app_start(const char *folder)
     char script_folder[FILE_PATH_MAX];
 
     snprintf(assets_folder, sizeof(assets_folder), "%s", folder);
+    asset_language_init(assets_folder);
     asset_subfolder_path(texture_folder, "textures");
     asset_subfolder_path(animation_folder, "animations");
     asset_subfolder_path(scene_folder, "scenes");
     asset_subfolder_path(music_folder, ORIGINAL_MUSIC_SUBFOLDER);
     asset_subfolder_path(sound_folder, "sounds");
-    asset_subfolder_path(script_folder, "scripts");
+    asset_subfolder_path(script_folder, SCRIPT_PLAYER_SCRIPTS_SUBFOLDER);
     manifest = NULL;
     current_background_index = 0;
     pending_background_index = NO_PENDING_BACKGROUND;

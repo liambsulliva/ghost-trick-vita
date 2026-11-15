@@ -145,8 +145,18 @@ def raise_contrast(canvas, fields):
     area[:] = np.clip(area - CONTRAST_FLOOR * 255.0, 0.0, 255.0) * (1.0 + CONTRAST_GAIN)
 
 
-def render(assets_folder, buttons, output_path, notes=None, clock=None):
+def texture_path(assets_folder, name, language):
+    if language is not None:
+        path = os.path.join(assets_folder, output_folders.disk_path_of(output_folders.LANGUAGE_FOLDER + "/" + language + "/textures/" + name + ".gtex"))
+        if os.path.isfile(path):
+            return path
+    return os.path.join(assets_folder, output_folders.disk_path_of("textures/" + name + ".gtex"))
+
+
+def render(assets_folder, buttons, output_path, notes=None, clock=None, language=None):
     extra = [notes or ""] + ([clock] if clock else []) if notes or clock else []
+    if language is not None:
+        extra = [notes or "", clock or "", language]
     result = subprocess.run([RENDER_BINARY, assets_folder, buttons] + extra, check=True, capture_output=True, text=True)
     canvas = np.zeros((SCREEN_HEIGHT, SCREEN_WIDTH, 3), dtype=np.float32)
     textures = {}
@@ -161,7 +171,7 @@ def render(assets_folder, buttons, output_path, notes=None, clock=None):
         elif parts[0] == "sprite":
             name = parts[1]
             if name not in textures:
-                textures[name] = read_texture(os.path.join(assets_folder, output_folders.disk_path_of("textures/" + name + ".gtex")))
+                textures[name] = read_texture(texture_path(assets_folder, name, language))
             draw_sprite(canvas, textures[name], parts[2:])
     raw_path = output_path + ".rgb"
     with open(raw_path, "wb") as output:
@@ -179,13 +189,14 @@ def main():
     parser.add_argument("output", help="the PNG to write")
     parser.add_argument("--notes", help="notebook entries known, as list:id:level,... (1 people, 2 places)")
     parser.add_argument("--clock", help="the scene the clock reads, as chapter:script:plate")
+    parser.add_argument("--language", help="draw in this language, by its code in tools/assets/languages.json")
     arguments = parser.parse_args()
     buttons = arguments.buttons
     if arguments.title is not None:
         buttons = {"none": "title:", "save": "title_save:", "cleared": "title_clear:"}[arguments.title] + buttons
     if arguments.loading:
         buttons = "loading:" + buttons
-    render(arguments.assets_folder, buttons, arguments.output, arguments.notes, arguments.clock)
+    render(arguments.assets_folder, buttons, arguments.output, arguments.notes, arguments.clock, arguments.language)
     return 0
 
 

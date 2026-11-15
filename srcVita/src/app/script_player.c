@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "animation.h"
+#include "asset_language.h"
 #include "animation_library.h"
 #include "background_reader.h"
 #include "background_task.h"
@@ -103,6 +104,7 @@ static enum script_player_phase phase;
 static int is_available;
 static int is_active;
 static int is_paused;
+static struct script_talk_book *waiting_talk_book;
 static volatile int read_step;
 static volatile int chain_read_is_cancelled;
 static int chain_read_is_started;
@@ -270,12 +272,34 @@ static int copy_from_the_pack(const char *name, const char *extension, unsigned 
     return FILE_OK;
 }
 
+static int read_language_file(const char *name, const char *extension, unsigned char **bytes, unsigned int *size)
+{
+    char relative_path[FILE_PATH_MAX];
+    char path[FILE_PATH_MAX];
+    int written;
+    int result;
+
+    written = snprintf(relative_path, sizeof(relative_path), "%s/%s%s", SCRIPT_PLAYER_SCRIPTS_SUBFOLDER, name, extension);
+    if (written < 0 || written >= (int)sizeof(relative_path) || !asset_language_overrides(relative_path) || !asset_language_join_assets(path, relative_path)) {
+        return FILE_ERR_OPEN;
+    }
+    result = file_read_whole(path, bytes, size);
+    if (result != FILE_OK) {
+        return result;
+    }
+    run_log_write("script read name=%s%s bytes=%u from=%s", name, extension, *size, asset_language_code(asset_language_now()));
+    return unpack_if_packed(name, extension, bytes, size);
+}
+
 static int read_named_file(const char *name, const char *extension, unsigned char **bytes, unsigned int *size)
 {
     char path[FILE_PATH_MAX];
     unsigned long long started_us;
     int result;
 
+    if (read_language_file(name, extension, bytes, size) == FILE_OK) {
+        return FILE_OK;
+    }
     if (pack_is_open) {
         started_us = clock_now_us();
         result = copy_from_the_pack(name, extension, bytes, size);
@@ -527,24 +551,61 @@ static void load_script_animations(const char *name)
 
 static void begin_loading_animations(void);
 
-static void read_talk_book(void)
+static struct script_talk_book *new_talk_book(void)
 {
+    struct script_talk_book *book;
     unsigned char *bytes;
     unsigned int size;
 
     if (read_named_file("talk", ".txt", &bytes, &size) != FILE_OK) {
-        return;
+        return NULL;
     }
-    data->talk_book = mem_alloc(sizeof(struct script_talk_book));
-    if (data->talk_book == NULL) {
+    book = mem_alloc(sizeof(struct script_talk_book));
+    if (book == NULL) {
         note_failure("talk_out_of_memory", "talk");
-    } else if (!script_talk_book_parse((const char *)bytes, size, data->talk_book)) {
+    } else if (!script_talk_book_parse((const char *)bytes, size, book)) {
         note_failure("talk_invalid", "talk");
-        mem_free(data->talk_book);
-        data->talk_book = NULL;
+        mem_free(book);
+        book = NULL;
     }
     mem_free(bytes);
+    return book;
+}
+
+static void read_talk_book(void)
+{
+    data->talk_book = new_talk_book();
     data->machine.talk_book = data->talk_book;
+}
+
+static void forget_waiting_talk_book(void)
+{
+    mem_free(waiting_talk_book);
+    waiting_talk_book = NULL;
+}
+
+static void swap_in_the_waiting_talk_book(void)
+{
+    if (waiting_talk_book == NULL || data == NULL || data->machine.talk.message != NULL) {
+        return;
+    }
+    mem_free(data->talk_book);
+    data->talk_book = waiting_talk_book;
+    data->machine.talk_book = waiting_talk_book;
+    waiting_talk_book = NULL;
+    run_log_write("script talk_book language=%s", asset_language_code(asset_language_now()));
+}
+
+void script_player_use_language(void)
+{
+    if (data == NULL || phase == PHASE_IDLE || read_step <= FIXED_TABLE_COUNT) {
+        return;
+    }
+    data->tables.text_row_count = 0;
+    read_text_table("text_lines", ".txt", script_tables_read_text_lines, 0);
+    forget_waiting_talk_book();
+    waiting_talk_book = new_talk_book();
+    swap_in_the_waiting_talk_book();
 }
 
 static int read_next_file(void)
@@ -1021,6 +1082,7 @@ static void free_data(void)
     int index;
 
     drop_the_prepared_bundle();
+    forget_waiting_talk_book();
     if (data == NULL) {
         return;
     }
@@ -1182,6 +1244,7 @@ void script_player_update(unsigned long long elapsed_us)
         read_ahead_step(data->machine.tick);
         if (!art_gate_holds(elapsed_us)) {
             run_ticks(elapsed_us);
+            swap_in_the_waiting_talk_book();
             (void)record_reveal_watch(data->machine.talk.message != NULL ? data->machine.talk.message->label : NULL, &data->machine.note_levels[0][0], RECORD_REVEAL_PATH);
             if (phase == PHASE_RUNNING && art_wait_us < ART_WAIT_MOST_US && shown_art_is_loading()) {
                 is_holding_for_art = 1;

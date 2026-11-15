@@ -25,6 +25,7 @@
     "timing": "remaster",
     "card_texture": "chapter_card_00"
   },
+  "languages": "languages.json",
   "narration_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
   "talk": {
     "pages_left_out": ["st01_0000_m01_0460_05", "st01_0000_m01_0460_06", "st01_0000_m01_0460_07"],
@@ -281,7 +282,15 @@
   },
   "hud": {
     "label_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
-    "key_font": "natives/android/gui/font/outlinefont/helveticaneueltw1g-bd.oft.1"
+    "key_font": "natives/android/gui/font/outlinefont/helveticaneueltw1g-bd.oft.1",
+    "words": {
+      "ghost": "Ghost",
+      "trick": "Trick",
+      "back": "Back",
+      "swap": "Swap",
+      "unlock": "Unlock",
+      "rewind": "Rewind Time"
+    }
   },
   "pause": {
     "label_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
@@ -331,7 +340,7 @@
     "widgets": {
       "font": "natives/android/gui/font/outlinefont/fot-chiarostd-b.oft.1",
       "row_points": 30,
-      "chapter_word": "Chapter",
+      "chapter_format": "Chapter %d",
       "chapter_count": 18,
       "bar_points": 26,
       "preview": {
@@ -432,7 +441,7 @@
         "to_choose_language": "to choose a language.",
         "controls_page": "The Vita's controls.",
         "do_stick": "Aim the soul, pan the camera, move a cursor",
-        "do_right_stick": "Pan the camera in the soul view",
+        "do_right_stick": "Pan the camera",
         "do_cross": "Finish or advance text, do a trick, choose",
         "do_circle": "Go back, unlock a link, or hold to skip text",
         "do_l": "Open or close the soul view",
@@ -675,9 +684,7 @@
       "first_places": [
         1
       ],
-      "unknown_portraits": [
-        "crew"
-      ],
+      "unknown_portraits": [],
       "shared_portraits": [
         [
           "cicel",
@@ -727,6 +734,7 @@
         "leaflet": 17,
         "mother": 27,
         "waitress": 30,
+        "crew": 10,
         "cicel_evil": 0
       },
       "place_pictures": {

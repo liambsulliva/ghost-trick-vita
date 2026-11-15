@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "asset_language.h"
 #include "file.h"
 #include "file_path.h"
 #include "memory.h"
@@ -260,7 +261,7 @@ static int read_table(const char *assets_folder, const char *relative_path, int 
     unsigned int size;
     int count;
 
-    if (!file_path_join(path, assets_folder, relative_path, "") || file_read_whole(path, &bytes, &size) != FILE_OK) {
+    if (!asset_language_join(path, assets_folder, relative_path) || file_read_whole(path, &bytes, &size) != FILE_OK) {
         return 0;
     }
     count = reader((const char *)bytes, size);
@@ -289,6 +290,18 @@ int pause_menu_load(const char *assets_folder)
     run_log_write("pause clock scenes=%d", pause_clock_load(assets_folder));
     phase = PAUSE_PHASE_CLOSED;
     run_log_write("pause art frames=%d idle_ticks=%d fidget_ticks=%d labels=%d widgets=%d people=%d", frames, ticks, fidget_count, words, widget_total, pause_people_load(assets_folder));
+    return pause_menu_is_ready();
+}
+
+int pause_menu_reload_text(const char *assets_folder)
+{
+    int words;
+
+    label_count = 0;
+    arrow_size = 0.0f;
+    words = read_table(assets_folder, LABEL_TABLE_PATH, pause_menu_read_label_text);
+    widget_total = pause_widgets_load(assets_folder);
+    run_log_write("pause text language=%s labels=%d widgets=%d clock=%d people=%d", asset_language_code(asset_language_now()), words, widget_total, pause_clock_load(assets_folder), pause_people_load(assets_folder));
     return pause_menu_is_ready();
 }
 

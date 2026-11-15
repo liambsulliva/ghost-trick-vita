@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "asset_language.h"
 #include "asset_name.h"
 #include "file.h"
 #include "file_path.h"
@@ -285,7 +286,7 @@ int pause_people_load(const char *assets_folder)
     int count;
 
     forget_table();
-    if (!file_path_join(path, assets_folder, TABLE_PATH, "") || file_read_whole(path, &bytes, &size) != FILE_OK) {
+    if (!asset_language_join(path, assets_folder, TABLE_PATH) || file_read_whole(path, &bytes, &size) != FILE_OK) {
         return 0;
     }
     count = pause_people_read_text((const char *)bytes, size);

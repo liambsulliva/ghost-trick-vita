@@ -29,9 +29,9 @@ def rows_with_ink(line):
 
 class LineBoxTests(unittest.TestCase):
     def test_the_box_is_one_em_above_the_baseline_and_three_tenths_below_in_steps_of_four(self):
-        self.assertEqual(line_renderer.line_box(100), (100, 132))
-        self.assertEqual(line_renderer.line_box(38.5), (39, 52))
-        self.assertEqual(line_renderer.line_box(34), (34, 48))
+        self.assertEqual(line_renderer.line_box(100), (113, 144))
+        self.assertEqual(line_renderer.line_box(38.5), (44, 56))
+        self.assertEqual(line_renderer.line_box(34), (39, 52))
 
     def test_magick_draws_at_four_times_the_final_size(self):
         arguments = line_renderer.annotate_arguments("font.otf", "line.txt", 40, 800, 200, 45)

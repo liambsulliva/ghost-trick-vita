@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "animation.h"
+#include "asset_language.h"
 #include "audio_volume.h"
 #include "file.h"
 #include "file_path.h"
@@ -21,6 +22,8 @@ static struct game_settings settings_to_write;
 static char settings_path_to_write[FILE_PATH_MAX];
 static volatile int settings_write_is_busy;
 static int default_music = GAME_MUSIC_ARRANGED;
+static int default_language = ASSET_LANGUAGE_ENGLISH;
+static void (*language_user)(int language);
 static char music_folders[2][FILE_PATH_MAX];
 static int has_remastered_art = 1;
 static int has_ds_art;
@@ -37,7 +40,7 @@ static void keep_in_range(struct game_settings *settings)
     settings->music = clamp_level(settings->music, 0);
     settings->effects = clamp_level(settings->effects, 0);
     settings->music_type = settings->music_type == GAME_MUSIC_ORIGINAL ? GAME_MUSIC_ORIGINAL : GAME_MUSIC_ARRANGED;
-    settings->language = 0;
+    settings->language = settings->language >= 0 && settings->language < ASSET_LANGUAGE_COUNT ? settings->language : ASSET_LANGUAGE_ENGLISH;
     settings->unlock_all = settings->unlock_all != 0;
     settings->fps_cap = settings->fps_cap == GAME_FPS_CAPPED ? GAME_FPS_CAPPED : GAME_FPS_FULL;
     settings->high_contrast = settings->high_contrast != 0;
@@ -49,6 +52,16 @@ static void keep_in_range(struct game_settings *settings)
 void game_settings_set_default_music(int music_type)
 {
     default_music = music_type;
+}
+
+void game_settings_set_default_language(int language)
+{
+    default_language = language >= 0 && language < ASSET_LANGUAGE_COUNT ? language : ASSET_LANGUAGE_ENGLISH;
+}
+
+void game_settings_on_language(void (*use_language)(int language))
+{
+    language_user = use_language;
 }
 
 void game_settings_set_music_folders(const char *original_folder, const char *arranged_folder)
@@ -64,7 +77,7 @@ void game_settings_defaults(struct game_settings *settings)
     settings->music = GAME_SETTING_STEPS;
     settings->effects = GAME_SETTING_STEPS;
     settings->music_type = default_music;
-    settings->language = 0;
+    settings->language = default_language;
     settings->unlock_all = 0;
     settings->fps_cap = GAME_FPS_FULL;
     settings->high_contrast = 0;
@@ -197,6 +210,9 @@ void game_settings_apply(void)
         music_engine_use_folder(music_folders[current.music_type]);
     }
     renderer_set_vblanks_per_frame(GAME_FPS_FULL / current.fps_cap);
+    if (language_user != NULL) {
+        language_user(current.language);
+    }
 }
 
 float game_settings_darkness(void)

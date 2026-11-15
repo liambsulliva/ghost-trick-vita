@@ -1,4 +1,5 @@
 import os
+import unicodedata
 
 import asset_writers
 import bake_record
@@ -87,7 +88,7 @@ def read_requested_texts(packs, requests, text_key):
     texts = {}
     for file_path, entry_names in entry_names_by_file.items():
         try:
-            texts[file_path] = message_file.read_english_entries(packs.read(file_path), entry_names, text_key)
+            texts[file_path] = message_file.read_entries(packs.read(file_path), entry_names, text_key)
         except message_file.MissingEntryError as error:
             raise NarrationError("%s: %s" % (file_path, error)) from None
         except message_file.MessageFileError:
@@ -96,11 +97,32 @@ def read_requested_texts(packs, requests, text_key):
 
 
 class TextFonts:
-    def __init__(self, packs, work_folder):
+    def __init__(self, packs, work_folder, fallbacks=None):
         self.packs = packs
         self.work_folder = work_folder
+        self.fallbacks = fallbacks or {}
         self.pack_bytes_by_path = {}
         self.decoded_paths = {}
+        self.characters_by_path = {}
+
+    def characters_of(self, font_path):
+        if font_path not in self.characters_by_path:
+            with open(self.decoded_path(font_path), "rb") as source:
+                self.characters_by_path[font_path] = font_file.mapped_characters(source.read())
+        return self.characters_by_path[font_path]
+
+    def font_for(self, font_path, character):
+        for candidate in [font_path] + list(self.fallbacks.get(font_path, [])):
+            if ord(character) in self.characters_of(candidate):
+                return candidate
+        return font_path
+
+    def require(self, font_path, text, may_fall_back=False):
+        missing = font_file.missing_characters(b"", text, self.characters_of(font_path))
+        if may_fall_back:
+            missing = [character for character in missing if self.font_for(font_path, character) == font_path]
+        if missing:
+            raise NarrationError("%s has no glyph for %s" % (os.path.basename(font_path), " ".join("U+%04X" % ord(character) for character in missing)))
 
     def pack_bytes(self, font_path):
         if font_path not in self.pack_bytes_by_path:
@@ -129,6 +151,7 @@ def bake_line(fonts, work_folder, record, code, name, font_path, text, pixels_pe
     gtex_bytes = None if natural_width is None else record.read_if_current(relative_path, key)
     if gtex_bytes is not None:
         return bake_record.result_of_own_size(name, gtex_bytes), natural_width
+    fonts.require(font_path, text)
     line = line_renderer.render_line(work_folder, name, fonts.decoded_path(font_path), text, pixels_per_em, max_ink_width, color)
     gtex_bytes = encode_line(work_folder, name, line)
     record.store(relative_path, key, gtex_bytes, {"natural_width": line["natural_width"]})
@@ -163,16 +186,45 @@ def parts_of_message(message):
     return [message] + message.get("later_parts", [])
 
 
+def is_wide_character(character):
+    return unicodedata.east_asian_width(character) in ("W", "F")
+
+
+def width_in_columns(text):
+    return sum(2 if is_wide_character(character) else 1 for character in text)
+
+
+def breakable_units(line):
+    units = []
+    for word in line.split():
+        current = ""
+        for character in word:
+            if is_wide_character(character) and current and not unicodedata.category(character).startswith("P"):
+                units.append(current)
+                current = ""
+            current = current + character
+        units.append(current)
+    return units
+
+
+def joined(current, unit):
+    if not current:
+        return unit
+    if is_wide_character(current[-1]) or is_wide_character(unit[0]):
+        return current + unit
+    return current + " " + unit
+
+
 def wrapped_bubble_lines(lines):
     wrapped = []
     for line in lines:
         current = ""
-        for word in line.split():
-            if current and len(current) + 1 + len(word) > BUBBLE_CHARACTERS_PER_LINE:
+        for unit in breakable_units(line):
+            if current and width_in_columns(joined(current, unit)) > BUBBLE_CHARACTERS_PER_LINE:
                 wrapped.append(current)
-                current = word
+                current = unit
             else:
-                current = (current + " " + word).strip()
+                current = joined(current, unit)
         if current:
             wrapped.append(current)
     return wrapped
@@ -282,6 +334,7 @@ def bake_bubble_text(fonts, work_folder, record, code, request, message):
     key = record.key_for(code, settings, "\n".join(lines).encode("utf-8"))
     gtex_bytes = record.read_if_current(relative_path, key)
     if gtex_bytes is None:
+        fonts.require(request["font"], "".join(lines))
         rendered = [line_renderer.render_line(work_folder, "%s_%d" % (request["name"], index), fonts.decoded_path(request["font"]), line, request["pixels_per_em"], SCREEN_WIDTH, color) for index, line in enumerate(lines)]
         gtex_bytes = encode_line(work_folder, request["name"], stacked_lines(rendered))
         record.store(relative_path, key, gtex_bytes, {})

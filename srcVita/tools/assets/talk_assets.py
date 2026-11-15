@@ -22,6 +22,8 @@ TOP_BOX_TOP = 3
 TOP_BOX_HEIGHT = 144
 TOP_TEXT_LEFT = 212
 ATLAS_WIDTH = 1024
+ATLAS_WIDTHS = (1024, 2048, 4096)
+ATLAS_HEIGHT_LIMIT = 2048
 ATLAS_CELL_GAP = 4
 COLOR_BLACK = 0
 COLOR_OF_TAG = {"c1": 1, "c2": 2}
@@ -40,6 +42,7 @@ BOX_BOTTOM = 0
 BOX_TOP_ALONE = 1
 BOX_TOP_WITH_HEAD = 2
 TOP_WITH_HEAD_TEXT_LEFT = 282
+TEXT_RIGHT = 960 - BOTTOM_TEXT_LEFT
 ENDING_PRESS = 0
 ENDING_PAUSE_THEN_NEXT = 1
 ENDING_PAUSE_THEN_CLOSE = 2
@@ -225,13 +228,13 @@ def render_glyph(font_path, work_folder, character):
     return glyph
 
 
-def build_atlas(glyphs):
+def packed_places(glyphs, width):
     x = ATLAS_CELL_GAP
     y = ATLAS_CELL_GAP
     row_height = 0
     placed = []
     for glyph in glyphs:
-        if x + glyph["width"] + ATLAS_CELL_GAP > ATLAS_WIDTH:
+        if x + glyph["width"] + ATLAS_CELL_GAP > width:
             x = ATLAS_CELL_GAP
             y = y + row_height + ATLAS_CELL_GAP
             row_height = 0
@@ -241,30 +244,46 @@ def build_atlas(glyphs):
     height = 4
     while height < y + row_height + ATLAS_CELL_GAP:
         height = height * 2
-    pixels = bytearray(b"\xff\xff\xff\x00" * (ATLAS_WIDTH * height))
+    return placed, height
+
+
+def atlas_width_for(glyphs):
+    for width in ATLAS_WIDTHS:
+        if packed_places(glyphs, width)[1] <= ATLAS_HEIGHT_LIMIT:
+            return width
+    return ATLAS_WIDTHS[-1]
+
+
+def build_atlas(glyphs):
+    width = atlas_width_for(glyphs)
+    placed, height = packed_places(glyphs, width)
+    pixels = bytearray(b"\xff\xff\xff\x00" * (width * height))
     for glyph, (cell_x, cell_y) in zip(glyphs, placed):
         for row in range(glyph["height"]):
-            start = (cell_y + row) * ATLAS_WIDTH * 4 + cell_x * 4
+            start = (cell_y + row) * width * 4 + cell_x * 4
             pixels[start:start + glyph["width"] * 4] = glyph["pixels"][row * glyph["width"] * 4:(row + 1) * glyph["width"] * 4]
-    return bytes(pixels), height, placed
+    return bytes(pixels), width, height, placed
 
 
-def bake_font_atlas(fonts, work_folder, record, code, font_path, characters):
+def bake_font_atlas(fonts, work_folder, record, code, font_path, characters, font_texture=FONT_TEXTURE):
     settings = {"font": bake_record.sha256_of_bytes(fonts.pack_bytes(font_path)), "pixels_per_em": PIXELS_PER_EM}
-    relative_path = "textures/" + FONT_TEXTURE + ".gtex"
+    if fonts.fallbacks.get(font_path):
+        settings["fallbacks"] = [bake_record.sha256_of_bytes(fonts.pack_bytes(path)) for path in fonts.fallbacks[font_path]]
+    relative_path = "textures/" + font_texture + ".gtex"
     key = record.key_for(code, settings, "".join(characters).encode("utf-8"))
     details = record.details_of(relative_path)
     current = record.read_if_current(relative_path, key) if "glyph_rows" in details else None
     if current is not None:
-        return bake_record.result_of_own_size(FONT_TEXTURE, current), details["glyph_rows"]
+        return bake_record.result_of_own_size(font_texture, current), details["glyph_rows"]
+    fonts.require(font_path, "".join(character for character in characters if character not in CHARACTER_OF_ICON.values()), may_fall_back=True)
     decoded_font = fonts.decoded_path(font_path)
-    glyphs = [render_glyph(decoded_font, work_folder, character) for character in characters]
-    pixels, height, placed = build_atlas(glyphs)
-    blocks = texture_encoder.encode_rgba(work_folder, FONT_TEXTURE, ATLAS_WIDTH, height, pixels, "dxt5")
-    gtex_bytes = asset_writers.gtex_bytes(ATLAS_WIDTH, height, asset_writers.FORMAT_DXT5, blocks)
+    glyphs = [render_glyph(decoded_font if character in CHARACTER_OF_ICON.values() else fonts.decoded_path(fonts.font_for(font_path, character)), work_folder, character) for character in characters]
+    pixels, width, height, placed = build_atlas(glyphs)
+    blocks = texture_encoder.encode_rgba(work_folder, font_texture, width, height, pixels, "dxt5")
+    gtex_bytes = asset_writers.gtex_bytes(width, height, asset_writers.FORMAT_DXT5, blocks)
     rows = [[cell_x, cell_y, glyph["width"], glyph["height"], glyph["left"], glyph["top"], glyph["advance"]] for glyph, (cell_x, cell_y) in zip(glyphs, placed)]
     record.store(relative_path, key, gtex_bytes, {"glyph_rows": rows})
-    return bake_record.result_of_own_size(FONT_TEXTURE, gtex_bytes), rows
+    return bake_record.result_of_own_size(font_texture, gtex_bytes), rows
 
 
 def layouts_by_ds_page(language_plain, offset):
@@ -300,7 +319,7 @@ def read_ds_faces(section):
 
 def system_line_section(text, line):
     words = text.split(" ")
-    wrapped = " ".join(words[:line["words_on_first_row"]]) + "\n" + " ".join(words[line["words_on_first_row"]:])
+    wrapped = text if "\n" in text else " ".join(words[:line["words_on_first_row"]]) + "\n" + " ".join(words[line["words_on_first_row"]:])
     section = new_section()
     section["ending"] = ENDING_HOLD_THEN_CLOSE
     section["center_x"] = line["center_x"]
@@ -346,7 +365,7 @@ def read_all_pages(packs, section, text_key):
             by_file.setdefault(path, []).append(name)
     texts = {}
     for path, names in by_file.items():
-        texts[path] = message_file.read_english_entries(packs.read(path), names, text_key)
+        texts[path] = message_file.read_entries(packs.read(path), names, text_key)
     return {label: [texts[path][name] for path, name in pages] for label, pages in entries.items()}
 
 
@@ -395,16 +414,17 @@ def parse_all_pages(packs, section, text_key):
     return parsed, characters, used_faces
 
 
-def bake_talk(packs, set_description, text_key, work_folder, record, code):
+def bake_talk(packs, set_description, text_key, work_folder, record, code, font_texture=FONT_TEXTURE):
     section = set_description.get("talk")
     if section is None or "entries" not in section:
         return {}, [], [], []
     parsed, characters, used_faces = parse_all_pages(packs, section, text_key)
     ordered_characters = sorted(characters)
-    fonts = narration.TextFonts(packs, work_folder)
-    result, glyph_rows = bake_font_atlas(fonts, work_folder, record, code, section["font"], ordered_characters)
+    fonts = narration.TextFonts(packs, work_folder, set_description.get("font_fallbacks"))
+    result, glyph_rows = bake_font_atlas(fonts, work_folder, record, code, section["font"], ordered_characters, font_texture)
     glyph_of = {character: index for index, character in enumerate(ordered_characters)}
-    rows = ["font " + FONT_TEXTURE]
+    failures = []
+    rows = ["font " + font_texture]
     rows.extend("glyph " + " ".join(str(value) for value in row) for row in glyph_rows)
     for label, pages in parsed.items():
         rows.append("talk " + label)
@@ -419,12 +439,19 @@ def bake_talk(packs, set_description, text_key, work_folder, record, code):
                 for line, top in zip(one_section["lines"], tops):
                     codes = " ".join(str(glyph_of[character] | (color << COLOR_SHIFT)) for character, color in line)
                     line_left = centered_left(line, one_section["center_x"], glyph_rows, glyph_of) if "center_x" in one_section else text_left
+                    line_width = sum(glyph_rows[glyph_of[character]][GLYPH_ROW_ADVANCE] for character, _ in line)
+                    if line_left + line_width > TEXT_RIGHT:
+                        failures.append((label, "a line is %d px wider than its box" % (line_left + line_width - TEXT_RIGHT)))
                     rows.append("line %d %d %d %s" % (line_left, top, len(line), codes))
-    return {TALK_FILE: ("\n".join(rows) + "\n").encode("ascii")}, [result], [], used_faces
+    return {TALK_FILE: ("\n".join(rows) + "\n").encode("ascii")}, [result], failures, used_faces
 
 
 def talk_texture_names(talk_files):
-    return [FONT_TEXTURE] if talk_files else []
+    names = []
+    for text in talk_files.values():
+        first_row = text.split(b"\n", 1)[0].decode("ascii").split()
+        names.append(first_row[1] if len(first_row) == 2 and first_row[0] == "font" else FONT_TEXTURE)
+    return names
 
 
 def print_talk_summary(talk_files):

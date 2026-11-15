@@ -27,6 +27,17 @@ class MessageFileError(ValueError):
     pass
 
 
+class LanguageKey(bytes):
+    def __new__(cls, key, slot):
+        made = super().__new__(cls, key)
+        made.slot = slot
+        return made
+
+
+def slot_of(key):
+    return getattr(key, "slot", ENGLISH_SLOT)
+
+
 class MissingEntryError(MessageFileError):
     pass
 
@@ -78,9 +89,9 @@ def read_entry_and_name(data, string_area, string_area_start, index):
         raise MessageFileError("entry number %d: %s" % (index, error)) from None
 
 
-def read_english_text(data, string_area, string_area_start, entry, name):
+def read_text_in_slot(data, string_area, string_area_start, entry, name, slot):
     try:
-        text_pointer = read_u64(data, entry + ENTRY_TEXT_POINTERS_OFFSET + 8 * ENGLISH_SLOT)
+        text_pointer = read_u64(data, entry + ENTRY_TEXT_POINTERS_OFFSET + 8 * slot)
         return read_string(string_area, string_area_start, text_pointer)
     except MessageFileError as error:
         raise MessageFileError("entry %s: %s" % (name, error)) from None
@@ -98,8 +109,11 @@ def read_header(data):
     return entry_count, language_count, read_u64(data, STRING_AREA_OFFSET)
 
 
-def read_english_entries(data, wanted_names, key):
-    entry_count, _, string_area_start = read_header(data)
+def read_entries(data, wanted_names, key):
+    entry_count, language_count, string_area_start = read_header(data)
+    slot = slot_of(key)
+    if slot >= language_count:
+        raise MessageFileError("file has no language slot %d" % slot)
     string_area = decode_string_area(data[string_area_start:], key)
     wanted = set(wanted_names)
     found = {}
@@ -108,7 +122,7 @@ def read_english_entries(data, wanted_names, key):
         entry, name = read_entry_and_name(data, string_area, string_area_start, index)
         every_name_is_plain = every_name_is_plain and ENTRY_NAME_PATTERN.fullmatch(name) is not None
         if name in wanted:
-            found[name] = read_english_text(data, string_area, string_area_start, entry, name)
+            found[name] = read_text_in_slot(data, string_area, string_area_start, entry, name, slot)
     for name in sorted(wanted):
         if name not in found:
             if not every_name_is_plain:

@@ -1938,15 +1938,23 @@ void script_soul_drag_camera(struct script_machine *machine, float delta_x, floa
 static void move_free_camera(struct script_machine *machine)
 {
     struct script_soul *soul;
+    float move_x;
+    float move_y;
 
     soul = &machine->soul;
-    if (soul->held_x == 0.0f && soul->held_y == 0.0f) {
+    move_x = soul->held_x;
+    move_y = soul->held_y;
+    if (move_x == 0.0f && move_y == 0.0f) {
+        move_x = soul->view_pan_x;
+        move_y = soul->view_pan_y;
+    }
+    if (move_x == 0.0f && move_y == 0.0f) {
         return;
     }
     if (!free_camera_is_allowed(machine) || (talk_holds_the_soul(machine) && !soul->camera_tutorial_is_on)) {
         return;
     }
-    script_machine_scroll_camera(machine, (int)lroundf(soul->held_x * CAMERA_FREE_SPEED_PIXELS), (int)lroundf(soul->held_y * CAMERA_FREE_SPEED_PIXELS));
+    script_machine_scroll_camera(machine, (int)lroundf(move_x * CAMERA_FREE_SPEED_PIXELS), (int)lroundf(move_y * CAMERA_FREE_SPEED_PIXELS));
     soul->free_camera_moved_this_tick = 1;
 }
 

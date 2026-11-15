@@ -216,6 +216,14 @@ class UploadAssetsTests(DeviceFreeTestCase):
         for folder_name in vita_loop.output_folders.NAMES:
             self.assertIn(folder_name + "/probe.txt", relative_paths)
 
+    def test_every_language_folder_is_uploaded_beside_the_set(self):
+        for relative_path in ["lang/fr/names.txt", "lang/fr/textures/text_a.gtex", "lang/zhcn/scripts/talk.txt", "lang/fr/textures/text_b.gtex.new"]:
+            os.makedirs(os.path.dirname(os.path.join(self.set_folder, relative_path)), exist_ok=True)
+            self.write_file(relative_path, b"probe")
+        relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
+        self.assertEqual([path for path in relative_paths if path.startswith("lang/")], ["lang/fr/names.txt", "lang/fr/textures/text_a.gtex", "lang/zhcn/scripts/talk.txt"])
+        self.assertEqual(vita_loop.device_path_of_asset("lang/fr/textures/text_a.gtex"), "lang/fr/textures/23/text_a.gtex")
+
     def test_a_file_left_half_written_by_the_converter_is_not_listed(self):
         self.write_file("music/song.ogg.new", b"half")
         self.write_file("scenes/s.scene.new", b"half")

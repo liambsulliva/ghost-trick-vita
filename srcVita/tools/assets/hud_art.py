@@ -23,9 +23,12 @@ FACE_ORDER = ["cross", "circle", "square", "triangle"]
 LETTER_ORDER = ["L", "R"]
 LABELS = ["Ghost", "Trick", "Back"]
 SWAP_LABELS = ["Swap", "Unlock"]
+WORD_KEYS = ["ghost", "trick", "back", "swap", "unlock", "rewind"]
+LABEL_SIDE_ROOM = 12
 SWAP_LABEL_ROW_Y = 192
 SWAP_LABEL_WIDTH = 224
 WIDE_LABEL = "Rewind Time"
+ENGLISH_WORDS = dict(zip(WORD_KEYS, LABELS + SWAP_LABELS + [WIDE_LABEL]))
 WIDE_LABEL_ROW_Y = 112
 WIDE_LABEL_WIDTH = 420
 WIDE_LABEL_HEIGHT = 72
@@ -139,19 +142,42 @@ def word_button_arguments(key_font_path, word, cell_x, cell_width, points):
     return plate + word_image
 
 
-def label_arguments(label_font_path, word, cell_x, row_y, cell_width=LABEL_WIDTH):
-    return ["(", "-size", "%dx%d" % (scaled(cell_width), scaled(LABEL_HEIGHT)), "xc:none", "-font", label_font_path, "-pointsize", str(LABEL_POINTS), "-gravity", "center", "-fill", INK_NAVY, "-stroke", INK_NAVY, "-strokewidth", str(LABEL_OUTLINE), "-annotate", "+0+0", word, "-fill", WHITE, "-stroke", "none", "-annotate", "+0+0", word, ")", "-gravity", "NorthWest", "-geometry", "+%d+%d" % (scaled(cell_x), scaled(row_y)), "-composite"]
+def word_width(font_path, points, word):
+    size = subprocess.run(["magick", "-background", "none", "-font", font_path, "-pointsize", str(points), "label:" + word, "-format", "%w", "info:"], check=True, capture_output=True, text=True).stdout
+    return int(size)
 
 
-def wide_label_arguments(label_font_path):
-    return ["(", "-size", "%dx%d" % (scaled(WIDE_LABEL_WIDTH), scaled(WIDE_LABEL_HEIGHT)), "xc:none", "-font", label_font_path, "-pointsize", str(WIDE_LABEL_POINTS), "-gravity", "center", "-fill", WHITE, "-stroke", "none", "-annotate", "+0+0", WIDE_LABEL, ")", "-gravity", "NorthWest", "-geometry", "+0+%d" % scaled(WIDE_LABEL_ROW_Y), "-composite"]
+def fitted_points(font_path, points, word, cell_width):
+    room = scaled(cell_width - LABEL_SIDE_ROOM)
+    width = word_width(font_path, points, word)
+    return points if width <= room else max(1, points * room // width)
+
+
+def label_arguments(label_font_path, word, cell_x, row_y, cell_width=LABEL_WIDTH, points=LABEL_POINTS):
+    return ["(", "-size", "%dx%d" % (scaled(cell_width), scaled(LABEL_HEIGHT)), "xc:none", "-font", label_font_path, "-pointsize", str(points), "-gravity", "center", "-fill", INK_NAVY, "-stroke", INK_NAVY, "-strokewidth", str(LABEL_OUTLINE), "-annotate", "+0+0", word, "-fill", WHITE, "-stroke", "none", "-annotate", "+0+0", word, ")", "-gravity", "NorthWest", "-geometry", "+%d+%d" % (scaled(cell_x), scaled(row_y)), "-composite"]
+
+
+def wide_label_arguments(label_font_path, word=WIDE_LABEL, points=WIDE_LABEL_POINTS):
+    return ["(", "-size", "%dx%d" % (scaled(WIDE_LABEL_WIDTH), scaled(WIDE_LABEL_HEIGHT)), "xc:none", "-font", label_font_path, "-pointsize", str(points), "-gravity", "center", "-fill", WHITE, "-stroke", "none", "-annotate", "+0+0", word, ")", "-gravity", "NorthWest", "-geometry", "+0+%d" % scaled(WIDE_LABEL_ROW_Y), "-composite"]
+
+
+def cell_width_of(key):
+    if key == "rewind":
+        return WIDE_LABEL_WIDTH
+    return SWAP_LABEL_WIDTH if key in WORD_KEYS[len(LABELS):len(LABELS) + len(SWAP_LABELS)] else LABEL_WIDTH
+
+
+def word_points(label_font_path, words):
+    return {key: fitted_points(label_font_path, WIDE_LABEL_POINTS if key == "rewind" else LABEL_POINTS, words[key], cell_width_of(key)) for key in WORD_KEYS}
 
 
 def hint_mark_arguments(label_font_path):
     return ["(", "-size", "%dx%d" % (scaled(HINT_MARK_SIZE), scaled(HINT_MARK_SIZE)), "xc:none", "-font", label_font_path, "-pointsize", str(HINT_MARK_POINTS), "-gravity", "center", "-fill", INK_NAVY, "-stroke", "none", "-annotate", "+0+0", HINT_MARK, ")", "-gravity", "NorthWest", "-geometry", "+%d+%d" % (scaled(HINT_MARK_X), scaled(HINT_MARK_Y)), "-composite"]
 
 
-def sheet_arguments(label_font_path, key_font_path, output_path):
+def sheet_arguments(label_font_path, key_font_path, output_path, words=None, points=None):
+    words = words or ENGLISH_WORDS
+    points = points or {key: WIDE_LABEL_POINTS if key == "rewind" else LABEL_POINTS for key in WORD_KEYS}
     arguments = ["magick", "-respect-parentheses", "-size", "%dx%d" % (scaled(SHEET_WIDTH), scaled(SHEET_HEIGHT)), "xc:none"]
     cell_x = 0
     for kind in FACE_ORDER:
@@ -162,11 +188,11 @@ def sheet_arguments(label_font_path, key_font_path, output_path):
         cell_x += GLYPH_CELL
     arguments += word_button_arguments(key_font_path, "START", cell_x, START_WIDTH, START_POINTS)
     arguments += word_button_arguments(key_font_path, "SELECT", cell_x + START_WIDTH, SELECT_WIDTH, SELECT_POINTS)
-    for index, word in enumerate(LABELS):
-        arguments += label_arguments(label_font_path, word, index * LABEL_WIDTH, LABEL_ROW_Y)
-    for index, word in enumerate(SWAP_LABELS):
-        arguments += label_arguments(label_font_path, word, index * SWAP_LABEL_WIDTH, SWAP_LABEL_ROW_Y, SWAP_LABEL_WIDTH)
-    arguments += wide_label_arguments(label_font_path)
+    for index, key in enumerate(WORD_KEYS[:len(LABELS)]):
+        arguments += label_arguments(label_font_path, words[key], index * LABEL_WIDTH, LABEL_ROW_Y, LABEL_WIDTH, points[key])
+    for index, key in enumerate(WORD_KEYS[len(LABELS):len(LABELS) + len(SWAP_LABELS)]):
+        arguments += label_arguments(label_font_path, words[key], index * SWAP_LABEL_WIDTH, SWAP_LABEL_ROW_Y, SWAP_LABEL_WIDTH, points[key])
+    arguments += wide_label_arguments(label_font_path, words["rewind"], points["rewind"])
     arguments += hint_mark_arguments(label_font_path)
     for kind, extra_x, row_y in EXTRA_GLYPHS:
         arguments += extra_glyph_arguments(key_font_path, kind, extra_x, row_y)
@@ -190,14 +216,19 @@ def bake_hud_disc(work_folder, record, code):
     return bake_record.result_of_own_size(DISC_NAME, gtex_bytes)
 
 
-def bake_hud_sheet(fonts, work_folder, record, code, label_font, key_font):
+def bake_hud_sheet(fonts, work_folder, record, code, label_font, key_font, words=None):
+    words = words or ENGLISH_WORDS
     settings = {"label_font": bake_record.sha256_of_bytes(fonts.pack_bytes(label_font)), "key_font": bake_record.sha256_of_bytes(fonts.pack_bytes(key_font)), "width": SHEET_WIDTH, "height": SHEET_HEIGHT}
+    if words != ENGLISH_WORDS:
+        settings["words"] = words
     relative_path = "textures/" + SHEET_NAME + ".gtex"
     key = record.key_for(code, settings, b"")
     gtex_bytes = record.read_if_current(relative_path, key)
     if gtex_bytes is None:
         rgba_path = os.path.join(work_folder, SHEET_NAME + ".rgba")
-        subprocess.run(sheet_arguments(fonts.decoded_path(label_font), fonts.decoded_path(key_font), rgba_path), check=True, capture_output=True)
+        fonts.require(label_font, "".join(words.values()))
+        label_font_path = fonts.decoded_path(label_font)
+        subprocess.run(sheet_arguments(label_font_path, fonts.decoded_path(key_font), rgba_path, words, word_points(label_font_path, words)), check=True, capture_output=True)
         with open(rgba_path, "rb") as source:
             pixels = source.read()
         os.remove(rgba_path)
