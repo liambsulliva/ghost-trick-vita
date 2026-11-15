@@ -1799,6 +1799,16 @@ The class: a converter output longer than a fixed table in the app.
 
 Guard: `asset_writers.manifest_text` refuses more scene, background or animation names than the app holds, so the bake stops instead of writing a set the app rejects. `tests/tools/test_asset_writers.py` reads the limits from `include/asset_manifest.h` and fails when the two disagree. The DS set no longer lists its animations, the same as the remastered set.
 
+### 241. The DS set had no faces and no interface art, because one of the cartridge's two packs was never read
+
+Found on the Vita: with Visual Filter on DS, every talk drew its text with no box and no face, and the log listed `talk_box_top`, `talk_box_bottom`, `ui_choice_buttons`, `ui_tap_balloon`, the rewind rocks and more as missing. The DS converter read only `cpac_2d.bin`. The DS draws its faces and nearly all of its interface on the 3D layer, as textured quads whose textures sit in `cpac_3d.bin` block 0 (`.tds` files, 1,136 of them, loaded by the same entry loader `func_0201e664`). The face table at `data_02085724`, which the remastered set already reads for its own faces, names a face by its entry in that block, so face 3's first field, 216, is texture 216. Entries from 322 on come in groups of five, one per cartridge language.
+
+The class: art the DS draws from a pack the converter does not open.
+
+Guard: `tools/assets/ds_textures.py` decodes the five texture formats the cartridge uses (4, 16 and 256 colours, A3I5 and A5I3) and refuses anything else. `ds_set_text.py` reads each page's face, pose and head codes, as the remastered set does, and bakes `ds_face_<entry>` at DS size for every face a page names; the head icons are the entries `ds_head_textures` lists in the set description. `tools/assets/ds_ui.py` builds each interface texture the app names from the parts `ds_textures` gives it in the set description: a crop of a cartridge texture, scaled to the nearest pixel into the place the app's layout reads, with nine-slice parts for panels. A texture whose source is missing or does not decode is left out and named on one line, so the app still logs it and draws nothing. `tests/tools/test_ds_textures.py`, `test_ds_ui.py` and the face tests in `test_ds_set_text.py` cover the decoder, the composer, the page fields and the description.
+
+What the DS really shows is read from the cartridge running in melonDS: `tools/ds_screen_dump.py` presses buttons on a schedule, saves the video memory and captures the main screen's finished picture, 3D layer included, through the DS display capture unit; `tools/ds_screen_render.py` draws both screens from a dump. The top talk box was matched against such a capture (a 208 by 48 box at x 24, built from texture 23). The bottom box uses the same texture and has not been seen in a capture, because the captures stop at the first touch tutorial: the tools press buttons but cannot touch.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

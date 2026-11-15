@@ -43,6 +43,12 @@
       "4": "CharFiles/3D/08_Face/cmn_do_10_06.user",
       "5": "CharFiles/3D/08_Face/cmn_do_10_06.user"
     },
+    "ds_head_textures": {
+      "1": 310,
+      "3": 312,
+      "4": 315,
+      "5": 315
+    },
     "window_textures": [
       "talk_box_bottom",
       "talk_box_top",
@@ -1765,6 +1771,221 @@
           "y": 89,
           "width": 57,
           "height": 19
+        }
+      ]
+    }
+  ],
+  "ds_textures": [
+    {
+      "name": "talk_box_top",
+      "width": 584,
+      "height": 144,
+      "parts": [
+        {
+          "texture": 23,
+          "crop": [
+            0,
+            0,
+            32,
+            48
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 90,
+          "height": 144
+        },
+        {
+          "texture": 23,
+          "crop": [
+            31,
+            0,
+            1,
+            48
+          ],
+          "x": 90,
+          "y": 0,
+          "width": 404,
+          "height": 144
+        },
+        {
+          "texture": 23,
+          "crop": [
+            0,
+            0,
+            32,
+            48
+          ],
+          "x": 494,
+          "y": 0,
+          "width": 90,
+          "height": 144,
+          "flip_x": true
+        }
+      ]
+    },
+    {
+      "name": "talk_box_bottom",
+      "width": 960,
+      "height": 132,
+      "parts": [
+        {
+          "texture": 23,
+          "crop": [
+            0,
+            0,
+            32,
+            48
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 90,
+          "height": 132
+        },
+        {
+          "texture": 23,
+          "crop": [
+            31,
+            0,
+            1,
+            48
+          ],
+          "x": 90,
+          "y": 0,
+          "width": 780,
+          "height": 132
+        },
+        {
+          "texture": 23,
+          "crop": [
+            0,
+            0,
+            32,
+            48
+          ],
+          "x": 870,
+          "y": 0,
+          "width": 90,
+          "height": 132,
+          "flip_x": true
+        }
+      ]
+    },
+    {
+      "name": "rewind_rocks_far",
+      "width": 64,
+      "height": 384,
+      "parts": [
+        {
+          "texture": 172
+        }
+      ]
+    },
+    {
+      "name": "rewind_rocks_mid",
+      "width": 64,
+      "height": 384,
+      "parts": [
+        {
+          "texture": 174
+        }
+      ]
+    },
+    {
+      "name": "rewind_rocks_near",
+      "width": 64,
+      "height": 384,
+      "parts": [
+        {
+          "texture": 173
+        }
+      ]
+    },
+    {
+      "name": "soul_spokes",
+      "width": 16,
+      "height": 64,
+      "parts": [
+        {
+          "texture": 11
+        }
+      ]
+    },
+    {
+      "name": "ui_choice_buttons",
+      "width": 512,
+      "height": 236,
+      "parts": [
+        {
+          "texture": 88,
+          "crop": [
+            19,
+            3,
+            130,
+            34
+          ],
+          "corner": 9,
+          "x": 125,
+          "y": 125,
+          "width": 100,
+          "height": 100,
+          "target_corner": 30
+        },
+        {
+          "texture": 88,
+          "crop": [
+            19,
+            3,
+            130,
+            34
+          ],
+          "corner": 9,
+          "x": 0,
+          "y": 117,
+          "width": 116,
+          "height": 116,
+          "target_corner": 35
+        }
+      ]
+    },
+    {
+      "name": "ui_select_button",
+      "width": 116,
+      "height": 116,
+      "parts": [
+        {
+          "texture": 193,
+          "crop": [
+            12,
+            5,
+            232,
+            38
+          ],
+          "corner": 12,
+          "x": 0,
+          "y": 0,
+          "width": 116,
+          "height": 116,
+          "target_corner": 40
+        }
+      ]
+    },
+    {
+      "name": "ui_tap_balloon",
+      "width": 512,
+      "height": 256,
+      "parts": [
+        {
+          "texture": 122,
+          "crop": [
+            11,
+            332,
+            41,
+            39
+          ],
+          "x": 2,
+          "y": 2,
+          "width": 225,
+          "height": 216
         }
       ]
     }

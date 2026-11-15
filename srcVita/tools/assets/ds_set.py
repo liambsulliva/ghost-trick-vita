@@ -8,6 +8,8 @@ import ds_rooms
 import ds_set_text
 import ds_sounds
 import ds_sprites
+import ds_textures
+import ds_ui
 import script_assets
 
 PLATE_NAME = "ds_plate_%d"
@@ -25,6 +27,7 @@ class Cartridge:
         with ds_rom.DsRom(rom_path) as rom:
             self.pack_bytes = rom.read_file(ds_rooms.PACK_PATH)
             self.sdat = rom.read_file(SDAT_PATH)
+            self.textures = ds_textures.TexturePack(rom.read_file(ds_textures.PACK_PATH))
         self.sprites = ds_sprites.SpritePack(self.pack_bytes)
 
 
@@ -196,4 +199,8 @@ def bake_art(set_description, scripts, arm9, cartridge, rom_path, record, work_f
     art["narration_lines"] = text["narration_lines"]
     art["talk_textures"] = text["talk_textures"]
     art["files"] = dict(text["talk_files"])
+    language = ds_textures.LANGUAGE_NUMBERS.get(set_description.get("scripts", {}).get("language", "en"), 1)
+    interface_paths, interface_sizes = ds_ui.bake(set_description.get("ds_textures", []), cartridge.textures, language, record)
+    art["texture_paths"] = art["texture_paths"] + interface_paths
+    art["texture_sizes"] = dict(art["texture_sizes"], **interface_sizes)
     return art
