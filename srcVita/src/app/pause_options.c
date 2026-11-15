@@ -79,6 +79,7 @@ enum row_job {
     JOB_RESET_SAVE,
     JOB_HIGH_CONTRAST,
     JOB_FPS_CAP,
+    JOB_VSYNC,
     JOB_VISUAL_FILTER,
     JOB_TEXT_SPEED,
     JOB_HINTS,
@@ -101,7 +102,7 @@ static const struct option_row rows[] = {
     { NULL, "high_contrast", ROW_CYCLES, JOB_HIGH_CONTRAST, 0, NULL },
     { NULL, "visual_filter", ROW_CYCLES, JOB_VISUAL_FILTER, 0, NULL },
     { NULL, "fps_cap", ROW_CYCLES, JOB_FPS_CAP, 0, NULL },
-    { NULL, "vsync", ROW_FIXED, JOB_NONE, 1, "on" },
+    { NULL, "vsync", ROW_CYCLES, JOB_VSYNC, 0, NULL },
     { "sound", "master", ROW_METER, JOB_MASTER, 0, NULL },
     { NULL, "music", ROW_METER, JOB_MUSIC, 0, NULL },
     { NULL, "effects", ROW_METER, JOB_EFFECTS, 0, NULL },
@@ -310,6 +311,8 @@ static int *switch_of(enum row_job job)
         return &settings->high_contrast;
     case JOB_FPS_CAP:
         return &settings->fps_cap;
+    case JOB_VSYNC:
+        return &settings->vsync;
     case JOB_VISUAL_FILTER:
         return &settings->visual_filter;
     case JOB_UNLOCK_ALL:
@@ -417,6 +420,7 @@ static void act_on_row(void)
         break;
     case JOB_HIGH_CONTRAST:
     case JOB_FPS_CAP:
+    case JOB_VSYNC:
     case JOB_VISUAL_FILTER:
     case JOB_UNLOCK_ALL:
         flip_switch(rows[selected].job);

@@ -208,6 +208,11 @@ void renderer_set_vblanks_per_frame(int vblanks)
     vblanks_per_frame = vblanks < 1 ? 1 : vblanks;
 }
 
+void renderer_set_vsync(int is_on)
+{
+    vglWaitVblankStart(is_on ? GL_TRUE : GL_FALSE);
+}
+
 renderer_texture renderer_texture_create(const unsigned char *rgba_pixels, int width, int height)
 {
     GLuint texture;

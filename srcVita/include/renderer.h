@@ -54,6 +54,7 @@ int renderer_snapshot_begin(void);
 void renderer_snapshot_end(void);
 void renderer_draw_snapshot(struct renderer_rect screen_area, float alpha);
 void renderer_set_vblanks_per_frame(int vblanks);
+void renderer_set_vsync(int is_on);
 void renderer_raise_contrast(void);
 void renderer_raise_contrast_in(struct renderer_rect screen_area);
 void renderer_draw_turned_snapshot(float center_x, float center_y, float half_width, float half_height, float degrees, float alpha);

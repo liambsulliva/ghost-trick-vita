@@ -20,12 +20,14 @@ static int texture_is_sharp[FAKE_TEXTURE_MAX];
 static int unfilled_draws;
 static int uploads_should_fail;
 static int vblanks_per_frame = 1;
+static int vsync_is_on = 1;
 
 static struct fake_draw *record_draw(renderer_texture texture, int is_filled_rect, struct renderer_rect screen_area, struct renderer_rect texture_area, struct renderer_color color);
 
 void fake_renderer_reset(void)
 {
     vblanks_per_frame = 1;
+    vsync_is_on = 1;
     memset(texture_widths, 0, sizeof(texture_widths));
     memset(texture_is_alive, 0, sizeof(texture_is_alive));
     memset(texture_is_filled, 0, sizeof(texture_is_filled));
@@ -139,6 +141,16 @@ void renderer_end_frame(void)
 void renderer_set_vblanks_per_frame(int vblanks)
 {
     vblanks_per_frame = vblanks;
+}
+
+void renderer_set_vsync(int is_on)
+{
+    vsync_is_on = is_on != 0;
+}
+
+int fake_renderer_vsync_is_on(void)
+{
+    return vsync_is_on;
 }
 
 void renderer_raise_contrast(void)

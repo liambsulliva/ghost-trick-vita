@@ -17,6 +17,7 @@
 #define HIGH_CONTRAST_ROW 3
 #define VISUAL_FILTER_ROW 4
 #define FPS_CAP_ROW 5
+#define VSYNC_ROW 6
 #define MASTER_ROW 7
 #define MUSIC_ROW 8
 #define MUSIC_TYPE_ROW 10
@@ -71,7 +72,7 @@ static void test_settings_survive_a_round_trip_and_bad_values_are_clamped(void)
     size = game_settings_write_text(&written, text, sizeof(text));
     game_settings_defaults(&read);
     CHECK_INT(read.hint_delay, GAME_HINTS_AFTER_5_MINUTES);
-    CHECK_INT(game_settings_read_text(&read, text, size), 12);
+    CHECK_INT(game_settings_read_text(&read, text, size), 13);
     CHECK_INT(read.hint_delay, GAME_HINTS_AFTER_10_MINUTES);
     CHECK_INT(read.brightness, 4);
     CHECK_INT(read.master, 3);
@@ -115,6 +116,8 @@ static void test_the_cursor_skips_rows_the_vita_fixes(void)
     CHECK_INT(pause_options_selected_row(), VISUAL_FILTER_ROW);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), FPS_CAP_ROW);
+    pause_options_step(INPUT_DOWN);
+    CHECK_INT(pause_options_selected_row(), VSYNC_ROW);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), MASTER_ROW);
     press_down_to(RESTORE_ROW);
@@ -316,6 +319,11 @@ static void test_display_switches_flip_save_and_reach_the_renderer(void)
     pause_options_step(INPUT_CROSS);
     CHECK_INT(game_settings_now()->fps_cap, GAME_FPS_CAPPED);
     CHECK_INT(fake_renderer_vblanks_per_frame(), 2);
+    CHECK_INT(fake_renderer_vsync_is_on(), 1);
+    press_down_to(VSYNC_ROW);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->vsync, 0);
+    CHECK_INT(fake_renderer_vsync_is_on(), 0);
     press_up_to(HIGH_CONTRAST_ROW);
     pause_options_step(INPUT_LEFT);
     CHECK_INT(game_settings_now()->high_contrast, 1);
@@ -326,11 +334,13 @@ static void test_display_switches_flip_save_and_reach_the_renderer(void)
         game_settings_defaults(&read);
         game_settings_read_text(&read, (const char *)saved, size);
         CHECK_INT(read.fps_cap, GAME_FPS_CAPPED);
+        CHECK_INT(read.vsync, 0);
         CHECK_INT(read.high_contrast, 1);
     }
     game_settings_defaults(game_settings_now());
     game_settings_apply();
     CHECK_INT(fake_renderer_vblanks_per_frame(), 1);
+    CHECK_INT(fake_renderer_vsync_is_on(), 1);
 }
 
 static void test_the_visual_filter_chooses_only_when_both_art_sets_are_bundled(void)

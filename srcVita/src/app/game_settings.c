@@ -43,6 +43,7 @@ static void keep_in_range(struct game_settings *settings)
     settings->language = settings->language >= 0 && settings->language < ASSET_LANGUAGE_COUNT ? settings->language : ASSET_LANGUAGE_ENGLISH;
     settings->unlock_all = settings->unlock_all != 0;
     settings->fps_cap = settings->fps_cap == GAME_FPS_CAPPED ? GAME_FPS_CAPPED : GAME_FPS_FULL;
+    settings->vsync = settings->vsync != 0;
     settings->high_contrast = settings->high_contrast != 0;
     settings->visual_filter = settings->visual_filter == GAME_FILTER_DS ? GAME_FILTER_DS : GAME_FILTER_REMASTERED;
     settings->text_speed = settings->text_speed >= GAME_TEXT_SLOW && settings->text_speed < GAME_TEXT_SPEED_COUNT ? settings->text_speed : GAME_TEXT_NORMAL;
@@ -80,6 +81,7 @@ void game_settings_defaults(struct game_settings *settings)
     settings->language = default_language;
     settings->unlock_all = 0;
     settings->fps_cap = GAME_FPS_FULL;
+    settings->vsync = 1;
     settings->high_contrast = 0;
     settings->visual_filter = GAME_FILTER_REMASTERED;
     settings->text_speed = GAME_TEXT_NORMAL;
@@ -118,6 +120,8 @@ int game_settings_read_text(struct game_settings *settings, const char *text, un
             settings->unlock_all = value;
         } else if (strcmp(name, "fps_cap") == 0) {
             settings->fps_cap = value;
+        } else if (strcmp(name, "vsync") == 0) {
+            settings->vsync = value;
         } else if (strcmp(name, "high_contrast") == 0) {
             settings->high_contrast = value;
         } else if (strcmp(name, "visual_filter") == 0) {
@@ -138,7 +142,7 @@ unsigned int game_settings_write_text(const struct game_settings *settings, char
 {
     int written;
 
-    written = snprintf(text, text_size, "brightness %d\nmaster %d\nmusic %d\neffects %d\nmusic_type %d\nlanguage %d\nunlock_all %d\nfps_cap %d\nhigh_contrast %d\nvisual_filter %d\ntext_speed %d\nhint_delay %d\n", settings->brightness, settings->master, settings->music, settings->effects, settings->music_type, settings->language, settings->unlock_all, settings->fps_cap, settings->high_contrast, settings->visual_filter, settings->text_speed, settings->hint_delay);
+    written = snprintf(text, text_size, "brightness %d\nmaster %d\nmusic %d\neffects %d\nmusic_type %d\nlanguage %d\nunlock_all %d\nfps_cap %d\nvsync %d\nhigh_contrast %d\nvisual_filter %d\ntext_speed %d\nhint_delay %d\n", settings->brightness, settings->master, settings->music, settings->effects, settings->music_type, settings->language, settings->unlock_all, settings->fps_cap, settings->vsync, settings->high_contrast, settings->visual_filter, settings->text_speed, settings->hint_delay);
     return written < 0 || (unsigned int)written >= text_size ? 0u : (unsigned int)written;
 }
 
@@ -210,6 +214,7 @@ void game_settings_apply(void)
         music_engine_use_folder(music_folders[current.music_type]);
     }
     renderer_set_vblanks_per_frame(GAME_FPS_FULL / current.fps_cap);
+    renderer_set_vsync(current.vsync);
     if (language_user != NULL) {
         language_user(current.language);
     }

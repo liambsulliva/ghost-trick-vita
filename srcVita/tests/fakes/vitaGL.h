@@ -13,6 +13,7 @@ typedef double GLdouble;
 typedef void GLvoid;
 
 #define GL_FALSE 0
+#define GL_TRUE 1
 #define GL_NO_ERROR 0
 #define GL_INVALID_OPERATION 0x0502
 #define GL_TRIANGLES 0x0004
@@ -51,6 +52,7 @@ typedef void GLvoid;
 
 GLboolean vglInitExtended(int pool_size, int width, int height, int ram_threshold, int msaa);
 void vglSwapBuffers(GLboolean has_commondialog);
+void vglWaitVblankStart(GLboolean enable);
 void *vglGetTexDataPointer(GLenum target);
 GLenum glGetError(void);
 void glViewport(GLint x, GLint y, GLsizei width, GLsizei height);

@@ -20,6 +20,7 @@
 #define renderer_draw_turned_snapshot real_renderer_draw_turned_snapshot
 #define renderer_draw_triangles real_renderer_draw_triangles
 #define renderer_set_vblanks_per_frame real_renderer_set_vblanks_per_frame
+#define renderer_set_vsync real_renderer_set_vsync
 #define renderer_raise_contrast real_renderer_raise_contrast
 #define renderer_raise_contrast_in real_renderer_raise_contrast_in
 #include "../../src/vita/renderer.c"
@@ -194,6 +195,13 @@ int sceDisplayWaitVblankStart(void)
 {
     vblank_waits = vblank_waits + 1;
     return 0;
+}
+
+static int vgl_waits_for_vblank = 1;
+
+void vglWaitVblankStart(GLboolean enable)
+{
+    vgl_waits_for_vblank = enable == GL_TRUE;
 }
 
 void glMatrixMode(GLenum mode)
@@ -636,6 +644,15 @@ static void test_a_30_fps_cap_waits_out_one_more_vblank_each_frame(void)
     CHECK_INT(vblank_waits, 2);
 }
 
+static void test_vsync_off_stops_vitagl_waiting_for_the_vblank(void)
+{
+    start_renderer();
+    real_renderer_set_vsync(0);
+    CHECK_INT(vgl_waits_for_vblank, 0);
+    real_renderer_set_vsync(1);
+    CHECK_INT(vgl_waits_for_vblank, 1);
+}
+
 static void test_a_sharp_texture_samples_its_nearest_texel(void)
 {
     static const unsigned char pixels[16] = { 0 };
@@ -693,6 +710,7 @@ int main(void)
 {
     test_an_empty_compressed_texture_is_filled_with_the_swizzle_vitagl_uses();
     test_a_30_fps_cap_waits_out_one_more_vblank_each_frame();
+    test_vsync_off_stops_vitagl_waiting_for_the_vblank();
     test_a_sharp_texture_samples_its_nearest_texel();
     test_high_contrast_lowers_the_floor_then_scales_and_puts_blending_back();
     test_the_target_is_one_rgb565_texture_the_size_of_the_screen();

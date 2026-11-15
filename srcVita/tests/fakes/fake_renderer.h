@@ -39,5 +39,6 @@ int fake_renderer_snapshot_draw_count(void);
 const struct fake_draw *fake_renderer_snapshot_draw(int index);
 
 int fake_renderer_vblanks_per_frame(void);
+int fake_renderer_vsync_is_on(void);
 
 #endif

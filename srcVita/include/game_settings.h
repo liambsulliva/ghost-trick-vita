@@ -43,6 +43,7 @@ struct game_settings {
     int language;
     int unlock_all;
     int fps_cap;
+    int vsync;
     int high_contrast;
     int visual_filter;
     int text_speed;
