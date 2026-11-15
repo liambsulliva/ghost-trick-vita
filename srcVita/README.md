@@ -28,7 +28,7 @@ No game data lives in this folder. Converted assets, captures, reference video a
 
 A good first read is `src/app/viewer_app.c`, then `script_player.c`, `script_machine.c` and `scene_view.c`.
 
-The scene fills the Vita's 960 by 544 screen at 2.8125 screen pixels per DS pixel, so wide rooms show about 85 more DS pixels across than the DS did. Art that stops short of the screen, such as room 11's close-up and the chapter card, is centred with black around it and never stretched. `docs/asset_format.md` has the rule.
+The scene fills the Vita's 960 by 544 screen at 2.8125 screen pixels per DS pixel, so wide rooms show about 85 more DS pixels across than the DS did, and talk boxes span the whole screen as they span the DS picture. Art that stops short of the screen, such as room 11's close-up and the chapter card, is centred with black around it and never stretched. `docs/asset_format.md` has the rule.
 
 ## Build and test
 
@@ -347,9 +347,7 @@ These are the known differences from the original. Bug-fix releases work through
 - Some core labels are on the wrong side, or on one line instead of two.
 - The thin pill words.
 - The soul's fly-in from the trick pill.
-- Film-still bubbles are about 40% too wide, and the bubble close is squashed.
 - Short black or white holds that the footage does not have.
-- Pacing: narration pages in the opening run about 9.6 s longer in total than the footage (the first page alone about 4 s). Talk pages cycle about every 2.8 s, against 2.5 s.
 
 **Effects**
 

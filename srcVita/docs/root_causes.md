@@ -1853,6 +1853,20 @@ Guard: the remastered set always takes list rows from the remaster's table (`con
 
 The README listed "Soul view class gates. They are not drawn." The words come from the 2026-11-06 README's "Object tints and class gates are not drawn": which classes draw in which view. Root cause 44 moved that rule into `script_classes.c` (`script_class_draws_in_living_view`, `script_class_draws_in_soul_view`), and the bridge applies it to every actor (`scene_stage_set_object_views`); the tints are root causes 243 and earlier. `tests/unit/test_ghost_copy.c` checks the gates. Nothing is left to draw, so the line is gone.
 
+### 247. "Film-still bubbles 40% too wide" compared a 4:3 frame with the wide screen
+
+The README said film-still bubbles were about 40% too wide and their close squashed. In the film still after the rescue (footage 1013 s, port tick 51553), the talk box's height, its text's size and the text's place from the box's left edge match within a few pixels once the footage's 4:3 picture is scaled to 720 by 540. The box spans the picture in both: 716 of the footage's 720 px with rounded corners just inside its edges, and all 960 px of the port, whose scene fills the wide screen (the README's display rule). 960 over 716 is the 1.34 the line measured. The opening's "So long, sister." balloon is about 330 Vita px wide in both.
+
+The close, at 60 fps around "(Unconscious, eh?)" (footage 791.0 s, port tick 40163): in both the box slides down off the bottom while the portrait slides out to the left; the footage's box is gone after 6 frames and its portrait after 6 or 7, the port's after 7 and 8. Neither squashes.
+
+Guard: none needed; the README states the wide-screen rule once.
+
+### 248. Opening narration pacing was measured with the talk pages included
+
+The README said the opening's narration ran about 9.6 s longer in total than the footage, its first page alone about 4 s, and talk pages cycled every 2.8 s against 2.5 s. Measured from the first narration page to the swirl, the port takes 74 s and the footage 75 s; the first page takes 7 s and 8 s. Talk pages wait for the player's press in both games, so their length is how fast the player presses: the footage's player held two pages for 3.5 and 4.0 s, and the port's auto-play holds them for 3.0 and 2.8 s by its own pacing. Neither is game behaviour.
+
+Guard: none needed; auto-play's pacing is a test harness choice.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
