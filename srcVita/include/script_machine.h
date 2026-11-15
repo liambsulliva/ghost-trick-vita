@@ -370,6 +370,7 @@ struct script_soul {
     int tutorial_holds_input;
     int view_is_a_tutorial;
     int ghost_is_pending;
+    int trick_waits_for_the_leave;
     int tap_group_is_pending;
     int direction_x;
     int direction_y;
@@ -711,6 +712,7 @@ void script_soul_effect_deleted(struct script_machine *machine, const char *name
 void script_soul_effect_signalled(struct script_machine *machine, const char *name);
 int script_soul_waits_on_the_player(const struct script_machine *machine);
 int script_soul_world_is_playable(const struct script_machine *machine);
+int script_soul_ghost_view_offers_a_trick(const struct script_machine *machine);
 int script_soul_demo_mode_offers_the_ghost_view(const struct script_machine *machine);
 void script_exchange_reset(struct script_machine *machine);
 int script_exchange_is_on(const struct script_machine *machine);

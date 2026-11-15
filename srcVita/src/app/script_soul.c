@@ -1739,6 +1739,47 @@ static void step_the_game_over(struct script_machine *machine)
     }
 }
 
+int script_soul_ghost_view_offers_a_trick(const struct script_machine *machine)
+{
+    const struct script_soul *soul;
+
+    soul = &machine->soul;
+    return soul->is_on && !soul->is_leaving_view && machine->mode_byte == SCRIPT_MODE_NORMAL && soul->tutorial_mode == TUTORIAL_NONE && !a_scripted_event_holds_the_soul(machine) && !script_exchange_is_on(machine) && soul->trick_is_on && soul->active_object != NO_CORE && soul->drag_ticks_left == 0 && soul->action_is_due_in == 0 && !soul->trick_waits_for_the_leave && !core_is_busy(machine) && !core_names_no_trick(machine);
+}
+
+static void take_trick_in_the_ghost_view(struct script_machine *machine)
+{
+    if (!script_soul_ghost_view_offers_a_trick(machine) || !pill_answers_a_press(machine, SCRIPT_PILL_TRICK)) {
+        return;
+    }
+    script_pills_press(machine, SCRIPT_PILL_TRICK, PILL_HOLD_AFTER_TRICK);
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("trick_from_ghost_view", machine->objects[machine->soul.active_object].name);
+    }
+    machine->soul.trick_waits_for_the_leave = 1;
+    machine->mode_byte = SCRIPT_MODE_NORMAL;
+    set_soul_view(machine, 0);
+}
+
+static void fire_the_trick_kept_for_the_leave(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    if (!soul->trick_waits_for_the_leave || soul->is_leaving_view || soul->view_change_ticks_left > 0) {
+        return;
+    }
+    soul->trick_waits_for_the_leave = 0;
+    if (soul->is_on || !script_soul_world_is_playable(machine) || !soul->trick_is_on || core_is_busy(machine) || core_names_no_trick(machine)) {
+        if (machine->outputs->marked != NULL) {
+            machine->outputs->marked("trick_from_ghost_view_dropped", soul->active_object != NO_CORE ? machine->objects[soul->active_object].name : "-");
+        }
+        return;
+    }
+    soul->mark_age_ticks = MARK_IS_OFF;
+    fire_trick(machine);
+}
+
 static void take_press(struct script_machine *machine)
 {
     struct script_soul *soul;
@@ -1778,6 +1819,7 @@ static void take_press(struct script_machine *machine)
         return;
     }
     if (soul->is_on) {
+        take_trick_in_the_ghost_view(machine);
         return;
     }
     if (script_soul_world_is_playable(machine) && soul->trick_is_on && !core_is_busy(machine) && pill_answers_a_press(machine, SCRIPT_PILL_TRICK)) {
@@ -2923,6 +2965,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         }
     }
     finish_leaving_view_when_due(machine);
+    fire_the_trick_kept_for_the_leave(machine);
     if (machine->route_is_driving) {
         run_route(machine);
     }

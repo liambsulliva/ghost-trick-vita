@@ -27,6 +27,7 @@
   },
   "narration_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
   "talk": {
+    "pages_left_out": ["st01_0000_m01_0460_05", "st01_0000_m01_0460_06", "st01_0000_m01_0460_07"],
     "system_lines": {
       "sys_add_data": {
         "file": "system/system_0000.en.msg.xml.lz",
