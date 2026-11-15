@@ -353,12 +353,12 @@ These are the known differences from the original. Bug-fix releases work through
 
 **Effects**
 
-- Effects 8 (`efc_tsunagu`, kind 0xd8) and 9 (`efc_chain`, kind 0xce) have no art in any remaster effect list. `coreactionexchangecore` is an unconfirmed candidate for 8. Notes are in `extracted/audit_notes_2026-11-06/effects_8_9.md`.
-- Effects without art are noted in the log and not drawn.
+- Effects 8 (`efc_tsunagu`) and 9 (`efc_chain`) have no art in the remaster: none of its 144 effect lists has a row for their kinds (0xd8 and 0xcf), so they are not drawn.
+- Effects 5, 6 (the ripple), 42, 43, 61, 62 and 207 (the dog's bark) have no art in the remaster either and are not drawn.
+- These class effects have no port and are not drawn: 50, 54, 56, 57, 59, 64, 65, 99 to 102, 118, 119, 146 to 151, 165 to 168, 191 to 193, 227 to 229, 242, 243 and 270.
 
 **Not in the port**
 
-- **Soul view class gates.** They are not drawn.
 - **Touch.** The back touch pad is not read. The front screen works alongside the buttons: tap pills, balloons, Rewind Time and talk, drag the soul in Ghost view, and drag the camera where the game allows it.
 The VM's timing comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.
 

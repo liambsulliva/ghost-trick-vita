@@ -70,10 +70,10 @@ class SetUpGameTest(unittest.TestCase):
         self.assertIn("ux0:data/ghosttrick/assets_ds/", shown)
         self.assertNotIn("ux0:data/ghosttrick/assets/\n", shown)
 
-    def test_with_the_android_package_both_sets_are_built_and_planned(self):
+    def test_with_the_android_package_both_sets_are_built_and_planned_after_the_tables_are_read(self):
         with tempfile.TemporaryDirectory() as folder:
             calls, shown = self.run_stages_with(folder, os.path.join(folder, "game.apk"))
-        self.assertEqual(calls, ["copy", "key", "srcVita/tools/assets", "ds", "remastered", "PLAN_SET=game_ds", "PLAN_SET=game"])
+        self.assertEqual(calls, ["copy", "key", "tables", "srcVita/tools/assets", "ds", "remastered", "PLAN_SET=game_ds", "PLAN_SET=game"])
         self.assertIn("ux0:data/ghosttrick/assets_ds/", shown)
         self.assertIn("ux0:data/ghosttrick/assets/", shown)
 

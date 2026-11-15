@@ -229,9 +229,9 @@ def run_stages(arguments):
         else:
             stage_header(3)
             find_text_key(arguments.apk)
-        if not with_rom and not os.path.exists(TABLES_PATH):
+        if not os.path.exists(TABLES_PATH):
             if arguments.apk is None:
-                raise SetupFailed("no DS ROM, and the game tables were never read out of the Android package; name it again with --apk")
+                raise SetupFailed("the game tables were never read out of the Android package; name it again with --apk")
             read_tables(arguments.apk)
 
     stage_header(4)
