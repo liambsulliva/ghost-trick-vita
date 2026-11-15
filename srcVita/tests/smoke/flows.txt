@@ -1,6 +1,6 @@
 block new_game
-remastered: until 900 title
-remastered: press cross
+until 900 title
+press cross
 until 9000 game
 
 block continue
@@ -471,7 +471,7 @@ wait 30
 expect title_submenu
 
 flow visual_filter_relaunch
-about With both sets installed, Visual Filter on the title saves the choice and relaunches into the other set.
+about With both sets installed, Visual Filter on the title saves the choice and relaunches into the DS set, and from there back into the remastered one.
 guards 217 231
 sets both
 log_has settings saved=1
@@ -483,9 +483,19 @@ press down
 press down
 expect options_row 4
 press right
-launch
+launch relaunches
 expect set ds
 expect setting visual_filter 1
+use open_title_options
+press down
+press down
+press down
+press down
+expect options_row 4
+press left
+launch
+expect set remastered
+expect setting visual_filter 0
 use new_game
 
 flow hint_after_wait
