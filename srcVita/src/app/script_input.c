@@ -179,8 +179,36 @@ static void send_buttons(struct script_machine *machine, unsigned int pressed)
     }
 }
 
+static void steer_the_phone_book(struct script_input *input, struct script_machine *machine, const struct input_state *frame)
+{
+    int pressed_x;
+    int pressed_y;
+    int stick_is_out;
+
+    pressed_x = axis_of(frame->pressed, INPUT_LEFT, INPUT_RIGHT);
+    pressed_y = axis_of(frame->pressed, INPUT_UP, INPUT_DOWN);
+    stick_is_out = frame->stick_x != 0.0f || frame->stick_y != 0.0f;
+    if (pressed_x == 0 && pressed_y == 0 && stick_is_out && !input->stick_was_out) {
+        stick_aim_first_push(frame->stick_x, frame->stick_y, &pressed_x, &pressed_y);
+    }
+    input->stick_was_out = stick_is_out;
+    input->touch_was_down = frame->touch_is_down;
+    input->touch_is_dragging = 0;
+    script_soul_set_held(machine, 0.0f, 0.0f);
+    script_phone_book_move_cursor(machine, pressed_y != 0 ? pressed_y : pressed_x);
+    if (frame->pressed & INPUT_CROSS) {
+        script_phone_book_go_there(machine);
+    } else if (frame->pressed & INPUT_CIRCLE) {
+        script_phone_book_stay_here(machine);
+    }
+}
+
 void script_input_frame(struct script_input *input, struct script_machine *machine, const struct input_state *frame)
 {
+    if (script_phone_book_takes_input(machine)) {
+        steer_the_phone_book(input, machine, frame);
+        return;
+    }
     send_directions(input, machine, frame);
     send_view_pan(machine, frame);
     send_touch(input, machine, frame);

@@ -448,6 +448,8 @@
         "title_warning": "Progress will be lost without saving.",
         "people_tab": "People",
         "phone_tab": "Phone Book",
+        "go_there": "Go There",
+        "stay_here": "Stay Here",
         "do_touch": "Drag the soul, tap pills and balloons",
         "title_continue": "Pick up from your newest save.",
         "title_chapters": "Play a chapter you have reached from its start.",
@@ -4172,14 +4174,6 @@
       },
       {
         "script": "st01-st01_game020_Expand",
-        "action": "trick",
-        "object": "dn_telephone",
-        "pace": "quick",
-        "footage_s": 4700.5,
-        "wait": "playable & no_talk"
-      },
-      {
-        "script": "st01-st01_game020_Expand",
         "action": "ghost_on",
         "object": "dn_kasa",
         "pace": "normal",
@@ -4212,11 +4206,123 @@
       },
       {
         "script": "st01-st01_game020_Expand",
+        "action": "tap_balloon",
+        "object": "keijitalk",
+        "pace": "normal",
+        "footage_s": 4971.0,
+        "wait": "balloon:keijitalk"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "tap_balloon",
+        "object": "kanshikitalk",
+        "pace": "normal",
+        "footage_s": 4998.0,
+        "wait": "balloon:kanshikitalk"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "tap_balloon",
+        "object": "keijitalk",
+        "pace": "normal",
+        "footage_s": 5004.0,
+        "wait": "act:game:gameAct045 & balloon:keijitalk"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "ghost_on",
+        "object": "dn_telephone",
+        "pace": "normal",
+        "footage_s": 5006.0,
+        "wait": "act:game:gameAct045 & free & no_talk"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "move",
+        "object": "dn_telephone",
+        "pace": "normal",
+        "footage_s": 5007.0,
+        "wait": "view & usable:dn_telephone"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "tap_balloon",
+        "object": "keijitalk",
+        "pace": "normal",
+        "footage_s": 5030.0,
+        "wait": "act:game:gameAct065 & balloon:keijitalk"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "tap_balloon",
+        "object": "kanshikitalk",
+        "pace": "normal",
+        "footage_s": 5035.0,
+        "wait": "act:game:gameAct065 & balloon:kanshikitalk"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "ghost_on",
+        "object": "dn_pistol",
+        "pace": "normal",
+        "footage_s": 5040.0,
+        "wait": "act:game:gameAct065 & free & no_talk"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "move",
+        "object": "dn_pistol",
+        "pace": "normal",
+        "footage_s": 5042.0,
+        "wait": "view & usable:dn_pistol"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "ghost_off",
+        "object": "dn_pistol",
+        "pace": "quick",
+        "footage_s": 5043.0,
+        "wait": "view & core:dn_pistol"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "trick",
+        "object": "dn_pistol",
+        "pace": "quick",
+        "footage_s": 5085.0,
+        "wait": "core:dn_pistol & playable"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "ghost_on",
+        "object": "dn_telephone",
+        "pace": "normal",
+        "footage_s": 5114.0,
+        "wait": "act:game:gameAct075 & free & no_talk"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "move",
+        "object": "dn_telephone",
+        "pace": "normal",
+        "footage_s": 5116.0,
+        "wait": "view & usable:dn_telephone"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
+        "action": "trick",
+        "object": "dn_telephone",
+        "pace": "quick",
+        "footage_s": 5118.0,
+        "wait": "act:game:gameAct090 & core:dn_telephone & playable"
+      },
+      {
+        "script": "st01-st01_game020_Expand",
         "action": "phone_call",
         "object": "dn_telephone",
         "pace": "normal",
-        "footage_s": 5115.0,
-        "wait": "act:dn_telephone:telephoneAct000",
+        "footage_s": 5120.0,
+        "wait": "act:game:gameAct090",
         "place": 2
       },
       {
@@ -5636,19 +5742,11 @@
       },
       {
         "script": "st03-st03_game000_Expand",
-        "action": "trick",
-        "object": "tel",
-        "pace": "normal",
-        "footage_s": 7411.0,
-        "wait": "core:tel & playable"
-      },
-      {
-        "script": "st03-st03_game000_Expand",
         "action": "ghost_on",
         "object": "tel",
         "pace": "normal",
         "footage_s": 7417.0,
-        "wait": "free & no_talk"
+        "wait": "usable:memo1 & playable & free & no_talk"
       },
       {
         "script": "st03-st03_game000_Expand",
@@ -7812,8 +7910,7 @@
         "object": "denwa",
         "pace": "normal",
         "footage_s": 12494.0,
-        "wait": "act:denwa:denwa_act05",
-        "place": 13
+        "wait": "act:denwa:denwa_act05"
       },
       {
         "script": "st04-st04_game003_Expand",
@@ -11640,14 +11737,6 @@
       },
       {
         "script": "st09-st09_game010_Expand",
-        "action": "trick",
-        "object": "denwa",
-        "pace": "quick",
-        "footage_s": 18786.0,
-        "wait": "core:denwa & playable"
-      },
-      {
-        "script": "st09-st09_game010_Expand",
         "action": "tap_balloon",
         "object": "Talk00",
         "pace": "normal",
@@ -11712,6 +11801,14 @@
       },
       {
         "script": "st09-st09_game010_Expand",
+        "action": "trick",
+        "object": "denwa",
+        "pace": "quick",
+        "footage_s": 19469.5,
+        "wait": "act:game_master:game_master_act05 & core:denwa & playable"
+      },
+      {
+        "script": "st09-st09_game010_Expand",
         "action": "phone_call",
         "object": "denwa",
         "pace": "normal",
@@ -11742,14 +11839,6 @@
         "pace": "quick",
         "footage_s": 19748.0,
         "wait": "view & core:tel"
-      },
-      {
-        "script": "st05-st05_game001_Expand",
-        "action": "trick",
-        "object": "tel",
-        "pace": "quick",
-        "footage_s": 19749.0,
-        "wait": "core:tel & playable"
       },
       {
         "script": "st05-st05_game001_Expand",

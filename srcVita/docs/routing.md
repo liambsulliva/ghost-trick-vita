@@ -15,7 +15,8 @@ Auto-play plays a step only through the inputs a player has (`src/app/script_rou
 - `camera`: holds the d-pad right while the camera tutorial is on.
 - `choose`: moves the choice marker with the d-pad, then presses CROSS.
 - Talk and narration pages get CROSS after 120 ticks of reading, and the game-over menu after 60.
-- `phone_call` and `dead_talk` still act inside the game and log `route_no_player_input` until their player inputs are ported.
+- `phone_call` moves the phone book's cursor to its `place` with the d-pad and presses CROSS (place 0 takes the place the book opens on); `phone_stay` presses CIRCLE. `dead_talk` still acts inside the game and logs `route_no_player_input` until its player input is ported.
+- The phone book holds the game like native's: nothing else happens until it is answered, so a Dial needs its answer as the next step, and a `place` must be one the book offers (the places noted so far, place 1 and the telephone's own). A ride whose `phone movie` handler loads a scene itself takes place 0 (root cause 206).
 - A telephone ride is three things the player does: trick the telephone (Dial) or leave the ghost view on it, as its scene's handler wants, then answer the phone book. `phone_call` (with `place`, the destination) is Go There and `phone_stay` is Stay Here; both wait until op 0x77 has opened the book (root cause 95), so a ride with no Dial step stalls. They are not ready until the book is up, so a book the scene opens long after the step (Chapter 5's basement telephone opens it only when demo010 ends) is still answered (root cause 96).
 
 A step that a player could not do fails after 1800 ticks; nothing teleports and nothing pushes a stuck scene on. With `--marks` the replay prints every object's core position and whether it can be used, at each `route_hop_beyond_reach` and at the end of the run, so a chain of cores within the ghost's reach can be read off directly.

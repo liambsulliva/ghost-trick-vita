@@ -1223,7 +1223,7 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         return SCRIPT_STEP_NEXT;
     case 0x77:
         machine->phone_view_is_on = 1;
-        machine->phone_book_is_open = 1;
+        script_phone_book_open(machine, words[0], words[1]);
         if (machine->outputs->soul_vision_changed != NULL) {
             machine->outputs->soul_vision_changed(1, 1);
         }

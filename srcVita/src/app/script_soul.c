@@ -892,6 +892,7 @@ static void report_hud(struct script_machine *machine)
     view.rewind_select_ticks = machine->soul.rewind_select_ticks;
     view.rewind_press_ticks = machine->soul.rewind_press_ticks;
     script_pills_fill_view(machine, &view);
+    script_phone_book_fill_view(machine, &view);
     machine->outputs->hud_changed(&view);
 }
 
@@ -2001,6 +2002,7 @@ static void go_to_route_step(struct script_machine *machine, int step_index)
     soul->route_taps_when_step_began = soul->taps_taken;
     soul->route_character_presses_when_step_began = soul->character_presses_taken;
     soul->route_picks_when_step_began = machine->choice.picks;
+    soul->route_phone_answers_when_step_began = machine->phone_book.answers;
     soul->exchange.route_swaps_when_step_began = soul->exchange.swaps_done;
     soul->route_aimed_node = NO_CORE;
 }
@@ -2434,22 +2436,6 @@ static void mark_no_player_input(struct script_machine *machine, const struct sc
     mark_route_step(machine, "route_no_player_input", step);
 }
 
-static int answer_the_phone_book(struct script_machine *machine, const struct script_route_step *step)
-{
-    if (!machine->phone_book_is_open) {
-        return 0;
-    }
-    mark_no_player_input(machine, step);
-    machine->phone_book_is_open = 0;
-    if (step->action == SCRIPT_ROUTE_PHONE_STAY) {
-        script_machine_send(machine, "*", "phone", "cancel");
-        return 1;
-    }
-    machine->phone_book_place = step->slot;
-    script_machine_send(machine, "*", "phone", "movie");
-    return 1;
-}
-
 static int route_step_is_done(struct script_machine *machine, const struct script_route_step *step)
 {
     int camera_push_x;
@@ -2474,7 +2460,7 @@ static int route_step_is_done(struct script_machine *machine, const struct scrip
         return !soul->camera_tutorial_is_on && !script_soul_route_camera_push(machine, &camera_push_x, &camera_push_y);
     case SCRIPT_ROUTE_PHONE_CALL:
     case SCRIPT_ROUTE_PHONE_STAY:
-        return answer_the_phone_book(machine, step);
+        return machine->phone_book.answers != soul->route_phone_answers_when_step_began;
     case SCRIPT_ROUTE_DEAD_TALK:
         mark_no_player_input(machine, step);
         start_dead_talk(machine, step->object[0] != '\0' ? script_machine_index_of_object(machine, step->object) : NO_CORE);

@@ -68,6 +68,8 @@ struct script_pill_view {
     int is_pressed;
 };
 
+#define SCRIPT_PHONE_BOOK_MOST 24
+
 struct script_hud_view {
     int side_is_on;
     int fate_level;
@@ -84,6 +86,10 @@ struct script_hud_view {
     int rewind_press_ticks;
     int pulse_ticks;
     struct script_pill_view pills[SCRIPT_PILL_COUNT];
+    int phone_book_is_up;
+    int phone_book_count;
+    int phone_book_cursor;
+    int phone_book_places[SCRIPT_PHONE_BOOK_MOST];
 };
 
 struct script_outputs {

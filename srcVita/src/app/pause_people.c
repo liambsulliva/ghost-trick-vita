@@ -670,6 +670,14 @@ static void draw_thumb(const char *name, float x, float y, float width, float he
     }
 }
 
+void pause_people_draw_place(int place, float x, float y, float width, float height, int is_framed)
+{
+    draw_thumb(art_for(PAUSE_PEOPLE_TAB_PLACES, place), x, y, width, height);
+    if (is_framed) {
+        draw_thumb("frame", x - FRAME_SPILL, y - FRAME_SPILL, width + 2.0f * FRAME_SPILL, height + 2.0f * FRAME_SPILL);
+    }
+}
+
 static void draw_whole_texture(const char *name, float x, float y)
 {
     const struct cached_texture *texture;

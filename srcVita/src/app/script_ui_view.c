@@ -1,6 +1,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "pause_people.h"
+#include "pause_widgets.h"
 #include "renderer.h"
 #include "scene_stage.h"
 #include "scene_view.h"
@@ -8,6 +10,17 @@
 #include "texture_cache.h"
 
 #define PLAYING_CLIP_MAX 4
+#define PHONE_BOOK_SHADE 0.6f
+#define PHONE_BOOK_TITLE_Y 120.0f
+#define PHONE_BOOK_PLACE_WIDTH 156.0f
+#define PHONE_BOOK_PLACE_HEIGHT 117.0f
+#define PHONE_BOOK_PLACE_TOP 200.0f
+#define PHONE_BOOK_PLACE_GAP 24.0f
+#define PHONE_BOOK_PLACES_EACH_SIDE 2
+#define PHONE_BOOK_HINT_Y 420.0f
+#define PHONE_BOOK_HINT_FROM_CENTRE 220.0f
+#define PHONE_BOOK_GLYPH_SIZE 36.0f
+#define PHONE_BOOK_GLYPH_GAP 10.0f
 #define DEGREES_TO_RADIANS 0.017453293f
 #define BAND_CENTER_Y 272.0f
 #define BAND_STRIPE_COUNT 29
@@ -1249,6 +1262,48 @@ void script_ui_view_draw_under_talk(float screen_fade)
     draw_side_hud(screen_fade);
 }
 
+static void draw_phone_book_hint(const char *glyph, const char *key, float left)
+{
+    float width;
+
+    width = pause_draw_glyph_from_left(glyph, left, PHONE_BOOK_HINT_Y, PHONE_BOOK_GLYPH_SIZE, 1.0f);
+    pause_draw_text(key, left + width + PHONE_BOOK_GLYPH_GAP, PHONE_BOOK_HINT_Y, PAUSE_ANCHOR_LEFT, 1.0f);
+}
+
+static void draw_phone_book(void)
+{
+    struct renderer_rect screen;
+    struct renderer_color shade;
+    float centre_x;
+    int offset;
+
+    if (!hud.phone_book_is_up) {
+        return;
+    }
+    screen.x = 0.0f;
+    screen.y = 0.0f;
+    screen.width = (float)RENDERER_WIDTH;
+    screen.height = (float)RENDERER_HEIGHT;
+    shade.red = 0.0f;
+    shade.green = 0.0f;
+    shade.blue = 0.0f;
+    shade.alpha = PHONE_BOOK_SHADE;
+    renderer_draw_filled_rect(screen, shade);
+    centre_x = (float)RENDERER_WIDTH / 2.0f;
+    pause_draw_text("bar.phone_tab", centre_x, PHONE_BOOK_TITLE_Y, PAUSE_ANCHOR_CENTRE, 1.0f);
+    for (offset = -PHONE_BOOK_PLACES_EACH_SIDE; offset <= PHONE_BOOK_PLACES_EACH_SIDE; offset++) {
+        int index;
+
+        index = hud.phone_book_cursor + offset;
+        if (index < 0 || index >= hud.phone_book_count) {
+            continue;
+        }
+        pause_people_draw_place(hud.phone_book_places[index], centre_x - PHONE_BOOK_PLACE_WIDTH / 2.0f + (float)offset * (PHONE_BOOK_PLACE_WIDTH + PHONE_BOOK_PLACE_GAP), PHONE_BOOK_PLACE_TOP, PHONE_BOOK_PLACE_WIDTH, PHONE_BOOK_PLACE_HEIGHT, offset == 0);
+    }
+    draw_phone_book_hint("cross", "bar.go_there", centre_x - PHONE_BOOK_HINT_FROM_CENTRE);
+    draw_phone_book_hint("circle", "bar.stay_here", centre_x + PHONE_BOOK_HINT_FROM_CENTRE / 4.0f);
+}
+
 void script_ui_view_draw(void)
 {
     int index;
@@ -1265,6 +1320,7 @@ void script_ui_view_draw(void)
         }
         draw_narration_arrow();
     }
+    draw_phone_book();
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
         if (playing[index].clip != NULL) {
             int element;

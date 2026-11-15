@@ -29,6 +29,7 @@ int pause_people_level(int tab, int index);
 const char *pause_people_card(void);
 const char *pause_people_art(void);
 void pause_people_read_ahead(void);
+void pause_people_draw_place(int place, float x, float y, float width, float height, int is_framed);
 void pause_people_draw(float x_offset);
 void pause_people_draw_bar(float x_offset);
 void pause_people_draw_dialog(float x_offset);

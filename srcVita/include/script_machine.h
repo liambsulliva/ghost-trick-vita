@@ -10,6 +10,7 @@
 #include "script_narration.h"
 #include "script_opcodes.h"
 #include "script_outputs.h"
+#include "script_phone_book.h"
 #include "script_route.h"
 #include "script_staff_roll.h"
 #include "script_talk.h"
@@ -402,6 +403,7 @@ struct script_soul {
     int route_taps_when_step_began;
     int route_character_presses_when_step_began;
     int route_picks_when_step_began;
+    int route_phone_answers_when_step_began;
     struct soul_chain chain;
     int chain_needs_reset;
     int chain_pick_object;
@@ -549,6 +551,7 @@ struct script_machine {
     int phone_view_is_on;
     int phone_book_place;
     int phone_book_is_open;
+    struct script_phone_book phone_book;
     int game_over_is_pending;
     unsigned int game_over_talk_ended_at;
     struct script_anchored_effect anchored_effects[SCRIPT_ANCHORED_EFFECT_MAX];

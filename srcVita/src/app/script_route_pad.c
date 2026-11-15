@@ -169,6 +169,34 @@ static int a_character_pill_is_up(const struct script_machine *machine)
     return script_pills_is_up(machine, SCRIPT_PILL_JOWD) || script_pills_is_up(machine, SCRIPT_PILL_MISSILE) || script_pills_is_up(machine, SCRIPT_PILL_CICEL);
 }
 
+static void answer_the_phone_book(struct script_route_pad *pad, const struct script_machine *machine, const struct script_route_step *step, struct input_state *frame)
+{
+    int wanted;
+
+    if (!script_phone_book_takes_input(machine)) {
+        return;
+    }
+    if (step->action == SCRIPT_ROUTE_PHONE_STAY) {
+        if (pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
+            press(pad, machine, frame, INPUT_CIRCLE);
+        }
+        return;
+    }
+    wanted = step->slot == 0 ? machine->phone_book.cursor : script_phone_book_index_of(machine, step->slot);
+    if (wanted < 0) {
+        return;
+    }
+    if (wanted != machine->phone_book.cursor) {
+        if (pad_may_press(pad, machine, TICKS_BETWEEN_CURSOR_MOVES)) {
+            press(pad, machine, frame, INPUT_DOWN);
+        }
+        return;
+    }
+    if (pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
+        press(pad, machine, frame, INPUT_CROSS);
+    }
+}
+
 static void play_the_route_step(struct script_route_pad *pad, const struct script_machine *machine, struct input_state *frame)
 {
     const struct script_route_step *step;
@@ -214,6 +242,10 @@ static void play_the_route_step(struct script_route_pad *pad, const struct scrip
         } else if (script_pills_is_up(machine, SCRIPT_PILL_EXCHANGE) && pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
             press(pad, machine, frame, INPUT_CROSS);
         }
+        break;
+    case SCRIPT_ROUTE_PHONE_CALL:
+    case SCRIPT_ROUTE_PHONE_STAY:
+        answer_the_phone_book(pad, machine, step, frame);
         break;
     case SCRIPT_ROUTE_CHARACTER:
         if (a_character_pill_is_up(machine) && pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
