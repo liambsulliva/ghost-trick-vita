@@ -1636,6 +1636,16 @@ The class: every routed scene, and anything else that reads the route to learn w
 
 Guard: at every finished route step the replay asks whether the follower is behind or ahead of auto-play and marks `hint_behind_route` or `hint_ahead_of_route`, and `make route-check` fails on either. The whole-game replay has none. It marks `hint_has_no_target` for a step a hint could not point at when it begins: 25 of the object steps (18 balloons, 5 character buttons and 2 phone answers), and no trick, swap or talk with the dead. `tests/unit/test_hints.c` covers the clock, the tap button choice, the one hint per scene, the camera pan, the retry and the steps with no object. `tests/tools/test_hud_art.py` checks that the "?" cell the converter draws on `hud_sheet` is the cell the app reads.
 
+### 222. The title's Options button played the confirm sound, as if the game were starting
+
+Reported: on the title menu, picking Options, Language, the trash or the Record played the same pick sound (system sound 26) as Continue and New Game, so a player who only opened a menu heard the game start. `pick` in `title_menu.c` played sound 26 on every branch.
+
+Native: none. The title menu and its buttons are the remaster's; the DS game has no such screen.
+
+The class: every button on the title menu, and any button added to it later.
+
+Guard: `title_menu_item_enters_game` reads one table of which buttons lead into the game (Continue, New Game, Chapter Select). Those play the pick sound; every other button plays the cursor sound (system sound 1). Leaving for the game still plays the pick sound in `leave_with`. `tests/unit/test_title_menu.c` (`test_only_buttons_that_enter_the_game_play_the_pick_sound`) picks every shown button with and without a save, checks the sound each one plays against the table, and checks that no button the table calls menu-only leaves the title.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

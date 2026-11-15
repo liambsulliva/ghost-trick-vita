@@ -41,6 +41,7 @@ typedef void (*title_sound_function)(int kind);
 
 void title_menu_use(title_save_check_function has_save, title_save_check_function is_cleared, title_save_check_function erase_saves);
 void title_menu_use_sound(title_sound_function play);
+int title_menu_item_enters_game(int item);
 int title_menu_is_ready(void);
 void title_menu_open(void);
 void title_menu_close(void);

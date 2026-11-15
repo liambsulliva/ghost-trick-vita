@@ -444,6 +444,65 @@ static void test_moving_the_cursor_plays_the_cursor_sound_and_a_submenu_pick_the
     CHECK_INT(sounds[1], PICK_SOUND);
 }
 
+static int steer_to(int item)
+{
+    static const unsigned int ways[4] = { INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT };
+    int first;
+    int second;
+
+    for (first = 0; first < 4; first++) {
+        for (second = 0; second < 5; second++) {
+            open_until_shown();
+            press(ways[first]);
+            if (second < 4 && title_menu_cursor() != item) {
+                press(ways[second]);
+            }
+            if (title_menu_cursor() == item) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+static void test_only_buttons_that_enter_the_game_play_the_pick_sound(void)
+{
+    int with_save;
+    int item;
+    int step;
+    int left_menu;
+
+    CHECK(title_menu_item_enters_game(TITLE_ITEM_CONTINUE));
+    CHECK(title_menu_item_enters_game(TITLE_ITEM_NEW_GAME));
+    CHECK(title_menu_item_enters_game(TITLE_ITEM_CHAPTERS));
+    CHECK(!title_menu_item_enters_game(TITLE_ITEM_OPTIONS));
+    CHECK(!title_menu_item_enters_game(TITLE_ITEM_LANGUAGE));
+    CHECK(!title_menu_item_enters_game(TITLE_ITEM_ERASE));
+    CHECK(!title_menu_item_enters_game(TITLE_ITEM_RECORD));
+    for (with_save = 0; with_save < 2; with_save++) {
+        for (item = 0; item < TITLE_MENU_ITEM_COUNT; item++) {
+            start_with_art(with_save);
+            open_until_shown();
+            if (!title_menu_shows(item)) {
+                continue;
+            }
+            CHECK(steer_to(item));
+            sound_count = 0;
+            press(INPUT_CROSS);
+            CHECK_INT(sound_count, 1);
+            CHECK_INT(sounds[0], title_menu_item_enters_game(item) ? PICK_SOUND : CURSOR_SOUND);
+            left_menu = 0;
+            for (step = 0; step < LEAVE_STEPS; step++) {
+                press(0);
+                left_menu = left_menu || title_menu_phase() == TITLE_PHASE_HOLDING;
+            }
+            if (!title_menu_item_enters_game(item)) {
+                CHECK(!left_menu);
+            }
+        }
+    }
+}
+
 static void test_the_menu_is_not_ready_without_its_art(void)
 {
     fake_files_reset();
@@ -468,6 +527,7 @@ int main(void)
     test_moving_the_cursor_plays_the_cursor_sound_and_a_submenu_pick_the_pick_sound();
     test_a_picked_button_looks_pressed_through_the_hold_and_the_fade();
     test_the_trash_looks_pressed_while_its_ask_is_open_and_not_after_no();
+    test_only_buttons_that_enter_the_game_play_the_pick_sound();
     test_the_menu_is_not_ready_without_its_art();
     return test_finish("unit/title_menu");
 }
