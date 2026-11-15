@@ -5,13 +5,9 @@
 #include <psp2/kernel/processmgr.h>
 #include "asset_sets.h"
 #include "clock.h"
-#include "command_file.h"
-#include "command_reader.h"
 #include "device_stats.h"
 #include "build_info.h"
 #include "file.h"
-#include "file_path.h"
-#include "fps_overlay.h"
 #include "game_settings.h"
 #include "frame_stats.h"
 #include "input.h"
@@ -21,30 +17,27 @@
 #include "renderer.h"
 #include "audio_thread.h"
 #include "run_log.h"
-#include "screen_burst.h"
-#include "screen_capture.h"
-#include "screen_watch.h"
 #include "script_player.h"
-#include "script_view.h"
 #include "system_watch.h"
 #include "texture_cache.h"
 #include "timing.h"
 #include "viewer_app.h"
+#ifdef DEBUG_BUILD
+#include "command_file.h"
+#include "command_reader.h"
+#include "file_path.h"
+#include "fps_overlay.h"
+#include "screen_burst.h"
+#include "screen_capture.h"
+#include "screen_watch.h"
+#include "script_view.h"
+#endif
 
 #define LONG_FRAME_US 50000u
-#define BURST_PAUSE_MOST_US 120000000ULL
 #define ART_HOLD_SLEEP_US 4000
-
-#define COMMAND_POLL_FRAMES 6
 #define KEEP_AWAKE_FRAMES 30
-#define CAPTURE_NAME_MAX 64
 #define FIRST_TIMED_FRAME 2
-#define LOG_FOR_TOOLS_CAPTURE_DONE "capture name=%s result=%d took_us=%llu"
-#define LOG_FOR_TOOLS_MUSIC_STARVE_COMMAND "command music_starve ms=%d"
-
 #define LOG_PATH FILE_DATA_FOLDER "/run.log"
-#define COMMANDS_PATH FILE_DATA_FOLDER "/commands.txt"
-#define CAPTURE_FOLDER FILE_DATA_FOLDER "/captures"
 #define RELAUNCH_PATH "app0:eboot.bin"
 
 static const struct renderer_color clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -69,6 +62,14 @@ static void log_memory_and_textures(void)
 }
 
 #ifdef DEBUG_BUILD
+#define BURST_PAUSE_MOST_US 120000000ULL
+#define COMMAND_POLL_FRAMES 6
+#define CAPTURE_NAME_MAX 64
+#define LOG_FOR_TOOLS_CAPTURE_DONE "capture name=%s result=%d took_us=%llu"
+#define LOG_FOR_TOOLS_MUSIC_STARVE_COMMAND "command music_starve ms=%d"
+#define COMMANDS_PATH FILE_DATA_FOLDER "/commands.txt"
+#define CAPTURE_FOLDER FILE_DATA_FOLDER "/captures"
+
 static void save_capture(const char *name)
 {
     char path[FILE_PATH_MAX];
@@ -207,7 +208,9 @@ static void publish_frame_stats(struct frame_stats *stats)
     frame_stats_format(stats, log_text, sizeof(log_text));
     run_log_write("%s", log_text);
     log_memory_and_textures();
+#ifdef DEBUG_BUILD
     screen_watch_publish();
+#endif
     system_watch_poll();
 
     average_frame_us = stats->total_frame_us / stats->frame_count;
@@ -236,8 +239,8 @@ static void run_main_loop(void)
     quit_requested = 0;
     frame_stats_reset(&stats);
     frame_timer_start(&frame_timer);
-    screen_watch_start();
 #ifdef DEBUG_BUILD
+    screen_watch_start();
     if (!command_reader_start(COMMANDS_PATH)) {
         run_log_write("command reader_not_started");
     }
@@ -306,8 +309,8 @@ static void run_main_loop(void)
         }
 
         last_frame_us = frame_timer_tick(&frame_timer);
-        screen_watch_note_frame();
 #ifdef DEBUG_BUILD
+        screen_watch_note_frame();
         fps_overlay_note_frame(last_frame_us);
         if (burst_pause_began_us != 0 && clock_now_us() - burst_pause_began_us > BURST_PAUSE_MOST_US) {
             burst_pause_began_us = 0;
@@ -345,7 +348,9 @@ int main(void)
 
     keep_awake_tick();
     file_make_folder(FILE_DATA_FOLDER);
+#ifdef DEBUG_BUILD
     file_make_folder(CAPTURE_FOLDER);
+#endif
     run_log_open(LOG_PATH);
     run_log_write("build id=%s", build_info_id());
     system_watch_start();

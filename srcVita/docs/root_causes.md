@@ -1672,6 +1672,16 @@ The class: any function a header exposes for a caller that has gone, in every mo
 
 Guard: `tests/tools/test_headers_expose_what_is_used.py` fails when a function declared in `include/` has no user outside its own file among the sources, the other headers and the tests. Make such a function `static`, or delete it.
 
+### 226. The player's build carried the dev tools and hashed the screen on every frame
+
+Found in the 1.0 audit: the Makefile compiled every source into both builds, so the player's build linked the command reader, the commands parser, the BMP writer, the screen capture, the burst recorder and the frame rate overlay, none of which it can reach. It also ran one of them: `screen_watch_note_frame` asked the system for the frame buffer and hashed a 16 px grid of it (2,040 reads of display memory) after every frame, to log `screen flips` once a second. That line is a development measurement, and the player's build paid for it on every frame. It also made an empty `captures` folder on the memory card.
+
+The class: any code only the debug build needs, wherever it is called from, and any game function that nothing in the player's build reaches.
+
+Guard: the sources named in the Makefile's `DEBUG_ONLY_NAMES` are left out of the player's build, and `main.c` includes and calls them only under `DEBUG_BUILD`. `make test` links the player's build on the Mac with dead stripping (`tests/tools/check_player_link.py`, parser tests in `tests/tools/test_player_link.py`) and fails when a game function is unreached and `tests/player_link/unreached.txt` does not name it, or when the list names one that is reached or gone. The list holds only what the tests and the debug build call. The link uses the test fakes for `src/vita`, so a name a device source uses counts as reached.
+
+Not measured: the saving per frame, because no device run was allowed. The Vita link dropped 5.3 KB of code.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

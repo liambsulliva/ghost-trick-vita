@@ -29,7 +29,12 @@ CFLAGS += -DDEBUG_BUILD
 OBJECT_FOLDER := build/obj_debug
 endif
 
+DEBUG_ONLY_NAMES := bmp_image command_file command_reader fps_overlay screen_burst screen_capture screen_changes screen_watch
+DEBUG_ONLY_SRCS := $(foreach name,$(DEBUG_ONLY_NAMES),$(wildcard src/app/$(name).c src/vita/$(name).c))
 SRCS := src/main.c $(wildcard src/app/*.c) $(wildcard src/vita/*.c) $(STB_VORBIS_SOURCE)
+ifneq ($(DEBUG),1)
+SRCS := $(filter-out $(DEBUG_ONLY_SRCS),$(SRCS))
+endif
 OBJS := $(patsubst src/%.c,$(OBJECT_FOLDER)/%.o,$(SRCS))
 
 LIVEAREA_FOLDER := build/sce_sys
@@ -138,14 +143,29 @@ build/tests/%: build/test_objects/tests/%.o $(APP_TEST_OBJECTS) $(FAKE_TEST_OBJE
 
 test-binaries: $(TEST_BINS)
 
-STANDARD_BUILD_CHECK := build/test_objects/standard_build_compiles
+PLAYER_OBJECT_FOLDER := build/player_objects
+PLAYER_SRCS := src/main.c $(filter-out $(DEBUG_ONLY_SRCS),$(APP_SRCS)) $(filter-out tests/fakes/fake_command_reader.c,$(FAKE_SRCS)) tests/player_link/platform.c
+PLAYER_OBJECTS := $(patsubst %.c,$(PLAYER_OBJECT_FOLDER)/%.o,$(PLAYER_SRCS))
+PLAYER_DEVICE_SRCS := $(filter-out $(DEBUG_ONLY_SRCS),$(wildcard src/vita/*.c))
+PLAYER_LINK_MAP := $(PLAYER_OBJECT_FOLDER)/player.map
+PLAYER_LINK_CHECK := $(PLAYER_OBJECT_FOLDER)/player_link_checked
 
-$(STANDARD_BUILD_CHECK): src/main.c $(APP_SRCS) $(TEST_HEADERS)
+$(PLAYER_OBJECT_FOLDER)/%.o: %.c $(TEST_HEADERS)
 	@mkdir -p $(dir $@)
-	@for source in src/main.c $(APP_SRCS); do $(HOST_CC) $(HOST_STANDARD_CFLAGS) -Itests/fakes -fsyntax-only $$source || exit 1; done
+	$(HOST_CC) $(HOST_STANDARD_CFLAGS) -fno-inline -Itests/fakes -c $< -o $@
+
+$(PLAYER_OBJECT_FOLDER)/stb_vorbis.o: $(STB_VORBIS_SOURCE)
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -std=c99 -w -O1 -include alloca.h $(STB_VORBIS_DEFINES) -c $< -o $@
+
+$(PLAYER_LINK_MAP): $(PLAYER_OBJECTS) $(PLAYER_OBJECT_FOLDER)/stb_vorbis.o
+	$(HOST_CC) $^ -Wl,-dead_strip -Wl,-map,$@ -o $(PLAYER_OBJECT_FOLDER)/player
+
+$(PLAYER_LINK_CHECK): $(PLAYER_LINK_MAP) tests/player_link/unreached.txt tests/tools/check_player_link.py $(PLAYER_DEVICE_SRCS)
+	python3 -I tests/tools/check_player_link.py $(PLAYER_LINK_MAP) tests/player_link/unreached.txt --game-objects $(PLAYER_OBJECT_FOLDER)/src/ --device-sources $(PLAYER_DEVICE_SRCS)
 	@touch $@
 
-test: $(STANDARD_BUILD_CHECK) $(TEST_BINS)
+test: $(PLAYER_LINK_CHECK) $(TEST_BINS)
 	@failed=0; for test_binary in $(TEST_BINS); do $$test_binary || failed=1; done; exit $$failed
 
 $(TEST_RUNS): run-%: %
