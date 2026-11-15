@@ -191,7 +191,7 @@ static void note_watched_actors(void)
         if (found == NULL || (found[length] != ',' && found[length] != '\0') || (found != watched_actor_names && found[-1] != ',') || machine.objects[index].is_deleted) {
             continue;
         }
-        printf(" %s %d,%d f%d r%d,%d", machine.objects[index].name, actor->x + actor->points[0][0], actor->y + actor->points[0][1], actor->is_flipped ? 1 : 0, actor->counters[0], actor->counters[4]);
+        printf(" %s %d,%d f%d r%d,%d v%d g%d", machine.objects[index].name, actor->x + actor->points[0][0], actor->y + actor->points[0][1], actor->is_flipped ? 1 : 0, actor->counters[0], actor->counters[4], actor->exists && actor->is_visible ? 1 : 0, script_ghost_copy_shown_level(&actor->ghost_copy));
     }
     printf("\n");
 }

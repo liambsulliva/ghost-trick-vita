@@ -256,6 +256,7 @@ static void draw_texture_or_placeholder(const char *texture_name, struct rendere
 
 struct held_pose {
     char object_name[ASSET_NAME_MAX];
+    char animation_name[ASSET_NAME_MAX];
     char texture_name[ASSET_NAME_MAX];
     float world_left;
     float world_top;
@@ -263,6 +264,7 @@ struct held_pose {
     float height;
     struct renderer_rect texture_area;
     int frames_waiting;
+    int frames_absent;
 };
 
 static struct renderer_color color_at_level(int level)
@@ -437,6 +439,10 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
         return;
     }
     held = &held_poses[object - stage->objects];
+    if (strcmp(held->object_name, object->name) == 0 && strcmp(held->animation_name, object->player.animation->name) != 0) {
+        held->object_name[0] = '\0';
+        held->frames_waiting = 0;
+    }
     paint = object_paint(stage, object, &paint_is_flat);
     texture_area.x = frame->u;
     texture_area.y = frame->v;
@@ -457,8 +463,13 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
         if (held->frames_waiting >= POSE_WAIT_FRAMES_WORTH_LOGGING && strcmp(held->object_name, object->name) == 0) {
             run_log_write("pose held object=%s frames=%d waited_for=%s", object->name, held->frames_waiting, wanted);
         }
+        if (held->frames_absent >= POSE_WAIT_FRAMES_WORTH_LOGGING) {
+            run_log_write("pose absent object=%s frames=%d waited_for=%s", object->name, held->frames_absent, wanted);
+        }
         held->frames_waiting = 0;
+        held->frames_absent = 0;
         snprintf(held->object_name, sizeof(held->object_name), "%s", object->name);
+        snprintf(held->animation_name, sizeof(held->animation_name), "%s", object->player.animation->name);
         snprintf(held->texture_name, sizeof(held->texture_name), "%s", wanted);
         held->world_left = left;
         held->world_top = object->y + frame->y;
@@ -470,7 +481,9 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
     if (strcmp(held->object_name, object->name) == 0) {
         held->frames_waiting = held->frames_waiting + 1;
         draw_when_ready(held->texture_name, world_area_to_screen(view, held->world_left, held->world_top, held->width, held->height), held->texture_area, paint, paint_is_flat);
+        return;
     }
+    held->frames_absent = held->frames_absent + 1;
 }
 
 static int find_lowest_layer_above(const struct scene_stage *stage, int layer, int *found_layer)
