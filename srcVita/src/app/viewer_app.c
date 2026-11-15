@@ -573,6 +573,7 @@ void viewer_app_start(const char *folder)
     pause_chapters_use(chapter_has_save);
     title_menu_use(newest_save_exists, newest_save_is_cleared, game_save_erase_all);
     (void)system_sounds_load(script_folder);
+    (void)pause_options_read_credits(script_folder);
     title_menu_use_sound(system_sounds_play);
     illustrations_known_chapter = highest_reached_chapter();
     if (script_player_is_available()) {

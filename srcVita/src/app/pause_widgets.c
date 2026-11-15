@@ -395,6 +395,16 @@ static void draw_text_in_box(const char *key, float centre_x, float centre_y, fl
     pause_draw_from(PAUSE_WIDGET_SHEET, widget->x, widget->y, widget->width, widget->height, whole(centre_x - widget->width * scale / 2.0f), whole(centre_y - widget->height * scale / 2.0f), widget->width * scale, widget->height * scale, 1.0f);
 }
 
+void pause_draw_back_pill(float x_offset)
+{
+    float middle;
+
+    middle = PAUSE_BAR_TOP + PAUSE_BAR_HEIGHT / 2.0f;
+    pause_draw_slice("back", BACK_LEFT + x_offset, PAUSE_BAR_TOP + BACK_INSET, BACK_RIGHT - BACK_LEFT, PAUSE_BAR_HEIGHT - 2.0f * BACK_INSET, 1.0f);
+    pause_draw_glyph("circle", BACK_GLYPH_X + x_offset, middle, BACK_GLYPH_SIZE, 1.0f);
+    pause_draw_text("bar.back", BACK_WORD_X + x_offset, middle, PAUSE_ANCHOR_CENTRE, 1.0f);
+}
+
 void pause_draw_bar(float x_offset, const char *before_key, const char *glyph, const char *after_key)
 {
     float middle;
@@ -402,9 +412,7 @@ void pause_draw_bar(float x_offset, const char *before_key, const char *glyph, c
     float x;
 
     middle = PAUSE_BAR_TOP + PAUSE_BAR_HEIGHT / 2.0f;
-    pause_draw_slice("back", BACK_LEFT + x_offset, PAUSE_BAR_TOP + BACK_INSET, BACK_RIGHT - BACK_LEFT, PAUSE_BAR_HEIGHT - 2.0f * BACK_INSET, 1.0f);
-    pause_draw_glyph("circle", BACK_GLYPH_X + x_offset, middle, BACK_GLYPH_SIZE, 1.0f);
-    pause_draw_text("bar.back", BACK_WORD_X + x_offset, middle, PAUSE_ANCHOR_CENTRE, 1.0f);
+    pause_draw_back_pill(x_offset);
     total = pause_text_width(before_key) + (glyph != NULL ? BAR_GLYPH_ROOM + pause_text_width(after_key) : 0.0f);
     if (glyph == NULL) {
         draw_text_in_box(before_key, (BACK_RIGHT + SCREEN_WIDTH) / 2.0f + x_offset, middle, SCREEN_WIDTH - BACK_RIGHT - 2.0f * BAR_TEXT_MARGIN, PAUSE_BAR_HEIGHT - 2.0f * BAR_TEXT_INSET);

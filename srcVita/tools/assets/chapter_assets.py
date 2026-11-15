@@ -77,6 +77,13 @@ SOUL_BALLOON_TALK_OP = 0x4c
 BALLOON_LABEL_OPS = (0x51, 0x45)
 EFFECT_SPAWN_OP = 0xb0
 STAFF_ROLL_START_OP = 0xf8
+STAFF_ROLL_WAIT_OP = 0xf9
+FADE_IN_OP = 0xb
+FADE_OUT_OP = 0xc
+FADE_WAIT_OP = 0xa
+TICKS_WAIT_OP = 0x2f
+CALL_OP = 0x2d
+MUSIC_START_OPS = (0x106, 0x107)
 STAFF_SCREEN_SOURCE = "natives/android/charfiles/3d/06_id/13_ending/staff_%02d_%02d_iml4.tex.691230823"
 STAFF_SCREEN_TEXTURE = "staff_%02d_%02d"
 STAFF_SCREEN_WIDTH = 720
@@ -437,22 +444,58 @@ def chapter_card_rows(packs, scripts, arm9, cards):
     return textures, effects
 
 
+def ops_from(script, index):
+    operations = script.operations
+    if index < len(operations) and operations[index][2] == CALL_OP:
+        target = operations[index][3][0]
+        index = next((place for place, operation in enumerate(operations) if operation[0] == target), len(operations))
+    return [(op, operands) for _, _, op, operands in operations[index:]]
+
+
+def staff_page_pace(script, index):
+    ops = ops_from(script, index + 1)
+    pace = []
+    for wanted in (FADE_IN_OP, FADE_WAIT_OP, STAFF_ROLL_WAIT_OP, TICKS_WAIT_OP, FADE_OUT_OP):
+        if ops and ops[0][0] == wanted:
+            pace.append(ops[0][1][0] if ops[0][1] else 0)
+            ops = ops[1:]
+        elif wanted in (FADE_WAIT_OP, TICKS_WAIT_OP):
+            pace.append(0)
+        else:
+            raise ValueError("%s: the staff page at op %d is not followed by a fade in, the page's wait and a fade out" % (script.path, index))
+    return pace[0], pace[3], pace[4]
+
+
+def staff_music_before(script, index):
+    for _, _, op, operands in reversed(script.operations[:index]):
+        if op in MUSIC_START_OPS and operands:
+            return MUSIC_NAME % operands[0]
+    return None
+
+
 def staff_roll_rows(packs, scripts):
-    pages = set()
+    paces = {}
+    music_of_page = {}
     for script in scripts.values():
-        for _, _, op, operands in script.operations:
-            if op == STAFF_ROLL_START_OP and operands:
-                pages.add(operands[0])
+        for index, (_, _, op, operands) in enumerate(script.operations):
+            if op != STAFF_ROLL_START_OP or not operands:
+                continue
+            pace = staff_page_pace(script, index)
+            if paces.setdefault(operands[0], pace) != pace:
+                raise ValueError("staff roll page %d is started twice with different fades" % operands[0])
+            music_of_page.setdefault(operands[0], staff_music_before(script, index))
     textures = []
     lines = []
-    for page in sorted(pages):
+    for page in sorted(paces):
         screen_count = 0
         while path_exists(packs, STAFF_SCREEN_SOURCE % (page, screen_count + 1)):
             screen_count += 1
             textures.append({"name": STAFF_SCREEN_TEXTURE % (page, screen_count), "source": STAFF_SCREEN_SOURCE % (page, screen_count), "width": STAFF_SCREEN_WIDTH, "height": STAFF_SCREEN_HEIGHT})
         if screen_count == 0:
             raise ValueError("staff roll page %d is started by a script but has no screens in the packs" % page)
-        lines.append("staffpage %d %d" % (page, screen_count))
+        lines.append("staffpage %d %d %d %d %d" % ((page, screen_count) + paces[page]))
+    if paces and music_of_page[min(paces)] is not None:
+        lines.append("staffmusic %s" % music_of_page[min(paces)])
     return textures, "".join(line + "\n" for line in lines)
 
 

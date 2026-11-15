@@ -1806,28 +1806,25 @@ static void draw_credits_side_bars(void)
     renderer_draw_filled_rect(bar, movie_black);
 }
 
-static void draw_staff_roll(void)
+void script_view_draw_staff_page(int page, int screen_count, float scroll)
 {
     char name[ASSET_NAME_MAX];
     float left;
     float top;
     int screen;
 
-    if (!staff_roll_is_drawn) {
-        return;
-    }
     left = ds_frame_left();
     top = ((float)RENDERER_HEIGHT - SCENE_VIEW_DS_SCREEN_HEIGHT * VITA_PIXELS_PER_DS_PIXEL) / 2.0f;
-    for (screen = 0; screen < staff_roll_screen_count; screen++) {
+    for (screen = 0; screen < screen_count; screen++) {
         const struct cached_texture *texture;
         struct script_staff_screen_span span;
         struct renderer_rect area;
         struct renderer_rect uv;
 
-        if (!script_staff_roll_screen_span(staff_roll_scroll, screen, &span)) {
+        if (!script_staff_roll_screen_span(scroll, screen, &span)) {
             continue;
         }
-        snprintf(name, sizeof(name), STAFF_SCREEN_TEXTURE, staff_roll_page, screen + 1);
+        snprintf(name, sizeof(name), STAFF_SCREEN_TEXTURE, page, screen + 1);
         texture = texture_cache_use_or_start_loading(name);
         if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
             continue;
@@ -1841,6 +1838,31 @@ static void draw_staff_roll(void)
         uv.width = 1.0f;
         uv.height = span.row_count / (float)SCRIPT_STAFF_SCREEN_HEIGHT;
         renderer_draw_sprite(texture->texture, area, uv, white);
+    }
+}
+
+int script_view_staff_page_is_ready(int page, int screen_count)
+{
+    char name[ASSET_NAME_MAX];
+    const struct cached_texture *texture;
+    int screen;
+    int is_ready;
+
+    is_ready = 1;
+    for (screen = 0; screen < screen_count; screen++) {
+        snprintf(name, sizeof(name), STAFF_SCREEN_TEXTURE, page, screen + 1);
+        texture = texture_cache_use_or_start_loading(name);
+        if (texture == NULL || texture->state == CACHED_TEXTURE_LOADING) {
+            is_ready = 0;
+        }
+    }
+    return is_ready;
+}
+
+static void draw_staff_roll(void)
+{
+    if (staff_roll_is_drawn) {
+        script_view_draw_staff_page(staff_roll_page, staff_roll_screen_count, staff_roll_scroll);
     }
 }
 

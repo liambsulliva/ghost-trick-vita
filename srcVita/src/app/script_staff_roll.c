@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <string.h>
+#include "asset_name.h"
 #include "script_staff_roll.h"
 
 #define TICKS_BEFORE_THE_PAGE_STARTS 0x3c
@@ -5,6 +8,34 @@
 #define TICKS_EACH_SCREEN_RESTS 0x78
 #define SCROLL_PER_TICK 0x1000
 #define FIXED_POINT_BITS 12
+#define PAGE_ROW_WORD "staffpage "
+#define MUSIC_ROW_WORD "staffmusic "
+
+int script_staff_page_row_read(const char *line, struct script_staff_page_row *row)
+{
+    int found;
+
+    memset(row, 0, sizeof(*row));
+    if (strncmp(line, PAGE_ROW_WORD, strlen(PAGE_ROW_WORD)) != 0) {
+        return 0;
+    }
+    found = sscanf(line + strlen(PAGE_ROW_WORD), "%d %d %d %d %d", &row->page, &row->screen_count, &row->fade_in_ticks, &row->hold_ticks, &row->fade_out_ticks);
+    if (found != 2 && found != 5) {
+        return 0;
+    }
+    return row->screen_count > 0 && row->fade_in_ticks >= 0 && row->hold_ticks >= 0 && row->fade_out_ticks >= 0;
+}
+
+int script_staff_music_row_read(const char *line, char *name, unsigned int name_size)
+{
+    char found[ASSET_NAME_MAX];
+
+    if (strncmp(line, MUSIC_ROW_WORD, strlen(MUSIC_ROW_WORD)) != 0 || sscanf(line + strlen(MUSIC_ROW_WORD), ASSET_NAME_SCAN, found) != 1) {
+        return 0;
+    }
+    snprintf(name, name_size, "%s", found);
+    return 1;
+}
 
 void script_staff_roll_set_screens(struct script_staff_roll *roll, int page, int screen_count)
 {

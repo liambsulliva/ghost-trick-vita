@@ -4,11 +4,13 @@
 #include "audio_volume.h"
 #include "fakes/fake_platform.h"
 #include "fakes/fake_renderer.h"
+#include "fakes/fake_texture_files.h"
 #include "file.h"
 #include "game_settings.h"
 #include "input.h"
 #include "pause_options.h"
 #include "pause_widgets.h"
+#include "texture_cache.h"
 #include "test_support.h"
 
 #define CONTROLS_ROW 0
@@ -23,7 +25,9 @@
 #define MUSIC_TYPE_ROW 10
 #define LANGUAGE_ROW 11
 #define HINTS_ROW 12
+#define CREDITS_ROW 13
 #define RESTORE_ROW 15
+#define CREDITS_TICK_LIMIT 5000
 #define UNLOCK_ROW 16
 
 static void start_options(void)
@@ -123,6 +127,84 @@ static void test_the_cursor_skips_rows_the_vita_fixes(void)
     press_down_to(RESTORE_ROW);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), RESTORE_ROW);
+}
+
+static const char credits_rows[] = "staffpage 0 1 15 120 45\nstaffpage 1 2 25 0 45\nstaffmusic bgm35_new\n";
+
+static void read_credits(void)
+{
+    fake_files_add("set/scripts/effects.txt", (const unsigned char *)credits_rows, (unsigned int)strlen(credits_rows));
+    CHECK_INT(pause_options_read_credits("set/scripts"), 2);
+    fake_files_add_rgba_texture("set/textures/staff_00_01.gtex", 8, 8);
+    fake_files_add_rgba_texture("set/textures/staff_01_01.gtex", 8, 8);
+    fake_files_add_rgba_texture("set/textures/staff_01_02.gtex", 8, 8);
+    texture_cache_clear();
+    texture_cache_init("set/textures", 1u << 20);
+}
+
+static void tick_credits(void)
+{
+    texture_cache_upload_finished_reads(8);
+    texture_cache_begin_frame();
+    pause_options_tick();
+}
+
+static void test_the_credits_row_is_greyed_only_with_no_staff_pages(void)
+{
+    start_options();
+    CHECK_INT(pause_options_read_credits("set/scripts"), 0);
+    pause_options_enter();
+    press_down_to(RESTORE_ROW);
+    press_up_to(CREDITS_ROW);
+    CHECK(pause_options_selected_row() != CREDITS_ROW);
+    start_options();
+    read_credits();
+    pause_options_enter();
+    press_down_to(CREDITS_ROW);
+    CHECK_INT(pause_options_selected_row(), CREDITS_ROW);
+}
+
+static void test_the_credits_row_plays_the_staff_roll_and_circle_returns_to_options(void)
+{
+    start_options();
+    read_credits();
+    pause_options_enter();
+    press_down_to(CREDITS_ROW);
+    CHECK_INT(pause_options_step(INPUT_CROSS), PAUSE_OPTIONS_STAYS);
+    CHECK(pause_options_credits_are_playing());
+    tick_credits();
+    CHECK_INT(pause_options_step(INPUT_DOWN), PAUSE_OPTIONS_STAYS);
+    CHECK_INT(pause_options_selected_row(), CREDITS_ROW);
+    CHECK_INT(pause_options_step(INPUT_CIRCLE), PAUSE_OPTIONS_STAYS);
+    CHECK(!pause_options_credits_are_playing());
+    CHECK_INT(pause_options_selected_row(), CREDITS_ROW);
+    pause_options_step(INPUT_CROSS);
+    CHECK(pause_options_credits_are_playing());
+    CHECK_INT(pause_options_touch(1, 0, 1, 60.0f, 520.0f), INPUT_CIRCLE);
+    pause_options_step(INPUT_CIRCLE);
+    CHECK(!pause_options_credits_are_playing());
+    pause_options_step(INPUT_CROSS);
+    pause_options_leave();
+    CHECK(!pause_options_credits_are_playing());
+    CHECK_INT(pause_options_step(INPUT_CIRCLE), PAUSE_OPTIONS_LEAVES);
+}
+
+static void test_the_credits_return_to_options_when_the_last_page_ends(void)
+{
+    int ticks;
+
+    start_options();
+    read_credits();
+    pause_options_enter();
+    press_down_to(CREDITS_ROW);
+    pause_options_step(INPUT_CROSS);
+    for (ticks = 0; ticks < CREDITS_TICK_LIMIT && pause_options_credits_are_playing(); ticks++) {
+        tick_credits();
+    }
+    CHECK(!pause_options_credits_are_playing());
+    CHECK(ticks < CREDITS_TICK_LIMIT);
+    CHECK_INT(pause_options_selected_row(), CREDITS_ROW);
+    CHECK_INT(pause_options_step(INPUT_CIRCLE), PAUSE_OPTIONS_LEAVES);
 }
 
 static void test_the_hints_row_cycles_the_delay_and_off(void)
@@ -444,6 +526,9 @@ int main(void)
     test_full_volume_leaves_samples_untouched_and_half_scales_them();
     test_the_cursor_skips_rows_the_vita_fixes();
     test_the_hints_row_cycles_the_delay_and_off();
+    test_the_credits_row_is_greyed_only_with_no_staff_pages();
+    test_the_credits_row_plays_the_staff_roll_and_circle_returns_to_options();
+    test_the_credits_return_to_options_when_the_last_page_ends();
     test_volume_meters_drive_the_audio_gain();
     test_leaving_saves_only_what_changed();
     test_restore_asks_first_and_no_keeps_the_settings();

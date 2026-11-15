@@ -3,13 +3,17 @@
 #include <string.h>
 #include "asset_language.h"
 #include "file.h"
+#include "file_path.h"
 #include "game_save.h"
 #include "game_settings.h"
 #include "input.h"
+#include "memory.h"
 #include "pause_options.h"
 #include "pause_widgets.h"
 #include "renderer.h"
 #include "run_log.h"
+#include "script_view.h"
+#include "staff_credits.h"
 
 #define KEY_MAX 64
 #define ROW_TOP 150.0f
@@ -77,6 +81,7 @@ enum row_job {
     JOB_LANGUAGE,
     JOB_RESTORE,
     JOB_RESET_SAVE,
+    JOB_CREDITS,
     JOB_HIGH_CONTRAST,
     JOB_FPS_CAP,
     JOB_VSYNC,
@@ -109,7 +114,7 @@ static const struct option_row rows[] = {
     { NULL, "music_type", ROW_CYCLES, JOB_MUSIC_TYPE, 0, NULL },
     { "language", "language", ROW_DROPDOWN, JOB_LANGUAGE, 0, NULL },
     { "other", "hints", ROW_CYCLES, JOB_HINTS, 0, NULL },
-    { NULL, "credits", ROW_OPENS, JOB_NONE, 1, NULL },
+    { NULL, "credits", ROW_OPENS, JOB_CREDITS, 0, NULL },
     { NULL, "reset_save", ROW_OPENS, JOB_RESET_SAVE, 0, NULL },
     { NULL, "restore", ROW_OPENS, JOB_RESTORE, 0, NULL },
     { NULL, "unlock_all", ROW_CYCLES, JOB_UNLOCK_ALL, 0, NULL }
@@ -145,6 +150,7 @@ static struct pause_dialog restore_dialog;
 static enum row_job dialog_job;
 static int unlock_row_is_shown;
 static int leaves_with_dropdown;
+static struct staff_credits credits;
 
 void pause_options_show_unlock(int is_shown)
 {
@@ -177,14 +183,80 @@ static void lay_out_rows(void)
     list_height = y + LIST_BOTTOM_PAD;
 }
 
+static int is_greyed(const struct option_row *row)
+{
+    return row->is_greyed || (row->job == JOB_CREDITS && !staff_credits_can_play(&credits));
+}
+
 static int is_dimmed(const struct option_row *row)
 {
-    return row->is_greyed || (row->job == JOB_VISUAL_FILTER && game_settings_filter_is_pinned());
+    return is_greyed(row) || (row->job == JOB_VISUAL_FILTER && game_settings_filter_is_pinned());
 }
 
 static int is_selectable(int index)
 {
-    return index >= 0 && index < row_count() && !rows[index].is_greyed;
+    return index >= 0 && index < row_count() && !is_greyed(&rows[index]);
+}
+
+int pause_options_read_credits(const char *scripts_folder)
+{
+    char path[FILE_PATH_MAX];
+    unsigned char *bytes;
+    unsigned int size;
+
+    staff_credits_clear(&credits);
+    if (!file_path_join(path, scripts_folder, STAFF_CREDITS_FILE_NAME, ".txt") || file_read_whole(path, &bytes, &size) != FILE_OK) {
+        run_log_write("credits missing");
+        return 0;
+    }
+    (void)staff_credits_read(&credits, (const char *)bytes, size);
+    mem_free(bytes);
+    run_log_write("credits read pages=%d", credits.page_count);
+    return credits.page_count;
+}
+
+int pause_options_credits_are_playing(void)
+{
+    return staff_credits_is_playing(&credits);
+}
+
+static void step_credits(void)
+{
+    const struct script_staff_page_row *row;
+    int is_ready;
+
+    row = staff_credits_page(&credits);
+    if (row == NULL) {
+        return;
+    }
+    is_ready = credits.step != STAFF_CREDITS_LOADING || script_view_staff_page_is_ready(row->page, row->screen_count);
+    (void)staff_credits_step(&credits, is_ready);
+}
+
+static void draw_credits(void)
+{
+    const struct script_staff_page_row *row;
+    struct renderer_rect screen;
+    struct renderer_color black;
+
+    screen.x = 0.0f;
+    screen.y = 0.0f;
+    screen.width = (float)RENDERER_WIDTH;
+    screen.height = (float)RENDERER_HEIGHT;
+    black.red = 0.0f;
+    black.green = 0.0f;
+    black.blue = 0.0f;
+    black.alpha = 1.0f;
+    renderer_draw_filled_rect(screen, black);
+    row = staff_credits_page(&credits);
+    if (row != NULL && staff_credits_page_is_drawn(&credits)) {
+        script_view_draw_staff_page(row->page, row->screen_count, staff_credits_scroll(&credits));
+    }
+    black.alpha = staff_credits_black(&credits);
+    if (black.alpha > 0.0f) {
+        renderer_draw_filled_rect(screen, black);
+    }
+    pause_draw_back_pill(0.0f);
 }
 
 static int next_selectable(int from, int direction)
@@ -429,6 +501,9 @@ static void act_on_row(void)
         dropdown_is_open = 1;
         dropdown_hovered = game_settings_now()->language;
         break;
+    case JOB_CREDITS:
+        staff_credits_start(&credits);
+        break;
     case JOB_RESTORE:
     case JOB_RESET_SAVE:
         dialog_job = rows[selected].job;
@@ -484,6 +559,7 @@ static int step_controls_page(unsigned int pressed)
 
 void pause_options_leave(void)
 {
+    staff_credits_stop(&credits);
     if (settings_changed) {
         (void)game_settings_save(GAME_SETTINGS_PATH);
         settings_changed = 0;
@@ -495,6 +571,12 @@ int pause_options_step(unsigned int pressed)
     int chosen;
     int *level;
 
+    if (staff_credits_is_playing(&credits)) {
+        if (pressed & INPUT_CIRCLE) {
+            staff_credits_stop(&credits);
+        }
+        return PAUSE_OPTIONS_STAYS;
+    }
     if (restore_dialog.is_open) {
         chosen = pause_dialog_steer(&restore_dialog, pressed);
         if (chosen == 0 && dialog_job == JOB_RESET_SAVE) {
@@ -577,6 +659,10 @@ void pause_options_tick(void)
 {
     float target;
 
+    if (staff_credits_is_playing(&credits)) {
+        step_credits();
+        return;
+    }
     if (scroll_is_free) {
         return;
     }
@@ -706,6 +792,9 @@ unsigned int pause_options_touch(int lands, int lifts, int is_down, float x, flo
 
     if (lands && pause_is_on_back_pill(x, y)) {
         return INPUT_CIRCLE;
+    }
+    if (staff_credits_is_playing(&credits)) {
+        return 0;
     }
     if (restore_dialog.is_open) {
         if (lands) {
@@ -984,5 +1073,9 @@ void pause_options_draw_bar(float x_offset)
 
 void pause_options_draw_dialog(float x_offset)
 {
+    if (staff_credits_is_playing(&credits)) {
+        draw_credits();
+        return;
+    }
     pause_dialog_draw(&restore_dialog, whole(x_offset));
 }

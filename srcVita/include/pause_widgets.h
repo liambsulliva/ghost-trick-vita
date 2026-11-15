@@ -48,6 +48,7 @@ int pause_draw_preview(float x, float y, float width, float height, float from, 
 float pause_fit_box_scale(const char *key, float room_width, float room_height);
 void pause_draw_text_within(const char *key, float x, float y, float room, float alpha);
 void pause_draw_cell(const char *name, float centre_x, float centre_y, float alpha);
+void pause_draw_back_pill(float x_offset);
 void pause_draw_bar(float x_offset, const char *before_key, const char *glyph, const char *after_key);
 void pause_draw_bar_note(float x_offset, const char *key);
 void pause_draw_floor(float line_alpha);

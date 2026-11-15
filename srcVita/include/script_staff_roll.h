@@ -34,12 +34,22 @@ struct script_staff_roll {
     int scroll_limit;
 };
 
+struct script_staff_page_row {
+    int page;
+    int screen_count;
+    int fade_in_ticks;
+    int hold_ticks;
+    int fade_out_ticks;
+};
+
 struct script_staff_screen_span {
     float top;
     float first_row;
     float row_count;
 };
 
+int script_staff_page_row_read(const char *line, struct script_staff_page_row *row);
+int script_staff_music_row_read(const char *line, char *name, unsigned int name_size);
 void script_staff_roll_set_screens(struct script_staff_roll *roll, int page, int screen_count);
 void script_staff_roll_start(struct script_staff_roll *roll, int page);
 int script_staff_roll_step(struct script_staff_roll *roll);
