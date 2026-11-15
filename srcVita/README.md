@@ -202,6 +202,8 @@ It replays the game's scripts on the Mac at auto-play pace and writes two files 
 
 It also paces the route into `scripts/route_pacing.txt`. Pacing depends on the passes before it, so a fresh run does not reproduce a settled one: each settled pacing is kept in `tools/assets/game_pacing.txt`, and the next run starts from it while the route is unchanged.
 
+It also writes `scripts/chapter_starts.txt`, the state (flags, notes, chapter mark) the settled replay had each time it entered `chapter.xml`, one `chapter_start <chapter>` section per chapter from 2 to 18. `make route-check` fails when that file differs from a fresh replay's.
+
 Upload the assets after this step, so the Vita gets every file.
 
 Music and sounds are the remaster's own Ogg Vorbis files, unchanged apart from losing their wrappers.
@@ -313,7 +315,7 @@ The device loop installs this build. It can play through the game by itself, at 
 make -C srcVita DEBUG=1
 ```
 
-It adds `-debug` to the build id and keeps its objects in `build/obj_debug`, so it never mixes with the player's build. It adds an Unlock Everything switch at the end of Options: while it is on, every chapter in the Chapters grid opens and every People and Places note shows at its highest level. A chapter with no save starts through `chapter.xml` with the chapter mark one below it, the way the DS chapter select does, but with empty flags, so chapters that share a stage (4 to 6 in st02) start at that stage's first part. The player's build ignores the saved switch. SQUARE saves a screen capture, and the [debug controls](#debug-controls) are on. It reads these lines from the commands file, which `vita_loop.py app-command` writes. A thread of its own looks for the file ten times a second (`src/vita/command_reader.c`), so a debug run's frames carry no card opens the player's build would not:
+It adds `-debug` to the build id and keeps its objects in `build/obj_debug`, so it never mixes with the player's build. It adds an Unlock Everything switch at the end of Options: while it is on, every chapter in the Chapters grid opens and every People and Places note shows at its highest level. A chapter with no save starts from its entry in the set's `scripts/chapter_starts.txt`, entering `chapter.xml` with the flags and notes the whole-game replay had there, so it opens in its own scene and a Phone book ride stays at that point in the story. Chapter 1, and any chapter the set has no entry for, start through `chapter.xml` with empty flags and the chapter mark one below the chapter; the log says which with `save chapter_select chapter=<n> baked_start=<0|1>`. The player's build ignores the saved switch. SQUARE saves a screen capture, and the [debug controls](#debug-controls) are on. It reads these lines from the commands file, which `vita_loop.py app-command` writes. A thread of its own looks for the file ten times a second (`src/vita/command_reader.c`), so a debug run's frames carry no card opens the player's build would not:
 
 | Line | What it does |
 |---|---|

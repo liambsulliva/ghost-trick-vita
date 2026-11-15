@@ -754,6 +754,26 @@ static void prepare_the_first_scene(void)
     start_preparing(read_ahead_next_script_of(entry, data->machine.chapter_mark));
 }
 
+static void start_chapter_select_from_its_baked_start(void)
+{
+    static struct game_save baked;
+    unsigned char *bytes;
+    unsigned int size;
+    int chapter;
+    int is_found;
+
+    chapter = game_save_chapter_of_start(&pending_resume);
+    is_found = 0;
+    if (read_named_file(GAME_SAVE_CHAPTER_STARTS_NAME, GAME_SAVE_CHAPTER_STARTS_EXTENSION, &bytes, &size) == FILE_OK) {
+        is_found = game_save_read_chapter_start(&baked, (const char *)bytes, size, chapter);
+        mem_free(bytes);
+    }
+    run_log_write("save chapter_select chapter=%d baked_start=%d", chapter, is_found);
+    if (is_found) {
+        pending_resume = baked;
+    }
+}
+
 static void begin_loading_animations(void)
 {
     const struct script_movie *time_jump;
@@ -763,6 +783,9 @@ static void begin_loading_animations(void)
     data->machine.chapter_mark = data->tables.chapter_mark;
     if (data->tables.entry_name[0] != '\0') {
         snprintf(entry, sizeof(entry), "%s", data->tables.entry_name);
+    }
+    if (has_pending_resume && pending_resume.is_chapter_select) {
+        start_chapter_select_from_its_baked_start();
     }
     if (has_pending_resume) {
         snprintf(entry, sizeof(entry), "%s", pending_resume.script);

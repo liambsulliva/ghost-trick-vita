@@ -11,6 +11,8 @@
 #define GAME_SAVE_TEXT_MAX 8192
 #define GAME_SAVE_CHAPTER_COUNT 18
 #define GAME_SAVE_CHAPTER_SELECT_SCRIPT "chapter"
+#define GAME_SAVE_CHAPTER_STARTS_NAME "chapter_starts"
+#define GAME_SAVE_CHAPTER_STARTS_EXTENSION ".txt"
 
 enum game_save_slot {
     GAME_SAVE_AUTO,
@@ -29,6 +31,7 @@ struct game_save {
     int rollback_is_on;
     int has_soul_state;
     int game_cleared;
+    int is_chapter_select;
     unsigned char game_flags[SCRIPT_FLAG_BYTES];
     unsigned char chapter_flags[SCRIPT_FLAG_BYTES];
     unsigned char game_bank_saved[SCRIPT_GAME_FLAG_BANK_BYTES];
@@ -50,5 +53,8 @@ int game_save_erase_all(void);
 int game_save_store_chapter(const struct game_save *save, int chapter);
 int game_save_load_chapter(struct game_save *save, int chapter);
 int game_save_for_chapter_select(struct game_save *save, int chapter);
+unsigned int game_save_write_chapter_start(const struct game_save *save, char *text, unsigned int text_size);
+int game_save_read_chapter_start(struct game_save *save, const char *text, unsigned int text_size, int chapter);
+int game_save_chapter_of_start(const struct game_save *save);
 
 #endif

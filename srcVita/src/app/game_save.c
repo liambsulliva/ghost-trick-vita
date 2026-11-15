@@ -13,6 +13,7 @@
 #define LINE_MAX (4 * SCRIPT_FLAG_BYTES)
 #define NOTE_BYTES (SCRIPT_NOTE_LIST_COUNT * SCRIPT_NOTE_ID_COUNT)
 #define SAVE_JOB_MAX 4
+#define CHAPTER_START_LINE "chapter_start"
 
 enum save_job_kind {
     SAVE_JOB_NEWEST,
@@ -380,7 +381,65 @@ int game_save_for_chapter_select(struct game_save *save, int chapter)
     }
     snprintf(save->script, sizeof(save->script), "%s", GAME_SAVE_CHAPTER_SELECT_SCRIPT);
     save->chapter_mark = chapter - 1;
+    save->is_chapter_select = 1;
     return 1;
+}
+
+int game_save_chapter_of_start(const struct game_save *save)
+{
+    return save->chapter_mark + 1;
+}
+
+unsigned int game_save_write_chapter_start(const struct game_save *save, char *text, unsigned int text_size)
+{
+    unsigned int used;
+    unsigned int written;
+
+    used = add_text(text, text_size, 0, CHAPTER_START_LINE " %d\n", game_save_chapter_of_start(save));
+    if (used >= text_size) {
+        return 0;
+    }
+    written = game_save_write_text(save, text + used, text_size - used);
+    return written > 0 ? used + written : 0;
+}
+
+static int chapter_of_start_line(const char *line)
+{
+    int chapter;
+
+    if (strncmp(line, CHAPTER_START_LINE " ", sizeof(CHAPTER_START_LINE)) != 0 || sscanf(line + sizeof(CHAPTER_START_LINE), "%d", &chapter) != 1) {
+        return 0;
+    }
+    return chapter;
+}
+
+int game_save_read_chapter_start(struct game_save *save, const char *text, unsigned int text_size, int chapter)
+{
+    static char line[LINE_MAX];
+    unsigned int offset;
+    unsigned int line_start;
+    unsigned int section_start;
+    int is_inside;
+
+    memset(save, 0, sizeof(*save));
+    is_inside = 0;
+    section_start = 0;
+    offset = 0;
+    while (offset < text_size) {
+        line_start = offset;
+        offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));
+        if (chapter_of_start_line(line) == 0) {
+            continue;
+        }
+        if (is_inside) {
+            return game_save_read_text(save, text + section_start, line_start - section_start) && save->script[0] != '\0';
+        }
+        if (chapter_of_start_line(line) == chapter) {
+            is_inside = 1;
+            section_start = offset;
+        }
+    }
+    return is_inside && game_save_read_text(save, text + section_start, text_size - section_start) && save->script[0] != '\0';
 }
 
 int game_save_load_newest(struct game_save *save)

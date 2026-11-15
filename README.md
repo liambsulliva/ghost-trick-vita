@@ -73,6 +73,14 @@ Everything under `extracted/` is ignored by git. `tools/rom_audit.py` refuses a 
 
 Install the VPK from the Releases page, or `srcVita/build/ghosttrick.vpk` if you built it, with VitaShell from anywhere under `ux0:`, then copy what is inside `extracted/vita_assets/game_ds/` to `ux0:data/ghosttrick/assets_ds/` and, if you built it, what is inside `extracted/vita_assets/game/` to `ux0:data/ghosttrick/assets/`. Copy each folder's contents, not the folder itself: a path like `ux0:data/ghosttrick/assets/game/manifest.txt` will not be found. With both sets installed, Options' Visual Filter picks one; with one, that one runs.
 
+How much memory card space you need depends on which sets you copy. The VPK is about 1 MB in every case. These are rough figures from the current sets, and they grow as more of the game is converted:
+
+| What you copy | Made from | About |
+| --- | --- | --- |
+| DS set only | the DS cartridge | 0.9 GB |
+| Remastered set only | the Android package | 3.8 GB |
+| Both sets | both | 4.7 GB |
+
 The fastest way to copy the sets is VitaShell's USB mode: press SELECT in VitaShell, and the memory card opens as a drive on this computer. FTP works too but takes hours for the remastered set's 30,000 files: put the Vita and this computer on the same Wi-Fi network, set VitaShell's **SELECT button** option to **FTP** under START, press SELECT and connect an FTP client to the address VitaShell shows.
 
 ### Check that it worked
