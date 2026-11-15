@@ -1223,6 +1223,11 @@ const unsigned char *script_player_note_levels(void)
     return data == NULL ? NULL : &data->machine.note_levels[0][0];
 }
 
+int script_player_chapter(void)
+{
+    return data == NULL || !is_active ? 0 : data->machine.chapter_mark;
+}
+
 int script_player_is_showing_next_chapter_card(void)
 {
     return phase == PHASE_NEXT_CHAPTER_CARD;

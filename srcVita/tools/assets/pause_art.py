@@ -47,6 +47,7 @@ WHITE = "#ffffff"
 HEADER_ORANGE = "#d3763a"
 PILL_GREY = "#3e424a"
 PILL_RED = "#c41c1c"
+CURRENT_FILL = "#5c0e0e"
 BACK_RED = "#c4221c"
 BACK_EDGE = "#c8ccd2"
 FLAME_LIT = "#78c8f0"
@@ -81,6 +82,8 @@ SLICES = [
     ("box", 56, 56, 22, "black", PILL_GREY, 4),
     ("button", 64, 56, 28, "black", PILL_GREY, 4),
     ("button_selected", 64, 56, 28, "black", PILL_RED, 4),
+    ("button_current", 64, 56, 28, CURRENT_FILL, PILL_GREY, 4),
+    ("button_current_selected", 64, 56, 28, CURRENT_FILL, PILL_RED, 4),
     ("tab", 44, 40, 20, "black", PILL_GREY, 3),
     ("tab_selected", 44, 40, 20, PILL_RED, BACK_EDGE, 3),
     ("sprocket", 11, 7, 2, "#46464c", "none", 0),

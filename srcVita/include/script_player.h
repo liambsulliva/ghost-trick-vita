@@ -17,6 +17,7 @@ int script_player_is_active(void);
 const unsigned char *script_player_note_levels(void);
 int script_player_save_manual(void);
 int script_player_takes_new_chapter(void);
+int script_player_chapter(void);
 int script_player_takes_record_request(void);
 int script_player_takes_title_request(void);
 struct game_save;

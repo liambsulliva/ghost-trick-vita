@@ -246,6 +246,7 @@ static void note_clock(const char *spec)
     if (sscanf(spec, "%d:%63[^:]:%63s", &chapter, script, plate) == 3) {
         pause_clock_note_scene(chapter, script);
         pause_clock_note_plate(plate);
+        pause_chapters_set_current(chapter);
     }
 }
 
@@ -358,6 +359,7 @@ int main(int argc, char **argv)
         pause_chapters_use(every_chapter_is_reached);
         title_menu_open();
     } else {
+        pause_chapters_use(every_chapter_is_reached);
         pause_menu_open();
     }
     wait_steps(SETTLE_STEPS);

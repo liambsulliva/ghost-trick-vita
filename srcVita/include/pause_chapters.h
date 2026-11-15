@@ -11,11 +11,15 @@
 typedef int (*pause_chapter_reached_function)(int chapter);
 
 void pause_chapters_use(pause_chapter_reached_function chapter_is_reached);
+void pause_chapters_set_current(int chapter);
+int pause_chapters_current(void);
 void pause_chapters_enter(const char *warning_key);
 int pause_chapters_step(unsigned int pressed);
 unsigned int pause_chapters_touch(int lands, int lifts, float x, float y);
 int pause_chapters_selected(void);
 int pause_chapters_dialog_is_open(void);
+const char *pause_chapters_question(void);
+const char *pause_chapters_cell_slice(int chapter);
 void pause_chapters_draw(float x_offset);
 void pause_chapters_draw_bar(float x_offset);
 void pause_chapters_draw_dialog(float x_offset);

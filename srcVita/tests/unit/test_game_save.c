@@ -203,6 +203,29 @@ static void test_the_chapters_grid_plays_only_reached_chapters_after_asking(void
     CHECK_INT(pause_chapters_touch(1, 0, 60.0f + 290.0f + 10.0f, 115.0f), INPUT_CROSS);
 }
 
+static void test_the_chapter_in_play_has_its_own_fill_and_asks_to_start_from_the_beginning(void)
+{
+    pause_chapters_use(fake_chapter_reached);
+    pause_chapters_set_current(1);
+    pause_chapters_enter("bar.title_warning");
+    CHECK_INT(pause_chapters_current(), 1);
+    CHECK_INT(pause_chapters_selected(), 1);
+    CHECK_TEXT(pause_chapters_cell_slice(1), "button_current_selected");
+    CHECK_TEXT(pause_chapters_cell_slice(2), "button");
+    pause_chapters_step(INPUT_CROSS);
+    CHECK_TEXT(pause_chapters_question(), "row.chapters_restart");
+    pause_chapters_step(INPUT_CIRCLE);
+    pause_chapters_step(INPUT_RIGHT);
+    CHECK_TEXT(pause_chapters_cell_slice(1), "button_current");
+    CHECK_TEXT(pause_chapters_cell_slice(2), "button_selected");
+    pause_chapters_step(INPUT_CROSS);
+    CHECK_TEXT(pause_chapters_question(), "row.chapters_ask");
+    pause_chapters_set_current(0);
+    pause_chapters_enter(NULL);
+    CHECK_INT(pause_chapters_selected(), 2);
+    CHECK_TEXT(pause_chapters_cell_slice(1), "button");
+}
+
 static void test_the_game_cleared_mark_reaches_every_slot_stays_through_later_saves_and_erases(void)
 {
     fake_files_reset();
@@ -267,6 +290,7 @@ int main(void)
     test_chapter_slots_store_by_number_and_erase_with_the_rest();
     test_an_unsaved_chapter_starts_through_the_native_chapter_select();
     test_the_chapters_grid_plays_only_reached_chapters_after_asking();
+    test_the_chapter_in_play_has_its_own_fill_and_asks_to_start_from_the_beginning();
     test_the_game_cleared_mark_reaches_every_slot_stays_through_later_saves_and_erases();
     test_saves_reach_the_card_on_the_writer_and_loads_wait_for_them();
     return test_finish("unit/game_save");

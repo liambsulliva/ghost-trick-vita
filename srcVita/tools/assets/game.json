@@ -384,6 +384,7 @@
         "reset_ask": "Erase every saved game?",
         "chapters_title": "Chapters",
         "chapters_ask": "Play this chapter from its start?",
+        "chapters_restart": "Start from the beginning?",
         "off": "Off",
         "on": "On",
         "original": "Original",

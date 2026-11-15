@@ -407,6 +407,7 @@ static int newest_save_is_cleared(void)
 
 static void open_title(void)
 {
+    pause_chapters_set_current(0);
     leave_scene_for_browsing();
     pending_background_index = NO_PENDING_BACKGROUND;
     if (!title_menu_is_ready()) {
@@ -701,6 +702,7 @@ static void ready_the_pause_screens(void)
 {
     const struct scene_stage *stage;
 
+    pause_chapters_set_current(script_player_chapter());
     pause_people_use_notes(everything_is_unlocked() ? pause_people_every_note() : script_player_note_levels());
     pause_people_use_reached_chapter(highest_reached_chapter());
     stage = scene_stage_view();

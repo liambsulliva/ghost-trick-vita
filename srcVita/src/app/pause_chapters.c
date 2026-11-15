@@ -19,6 +19,7 @@
 static pause_chapter_reached_function checker;
 static int reached[PAUSE_CHAPTERS_MOST + 1];
 static int selected;
+static int current;
 static struct pause_dialog dialog;
 static int touched_option;
 static const char *warning;
@@ -26,6 +27,16 @@ static const char *warning;
 void pause_chapters_use(pause_chapter_reached_function chapter_is_reached)
 {
     checker = chapter_is_reached;
+}
+
+void pause_chapters_set_current(int chapter)
+{
+    current = chapter >= 1 && chapter <= PAUSE_CHAPTERS_MOST ? chapter : 0;
+}
+
+int pause_chapters_current(void)
+{
+    return current;
 }
 
 void pause_chapters_enter(const char *warning_key)
@@ -41,6 +52,9 @@ void pause_chapters_enter(const char *warning_key)
             selected = chapter;
         }
     }
+    if (current != 0 && reached[current]) {
+        selected = current;
+    }
     dialog.is_open = 0;
     touched_option = PAUSE_DIALOG_NOTHING;
 }
@@ -55,7 +69,7 @@ static void move_to(int chapter)
 static void ask(void)
 {
     dialog.line_count = 1;
-    dialog.lines[0] = "row.chapters_ask";
+    dialog.lines[0] = selected == current ? "row.chapters_restart" : "row.chapters_ask";
     dialog.note = warning;
     dialog.option_count = 2;
     dialog.options[0] = "row.yes";
@@ -156,9 +170,22 @@ int pause_chapters_selected(void)
     return selected;
 }
 
+const char *pause_chapters_question(void)
+{
+    return dialog.is_open ? dialog.lines[0] : NULL;
+}
+
 int pause_chapters_dialog_is_open(void)
 {
     return dialog.is_open;
+}
+
+const char *pause_chapters_cell_slice(int chapter)
+{
+    if (chapter == current) {
+        return chapter == selected ? "button_current_selected" : "button_current";
+    }
+    return chapter == selected ? "button_selected" : "button";
 }
 
 void pause_chapters_draw(float x_offset)
@@ -172,7 +199,7 @@ void pause_chapters_draw(float x_offset)
     for (chapter = 1; chapter <= PAUSE_CHAPTERS_MOST; chapter++) {
         alpha = reached[chapter] ? 1.0f : LOCKED_ALPHA;
         snprintf(key, sizeof(key), "row.chapter_%d", chapter);
-        pause_draw_slice(chapter == selected ? "button_selected" : "button", cell_left(chapter) + x_offset, cell_top(chapter), CELL_WIDTH, CELL_HEIGHT, chapter == selected ? 1.0f : alpha);
+        pause_draw_slice(pause_chapters_cell_slice(chapter), cell_left(chapter) + x_offset, cell_top(chapter), CELL_WIDTH, CELL_HEIGHT, chapter == selected || chapter == current ? 1.0f : alpha);
         pause_draw_text(key, cell_left(chapter) + CELL_WIDTH / 2.0f + x_offset, cell_top(chapter) + CELL_HEIGHT / 2.0f, PAUSE_ANCHOR_CENTRE, alpha);
     }
 }
