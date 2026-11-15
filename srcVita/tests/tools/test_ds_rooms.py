@@ -64,24 +64,19 @@ class DsRoomsTests(unittest.TestCase):
         with self.assertRaises(ds_rooms.PlateRefused):
             ds_rooms.decode_plate(struct.pack("<HH", 12, 16) + plate[4:])
 
-    def test_a_plate_gets_ds_art_only_when_the_ds_has_one_of_the_remasters_size(self):
+    def test_every_plate_the_cartridge_holds_is_baked_at_its_own_size(self):
         record = FakeRecord()
-        plates = [{"name": "room-a", "ds_plate": 3}, {"name": "room-b", "ds_plate": 9}, {"name": "room-c", "ds_plate": 4}]
+        plates = [{"name": "ds_plate_3", "ds_plate": 3}, {"name": "ds_plate_9", "ds_plate": 9}, {"name": "ds_plate_4", "ds_plate": 4}]
         original = ds_rooms.read_plate_entries
-        ds_rooms.read_plate_entries = lambda pack_bytes: {3: synthetic_plate(16, 16, pattern), 4: synthetic_plate(16, 16, pattern)}
+        ds_rooms.read_plate_entries = lambda pack_bytes: {3: synthetic_plate(16, 16, pattern), 4: synthetic_plate(32, 16, pattern)}
         try:
-            paths, names, missing = ds_rooms.bake_plates(plates, b"", None, None, "unused", record, "code", {"room-a": (16.0, 16.0), "room-b": (16.0, 16.0), "room-c": (32.0, 16.0)})
+            paths, names, missing = ds_rooms.bake_plates(plates, b"", None, None, "unused", record, "code")
         finally:
             ds_rooms.read_plate_entries = original
-        self.assertEqual(paths, ["textures_ds/room-a.gtex"])
-        self.assertEqual(names, ["room-a"])
-        self.assertEqual(missing, ["room-b", "room-c"])
-        stored = record.stored["textures_ds/room-a.gtex"]
-        self.assertEqual(stored[:4], b"GTEX")
-        self.assertEqual(struct.unpack_from("<III", stored, 4), (16, 16, 0))
-
-    def test_the_names_file_lists_each_name_once_per_line_in_order(self):
-        self.assertEqual(ds_rooms.names_text(["b", "a"]), "a\nb\n")
+        self.assertEqual(paths, ["textures/ds_plate_3.gtex", "textures/ds_plate_4.gtex"])
+        self.assertEqual(names, ["ds_plate_3", "ds_plate_4"])
+        self.assertEqual(missing, ["ds_plate_9"])
+        self.assertEqual(struct.unpack_from("<III", record.stored["textures/ds_plate_4.gtex"], 4), (32, 16, 0))
 
 
 if __name__ == "__main__":

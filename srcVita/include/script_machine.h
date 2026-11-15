@@ -393,6 +393,7 @@ struct script_soul {
     const char *route_script;
     unsigned int route_ready_at;
     unsigned int route_step_began_at;
+    unsigned int route_talk_ticks;
     int route_action_has_begun;
     int route_acted_step;
     unsigned int route_action_began_at;

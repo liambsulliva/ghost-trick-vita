@@ -33,6 +33,7 @@
 #include "system_sounds.h"
 #include "record_reveal.h"
 #include "texture_cache.h"
+#include "asset_sets.h"
 #include "title_menu.h"
 #include "ui_list.h"
 #include "viewer_app.h"
@@ -43,7 +44,6 @@
 #define NEW_ILLUSTRATIONS_TOAST "bar.new_illustrations"
 #define DEFAULT_MUSIC_TYPE GAME_MUSIC_ORIGINAL
 #define ORIGINAL_MUSIC_SUBFOLDER "music_ds"
-#define DS_TEXTURE_SUBFOLDER "textures_ds"
 #define ARRANGED_MUSIC_SUBFOLDER "music"
 #ifdef DEBUG_BUILD
 #define DEV_TOOLS_ARE_BUILT 1
@@ -282,8 +282,7 @@ static void load_manifest(void)
         return;
     }
     art_sets = manifest->art_sets != 0 ? manifest->art_sets : ASSET_ART_REMASTERED;
-    game_settings_set_bundled_art(art_sets & ASSET_ART_REMASTERED, art_sets & ASSET_ART_DS);
-    texture_cache_use_sharp_art(game_settings_visual_filter() == GAME_FILTER_DS);
+    texture_cache_use_sharp_art(art_sets == ASSET_ART_DS);
     run_log_write("manifest loaded scenes=%d backgrounds=%d animations=%d art=%d", manifest->scene_count, manifest->background_count, manifest->animation_count, art_sets);
 }
 
@@ -451,6 +450,20 @@ static void read_page_tiles(const char *script_folder)
     mem_free(bytes);
 }
 
+static void count_a_file(void *context, const char *name)
+{
+    (void)name;
+    *(int *)context = *(int *)context + 1;
+}
+
+static int folder_has_files(const char *folder)
+{
+    int count;
+
+    count = 0;
+    return file_list_folder(folder, count_a_file, &count) == FILE_OK && count > 0;
+}
+
 static void start_settings(void)
 {
     char original_folder[FILE_PATH_MAX];
@@ -458,6 +471,9 @@ static void start_settings(void)
 
     asset_subfolder_path(original_folder, ORIGINAL_MUSIC_SUBFOLDER);
     asset_subfolder_path(arranged_folder, ARRANGED_MUSIC_SUBFOLDER);
+    if (!folder_has_files(arranged_folder)) {
+        arranged_folder[0] = '\0';
+    }
     game_settings_set_music_folders(original_folder, arranged_folder);
     game_settings_set_default_music(DEFAULT_MUSIC_TYPE);
     game_settings_load(GAME_SETTINGS_PATH);
@@ -487,7 +503,6 @@ static void draw_brightness(void)
 void viewer_app_start(const char *folder)
 {
     char texture_folder[FILE_PATH_MAX];
-    char ds_texture_folder[FILE_PATH_MAX];
     char animation_folder[FILE_PATH_MAX];
     char scene_folder[FILE_PATH_MAX];
     char music_folder[FILE_PATH_MAX];
@@ -512,8 +527,6 @@ void viewer_app_start(const char *folder)
 
     texture_cache_init(texture_folder, TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
     texture_cache_set_bucket_count(TEXTURE_FOLDER_BUCKETS);
-    asset_subfolder_path(ds_texture_folder, DS_TEXTURE_SUBFOLDER);
-    run_log_write("ds art names=%d", texture_cache_read_sharp_art(ds_texture_folder));
     animation_library_init(animation_folder);
     animation_library_set_in_use_check(scene_stage_plays_animation);
     scene_player_init(scene_folder);
@@ -1005,4 +1018,9 @@ void viewer_app_stop(void)
 int viewer_app_has_assets(void)
 {
     return manifest != NULL;
+}
+
+int viewer_app_wants_relaunch(void)
+{
+    return title_menu_is_open() && asset_sets_switch_is_due();
 }

@@ -32,40 +32,29 @@ static void test_requested_texture_stays_loading_until_its_read_finishes(void)
     CHECK_INT(fake_renderer_textures_created(), 1);
 }
 
-static void test_the_ds_look_reads_the_ds_art_sharp_and_switches_back(void)
+static void test_a_ds_set_reads_every_texture_sharp_from_its_own_folder(void)
 {
     const struct cached_texture *entry;
-    static const char names[] = "plate\n";
 
     fake_files_reset();
     fake_renderer_reset();
     fake_reader_reset();
     fake_files_add_rgba_texture("tex/plate.gtex", 8, 4);
     fake_files_add_rgba_texture("tex/other.gtex", 4, 4);
-    fake_files_add_rgba_texture("ds/plate.gtex", 2, 1);
-    fake_files_add("ds/names.txt", (const unsigned char *)names, (unsigned int)strlen(names));
     texture_cache_init("tex", 1u << 20);
-    CHECK_INT(texture_cache_read_sharp_art("ds"), 1);
-    entry = texture_cache_load_now("plate");
-    CHECK_INT(entry->width, 8);
-    CHECK(!fake_renderer_texture_is_sharp(entry->texture));
+    CHECK(!texture_cache_sharp_art_is_on());
     texture_cache_use_sharp_art(1);
     CHECK(texture_cache_sharp_art_is_on());
     entry = texture_cache_load_now("plate");
-    CHECK_INT(entry->width, 2);
+    CHECK_INT(entry->width, 8);
+    CHECK(fake_renderer_texture_is_sharp(entry->texture));
+    entry = texture_cache_load_now("other");
     CHECK(fake_renderer_texture_is_sharp(entry->texture));
     entry = texture_cache_load_now("plate" TEXTURE_CACHE_GRAYSCALE_SUFFIX);
-    CHECK_INT(entry->width, 2);
-    entry = texture_cache_load_now("other");
-    CHECK_INT(entry->width, 4);
-    CHECK(!fake_renderer_texture_is_sharp(entry->texture));
-    texture_cache_use_sharp_art(0);
-    entry = texture_cache_load_now("plate");
     CHECK_INT(entry->width, 8);
-    CHECK(!fake_renderer_texture_is_sharp(entry->texture));
 }
 
-static void test_with_no_ds_art_the_ds_look_changes_nothing(void)
+static void test_a_remastered_set_reads_textures_smooth(void)
 {
     const struct cached_texture *entry;
 
@@ -74,11 +63,9 @@ static void test_with_no_ds_art_the_ds_look_changes_nothing(void)
     fake_reader_reset();
     fake_files_add_rgba_texture("tex/plate.gtex", 8, 4);
     texture_cache_init("tex", 1u << 20);
-    CHECK_INT(texture_cache_read_sharp_art("ds"), 0);
-    texture_cache_use_sharp_art(1);
-    CHECK(!texture_cache_sharp_art_is_on());
+    texture_cache_use_sharp_art(0);
     entry = texture_cache_load_now("plate");
-    CHECK_INT(entry->width, 8);
+    CHECK(!fake_renderer_texture_is_sharp(entry->texture));
 }
 
 static void test_grayscale_name_reads_the_plain_file(void)
@@ -685,8 +672,8 @@ int main(void)
     test_requested_texture_stays_loading_until_its_read_finishes();
     test_large_compressed_pages_are_filled_off_the_frame_and_shown_only_once_filled();
     test_grayscale_name_reads_the_plain_file();
-    test_the_ds_look_reads_the_ds_art_sharp_and_switches_back();
-    test_with_no_ds_art_the_ds_look_changes_nothing();
+    test_a_ds_set_reads_every_texture_sharp_from_its_own_folder();
+    test_a_remastered_set_reads_textures_smooth();
     test_requesting_twice_only_reads_once();
     test_uploads_respect_the_limit_per_frame();
     test_read_the_reader_refuses_is_retried_until_it_loads();

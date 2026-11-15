@@ -27,6 +27,8 @@ static int writes_should_fail;
 static char missed_paths[MISSED_PATH_MAX][FILE_PATH_MAX];
 static int read_misses;
 static int folder_listing_fails;
+static char watched_folder[FILE_PATH_MAX];
+static int watched_reads;
 static char fake_log_path[FILE_PATH_MAX];
 
 void fake_clock_set_us(unsigned long long now_us)
@@ -150,6 +152,26 @@ void fake_files_reset(void)
     writes_should_fail = 0;
     read_misses = 0;
     folder_listing_fails = 0;
+    watched_folder[0] = '\0';
+    watched_reads = 0;
+}
+
+static void note_read(const char *path)
+{
+    if (watched_folder[0] != '\0' && strncmp(path, watched_folder, strlen(watched_folder)) == 0) {
+        watched_reads = watched_reads + 1;
+    }
+}
+
+void fake_files_watch_reads_under(const char *folder)
+{
+    snprintf(watched_folder, sizeof(watched_folder), "%s", folder);
+    watched_reads = 0;
+}
+
+int fake_files_watched_reads(void)
+{
+    return watched_reads;
 }
 
 void fake_files_fail_writes(int should_fail)
@@ -186,6 +208,7 @@ int file_read_whole_into(const char *path, const struct file_buffers *buffers, u
     unsigned char *buffer;
 
     *open_us = 0;
+    note_read(path);
     file = find_file(path);
     if (file == NULL) {
         if (read_misses < MISSED_PATH_MAX) {
@@ -212,6 +235,7 @@ int file_read_whole(const char *path, unsigned char **data, unsigned int *size)
     struct fake_file *file;
     unsigned char *copy;
 
+    note_read(path);
     file = find_file(path);
     if (file == NULL) {
         if (read_misses < MISSED_PATH_MAX) {
@@ -326,6 +350,7 @@ int file_list_folder(const char *path, file_name_visitor visit, void *context)
     unsigned int path_length;
     int index;
 
+    note_read(path);
     if (folder_listing_fails) {
         return FILE_ERR_OPEN;
     }

@@ -11,8 +11,8 @@ CODE_FILES = ["audio_file.py", "ds_music.py", "sseq_render.py"]
 ENCODER_QUALITY = "8"
 
 
-def track_path(name, suffix):
-    return MUSIC_FOLDER + "/" + name + suffix
+def track_path(name, suffix, folder=MUSIC_FOLDER):
+    return folder + "/" + name + suffix
 
 
 def frames_at_playback_rate(frames, sample_rate):
@@ -27,8 +27,8 @@ def encode_ogg(samples, sample_rate):
             return source.read()
 
 
-def bake_track(sdat, sequence, name, record, code):
-    relative_path = track_path(name, ".ogg")
+def bake_track(sdat, sequence, name, record, code, folder=MUSIC_FOLDER):
+    relative_path = track_path(name, ".ogg", folder)
     key = record.key_for(code, {"sequence": sequence}, sdat)
     ogg = record.read_if_current(relative_path, key)
     loop_points = record.details_of(relative_path).get("loop_points")
@@ -66,3 +66,20 @@ def music_files(section, sdat, remaster_tracks, record, music_ids=None):
         if loop_points is not None:
             files[track_path(name, ".loop")] = audio_file.loop_text(tuple(loop_points)).encode("ascii")
     return files
+
+
+def cartridge_music_files(section, sdat, music_ids, record, folder=MUSIC_FOLDER):
+    code = bake_record.code_fingerprint(CODE_FILES, subprocess.run(["ffmpeg", "-version"], capture_output=True).stdout.decode("utf-8", "replace"))
+    files = {}
+    derived = sequence_of_music_id(sdat, music_ids)
+    missing = []
+    for name in sorted(set(music_ids.values())):
+        sequence = section.get("sequences", {}).get(name, derived.get(name))
+        if sequence is None:
+            missing.append(name)
+            continue
+        ogg, loop_points = bake_track(sdat, sequence, name, record, code, folder)
+        files[track_path(name, ".ogg", folder)] = ogg
+        if loop_points is not None:
+            files[track_path(name, ".loop", folder)] = audio_file.loop_text(tuple(loop_points)).encode("ascii")
+    return files, missing

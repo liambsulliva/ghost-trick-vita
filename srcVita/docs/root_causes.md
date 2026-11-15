@@ -1582,9 +1582,19 @@ The class: every `<ICON>` tag in every talk page, in every chapter and every lan
 
 Guard: `BUTTON_OF_ICON` (`talk_assets.py`) names the Vita button each icon stands for, and the glyphs come from it. `<ICON SAVE>` is now the SELECT button. `tests/tools/test_talk_icon_buttons.py` reads `send_buttons` and checks that every icon names the button wired to that icon's action (press, ghost, hourglass, notebook), and that no icon is missing from the map.
 
+### 217. Visual Filter's DS setting still drew the remaster's sprites, text and sounds, and the DS look needed the APK
+
+Reported: in DS mode the characters, objects and effects were the remaster's. The DS setting swapped only the room plates. The texture cache read a name from `textures_ds/` when that folder listed it, and fell back to the remaster's `textures/` for every other name, so anything without a DS copy quietly showed remaster art. The DS look also could not exist without the APK, because the one set held both kinds of art, and its tables (text placement, balloons, rooms, records per DS frame) were sized for the remaster's.
+
+Native: a motion table's `begin` names a cell resource; `func_0200b598` resolves it through the ARM9 tables into a palette (block 0) and a cell file and graphics (block 3), and `func_0200bf54` draws frame word N as cell N's OAM records (`func_0200c2c0`), reading streamed tiles per frame where the bank says so (`func_0200857c`). Text is the script's language file in the DS font (`func_0201c7c8`), and sounds are `sound_data.sdat`'s sequence archives (`func_02007250`, `func_02004a84`).
+
+The class: every texture, animation, text line and sound the DS look shows, in every chapter, and every future file a DS build might take from the APK.
+
+Guard: the converter builds two self-contained sets (`--art remastered` from the APK, `--art ds` from the cartridge alone), and the app runs one of them (`asset_sets.c`), relaunching at the title when the filter changes. No per-name fallback remains. During a DS build an audit hook (`refuse_apk_reads_from` in `convert_assets.py`) refuses every open or listing under the APK folder, so any DS code that reaches for the remaster's files fails the build; `tests/tools/test_ds_set_guard.py` checks the hook. `tests/integration/test_asset_sets.c` plays a scene with both sets installed and checks that the running set reads no file of the other. A DS talk page ends the way its control codes say (0x21 pause, 0x23 close, 0x24 fade in, 0x15 page turn; table `data_020848ac`, `func_02015d48`), so the tutorial's `pause in` reaches the script. The cartridge's own talks can run longer than the remaster's, so auto-play no longer counts the ticks an open talk holds the player against a route step's limit (`run_route`, `tests/unit/test_route_step_talk_time.c`). `make route-check PLAN_SET=game_ds` replays the whole route on the DS set. Still open: the cartridge's pause menu, talk window, balloons, HUD, effects and movies are not decoded, so the DS set draws none of them.
+
 ## Still open
 
-- The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
+- The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
 - Talks and balloons the remaster's text lacks (49 labels, root cause 60): bake them from the DS ROM's language file for the script.
 
 - Which verb an object's action line shows. `st01_id_st01a_acn_*` holds state variants and native selection is not traced, so objects with an empty first variant show no action.

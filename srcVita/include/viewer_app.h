@@ -17,4 +17,6 @@ int viewer_app_play_scene(const char *name);
 int viewer_app_play_script(const char *name);
 int viewer_app_has_assets(void);
 
+int viewer_app_wants_relaunch(void);
+
 #endif

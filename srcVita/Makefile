@@ -40,6 +40,7 @@ LIVEAREA_SOURCE := build/livearea_$(LIVEAREA_STYLE)
 LIVEAREA_IMAGE_NAMES := icon0.png livearea/contents/bg.png livearea/contents/startup.png
 
 PLAN_SET ?= game
+PLAN_DESCRIPTION ?= $(PLAN_SET)
 PLAN_STOP_TICK ?= 4200000
 PLAN_SCRIPTS := ../extracted/vita_assets/$(PLAN_SET)/scripts
 STEPS_THE_STORY_PASSES_OVER := 1
@@ -166,7 +167,7 @@ coverage: route-check
 
 read-ahead: build/tests/golden/script_replay
 	@mkdir -p build/golden
-	python3 -I tools/assets/route_pacing.py build/tests/golden/script_replay tools/assets/$(PLAN_SET).json ../extracted/vita_assets/$(PLAN_SET)/scripts build/golden/cues_paced_$(PLAN_SET).tsv --stop-tick $(PLAN_STOP_TICK) --kept tools/assets/$(PLAN_SET)_pacing.txt
+	python3 -I tools/assets/route_pacing.py build/tests/golden/script_replay tools/assets/$(PLAN_DESCRIPTION).json ../extracted/vita_assets/$(PLAN_SET)/scripts build/golden/cues_paced_$(PLAN_SET).tsv --stop-tick $(PLAN_STOP_TICK) --kept tools/assets/$(PLAN_SET)_pacing.txt
 	python3 -I tools/assets/read_ahead.py build/golden/cues_paced_$(PLAN_SET).tsv ../extracted/vita_assets/$(PLAN_SET)/scripts ../extracted/vita_assets/$(PLAN_SET)/animations
 
 route-check: build/tests/golden/script_replay

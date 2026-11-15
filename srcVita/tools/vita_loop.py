@@ -43,6 +43,9 @@ BURST_PICTURE_NAME = "f%03d"
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD_FOLDER = os.path.join(SRC_VITA_FOLDER, "build")
 ASSETS_FOLDER = DATA_FOLDER + "/assets"
+DS_ASSETS_FOLDER = DATA_FOLDER + "/assets_ds"
+DS_ART_LINE = "art ds"
+ART_LINE_START = "art "
 UPLOAD_RECORD_PATH = os.path.join(BUILD_FOLDER, "uploaded_assets.json")
 UPLOAD_RECORD_SUFFIX = ".uploaded.json"
 UPLOAD_PROGRESS_EVERY = 100
@@ -287,9 +290,15 @@ def earlier_device_paths_of_asset(relative_path):
     return [path for path in paths if path != device_path_of_asset(relative_path)]
 
 
-def move_earlier_copy(connection, relative_path, remote_path, local_size):
+def device_root_of(folder):
+    with open(os.path.join(folder, "manifest.txt"), encoding="ascii") as source:
+        art_lines = [line.strip() for line in source if line.startswith(ART_LINE_START)]
+    return DS_ASSETS_FOLDER if art_lines == [DS_ART_LINE] else ASSETS_FOLDER
+
+
+def move_earlier_copy(connection, relative_path, remote_path, local_size, root=ASSETS_FOLDER):
     for earlier_path in earlier_device_paths_of_asset(relative_path):
-        earlier_remote = ASSETS_FOLDER + "/" + earlier_path
+        earlier_remote = root + "/" + earlier_path
         if remote_size_or_none(connection, earlier_remote) == local_size:
             try:
                 connection.rename(earlier_remote, remote_path)
@@ -310,6 +319,7 @@ def upload_assets(folder, checks_the_device=False):
         print("no manifest.txt in: " + folder)
         return 1
     record = load_upload_record(folder)
+    root = device_root_of(folder)
     uploaded = 0
     skipped = 0
     moved = 0
@@ -321,7 +331,7 @@ def upload_assets(folder, checks_the_device=False):
         local_files = list_local_files(folder)
         for local_path, relative_path in local_files:
             digest = sha256_of_file(local_path)
-            remote_path = ASSETS_FOLDER + "/" + device_path_of_asset(relative_path)
+            remote_path = root + "/" + device_path_of_asset(relative_path)
             if device_has_the_recorded_copy(connection, record, relative_path, digest, remote_path, os.path.getsize(local_path), checks_the_device):
                 skipped = skipped + 1
                 continue
@@ -329,7 +339,7 @@ def upload_assets(folder, checks_the_device=False):
             if remote_folder not in made_folders:
                 make_folders(connection, remote_folder)
                 made_folders.add(remote_folder)
-            if record.get(relative_path) == digest and move_earlier_copy(connection, relative_path, remote_path, os.path.getsize(local_path)):
+            if record.get(relative_path) == digest and move_earlier_copy(connection, relative_path, remote_path, os.path.getsize(local_path), root):
                 moved = moved + 1
                 continue
             was_uploaded_before = record.pop(relative_path, None) is not None
@@ -339,7 +349,7 @@ def upload_assets(folder, checks_the_device=False):
             save_upload_record(record, folder)
             if was_uploaded_before:
                 for earlier_path in earlier_device_paths_of_asset(relative_path):
-                    delete_if_present(connection, ASSETS_FOLDER + "/" + earlier_path)
+                    delete_if_present(connection, root + "/" + earlier_path)
             uploaded = uploaded + 1
             uploaded_bytes = uploaded_bytes + os.path.getsize(local_path)
             if uploaded % UPLOAD_PROGRESS_EVERY == 0:
@@ -347,11 +357,12 @@ def upload_assets(folder, checks_the_device=False):
         for loop_path in loop_files_the_set_no_longer_has([relative_path for _, relative_path in local_files]):
             if not checks_the_device and loop_path not in record:
                 continue
-            delete_if_present(connection, ASSETS_FOLDER + "/" + loop_path)
+            delete_if_present(connection, root + "/" + loop_path)
             if record.pop(loop_path, None) is not None:
                 save_upload_record(record, folder)
     finally:
         connection.close()
+    print("assets root", root)
     print("assets moved", moved)
     print("assets uploaded", uploaded, "skipped", skipped, "bytes", uploaded_bytes, "seconds", int(time.time() - started))
     return 0

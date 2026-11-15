@@ -61,7 +61,6 @@
       "st15": "natives/android/gamedesign/text/st15/st15_%04d.msg.22"
     }
   },
-  "ds_art": true,
   "ds_music": {
     "archive": "sound_data.sdat",
     "sequences": {
@@ -969,6 +968,18 @@
       ],
       "width": 84,
       "height": 40
+    },
+    {
+      "name": "ui_choice_buttons",
+      "source": "natives/android/charfiles/3d/06_id/10_select/cmn_button_01_iml4.tex.691230823",
+      "crop": [
+        0,
+        0,
+        512,
+        236
+      ],
+      "width": 512,
+      "height": 236
     },
     {
       "name": "ui_select_button",

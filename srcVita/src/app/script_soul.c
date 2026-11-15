@@ -940,6 +940,7 @@ static void report_hud(struct script_machine *machine)
     view.rewind_press_ticks = machine->soul.rewind_press_ticks;
     script_pills_fill_view(machine, &view);
     script_phone_book_fill_view(machine, &view);
+    script_choice_fill_view(machine, &view);
     machine->outputs->hud_changed(&view);
 }
 
@@ -2790,11 +2791,14 @@ static void run_route(struct script_machine *machine)
             machine->route_furthest_acted_step = soul->route_step;
         }
         soul->route_action_began_at = machine->tick;
+        soul->route_talk_ticks = 0;
         mark_route_step(machine, "route_step_began", step);
     }
     if (route_step_is_done(machine, step)) {
         finish_route_step(machine, step);
-    } else if (machine->tick - soul->route_step_began_at > ROUTE_ACTION_MOST_TICKS) {
+    } else if (machine->talk.phase != SCRIPT_TALK_CLOSED) {
+        soul->route_talk_ticks = soul->route_talk_ticks + 1;
+    } else if (machine->tick - soul->route_step_began_at - soul->route_talk_ticks > ROUTE_ACTION_MOST_TICKS) {
         give_up_on_route_step(machine, step);
     }
 }

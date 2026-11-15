@@ -9,7 +9,6 @@
 #include "renderer.h"
 #include "run_log.h"
 #include "text_lines.h"
-#include "texture_cache.h"
 #include "work_queue.h"
 
 #define LINE_MAX 64
@@ -192,7 +191,6 @@ void game_settings_apply(void)
         music_engine_use_folder(music_folders[current.music_type]);
     }
     renderer_set_vblanks_per_frame(GAME_FPS_FULL / current.fps_cap);
-    texture_cache_use_sharp_art(game_settings_visual_filter() == GAME_FILTER_DS);
 }
 
 float game_settings_darkness(void)

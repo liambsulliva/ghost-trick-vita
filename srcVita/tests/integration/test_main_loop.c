@@ -96,6 +96,14 @@ int sceKernelExitProcess(int result)
     return result;
 }
 
+int sceAppMgrLoadExec(const char *appPath, char * const argv[], const void *optParam)
+{
+    (void)appPath;
+    (void)argv;
+    (void)optParam;
+    return 0;
+}
+
 static const char *log_text(void)
 {
     unsigned int size;

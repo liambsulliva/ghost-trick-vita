@@ -11,8 +11,7 @@ import lz
 import texture_encoder
 
 PACK_PATH = "cpac_2d.bin"
-DS_TEXTURE_FOLDER = "textures_ds"
-NAMES_FILE = DS_TEXTURE_FOLDER + "/names.txt"
+DS_TEXTURE_FOLDER = "textures"
 PLATE_BLOCK = 4
 PALETTE_OFFSET = 512
 PALETTE_COLORS = 256
@@ -100,8 +99,8 @@ def ramped(work_folder, name, width, height, rgba, ramp):
     return result
 
 
-def bake_variant(work_folder, record, code, plate_bytes, name, ramp):
-    relative_path = DS_TEXTURE_FOLDER + "/" + name + ".gtex"
+def bake_variant(work_folder, record, code, plate_bytes, name, ramp, folder=DS_TEXTURE_FOLDER):
+    relative_path = folder + "/" + name + ".gtex"
     key = record.key_for(code, {"soul_ramp": ramp}, plate_bytes)
     if record.read_if_current(relative_path, key) is not None:
         return relative_path
@@ -112,21 +111,17 @@ def bake_variant(work_folder, record, code, plate_bytes, name, ramp):
     return relative_path
 
 
-def bake_plates(plates, pack_bytes, soul_ramp, ghost_ramps, work_folder, record, code, remaster_sizes):
+def bake_plates(plates, pack_bytes, soul_ramp, ghost_ramps, work_folder, record, code, remaster_sizes=None, folder=DS_TEXTURE_FOLDER):
     entries = read_plate_entries(pack_bytes)
     paths = []
     names = []
     missing = []
     for plate in plates:
         plate_bytes = entries.get(plate.get("ds_plate"))
-        if plate_bytes is None or tuple(remaster_sizes.get(plate["name"], ())) != plate_size(plate_bytes):
+        if plate_bytes is None or (remaster_sizes is not None and tuple(remaster_sizes.get(plate["name"], ())) != plate_size(plate_bytes)):
             missing.append(plate["name"])
             continue
         for name, ramp in variants_of(plate, soul_ramp, ghost_ramps):
-            paths.append(bake_variant(work_folder, record, code, plate_bytes, name, ramp))
+            paths.append(bake_variant(work_folder, record, code, plate_bytes, name, ramp, folder))
             names.append(name)
     return paths, names, missing
-
-
-def names_text(names):
-    return "".join(name + "\n" for name in sorted(names))

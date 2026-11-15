@@ -19,6 +19,8 @@ import class_movies
 import ds_music
 import ds_rom
 import ds_rooms
+import ds_set
+import ds_sounds
 import effect_movies
 import effect_pieces
 import frame_layout
@@ -39,6 +41,8 @@ import timeline_file
 
 MOVIE_CODE_FILES = ["convert_assets.py", "texture_encoder.py"]
 DS_PLATE_CODE_FILES = ["asset_writers.py", "ds_rooms.py", "texture_encoder.py"]
+DS_SET_TEXTURE_FOLDER = "textures"
+DS_SET_MUSIC_FOLDER = ds_music.MUSIC_FOLDER
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
 REPOSITORY_FOLDER = os.path.dirname(SRC_VITA_FOLDER)
@@ -344,24 +348,10 @@ def ds_music_output_files(set_description, rom_path, music_results, record):
     return ds_music.music_files(section, sdat, music_results, record, set_description.get("scripts", {}).get("music_ids", {}))
 
 
-def convert_ds_plates(set_description, rom_path, work_folder, record, remaster_sizes):
-    if not set_description.get("ds_art") or not os.path.exists(rom_path):
-        return [], []
-    with ds_rom.DsRom(rom_path) as rom:
-        pack_bytes = rom.read_file(ds_rooms.PACK_PATH)
-    soul_view = set_description.get("soul_view", {})
-    paths, names, missing = ds_rooms.bake_plates(set_description.get("plates", []), pack_bytes, soul_view.get("ramp"), soul_view.get("ghost_ramps"), work_folder, record, code_fingerprint_with_magick(DS_PLATE_CODE_FILES), remaster_sizes)
-    if missing:
-        print("plates with no DS art of the remaster's size: %d (%s)" % (len(missing), ", ".join(missing[:12])))
-    return paths, names
-
-
 def art_sets_of(set_description):
     sets = []
     if set_description.get("plates"):
         sets.append(REMASTERED_ART)
-    if set_description.get("ds_art"):
-        sets.append(DS_ART)
     return sets
 
 
@@ -490,7 +480,6 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
             composed_results, composed_failures = convert_composed_textures(packs, set_description.get("composed_textures", []), work_folder, record)
             talk_files, talk_results, talk_failures, _ = talk_assets.bake_talk(packs, set_description, text_key, work_folder, record, text_code_fingerprint())
             talk_results = talk_results + convert_hud_sheet(packs, set_description, work_folder, record)
-            ds_paths, ds_names = convert_ds_plates(set_description, ds_rom_path, work_folder, record, plate_size_lookup(texture_results, plates))
         finally:
             delete_work_folder(work_folder)
         failures = failures + text_failures + composed_failures + talk_failures
@@ -499,10 +488,7 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         for movie in set_description.get("movies", []):
             talk_results = talk_results + bake_movie_frames(packs, record, movie)
         texture_results = sorted(texture_results + text_results + composed_results + talk_results, key=lambda result: result["name"])
-        set_description["ds_art"] = ds_names
         files = audio_output_files(music_results, sound_results)
-        if ds_names:
-            files[ds_rooms.NAMES_FILE] = ds_rooms.names_text(ds_names).encode("ascii")
         files.update(ds_music_output_files(set_description, ds_rom_path, music_results, record))
         files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in animation_texts.items()})
         table_texts, motion_lines = script_assets.table_animations(set_description, output_folder, timelines, crops)
@@ -516,12 +502,82 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
         tile_table = page_tiles.table_text(texture_results)
         if tile_table:
             files[page_tiles.TABLE_PATH] = tile_table.encode("ascii")
-        write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts), list(script_paths) + ds_paths)
+        write_outputs(output_folder, record, texture_results, files, manifest_bytes(set_description, animation_texts), list(script_paths))
     finally:
         record.save()
     print_summary(record, texture_results, animation_texts, music_results, sound_results)
     narration.print_narration_summary(narration_lines)
     talk_assets.print_talk_summary(talk_files)
+
+
+class ApkReadRefused(RuntimeError):
+    pass
+
+
+refused_apk_folders = []
+AUDITED_FILE_EVENTS = ("open", "os.listdir", "os.scandir")
+
+
+def path_of_audited_event(args):
+    if not args or isinstance(args[0], int) or args[0] is None:
+        return None
+    return os.path.realpath(os.fsdecode(args[0]))
+
+
+def refuse_apk_reads_hook(event, args):
+    if not refused_apk_folders or event not in AUDITED_FILE_EVENTS:
+        return
+    path = path_of_audited_event(args)
+    if path is None:
+        return
+    for folder in refused_apk_folders:
+        if path == folder or path.startswith(folder + os.sep):
+            raise ApkReadRefused("the DS set must read nothing from the APK, but it opened " + path)
+
+
+def refuse_apk_reads_from(folders):
+    if not refused_apk_folders and refuse_apk_reads_hook not in hooks_added:
+        sys.addaudithook(refuse_apk_reads_hook)
+        hooks_added.append(refuse_apk_reads_hook)
+    refused_apk_folders[:] = sorted(set(os.path.realpath(folder) for folder in folders))
+
+
+def allow_apk_reads():
+    refused_apk_folders[:] = []
+
+
+hooks_added = []
+
+
+def convert_ds_set_description(set_description, output_folder, ds_rom_path=DEFAULT_DS_ROM_PATH):
+    remove_old_work_folders()
+    cartridge = ds_set.Cartridge(ds_rom_path)
+    set_description, scripts, arm9, plate_entries, languages, system_line_texts = ds_set.expand(set_description, ds_rom_path, cartridge)
+    make_output_folders(output_folder)
+    record = bake_record.BakeRecord(output_folder)
+    try:
+        script_paths = script_assets.bake_or_keep_scripts(set_description, ds_rom_path, output_folder, record)
+        soul_view = set_description.get("soul_view", {})
+        work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
+        try:
+            plate_paths, plate_names, _ = ds_rooms.bake_plates(set_description["plates"], cartridge.pack_bytes, soul_view.get("ramp"), soul_view.get("ghost_ramps"), work_folder, record, code_fingerprint_with_magick(DS_PLATE_CODE_FILES), None, DS_SET_TEXTURE_FOLDER)
+            art = ds_set.bake_art(set_description, scripts, arm9, cartridge, ds_rom_path, record, work_folder)
+        finally:
+            delete_work_folder(work_folder)
+        texture_sizes = dict(ds_set.plate_sizes(set_description["plates"], plate_entries), **art["texture_sizes"])
+        files = ds_sounds.sound_files(cartridge.sdat, set_description["sounds"], record)
+        music_files, missing_music = ds_music.cartridge_music_files(set_description.get("ds_music", {}), cartridge.sdat, set_description["scripts"]["music_ids"], record, DS_SET_MUSIC_FOLDER)
+        if missing_music:
+            print("music with no DS sequence: %d (%s)" % (len(missing_music), ", ".join(missing_music[:12])))
+        files.update(music_files)
+        files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in art["animation_texts"].items()})
+        files.update(art["files"])
+        files.update(script_assets.table_files(set_description, output_folder, art["motion_lines"], art["narration_lines"], texture_sizes, texture_sizes, list(art["animation_texts"]), art["talk_textures"]))
+        manifest = asset_writers.manifest_text([], plate_names, list(art["animation_texts"]), [DS_ART]).encode("ascii")
+        write_outputs(output_folder, record, [], files, manifest, list(script_paths) + plate_paths + art["texture_paths"])
+    finally:
+        record.save()
+    print("ds set: %d plates, %d textures, %d animations, %d sounds, %d music tracks" % (len(plate_names), len(art["texture_paths"]), len(art["animation_texts"]), len(set_description["sounds"]), len(music_files) - sum(1 for name in music_files if name.endswith(".loop"))))
 
 
 def exit_so_the_work_folder_is_deleted(signal_number, _frame):
@@ -534,10 +590,18 @@ def exit_so_the_work_folder_is_deleted(signal_number, _frame):
 
 def convert_and_report(set_description, arguments):
     try:
+        if arguments.art == DS_ART:
+            subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)
+            refuse_apk_reads_from([arguments.apk_folder, DEFAULT_APK_FOLDER])
+            try:
+                convert_ds_set_description(set_description, arguments.output, arguments.ds_rom)
+            finally:
+                allow_apk_reads()
+            return 0
         text_key = narration.load_text_key(set_description, arguments.apk_folder)
         subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)
         convert_set_description(set_description, arguments.output, arguments.apk_folder, text_key, arguments.ds_rom)
-    except (narration.NarrationError, ds_rom.RomRefused, script_assets.ScriptBakeError) as error:
+    except (narration.NarrationError, ds_rom.RomRefused, script_assets.ScriptBakeError, ApkReadRefused) as error:
         print("error: " + str(error), file=sys.stderr)
         return 1
     except ConversionFailed as failed:
@@ -554,6 +618,7 @@ def main():
     parser.add_argument("--set", required=True, help="a set description: its name in tools/assets without .json, or a path to a JSON file")
     parser.add_argument("--output", required=True, help="folder to write manifest.txt, textures, animations, scenes, music, sounds and scripts into")
     parser.add_argument("--apk-folder", default=DEFAULT_APK_FOLDER, help="folder holding the remaster's pack files")
+    parser.add_argument("--art", choices=[REMASTERED_ART, DS_ART], default=REMASTERED_ART, help="which art set to build: the remaster's, from the APK, or the DS cartridge's alone, which reads nothing from the APK")
     parser.add_argument("--ds-rom", default=DEFAULT_DS_ROM_PATH, help="your own USA DS ROM, read only for a set with a scripts section")
     arguments = parser.parse_args()
     set_description = load_set_description(arguments.set)

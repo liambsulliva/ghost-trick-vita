@@ -10,8 +10,6 @@
 #define TEXTURE_CACHE_ENTRY_MAX 2048
 #define TEXTURE_CACHE_DEFAULT_BUDGET_BYTES (128u * 1024u * 1024u)
 #define TEXTURE_CACHE_READS_AT_ONCE 2u
-#define TEXTURE_CACHE_SHARP_NAME_MAX 1024
-#define TEXTURE_CACHE_SHARP_NAMES_FILE "names"
 
 enum cached_texture_state {
     CACHED_TEXTURE_LOADING,
@@ -66,7 +64,6 @@ int texture_cache_drawn_loading_count(void);
 int texture_cache_read_ahead_is_behind(void);
 void texture_cache_read_totals(struct texture_cache_totals *totals);
 void texture_cache_clear(void);
-int texture_cache_read_sharp_art(const char *art_folder);
 void texture_cache_use_sharp_art(int is_on);
 int texture_cache_sharp_art_is_on(void);
 

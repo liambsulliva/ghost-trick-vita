@@ -1,7 +1,9 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+#include <psp2/appmgr.h>
 #include <psp2/kernel/processmgr.h>
+#include "asset_sets.h"
 #include "clock.h"
 #include "command_file.h"
 #include "command_reader.h"
@@ -10,6 +12,7 @@
 #include "file.h"
 #include "file_path.h"
 #include "fps_overlay.h"
+#include "game_settings.h"
 #include "frame_stats.h"
 #include "input.h"
 #include "keep_awake.h"
@@ -42,7 +45,7 @@
 #define LOG_PATH FILE_DATA_FOLDER "/run.log"
 #define COMMANDS_PATH FILE_DATA_FOLDER "/commands.txt"
 #define CAPTURE_FOLDER FILE_DATA_FOLDER "/captures"
-#define ASSETS_FOLDER FILE_DATA_FOLDER "/assets"
+#define RELAUNCH_PATH "app0:eboot.bin"
 
 static const struct renderer_color clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
@@ -241,6 +244,10 @@ static void run_main_loop(void)
 #endif
 
     while (!quit_requested) {
+        if (viewer_app_wants_relaunch()) {
+            run_log_write("relaunch for the other art set");
+            break;
+        }
         if (frame_number % KEEP_AWAKE_FRAMES == 0) {
             keep_awake_tick();
         }
@@ -348,7 +355,8 @@ int main(void)
 #ifdef DEBUG_BUILD
     screen_burst_reserve_memory();
 #endif
-    viewer_app_start(ASSETS_FOLDER);
+    game_settings_load(GAME_SETTINGS_PATH);
+    viewer_app_start(asset_sets_choose(ASSET_SETS_REMASTERED_FOLDER, ASSET_SETS_DS_FOLDER));
     use_the_memory_this_device_has();
     log_memory_and_textures();
     run_log_write("viewer ready has_assets=%d", viewer_app_has_assets());
@@ -359,6 +367,9 @@ int main(void)
     renderer_shutdown();
     run_log_write("exit clean");
     run_log_flush();
+    if (viewer_app_wants_relaunch()) {
+        sceAppMgrLoadExec(RELAUNCH_PATH, NULL, NULL);
+    }
     sceKernelExitProcess(0);
     return 0;
 }

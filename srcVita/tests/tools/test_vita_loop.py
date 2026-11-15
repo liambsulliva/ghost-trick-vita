@@ -183,6 +183,14 @@ class UploadAssetsTests(DeviceFreeTestCase):
         self.assertEqual(vita_loop.device_path_of_asset("textures/a.gtex"), "textures/03/a.gtex")
         self.assertEqual(vita_loop.device_path_of_asset("textures/movie_time_jump_012.gtex"), "textures/30/movie_time_jump_012.gtex")
 
+    def test_a_ds_set_goes_to_its_own_folder_and_a_remastered_set_to_the_usual_one(self):
+        self.write_file("manifest.txt", b"art ds\nanimation a\n")
+        self.assertEqual(vita_loop.device_root_of(self.set_folder), vita_loop.DS_ASSETS_FOLDER)
+        self.write_file("manifest.txt", b"art remastered\nanimation a\n")
+        self.assertEqual(vita_loop.device_root_of(self.set_folder), vita_loop.ASSETS_FOLDER)
+        self.write_file("manifest.txt", b"animation a\n")
+        self.assertEqual(vita_loop.device_root_of(self.set_folder), vita_loop.ASSETS_FOLDER)
+
     def test_other_assets_keep_their_path_on_the_device(self):
         self.assertEqual(vita_loop.device_path_of_asset("music/fx_theme_01.ogg"), "music/fx_theme_01.ogg")
 

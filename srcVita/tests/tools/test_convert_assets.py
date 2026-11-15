@@ -23,8 +23,7 @@ class ArtSetTests(unittest.TestCase):
     def test_the_manifest_declares_each_bundled_art_set(self):
         plates = [{"name": "st01-00"}]
         self.assertEqual(convert_assets.art_sets_of({"plates": plates}), ["remastered"])
-        self.assertEqual(convert_assets.art_sets_of({"ds_art": ["st01-00"]}), ["ds"])
-        self.assertEqual(convert_assets.art_sets_of({"plates": plates, "ds_art": ["st01-00"]}), ["remastered", "ds"])
+        self.assertEqual(convert_assets.art_sets_of({"plates": plates, "ds_art": ["st01-00"]}), ["remastered"])
         self.assertEqual(convert_assets.manifest_bytes({"plates": plates}, {}).decode("ascii").splitlines()[0], "art remastered")
 
 

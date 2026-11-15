@@ -41,6 +41,39 @@ class SetUpGameTest(unittest.TestCase):
                 set_up_game.pack_members(apk)
             self.assertIn("assets/data02", str(caught.exception))
 
+    def run_stages_with(self, folder, apk):
+        calls = []
+        rom = os.path.join(folder, "game.nds")
+        with open(rom, "wb") as output:
+            output.write(b"rom")
+        arguments = mock.Mock(apk=apk, ds_rom=rom)
+        with mock.patch.object(set_up_game, "APK_FOLDER", os.path.join(folder, "remaster_apk")), \
+                mock.patch.object(set_up_game, "TEXT_KEY_PATH", os.path.join(folder, "remaster_apk", "text_key.bin")), \
+                mock.patch.object(set_up_game, "check_tools"), \
+                mock.patch.object(set_up_game, "copy_packs", side_effect=lambda path: calls.append("copy")), \
+                mock.patch.object(set_up_game, "find_text_key", side_effect=lambda path: calls.append("key")), \
+                mock.patch.object(set_up_game, "convert", side_effect=lambda path: calls.append("remastered")), \
+                mock.patch.object(set_up_game, "convert_ds_set", side_effect=lambda path: calls.append("ds")), \
+                mock.patch.object(set_up_game, "run_with_progress", side_effect=lambda command, label, environment=None: calls.append(next((word for word in command if word.startswith("PLAN_SET=")), command[-1])) or []), \
+                mock.patch.object(set_up_game, "vitasdk_folder", return_value=None), \
+                redirect_stdout(io.StringIO()) as shown:
+            set_up_game.run_stages(arguments)
+        return calls, shown.getvalue()
+
+    def test_with_only_the_cartridge_only_the_ds_set_is_built_and_planned(self):
+        with tempfile.TemporaryDirectory() as folder:
+            calls, shown = self.run_stages_with(folder, None)
+        self.assertEqual(calls, ["srcVita/tools/assets", "ds", "PLAN_SET=game_ds"])
+        self.assertIn("ux0:data/ghosttrick/assets_ds/", shown)
+        self.assertNotIn("ux0:data/ghosttrick/assets/\n", shown)
+
+    def test_with_the_android_package_both_sets_are_built_and_planned(self):
+        with tempfile.TemporaryDirectory() as folder:
+            calls, shown = self.run_stages_with(folder, os.path.join(folder, "game.apk"))
+        self.assertEqual(calls, ["copy", "key", "srcVita/tools/assets", "ds", "remastered", "PLAN_SET=game_ds", "PLAN_SET=game"])
+        self.assertIn("ux0:data/ghosttrick/assets_ds/", shown)
+        self.assertIn("ux0:data/ghosttrick/assets/", shown)
+
     def test_the_bar_shows_share_and_sizes(self):
         self.assertIn(" 50%", set_up_game.bar_text(512, 1024, 0))
         self.assertIn("512 B of 1.0 KB", set_up_game.bar_text(512, 1024, 0))

@@ -1,6 +1,6 @@
 # Ghost Trick Vita
 
-A PS Vita port using the original DS game logic with the 2023 remaster's art and a single-screen interface.
+A PS Vita port using the original DS game logic and a single-screen interface, drawn with either the 2023 remaster's art or the DS cartridge's own.
 
 ## Where the port stands
 
@@ -8,7 +8,7 @@ The whole game is routed and plays from start to finish. An automatic playthroug
 
 The same playthrough has run on a real Vita. On 2026-11-13 the debug build played the route by itself, at up to 30 ticks a frame, and did all 1718 steps in about 53 minutes. It saved every chapter from 2 to 18 on the way and had no softlock and no crash. The title screen had not appeared in the log when the run was stopped, 47 seconds after the last step. The port now boots into a title screen and returns to it at the story's end, so far checked on the Mac only. What is left is the script opcodes that still log as not ported (16 were met on that run) and a few slow stretches where large textures load.
 
-The app installs and runs from locally converted remaster art. The one-command setup below prepares the whole game.
+The app installs and runs from locally converted art: the remaster's, the DS cartridge's, or both. The one-command setup below prepares the whole game.
 
 ## Legal disclaimer
 
@@ -33,13 +33,13 @@ Click the preview to open the [interactive treemap](https://liambsulliva.github.
 
 ## Run it on a Vita
 
-The VPK holds only the app. It has no game data in it, so it also needs art, sound and text converted from your own copy of the remaster's Android release. The app plays the game from the DS game's own scripts, with its music, sounds, narration and dialogue. [The app's README](srcVita/README.md#controls) lists the buttons.
+The VPK holds only the app. It has no game data in it, so it also needs art, sound and text converted from your own copies of the game. The app plays the game from the DS game's own scripts, with its music, sounds, narration and dialogue. Your DS cartridge dump alone is enough: it gives the DS set, drawn with the cartridge's own art, text and sound. Adding your copy of the remaster's Android release also gives the remastered set. [The app's README](srcVita/README.md#controls) lists the buttons.
 
 You need:
 
 - Python 3, `make`, `clang` and ImageMagick 7 (the `magick` command). The converter draws the game's text with `magick`, which needs FreeType support: `magick -list format | grep OTF` should print a line.
 - About 3.6 GB of free disk space for the game files and the converted game.
-- Your own copy of the remaster's Android release, and your own dump of the USA DS cartridge.
+- Your own dump of the USA DS cartridge. Your own copy of the remaster's Android release is optional: without it the port uses the cartridge's own art, text and sound only.
 - VitaSDK, to build the VPK. [The app's README](srcVita/README.md#build-and-test) lists its libraries.
 - A Vita that can install homebrew with VitaShell.
 - The Vita's shader compiler at `ur0:data/libshacccg.suprx`. It does not come with the VPK. Extract it once with ShaRKF00D, if another app has not already made you do this.
@@ -50,7 +50,7 @@ Run every command below from the top of this repository.
 
 ### Set everything up with one command
 
-`srcVita/tools/set_up_game.py` does the whole preparation in one go. Give it your copy of the Android package and your own dump of the USA DS cartridge (game code `BGTE`):
+`srcVita/tools/set_up_game.py` does the whole preparation in one go. Give it your own dump of the USA DS cartridge (game code `BGTE`) and, for the remastered art, your copy of the Android package:
 
 ```bash
 python3 -I srcVita/tools/set_up_game.py --apk "path/to/your-copy.apk" --ds-rom "path/to/your-cartridge.nds"
@@ -62,7 +62,7 @@ It prints each stage as it starts, with a progress bar while it copies the game 
 2. **Copy the game files out of the Android package.** It takes `re_chunk_000.pak`, `data01` and `data02` (about 3.1 GB) from the package's `assets/` folder into `extracted/remaster_apk/`. They were only tested with Android v1.0.0, packaged as one APK with all three files.
 3. **Find the text key.** The narration and speech bubbles are stored encrypted. The key is not in this repository, so it is found in your own package, saved as `extracted/remaster_apk/text_key.bin` and never printed.
 4. **Build the converter.**
-5. **Convert the art, sound, text and DS scripts** into `extracted/vita_assets/game/` (about 3.3 GB). The app plays the game from the DS game's own scripts, so the cartridge dump is required. A cartridge from another region is refused, because no other region's scripts have been checked.
+5. **Convert the art, sound, text and DS scripts.** The cartridge's own set goes into `extracted/vita_assets/game_ds/`, and with the Android package the remastered set goes into `extracted/vita_assets/game/` (about 3.3 GB). The app plays the game from the DS game's own scripts, so the cartridge dump is required. A cartridge from another region is refused, because no other region's scripts have been checked. [The asset format](srcVita/docs/asset_format.md#two-art-sets) explains the two sets.
 6. **Plan the loading.** It replays the game on this computer and writes, for each scene, the list of textures to read ahead and one bundle of its animations.
 7. **Build the package**, if VitaSDK is installed. [The app's README](srcVita/README.md#build-and-test) lists its libraries.
 8. **Copy everything to the Vita.** The script tells you what to install and copy, which the next section explains.
@@ -73,7 +73,7 @@ Everything under `extracted/` is ignored by git. `tools/rom_audit.py` refuses a 
 
 ### Copy everything to the Vita
 
-Install `srcVita/build/ghosttrick.vpk` with VitaShell from anywhere under `ux0:`, then copy what is inside `extracted/vita_assets/game/` to `ux0:data/ghosttrick/assets/`. Copy the folder's contents, not the folder itself: a path like `ux0:data/ghosttrick/assets/game/manifest.txt` will not be found.
+Install `srcVita/build/ghosttrick.vpk` with VitaShell from anywhere under `ux0:`, then copy what is inside `extracted/vita_assets/game_ds/` to `ux0:data/ghosttrick/assets_ds/` and, if you built it, what is inside `extracted/vita_assets/game/` to `ux0:data/ghosttrick/assets/`. Copy each folder's contents, not the folder itself: a path like `ux0:data/ghosttrick/assets/game/manifest.txt` will not be found. With both sets installed, Options' Visual Filter picks one; with one, that one runs.
 
 To copy by hand, put the Vita and this computer on the same Wi-Fi network. In VitaShell, press SELECT to start its FTP server. If SELECT starts USB instead, press START and set **SELECT button** to **FTP**. Then connect an FTP client to the address VitaShell shows.
 
@@ -86,7 +86,7 @@ If you see something else:
 | What you see                                                    | What is wrong                                                    | Look in the log for                      |
 | --------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------- |
 | Black or a crash before anything else appears                   | `ur0:data/libshacccg.suprx` is probably missing                  |                                          |
-| A checker pattern and `no assets in ux0:data/ghosttrick/assets` | `manifest.txt` is missing, misplaced or out of date              | `manifest missing`, `manifest invalid`   |
+| A checker pattern and `no assets in ux0:data/ghosttrick/assets` | `manifest.txt` is missing, misplaced or out of date (for the DS set, in `assets_ds`) | `manifest missing`, `manifest invalid`, `asset sets` |
 | `no scripts in ux0:data/ghosttrick/assets/scripts`             | `scripts/` is missing, because the DS cartridge step did not run | `opening needs_scripts`                  |
 | Magenta blocks                                                  | `textures/` is missing or out of date                            | `texture missing`                        |
 | Rooms with nothing in them                                      | `animations/` is missing or out of date                          | `animation missing`, `animation invalid` |
@@ -106,17 +106,18 @@ The port follows the DS game's own code wherever it can. The changes below are d
 - **Save at any point.** The pause menu's Save keeps the game whenever the player has the controls, not only at the game's own checkpoints. Loading picks up again from the start of the scene it was saved in.
 - **New Game and Options on the title screen.** The DS title offers Chapter Select, Continue, Language and erase, and a new game only when there is no save. The port also always offers New Game, which asks first over a save, and Options.
 - **The Record shows who Sissel really is.** Once the story reveals that Sissel is not the blond man in the red suit (that man is Yomiel), Sissel's Record entry shows the soul with sunglasses instead of the man's face. What the player has learned stays through every save, load and chapter, until the saves are erased from the title screen.
+- **Two looks, and no remaster needed for the DS one.** Visual Filter chooses between the remaster's art and the DS cartridge's own, scaled up sharp from the DS's resolution. Until roadmap item 2 is done, the DS look leaves out the parts of the screen not decoded yet. Each look is a separate set that takes nothing from the other, so the DS look plays from the cartridge alone. A change takes effect at the title screen, where the app restarts into the other set.
 - **A high-contrast mode.** An Options setting that makes cores easier to pick out in crowded rooms, for players with low vision.
 - **Vita buttons instead of touch alone.** Every touch action also has a button. The on-screen prompts, and the buttons the characters name in dialogue in every language, show the Vita's buttons rather than the remaster's keyboard keys, so Ray's tutorial says SELECT for the Record. [The app's README](srcVita/README.md#controls) lists them.
 
 ## Roadmap
 
 1. **Finish the remaining script opcodes**, on the same data-driven code. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
-2. **A DS-faithful look.** Visual Filter's DS setting draws the cartridge's own rooms with nearest-neighbour sampling, but the characters, objects and effects over them are still the remaster's. Their DS art (the sprite entries in `cpac_2d.bin` and their frame tables) is not decoded yet.
+2. **A DS-faithful look.** The cartridge's pause menu, talk window, balloons, HUD, effects and movies are not decoded yet, so the DS set draws none of them.
 3. **Every language the remaster has.** Spanish, French, German, Italian, Japanese, Korean, Simplified Chinese and Traditional Chinese, alongside English.
 4. **The rest of the settings.** Resolution, and the ghost world's background color for Sissel and, once unlocked, Missile.
 5. **Upload to VitaDB.**
-6. **Make the APK optional.** A player with only the DS cartridge would get the whole port from the DS game's own art, text and sound, and the remaster's files would become an optional upgrade.
+6. **A remastered set from the APK alone.** Building it without the cartridge needs the remaster's own scene scripts and tables in place of the DS ones.
 
 ## Working on the port
 

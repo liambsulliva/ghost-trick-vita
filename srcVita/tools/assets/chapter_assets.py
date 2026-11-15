@@ -72,7 +72,7 @@ SECOND_NAME_TABLE_MARK = "b:"
 UNKNOWN_LABEL_ID = "?"
 THORN_BALLOON_KIND = 2
 TALK_OPS = (0x37, 0x5c, 0xdb)
-CHOICE_TALK_LABEL_WORD = {0x3c: 2, 0x3d: 3}
+CHOICE_TEXT_LABEL_WORDS = {0x3c: (0, 2), 0x3d: (1, 3), 0x40: (0,), 0x41: (1,)}
 SOUL_BALLOON_TALK_OP = 0x4c
 BALLOON_LABEL_OPS = (0x51, 0x45)
 EFFECT_SPAWN_OP = 0xb0
@@ -132,9 +132,9 @@ class Script:
     def talk_labels_of_choice_panels(self):
         found = []
         for _, _, op, operands in self.operations:
-            word = CHOICE_TALK_LABEL_WORD.get(op)
-            if word is not None and len(operands) > word and self.text_of(operands[word]) is not None:
-                found.append(self.text_of(operands[word]))
+            for word in CHOICE_TEXT_LABEL_WORDS.get(op, ()):
+                if len(operands) > word and self.text_of(operands[word]) is not None:
+                    found.append(self.text_of(operands[word]))
         return list(dict.fromkeys(found))
 
     def thorn_balloon_labels(self):
@@ -249,33 +249,17 @@ def rooms_of_scripts_naming(scripts, words):
 
 
 def plates_and_rooms(packs, scripts, arm9, soul_ramp, ghost_ramps=None):
-    ghost_rooms = {ghost: rooms_of_scripts_naming(scripts, set(ramp["commands"])) for ghost, ramp in (ghost_ramps or {}).items()}
     plate_paths = {}
     for script in scripts.values():
         for plate_id, path in read_list_or_nothing(packs, "bg", script.list_name()):
             plate_paths.setdefault(plate_id, path)
-    plates = collections.OrderedDict()
-    room_plates = {}
-    room_sizes = {}
-    for room in rooms_used(scripts):
-        width, height, rows = read_room(arm9, room)
-        room_sizes[str(room)] = [width, height]
-        placed = []
-        for plate_id, x, y in rows:
-            if plate_id not in plate_paths:
-                continue
-            name = os.path.basename(plate_paths[plate_id])[:-len(".user")].lower()
-            if name not in plates:
-                plates[name] = {"name": name, "source": plate_source(plate_paths[plate_id]), "ds_plate": plate_id}
-                if soul_ramp is not None:
-                    plates[name]["soul_plate"] = name + "-soul"
-            for ghost, rooms in ghost_rooms.items():
-                if room in rooms and soul_ramp is not None:
-                    plates[name].setdefault("ghost_plates", {})[ghost] = name + "-soul-" + ghost
-            placed.append([name, x, y])
-        if placed:
-            room_plates[str(room)] = placed
-    return list(plates.values()), room_plates, room_sizes
+
+    def remaster_plate(plate_id):
+        if plate_id not in plate_paths:
+            return None
+        return {"name": os.path.basename(plate_paths[plate_id])[:-len(".user")].lower(), "source": plate_source(plate_paths[plate_id])}
+
+    return room_rows(scripts, arm9, soul_ramp, ghost_ramps, remaster_plate)
 
 
 def strip_table_variant(stem):
@@ -633,14 +617,8 @@ def refuse_a_closing_card_beside_the_game_s_own_cards(set_description):
         raise ChapterBakeError("the set plays the game's own chapter cards, so it cannot also close on " + closing_card)
 
 
-def expand_set(set_description, packs, rom_path, text_key):
-    if "chapter" not in set_description:
-        return set_description
-    refuse_a_closing_card_beside_the_game_s_own_cards(set_description)
-    expanded = dict(set_description)
+def read_chain(set_description, rom_path):
     section = dict(set_description["scripts"])
-    chapter = set_description["chapter"]
-    soul_ramp = set_description.get("soul_view", {}).get("ramp")
     with ds_rom.DsRom(rom_path) as rom:
         scripts = discover_chain(rom, section["entry"], stages_of(set_description), section.get("follow", ()), section.get("stop_before", ()))
         arm9 = read_arm9(rom)
@@ -651,6 +629,44 @@ def expand_set(set_description, packs, rom_path, text_key):
                 languages[path] = lz.try_decompress(rom.read_file(language_path))
         system_line_texts = read_system_line_texts(rom, set_description.get("talk", {}).get("system_lines", {}))
     section["files"] = list(scripts)
+    return section, scripts, arm9, languages, system_line_texts
+
+
+def room_rows(scripts, arm9, soul_ramp, ghost_ramps, name_of_plate):
+    ghost_rooms = {ghost: rooms_of_scripts_naming(scripts, set(ramp["commands"])) for ghost, ramp in (ghost_ramps or {}).items()}
+    plates = collections.OrderedDict()
+    room_plates = {}
+    room_sizes = {}
+    for room in rooms_used(scripts):
+        width, height, rows = read_room(arm9, room)
+        room_sizes[str(room)] = [width, height]
+        placed = []
+        for plate_id, x, y in rows:
+            plate = name_of_plate(plate_id)
+            if plate is None:
+                continue
+            name = plate["name"]
+            if name not in plates:
+                plates[name] = dict(plate, ds_plate=plate_id)
+                if soul_ramp is not None:
+                    plates[name]["soul_plate"] = name + "-soul"
+            for ghost, rooms in ghost_rooms.items():
+                if room in rooms and soul_ramp is not None:
+                    plates[name].setdefault("ghost_plates", {})[ghost] = name + "-soul-" + ghost
+            placed.append([name, x, y])
+        if placed:
+            room_plates[str(room)] = placed
+    return list(plates.values()), room_plates, room_sizes
+
+
+def expand_set(set_description, packs, rom_path, text_key):
+    if "chapter" not in set_description:
+        return set_description
+    refuse_a_closing_card_beside_the_game_s_own_cards(set_description)
+    expanded = dict(set_description)
+    chapter = set_description["chapter"]
+    soul_ramp = set_description.get("soul_view", {}).get("ramp")
+    section, scripts, arm9, languages, system_line_texts = read_chain(set_description, rom_path)
     plates, room_plates, room_sizes = plates_and_rooms(packs, scripts, arm9, soul_ramp, set_description.get("soul_view", {}).get("ghost_ramps"))
     expanded["plates"] = plates
     section["room_plates"] = room_plates

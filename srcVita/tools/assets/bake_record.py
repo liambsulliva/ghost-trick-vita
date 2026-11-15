@@ -7,7 +7,7 @@ import asset_writers
 import gtex_pack
 
 RECORD_FILE_NAME = ".bake_record.json"
-TEXTURE_FOLDER_PREFIXES = ("textures/", "textures_ds/")
+TEXTURE_FOLDER_PREFIXES = ("textures/",)
 TEXTURE_FILE_SUFFIX = ".gtex"
 TEMPORARY_SUFFIX = ".new"
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))

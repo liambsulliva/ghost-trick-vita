@@ -5,8 +5,6 @@ The converter turns the remaster's Android files into small, simple files the Vi
 ```
 manifest.txt
 textures/<texture_name>.gtex
-textures_ds/<texture_name>.gtex
-textures_ds/names.txt
 animations/<animation_name>.anim
 scenes/<scene_name>.scene
 music/<track_name>.ogg
@@ -79,11 +77,27 @@ A 20-byte header followed by pixel data, with every number a little-endian 32-bi
 
 Width and height must both be multiples of 4 for DXT formats. Pixels run left to right, top to bottom, with straight (not premultiplied) alpha. Color under transparent pixels is filled from the nearest visible pixels, so bilinear filtering does not leave dark edges.
 
-## DS art: `textures_ds/`
+## Two art sets
 
-A set with `"ds_art": true` also bakes the DS cartridge's own room plates, for Visual Filter's DS setting. Each is block 4 of `cpac_2d.bin`, at the index the DS room table (`data_02083328`, read by `func_02009a28`) gives as the plate id: a 4-byte width and height, a 256-colour BGR555 palette at byte 512, then one byte per pixel from byte 1024, in 16 by 16 blocks of 8 by 8 tiles. Colour 0 is clear. The plate is stored at the DS's own size, uncompressed (format 0), under the remaster plate's name, and its ghost-world versions get the same ramps as the remaster's.
+The converter builds one of two self-contained sets, chosen with `--art`:
 
-`textures_ds/names.txt` lists every name the folder holds, one per line. The manifest lists `art ds` when it has any. While Visual Filter is on DS, the texture cache reads those names from `textures_ds/` and samples them nearest-neighbour; every other name still comes from `textures/`. Changing the setting drops the loaded copies of those names, so they load again from the other folder.
+- `remastered` (the default) reads the remaster's art, text and sound from the Android package, and the scripts from the DS cartridge. It goes to `ux0:data/ghosttrick/assets/`.
+- `ds` reads the DS cartridge alone and goes to `ux0:data/ghosttrick/assets_ds/`. While it runs, an audit hook in `convert_assets.py` (`refuse_apk_reads_from`) refuses every open or listing under the APK folder, so the build fails if any of its code reaches for the remaster's files.
+
+The two sets share no file. Each has its own manifest (`art remastered` or `art ds`), textures, animations, tables, music and sounds, because the tables that place text, balloons and rooms keep texture sizes, and motion lines keep records per DS frame. At launch the app reads whichever set Visual Filter names, or the only one installed (`asset_sets.c`). A change of filter takes effect the next time the title screen opens, where the app relaunches into the other set.
+
+What the DS set holds, and where each part comes from:
+
+| Part | Source | Native reader |
+|---|---|---|
+| Room plates `ds_plate_<id>` | `cpac_2d.bin` block 4, at the plate id the room table gives: a 4-byte width and height, a 256-colour BGR555 palette at byte 512, then one byte per pixel from byte 1024, in 16 by 16 blocks of 8 by 8 tiles. Colour 0 is clear. Ghost-world versions get the set's ramps | `data_02083328`, `func_02009a28` |
+| Sprite pages `ds_sprite_<resource>` | Every frame of a motion table's resource, packed left to right on one page at DS size | `func_0200b598`, `func_0200bf54`, `func_0200c2c0`, `func_0200857c` |
+| Motion animations `t_<table>` | One frame per frame word, 4 ticks each, so their motion lines give 1 record per DS frame. A table name two resources share gets the resource id on the end | |
+| Narration lines and the talk font | The script's language file and the DS font, in the text palette (`cpac_2d.bin` block 0, entry 5), rendered at DS size and placed in the cartridge's text boxes, then scaled nearest-neighbour by 2.8125. Icons keep their width but are not drawn yet | `func_0201c7c8`, `func_0201c350`, `data_02084a8c`, `func_02017b60`, `func_020197b4` |
+| Music `music_ds/bgm<id>_new` | `sound_data.sdat`, the sequence at the music id | `ds_music.py` |
+| Sounds `sounds/<group>_<index>` | `sound_data.sdat`'s sequence archives `SEQ_SE_SYS` and `SEQ_SE_GIM` | `func_02007250`, `func_02004a84` |
+
+All DS textures are uncompressed (format 0), and the texture cache samples every texture of a DS set nearest-neighbour. Anything the cartridge's decoders do not cover yet, such as the pause menu, the talk window and the pre-rendered movies, has no file in the set: the app logs it once as missing and draws nothing.
 
 ## Animations: `.anim`
 

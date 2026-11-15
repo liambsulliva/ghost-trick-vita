@@ -9,5 +9,6 @@ typedef struct SceAppMgrAppState {
 } SceAppMgrAppState;
 
 int _sceAppMgrGetAppState(SceAppMgrAppState *appState, unsigned int len, unsigned int version);
+int sceAppMgrLoadExec(const char *appPath, char * const argv[], const void *optParam);
 
 #endif
