@@ -63,6 +63,7 @@ struct fill_job {
     unsigned long long read_us;
     unsigned long long unpack_us;
     unsigned long long fill_us;
+    unsigned long long room_us;
 };
 
 static struct fill_job fill_jobs[FILL_JOB_MAX];
@@ -457,7 +458,7 @@ static struct fill_job *claim_fill_job(void)
     return NULL;
 }
 
-static void log_loaded(const struct cached_texture *entry, unsigned int file_bytes, unsigned long long upload_us, unsigned long long open_us, unsigned long long read_us, unsigned long long unpack_us, unsigned long long fill_us)
+static void log_loaded(const struct cached_texture *entry, unsigned int file_bytes, unsigned long long upload_us, unsigned long long room_us, unsigned long long open_us, unsigned long long read_us, unsigned long long unpack_us, unsigned long long fill_us)
 {
     unsigned long long wait_us;
 
@@ -468,7 +469,7 @@ static void log_loaded(const struct cached_texture *entry, unsigned int file_byt
     if (wait_us > totals.longest_wait_us) {
         totals.longest_wait_us = wait_us;
     }
-    run_log_write("texture loaded name=%s width=%u height=%u file_bytes=%u memory=%u wait_us=%llu upload_us=%llu open_us=%llu read_us=%llu unpack_us=%llu fill_us=%llu", entry->name, entry->width, entry->height, file_bytes, entry->memory_bytes, wait_us, upload_us, open_us, read_us, unpack_us, fill_us);
+    run_log_write("texture loaded name=%s width=%u height=%u file_bytes=%u memory=%u wait_us=%llu upload_us=%llu room_us=%llu open_us=%llu read_us=%llu unpack_us=%llu fill_us=%llu", entry->name, entry->width, entry->height, file_bytes, entry->memory_bytes, wait_us, upload_us, room_us, open_us, read_us, unpack_us, fill_us);
 }
 
 static void finish_filled_textures(void)
@@ -488,7 +489,7 @@ static void finish_filled_textures(void)
         job->entry->fill_is_running = 0;
         job->entry->state = CACHED_TEXTURE_READY;
         totals.loads = totals.loads + 1;
-        log_loaded(job->entry, job->file_bytes, job->upload_us, job->open_us, job->read_us, job->unpack_us, job->fill_us);
+        log_loaded(job->entry, job->file_bytes, job->upload_us, job->room_us, job->open_us, job->read_us, job->unpack_us, job->fill_us);
         read_buffer_release(job->data);
         job->is_used = 0;
         fills_running = fills_running - 1;
@@ -503,7 +504,7 @@ static void wait_for_fills(void)
     }
 }
 
-static int start_filling_off_the_frame(struct cached_texture *entry, const struct texture_file_header *header, const struct finished_read *finished, unsigned long long upload_started_us)
+static int start_filling_off_the_frame(struct cached_texture *entry, const struct texture_file_header *header, const struct finished_read *finished, unsigned long long upload_started_us, unsigned long long room_us)
 {
     enum renderer_compressed_format format;
     struct fill_job *job;
@@ -540,6 +541,7 @@ static int start_filling_off_the_frame(struct cached_texture *entry, const struc
     job->read_us = finished->read_us;
     job->unpack_us = finished->unpack_us;
     job->upload_us = clock_now_us() - upload_started_us;
+    job->room_us = room_us;
     entry->fill_is_running = 1;
     fills_running = fills_running + 1;
     if (!work_queue_post(run_fill_job, job)) {
@@ -552,6 +554,7 @@ static int upload_read_data(struct cached_texture *entry, const struct finished_
 {
     struct texture_file_header header;
     unsigned long long upload_started_us;
+    unsigned long long room_us;
     unsigned int memory_bytes;
     int result;
 
@@ -577,9 +580,10 @@ static int upload_read_data(struct cached_texture *entry, const struct finished_
             return 0;
         }
     }
+    room_us = clock_now_us() - upload_started_us;
     entry->width = header.width;
     entry->height = header.height;
-    if (start_filling_off_the_frame(entry, &header, finished, upload_started_us)) {
+    if (start_filling_off_the_frame(entry, &header, finished, upload_started_us, room_us)) {
         entry->memory_bytes = memory_bytes;
         totals.bytes_in_use = totals.bytes_in_use + entry->memory_bytes;
         return 1;
@@ -597,7 +601,7 @@ static int upload_read_data(struct cached_texture *entry, const struct finished_
     entry->state = CACHED_TEXTURE_READY;
     totals.bytes_in_use = totals.bytes_in_use + entry->memory_bytes;
     totals.loads = totals.loads + 1;
-    log_loaded(entry, header.pixel_data_size, clock_now_us() - upload_started_us, finished->open_us, finished->read_us, finished->unpack_us, 0);
+    log_loaded(entry, header.pixel_data_size, clock_now_us() - upload_started_us, room_us, finished->open_us, finished->read_us, finished->unpack_us, 0);
     return 0;
 }
 
