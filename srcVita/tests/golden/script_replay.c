@@ -68,6 +68,7 @@ static void on_music_started(int id) { CUE("music_start %d", id); }
 static void on_music_stopped(int fade) { CUE("music_stop %d", fade); }
 static void on_sound(int kind) { CUE("sound %d", kind); }
 static void on_soul_vision(int is_on, int with_effect) { (void)with_effect; CUE("soul_vision %d", is_on); }
+static void on_swirl(int is_on) { CUE("swirl %d", is_on); }
 static void write_state(const char *path, const char *script)
 {
     static struct game_save save;
@@ -256,6 +257,7 @@ static const struct script_outputs recording_outputs = {
     .music_stopped = on_music_stopped,
     .sound_played = on_sound,
     .soul_vision_changed = on_soul_vision,
+    .swirl_changed = on_swirl,
     .screen_filter_changed = on_screen_filter,
     .marked = on_marked,
     .talk_changed = on_talk,

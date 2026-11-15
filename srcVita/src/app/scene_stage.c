@@ -229,6 +229,11 @@ void scene_stage_set_mono_mode(int is_on)
     stage.mono_mode_is_on = is_on;
 }
 
+void scene_stage_set_world_covered(int is_on)
+{
+    stage.world_is_covered = is_on != 0;
+}
+
 void scene_stage_set_object_soul_tint(const char *object_name, float red, float green, float blue, float alpha, int is_flat, int turns_with_ghost)
 {
     struct scene_object *object;
