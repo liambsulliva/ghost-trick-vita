@@ -10,6 +10,10 @@ TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 SRC_VITA_FOLDER = os.path.dirname(TOOLS_FOLDER)
 ASSETS_FOLDER = os.path.join(os.path.dirname(SRC_VITA_FOLDER), "extracted", "remaster_apk")
 TEXTURE_TOOL = os.path.join(SRC_VITA_FOLDER, "build", "tools", "texture_tool")
+DS_ROM_PATH = os.path.join(os.path.dirname(SRC_VITA_FOLDER), "extracted", "ds_rom", "game.nds")
+GAME_DESCRIPTION = os.path.join(TOOLS_FOLDER, "assets", "game.json")
+DS_LOGO_NAME = "title_logo"
+DS_BACKDROP_NAME = "pause_backdrop"
 LOGO_PACK_PATH = "natives/android/charfiles/3d/06_id/11_title/title_up_iml4.tex.691230823.en"
 FIELD_COLOR = "#0c1523"
 LOGO_LAYOUTS = (
@@ -109,11 +113,11 @@ def export_logo(assets_folder, texture_tool, work_folder):
     return rgba_path, width, height
 
 
-def compose_command(logo_path, logo_width, logo_height, layout, output_path):
+def compose_command(logo_path, logo_width, logo_height, layout, output_path, field_color=FIELD_COLOR):
     _, canvas_width, canvas_height, box_width, box_height = layout
     return [
         "magick", "-size", "%dx%d" % (logo_width, logo_height), "-depth", "8", "rgba:" + logo_path,
-        "-background", FIELD_COLOR, "-flatten", "-trim", "+repage",
+        "-background", field_color, "-flatten", "-trim", "+repage",
         "-resize", "%dx%d" % (box_width, box_height),
         "-gravity", "center", "-extent", "%dx%d" % (canvas_width, canvas_height),
         "-colors", "256", "-define", "png:exclude-chunks=date,time", "PNG8:" + output_path,
@@ -129,6 +133,28 @@ def write_logo_images(output_folder, assets_folder, texture_tool):
             subprocess.run(compose_command(logo_path, logo_width, logo_height, layout, output_path), check=True)
 
 
+def ds_logo_and_field(rom_path):
+    import json
+    import ds_set
+    import ds_ui
+    with open(GAME_DESCRIPTION, encoding="utf-8") as source:
+        textures = {entry["name"]: entry for entry in json.load(source)["ds_textures"]}
+    cartridge = ds_set.Cartridge(rom_path)
+    width, height, rgba = ds_ui.compose(textures[DS_LOGO_NAME], lambda index, opaque: cartridge.textures.texture(index, 1, not opaque))
+    return width, height, rgba, "#%02x%02x%02x" % tuple(textures[DS_BACKDROP_NAME]["fill"])
+
+
+def write_ds_logo_images(output_folder, rom_path):
+    width, height, rgba, field_color = ds_logo_and_field(rom_path)
+    with tempfile.TemporaryDirectory() as work_folder:
+        logo_path = os.path.join(work_folder, "logo.rgba")
+        write_file(logo_path, rgba)
+        for layout in LOGO_LAYOUTS:
+            output_path = os.path.join(output_folder, layout[0])
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            subprocess.run(compose_command(logo_path, width, height, layout, output_path, field_color), check=True)
+
+
 def write_procedural_images(output_folder):
     write_file(os.path.join(output_folder, "icon0.png"), make_image(128, 128, 10))
     write_file(os.path.join(output_folder, "livearea/contents/bg.png"), make_image(840, 500, 40))
@@ -140,6 +166,7 @@ def main():
     parser.add_argument("output_folder")
     parser.add_argument("--assets-folder", default=ASSETS_FOLDER)
     parser.add_argument("--texture-tool", default=TEXTURE_TOOL)
+    parser.add_argument("--ds-rom", default=DS_ROM_PATH)
     parser.add_argument("--monogram", action="store_true", help="use the monogram even when the extracted assets are present, as release packages do")
     arguments = parser.parse_args()
     if arguments.monogram:
@@ -147,6 +174,9 @@ def main():
         return 0
     if assets_available(arguments.assets_folder, arguments.texture_tool):
         write_logo_images(arguments.output_folder, arguments.assets_folder, arguments.texture_tool)
+    elif os.path.isfile(arguments.ds_rom):
+        print("make_livearea: no remaster assets, using the DS cartridge's title logo", file=sys.stderr)
+        write_ds_logo_images(arguments.output_folder, arguments.ds_rom)
     else:
         print("make_livearea: game assets or texture_tool missing, using procedural images", file=sys.stderr)
         write_procedural_images(arguments.output_folder)
