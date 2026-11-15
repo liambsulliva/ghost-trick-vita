@@ -161,6 +161,9 @@ static int pill_is_wanted(const struct script_machine *machine, enum script_pill
     case SCRIPT_PILL_GHOST:
         return is_registered && (group == GROUP_NORMAL || group == GROUP_DEMO_MODE_PLAY) && !soul->ghost_pill_is_held_out;
     case SCRIPT_PILL_TRICK:
+        if (group == GROUP_GHOST) {
+            return is_registered && !soul->trick_pill_is_held_out && script_soul_ghost_view_offers_a_trick(machine);
+        }
         return is_registered && group == GROUP_NORMAL && !soul->trick_pill_is_held_out && !current_core_is_busy(machine);
     case SCRIPT_PILL_NOTEBOOK:
         return is_registered && group == GROUP_NORMAL;
