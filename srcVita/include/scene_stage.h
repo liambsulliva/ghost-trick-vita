@@ -60,6 +60,7 @@ struct scene_stage {
     int soul_mode_is_on;
     int soul_ghost;
     int mono_mode_is_on;
+    int world_is_covered;
     int background_color_level;
     char card_texture[ASSET_NAME_MAX];
     struct scene_effects effects;
@@ -79,6 +80,7 @@ void scene_stage_set_soul_ghost(int ghost);
 int scene_stage_soul_ghost(void);
 void scene_stage_set_soul_mode(int is_on);
 void scene_stage_set_mono_mode(int is_on);
+void scene_stage_set_world_covered(int is_on);
 void scene_stage_set_object_flipped(const char *object_name, int is_flipped);
 void scene_stage_set_object_soul_tint(const char *object_name, float red, float green, float blue, float alpha, int is_flat, int turns_with_ghost);
 void scene_stage_set_object_color_level(const char *object_name, int level);

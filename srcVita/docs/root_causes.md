@@ -1582,6 +1582,14 @@ The class: every `<ICON>` tag in every talk page, in every chapter and every lan
 
 Guard: `BUTTON_OF_ICON` (`talk_assets.py`) names the Vita button each icon stands for, and the glyphs come from it. `<ICON SAVE>` is now the SELECT button. `tests/tools/test_talk_icon_buttons.py` reads `send_buttons` and checks that every icon names the button wired to that icon's action (press, ghost, hourglass, notebook), and that no icon is missing from the map.
 
+### 217. The ghost view showed through the red swirl when the swirl's art was not in memory
+
+Reported from the device: in Chapter 4's talk with Lynne before her flashback (st02_game023, the `......` page before the fade to white that `DeadTalk|Abort` opens the flashback with), the red swirl vanished and showed the ghost-tinted basement, Lynne in the ghost view's purple and pieces of the room missing. The machine still had the swirl on, which is why no cores were drawn (root cause 209). Native draws nothing of the room under the swirl: `func_0200f084` opening it calls `func_0200a200` on the room (`game+0xee0`), which stops the room's scrolling and streaming (`func_02009c7c` returns while the byte `func_0200a248` sets is on) and clears entry 0x10 of the table at `+0x4004`, and closing it reloads the whole room (`func_0200a260`). The port drew the room and every person under the swirl each frame, so the texture cache had to hold them all with the swirl's own art. When it ran short, the cache evicted whichever texture was drawn longest ago, the swirl among them, and `draw_swirl` drew nothing while it read back.
+
+The class: every swirl, in every dead talk and core talk, every op 0xe0 and every time leap, in every chapter. A replay from st01_game021 to the end opens the swirl 89 times in 35 scripts, from st01_game021 to st13_game022.
+
+Guard: the bridge's swirl output also sets `world_is_covered` on the stage, and the stage clear resets it. While it is set, `scene_view_draw_world` fills black and draws no plates or objects, and `scene_view_visible_art_is_loading` neither waits for nor reads their art. The swirl's art is opaque (DXT1) and covers the screen at any angle, so nothing visible changes while it is loaded, and a black screen replaces the ghost view while it is not. `tests/unit/test_swirl_hides_the_world.c` drives the swirl through the bridge's outputs and checks that the room and a person are not drawn, a new object's art is not read, and a stage clear uncovers the world. The Mac replay now writes a `swirl` cue.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

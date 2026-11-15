@@ -799,6 +799,10 @@ static void draw_world_layers(const struct scene_stage *stage)
 
     struct screen_view objects_view;
 
+    if (stage->world_is_covered) {
+        renderer_draw_filled_rect(whole_screen_area(), black);
+        return;
+    }
     view = view_of_stage(stage);
     objects_view = view_for_objects(stage, &view);
     draw_plates(stage, &view);
@@ -867,7 +871,7 @@ int scene_view_visible_art_is_loading(const struct scene_stage *stage)
     is_loading = 0;
     view = view_of_stage(stage);
     objects_view = view_for_objects(stage, &view);
-    for (index = 0; index < stage->plate_count; index++) {
+    for (index = 0; index < stage->plate_count && !stage->world_is_covered; index++) {
         const struct scene_plate *plate;
 
         plate = &stage->plates[index];
@@ -875,7 +879,7 @@ int scene_view_visible_art_is_loading(const struct scene_stage *stage)
             is_loading = 1;
         }
     }
-    for (index = 0; index < SCENE_OBJECT_MAX; index++) {
+    for (index = 0; index < SCENE_OBJECT_MAX && !stage->world_is_covered; index++) {
         const struct scene_object *object;
         const struct animation_frame *frame;
 
