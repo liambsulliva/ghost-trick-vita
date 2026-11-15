@@ -1682,6 +1682,14 @@ Guard: the sources named in the Makefile's `DEBUG_ONLY_NAMES` are left out of th
 
 Not measured: the saving per frame, because no device run was allowed. The Vita link dropped 5.3 KB of code.
 
+### 227. The link line named libraries nothing needed
+
+Found in the 1.0 audit: the link line named `SceAppUtil_stub`, which neither the game nor vitaGL imports, and `SceLibKernel_stub`, `SceSysmodule_stub`, `SceIofilemgr_stub`, `SceProcessmgr_stub` and `c`, which the toolchain links on its own. The rest are needed: vitaGL's fixed pipeline builds its shaders on the device, so it needs vitaShaRK, `SceShaccCgExt`, `SceShaccCg_stub` and `taihen_stub`, and it uses libmathneon, `SceCommonDialog_stub`, `SceKernelDmacMgr_stub` and the C++ runtime.
+
+The class: any library left on the link line after its last caller went.
+
+Guard: `make check-libs` relinks without each library in turn and fails if a link still succeeds. The imports of the linked app are the same as before; only the order of the stub sections changed.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

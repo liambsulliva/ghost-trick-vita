@@ -15,10 +15,10 @@ DATA_SEGMENT_CLEAR_OF_SCE_TABLES := 0x81200000
 TEXTURE_FOLDER_BUCKETS := 64
 CFLAGS += -DTEXTURE_FOLDER_BUCKETS=$(TEXTURE_FOLDER_BUCKETS)u
 LDFLAGS := -Wl,-q -Wl,--section-start=.init_array=$(DATA_SEGMENT_CLEAR_OF_SCE_TABLES)
-LIBS    := -lvitaGL -lstdc++ -lSceLibKernel_stub -lSceAppMgr_stub -lSceAppUtil_stub -lmathneon \
-           -lc -lSceCommonDialog_stub -lm -lSceGxm_stub -lSceDisplay_stub -lSceSysmodule_stub \
+LIBS    := -lvitaGL -lstdc++ -lSceAppMgr_stub -lmathneon \
+           -lSceCommonDialog_stub -lm -lSceGxm_stub -lSceDisplay_stub \
            -lvitashark -lSceShaccCgExt -ltaihen_stub -lSceShaccCg_stub \
-           -lSceKernelDmacMgr_stub -lSceCtrl_stub -lSceTouch_stub -lSceIofilemgr_stub -lSceProcessmgr_stub \
+           -lSceKernelDmacMgr_stub -lSceCtrl_stub -lSceTouch_stub \
            -lSceAudio_stub -lScePower_stub
 
 STB_VORBIS_SOURCE := src/third_party/stb_vorbis.c
@@ -62,7 +62,7 @@ APP_TEST_OBJECTS := $(patsubst src/app/%.c,build/test_objects/app/%.o,$(APP_SRCS
 FAKE_TEST_OBJECTS := $(patsubst tests/fakes/%.c,build/test_objects/fakes/%.o,$(FAKE_SRCS))
 TEST_RUNS := $(addprefix run-,$(TEST_BINS))
 
-.PHONY: all release clean check-sdk test test-binaries test-parallel test-all golden coverage always-rebuild $(TEST_RUNS)
+.PHONY: all release clean check-sdk check-libs test test-binaries test-parallel test-all golden coverage always-rebuild $(TEST_RUNS)
 
 all: check-sdk build/$(TARGET).vpk
 
@@ -194,6 +194,10 @@ route-check: build/tests/golden/script_replay
 	@mkdir -p build/golden
 	build/tests/golden/script_replay --scripts $(PLAN_SCRIPTS) --timing remaster --auto-paced --marks --stop-tick $(PLAN_STOP_TICK) > build/golden/route_marks.txt
 	python3 -I tools/route_check.py build/golden/route_marks.txt $(PLAN_SCRIPTS)/route_steps.txt --most-passed-over $(STEPS_THE_STORY_PASSES_OVER) --must-reach GOTO
+
+check-libs: check-sdk $(OBJS)
+	@$(foreach library,$(LIBS),if $(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) $(filter-out $(library),$(LIBS)) -o build/without_one_library.elf 2>/dev/null; then echo "the link does not need $(library)"; exit 1; fi;)
+	@echo "every linked library is needed"
 
 clean:
 	rm -rf build
