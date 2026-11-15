@@ -2003,6 +2003,16 @@ Guard: `write_outputs` calls `read_ahead.write_every_bundle` after writing the a
 
 Not done: the `.ahead` lists still come only from `make read-ahead`, and name only a split resource's first page; rerun it for the DS set. Not checked on the device.
 
+### 264. The DS phone book listed no contacts
+
+Seen on the Vita: in DS mode the phone book showed its title and choices over empty slots. The app drew each contact as a remastered place photo from `pause/people.txt` (`pause_people_draw_place`), a table only the remastered set bakes. Natively the book (`pGameSubPhoneBook`; list `func_02038848`, items `func_02038e04`) shows a cartridge name plate per place: `func_0203971c` picks the localized `cpac_2d.bin` sprite resource from `data_0209a7cc` (24 places by 3 levels; +1 selected, +2 touched), `func_02038e04` raises the level once the place's list-2 note level reaches the steps in `data_0209a76c`, so a place reads as its number, such as (SYS)-1729, before its name, and `func_0203936c` lays the items on a 7-slot arc.
+
+The class: a DS-mode screen whose content comes only from a table the remastered set alone bakes.
+
+Guard: `ds_phone_book.py` reads both native tables from the arm9 and bakes every place's resting and selected plates, per cartridge language, into `ds_phone_book` and `pause/phone_book.txt`; the app draws them on the native arc at twice DS size through `phone_book_plates` when that table is loaded, the remastered path unchanged. To fit five slots, the title moves up to y 72 and the hints down to y 472 when the plates draw. `tests/tools/test_ds_phone_book.py` checks that every language's text-and-menu pass bakes the book and that every place, level and state has a plate in all five languages; `tests/unit/test_phone_book_plates.c` checks the reveal levels, the plate choice and the view's note levels.
+
+Not done: five slots shown, not native's seven; the native prompt plates and Go There / Stay Here plates are decoded but not wired; the highlight and reveal animations (`func_020396ac`, `func_02039500`) are not ported. The DS set still bakes no `people.txt`, so the pause menu's People tab is empty in DS mode. Not checked on the device.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

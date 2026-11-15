@@ -3,6 +3,7 @@
 #include <string.h>
 #include "pause_people.h"
 #include "pause_widgets.h"
+#include "phone_book_plates.h"
 #include "ds_units.h"
 #include "renderer.h"
 #include "scene_stage.h"
@@ -56,6 +57,11 @@
 #define PHONE_BOOK_HINT_FROM_CENTRE 220.0f
 #define PHONE_BOOK_GLYPH_SIZE 36.0f
 #define PHONE_BOOK_GLYPH_GAP 10.0f
+#define PHONE_BOOK_PLATE_SCALE 2.0f
+#define PHONE_BOOK_WHEEL_CENTRE_Y 272.0f
+#define PHONE_BOOK_WHEEL_REACH 2
+#define PHONE_BOOK_WHEEL_TITLE_Y 72.0f
+#define PHONE_BOOK_WHEEL_HINT_Y 472.0f
 #define DEGREES_TO_RADIANS 0.017453293f
 #define BAND_CENTER_Y 272.0f
 #define BAND_STRIPE_COUNT 29
@@ -1404,12 +1410,33 @@ void script_ui_view_draw_under_talk(float screen_fade)
     draw_side_hud(screen_fade);
 }
 
-static void draw_phone_book_hint(const char *glyph, const char *key, float left)
+static void draw_phone_book_hint(const char *glyph, const char *key, float left, float y)
 {
     float width;
 
-    width = pause_draw_glyph_from_left(glyph, left, PHONE_BOOK_HINT_Y, PHONE_BOOK_GLYPH_SIZE, 1.0f);
-    pause_draw_text(key, left + width + PHONE_BOOK_GLYPH_GAP, PHONE_BOOK_HINT_Y, PAUSE_ANCHOR_LEFT, 1.0f);
+    width = pause_draw_glyph_from_left(glyph, left, y, PHONE_BOOK_GLYPH_SIZE, 1.0f);
+    pause_draw_text(key, left + width + PHONE_BOOK_GLYPH_GAP, y, PAUSE_ANCHOR_LEFT, 1.0f);
+}
+
+static const float phone_book_wheel_x[PHONE_BOOK_WHEEL_REACH + 1] = { 0.0f, 8.0f, 20.0f };
+static const float phone_book_wheel_y[PHONE_BOOK_WHEEL_REACH + 1] = { 0.0f, 32.0f, 60.0f };
+
+static void draw_phone_book_wheel(float centre_x)
+{
+    int offset;
+    int index;
+    int reach;
+    float y;
+
+    for (offset = -PHONE_BOOK_WHEEL_REACH; offset <= PHONE_BOOK_WHEEL_REACH; offset++) {
+        index = hud.phone_book_cursor + offset;
+        if (index < 0 || index >= hud.phone_book_count) {
+            continue;
+        }
+        reach = offset < 0 ? -offset : offset;
+        y = offset < 0 ? -phone_book_wheel_y[reach] : phone_book_wheel_y[reach];
+        phone_book_plates_draw(hud.phone_book_places[index], hud.phone_book_note_levels[index], offset == 0, centre_x + phone_book_wheel_x[reach] * PHONE_BOOK_PLATE_SCALE, PHONE_BOOK_WHEEL_CENTRE_Y + y * PHONE_BOOK_PLATE_SCALE, PHONE_BOOK_PLATE_SCALE);
+    }
 }
 
 static void draw_phone_book(void)
@@ -1418,6 +1445,7 @@ static void draw_phone_book(void)
     struct renderer_color shade;
     float centre_x;
     int offset;
+    int is_wheel;
 
     if (!hud.phone_book_is_up) {
         return;
@@ -1432,8 +1460,12 @@ static void draw_phone_book(void)
     shade.alpha = PHONE_BOOK_SHADE;
     renderer_draw_filled_rect(screen, shade);
     centre_x = (float)RENDERER_WIDTH / 2.0f;
-    pause_draw_text("bar.phone_tab", centre_x, PHONE_BOOK_TITLE_Y, PAUSE_ANCHOR_CENTRE, 1.0f);
-    for (offset = -PHONE_BOOK_PLACES_EACH_SIDE; offset <= PHONE_BOOK_PLACES_EACH_SIDE; offset++) {
+    is_wheel = phone_book_plates_is_loaded();
+    pause_draw_text("bar.phone_tab", centre_x, is_wheel ? PHONE_BOOK_WHEEL_TITLE_Y : PHONE_BOOK_TITLE_Y, PAUSE_ANCHOR_CENTRE, 1.0f);
+    if (is_wheel) {
+        draw_phone_book_wheel(centre_x);
+    }
+    for (offset = -PHONE_BOOK_PLACES_EACH_SIDE; offset <= PHONE_BOOK_PLACES_EACH_SIDE && !is_wheel; offset++) {
         int index;
 
         index = hud.phone_book_cursor + offset;
@@ -1442,8 +1474,8 @@ static void draw_phone_book(void)
         }
         pause_people_draw_place(hud.phone_book_places[index], centre_x - PHONE_BOOK_PLACE_WIDTH / 2.0f + (float)offset * (PHONE_BOOK_PLACE_WIDTH + PHONE_BOOK_PLACE_GAP), PHONE_BOOK_PLACE_TOP, PHONE_BOOK_PLACE_WIDTH, PHONE_BOOK_PLACE_HEIGHT, offset == 0);
     }
-    draw_phone_book_hint("cross", "bar.go_there", centre_x - PHONE_BOOK_HINT_FROM_CENTRE);
-    draw_phone_book_hint("circle", "bar.stay_here", centre_x + PHONE_BOOK_HINT_FROM_CENTRE / 4.0f);
+    draw_phone_book_hint("cross", "bar.go_there", centre_x - PHONE_BOOK_HINT_FROM_CENTRE, is_wheel ? PHONE_BOOK_WHEEL_HINT_Y : PHONE_BOOK_HINT_Y);
+    draw_phone_book_hint("circle", "bar.stay_here", centre_x + PHONE_BOOK_HINT_FROM_CENTRE / 4.0f, is_wheel ? PHONE_BOOK_WHEEL_HINT_Y : PHONE_BOOK_HINT_Y);
 }
 
 static void draw_sheet_slice(const struct cached_texture *art, float x, float y, float width, float height, float cell_x, float cell_y, float cell_width, float cell_height, struct renderer_color tint)

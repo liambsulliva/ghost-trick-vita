@@ -6,6 +6,7 @@ import bake_record
 import chapter_assets
 import ds_balloons
 import ds_pause
+import ds_phone_book
 import ds_rom
 import ds_rooms
 import ds_set_text
@@ -271,6 +272,10 @@ def bake_text_and_menus(art, set_description, scripts, arm9, cartridge, rom_path
         art["files"].update(menu_files)
         art["texture_paths"] = art["texture_paths"] + menu_paths
         art["texture_sizes"] = dict(art["texture_sizes"], **menu_sizes)
+    phone_files, phone_paths, phone_sizes = ds_phone_book.bake(arm9, cartridge.sprites, language, record)
+    art["files"].update(phone_files)
+    art["texture_paths"] = art["texture_paths"] + phone_paths
+    art["texture_sizes"] = dict(art["texture_sizes"], **phone_sizes)
     set_description["script_balloons"], balloon_paths, balloon_sizes = ds_balloons.bake(set_description, scripts, arm9, cartridge, rom_path, record)
     art["texture_paths"] = art["texture_paths"] + balloon_paths
     art["texture_sizes"] = dict(art["texture_sizes"], **balloon_sizes)

@@ -92,6 +92,7 @@ struct script_hud_view {
     int phone_book_count;
     int phone_book_cursor;
     int phone_book_places[SCRIPT_PHONE_BOOK_MOST];
+    int phone_book_note_levels[SCRIPT_PHONE_BOOK_MOST];
     struct script_choice_view choice;
 };
 

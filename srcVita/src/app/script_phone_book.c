@@ -5,6 +5,7 @@
 #include "script_phone_book.h"
 
 #define PLACE_LIST 0
+#define LEVEL_LIST 2
 #define FIRST_PLACE 1
 #define BOOK_IS_HELD_FLAG 0x1022u
 
@@ -114,5 +115,6 @@ void script_phone_book_fill_view(const struct script_machine *machine, struct sc
     view->phone_book_cursor = machine->phone_book.cursor;
     for (index = 0; index < view->phone_book_count; index++) {
         view->phone_book_places[index] = machine->phone_book.places[index];
+        view->phone_book_note_levels[index] = machine->note_levels[LEVEL_LIST][machine->phone_book.places[index]];
     }
 }
