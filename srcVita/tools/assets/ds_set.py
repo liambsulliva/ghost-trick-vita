@@ -1,8 +1,10 @@
 import collections
+import re
 
 import asset_writers
 import bake_record
 import chapter_assets
+import ds_pause
 import ds_rom
 import ds_rooms
 import ds_set_text
@@ -19,6 +21,7 @@ TEXTURE_FOLDER = "textures"
 PAGE_WIDTH = 1024
 PAGE_HEIGHT = 2048
 SPRITE_LATER_PAGE_NAME = "ds_sprite_%d_%d"
+SPRITE_PAGE_PATTERN = re.compile(r"^ds_sprite_(\d+)(?:_(\d+))?$")
 FRAME_GAP = 1
 DS_TICKS_PER_FRAME = 4
 SPRITE_CODE_FILES = ["asset_writers.py", "ds_set.py", "ds_sprites.py"]
@@ -182,6 +185,34 @@ def anim_frame(resource, frame, place, page_sizes):
             "u": x / page_width, "v": y / page_height, "u_size": width / page_width, "v_size": height / page_height}
 
 
+class SpritePages:
+    def __init__(self, cartridge, arm9):
+        self.cartridge = cartridge
+        self.arm9 = arm9
+        self.known = {}
+
+    def parts_of(self, name):
+        match = SPRITE_PAGE_PATTERN.match(name)
+        if match is None:
+            raise ds_sprites.SpriteRefused("%s is not a DS sprite page" % name)
+        resource = int(match.group(1))
+        if resource not in self.known:
+            self.known[resource] = ds_sprites.resource_parts(self.cartridge.sprites, ds_sprites.resolve(self.arm9, resource))
+        return self.known[resource], int(match.group(2) or 0)
+
+    def source(self, name):
+        return source_of_parts(self.parts_of(name)[0])
+
+    def pixels(self, name):
+        parts, page = self.parts_of(name)
+        frames = ds_sprites.frames_of_parts(*parts)
+        places, page_sizes = place_frames(frames)
+        if page >= len(page_sizes):
+            raise ds_sprites.SpriteRefused("%s is past its resource's last page" % name)
+        width, height = page_sizes[page]
+        return width, height, page_rgba(frames, places, page, width, height)
+
+
 def bake_motion_tables(set_description, scripts, arm9, cartridge, record):
     code = bake_record.code_fingerprint(SPRITE_CODE_FILES)
     rows = table_rows(scripts)
@@ -230,4 +261,10 @@ def bake_art(set_description, scripts, arm9, cartridge, rom_path, record, work_f
     interface_paths, interface_sizes = ds_ui.bake(set_description.get("ds_textures", []), cartridge.textures, language, record)
     art["texture_paths"] = art["texture_paths"] + interface_paths
     art["texture_sizes"] = dict(art["texture_sizes"], **interface_sizes)
+    pause = set_description.get("pause", {})
+    if "ds_art" in pause:
+        menu_files, menu_paths, menu_sizes = ds_pause.bake(pause, pause["ds_art"], cartridge.textures, rom_path, language, record, work_folder, art["animation_texts"], SpritePages(cartridge, arm9))
+        art["files"].update(menu_files)
+        art["texture_paths"] = art["texture_paths"] + menu_paths
+        art["texture_sizes"] = dict(art["texture_sizes"], **menu_sizes)
     return art

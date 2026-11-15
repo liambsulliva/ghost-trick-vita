@@ -13,7 +13,7 @@ RED = bytes((255, 0, 0, 255))
 BLUE = bytes((0, 0, 255, 255))
 CLEAR = bytes(4)
 GAME_DESCRIPTION = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "tools", "assets", "game.json")
-TEXTURES_THE_APP_DRAWS_WITH_NO_PARTS_OF_ITS_OWN = ["talk_box_top", "talk_box_bottom", "ui_choice_buttons", "ui_select_button", "ui_tap_balloon", "rewind_rocks_far", "rewind_rocks_mid", "rewind_rocks_near", "soul_spokes", "hud_pills"]
+TEXTURES_THE_APP_DRAWS_WITH_NO_PARTS_OF_ITS_OWN = ["talk_box_top", "talk_box_bottom", "ui_choice_buttons", "ui_select_button", "ui_tap_balloon", "rewind_rocks_far", "rewind_rocks_mid", "rewind_rocks_near", "soul_spokes", "hud_pills", "pause_backdrop", "title_logo"]
 
 
 def image(width, height, pixels):
@@ -46,6 +46,18 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual([pixel(rgba, 6, x, 1) for x in range(6)], [CLEAR, RED, RED, BLUE, BLUE, CLEAR])
         self.assertEqual(pixel(rgba, 6, 2, 2), RED)
         self.assertEqual(pixel(rgba, 6, 2, 0), CLEAR)
+
+    def test_a_cut_out_keeps_what_is_not_the_red_backdrop_and_a_rim_around_it(self):
+        dark = bytes((120, 8, 8, 255))
+        white = bytes((250, 250, 250, 255))
+        bright = bytes((230, 0, 0, 255))
+        source = image(7, 1, [dark, dark, dark, white, dark, dark, bright])
+        _, _, rgba = ds_ui.compose({"width": 7, "height": 1, "parts": [{"texture": 1, "cut_out": {"other_channels_above": 40, "red_above": 180, "grow": 1}}]}, lambda index, opaque: source)
+        self.assertEqual([pixel(rgba, 7, x, 0) for x in range(7)], [CLEAR, CLEAR, dark, white, dark, dark, bright])
+
+    def test_a_fill_colors_the_whole_texture_with_no_part(self):
+        _, _, rgba = ds_ui.compose({"width": 2, "height": 2, "fill": [123, 8, 8], "parts": []}, lambda index, opaque: None)
+        self.assertEqual(rgba, bytes((123, 8, 8, 255)) * 4)
 
     def test_a_flipped_part_mirrors_its_columns(self):
         source = image(2, 1, [RED, BLUE])

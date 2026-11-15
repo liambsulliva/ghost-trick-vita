@@ -50,6 +50,12 @@ FULL_ALPHA = 255
 WHITE = b"\xff\xff\xff"
 CLEAR = b"\x00\x00\x00\x00"
 GLYPH_LIMIT = 512
+APP_BOX_LEFT = {talk_assets.BOX_BOTTOM: 0, talk_assets.BOX_TOP_ALONE: 188, talk_assets.BOX_TOP_WITH_HEAD: 255}
+HEAD_TABLE_ADDRESS = 0x02099cb0
+HEAD_ROW_SIZE = 6
+HEAD_ICON_OFFSET = 2
+HEAD_ROW_COUNT = 14
+NO_HEAD_TEXTURE = 0xffff
 FACE_NAME = "ds_face_%d"
 FACE_CODE_FILES = ["ds_set_text.py", "ds_textures.py"]
 
@@ -380,6 +386,15 @@ def read_face_rows(arm9):
     return rows
 
 
+def read_head_textures(arm9):
+    textures = {}
+    for value in range(1, HEAD_ROW_COUNT + 1):
+        texture, = struct.unpack_from("<H", arm9, HEAD_TABLE_ADDRESS - ds_text.ARM9_LOAD_ADDRESS + HEAD_ROW_SIZE * (value - 1) + HEAD_ICON_OFFSET)
+        if texture != NO_HEAD_TEXTURE:
+            textures[value] = texture
+    return textures
+
+
 def bake_face_textures(record, textures, faces):
     code = bake_record.code_fingerprint(FACE_CODE_FILES)
     paths = []
@@ -454,7 +469,11 @@ def talk_page_row(page, layout, line_count, faces, changes_instantly):
     return "page %s %d %d %d %d %d %d %d %d %d %d" % (face, flip, box_kind, fields["reveal_is_fade"], fields["ending"], line_count, changes_instantly, fields["flashes"], fields["quake_level"], fields["quake_frames"], fields["pauses_before"])
 
 
-def talk_line_rows(font, glyphs, lines, window, kind, color, center_x=None, tint=None):
+def box_shift(window, box_kind):
+    return screen_x_of(window["x"]) - APP_BOX_LEFT[box_kind]
+
+
+def talk_line_rows(font, glyphs, lines, window, kind, color, center_x=None, tint=None, shift=0):
     rows = []
     pitch = font.shape["line_height"] + lift_of_kind(kind)
     for row_index, line in enumerate(lines):
@@ -469,7 +488,7 @@ def talk_line_rows(font, glyphs, lines, window, kind, color, center_x=None, tint
         for glyph in placed:
             glyph_tint = tint if tint is not None else TINT_OF_DS_COLOR.get(glyph["color"], 0)
             codes.append(str(glyphs.id_of(glyph, ds_x + glyph["x"], ds_y) | (glyph_tint << talk_assets.COLOR_SHIFT)))
-        rows.append("line %d %d %d %s" % (screen_x_of(ds_x + placed[0]["x"]), screen_y_of(ds_y), len(codes), " ".join(codes)))
+        rows.append("line %d %d %d %s" % (screen_x_of(ds_x + placed[0]["x"]) - shift, screen_y_of(ds_y), len(codes), " ".join(codes)))
     return rows, color
 
 
@@ -485,7 +504,7 @@ def talk_message_rows(font, glyphs, windows, label, message, faces=None):
         layout = own_layout or layout
         window = windows[TOP_ROW if layout is not None and layout[0] == talk_assets.HEAD_CODE else BOTTOM_ROW]
         lines = [line for paragraph in page for line in paragraph]
-        line_rows, color = talk_line_rows(font, glyphs, lines, window, page_line_count(raw), color)
+        line_rows, color = talk_line_rows(font, glyphs, lines, window, page_line_count(raw), color, shift=box_shift(window, faces.of_layout(layout)[2]))
         rows.append(talk_page_row(raw, layout, len(line_rows), faces, 1 if own_layout is not None and own_layout[0] == talk_assets.POSE_CODE else 0))
         rows.extend(line_rows)
     return rows
@@ -579,7 +598,7 @@ def bake_text(set_description, scripts, rom_path, record, work_folder):
         book = MessageBook(rom, scripts, language)
         system_messages = read_system_messages(rom, system_lines)
         textures = ds_textures.TexturePack(rom.read_file(ds_textures.PACK_PATH))
-    faces = Faces(read_face_rows(arm9), set_description.get("talk", {}).get("ds_head_textures"))
+    faces = Faces(read_face_rows(arm9), read_head_textures(arm9))
     return bake_from_messages(record, font, palette, read_window_rows(arm9), book, scripts, system_lines, system_messages, faces, textures)
 
 

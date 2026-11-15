@@ -43,12 +43,6 @@
       "4": "CharFiles/3D/08_Face/cmn_do_10_06.user",
       "5": "CharFiles/3D/08_Face/cmn_do_10_06.user"
     },
-    "ds_head_textures": {
-      "1": 310,
-      "3": 312,
-      "4": 315,
-      "5": 315
-    },
     "window_textures": [
       "talk_box_bottom",
       "talk_box_top",
@@ -299,6 +293,14 @@
     }
   },
   "pause": {
+    "ds_art": {
+      "title_buttons": {
+        "resting": 192,
+        "selected": 193,
+        "pressed": 194
+      },
+      "flame": 31
+    },
     "label_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
     "labels": [
       "RESUME",
@@ -390,6 +392,7 @@
         "yes": "Yes",
         "no": "No",
         "restore_ask": "Return every setting to its default?",
+        "filter_ask": "Switch the look and restart the game?",
         "title_ask": "Return to Title without saving?",
         "title_save_ask": "Save the current game state",
         "title_save_ask_more": "and return to the title screen?",
@@ -463,6 +466,7 @@
         "save_manual": "Save your progress to the Manual Save slot.",
         "save_ask_note": "Play picks up from the start of this scene.",
         "reset_warning": "This cannot be undone.",
+        "filter_warning": "Progress since your last save will be lost.",
         "chapters": "Replay a chapter from its start.",
         "chapter_locked": "Reach this chapter to replay it.",
         "title_warning": "Progress will be lost without saving.",
@@ -1776,6 +1780,39 @@
     }
   ],
   "ds_textures": [
+    {
+      "name": "pause_backdrop",
+      "width": 240,
+      "height": 136,
+      "fill": [
+        123,
+        8,
+        8
+      ],
+      "parts": []
+    },
+    {
+      "name": "title_logo",
+      "width": 256,
+      "height": 76,
+      "parts": [
+        {
+          "texture": 1042,
+          "opaque": true,
+          "crop": [
+            0,
+            46,
+            256,
+            76
+          ],
+          "cut_out": {
+            "other_channels_above": 40,
+            "red_above": 180,
+            "grow": 2
+          }
+        }
+      ]
+    },
     {
       "name": "hud_pills",
       "width": 176,

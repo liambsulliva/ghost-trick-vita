@@ -493,9 +493,18 @@ static void act_on_row(void)
     case JOB_HIGH_CONTRAST:
     case JOB_FPS_CAP:
     case JOB_VSYNC:
-    case JOB_VISUAL_FILTER:
     case JOB_UNLOCK_ALL:
         flip_switch(rows[selected].job);
+        break;
+    case JOB_VISUAL_FILTER:
+        if (game_settings_filter_is_pinned()) {
+            flip_switch(rows[selected].job);
+            break;
+        }
+        dialog_job = rows[selected].job;
+        restore_dialog.lines[0] = "row.filter_ask";
+        restore_dialog.note = "bar.filter_warning";
+        pause_dialog_open(&restore_dialog, 1);
         break;
     case JOB_LANGUAGE:
         dropdown_is_open = 1;
@@ -581,6 +590,8 @@ int pause_options_step(unsigned int pressed)
         chosen = pause_dialog_steer(&restore_dialog, pressed);
         if (chosen == 0 && dialog_job == JOB_RESET_SAVE) {
             (void)game_save_erase_all();
+        } else if (chosen == 0 && dialog_job == JOB_VISUAL_FILTER) {
+            flip_switch(JOB_VISUAL_FILTER);
         } else if (chosen == 0) {
             restore_defaults();
         }

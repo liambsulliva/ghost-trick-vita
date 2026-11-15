@@ -143,6 +143,23 @@ class DsSetNamesTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(second[0], [(2, 1, None, -1, -2)])
 
+    def test_a_sprite_page_is_read_back_by_the_name_an_animation_gives_it(self):
+        red = bytes((255, 0, 0, 255)) * 2
+        frames = [(2, 1, red, 0, 0)]
+        with mock.patch.object(ds_set.ds_sprites, "resolve", return_value={}), \
+                mock.patch.object(ds_set.ds_sprites, "resource_parts", return_value=(b"p", b"g", b"c", b"a")) as read, \
+                mock.patch.object(ds_set.ds_sprites, "frames_of_parts", return_value=frames):
+            pages = ds_set.SpritePages(mock.Mock(), b"")
+            width, height, rgba = pages.pixels("ds_sprite_5")
+            self.assertEqual(pages.source("ds_sprite_5"), ds_set.source_of_parts((b"p", b"g", b"c", b"a")))
+            with self.assertRaises(ds_set.ds_sprites.SpriteRefused):
+                pages.pixels("ds_sprite_5_3")
+            with self.assertRaises(ds_set.ds_sprites.SpriteRefused):
+                pages.pixels("talk_box_top")
+        self.assertEqual(read.call_count, 1)
+        self.assertEqual(rgba[:8], red)
+        self.assertEqual(len(rgba), width * height * 4)
+
     def test_an_empty_frame_draws_nothing(self):
         frame = ds_set.anim_frame(1, (0, 0, b"", 0, 0), (0, 0, 0), [(8, 8)])
         self.assertEqual(frame["texture"], "-")

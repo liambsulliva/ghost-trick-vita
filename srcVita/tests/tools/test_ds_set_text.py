@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import struct
 import tempfile
@@ -14,6 +15,7 @@ import talk_assets
 import test_ds_text
 
 BAR = test_ds_text.BAR
+SCRIPT_VIEW_SOURCE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "src", "app", "script_view.c")
 WHITE = (255, 255, 255, 255)
 GREY = (128, 128, 128, 255)
 BLACK = (0, 0, 0, 255)
@@ -168,6 +170,36 @@ class TalkTests(unittest.TestCase):
         self.assertEqual(int(page[3]), talk_assets.BOX_TOP_WITH_HEAD)
         self.assertEqual(int(page[5]), talk_assets.ENDING_PAUSE_THEN_CLOSE)
         self.assertEqual(rows[2].split()[1], str(ds_set_text.screen_x_of(48 + 8)))
+
+
+    def test_text_keeps_the_ds_margin_inside_each_box_the_app_draws(self):
+        glyphs = ds_set_text.TalkGlyphs({1: 0, 2: 127, 3: 255})
+        bottom = ds_set_text.talk_message_rows(font(), glyphs, windows(), "a", {"items": chars(1), "pages": ds_text.pages_of_items(chars(1))})
+        self.assertEqual(int(bottom[2].split()[1]), ds_set_text.screen_of(6))
+        items = [("control", talk_assets.HEAD_CODE, (6,))] + chars(1)
+        alone = ds_set_text.talk_message_rows(font(), glyphs, windows(), "b", {"items": items, "pages": ds_text.pages_of_items(items)}, ds_set_text.Faces({}, {"1": 310}))
+        self.assertEqual(int(alone[1].split()[3]), talk_assets.BOX_TOP_ALONE)
+        self.assertEqual(int(alone[2].split()[1]), 188 + ds_set_text.screen_of(8))
+
+    def test_head_icons_are_read_from_the_cartridge_s_rows_and_an_empty_row_has_none(self):
+        table = bytearray(ds_set_text.HEAD_ROW_SIZE * ds_set_text.HEAD_ROW_COUNT)
+        for row in range(ds_set_text.HEAD_ROW_COUNT):
+            struct.pack_into("<H", table, row * ds_set_text.HEAD_ROW_SIZE + ds_set_text.HEAD_ICON_OFFSET, ds_set_text.NO_HEAD_TEXTURE)
+        struct.pack_into("<H", table, 3 * ds_set_text.HEAD_ROW_SIZE + ds_set_text.HEAD_ICON_OFFSET, 314)
+        arm9 = bytes(ds_set_text.HEAD_TABLE_ADDRESS - ds_text.ARM9_LOAD_ADDRESS) + bytes(table)
+        textures = ds_set_text.read_head_textures(arm9)
+        self.assertEqual(textures, {4: 314})
+        faces = ds_set_text.Faces({}, textures)
+        self.assertEqual(faces.of_layout((talk_assets.HEAD_CODE, 4)), ("ds_face_314", 0, talk_assets.BOX_TOP_WITH_HEAD))
+        self.assertEqual(faces.of_layout((talk_assets.HEAD_CODE, 6))[2], talk_assets.BOX_TOP_ALONE)
+
+    def test_the_box_edges_are_the_ones_the_app_draws(self):
+        with open(SCRIPT_VIEW_SOURCE, encoding="utf-8") as source:
+            text = source.read()
+        edges = {name: float(value) for name, value in re.findall(r"#define (BOX_BOTTOM_X|BOX_TOP_ALONE_X|BOX_TOP_WITH_HEAD_X) ([0-9.]+)f", text)}
+        self.assertEqual(ds_set_text.APP_BOX_LEFT[talk_assets.BOX_BOTTOM], int(edges["BOX_BOTTOM_X"]))
+        self.assertEqual(ds_set_text.APP_BOX_LEFT[talk_assets.BOX_TOP_ALONE], int(edges["BOX_TOP_ALONE_X"]))
+        self.assertEqual(ds_set_text.APP_BOX_LEFT[talk_assets.BOX_TOP_WITH_HEAD], int(edges["BOX_TOP_WITH_HEAD_X"]))
 
 
 class FakeTextures:

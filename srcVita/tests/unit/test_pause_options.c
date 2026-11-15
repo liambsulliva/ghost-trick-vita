@@ -444,9 +444,20 @@ static void test_the_visual_filter_chooses_only_when_both_art_sets_are_bundled(v
     CHECK_INT(game_settings_filter_is_pinned(), 0);
     CHECK_INT(game_settings_visual_filter(), GAME_FILTER_REMASTERED);
     pause_options_step(INPUT_CROSS);
+    CHECK_INT(pause_options_dialog_is_open(), 1);
+    CHECK_INT(game_settings_visual_filter(), GAME_FILTER_REMASTERED);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(pause_options_dialog_is_open(), 0);
+    CHECK_INT(game_settings_visual_filter(), GAME_FILTER_REMASTERED);
+    pause_options_step(INPUT_CROSS);
+    pause_options_step(INPUT_LEFT);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(pause_options_dialog_is_open(), 0);
     CHECK_INT(game_settings_now()->visual_filter, GAME_FILTER_DS);
     CHECK_INT(game_settings_visual_filter(), GAME_FILTER_DS);
+    pause_options_step(INPUT_CROSS);
     pause_options_step(INPUT_LEFT);
+    pause_options_step(INPUT_CROSS);
     CHECK_INT(game_settings_visual_filter(), GAME_FILTER_REMASTERED);
     game_settings_set_bundled_art(1, 0);
 }

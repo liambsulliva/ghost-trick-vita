@@ -27,6 +27,8 @@ CELL_GAP = 2
 CAT_TABLE_PATH = "pause/cat.txt"
 CAT_TRACK_PATH = "pause/cat_track.txt"
 CAT_PAGE_PREFIX = "pause_cat_"
+SMOOTH_FILTER = "Lanczos"
+SHARP_FILTER = "point"
 SPOTLIGHT_NAME = "pause_spotlight"
 SPOTLIGHT_SCALE = 0.5
 SPOTLIGHT_FADE_FROM = 0.78
@@ -224,7 +226,7 @@ def grid_for(placed):
     return width, height, anchor_x, anchor_y
 
 
-def scaled_grid(work_folder, grid_shape, pixels, left, top):
+def scaled_grid(work_folder, grid_shape, pixels, left, top, resize_filter=SMOOTH_FILTER):
     grid_width, grid_height, anchor_x, anchor_y = grid_shape
     grid = np.zeros((grid_height, grid_width, 4), dtype=np.uint8)
     x, y = anchor_x + left, anchor_y + top
@@ -236,7 +238,7 @@ def scaled_grid(work_folder, grid_shape, pixels, left, top):
     out_path = os.path.join(work_folder, "pause_grid_out.rgba")
     with open(in_path, "wb") as output:
         output.write(grid.tobytes())
-    subprocess.run(["magick", "-size", "%dx%d" % (grid_width, grid_height), "-depth", "8", "rgba:" + in_path, "-filter", "Lanczos", "-resize", "%dx%d!" % (out_w, out_h), "-depth", "8", "rgba:" + out_path], check=True, capture_output=True)
+    subprocess.run(["magick", "-size", "%dx%d" % (grid_width, grid_height), "-depth", "8", "rgba:" + in_path, "-filter", resize_filter, "-resize", "%dx%d!" % (out_w, out_h), "-depth", "8", "rgba:" + out_path], check=True, capture_output=True)
     with open(out_path, "rb") as source:
         scaled = np.frombuffer(source.read(), dtype=np.uint8).reshape(out_h, out_w, 4)
     os.remove(in_path)
@@ -280,17 +282,22 @@ def frames_from_text(text):
     return frames
 
 
-def cat_frames(packs, tool_path, work_folder, timelines, crops, animations):
+def remaster_cat_pages(packs, tool_path, work_folder, timelines, crops):
+    def page_of(animation, texture):
+        paths = {frame_layout.texture_name_for(path): path for path in timelines[animation["timeline"]]["pages"]}
+        return remaster_page(packs, tool_path, work_folder, frame_layout.pack_path_for(paths[texture]), crops[texture])
+    return page_of
+
+
+def cat_frames(page_of, animations):
     pages = {}
     per_animation = []
     for animation in animations:
-        timeline = timelines[animation["timeline"]]
         frames = frames_from_text(animation["text"])
-        paths = {frame_layout.texture_name_for(path): path for path in timeline["pages"]}
-        cells, keys = [], {}
-        for index, frame in enumerate(frames):
+        cells = []
+        for frame in frames:
             if frame["texture"] not in pages:
-                pages[frame["texture"]] = remaster_page(packs, tool_path, work_folder, frame_layout.pack_path_for(paths[frame["texture"]]), crops[frame["texture"]])
+                pages[frame["texture"]] = page_of(animation, frame["texture"])
             pixels = cell_pixels(pages[frame["texture"]], frame, animation["mirror"])
             left, top = source_left_top(frame, pixels, animation["mirror"])
             cells.append({"pixels": pixels, "left": left, "top": top, "ticks": frame["ticks"], "key": frame_key(frame)})
@@ -302,19 +309,30 @@ def bake_cat(packs, tool_path, work_folder, record, code, timelines, crops, anim
     settings = {"animations": animations, "crops": {name: list(crop) for name, crop in sorted(crops.items()) if name.startswith(tuple(a["name"][len(TABLE_PREFIX):] for a in animations))}, "grid_step": GRID_STEP, "scale": CAT_SCREEN_PIXELS_PER_DS_PIXEL}
     source = b"".join(packs.read(frame_layout.pack_path_for(path)) for animation in animations for path in timelines[animation["timeline"]]["pages"])
     key = record.key_for(code, settings, source)
+    return bake_cat_pages(work_folder, record, key, animations, remaster_cat_pages(packs, tool_path, work_folder, timelines, crops), SMOOTH_FILTER)
+
+
+def cat_page_gtex(work_folder, name, page, resize_filter):
+    if resize_filter == SHARP_FILTER:
+        return asset_writers.gtex_bytes(PAGE_SIZE, PAGE_SIZE, asset_writers.FORMAT_RGBA8888, page.tobytes())
+    blocks = texture_encoder.encode_rgba(work_folder, name, PAGE_SIZE, PAGE_SIZE, page.tobytes(), "dxt5")
+    return asset_writers.gtex_bytes(PAGE_SIZE, PAGE_SIZE, asset_writers.FORMAT_DXT5, blocks)
+
+
+def bake_cat_pages(work_folder, record, key, animations, page_of, resize_filter):
     table = record.read_if_current(CAT_TABLE_PATH, key)
     if table is not None:
         page_count = int(table.decode("ascii").splitlines()[0].split()[1])
         return table, [bake_record.result_of_own_size(CAT_PAGE_PREFIX + "%02d" % n, record.read_if_current("textures/" + CAT_PAGE_PREFIX + "%02d.gtex" % n, key)) for n in range(page_count)]
     images, rows, seen, leads = [], [], {}, []
     walks = {animation["name"] for animation in animations if animation.get("walk")}
-    baked = cat_frames(packs, tool_path, work_folder, timelines, crops, animations)
+    baked = cat_frames(page_of, animations)
     grid_shape = grid_for([(cell["pixels"], left, top) for _, cells, pins in baked for cell, (left, top) in zip(cells, pins)])
     for name, cells, pins in baked:
         for index, (cell, (left, top)) in enumerate(zip(cells, pins)):
             unique = (cell["key"], left, top)
             if unique not in seen:
-                image, offset_x, offset_y = scaled_grid(work_folder, grid_shape, cell["pixels"], left, top)
+                image, offset_x, offset_y = scaled_grid(work_folder, grid_shape, cell["pixels"], left, top, resize_filter)
                 seen[unique] = (len(images), offset_x, offset_y)
                 images.append(image)
             if name in walks:
@@ -330,8 +348,7 @@ def bake_cat(packs, tool_path, work_folder, record, code, timelines, crops, anim
     results = []
     for number, page in enumerate(pages):
         name = CAT_PAGE_PREFIX + "%02d" % number
-        blocks = texture_encoder.encode_rgba(work_folder, name, PAGE_SIZE, PAGE_SIZE, page.tobytes(), "dxt5")
-        gtex = asset_writers.gtex_bytes(PAGE_SIZE, PAGE_SIZE, asset_writers.FORMAT_DXT5, blocks)
+        gtex = cat_page_gtex(work_folder, name, page, resize_filter)
         record.store("textures/" + name + ".gtex", key, gtex)
         results.append(bake_record.result_of_own_size(name, gtex))
     record.store(CAT_TABLE_PATH, key, table)

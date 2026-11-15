@@ -1805,7 +1805,7 @@ Found on the Vita: with Visual Filter on DS, every talk drew its text with no bo
 
 The class: art the DS draws from a pack the converter does not open.
 
-Guard: `tools/assets/ds_textures.py` decodes the five texture formats the cartridge uses (4, 16 and 256 colours, A3I5 and A5I3) and refuses anything else. `ds_set_text.py` reads each page's face, pose and head codes, as the remastered set does, and bakes `ds_face_<entry>` at DS size for every face a page names; the head icons are the entries `ds_head_textures` lists in the set description. `tools/assets/ds_ui.py` builds each interface texture the app names from the parts `ds_textures` gives it in the set description: a crop of a cartridge texture, scaled to the nearest pixel into the place the app's layout reads, with nine-slice parts for panels. A texture whose source is missing or does not decode is left out and named on one line, so the app still logs it and draws nothing. `tests/tools/test_ds_textures.py`, `test_ds_ui.py` and the face tests in `test_ds_set_text.py` cover the decoder, the composer, the page fields and the description.
+Guard: `tools/assets/ds_textures.py` decodes the five texture formats the cartridge uses (4, 16 and 256 colours, A3I5 and A5I3) and refuses anything else. `ds_set_text.py` reads each page's face, pose and head codes, as the remastered set does, and bakes `ds_face_<entry>` at DS size for every face a page names; the head icons come from the cartridge's own head table (root cause 246). `tools/assets/ds_ui.py` builds each interface texture the app names from the parts `ds_textures` gives it in the set description: a crop of a cartridge texture, scaled to the nearest pixel into the place the app's layout reads, with nine-slice parts for panels. A texture whose source is missing or does not decode is left out and named on one line, so the app still logs it and draws nothing. `tests/tools/test_ds_textures.py`, `test_ds_ui.py` and the face tests in `test_ds_set_text.py` cover the decoder, the composer, the page fields and the description.
 
 What the DS really shows is read from the cartridge running in melonDS: `tools/ds_screen_dump.py` presses buttons on a schedule, saves the video memory and captures the main screen's finished picture, 3D layer included, through the DS display capture unit; `tools/ds_screen_render.py` draws both screens from a dump. The top talk box was matched against such a capture (a 208 by 48 box at x 24, built from texture 23). The bottom box uses the same texture and has not been seen in a capture, because the captures stop at the first touch tutorial: the tools press buttons but cannot touch.
 
@@ -1824,6 +1824,38 @@ The DS converter packed every frame of a resource onto one page, 1024 wide and a
 The class: converter output larger than a limit the app enforces, the same as root cause 240's manifest list.
 
 Guard: `place_frames` in `ds_set.py` starts a new page when a frame would pass 2048 rows, pages after the first are named `ds_sprite_<resource>_<page>`, and each animation frame names its own page. `tests/tools/test_ds_set_guard.py` reads the limit from `include/texture_file.h` and checks no page of a tall resource passes it, that every frame lands whole on one page, and that a frame names the page it was placed on.
+
+### 244. DS mode had no title screen art and its pause menu never opened
+
+The title, pause menu and loading screen are the port's own, and the converter drew their sheets from the Android package: a font file for every word, shapes it draws itself, the cat from remastered pages, a backdrop and a logo. The DS set reads no package, so it baked none of them. The title showed a red line on black, and START did nothing, because `pause_menu_is_ready` waits for the cat's frames, the labels and the widget table.
+
+The class: art the port builds for itself from one set's sources, which the other set then lacks whole.
+
+Guard: `ds_pause.py` builds the same sheets and tables, cell for cell, from the cartridge. Words are written in the cartridge's main font (`fonts2bpp_en.imb`, the one `ds_text.py` reads for talk) at two screen pixels a DS pixel, labels at three with a one-pixel rim. The title buttons are the cartridge's orange buttons (`cpac_3d.bin` block 0, textures 192 resting, 193 selected, 194 pressed, loaded by `func_0201e664`), the meter flame is texture 31, and the port's own pills, arrows and bin are the remastered shapes hardened to whole DS pixels. The cat is the DS set's own `st01_neko` animations: `pause_art.cat_frames` now takes its pages from whoever holds them, and `ds_set.SpritePages` hands it the sprite pages the cartridge frames were packed on (`func_0200b598`), stored pixel for pixel. The logo is cut out of the cartridge's title picture (texture 1042) by a `cut_out` part in `ds_ui.py`, which keeps what is not the red backdrop. The backdrop is a flat red `fill`, the user's choice on 2026-11-15, because every cartridge picture with that backdrop has a logo or chapter text over it. `tests/tools/test_ds_pause.py` checks the DS sheet has every cell the remastered sheet has, that every menu string can be written in the DS font (the four languages the cartridge never had are named and left out), that the sheet fits the app's texture limit and that a label fits its cell.
+
+Not done in DS mode: the Record screen (`pause/people.txt`) and the clock (`pause/clock.txt`), the spotlight under the cat, the option preview plate, and the Vita button glyphs, which sit on `hud_sheet`.
+
+### 245. DS talk text sat far from the left edge of its box
+
+The DS set places talk text where the DS does: the window's own left edge and margin (`data_02084a8c`), mapped into the middle 720 pixels of the screen. The app draws its boxes where the remaster has them: the bottom box across all 960 pixels, the top box 584 wide at 188, or at 255.5 beside a head icon. So text began 120 pixels further in than the bottom box and 67 further in than a top box with no head, and looked indented.
+
+The class: DS content placed by the DS screen inside a frame the app places by the remaster's layout.
+
+Guard: `talk_message_rows` in `ds_set_text.py` moves each page's lines left by the distance between the DS window's mapped edge and the edge of the box the app draws for that page (`APP_BOX_LEFT`), so the text keeps the DS margin inside the box. Centred system lines are not moved. `tests/tools/test_ds_set_text.py` checks the margin for a bottom page and a top page with no head, and reads the three box edges out of `script_view.c` so the two cannot drift apart.
+
+### 246. Ray's speech bubble showed Missile's head
+
+Root cause 241 gave the DS set a hand-written list of head icons copied from the remastered set's four entries, and it sent head values 4 and 5 to Missile's picture. Native reads the icon from a table: `func_0201d95c` indexes `data_02099cb0` (6-byte rows) with the head value less one, and the row's second word is the `cpac_3d.bin` texture, 0xffff for no icon. Value 4, Ray, is the desk lamp (314); 2 is Missile (315); 5, 6 and 14 have no icon, which is how the game keeps the first voice in Chapter 1 unseen.
+
+The class: a table the cartridge holds, retyped by hand from the other set.
+
+Guard: `read_head_textures` in `ds_set_text.py` reads all 14 rows from the cartridge and the set description lists none. `tests/tools/test_ds_set_text.py` checks a row with no icon gives a top box with no head. Not checked: the remastered set's `head_faces` still lists only values 1, 3, 4 and 5, with 4 and 5 on one file.
+
+### 247. Switching the Visual Filter restarted the game without warning
+
+The Visual Filter row flipped on one press, and the app then restarts to load the other art set, so a player lost the progress since the last save with no notice.
+
+Guard: the row opens the options' yes or no dialog first (`row.filter_ask`, `bar.filter_warning`, in every language) and flips only on yes; a pinned filter still does nothing. `tests/unit/test_pause_options.c` checks a press opens the dialog, No leaves the filter alone and Yes switches it.
 
 ## Still open
 

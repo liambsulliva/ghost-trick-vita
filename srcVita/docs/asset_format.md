@@ -97,6 +97,8 @@ What the DS set holds, and where each part comes from:
 | Faces `ds_face_<entry>` | `cpac_3d.bin` block 0, a `.tds` texture at the entry the face table names, at DS size (128 by 192, head icons 64 by 64) | `data_02085724`, `func_0201e664` |
 | Interface textures (`talk_box_top`, `talk_box_bottom`, `ui_choice_buttons`, `ui_select_button`, `ui_tap_balloon`, `rewind_rocks_*`, `soul_spokes`) | `cpac_3d.bin` block 0, the parts the set description's `ds_textures` lists, placed where the app's layout for the remastered texture of the same name reads them | `func_0201e664` |
 | HUD pills `hud_pills` | `cpac_3d.bin` block 0, each button's resting and touched texture, one row per pill and one column per state, 88 by 32 DS pixels a cell | `func_0204f850` |
+| Menu sheets `pause_widgets`, `pause_labels`, the cat pages `pause_cat_<page>` and their tables under `pause/` | The remastered set's cell names and layout, written in the cartridge's main font at whole DS pixels; title buttons from `cpac_3d.bin` textures 192 to 194, the meter flame from 31, the cat from the DS set's own `st01_neko` sprite pages; the port's own shapes hardened to DS pixels | `func_0201e664`, `func_0200b598` |
+| `title_logo`, `pause_backdrop` | The logo cut out of the cartridge's title picture (`cpac_3d.bin` texture 1042); the backdrop is a flat red, because the cartridge has no title backdrop without the logo | `func_0201e664` |
 | Music `music_ds/bgm<id>_new` | `sound_data.sdat`, the sequence at the music id | `ds_music.py` |
 | Sounds `sounds/<group>_<index>` | `sound_data.sdat`'s sequence archives `SEQ_SE_SYS` and `SEQ_SE_GIM` | `func_02007250`, `func_02004a84` |
 

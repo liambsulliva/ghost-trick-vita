@@ -7,6 +7,7 @@ import ds_textures
 TEXTURE_FOLDER = "textures"
 CODE_FILES = ["ds_ui.py", "ds_textures.py", "asset_writers.py"]
 RGBA_BYTES = 4
+FULL_ALPHA = 255
 
 
 class DsUiError(ValueError):
@@ -58,6 +59,27 @@ def trimmed(image):
     return cropped(image, [columns[0], rows[0], columns[-1] - columns[0] + 1, rows[-1] - rows[0] + 1])
 
 
+def cut_out(image, rule):
+    width, height, rgba = image
+    other_limit = rule["other_channels_above"]
+    red_limit = rule["red_above"]
+    kept = [rgba[place + 1] > other_limit or rgba[place + 2] > other_limit or rgba[place] > red_limit for place in range(0, width * height * RGBA_BYTES, RGBA_BYTES)]
+    for _ in range(rule.get("grow", 0)):
+        wider = list(kept)
+        for row in range(height):
+            for column in range(width):
+                if kept[row * width + column]:
+                    for near_row in range(max(row - 1, 0), min(row + 2, height)):
+                        for near_column in range(max(column - 1, 0), min(column + 2, width)):
+                            wider[near_row * width + near_column] = True
+        kept = wider
+    result = bytearray(rgba)
+    for place, keep in enumerate(kept):
+        if not keep:
+            result[place * RGBA_BYTES:(place + 1) * RGBA_BYTES] = bytes(RGBA_BYTES)
+    return width, height, bytes(result)
+
+
 def place_in_cell(image, cell, align):
     cell_x, cell_y, cell_width, cell_height = cell
     if image[0] > cell_width or image[1] > cell_height:
@@ -95,10 +117,14 @@ def compose(description, texture_of):
     width = description["width"]
     height = description["height"]
     canvas = bytearray(width * height * RGBA_BYTES)
+    if "fill" in description:
+        canvas = bytearray(bytes(description["fill"]) + bytes((FULL_ALPHA,))) * (width * height)
     for part in parts:
         image = texture_of(part["texture"], part.get("opaque", False))
         if "crop" in part:
             image = cropped(image, part["crop"])
+        if "cut_out" in part:
+            image = cut_out(image, part["cut_out"])
         if "cell" in part:
             image = trimmed(image)
             x, y = place_in_cell(image, part["cell"], part.get("align", [0.5, 0.5]))
