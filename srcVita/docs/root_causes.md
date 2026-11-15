@@ -1873,6 +1873,14 @@ The README said a second speech bubble went missing late in Chapter 1, in the fo
 
 Guard: none; the README line now names the opening.
 
+### 250. "Short black or white holds" were one movie end, not a pattern
+
+The README said the port had short black or white holds the footage does not have. The whole chapter was rendered every 20 ticks (`scene_render game tick:30 5440 20`, 5440 frames to tick 107386) and each frame's luma kept; a hold is a run of frames all at or under 56 (black) or all at or over 225 (white), the same test as the footage's 60 fps scan. The port has 23 black and 9 white holds. Placed on the footage's time through five anchors (ticks 6679, 40163, 51553, 64460 and 99796 at 124.5, 791.0, 1013.0, 1246.0 and 1907.6 s), each lies within a few seconds of a footage hold of the same kind: the opening's cards, the swirl cuts into and out of the ghost view, the film stills' white flashes, the chapter card, the rewind clock and the closing scenes. The footage has holds the port does not: the player opening the People screen at 1679 and 1697 s, which the route does not do.
+
+One pairing differs inside the hold. At the forward time jump (port tick 73049, footage 1409.5 s) the footage holds white about 0.75 s and fades to black, while the port goes from the movie's last white frame to 16 black ticks during the scene load and only then fades from white. That is the README's one remaining line about holds.
+
+Guard: none in code; the README names the movie end.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

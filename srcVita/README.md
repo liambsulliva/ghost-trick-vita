@@ -348,7 +348,7 @@ These are the known differences from the original. Bug-fix releases work through
 - The pill words ("Ghost", "Trick", "Back") are drawn in the talk font with a hairline outline. The footage's are a bold serif face with a dark outline, at the same size; which remaster font or texture draws them is not found.
 - The film still after "(Unconscious, eh?)" (footage 795 s, port tick 40220) turns from grey to full colour after about 30 ticks; the footage keeps it grey, with only Lynne in colour.
 - The soul's fly-in from the trick pill.
-- Short black or white holds that the footage does not have.
+- When the forward time-jump movie (`time_jump_b`, `pGameMainMovieForward`) ends on white, the port draws 16 black ticks (73050 to 73065, the HUD over black, then plain black) while the next scene loads, then fades that scene in from white. The footage (1409.5 s) stays white across the load. `draw_movie` drops a finished movie and nothing holds its last frame; what native shows between the movie's end and the next fade is not traced.
 
 **Effects**
 
