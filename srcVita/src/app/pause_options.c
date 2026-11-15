@@ -190,7 +190,7 @@ static int is_greyed(const struct option_row *row)
 
 static int is_dimmed(const struct option_row *row)
 {
-    return is_greyed(row) || (row->job == JOB_VISUAL_FILTER && game_settings_filter_is_pinned());
+    return is_greyed(row) || (row->job == JOB_VISUAL_FILTER && game_settings_filter_is_pinned()) || (row->job == JOB_FPS_CAP && game_settings_fps_is_pinned());
 }
 
 static int is_selectable(int index)
@@ -397,7 +397,7 @@ static int *switch_of(enum row_job job)
 static const char *switch_value_name(enum row_job job, int value)
 {
     if (job == JOB_FPS_CAP) {
-        return value == GAME_FPS_CAPPED ? "fps_30" : "fps_60";
+        return game_settings_fps_is_pinned() ? "fps_30" : value == GAME_FPS_CAPPED ? "fps_30" : "fps_60";
     }
     if (job == JOB_VISUAL_FILTER) {
         return game_settings_visual_filter() == GAME_FILTER_DS ? "filter_ds" : "filter_remastered";
@@ -415,6 +415,10 @@ static void flip_switch(enum row_job job)
     }
     if (job == JOB_VISUAL_FILTER && game_settings_filter_is_pinned()) {
         run_log_write("pause option %s pinned=%d", rows[selected].name, game_settings_visual_filter());
+        return;
+    }
+    if (job == JOB_FPS_CAP && game_settings_fps_is_pinned()) {
+        run_log_write("pause option %s pinned=%d", rows[selected].name, game_settings_fps_cap());
         return;
     }
     if (job == JOB_VISUAL_FILTER) {

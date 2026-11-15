@@ -425,6 +425,27 @@ static void test_display_switches_flip_save_and_reach_the_renderer(void)
     CHECK_INT(fake_renderer_vsync_is_on(), 1);
 }
 
+static void test_the_ds_art_set_pins_the_frame_rate_at_thirty(void)
+{
+    fake_renderer_reset();
+    start_options();
+    game_settings_set_art_fps_cap(GAME_FPS_CAPPED);
+    CHECK_INT(game_settings_fps_is_pinned(), 1);
+    CHECK_INT(game_settings_fps_cap(), GAME_FPS_CAPPED);
+    CHECK_INT(fake_renderer_vblanks_per_frame(), 2);
+    press_down_to(FPS_CAP_ROW);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->fps_cap, GAME_FPS_FULL);
+    game_settings_apply();
+    CHECK_INT(fake_renderer_vblanks_per_frame(), 2);
+    game_settings_set_art_fps_cap(GAME_FPS_FULL);
+    CHECK_INT(game_settings_fps_is_pinned(), 0);
+    CHECK_INT(fake_renderer_vblanks_per_frame(), 1);
+    CHECK_INT(pause_options_step(INPUT_CIRCLE), PAUSE_OPTIONS_LEAVES);
+    game_settings_defaults(game_settings_now());
+    game_settings_apply();
+}
+
 static void test_the_visual_filter_chooses_only_when_both_art_sets_are_bundled(void)
 {
     start_options();
@@ -550,6 +571,7 @@ int main(void)
     test_a_tap_on_a_flame_sets_that_level();
     test_the_unlock_row_shows_only_when_built_in_and_flips_a_saved_setting();
     test_display_switches_flip_save_and_reach_the_renderer();
+    test_the_ds_art_set_pins_the_frame_rate_at_thirty();
     test_the_visual_filter_chooses_only_when_both_art_sets_are_bundled();
     test_dragging_the_list_scrolls_it_without_picking_a_row();
     test_the_text_speed_slider_steps_cycles_and_takes_a_tap();

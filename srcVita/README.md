@@ -1,6 +1,6 @@
 # srcVita
 
-The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real Vita and plays the game at 60 fps, using art converted from the remaster.
+The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real Vita and plays the game at 60 fps with the remastered art, or a fixed 30 fps with the DS art, whose sprites change at most 15 times a second; the Options Framerate row is then held at 30.
 
 The game runs from the DS's own script bytes on the script VM (see [The script VM](#the-script-vm)). The whole story plays from start to finish. [Known issues](#known-issues) lists what still differs from the original.
 
