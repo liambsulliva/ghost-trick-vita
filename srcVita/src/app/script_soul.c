@@ -927,7 +927,7 @@ static void report_hud(struct script_machine *machine)
     if (machine->outputs->hud_changed == NULL) {
         return;
     }
-    view.side_is_on = script_flags_read(&machine->flags, FATE_SECTION_FLAG);
+    view.side_is_on = script_soul_fate_section_is_on(machine);
     view.fate_level = machine->fate_level;
     view.world_is_running = !machine->pause_bit && machine->mode_byte == SCRIPT_MODE_NORMAL && machine->eyecatch_ticks_left == 0;
     view.is_hidden_for_movie = machine->movie_ticks_left > 0 || machine->soul.phone_split_name[0] != '\0';
@@ -1708,15 +1708,16 @@ static void keep_the_core_the_soul_failed_on(struct script_machine *machine)
     machine->soul_slot_kept_for_the_retry = machine->soul.active_slot;
 }
 
-static void retry_after_the_game_over(struct script_machine *machine)
+static void retry_the_fate_attempt(struct script_machine *machine, const char *what)
 {
     int restarts_in_place;
 
     machine->game_over_is_pending = 0;
+    machine->soul.rollback_is_on = 0;
     restarts_in_place = script_machine_handles(machine, "SYSTEM", "RESTART");
     machine->retries_of_the_scene = machine->retries_of_the_scene + 1;
     if (machine->outputs->marked != NULL) {
-        machine->outputs->marked("game_over_retry", restarts_in_place ? "restart" : "reload");
+        machine->outputs->marked(what, restarts_in_place ? "restart" : "reload");
     }
     if (restarts_in_place) {
         script_machine_send(machine, "*", "SYSTEM", "RESTART");
@@ -1727,6 +1728,26 @@ static void retry_after_the_game_over(struct script_machine *machine)
     keep_the_core_the_soul_failed_on(machine);
     machine->scene_is_being_retried = 1;
     script_machine_reload_scene(machine);
+}
+
+static void retry_after_the_game_over(struct script_machine *machine)
+{
+    retry_the_fate_attempt(machine, "game_over_retry");
+}
+
+static int the_rollback_is_offered(const struct script_machine *machine)
+{
+    return script_pills_is_up(machine, SCRIPT_PILL_HOURGLASS) && !machine->pause_bit && machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->talk_is_open && !machine->choice.is_open && !game_over_waits_for_a_retry(machine);
+}
+
+static int take_rollback(struct script_machine *machine)
+{
+    if (!the_rollback_is_offered(machine)) {
+        return 0;
+    }
+    script_pills_press(machine, SCRIPT_PILL_HOURGLASS, 0);
+    retry_the_fate_attempt(machine, "rollback_retry");
+    return 1;
 }
 
 static void step_the_game_over(struct script_machine *machine)
@@ -2989,6 +3010,13 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         soul->ghost_is_pending = 0;
         soul->character_button_is_pending = 0;
         soul->tap_group_is_pending = 0;
+        soul->rollback_is_pending = 0;
+    }
+    if (soul->rollback_is_pending) {
+        soul->rollback_is_pending = 0;
+        if (take_rollback(machine)) {
+            return;
+        }
     }
     if (machine->press_is_pending) {
         machine->press_is_pending = 0;
@@ -3070,11 +3098,9 @@ void script_soul_note_pill(struct script_machine *machine, enum script_pill_id i
         machine->record_is_wanted = 1;
         return;
     }
-    if (!script_pills_is_up(machine, id)) {
-        return;
+    if (id == SCRIPT_PILL_HOURGLASS) {
+        machine->soul.rollback_is_pending = 1;
     }
-    script_pills_press(machine, id, 0);
-    script_machine_note(machine, NULL, "pill_not_ported", "hourglass");
 }
 
 void script_soul_note_tap(struct script_machine *machine, int tap_group)
@@ -3346,6 +3372,11 @@ int script_soul_route_balloon_group(const struct script_machine *machine, const 
 int script_soul_page_wants_a_press(const struct script_machine *machine)
 {
     return (machine->talk.phase == SCRIPT_TALK_WAITING && script_talk_wants_a_press(machine)) || script_narration_wants_a_press(&machine->narration);
+}
+
+int script_soul_fate_section_is_on(const struct script_machine *machine)
+{
+    return script_flags_read(&machine->flags, FATE_SECTION_FLAG);
 }
 
 int script_soul_game_over_waits(const struct script_machine *machine)
