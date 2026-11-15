@@ -1881,6 +1881,14 @@ Guard: `ds_textures` fills the four slots, and a part can take the main colour o
 
 Not done: the flower of lines around the soul (`soul_dim`, a flipbook in the remastered set) and Ray's light, which is effect movie `ef01_light_000`/`001` (effect ids 84 and 91) in the remastered set; the DS set bakes no effects yet.
 
+### 251. The DS pause menu showed a red block in a corner and a cat in pieces
+
+Seen on the Vita: in DS mode the pause menu drew a red rectangle in the top-left corner over a dark screen, and the cat showed only its eye, an ear and its red scarf. `pause_menu.c` drew the backdrop at its own pixel size, which filled the screen only because the remastered backdrop is 960 by 544. Root cause 244 gave the DS set a flat red backdrop 240 by 136, so it covered a quarter of the width, and the black cat stood on the dark clear colour where only its light parts showed. The cat pages were whole. The loading screen already stretched the same texture to the screen.
+
+The class: a screen-filling texture drawn at its texel size, which holds only while every set bakes it at screen size.
+
+Guard: the pause menu stretches the backdrop across the screen (`draw_across_screen`), as the loading screen does. `tests/unit/test_pause_menu.c` checks an 8 by 8 backdrop is drawn over the whole screen.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
