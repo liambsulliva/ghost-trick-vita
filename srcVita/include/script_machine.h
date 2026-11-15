@@ -61,7 +61,6 @@
 #define SCRIPT_NO_SELECTION -1
 #define SCRIPT_FREE_UNIT_MAX 16
 #define SCRIPT_NOTED_OP_BYTES ((SCRIPT_OPCODE_COUNT / 8) + 1)
-#define SCRIPT_NOTED_EFFECT_BYTES 128
 #define SCRIPT_NOTED_PROBLEM_BYTES 1024
 #define SCRIPT_CALL_DEPTH_MAX 4
 #define SCRIPT_ROOM_ID_MAX 256
@@ -598,7 +597,6 @@ struct script_machine {
     unsigned int game_over_talk_ended_at;
     struct script_anchored_effect anchored_effects[SCRIPT_ANCHORED_EFFECT_MAX];
     unsigned char noted_ops[SCRIPT_NOTED_OP_BYTES];
-    unsigned char noted_effects[SCRIPT_NOTED_EFFECT_BYTES];
     unsigned char noted_problems[SCRIPT_NOTED_PROBLEM_BYTES];
     unsigned long long phase_us[SCRIPT_TICK_PHASE_COUNT];
     unsigned long long slowest_object_us;
@@ -636,7 +634,6 @@ void script_machine_start_from_black(struct script_machine *machine);
 void script_machine_tick(struct script_machine *machine);
 void script_machine_set_swirl(struct script_machine *machine, int is_on);
 int script_machine_picture_is_hidden(const struct script_machine *machine);
-void script_machine_name_of_path(const char *path, char *name, unsigned int name_size);
 
 void script_machine_pan_camera_back_to(struct script_machine *machine, int x, int y);
 #define SCRIPT_FIRST_CORE_NODE 10
@@ -651,7 +648,6 @@ void script_machine_move_anchored_effects(struct script_machine *machine);
 void script_machine_spawn_table_effect(struct script_machine *machine, struct script_object *object, int effect_id, float offset_x, float offset_y, const char *name);
 int script_machine_camera_band_snap(const struct script_machine *machine, int object_y);
 void script_machine_note(struct script_machine *machine, const struct script_vm *vm, const char *reason, const char *detail);
-void script_machine_end_block(struct script_machine *machine, struct script_vm *vm, const char *reason);
 void script_machine_update_camera(struct script_machine *machine);
 const char *script_machine_string(struct script_machine *machine, const struct script_vm *vm, unsigned int string_offset);
 int script_machine_index_of_object(const struct script_machine *machine, const char *name);
@@ -674,7 +670,6 @@ void script_motion_update_all(struct script_machine *machine);
 void script_motion_hard_hide(struct script_actor *actor);
 void script_fades_update(struct script_machine *machine);
 void script_ghost_copies_update(struct script_machine *machine);
-void script_ghost_copy_fade_out(struct script_ghost_copy *copy);
 int script_ghost_copy_shown_level(const struct script_ghost_copy *copy);
 void script_fades_add(struct script_machine *machine, const struct script_vm *vm, int kind, int frames);
 void script_fades_set_mask(struct script_machine *machine, int target_alpha, int frames);
@@ -761,7 +756,6 @@ int script_hints_are_ahead_of_step(const struct script_machine *machine, int ste
 int script_hints_can_point_at_step(const struct script_machine *machine, int step_index);
 int script_hints_take_tap(struct script_machine *machine, int tap_group);
 int script_hints_hold_the_soul(const struct script_machine *machine);
-int script_hints_bubble_is_up(const struct script_machine *machine);
 void script_hints_step(struct script_machine *machine);
 void script_hints_report(struct script_machine *machine);
 void script_exchange_reset(struct script_machine *machine);

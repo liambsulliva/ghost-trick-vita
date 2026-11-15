@@ -332,7 +332,7 @@ static float stream_phase;
 static void advance_tap_balloons(void);
 static int the_picture_is_covered(void);
 
-void script_ui_view_clear(void)
+static void script_ui_view_clear(void)
 {
     memset(playing, 0, sizeof(playing));
     memset(tap_balloons, 0, sizeof(tap_balloons));

@@ -81,7 +81,7 @@ static void give_back_heap_buffer(void *context, unsigned char *buffer)
     mem_free(buffer);
 }
 
-int file_read_whole_timing_open(const char *path, unsigned char **data, unsigned int *size, unsigned long long *open_us)
+static int file_read_whole_timing_open(const char *path, unsigned char **data, unsigned int *size, unsigned long long *open_us)
 {
     struct file_buffers heap;
 

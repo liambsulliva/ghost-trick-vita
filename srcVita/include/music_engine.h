@@ -18,6 +18,5 @@ void music_request_stop(int fade_ticks);
 void music_request_volume(int volume_out_of_256, int ticks);
 void music_request_starve(int milliseconds);
 void music_shutdown(void);
-int music_engine_step(void);
 
 #endif

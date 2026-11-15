@@ -56,11 +56,6 @@ int work_queue_post(queued_work work, void *argument)
     return 1;
 }
 
-int work_queue_is_busy(void)
-{
-    return item_count > 0;
-}
-
 void work_queue_wait(void)
 {
     fake_work_queue_run_pending();

@@ -196,7 +196,7 @@ void game_save_apply_after_start(const struct game_save *save, struct script_mac
     machine->soul.rollback_is_on = save->rollback_is_on;
 }
 
-const char *game_save_path(enum game_save_slot slot)
+static const char *game_save_path(enum game_save_slot slot)
 {
     return slot == GAME_SAVE_AUTO ? GAME_SAVE_AUTO_PATH : GAME_SAVE_MANUAL_PATH;
 }
@@ -321,7 +321,7 @@ int game_save_store_as_newest(const struct game_save *save, enum game_save_slot 
     return queue_job(SAVE_JOB_NEWEST, save, (int)slot);
 }
 
-int game_save_store(const struct game_save *save, enum game_save_slot slot)
+static int game_save_store(const struct game_save *save, enum game_save_slot slot)
 {
     return queue_job(SAVE_JOB_SLOT, save, (int)slot);
 }

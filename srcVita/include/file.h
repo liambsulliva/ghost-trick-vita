@@ -19,7 +19,6 @@ struct file_buffers {
 };
 
 int file_read_whole_into(const char *path, const struct file_buffers *buffers, unsigned char **data, unsigned int *size, unsigned long long *open_us);
-int file_read_whole_timing_open(const char *path, unsigned char **data, unsigned int *size, unsigned long long *open_us);
 int file_write_whole(const char *path, const unsigned char *data, unsigned int size);
 int file_append(const char *path, const unsigned char *data, unsigned int size);
 int file_delete(const char *path);

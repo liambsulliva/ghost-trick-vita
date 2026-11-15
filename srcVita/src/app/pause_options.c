@@ -29,7 +29,6 @@
 #define FLAME_FIRST_X 545.0f
 #define FLAME_STEP 38.0f
 #define FLAME_RISE 2.0f
-#define FLAME_REACH_Y 24.0f
 #define SCROLL_KEEP_BELOW 40.0f
 #define SCROLL_EASE 0.18f
 #define SCROLL_SNAP 0.5f
@@ -891,7 +890,7 @@ static void draw_controls_page(float x_offset)
     }
 }
 
-float pause_options_preview_top(void)
+static float pause_options_preview_top(void)
 {
     float row_top;
     float top;

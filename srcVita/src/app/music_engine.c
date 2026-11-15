@@ -99,6 +99,8 @@ static unsigned int handled_generation;
 static unsigned int fade_generation;
 static int thread_line_is_written;
 
+static int music_engine_step(void);
+
 static void log_main_thread_facts(void)
 {
     struct audio_thread_facts facts;
@@ -563,7 +565,7 @@ static void log_thread_facts_once(void)
     run_log_write(LOG_FOR_TOOLS_MUSIC_THREAD, facts.priority, facts.cpu_mask, facts.cpu, facts.arm_mhz, facts.fpscr);
 }
 
-int music_engine_step(void)
+static int music_engine_step(void)
 {
     struct music_wish wish;
 

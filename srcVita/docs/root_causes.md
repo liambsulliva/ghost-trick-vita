@@ -1664,6 +1664,14 @@ The class: any file whose place on the Vita differs from its place in the conver
 
 Guard: the converter writes the Vita layout. `output_folders.disk_path_of` maps a texture's name to its bucket and is the one rule: `BakeRecord` stores and reads through it, the sweep keeps a texture only in its own bucket, `vita_loop.py` lists bucketed files by name and uploads them to the same place, and `pause_render.py` reads them there. A set baked flat is moved into buckets by rename the first time a newer converter opens it, so nothing is baked again. `tests/tools/test_texture_layout.py` checks the buckets against the C test's examples (`a` in `03`, `movie_time_jump_012` in `30`) and the Makefile's count, the store, the reuse after the move, the sweep and the uploader's listing.
 
+### 225. Headers declared functions that only their own file called
+
+Found in the 1.0 audit: 15 functions were declared in `include/` and called only inside the file that defines them (`script_machine_end_block`, `game_save_store`, `pause_menu_step`, `title_menu_step`, the two audio thread steps and nine more), and `work_queue_is_busy` had no caller at all. Three constants and the machine's `noted_effects` bytes were written once and never read. None of it changed behaviour, but each one made a header promise something no caller used, and a later change had to keep it working.
+
+The class: any function a header exposes for a caller that has gone, in every module.
+
+Guard: `tests/tools/test_headers_expose_what_is_used.py` fails when a function declared in `include/` has no user outside its own file among the sources, the other headers and the tests. Make such a function `static`, or delete it.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

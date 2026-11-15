@@ -84,15 +84,6 @@ int work_queue_post(queued_work work, void *argument)
     return has_room;
 }
 
-int work_queue_is_busy(void)
-{
-    if (unfinished_count > 0) {
-        return 1;
-    }
-    __sync_synchronize();
-    return 0;
-}
-
 void work_queue_wait(void)
 {
     while (unfinished_count > 0) {

@@ -125,6 +125,8 @@ static int port_is_open;
 static int port_has_failed;
 static int thread_line_is_written;
 
+static int sound_engine_step(void);
+
 void sound_engine_init(const char *sound_folder)
 {
     int result;
@@ -771,7 +773,7 @@ static void log_thread_facts_once(void)
     run_log_write(LOG_FOR_TOOLS_SOUND_THREAD, facts.priority, facts.cpu_mask, facts.cpu, facts.arm_mhz, facts.fpscr);
 }
 
-int sound_engine_step(void)
+static int sound_engine_step(void)
 {
     struct sound_requests requests;
     int index;
