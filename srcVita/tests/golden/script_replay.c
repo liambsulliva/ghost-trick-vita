@@ -219,7 +219,7 @@ static void note_traced_core(void)
     }
 }
 
-static void on_marked(const char *what, const char *name) { CUE("mark %s %s", what, name); if (marks_to_stdout) { printf("mark %s %s\n", what, name); if (strcmp(what, "route_hop_beyond_reach") == 0) { print_cores(); } } save_state_when_due(what, name); if (strcmp(what, "route_step_done") == 0) { note_flag_changes(); } }
+static void on_marked(const char *what, const char *name) { if (strcmp(what, "script_begun") == 0) { CUE("chapter_mark %d", machine.chapter_mark); } CUE("mark %s %s", what, name); if (marks_to_stdout) { printf("mark %s %s\n", what, name); if (strcmp(what, "route_hop_beyond_reach") == 0) { print_cores(); } } save_state_when_due(what, name); if (strcmp(what, "route_step_done") == 0) { note_flag_changes(); } }
 static void on_talk(const struct script_talk_view *view) { CUE("talk slide=%.2f alpha=%.2f glyphs=%d cursor=%d open=%d", view->slide, view->text_alpha, view->glyphs_shown, view->cursor_is_on, view->page != NULL); }
 static void on_effect_deleted(const char *name) { CUE("effect_deleted %s", name); }
 static void on_screen_filter(int mode) { CUE("screen_filter %d", mode); }

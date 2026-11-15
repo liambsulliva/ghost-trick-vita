@@ -10,6 +10,8 @@
 #define READ_AHEAD_ANCHOR_PREFIX "game"
 #define READ_AHEAD_LINE_SCAN "ahead %47s %u " ASSET_NAME_SCAN
 #define READ_AHEAD_NEXT_SCAN "next %47s"
+#define READ_AHEAD_NEXT_PREFIX "next "
+#define READ_AHEAD_NEXT_FOR_SCAN "next_for %d %47s"
 
 struct read_ahead_entry {
     char anchor[READ_AHEAD_NAME_MAX];
@@ -53,6 +55,9 @@ static int read_entries_of(const struct read_ahead_plan *plan, int is_kept)
     offset = 0;
     while (offset < plan->text_size) {
         offset = text_lines_read_next(plan->text, plan->text_size, offset, line, sizeof(line));
+        if (strncmp(line, READ_AHEAD_NEXT_PREFIX, strlen(READ_AHEAD_NEXT_PREFIX)) != 0 && strncmp(line, "next", 4) == 0) {
+            continue;
+        }
         if (is_kept && sscanf(line, READ_AHEAD_NEXT_SCAN, next_script) == 1) {
             continue;
         }
@@ -97,11 +102,13 @@ static void read_the_plan_of(const char *script_name)
     }
 }
 
-const char *read_ahead_next_script_of(const char *script_name)
+const char *read_ahead_next_script_of(const char *script_name, int chapter_mark)
 {
     static char named_next[READ_AHEAD_NAME_MAX];
+    char marked_next[READ_AHEAD_NAME_MAX];
     char line[READ_AHEAD_LINE_MAX];
     unsigned int offset;
+    int mark;
     int index;
 
     named_next[0] = '\0';
@@ -112,11 +119,15 @@ const char *read_ahead_next_script_of(const char *script_name)
         offset = 0;
         while (offset < plans[index].text_size) {
             offset = text_lines_read_next(plans[index].text, plans[index].text_size, offset, line, sizeof(line));
-            if (sscanf(line, READ_AHEAD_NEXT_SCAN, named_next) == 1) {
-                return named_next;
+            if (sscanf(line, READ_AHEAD_NEXT_FOR_SCAN, &mark, marked_next) == 2) {
+                if (mark == chapter_mark) {
+                    snprintf(named_next, sizeof(named_next), "%s", marked_next);
+                    return named_next;
+                }
+            } else if (strncmp(line, READ_AHEAD_NEXT_PREFIX, strlen(READ_AHEAD_NEXT_PREFIX)) == 0 && named_next[0] == '\0') {
+                (void)sscanf(line, READ_AHEAD_NEXT_SCAN, named_next);
             }
         }
-        named_next[0] = '\0';
         return named_next;
     }
     return named_next;

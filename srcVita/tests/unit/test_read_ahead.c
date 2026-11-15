@@ -79,8 +79,25 @@ static void test_a_plan_names_the_script_that_comes_next(void)
     CHECK_TEXT(read_ahead_next_script(), "");
 }
 
+static void test_a_roots_plan_names_the_first_scene_for_each_chapter_mark(void)
+{
+    static const char root_plan[] = "next game000\nnext_for 12 game000\nnext_for 13 game001\n";
+    static const char scene_plan[] = "next_for 1 wrong\nnext game003\nahead * 4 page_a\n";
+
+    set_up();
+    read_ahead_add_text("root", root_plan, (unsigned int)strlen(root_plan));
+    read_ahead_add_text("game002", scene_plan, (unsigned int)strlen(scene_plan));
+    CHECK_TEXT(read_ahead_next_script_of("root", 13), "game001");
+    CHECK_TEXT(read_ahead_next_script_of("root", 12), "game000");
+    CHECK_TEXT(read_ahead_next_script_of("root", 7), "game000");
+    CHECK_TEXT(read_ahead_next_script_of("unknown", 13), "");
+    read_ahead_note_mark("script_begun", "game002", 0);
+    CHECK_TEXT(read_ahead_next_script(), "game003");
+}
+
 int main(void)
 {
+    test_a_roots_plan_names_the_first_scene_for_each_chapter_mark();
     test_a_plan_names_the_script_that_comes_next();
     test_pages_due_soon_after_the_act_are_read_ahead();
     test_the_window_moves_on_and_drops_pages_already_due();

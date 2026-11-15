@@ -688,7 +688,7 @@ static void prepare_the_first_scene(void)
         data->ahead_bytes_count = data->ahead_bytes_count + 1;
         read_ahead_add_text(entry, (const char *)bytes, size);
     }
-    start_preparing(read_ahead_next_script_of(entry));
+    start_preparing(read_ahead_next_script_of(entry, data->machine.chapter_mark));
 }
 
 static void begin_loading_animations(void)

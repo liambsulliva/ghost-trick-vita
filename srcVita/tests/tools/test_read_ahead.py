@@ -133,6 +133,30 @@ class ReadAheadTest(unittest.TestCase):
             nexts = read_ahead.next_scripts_from_cues(os.path.join(folder, "cues.tsv"), folder)
         self.assertEqual(nexts, {"first": "second", "second": "first", "route": "first", "st01-st01_root": "first", "chapter": "second", "phone": "first"})
 
+    def test_each_root_names_the_first_scene_for_the_chapter_mark_it_began_at(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name in ("first", "second"):
+                write(folder, name + ".motions", "motion 1a2b t_ball 1\n")
+            write(folder, "cues.tsv", "\n".join([
+                "0\tchapter_mark 0",
+                "0\tmark script_begun route",
+                "5\tchapter_mark 0",
+                "5\tmark script_begun st05_root",
+                "10\tchapter_mark 0",
+                "10\tmark script_begun first",
+                "90\tchapter_mark 1",
+                "90\tmark script_begun st05_root",
+                "95\tchapter_mark 1",
+                "95\tmark script_begun second",
+                "150\tchapter_mark 1",
+                "150\tmark script_begun st05_root",
+                "155\tchapter_mark 1",
+                "155\tmark script_begun first",
+            ]) + "\n")
+            nexts = read_ahead.next_scripts_by_chapter_mark(os.path.join(folder, "cues.tsv"), folder)
+        self.assertEqual(nexts, {"route": {0: "first"}, "st05_root": {0: "first", 1: "second"}})
+        self.assertEqual(read_ahead.ahead_text([], "first", nexts["st05_root"]), "next first\nnext_for 0 first\nnext_for 1 second\n")
+
     def test_the_plan_names_the_next_script_before_its_textures(self):
         self.assertEqual(read_ahead.ahead_text([("*", 4, "ball_00")], "second"), "next second\nahead * 4 ball_00\n")
         self.assertEqual(read_ahead.ahead_text([("*", 4, "ball_00")]), "ahead * 4 ball_00\n")

@@ -212,8 +212,32 @@ def next_scripts_from_cues(cues_path, scripts_folder):
     return nexts
 
 
-def ahead_text(entries, next_script=None):
-    return ("next %s\n" % next_script if next_script else "") + "".join("ahead %s %d %s\n" % entry for entry in entries)
+def next_scripts_by_chapter_mark(cues_path, scripts_folder):
+    nexts = {}
+    chapter_mark = None
+    waiting_for_a_scene = []
+    for line in read_lines(cues_path):
+        _, _, text = line.partition("\t")
+        fields = text.split()
+        if len(fields) == 2 and fields[0] == "chapter_mark":
+            chapter_mark = int(fields[1])
+            continue
+        if len(fields) <= 2 or fields[0] != "mark" or fields[1] != "script_begun":
+            continue
+        if not os.path.exists(os.path.join(scripts_folder, fields[2] + MOTIONS_EXTENSION)):
+            if chapter_mark is not None:
+                waiting_for_a_scene.append((fields[2], chapter_mark))
+            continue
+        for waiting, mark in waiting_for_a_scene:
+            nexts.setdefault(waiting, {}).setdefault(mark, fields[2])
+        waiting_for_a_scene = []
+    return nexts
+
+
+def ahead_text(entries, next_script=None, next_by_mark=None):
+    lines = ["next %s\n" % next_script] if next_script else []
+    lines.extend("next_for %d %s\n" % (mark, scene) for mark, scene in sorted((next_by_mark or {}).items()))
+    return "".join(lines) + "".join("ahead %s %d %s\n" % entry for entry in entries)
 
 
 def main():
@@ -224,13 +248,14 @@ def main():
     arguments = parser.parse_args()
     schedules = schedules_from_cues(arguments.cues, arguments.scripts_folder, arguments.animation_folder)
     nexts = next_scripts_from_cues(arguments.cues, arguments.scripts_folder)
+    nexts_by_mark = next_scripts_by_chapter_mark(arguments.cues, arguments.scripts_folder)
     for path in os.listdir(arguments.scripts_folder):
         if path.endswith(MOTIONS_EXTENSION):
             schedules.setdefault(path[:-len(MOTIONS_EXTENSION)], [])
     for script_name in nexts:
         schedules.setdefault(script_name, [])
     for script_name, entries in sorted(schedules.items()):
-        bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + AHEAD_EXTENSION), ahead_text(entries, nexts.get(script_name)).encode("ascii"))
+        bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + AHEAD_EXTENSION), ahead_text(entries, nexts.get(script_name), nexts_by_mark.get(script_name) if not os.path.exists(os.path.join(arguments.scripts_folder, script_name + MOTIONS_EXTENSION)) else None).encode("ascii"))
         if not os.path.exists(os.path.join(arguments.scripts_folder, script_name + MOTIONS_EXTENSION)):
             continue
         bundle = bundle_text(arguments.scripts_folder, arguments.animation_folder, script_name)
