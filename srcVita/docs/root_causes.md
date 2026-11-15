@@ -1799,6 +1799,14 @@ The class: a converter output longer than a fixed table in the app.
 
 Guard: `asset_writers.manifest_text` refuses more scene, background or animation names than the app holds, so the bake stops instead of writing a set the app rejects. `tests/tools/test_asset_writers.py` reads the limits from `include/asset_manifest.h` and fails when the two disagree. The DS set no longer lists its animations, the same as the remastered set.
 
+### 247. A manifest list past the app's table stopped the whole set
+
+The app side of root cause 240. `asset_manifest_parse` returned an error at the first name past `ASSET_MANIFEST_SCENE_MAX`, `ASSET_MANIFEST_BACKGROUND_MAX` or `ASSET_MANIFEST_ANIMATION_MAX`, and `viewer_app` then ran with no assets at all, though the game finds every file by its path and only the debug browser reads those lists. Root cause 240 stops the converter writing such a set; a set already on a card still had it. No native function reads the manifest, which is the port's own.
+
+The class: one optional list too long, and the reader throws away everything.
+
+Guard: the parser keeps the names that fit, checks the rest for safe characters and counts them in `names_left_out`, which the `manifest loaded` line logs. `viewer_app_show_animation` only refuses a name the manifest lacks when no name was left out. `tests/unit/test_asset_manifest.c` parses a list one past the table and expects the set to load. The smoke test's `boot_title` flow fails when the manifest cannot be read (`make smoke`, and `make smoke-mutations` breaks the path to prove it).
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
