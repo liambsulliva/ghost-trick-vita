@@ -1741,6 +1741,14 @@ The class: a Vita library the link line lacks for a header the device code inclu
 
 Guard: `-lSceAppUtil_stub` is back in `LIBS`. `tests/tools/test_link_libraries.py` maps each `psp2/` header the sources include to its stub library and fails when the link line lacks it, or when a new header is not in the map; headers whose functions the default link spec supplies (`psp2/io/`, `psp2/kernel/`) are listed apart.
 
+### 234. A conversion swept away every language's text art
+
+Found after converting with the languages on vita-app: each `lang/<code>/` overlay held 9 text files and none of its 1,400 or so textures. Resolving the rebase onto the bucket layout kept vita-app's `wanted_paths` line in `write_outputs` (`tools/assets/convert_assets.py`), which lacked `| set(language_paths)`, so `languages.remove_overlay_files_not_listed` deleted every overlay texture the language passes had just written and `record.forget_all_except` dropped their bake entries.
+
+The class: an output the converter writes but does not name as wanted, which the sweep then deletes.
+
+Guard: `wanted_paths` includes the language paths again. `tests/tools/test_texture_layout.py` writes a base texture and a French overlay texture through `write_outputs`, then checks that both are still on disk in their buckets and that the overlay is still reused from the record; with the language paths left out the test fails.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

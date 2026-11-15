@@ -435,7 +435,7 @@ def outputs_of_the_read_ahead_step(output_folder):
 def write_outputs(output_folder, record, texture_results, files, manifest, script_paths, language_paths=()):
     for relative_path, data in files.items():
         bake_record.write_if_different(bake_record.disk_path(output_folder, relative_path), data)
-    wanted_paths = set(files) | set("textures/" + result["name"] + ".gtex" for result in texture_results) | set(script_paths) | outputs_of_the_read_ahead_step(output_folder) | {script_assets.SCRIPTS_FOLDER + "/" + script_pack.PACK_FILE_NAME}
+    wanted_paths = set(files) | set("textures/" + result["name"] + ".gtex" for result in texture_results) | set(script_paths) | outputs_of_the_read_ahead_step(output_folder) | {script_assets.SCRIPTS_FOLDER + "/" + script_pack.PACK_FILE_NAME} | set(language_paths)
     bake_record.remove_files_not_listed(output_folder, OUTPUT_FOLDER_NAMES, wanted_paths)
     languages.remove_overlay_files_not_listed(output_folder, wanted_paths)
     script_pack.write_pack(os.path.join(output_folder, script_assets.SCRIPTS_FOLDER))

@@ -92,6 +92,17 @@ class TheBakeWritesBuckets(unittest.TestCase):
         removed = languages.remove_overlay_files_not_listed(self.folder, {"lang/fr/textures/a.gtex"})
         self.assertEqual(sorted(removed), ["lang/fr/textures/30/stale.gtex", "lang/fr/textures/a.gtex"])
 
+    def test_writing_the_outputs_keeps_every_language_overlay(self):
+        import convert_assets
+        record = bake_record.BakeRecord(self.folder)
+        record.store("textures/a.gtex", "key", gtex())
+        record.store("lang/fr/textures/a.gtex", "key", gtex())
+        convert_assets.write_outputs(self.folder, record, [{"name": "a"}], {"lang/fr/names.txt": b"textures/a.gtex\n"}, b"art remastered\n", [], ["lang/fr/textures/a.gtex"])
+        self.assertTrue(os.path.isfile(os.path.join(self.folder, "lang", "fr", "textures", "03", "a.gtex")))
+        self.assertTrue(os.path.isfile(os.path.join(self.folder, "textures", "03", "a.gtex")))
+        record.save()
+        self.assertIsNotNone(bake_record.BakeRecord(self.folder).read_if_current("lang/fr/textures/a.gtex", "key"))
+
     def test_the_uploader_lists_a_bucketed_texture_by_its_name(self):
         record = bake_record.BakeRecord(self.folder)
         record.store("textures/a.gtex", "key", gtex())
