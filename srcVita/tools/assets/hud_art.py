@@ -37,6 +37,11 @@ LETTER_POINTS = 112
 START_POINTS = 64
 SELECT_POINTS = 64
 STICK_LETTER_POINTS = 72
+HINT_MARK = "?"
+HINT_MARK_X = 448
+HINT_MARK_Y = 192
+HINT_MARK_SIZE = 64
+HINT_MARK_POINTS = 224
 EXTRA_GLYPHS = [("dpad", 396, 0), ("lstick", 436, 0), ("rstick", 420, 112), ("touch", 460, 112)]
 
 
@@ -142,6 +147,10 @@ def wide_label_arguments(label_font_path):
     return ["(", "-size", "%dx%d" % (scaled(WIDE_LABEL_WIDTH), scaled(WIDE_LABEL_HEIGHT)), "xc:none", "-font", label_font_path, "-pointsize", str(WIDE_LABEL_POINTS), "-gravity", "center", "-fill", WHITE, "-stroke", "none", "-annotate", "+0+0", WIDE_LABEL, ")", "-gravity", "NorthWest", "-geometry", "+0+%d" % scaled(WIDE_LABEL_ROW_Y), "-composite"]
 
 
+def hint_mark_arguments(label_font_path):
+    return ["(", "-size", "%dx%d" % (scaled(HINT_MARK_SIZE), scaled(HINT_MARK_SIZE)), "xc:none", "-font", label_font_path, "-pointsize", str(HINT_MARK_POINTS), "-gravity", "center", "-fill", INK_NAVY, "-stroke", "none", "-annotate", "+0+0", HINT_MARK, ")", "-gravity", "NorthWest", "-geometry", "+%d+%d" % (scaled(HINT_MARK_X), scaled(HINT_MARK_Y)), "-composite"]
+
+
 def sheet_arguments(label_font_path, key_font_path, output_path):
     arguments = ["magick", "-respect-parentheses", "-size", "%dx%d" % (scaled(SHEET_WIDTH), scaled(SHEET_HEIGHT)), "xc:none"]
     cell_x = 0
@@ -158,6 +167,7 @@ def sheet_arguments(label_font_path, key_font_path, output_path):
     for index, word in enumerate(SWAP_LABELS):
         arguments += label_arguments(label_font_path, word, index * SWAP_LABEL_WIDTH, SWAP_LABEL_ROW_Y, SWAP_LABEL_WIDTH)
     arguments += wide_label_arguments(label_font_path)
+    arguments += hint_mark_arguments(label_font_path)
     for kind, extra_x, row_y in EXTRA_GLYPHS:
         arguments += extra_glyph_arguments(key_font_path, kind, extra_x, row_y)
     arguments += ["-filter", "Box", "-resize", "%dx%d!" % (SHEET_WIDTH, SHEET_HEIGHT), "-depth", "8", "rgba:" + output_path]

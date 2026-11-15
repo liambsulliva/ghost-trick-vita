@@ -11,7 +11,7 @@ EXPECTED_OPENING = [
     ("trick", "cicel"),
     ("act_begun", "gameAct070"),
 ]
-FAILURE_MARKS = ("route_step_failed", "route_hop_beyond_reach")
+FAILURE_MARKS = ("route_step_failed", "route_hop_beyond_reach", "hint_behind_route", "hint_ahead_of_route")
 
 
 def read_marks(path):

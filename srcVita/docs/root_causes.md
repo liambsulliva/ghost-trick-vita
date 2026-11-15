@@ -1620,6 +1620,22 @@ The class: any picture cut in pixels from a texture whose name the visual filter
 
 Guard: the preview's part is fractions of its plate, in `game.json` (`pause.widgets.preview.part`) and in the `preview` line of `pause/widgets.txt`; `pause_draw_preview` multiplies them by the loaded texture's size. `pause_art.preview_lines` refuses a part that is not inside 0 to 1, and `pause_widgets_read_text` drops a `preview` line whose part is outside it and logs `pause preview part_outside`, so a table baked before this draws the card without a picture. `pause_draw_from` draws nothing when the part it is asked for leaves the texture, so a pixel cut that meets art of another size shows nothing in place of streaks. `tests/unit/test_pause_widgets.c` draws the preview from a 1440 by 540 and a 512 by 192 plate and checks both show the same part, and that a part outside the texture draws nothing; `tests/tools/test_pause_art.py` checks the baked line and that `game.json`'s part passes. Cut a picture that has two art sizes by fractions, never by pixels.
 
+### 221. Hints had to follow a player through a route written for auto-play
+
+The route moves on by counting: a trick step is done when any trick fires or is refused, a tap step when any tap is taken. That is safe while auto-play makes exactly the route's presses, but a player presses anything. The hint system (`script_hints.c`) needs to know which route step the player is on, so it follows the player's own actions: each trick, balloon tap, swap, character button, talk with the dead and phone answer is matched against the route's next step that acts on an object, and only that step.
+
+Running that follower beside auto-play over the whole game showed three ways the route's counting hides what happened:
+
+- A CROSS on a core with no trick is refused (root cause 205), and the route still counts it. st06_game004, st01_game020 and st03_game000 have such steps, so the follower counts a refused press as its trick too.
+- A talk with the dead starts again after each choice in it. Matching by action alone let the first talk's restarts finish the next talk's step in st02_game036, so a talk is matched by its object.
+- A retry after a death does not rewind the route: auto-play keeps its step across the reload (`route_step_after_retry`). The follower keeps its place too and goes to a step only when that step waits on `retried`.
+
+Native: none. The game has no hints. The balloon is drawn and tapped through the tap balloons' own path (`script_balloons_are_live`, root cause 196), but it is kept out of the eight native balloon slots, because scripts test and close those slots (ops 0x4b, 0x50, 0x4d).
+
+The class: every routed scene, and anything else that reads the route to learn where a player is.
+
+Guard: at every finished route step the replay asks whether the follower is behind or ahead of auto-play and marks `hint_behind_route` or `hint_ahead_of_route`, and `make route-check` fails on either. The whole-game replay has none. It marks `hint_has_no_target` for a step a hint could not point at when it begins: 25 of the object steps (18 balloons, 5 character buttons and 2 phone answers), and no trick, swap or talk with the dead. `tests/unit/test_hints.c` covers the clock, the tap button choice, the one hint per scene, the camera pan, the retry and the steps with no object. `tests/tools/test_hud_art.py` checks that the "?" cell the converter draws on `hud_sheet` is the cell the app reads.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

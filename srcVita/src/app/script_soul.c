@@ -696,7 +696,7 @@ static int a_scripted_event_holds_the_soul(const struct script_machine *machine)
     const struct script_soul *soul;
 
     soul = &machine->soul;
-    return soul->view_change_ticks_left > 0 || soul->view_demo_is_on || machine->demo_soul_is_on || machine->film_frame_is_on || soul->ghost_pill_is_held_out || soul->tutorial_holds_input || soul->input_is_off || soul->dead_talk_is_on || machine->narration.is_running || machine->movie_ticks_left > 0 || machine->choice.is_open || talk_holds_the_soul(machine);
+    return soul->view_change_ticks_left > 0 || soul->view_demo_is_on || machine->demo_soul_is_on || machine->film_frame_is_on || soul->ghost_pill_is_held_out || soul->tutorial_holds_input || soul->input_is_off || soul->dead_talk_is_on || machine->narration.is_running || machine->movie_ticks_left > 0 || machine->choice.is_open || talk_holds_the_soul(machine) || script_hints_hold_the_soul(machine);
 }
 
 #define SWAP_LINK_REACH_DS_PIXELS 4096.0f
@@ -819,6 +819,7 @@ static void fire_trick(struct script_machine *machine)
     object = &machine->objects[soul->active_object];
     soul->tricks_fired = soul->tricks_fired + 1;
     soul->a_trick_is_playing_out = 1;
+    script_hints_player_did(machine, SCRIPT_ROUTE_TRICK, object->name);
     if (soul->countdown_is_running && soul->countdown_step >= COUNTDOWN_ENDING_STEP && soul->countdown_ticks < TRICK_ACTION_AFTER_TICKS) {
         soul->countdown_ticks = TRICK_ACTION_AFTER_TICKS;
     }
@@ -1441,6 +1442,7 @@ static void start_dead_talk(struct script_machine *machine, int object_index)
     machine->soul.dead_talk_is_on = 1;
     machine->soul.dead_talk_object = object_index;
     machine->soul.dead_core_holds_the_tip = 0;
+    script_hints_player_did(machine, SCRIPT_ROUTE_DEAD_TALK, object_index >= 0 && object_index < machine->object_count ? machine->objects[object_index].name : NULL);
     script_machine_set_swirl(machine, 1);
     if (machine->film_frame_is_on) {
         machine->film_frame_is_on = 0;
@@ -1718,6 +1720,7 @@ static void retry_after_the_game_over(struct script_machine *machine)
     }
     if (restarts_in_place) {
         script_machine_send(machine, "*", "SYSTEM", "RESTART");
+        script_hints_scene_retried(machine);
         return;
     }
     machine->route_step_after_retry = machine->soul.route_step;
@@ -1826,6 +1829,7 @@ static void take_press(struct script_machine *machine)
         script_pills_press(machine, SCRIPT_PILL_TRICK, PILL_HOLD_AFTER_TRICK);
         if (core_names_no_trick(machine)) {
             soul->tricks_refused = soul->tricks_refused + 1;
+            script_hints_player_did(machine, SCRIPT_ROUTE_TRICK, machine->active_core_name);
             if (machine->outputs->sound_played != NULL) {
                 machine->outputs->sound_played(TRICK_REFUSED_SOUND_KIND);
             }
@@ -2102,6 +2106,12 @@ static void go_to_route_step(struct script_machine *machine, int step_index)
 static void finish_route_step(struct script_machine *machine, const struct script_route_step *step)
 {
     mark_route_step(machine, "route_step_done", step);
+    if (!script_hints_have_passed_step(machine, machine->soul.route_step)) {
+        mark_route_step(machine, "hint_behind_route", step);
+    }
+    if (script_hints_are_ahead_of_step(machine, machine->soul.route_step)) {
+        mark_route_step(machine, "hint_ahead_of_route", step);
+    }
     machine->soul.route_last_action_tick = machine->tick;
     go_to_route_step(machine, machine->soul.route_step + 1);
 }
@@ -2835,6 +2845,9 @@ static void run_route(struct script_machine *machine)
         soul->route_action_began_at = machine->tick;
         soul->route_talk_ticks = 0;
         mark_route_step(machine, "route_step_began", step);
+        if (!script_hints_can_point_at_step(machine, soul->route_step)) {
+            mark_route_step(machine, "hint_has_no_target", step);
+        }
     }
     if (route_step_is_done(machine, step)) {
         finish_route_step(machine, step);
@@ -2899,6 +2912,7 @@ void script_soul_script_began(struct script_machine *machine, const char *script
     if (!machine->scene_is_being_retried) {
         machine->retries_of_the_scene = 0;
     }
+    script_hints_script_began(machine, script, machine->scene_is_being_retried);
     machine->scene_is_being_retried = 0;
     if (strcmp(machine->scene_kept_for_the_retry, script) != 0) {
         forget_the_core_kept_for_the_retry(machine);
@@ -2921,6 +2935,7 @@ void script_soul_act_began(struct script_machine *machine, const char *object_na
     int index;
 
     soul = &machine->soul;
+    script_hints_act_began(machine, object_name, act_name);
     step = current_route_step(machine);
     if (step == NULL || soul->route_action_has_begun) {
         return;
@@ -2969,6 +2984,12 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     if (machine->route_is_driving) {
         run_route(machine);
     }
+    if (script_hints_hold_the_soul(machine)) {
+        machine->press_is_pending = 0;
+        soul->ghost_is_pending = 0;
+        soul->character_button_is_pending = 0;
+        soul->tap_group_is_pending = 0;
+    }
     if (machine->press_is_pending) {
         machine->press_is_pending = 0;
         take_press(machine);
@@ -2982,7 +3003,7 @@ void script_soul_step_before_tasks(struct script_machine *machine)
         take_character_button(machine);
     }
     if (soul->tap_group_is_pending != 0) {
-        if (!machine->pause_bit && script_balloons_are_live(machine)) {
+        if (!machine->pause_bit && script_balloons_are_live(machine) && !script_hints_take_tap(machine, soul->tap_group_is_pending)) {
             script_balloons_tap(machine, soul->tap_group_is_pending);
             soul->taps_taken = soul->taps_taken + 1;
         }
@@ -3012,7 +3033,9 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     send_trick_action_when_due(machine);
     run_countdown(machine);
     script_pills_step(machine);
+    script_hints_step(machine);
     report_hud(machine);
+    script_hints_report(machine);
     send_timed_native_event(machine, &soul->phone_event);
     send_timed_native_event(machine, &soul->time_jump_event);
     step_the_white_wipe(machine);
@@ -3087,6 +3110,7 @@ static void take_character_button(struct script_machine *machine)
 {
     if (script_pills_is_up(machine, SCRIPT_PILL_JOWD) || script_pills_is_up(machine, SCRIPT_PILL_MISSILE) || script_pills_is_up(machine, SCRIPT_PILL_CICEL)) {
         machine->soul.character_presses_taken = machine->soul.character_presses_taken + 1;
+        script_hints_player_did(machine, SCRIPT_ROUTE_CHARACTER, NULL);
     }
     if (script_pills_is_up(machine, SCRIPT_PILL_JOWD) && script_soul_world_is_playable(machine)) {
         script_pills_press(machine, SCRIPT_PILL_JOWD, 0);
@@ -3219,6 +3243,14 @@ static int the_view_is_open_to_the_player(const struct script_machine *machine)
 
     soul = &machine->soul;
     return soul->player_opened_soul_view || (soul->is_on && !soul->view_demo_is_on && !soul->tutorial_holds_input && !soul->input_is_off);
+}
+
+int script_soul_player_has_control(const struct script_machine *machine)
+{
+    if (a_scripted_event_holds_the_soul(machine) || script_machine_picture_is_hidden(machine) || machine->phone_book_is_open || game_over_waits_for_a_retry(machine)) {
+        return 0;
+    }
+    return script_soul_world_is_playable(machine) || the_view_is_open_to_the_player(machine);
 }
 
 int script_soul_waits_on_the_player(const struct script_machine *machine)

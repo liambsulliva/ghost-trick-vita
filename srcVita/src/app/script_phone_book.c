@@ -80,6 +80,7 @@ static void answer(struct script_machine *machine, const char *event)
 
     machine->phone_book_is_open = 0;
     machine->phone_book.answers = machine->phone_book.answers + 1;
+    script_hints_player_did(machine, SCRIPT_ROUTE_PHONE_CALL, NULL);
     if (machine->outputs->marked != NULL) {
         snprintf(detail, sizeof(detail), "%s place=%d", event, machine->phone_book_place);
         machine->outputs->marked("phone_book_answered", detail);

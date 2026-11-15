@@ -89,6 +89,10 @@ static void touch_began(struct script_input *input, struct script_machine *machi
         press_the_pill(machine, pill);
         return;
     }
+    if (balloon_kind == SCRIPT_BALLOON_KIND_TAP_HINT) {
+        script_hints_note_tap(machine);
+        return;
+    }
     if (balloon_kind != 0) {
         script_soul_note_tap(machine, balloon_kind == SCRIPT_BALLOON_KIND_TAP_DOTS ? SCRIPT_TAP_GROUP_LEFT : SCRIPT_TAP_GROUP_RIGHT);
         return;

@@ -114,7 +114,13 @@
 #define REWIND_LABEL_SHEET_WIDTH 420.0f
 #define REWIND_LABEL_SHEET_HEIGHT 72.0f
 #define TOUCH_SLOP_PIXELS 6.0f
-#define TAP_BALLOON_MAX 8
+#define TAP_BALLOON_MAX 9
+#define HINT_BALLOON_SLOT 8
+#define HINT_MARK_CELL_X 448.0f
+#define HINT_MARK_CELL_Y 192.0f
+#define HINT_MARK_CELL_SIZE 64.0f
+#define HINT_MARK_SIZE 44.0f
+#define HINT_MARK_LEFT_OF_MIDDLE 12.0f
 #define TAP_BALLOON_KEY_COUNT 5
 #define TAP_BALLOON_CLOSE_TICKS 12
 #define TAP_BALLOON_CLOSE_WIDEN 0.2f
@@ -212,6 +218,7 @@ struct tap_balloon {
     int closing_ticks;
     float anchor_x;
     float anchor_y;
+    int tap_group;
 };
 
 struct pill_sheet_cell {
@@ -908,6 +915,7 @@ static void draw_tap_balloon(const struct tap_balloon *balloon)
     float y;
     float full_height;
     int is_marks;
+    int shows_square;
     int index;
 
     art = ready_texture(TAP_ART_TEXTURE);
@@ -916,6 +924,7 @@ static void draw_tap_balloon(const struct tap_balloon *balloon)
         return;
     }
     is_marks = balloon->kind == SCRIPT_BALLOON_KIND_TAP_MARKS;
+    shows_square = balloon->kind == SCRIPT_BALLOON_KIND_TAP_HINT ? balloon->tap_group == SCRIPT_TAP_GROUP_RIGHT : is_marks;
     frame = (float)balloon->age_ticks;
     width_scale = keyed_value(tap_balloon_widths, frame);
     height_scale = keyed_value(tap_balloon_heights, frame);
@@ -936,7 +945,18 @@ static void draw_tap_balloon(const struct tap_balloon *balloon)
     black.green = 0.0f;
     black.blue = 0.0f;
     black.alpha = 1.0f;
-    for (index = -1; index <= 1; index++) {
+    if (balloon->kind == SCRIPT_BALLOON_KIND_TAP_HINT) {
+        glyph.x = x - HINT_MARK_LEFT_OF_MIDDLE - HINT_MARK_SIZE / 2.0f;
+        glyph.y = y - TAP_DOTS_ABOVE_MIDDLE - HINT_MARK_SIZE / 2.0f;
+        glyph.width = HINT_MARK_SIZE;
+        glyph.height = HINT_MARK_SIZE;
+        part.x = HINT_MARK_CELL_X / PILL_SHEET_WIDTH;
+        part.y = HINT_MARK_CELL_Y / PILL_SHEET_HEIGHT;
+        part.width = HINT_MARK_CELL_SIZE / PILL_SHEET_WIDTH;
+        part.height = HINT_MARK_CELL_SIZE / PILL_SHEET_HEIGHT;
+        renderer_draw_sprite(sheet->texture, glyph, part, white);
+    }
+    for (index = -1; index <= 1 && balloon->kind != SCRIPT_BALLOON_KIND_TAP_HINT; index++) {
         if (is_marks) {
             draw_tap_balloon_art(art, x + (float)index * TAP_MARK_SPACING, y, TAP_MARK_SIZE, TAP_MARK_SIZE, TAP_MARK_CELL_X, TAP_MARK_CELL_Y, TAP_MARK_CELL_SIZE, TAP_MARK_CELL_SIZE, white);
         } else {
@@ -947,7 +967,7 @@ static void draw_tap_balloon(const struct tap_balloon *balloon)
     glyph.y = y + (is_marks ? TAP_MARKS_GLYPH_BELOW_MIDDLE : TAP_DOTS_GLYPH_BELOW_MIDDLE);
     glyph.width = TAP_GLYPH_SIZE;
     glyph.height = TAP_GLYPH_SIZE;
-    part.x = (is_marks ? TAP_SQUARE_GLYPH_X : TAP_TRIANGLE_GLYPH_X) / PILL_SHEET_WIDTH;
+    part.x = (shows_square ? TAP_SQUARE_GLYPH_X : TAP_TRIANGLE_GLYPH_X) / PILL_SHEET_WIDTH;
     part.y = 0.0f;
     part.width = TAP_GLYPH_CELL / PILL_SHEET_WIDTH;
     part.height = TAP_GLYPH_CELL / PILL_SHEET_HEIGHT;
@@ -1039,6 +1059,23 @@ void script_ui_view_tap_balloon_opened(int slot, int kind, float anchor_x, float
     tap_balloons[slot].closing_ticks = 0;
     tap_balloons[slot].anchor_x = anchor_x;
     tap_balloons[slot].anchor_y = anchor_y;
+}
+
+void script_ui_view_hint_changed(const struct script_hint_view *view)
+{
+    struct tap_balloon *balloon;
+
+    balloon = &tap_balloons[HINT_BALLOON_SLOT];
+    if (!view->bubble_is_up) {
+        script_ui_view_tap_balloon_closed(HINT_BALLOON_SLOT);
+        return;
+    }
+    if (!balloon->is_open || balloon->closing_ticks > 0) {
+        script_ui_view_tap_balloon_opened(HINT_BALLOON_SLOT, SCRIPT_BALLOON_KIND_TAP_HINT, view->bubble_x, view->bubble_y);
+    }
+    balloon->anchor_x = view->bubble_x;
+    balloon->anchor_y = view->bubble_y;
+    balloon->tap_group = view->bubble_tap_group;
 }
 
 void script_ui_view_tap_balloon_closed(int slot)

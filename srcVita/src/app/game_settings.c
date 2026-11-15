@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "animation.h"
 #include "audio_volume.h"
 #include "file.h"
 #include "file_path.h"
@@ -13,6 +14,7 @@
 
 #define LINE_MAX 64
 #define DARKNESS_PER_STEP 0.06f
+#define SECONDS_PER_MINUTE 60
 
 static struct game_settings current;
 static struct game_settings settings_to_write;
@@ -41,6 +43,7 @@ static void keep_in_range(struct game_settings *settings)
     settings->high_contrast = settings->high_contrast != 0;
     settings->visual_filter = settings->visual_filter == GAME_FILTER_DS ? GAME_FILTER_DS : GAME_FILTER_REMASTERED;
     settings->text_speed = settings->text_speed >= GAME_TEXT_SLOW && settings->text_speed < GAME_TEXT_SPEED_COUNT ? settings->text_speed : GAME_TEXT_NORMAL;
+    settings->hint_delay = settings->hint_delay >= GAME_HINTS_OFF && settings->hint_delay < GAME_HINT_DELAY_COUNT ? settings->hint_delay : GAME_HINTS_AFTER_5_MINUTES;
 }
 
 void game_settings_set_default_music(int music_type)
@@ -67,6 +70,7 @@ void game_settings_defaults(struct game_settings *settings)
     settings->high_contrast = 0;
     settings->visual_filter = GAME_FILTER_REMASTERED;
     settings->text_speed = GAME_TEXT_NORMAL;
+    settings->hint_delay = GAME_HINTS_AFTER_5_MINUTES;
 }
 
 int game_settings_read_text(struct game_settings *settings, const char *text, unsigned int text_size)
@@ -107,6 +111,8 @@ int game_settings_read_text(struct game_settings *settings, const char *text, un
             settings->visual_filter = value;
         } else if (strcmp(name, "text_speed") == 0) {
             settings->text_speed = value;
+        } else if (strcmp(name, "hint_delay") == 0) {
+            settings->hint_delay = value;
         } else {
             known = known - 1;
         }
@@ -119,7 +125,7 @@ unsigned int game_settings_write_text(const struct game_settings *settings, char
 {
     int written;
 
-    written = snprintf(text, text_size, "brightness %d\nmaster %d\nmusic %d\neffects %d\nmusic_type %d\nlanguage %d\nunlock_all %d\nfps_cap %d\nhigh_contrast %d\nvisual_filter %d\ntext_speed %d\n", settings->brightness, settings->master, settings->music, settings->effects, settings->music_type, settings->language, settings->unlock_all, settings->fps_cap, settings->high_contrast, settings->visual_filter, settings->text_speed);
+    written = snprintf(text, text_size, "brightness %d\nmaster %d\nmusic %d\neffects %d\nmusic_type %d\nlanguage %d\nunlock_all %d\nfps_cap %d\nhigh_contrast %d\nvisual_filter %d\ntext_speed %d\nhint_delay %d\n", settings->brightness, settings->master, settings->music, settings->effects, settings->music_type, settings->language, settings->unlock_all, settings->fps_cap, settings->high_contrast, settings->visual_filter, settings->text_speed, settings->hint_delay);
     return written < 0 || (unsigned int)written >= text_size ? 0u : (unsigned int)written;
 }
 
@@ -218,4 +224,11 @@ int game_settings_visual_filter(void)
         return GAME_FILTER_DS;
     }
     return current.visual_filter;
+}
+
+int game_settings_hint_delay_ticks(void)
+{
+    static const int minutes[GAME_HINT_DELAY_COUNT] = { 0, 2, 5, 10 };
+
+    return minutes[current.hint_delay] * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 }

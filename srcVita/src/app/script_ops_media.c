@@ -212,6 +212,7 @@ void script_balloons_tap(struct script_machine *machine, int tap_group)
         } else if (balloon->tap_target != NULL && balloon->tap_verb != NULL && balloon->tap_arg != NULL) {
             script_machine_send(machine, balloon->tap_target, balloon->tap_verb, balloon->tap_arg);
         }
+        script_hints_player_did(machine, SCRIPT_ROUTE_TAP_BALLOON, NULL);
         balloon->in_use = 0;
         if (machine->outputs->balloon_closed != NULL) {
             machine->outputs->balloon_closed(index);

@@ -81,6 +81,7 @@ enum row_job {
     JOB_FPS_CAP,
     JOB_VISUAL_FILTER,
     JOB_TEXT_SPEED,
+    JOB_HINTS,
     JOB_UNLOCK_ALL
 };
 
@@ -106,7 +107,8 @@ static const struct option_row rows[] = {
     { NULL, "effects", ROW_METER, JOB_EFFECTS, 0, NULL },
     { NULL, "music_type", ROW_CYCLES, JOB_MUSIC_TYPE, 0, NULL },
     { "language", "language", ROW_DROPDOWN, JOB_LANGUAGE, 0, NULL },
-    { "other", "credits", ROW_OPENS, JOB_NONE, 1, NULL },
+    { "other", "hints", ROW_CYCLES, JOB_HINTS, 0, NULL },
+    { NULL, "credits", ROW_OPENS, JOB_NONE, 1, NULL },
     { NULL, "reset_save", ROW_OPENS, JOB_RESET_SAVE, 0, NULL },
     { NULL, "restore", ROW_OPENS, JOB_RESTORE, 0, NULL },
     { NULL, "unlock_all", ROW_CYCLES, JOB_UNLOCK_ALL, 0, NULL }
@@ -119,6 +121,7 @@ static const char *const control_keys[CONTROLS_COUNT] = { "stick", "right_stick"
 static const char *const control_glyphs[CONTROLS_COUNT][CONTROLS_GLYPH_MOST] = { { "lstick", "dpad" }, { "rstick", NULL }, { "cross", NULL }, { "circle", NULL }, { "l", NULL }, { "r", NULL }, { "triangle", "square" }, { "select", NULL }, { "start", NULL }, { "touch", NULL } };
 
 static const char *const text_speed_keys[GAME_TEXT_SPEED_COUNT] = { "row.text_slow", "row.text_normal", "row.text_fast" };
+static const char *const hint_delay_keys[GAME_HINT_DELAY_COUNT] = { "row.off", "row.hints_2", "row.hints_5", "row.hints_10" };
 static float row_y[ROW_COUNT];
 static float list_height;
 static int selected;
@@ -363,6 +366,16 @@ static void set_text_speed(int speed)
     }
 }
 
+static void cycle_hint_delay(void)
+{
+    struct game_settings *settings;
+
+    settings = game_settings_now();
+    settings->hint_delay = (settings->hint_delay + 1) % GAME_HINT_DELAY_COUNT;
+    settings_now_changed("hints");
+    run_log_write("pause option hints=%d", settings->hint_delay);
+}
+
 static float slider_stop_width(void)
 {
     return (VALUE_RIGHT - VALUE_LEFT) / (float)GAME_TEXT_SPEED_COUNT;
@@ -398,6 +411,9 @@ static void act_on_row(void)
         break;
     case JOB_TEXT_SPEED:
         set_text_speed((game_settings_now()->text_speed + 1) % GAME_TEXT_SPEED_COUNT);
+        break;
+    case JOB_HINTS:
+        cycle_hint_delay();
         break;
     case JOB_HIGH_CONTRAST:
     case JOB_FPS_CAP:
@@ -753,6 +769,8 @@ static const char *value_key(const struct option_row *row, char *key, unsigned i
         snprintf(key, key_size, "row.%s", game_settings_now()->music_type == GAME_MUSIC_ORIGINAL ? "original" : "arranged");
     } else if (row->job == JOB_LANGUAGE) {
         snprintf(key, key_size, "language.%s", languages[game_settings_now()->language]);
+    } else if (row->job == JOB_HINTS) {
+        snprintf(key, key_size, "%s", hint_delay_keys[game_settings_now()->hint_delay]);
     } else if (switch_of(row->job) != NULL) {
         snprintf(key, key_size, "row.%s", switch_value_name(row->job, *switch_of(row->job)));
     } else {

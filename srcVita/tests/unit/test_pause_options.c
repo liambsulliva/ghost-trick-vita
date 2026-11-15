@@ -20,8 +20,9 @@
 #define MUSIC_ROW 8
 #define MUSIC_TYPE_ROW 10
 #define LANGUAGE_ROW 11
-#define RESTORE_ROW 14
-#define UNLOCK_ROW 15
+#define HINTS_ROW 12
+#define RESTORE_ROW 15
+#define UNLOCK_ROW 16
 
 static void start_options(void)
 {
@@ -65,9 +66,12 @@ static void test_settings_survive_a_round_trip_and_bad_values_are_clamped(void)
     written.brightness = 4;
     written.master = 3;
     written.music_type = GAME_MUSIC_ORIGINAL;
+    written.hint_delay = GAME_HINTS_AFTER_10_MINUTES;
     size = game_settings_write_text(&written, text, sizeof(text));
     game_settings_defaults(&read);
-    CHECK_INT(game_settings_read_text(&read, text, size), 11);
+    CHECK_INT(read.hint_delay, GAME_HINTS_AFTER_5_MINUTES);
+    CHECK_INT(game_settings_read_text(&read, text, size), 12);
+    CHECK_INT(read.hint_delay, GAME_HINTS_AFTER_10_MINUTES);
     CHECK_INT(read.brightness, 4);
     CHECK_INT(read.master, 3);
     CHECK_INT(read.music_type, GAME_MUSIC_ORIGINAL);
@@ -111,6 +115,23 @@ static void test_the_cursor_skips_rows_the_vita_fixes(void)
     press_down_to(RESTORE_ROW);
     pause_options_step(INPUT_DOWN);
     CHECK_INT(pause_options_selected_row(), RESTORE_ROW);
+}
+
+static void test_the_hints_row_cycles_the_delay_and_off(void)
+{
+    start_options();
+    CHECK_INT(game_settings_hint_delay_ticks(), 5 * 60 * 60);
+    press_down_to(HINTS_ROW);
+    CHECK_INT(pause_options_selected_row(), HINTS_ROW);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->hint_delay, GAME_HINTS_AFTER_10_MINUTES);
+    CHECK_INT(game_settings_hint_delay_ticks(), 10 * 60 * 60);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->hint_delay, GAME_HINTS_OFF);
+    CHECK_INT(game_settings_hint_delay_ticks(), 0);
+    pause_options_step(INPUT_RIGHT);
+    CHECK_INT(game_settings_now()->hint_delay, GAME_HINTS_AFTER_2_MINUTES);
+    CHECK_INT(game_settings_hint_delay_ticks(), 2 * 60 * 60);
 }
 
 static void test_volume_meters_drive_the_audio_gain(void)
@@ -380,6 +401,7 @@ int main(void)
     test_settings_survive_a_round_trip_and_bad_values_are_clamped();
     test_full_volume_leaves_samples_untouched_and_half_scales_them();
     test_the_cursor_skips_rows_the_vita_fixes();
+    test_the_hints_row_cycles_the_delay_and_off();
     test_volume_meters_drive_the_audio_gain();
     test_leaving_saves_only_what_changed();
     test_restore_asks_first_and_no_keeps_the_settings();

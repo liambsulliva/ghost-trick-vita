@@ -460,6 +460,11 @@ static void draw_object(const struct scene_stage *stage, const struct screen_vie
     read_art_ahead(stage, object);
     wanted = art_under_the_screen_filter(stage, frame->texture_name, grayscale_name);
     if (draw_when_ready(wanted, world_area_to_screen(view, left, object->y + frame->y, frame->width, frame->height), texture_area, paint, paint_is_flat)) {
+        if (object->flash_alpha > 0.0f && !stage->soul_mode_is_on && object->ghost_copy_level == SCENE_NO_GHOST_COPY) {
+            paint = white;
+            paint.alpha = object->flash_alpha;
+            draw_when_ready(wanted, world_area_to_screen(view, left, object->y + frame->y, frame->width, frame->height), texture_area, paint, 1);
+        }
         if (held->frames_waiting >= POSE_WAIT_FRAMES_WORTH_LOGGING && strcmp(held->object_name, object->name) == 0) {
             run_log_write("pose held object=%s frames=%d waited_for=%s", object->name, held->frames_waiting, wanted);
         }
