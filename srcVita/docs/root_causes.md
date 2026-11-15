@@ -1552,6 +1552,16 @@ The class: every frame of the credits, the pages and every scene, movie and fade
 
 Guard: the machine keeps `credits_are_on` from the first staff page until the script chain asks for the title, and reports it through `credits_changed`. `script_view_draw_on_covers` draws black bars, last, either side of the DS frame, sized from the same width the staff pages use (`SCENE_VIEW_DS_SCREEN_WIDTH` times `VITA_PIXELS_PER_DS_PIXEL`). `tests/unit/test_credits_side_bars.c` plays a page, a scene after it and `GOTO TITLE`, and checks the credits stay on through the scene and end at the title, that the ending mode alone does not start them, and that the bars leave a 4:3 frame the width of a staff page and go away when the credits end or the view restarts.
 
+### 214. Auto-play's push simulation tested every core in the scene on every simulated tick
+
+Root cause 211 kept the core graph's answers while nothing moves, but in run 13 (build `71f107d5-ff`) cores were moving with their animations, so the search ran every tick anyway. In st06_game001 the `reach:santa` condition (`soul_can_reach_core`) took about 15 ms of the machine's runner phase each tick. In st03_game012 the route pad took about 40 ms a tick, which gave 20 frames of 51 to 57 ms. Each link the search tries runs `a_push_lands_on`, up to 17 simulated pushes of up to 90 ticks, and every simulated tick ran `core_picked_by_a_tip` over every core in the scene. A pushed tip never leaves its root's reach: `soul_chain_aim` clamps the head to the reach, and the tip only eases toward the head. A core is picked only within `SOUL_TIP_PICKUP_FAR` of the tip. So any core farther than the reach plus that distance from the root can never be picked by that push.
+
+Native: none. The route, its pad and the push simulation are the port's auto-play harness; a player never runs them.
+
+The class: every route search: move steps, the pad's aim and `reach:` waits, in every chapter.
+
+Guard: `first_core_a_push_picks` (`script_soul.c`) gathers, once per push, the cores within the reach plus `SOUL_TIP_PICKUP_FAR` plus 1 px of its root, keeping the scene's order so ties still go to the same core. Each simulated tick tests only those. A push with none returns at once. The player's own pick, `core_picked_by_a_tip`, runs the same test over every core. The whole-game replay's marks are byte for byte the same as before. `tests/unit/test_route_pad.c` (`test_a_hop_search_tests_only_the_cores_a_tip_can_reach`) adds ten cores far out of reach and checks that one hop search makes under 400 tip tests; testing every core makes 1596.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

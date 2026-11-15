@@ -517,43 +517,86 @@ static int short_tip_cannot_pick_up(float tip_length, float distance)
     return 0;
 }
 
-static int core_picked_by_a_tip(const struct script_machine *machine, int from_object, int from_slot, float root_x, float root_y, float tip_x, float tip_y, int *found_slot)
+struct tip_candidate {
+    int object_index;
+    int slot;
+    float x;
+    float y;
+};
+
+static int tip_candidates_near(const struct script_machine *machine, int from_object, int from_slot, float root_x, float root_y, float within, struct tip_candidate *candidates)
 {
-    float tip_length;
-    float best;
-    int best_object;
+    int count;
     int object_index;
 
-    tip_length = sqrtf((tip_x - root_x) * (tip_x - root_x) + (tip_y - root_y) * (tip_y - root_y));
-    best = 0.0f;
-    best_object = NO_CORE;
+    count = 0;
     for (object_index = 0; object_index < machine->object_count; object_index++) {
         int slot;
 
         for (slot = 0; slot < SCRIPT_CORE_SLOT_COUNT; slot++) {
             float x;
             float y;
-            float distance;
 
             if ((object_index == from_object && slot == from_slot) || !object_can_be_a_core(&machine->objects[object_index], slot)) {
                 continue;
             }
             core_position(machine, object_index, slot, &x, &y);
-            if (!core_is_within_tip_pickup(root_x, root_y, tip_x, tip_y, x, y)) {
+            if (within >= 0.0f && (x - root_x) * (x - root_x) + (y - root_y) * (y - root_y) > within * within) {
                 continue;
             }
-            distance = sqrtf((x - tip_x) * (x - tip_x) + (y - tip_y) * (y - tip_y));
-            if (short_tip_cannot_pick_up(tip_length, distance)) {
-                continue;
-            }
-            if (best_object == NO_CORE || distance < best) {
-                best = distance;
-                best_object = object_index;
-                *found_slot = slot;
-            }
+            candidates[count].object_index = object_index;
+            candidates[count].slot = slot;
+            candidates[count].x = x;
+            candidates[count].y = y;
+            count++;
+        }
+    }
+    return count;
+}
+
+static unsigned int tip_tests;
+
+static int candidate_picked_by_a_tip(const struct tip_candidate *candidates, int count, float root_x, float root_y, float tip_x, float tip_y, int *found_slot)
+{
+    float tip_length;
+    float best;
+    int best_object;
+    int index;
+
+    tip_length = sqrtf((tip_x - root_x) * (tip_x - root_x) + (tip_y - root_y) * (tip_y - root_y));
+    best = 0.0f;
+    best_object = NO_CORE;
+    for (index = 0; index < count; index++) {
+        float x;
+        float y;
+        float distance;
+
+        tip_tests = tip_tests + 1u;
+        x = candidates[index].x;
+        y = candidates[index].y;
+        if (!core_is_within_tip_pickup(root_x, root_y, tip_x, tip_y, x, y)) {
+            continue;
+        }
+        distance = sqrtf((x - tip_x) * (x - tip_x) + (y - tip_y) * (y - tip_y));
+        if (short_tip_cannot_pick_up(tip_length, distance)) {
+            continue;
+        }
+        if (best_object == NO_CORE || distance < best) {
+            best = distance;
+            best_object = candidates[index].object_index;
+            *found_slot = candidates[index].slot;
         }
     }
     return best_object;
+}
+
+static int core_picked_by_a_tip(const struct script_machine *machine, int from_object, int from_slot, float root_x, float root_y, float tip_x, float tip_y, int *found_slot)
+{
+    struct tip_candidate candidates[SCRIPT_OBJECT_MAX * SCRIPT_CORE_SLOT_COUNT];
+    int count;
+
+    count = tip_candidates_near(machine, from_object, from_slot, root_x, root_y, -1.0f, candidates);
+    return candidate_picked_by_a_tip(candidates, count, root_x, root_y, tip_x, tip_y, found_slot);
 }
 
 static int core_under_the_tip(const struct script_machine *machine, float root_x, float root_y, int *found_slot)
@@ -2268,14 +2311,22 @@ static int linking_that_core_would_swap(const struct script_machine *machine, in
 #define PUSH_TICKS_MOST 90
 #define PUSH_TIP_ON_THE_AIM_DS_PIXELS 0.5f
 
+#define TIP_CANDIDATE_SLACK 1.0f
+
 static int first_core_a_push_picks(const struct script_machine *machine, int from_node, float aim_x, float aim_y)
 {
+    struct tip_candidate candidates[SCRIPT_OBJECT_MAX * SCRIPT_CORE_SLOT_COUNT];
+    int count;
     struct soul_chain chain;
     float root_x;
     float root_y;
     int tick;
 
     core_position(machine, from_node / SCRIPT_CORE_SLOT_COUNT, from_node % SCRIPT_CORE_SLOT_COUNT, &root_x, &root_y);
+    count = tip_candidates_near(machine, from_node / SCRIPT_CORE_SLOT_COUNT, from_node % SCRIPT_CORE_SLOT_COUNT, root_x, root_y, script_soul_reach(machine) + SOUL_TIP_PICKUP_FAR + TIP_CANDIDATE_SLACK, candidates);
+    if (count == 0) {
+        return NO_CORE;
+    }
     memset(&chain, 0, sizeof(chain));
     soul_chain_rest_at(&chain, root_x, root_y);
     for (tick = 0; tick < PUSH_TICKS_MOST; tick++) {
@@ -2303,7 +2354,7 @@ static int first_core_a_push_picks(const struct script_machine *machine, int fro
             continue;
         }
         found_slot = 0;
-        found_object = core_picked_by_a_tip(machine, from_node / SCRIPT_CORE_SLOT_COUNT, from_node % SCRIPT_CORE_SLOT_COUNT, root_x, root_y, chain.x[SOUL_CHAIN_TIP], chain.y[SOUL_CHAIN_TIP], &found_slot);
+        found_object = candidate_picked_by_a_tip(candidates, count, root_x, root_y, chain.x[SOUL_CHAIN_TIP], chain.y[SOUL_CHAIN_TIP], &found_slot);
         if (found_object != NO_CORE) {
             return found_object * SCRIPT_CORE_SLOT_COUNT + found_slot;
         }
@@ -2343,6 +2394,20 @@ static int a_push_lands_on(const struct script_machine *machine, int from_node, 
     return 0;
 }
 
+static int core_links_to(const struct script_machine *machine, int from, int node, int target_object)
+{
+    float aim_x;
+    float aim_y;
+
+    if (!object_can_be_a_core(&machine->objects[node / SCRIPT_CORE_SLOT_COUNT], node % SCRIPT_CORE_SLOT_COUNT)) {
+        return 0;
+    }
+    if (node / SCRIPT_CORE_SLOT_COUNT != target_object && linking_that_core_would_swap(machine, from / SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT)) {
+        return 0;
+    }
+    return core_distance(machine, from / SCRIPT_CORE_SLOT_COUNT, from % SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT, node % SCRIPT_CORE_SLOT_COUNT) <= script_soul_reach(machine) + SOUL_TIP_PICKUP_NEAR && a_push_lands_on(machine, from, node, &aim_x, &aim_y);
+}
+
 static int search_first_hop_toward(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot)
 {
     int came_from[SCRIPT_OBJECT_MAX * SCRIPT_CORE_SLOT_COUNT];
@@ -2353,8 +2418,6 @@ static int search_first_hop_toward(const struct script_machine *machine, int tar
     int head;
     int tail;
     int node;
-    float aim_x;
-    float aim_y;
 
     node_count = machine->object_count * SCRIPT_CORE_SLOT_COUNT;
     start = machine->soul.active_object * SCRIPT_CORE_SLOT_COUNT + machine->soul.active_slot;
@@ -2370,14 +2433,15 @@ static int search_first_hop_toward(const struct script_machine *machine, int tar
         int from;
 
         from = queue[head++];
+        if (core_links_to(machine, from, target, target_object)) {
+            came_from[target] = from;
+            break;
+        }
         for (node = 0; node < node_count; node++) {
-            if (came_from[node] != NO_CORE || !object_can_be_a_core(&machine->objects[node / SCRIPT_CORE_SLOT_COUNT], node % SCRIPT_CORE_SLOT_COUNT)) {
+            if (node == target || came_from[node] != NO_CORE) {
                 continue;
             }
-            if (node / SCRIPT_CORE_SLOT_COUNT != target_object && linking_that_core_would_swap(machine, from / SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT)) {
-                continue;
-            }
-            if (core_distance(machine, from / SCRIPT_CORE_SLOT_COUNT, from % SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT, node % SCRIPT_CORE_SLOT_COUNT) <= script_soul_reach(machine) + SOUL_TIP_PICKUP_NEAR && a_push_lands_on(machine, from, node, &aim_x, &aim_y)) {
+            if (core_links_to(machine, from, node, target_object)) {
                 came_from[node] = from;
                 queue[tail++] = node;
             }
@@ -2518,6 +2582,11 @@ static int aim_at_the_first_hop(const struct script_machine *machine, int target
     *aim_x = memory->aim_x;
     *aim_y = memory->aim_y;
     return memory->aim_found;
+}
+
+unsigned int script_soul_tip_tests(void)
+{
+    return tip_tests;
 }
 
 unsigned int script_soul_route_searches(void)

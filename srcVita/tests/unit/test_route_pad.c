@@ -368,6 +368,26 @@ static void test_the_route_searches_again_only_when_a_core_moves(void)
     CHECK_INT(hop_object, 1);
 }
 
+static void test_a_hop_search_tests_only_the_cores_a_tip_can_reach(void)
+{
+    static const char *far_names[] = { "far0", "far1", "far2", "far3", "far4", "far5", "far6", "far7", "far8", "far9" };
+    unsigned int tests_before;
+    int hop_object;
+    int hop_slot;
+    int index;
+
+    start_a_move_with_missile_and_cores(13);
+    machine.objects[1].actor.x = BODY_X + 90;
+    place_core(2, "lantern", BODY_X + 40);
+    for (index = 0; index < 10; index++) {
+        place_core(3 + index, far_names[index], BODY_X + 2000 + 400 * index);
+    }
+    tests_before = script_soul_tip_tests();
+    CHECK(script_soul_route_hop(&machine, 1, 0, &hop_object, &hop_slot));
+    CHECK_INT(hop_object, 2);
+    CHECK(script_soul_tip_tests() - tests_before < 400u);
+}
+
 static void test_a_began_wait_holds_only_just_after_the_act_starts(void)
 {
     start_with_one_step(SCRIPT_ROUTE_WAIT, "-", "began:gate:gate_a");
@@ -456,6 +476,7 @@ int main(void)
     test_the_pad_aims_past_a_core_a_slanted_push_can_miss();
     test_a_missile_hop_never_steps_from_a_core_to_one_of_its_shape();
     test_the_route_searches_again_only_when_a_core_moves();
+    test_a_hop_search_tests_only_the_cores_a_tip_can_reach();
     test_a_began_wait_holds_only_just_after_the_act_starts();
     test_a_near_wait_holds_while_two_actors_are_close_along_x();
     test_a_cores_wait_holds_while_two_first_cores_are_within_a_distance();

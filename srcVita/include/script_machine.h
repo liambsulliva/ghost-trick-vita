@@ -686,6 +686,7 @@ void script_soul_travel_to_core(struct script_machine *machine, int object_index
 int script_soul_route_camera_push(const struct script_machine *machine, int *push_x, int *push_y);
 int script_soul_route_hop_aim(const struct script_machine *machine, int target_object, int target_slot, float *aim_x, float *aim_y);
 unsigned int script_soul_route_searches(void);
+unsigned int script_soul_tip_tests(void);
 int script_soul_route_wait_reaches(const struct script_machine *machine, const char *wait);
 int script_soul_route_balloon_group(const struct script_machine *machine, const char *name);
 int script_soul_page_wants_a_press(const struct script_machine *machine);
