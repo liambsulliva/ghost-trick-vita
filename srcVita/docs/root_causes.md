@@ -2013,6 +2013,16 @@ Guard: `ds_phone_book.py` reads both native tables from the arm9 and bakes every
 
 Not done: five slots shown, not native's seven; the native prompt plates and Go There / Stay Here plates are decoded but not wired; the highlight and reveal animations (`func_020396ac`, `func_02039500`) are not ported. The DS set still bakes no `people.txt`, so the pause menu's People tab is empty in DS mode. Not checked on the device.
 
+### 265. DS cutscene movies skipped
+
+Seen on the Vita: in DS mode every full-screen movie skipped. The DS set baked no movie frames and wrote its movie rows without class ids, so op 0xec's `movie_of_class_started` found no movie and went on. The cartridge holds the movies as Mobiclip `.mods` files, played by `cMobiMovieImpl` (`func_ov004_020d7050`) from each movie class's start method (vtable slot 11, such as `func_ov004_020d7028`); the classes are registered by name in `__sinit_0207ef1c`. The rewind starts `pGameMainMovieRollback` (`func_0203e97c`), which on the DS plays `timejump.mods`, and `pGameMainMovieRollbackFinal` plays `longjump.mods`, both unlike the remaster's files. The files carry no audio; native plays the sound on its own.
+
+The class: every full-screen movie the DS scripts start, which the DS set never baked.
+
+Guard: `ds_movies.py` follows that chain in the cartridge code for every movie row at bake time, decodes with ffmpeg's mobiclip decoder, converts the full-range YCgCo planes itself, and bakes DXT1 frames at native size and 15 fps through the bake record. It prints any row it cannot bake and any class the scripts start that has no frames. `tests/tools/test_ds_movies.py` checks that every class id the DS scripts start has a cartridge movie, pins the native mapping and checks that the files carry no audio.
+
+Not done: Final's own sound (0x1eb with `func_0202a080`) is not played; `time_jump` and `long_jump` bake the same file twice. Not checked on the device.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

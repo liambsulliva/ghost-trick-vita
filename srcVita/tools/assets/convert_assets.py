@@ -19,6 +19,7 @@ import bubble_art
 import class_movies
 import ds_backdrops
 import ds_effect_movies
+import ds_movies
 import ds_music
 import ds_rom
 import ds_languages
@@ -684,6 +685,8 @@ def convert_ds_set_description(set_description, output_folder, ds_rom_path=DEFAU
             art["texture_paths"] = art["texture_paths"] + effect_paths
             set_description, backdrop_paths = ds_backdrops.add_to_set(set_description, cartridge, record)
             art["texture_paths"] = art["texture_paths"] + backdrop_paths
+            set_description, movie_paths = ds_movies.add_to_set(set_description, scripts, arm9, ds_rom_path, record, work_folder)
+            art["texture_paths"] = art["texture_paths"] + movie_paths
         finally:
             delete_work_folder(work_folder)
         texture_sizes = dict(ds_set.plate_sizes(set_description["plates"], plate_entries), **art["texture_sizes"])
