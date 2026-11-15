@@ -612,7 +612,10 @@ def preview_lines(widgets):
     preview = widgets.get("preview")
     if preview is None:
         return []
-    return ["preview %s %d %d %d %d" % tuple([preview["plate"]] + list(preview["crop"]))]
+    left, top, width, height = preview["part"]
+    if left < 0 or top < 0 or width <= 0 or height <= 0 or left + width > 1 or top + height > 1:
+        raise ValueError("the preview's part must be fractions of its plate, inside it: %r" % (preview["part"],))
+    return ["preview %s %.6f %.6f %.6f %.6f" % (preview["plate"], left, top, width, height)]
 
 
 def bake_widgets(packs, tool_path, work_folder, record, code, widgets):
