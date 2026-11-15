@@ -86,12 +86,47 @@ static void write_state(const char *path, const char *script)
     fclose(file);
 }
 
+#define STATE_FOLDER_SCRIPT_MAX 1024
+
+static const char *state_folder;
+static char state_folder_scripts[STATE_FOLDER_SCRIPT_MAX][SCRIPT_SOURCE_NAME_MAX];
+static int state_folder_script_count;
+
+static void save_state_into_the_folder(const char *name)
+{
+    char path[FILE_NAME_MAX];
+    FILE *list;
+    int index;
+
+    for (index = 0; index < state_folder_script_count; index++) {
+        if (strcmp(state_folder_scripts[index], name) == 0) {
+            return;
+        }
+    }
+    if (state_folder_script_count >= STATE_FOLDER_SCRIPT_MAX) {
+        return;
+    }
+    snprintf(state_folder_scripts[state_folder_script_count], SCRIPT_SOURCE_NAME_MAX, "%s", name);
+    state_folder_script_count = state_folder_script_count + 1;
+    snprintf(path, sizeof(path), "%s/%s.txt", state_folder, name);
+    write_state(path, name);
+    snprintf(path, sizeof(path), "%s/states.txt", state_folder);
+    list = fopen(path, state_folder_script_count == 1 ? "w" : "a");
+    if (list != NULL) {
+        fprintf(list, "%s %d %u\n", name, machine.chapter_mark, machine.tick);
+        fclose(list);
+    }
+}
+
 static void save_state_when_due(const char *what, const char *name)
 {
     int index;
 
     if (strcmp(what, "script_begun") != 0) {
         return;
+    }
+    if (state_folder != NULL) {
+        save_state_into_the_folder(name);
     }
     for (index = 0; index < state_save_count; index++) {
         if (!state_was_saved[index] && strcmp(name, state_save_scripts[index]) == 0) {
@@ -575,6 +610,8 @@ int main(int argument_count, char **arguments)
                 state_save_count = state_save_count + 1;
             }
             index = index + 2;
+        } else if (strcmp(arguments[index], "--save-states-into") == 0) {
+            state_folder = arguments[++index];
         } else if (strcmp(arguments[index], "--load-state") == 0) {
             state_load_path = arguments[++index];
         } else if (strcmp(arguments[index], "--start") == 0) {

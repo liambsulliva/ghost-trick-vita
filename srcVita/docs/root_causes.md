@@ -1799,6 +1799,38 @@ The class: a converter output longer than a fixed table in the app.
 
 Guard: `asset_writers.manifest_text` refuses more scene, background or animation names than the app holds, so the bake stops instead of writing a set the app rejects. `tests/tools/test_asset_writers.py` reads the limits from `include/asset_manifest.h` and fails when the two disagree. The DS set no longer lists its animations, the same as the remastered set.
 
+### 247. A manifest list past the app's table stopped the whole set
+
+The app side of root cause 240. `asset_manifest_parse` returned an error at the first name past `ASSET_MANIFEST_SCENE_MAX`, `ASSET_MANIFEST_BACKGROUND_MAX` or `ASSET_MANIFEST_ANIMATION_MAX`, and `viewer_app` then ran with no assets at all, though the game finds every file by its path and only the debug browser reads those lists. Root cause 240 stops the converter writing such a set; a set already on a card still had it. No native function reads the manifest, which is the port's own.
+
+The class: one optional list too long, and the reader throws away everything.
+
+Guard: the parser keeps the names that fit, checks the rest for safe characters and counts them in `names_left_out`, which the `manifest loaded` line logs. `viewer_app_show_animation` only refuses a name the manifest lacks when no name was left out. `tests/unit/test_asset_manifest.c` parses a list one past the table and expects the set to load. The smoke test's `boot_title` flow fails when the manifest cannot be read (`make smoke`, and `make smoke-mutations` breaks the path to prove it).
+
+### 248. Visual Filter on the title quit the app instead of switching sets
+
+Found by the smoke test's `visual_filter_relaunch` flow, the first run of the whole app on the Mac with both sets: after Visual Filter changed on the title screen, the settings were saved and the app exited without starting again, so the player was dropped to the LiveArea. `main` asked `viewer_app_wants_relaunch()` after `viewer_app_stop()`, and stopping closes the title menu, whose request the answer is read from. The relaunch through `sceAppMgrLoadExec` is the port's own; native has one set and no such switch.
+
+The class: asking a module a question after it was stopped.
+
+Guard: `main` reads the answer before the stop and logs it as `exit clean relaunch=`. The flow runs the change on an install with both sets and requires the launch to end in a relaunch into the other set; `make smoke-mutations` puts the two lines back in the old order and requires the flow to fail.
+
+### 249. A softlock looked like a slow test
+
+Found while proving the smoke test: with CROSS broken on purpose, each whole-chapter flow ran for a quarter of an hour before its `until` line gave up, because a line that waits for the chapter's end must allow a whole chapter's frames. A test that takes that long to say a softlock happened will not be run.
+
+The class: one time limit for a long wait, sized for the good case.
+
+Guard: the flow runner's `stall <frames> <text>` line fails a flow once that many frames pass with no log line holding the text; the fast-forward flows watch `route_step_done` with 20000 frames, fourteen times the longest gap in a good run, and a broken story now fails in under a minute. `tests/unit/test_smoke_run.c` covers the line.
+
+### 250. Three looping sounds loop past their own end and play once
+
+Found by the smoke test's `set remastered loop points` check, and by `sound bad_loop_file` in the whole-story flows of Chapters 4, 7, 8 and 11: `sounds/gim_189.loop` held `2 41438` for a sound of 41438 frames, `gim_232` `2 92927` of 92927 and `gim_279` `0 61393` of 61393. The app takes the second number as the last frame of the loop and refuses a loop whose last frame is not below the frame count, so the three played once. The loop points are the remaster's: the bake copies the srcd wrapper's two words at 53 and 57. Of the APK's 79 looping streams, 67 at 44100 Hz and the 2 at 48000 Hz end the loop on their last frame, frame count minus one; 7 end it earlier; only these three give the frame count itself. So the word at 57 is the last frame, as `audio_file.py` reads it, and the three are the remaster's own off-by-one, which its player clamps where ours refused. No native function is involved: the DS plays these sounds from its sequence archive, and the converter's DS paths already end on `loop_end - 1`.
+
+The class: a loop end copied from a source without checking it against the sound actually written beside it.
+
+Guard: `audio_file.loop_text` takes the baked Ogg and clamps the loop's last frame to the frame count its last page gives, minus one, and refuses a loop that starts past the end. Every `.loop` the converter writes passes through it (remaster music and sounds, DS music and DS sounds). The app's two readers share `loop_file_read` in `src/app/loop_file.c`, so music and sounds apply one rule. `tests/tools/test_audio_file.py` and `tests/tools/test_end_to_end.py` bake a loop ending at and past the frame count and require it to end on the last frame; `tests/unit/test_loop_file.c` refuses a last frame at or past the frame count; the smoke test's loop point check fails a set holding one; `tools/mutation_check.py` moves the clamp and the bound by one and requires the tests to fail.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

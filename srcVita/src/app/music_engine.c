@@ -8,6 +8,7 @@
 #include "crc32.h"
 #include "file.h"
 #include "file_path.h"
+#include "loop_file.h"
 #include "memory.h"
 #include "music_engine.h"
 #include "playback_speed.h"
@@ -25,7 +26,6 @@
 #define WINDOW_GRAINS 11
 #define IDLE_SLEEP_US 10000
 #define QUIT_WAIT_US 1000000
-#define LOOP_TEXT_MAX 64
 #define NO_LOOP_POINT -1
 #define LOG_FOR_TOOLS_MUSIC_THREAD "music thread priority=%d mask=0x%08x cpu=%d arm_mhz=%d fpscr=0x%08x"
 #define LOG_FOR_TOOLS_MUSIC_PORT "music port result=0x%08x rate=%d grain=%d mode=%d adopt=%d"
@@ -267,27 +267,16 @@ static void release_track(void)
 
 static void read_loop_points(const char *name)
 {
-    char path[FILE_PATH_MAX];
-    char text[LOOP_TEXT_MAX];
-    unsigned char *data;
-    unsigned int size;
     unsigned int loop_start;
     unsigned int loop_last;
+    int result;
 
-    if (!file_path_join(path, folders[folder_in_use], name, ".loop") || file_read_whole(path, &data, &size) != FILE_OK) {
-        return;
-    }
-    if (size >= sizeof(text)) {
-        size = sizeof(text) - 1;
-    }
-    memcpy(text, data, size);
-    text[size] = '\0';
-    mem_free(data);
-    if (sscanf(text, "%u %u", &loop_start, &loop_last) != 2 || loop_start > loop_last || loop_last >= source.stream.frame_count) {
+    result = loop_file_read(folders[folder_in_use], name, source.stream.frame_count, &loop_start, &loop_last);
+    if (result == LOOP_FILE_OK) {
+        music_source_set_loop_points(&source, loop_start, loop_last);
+    } else if (result == LOOP_FILE_BAD) {
         run_log_write("music bad_loop_file name=%s", name);
-        return;
     }
-    music_source_set_loop_points(&source, loop_start, loop_last);
 }
 
 static int logged_loop_start(void)

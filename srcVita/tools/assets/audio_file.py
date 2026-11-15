@@ -12,6 +12,8 @@ OFFSET_LOOP_FLAG = 52
 OFFSET_LOOP_START = 53
 OFFSET_LOOP_LAST = 57
 OFFSET_AUDIO_START = 78
+OFFSET_PAGE_FRAMES = 6
+PAGE_FRAMES_SIZE = 8
 PLAYBACK_RATE = 44100
 
 
@@ -50,5 +52,20 @@ def loop_points_at_playback_rate(loop_points, rate):
     return tuple(int(round(point * PLAYBACK_RATE / rate)) for point in loop_points)
 
 
-def loop_text(loop_points):
-    return "%d %d\n" % loop_points
+def ogg_frame_count(ogg):
+    page = ogg.rfind(OGG_MAGIC)
+    if page < 0 or page + OFFSET_PAGE_FRAMES + PAGE_FRAMES_SIZE > len(ogg):
+        raise ValueError("the sound has no Ogg page to count its frames from")
+    return int.from_bytes(ogg[page + OFFSET_PAGE_FRAMES:page + OFFSET_PAGE_FRAMES + PAGE_FRAMES_SIZE], "little")
+
+
+def loop_points_inside(loop_points, frame_count):
+    start, last = loop_points
+    last = min(last, frame_count - 1)
+    if start > last:
+        raise ValueError("a loop from frame %d to %d does not fit a sound of %d frames" % (loop_points[0], loop_points[1], frame_count))
+    return (start, last)
+
+
+def loop_text(loop_points, ogg):
+    return "%d %d\n" % loop_points_inside(loop_points, ogg_frame_count(ogg))

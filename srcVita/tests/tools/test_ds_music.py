@@ -1,6 +1,7 @@
 import unittest
 
 import ds_music
+import test_audio_file
 
 
 class FakeRecord:
@@ -22,8 +23,8 @@ class FakeRecord:
 
 class DsMusicTests(unittest.TestCase):
     def test_a_track_with_no_sequence_keeps_the_remaster_audio(self):
-        files = ds_music.music_files({"sequences": {}}, b"", [{"name": "song", "ogg": b"ogg", "loop_points": (5, 9)}], FakeRecord())
-        self.assertEqual(files["music_ds/song.ogg"], b"ogg")
+        files = ds_music.music_files({"sequences": {}}, b"", [{"name": "song", "ogg": test_audio_file.ogg_of(10), "loop_points": (5, 9)}], FakeRecord())
+        self.assertEqual(files["music_ds/song.ogg"], test_audio_file.ogg_of(10))
         self.assertEqual(files["music_ds/song.loop"], b"5 9\n")
 
     def test_a_track_with_no_loop_writes_no_loop_file(self):

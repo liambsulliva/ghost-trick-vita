@@ -636,7 +636,19 @@ def build_parser():
     upload_assets_action = actions.add_parser("upload-assets", help="upload a converted asset set, skipping files the device already has")
     upload_assets_action.add_argument("folder", help="local folder holding manifest.txt")
     upload_assets_action.add_argument("--check-device", action="store_true", help="ask the device for the size of every file, not only the ones that changed since the last upload; slow, for a card that was restored or edited by hand")
+    smoke_action = actions.add_parser("smoke", help="run the smoke test's flows on the Vita's debug build, then put the player's saves and settings back")
+    smoke_action.add_argument("--full", action="store_true", help="also run the flows marked 'needs full', which play every chapter")
+    smoke_action.add_argument("--only", action="append", default=[], help="run only the flows whose name matches this pattern; may repeat")
+    smoke_action.add_argument("--output", default=os.path.join(BUILD_FOLDER, "smoke_device"), help="local folder for the logs, pictures and report")
     return parser
+
+
+def run_smoke(arguments):
+    import smoke_device
+    import smoke_test
+    smoke_arguments = smoke_test.build_parser().parse_args(["--output", arguments.output] + ([] if arguments.full else ["--quick"]) + [word for pattern in arguments.only for word in ("--only", pattern)])
+    smoke_arguments.set = ["remastered", "ds"]
+    return 1 if smoke_device.run(smoke_arguments) else 0
 
 
 def main():
@@ -669,6 +681,8 @@ def main():
     if arguments.action == "app-command":
         write_app_commands(arguments.text + "\n")
         return 0
+    if arguments.action == "smoke":
+        return run_smoke(arguments)
     if arguments.action == "wait":
         line = wait_for_text(arguments.text, arguments.seconds)
         print(line if line else "timed out waiting for: " + arguments.text)

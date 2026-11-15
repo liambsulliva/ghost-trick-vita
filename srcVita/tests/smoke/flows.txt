@@ -1,0 +1,593 @@
+block new_game
+until 900 title
+press cross
+until 9000 game
+
+block continue
+until 900 title
+expect title_cursor 1
+press cross
+until 9000 game
+
+block free_play
+use continue
+auto_play
+ff 32
+stall 20000 route_step_done
+ff_until ready {ghost_on_step}
+until 300000 log script reached
+stall 0
+auto_play off
+resume
+wait 30
+
+block open_pause
+press start
+until 600 pause
+wait 30
+
+block open_title_options
+until 900 title
+wait 30
+press down
+expect title_cursor 6
+press cross
+until 600 title_submenu
+wait 30
+
+flow boot_title
+about The app finds the set, reads its tables and shows the title screen with its art.
+guards 224 233 240
+sets remastered
+shows title
+launch
+until 900 title
+wait 90
+expect assets
+expect set remastered
+expect textures_missing_most 0
+capture title
+
+flow opening_normal_speed
+about New Game shows the loading screen and the opening plays at a player's speed, with pages closed by presses, music and sounds, to the first move.
+guards 225
+sets remastered ds
+frames 60000
+shows first_scene first_move
+log_has route_step_done name=1:move:
+log_lacks music_with_sound=0
+launch
+use new_game
+auto_play
+until 20000 log route_step_done name=0:
+capture first_scene
+until 20000 log route_step_done name=1:
+capture first_move
+
+flow action_{action}
+about A player's {action} works through the pad, in the scene where the story first uses it.
+for action in route_actions
+sets remastered
+start {scene}
+route_steps {steps}
+launch
+use continue
+auto_play
+ff 32
+stall 20000 route_step_done
+ff_until step {step}
+until 300000 log script reached
+stall 0
+capture {action}
+
+flow retry_after_failure
+about A rescue that fails by design ends in the game-over menu, and the retry plays the scene again to the step after it.
+sets remastered
+start {retry_scene}
+route_steps {retry_steps}
+log_has game_over_retry
+launch
+use continue
+auto_play
+ff 32
+stall 20000 route_step_done
+ff_until step {retry_step}
+until 300000 log script reached
+stall 0
+
+flow story_part_{part}
+about This part of the story plays from its first scene to the next part's, through the whole app, as the replay does.
+for part in story_parts
+needs full
+sets remastered
+start {scene}
+route_steps {steps}
+frames 600000
+launch
+use continue
+auto_play
+ff 32
+stall 20000 route_step_done
+{stop_line}
+until 500000 log {end_log}
+
+flow whole_game
+about The whole story plays from New Game to its end through the whole app, as the replay does.
+needs full
+sets ds
+route_steps {all_steps}
+frames 3000000
+launch
+use new_game
+auto_play
+ff 32
+stall 20000 route_step_done
+until 2500000 log save game_cleared
+
+flow pause_and_resume
+about START opens the pause menu in free play, CROSS on Resume closes it, and the game carries on.
+sets remastered
+start {ghost_on_scene}
+shows pause_menu
+launch
+use free_play
+capture free_play
+use open_pause
+expect pause_cursor 0
+capture pause_menu
+press cross
+until 600 not pause_open
+expect game
+auto_play
+ff 32
+stall 20000 route_step_done
+ff_until step {ghost_on_step}
+until 300000 log script reached
+stall 0
+
+flow pause_save_then_continue
+about The pause menu's Save writes the manual slot, and a later launch continues from it.
+guards 231
+sets remastered
+start {ghost_on_scene}
+shows save_screen saved
+log_has save stored slot=1
+launch
+use free_play
+use open_pause
+press down
+expect pause_cursor 1
+press cross
+until 600 pause_submenu
+wait 30
+capture save_screen
+press cross
+wait 40
+press cross
+until 600 log save stored slot=1
+wait 30
+capture saved
+expect save manual
+launch
+until 900 title
+expect title_cursor 1
+press cross
+until 9000 log save resumed script={ghost_on_scene}
+until 9000 game
+
+flow pause_to_title
+about The pause menu's Title returns to the title screen, which then offers Continue.
+sets remastered
+start {ghost_on_scene}
+shows asks title
+launch
+use free_play
+use open_pause
+press right
+expect pause_cursor 3
+press cross
+wait 60
+capture asks
+press cross
+until 900 title
+wait 60
+expect title_cursor 1
+capture title
+
+flow pause_chapter_replay
+about The pause menu's Chapters replays a reached chapter from its start.
+sets remastered
+start {ghost_on_scene}
+chapters 3
+shows chapters
+log_has chapter_replay chapter=
+launch
+use free_play
+use open_pause
+press right
+press down
+expect pause_cursor 4
+press cross
+until 600 pause_submenu
+wait 30
+capture chapters
+press cross
+wait 40
+capture asks
+press left
+press cross
+until 900 log chapter_replay chapter=
+until 9000 game
+
+flow record_people
+about SELECT opens the Record on People, and L and R turn its tabs.
+sets remastered
+start {ghost_on_scene}
+shows people phone_book illustrations
+launch
+use free_play
+press select
+until 600 log pause people
+wait 120
+capture people
+expect record_tab 0
+press r
+wait 60
+expect record_tab 1
+capture phone_book
+press r
+wait 60
+expect record_tab 2
+capture illustrations
+press l
+wait 60
+expect record_tab 1
+press circle
+until 900 not pause_open
+expect game
+
+flow title_chapter_select
+about The title's Chapter Select lists the reached chapters and starts the picked one.
+sets remastered
+start {ghost_on_scene}
+chapters 5
+shows grid
+log_has chapter_replay chapter=5
+launch
+until 900 title
+wait 30
+press left
+expect title_cursor 0
+press cross
+until 600 title_submenu
+wait 30
+capture grid
+press cross
+wait 40
+capture asks
+press left
+press cross
+until 900 log chapter_replay chapter=5
+until 9000 game
+
+flow title_new_game_over_save
+about New Game asks before it starts over a save, and then plays the opening.
+sets remastered
+start {ghost_on_scene}
+shows asks
+log_has title pick new_game
+launch
+until 900 title
+wait 30
+press down
+press left
+expect title_cursor 5
+press cross
+wait 40
+capture asks
+expect title_dialog
+press left
+press cross
+until 9000 game
+expect script route
+
+flow title_erase_saves
+about The trash can asks, erases every save, and the title then offers no Continue.
+sets remastered
+start {ghost_on_scene}
+shows asks erased
+log_has save erased
+launch
+until 900 title
+wait 30
+press down
+press down
+press right
+expect title_cursor 2
+press cross
+wait 40
+capture asks
+expect title_dialog
+press left
+press cross
+until 600 log save erased
+wait 90
+capture erased
+expect not save auto
+expect title_cursor 5
+
+flow title_language
+about The title's Language list switches the language at once and a later launch keeps it.
+guards 230
+sets remastered
+shows list french
+log_has language use=fr
+launch
+until 900 title
+wait 30
+press down
+press down
+expect title_cursor 3
+press cross
+until 600 title_submenu
+wait 30
+capture list
+press down
+press down
+press cross
+until 600 log language use=fr
+wait 60
+press circle
+until 900 title
+wait 60
+capture french
+expect language fr
+launch
+until 900 title
+expect language fr
+expect setting language 2
+
+flow options_setting_persists
+about A setting changed in Options is written when the screen closes and read by the next launch.
+guards 231
+sets remastered
+shows brightness
+log_has settings saved=1
+launch
+use open_title_options
+press down
+press down
+expect options_row 2
+press left
+until 60 log pause option brightness brightness=9
+capture brightness
+press circle
+until 900 title
+wait 30
+launch
+until 900 title
+expect setting brightness 9
+
+flow options_every_row
+about Every Options row takes the cursor and its button, from Controls to Restore Defaults.
+sets remastered
+shows controls text_speed high_contrast sound language other
+launch
+use open_title_options
+expect options_row 0
+press cross
+wait 60
+capture controls
+press circle
+wait 60
+press down
+expect options_row 1
+press right
+wait 20
+capture text_speed
+expect setting text_speed 2
+press down
+press down
+expect options_row 3
+press cross
+wait 30
+capture high_contrast
+expect setting high_contrast 1
+press cross
+press down
+press down
+press down
+expect options_row 6
+press cross
+wait 10
+press cross
+press down
+expect options_row 7
+press left
+expect setting master 9
+press down
+press left
+expect setting music 9
+press down
+press left
+expect setting effects 9
+capture sound
+press down
+expect options_row 10
+press cross
+wait 30
+expect setting music_type 1
+press cross
+wait 30
+press down
+expect options_row 11
+press cross
+wait 30
+capture language
+press circle
+wait 30
+press down
+expect options_row 12
+press cross
+wait 10
+capture other
+press down
+press down
+press down
+expect options_row 15
+press circle
+until 900 title
+
+flow options_credits
+about The Credits row plays the staff roll with its music and CIRCLE returns to Options.
+guards 232
+sets remastered
+shows credits
+log_has credits start
+log_has credits end
+launch
+use open_title_options
+press down
+press down
+press down
+press down
+press down
+press down
+press down
+press down
+press down
+press down
+press down
+press down
+press down
+expect options_row 13
+press cross
+until 600 log credits start
+wait 400
+capture credits
+press circle
+until 600 log credits end
+wait 30
+expect title_submenu
+
+flow visual_filter_relaunch
+about With both sets installed, Visual Filter on the title saves the choice and relaunches into the DS set, and from there back into the remastered one.
+guards 217 231
+sets both
+log_has settings saved=1
+launch relaunches
+use open_title_options
+press down
+press down
+press down
+press down
+expect options_row 4
+press right
+launch relaunches
+expect set ds
+expect setting visual_filter 1
+use open_title_options
+press down
+press down
+press down
+press down
+expect options_row 4
+press left
+launch
+expect set remastered
+expect setting visual_filter 0
+use new_game
+
+flow hint_after_wait
+about A player who does nothing for the hint wait gets the "?" balloon, and pressing it points at the next object.
+guards 221
+sets remastered
+start {ghost_on_scene}
+settings hint_delay=1
+frames 60000
+shows offered used
+log_has hint_used
+launch
+use free_play
+until 12000 log hint_offered
+wait 30
+capture offered
+press square
+until 600 log hint_used
+wait 90
+capture used
+
+flow touch_pause_button
+about A tap on the pause button opens the pause menu, as START does.
+sets remastered
+start {ghost_on_scene}
+launch
+use free_play
+touch 912 30 3
+until 600 pause
+
+flow touch_drag_soul
+about In the ghost view a finger drags the soul from its core to the next one.
+sets remastered
+start {ghost_on_scene}
+shows dragged
+launch
+use continue
+auto_play
+ff 32
+stall 20000 route_step_done
+ff_until ready {ghost_on_next_step}
+until 300000 log script reached
+stall 0
+auto_play off
+resume
+wait 30
+expect shows ghost_view
+capture before
+drag_soul -164 -4 40 0
+until 300 log script core name=
+wait 30
+capture dragged
+
+flow language_{language}
+about The title, narration, talk, pause menu and Options draw in this language, with its own words.
+for language in languages
+guards 230 234
+sets remastered
+settings language={language_index}
+frames 80000
+differs_from language_en
+shows title narration talk pause options
+log_has language use={language}
+launch
+until 900 title
+wait 90
+expect language {language}
+capture title
+press cross
+until 9000 game
+auto_play
+until 20000 shows narration
+wait 240
+capture narration
+until 20000 shows talk
+wait 80
+capture talk
+ff 32
+stall 20000 route_step_done
+ff_until ready {ghost_on_step}
+until 300000 log script reached
+stall 0
+auto_play off
+resume
+wait 30
+use open_pause
+capture pause
+press right
+press down
+press down
+expect pause_cursor 5
+press cross
+until 600 pause_submenu
+wait 30
+capture options

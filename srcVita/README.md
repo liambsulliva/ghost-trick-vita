@@ -23,6 +23,7 @@ No game data lives in this folder. Converted assets, captures, reference video a
 | `tools/pause_render.py` | Draws the pause menu, or with `--title` the title screen or `--loading` the loading screen, on the Mac from the baked set, after a list of button presses, through `tests/golden/pause_render.c` |
 | `tools/audio_check.py` | Judges a run log's audio timing and checksums, with no listener |
 | `tools/mutation_check.py` | Breaks the code on purpose to prove the tests notice |
+| `tools/smoke_test.py`, `tests/smoke/` | The [smoke test](#smoke-test): its driver, its flows and the Mac build of the whole app it runs them in |
 | `docs/asset_format.md` | The file formats shared by the converter and the app |
 
 A good first read is `src/app/viewer_app.c`, then `script_player.c`, `script_machine.c` and `scene_view.c`.
@@ -60,6 +61,76 @@ python3 -I srcVita/tools/mutation_check.py
 ```
 
 Every mutation should be caught. A survivor means the tests have a gap. The run works on a copy of this folder plus `tools/lz.py` and `tools/lmg_decode.py`, so it leaves your files alone. It breaks one thing at a time, in the C code and the Python tools, including the text key tool. A C mutation rebuilds only the file it changed. A Python mutation runs the Python tests with `--failfast`, starting with the test files most likely to catch that tool and going on to all the others, so it stops at the first failure and is only called a survivor once every test has passed. `audio_check.py` and `audio_file.py` run only the audio tests. Before the Python mutations, the whole suite also runs once with its test files in reverse order, so a test that passes only in the usual order stops the run instead of making mutations look caught. The last full run had 778 mutations and took about 36 minutes on a busy Mac, about 11 of them in the Python ones. It does not cover `tools/rom_audit.py`, because it does not copy that file.
+
+### Smoke test
+
+The smoke test is the engine light for a release: it plays the things a player does most, through the whole app, and says which one broke. It needs both converted sets in `extracted/vita_assets` and reads them as they lie.
+
+```bash
+make -C srcVita smoke
+```
+
+```bash
+make -C srcVita smoke SMOKE_QUICK=1
+```
+
+The first takes about three minutes; the quick one leaves out the flows that play every chapter and takes about one. `SMOKE_ARGUMENTS` passes the driver's own options through, such as `--only 'pause*'` for some flows or `--set remastered` for one set; `python3 -I srcVita/tools/smoke_test.py --help` lists them.
+
+Every check runs whatever the others did, and prints one line: `ok`, `FAIL` with the first reason and the root causes it guards, `known` for a gap listed in `tests/smoke/known_gaps.txt`, or `skip`. The run ends non-zero if any line is `FAIL`. `build/smoke/report.txt` holds the same lines, `build/smoke/failures/` one file per failed check with its reasons, the end of its log and the folder the app ran in, and `build/smoke/pictures/` one contact sheet per flow for a look by eye; no check compares a picture with a kept one.
+
+What it checks, in order:
+
+- Each set: the manifest names its art and every background has a texture, every texture sits in its bucket folder, each language lists files that exist, every `.loop` file points inside its sound, and the baked route is the one in `tools/assets/game.json`.
+- The whole-game replay of each set finishes every route step. It also writes each scene's start state into `extracted/smoke/states/`, which the flows start from.
+- The debug build links and packs with VitaSDK (found through `VITASDK` or in `/usr/local/vitasdk`), and the package holds its files and the flow runner. `SMOKE_NO_SDK=1` skips this on a Mac with no SDK.
+- The flows in `tests/smoke/flows.txt`. Each runs in `build/smoke_host/smoke_host`, which is `src/main.c` and all of `src/app` linked against a disk, a clock that steps one frame per input poll, a software renderer that draws every triangle the app sends and audio ports that pull from the real music and sound threads. A flow passes when the app finishes its lines, its log holds no line of a failing or unlisted kind, the route steps it finished are the ones the replay finished over the same stretch, and the pictures it names show something.
+
+The flows cover booting to the title, the opening at a player's speed, each route action through the pad in the scene that first uses it, the retry after a failed rescue, every chapter and the whole story, the pause menu (resume, Save and Continue, Title, Chapters), the Record, the title's Chapter Select, New Game over a save, erasing saves, the language list, every Options row, a setting kept across launches, the credits, the Visual Filter relaunch, the hint, the touch controls, and the title, narration, talk, pause menu and Options in each of the nine languages, whose pictures must differ from the English ones.
+
+A flow is a block of lines:
+
+| Line | What it means |
+|---|---|
+| `flow <name>`, `about <text>`, `guards <root causes>` | Start a flow and say what it is for |
+| `sets <installs>` | Which installs it runs on: `remastered`, `ds`, `both`. One run per install |
+| `needs full` | Left out by `SMOKE_QUICK=1` |
+| `for <name> in route_actions`, `story_parts`, `languages` | One flow per row, with `{name}` and the row's other values filled in |
+| `start <scene>`, `chapters <n>`, `settings <name>=<value> ...` | Files the app finds at launch: a save at that scene, chapter saves up to `n`, a settings file |
+| `frames <n>` | The most frames a launch may take |
+| `shows <pictures>` | Captures that must not be black |
+| `log_has <text>`, `log_lacks <text>`, `known <pattern> \| <reason>` | Log lines that must, must not, or may appear; a `known` line that stops appearing fails |
+| `route_steps <list>` | The route steps the app must finish, in order |
+| `differs_from <flow>` | Its pictures must differ from that flow's |
+| `launch`, `launch relaunches` | Start the app; the second kind must end by relaunching itself |
+| `block <name>`, `use <name>` | Name some lines and use them in a launch |
+| `remastered: <line>`, `ds: <line>`, `both: <line>` | A line for one install only |
+
+Under a `launch`, a line is a commands-file line of the [debug build](#debug-build), with buttons by name in `press`, or one of the flow runner's own:
+
+| Line | What it does |
+|---|---|
+| `wait <frames>` | Let that many frames pass |
+| `until <frames> [not] <condition>` | Wait for the condition, and fail the flow after that many frames without it |
+| `expect [not] <condition>` | Fail the flow unless the condition holds now |
+| `stall <frames> <text>`, `stall 0` | From here on, fail the flow when that many frames pass with no log line holding the text, so a softlock ends the flow in seconds; `stall 0` stops watching |
+
+A condition is `log <text>` for a log line written since the flow began, each line counted once, or a word `smoke_condition_holds` in `src/main.c` answers from the app's state: `title`, `title_submenu`, `title_cursor <n>`, `title_dialog`, `pause`, `pause_submenu`, `pause_cursor <n>`, `pause_open`, `game`, `loading`, `paused`, `script <name>`, `tick <n>`, `shows talk`, `shows narration`, `shows choice`, `shows ghost_view`, `options_row <n>`, `record_tab <n>`, `route <wait>` with a route step's wait words, `set <kind>`, `language <code>`, `setting <name>=<value>`, `save auto`, `save manual`, `assets` and `textures_missing_most <n>`.
+
+`tests/smoke/log_kinds.txt` sorts log lines by their first two words into `ok`, `fail` and `known`; a kind it does not list fails the flow, so a new warning gets a decision. `tests/smoke/known_gaps.txt` lists checks that fail for a stated reason; a listed check that passes fails the run, so the list can only shrink.
+
+The flow runner is part of the debug build (`src/app/smoke_run.c`), so the same flows run on the Vita, where the app logs `smoke ok` or `smoke fail` with the line and the reason:
+
+```bash
+python3 -I srcVita/tools/vita_loop.py smoke
+```
+
+It runs the quick flows for the install the Vita holds (`--full` for all, `--only` for some), one launch at a time, and puts the player's saves and settings back when it ends; a copy of them stays in `build/smoke_device/device_backup`. Its report and pictures go to `build/smoke_device`.
+
+```bash
+make -C srcVita smoke-mutations
+```
+
+This proves the checks: it breaks the app in a copy of this folder and the set in a folder of links, one thing at a time, and requires the check for that thing to fail. It needs an earlier `make smoke` for the story, the start states and the package. `SMOKE_ARGUMENTS=--full` adds the breaks only the whole-story flows catch. It takes about two minutes, or five with `--full`.
 
 Before pushing, run the audit from the top of the repository with your key file in place. If it prints `key search skipped`, the key was not searched for.
 
@@ -248,7 +319,9 @@ It adds `-debug` to the build id and keeps its objects in `build/obj_debug`, so 
 | `auto_play`, `auto_play off` | Play by itself at normal speed, following the baked route in `route_steps.txt` with the same inputs a player has, and pausing long enough to read each page |
 | `ff <n>` | Run `n` script ticks per frame, pressing buttons by itself |
 | `ff_until script <name>`, `ff_until act <name>`, `ff_until tick <n>` | Fast forward until that point, then pause |
+| `ff_until ready <step>` | Fast forward until that route step is ready for its input, then pause |
 | `resume` | Carry on from a pause |
+| `smoke <name>` | Hand the rest of the commands file to the flow runner as the flow `name`; see the [smoke test](#smoke-test) |
 | `press <hex>` | Press a button mask for one frame |
 | `drag x0 y0 x1 y1 frames delay` | Move an injected finger in a straight line from `x0,y0` to `x1,y1` over `frames` frames, after waiting `delay` frames |
 | `drag_soul dx dy frames delay` | Start the finger on the soul's screen position and move it by `dx,dy` over `frames` frames, after `delay` frames. Does nothing if the soul is not on screen |

@@ -11,10 +11,16 @@
 #define REMASTERED_ART_NAME "remastered"
 #define DS_ART_NAME "ds"
 
-static int read_asset_name(const char *name_text, char names[][ASSET_NAME_MAX], int *count, int limit)
+static int read_asset_name(const char *name_text, char names[][ASSET_NAME_MAX], int *count, int limit, int *names_left_out)
 {
+    char name[ASSET_NAME_MAX];
+
     if (*count >= limit) {
-        return ASSET_MANIFEST_ERR_TOO_MANY;
+        if (sscanf(name_text, ASSET_NAME_SCAN, name) != 1) {
+            return ASSET_MANIFEST_ERR_BAD_LINE;
+        }
+        *names_left_out = *names_left_out + 1;
+        return ASSET_MANIFEST_OK;
     }
     if (sscanf(name_text, ASSET_NAME_SCAN, names[*count]) != 1) {
         return ASSET_MANIFEST_ERR_BAD_LINE;
@@ -42,13 +48,13 @@ static int read_one_line(const char *line, struct asset_manifest *manifest)
         return ASSET_MANIFEST_OK;
     }
     if (text_line_starts_with(line, SCENE_LINE_START)) {
-        return read_asset_name(line + strlen(SCENE_LINE_START), manifest->scene_names, &manifest->scene_count, ASSET_MANIFEST_SCENE_MAX);
+        return read_asset_name(line + strlen(SCENE_LINE_START), manifest->scene_names, &manifest->scene_count, ASSET_MANIFEST_SCENE_MAX, &manifest->names_left_out);
     }
     if (text_line_starts_with(line, BACKGROUND_LINE_START)) {
-        return read_asset_name(line + strlen(BACKGROUND_LINE_START), manifest->background_names, &manifest->background_count, ASSET_MANIFEST_BACKGROUND_MAX);
+        return read_asset_name(line + strlen(BACKGROUND_LINE_START), manifest->background_names, &manifest->background_count, ASSET_MANIFEST_BACKGROUND_MAX, &manifest->names_left_out);
     }
     if (text_line_starts_with(line, ANIMATION_LINE_START)) {
-        return read_asset_name(line + strlen(ANIMATION_LINE_START), manifest->animation_names, &manifest->animation_count, ASSET_MANIFEST_ANIMATION_MAX);
+        return read_asset_name(line + strlen(ANIMATION_LINE_START), manifest->animation_names, &manifest->animation_count, ASSET_MANIFEST_ANIMATION_MAX, &manifest->names_left_out);
     }
     if (text_line_starts_with(line, ART_LINE_START)) {
         return read_art_set(line + strlen(ART_LINE_START), manifest);
@@ -66,6 +72,7 @@ int asset_manifest_parse(const char *text, unsigned int text_size, struct asset_
     manifest->background_count = 0;
     manifest->animation_count = 0;
     manifest->art_sets = 0;
+    manifest->names_left_out = 0;
     offset = 0;
     while (offset < text_size) {
         offset = text_lines_read_next(text, text_size, offset, line, sizeof(line));

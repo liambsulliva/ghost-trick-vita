@@ -159,6 +159,9 @@ unsigned int command_parse_next_line(const char *text, unsigned int text_size, u
     if (read_named_command(line, "show_animation ", COMMAND_SHOW_ANIMATION, command)) {
         return offset;
     }
+    if (read_named_command(line, "smoke ", COMMAND_SMOKE, command)) {
+        return offset;
+    }
     if (read_music_starve_command(line, command)) {
         return offset;
     }

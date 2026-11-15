@@ -194,7 +194,7 @@ int viewer_app_show_animation(const char *name)
         return 0;
     }
     index = asset_manifest_find_animation(manifest, name);
-    if (index < 0) {
+    if (index < 0 && manifest->names_left_out == 0) {
         run_log_write("animation not_in_manifest name=%s", name);
         return 0;
     }
@@ -210,8 +210,10 @@ int viewer_app_show_animation(const char *name)
     if (!show_browse_object(name)) {
         return 0;
     }
-    current_animation_index = index;
-    ui_list_select(&animation_list, index);
+    if (index >= 0) {
+        current_animation_index = index;
+        ui_list_select(&animation_list, index);
+    }
     run_log_write("animation selected name=%s", name);
     return 1;
 }
@@ -287,7 +289,7 @@ static void load_manifest(void)
     }
     art_sets = manifest->art_sets != 0 ? manifest->art_sets : ASSET_ART_REMASTERED;
     texture_cache_use_sharp_art(art_sets == ASSET_ART_DS);
-    run_log_write("manifest loaded scenes=%d backgrounds=%d animations=%d art=%d", manifest->scene_count, manifest->background_count, manifest->animation_count, art_sets);
+    run_log_write("manifest loaded scenes=%d backgrounds=%d animations=%d left_out=%d art=%d", manifest->scene_count, manifest->background_count, manifest->animation_count, manifest->names_left_out, art_sets);
 }
 
 static void create_placeholder_texture(void)
