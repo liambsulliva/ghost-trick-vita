@@ -1917,6 +1917,16 @@ The class: a DS button whose words the cartridge draws into the button, which th
 
 Guard: with sharp art on, the app draws the rewind button whole from `rewind_button` (resting and pressed cells, from 672 and 682) at the pills' 45/16 screen pixels a DS pixel, centred where the remastered button sits. `tests/unit/test_script_ui_view.c` checks a sharp set draws it as one sprite from the resting cell, centred; `tests/tools/test_ds_texture_slots.py` makes the DS set carry it.
 
+### 255. Thought and shout balloons did not draw in DS mode
+
+The remastered set builds its balloon rows in `chapter_assets.expand` from Android bubble art and a text texture per label; `ds_set.expand` never built them, so the DS set wrote an empty `balloons.txt` and every op 0x51 balloon logged `no_balloon_row`. Native draws a worded balloon (`uBalloonPicture`, `func_02044b48`) as one texture that text parser type 1 composes: ovals (`func_0201a254`, `func_0201a680`) from pieces 110 to 113 for one line or 116 to 119 for two or three on canvas 109 or 115, the middle a run of 6-pixel segments as wide as the widest line; thorns (`func_0201a3ac`) from 114, 108 or 107 by width; the palette from `cpac_2d.bin` block 0 entry 7 (`func_0201a97c`); text in the balloon font placed by `func_0201aa88`, control code 3 centring a line (`func_0201a1b4`). The shape grows white over 8 ticks, then the real palette shows the text (`func_02044800`, `func_02044d7c`).
+
+The class: a table the app reads that one set builds and the other never does. And a second: a balloon row found by its label alone, though six labels open with two different kinds.
+
+Guard: `ds_balloons.py` reads the native tables from the arm9 and composes every label and kind op 0x51 opens, shapes shared by geometry (52) plus one text each (309); a part may carry `texture_scale` so DS-size art draws at DS size. `script_tables_find_balloon` matches a row's kind when the row names one (remastered rows keep -1, any kind). `tests/tools/test_ds_balloons.py` fails unless every op 0x51 label and kind in the game chain has a row with baked textures, and checks the oval and thorn rules; `tests/unit/test_balloon_row_kinds.c` covers the kind match. The bake matches the melonDS capture of "So long, sister." pixel for pixel.
+
+Not done: op 0x52's "!" and other bursts (`uSwfPlayForBalloon`, effect art), op 0x45's tap balloons, the close animation, and two- or three-line and thorn layouts against a capture.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

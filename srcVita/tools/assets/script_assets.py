@@ -530,7 +530,7 @@ def balloons_text(balloons, texture_sizes):
             part = with_thorn_chosen_by_text(part, texture_sizes)
             if part["texture"] not in texture_sizes:
                 continue
-            width, height = texture_sizes[part["texture"]]
+            width, height = (size * part.get("texture_scale", 1.0) for size in texture_sizes[part["texture"]])
             dx, dy = part["dx"], part["dy"]
             if part.get("fits") in texture_sizes and "thorn_sizes" not in part:
                 text_width, text_height = texture_sizes[part["fits"]]

@@ -11,6 +11,7 @@
 #define TABLE_LINE_MAX 320
 #define NAME_SCAN ASSET_NAME_SCAN
 #define NO_LABEL "-"
+#define BALLOON_ANY_KIND (-1)
 
 typedef int (*table_line_reader)(struct script_tables *tables, const char *line);
 
@@ -800,7 +801,7 @@ const struct script_balloon_row *script_tables_find_balloon(const struct script_
         const struct script_balloon_row *row;
 
         row = &tables->balloon_rows[index];
-        if (label != NULL && strcmp(row->label, label) == 0) {
+        if (label != NULL && strcmp(row->label, label) == 0 && (row->kind == BALLOON_ANY_KIND || row->kind == kind)) {
             return row;
         }
         if (label == NULL && row->label[0] == '\0' && row->kind == kind) {

@@ -4,6 +4,7 @@ import re
 import asset_writers
 import bake_record
 import chapter_assets
+import ds_balloons
 import ds_pause
 import ds_rom
 import ds_rooms
@@ -250,7 +251,10 @@ def bake_motion_tables(set_description, scripts, arm9, cartridge, record):
 
 
 def bake_art(set_description, scripts, arm9, cartridge, rom_path, record, work_folder):
-    art = bake_motion_tables(set_description, scripts, arm9, cartridge, record)
+    return bake_text_and_menus(bake_motion_tables(set_description, scripts, arm9, cartridge, record), set_description, scripts, arm9, cartridge, rom_path, record, work_folder)
+
+
+def bake_text_and_menus(art, set_description, scripts, arm9, cartridge, rom_path, record, work_folder):
     text = ds_set_text.bake_text(set_description, scripts, rom_path, record, work_folder)
     art["texture_paths"] = art["texture_paths"] + text["texture_paths"]
     art["texture_sizes"] = dict(art["texture_sizes"], **text["texture_sizes"])
@@ -267,4 +271,7 @@ def bake_art(set_description, scripts, arm9, cartridge, rom_path, record, work_f
         art["files"].update(menu_files)
         art["texture_paths"] = art["texture_paths"] + menu_paths
         art["texture_sizes"] = dict(art["texture_sizes"], **menu_sizes)
+    set_description["script_balloons"], balloon_paths, balloon_sizes = ds_balloons.bake(set_description, scripts, arm9, cartridge, rom_path, record)
+    art["texture_paths"] = art["texture_paths"] + balloon_paths
+    art["texture_sizes"] = dict(art["texture_sizes"], **balloon_sizes)
     return art
