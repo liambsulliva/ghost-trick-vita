@@ -846,18 +846,129 @@ static void on_marked(const char *what, const char *name)
     run_log_write("script %s name=%s tick=%u", what, name, script_player_tick());
 }
 
+enum output_group {
+    OUTPUT_ACTORS,
+    OUTPUT_CAMERA,
+    OUTPUT_SOUL,
+    OUTPUT_EFFECTS,
+    OUTPUT_GROUP_COUNT
+};
+
+static unsigned long long output_us[OUTPUT_GROUP_COUNT];
+static unsigned int actor_calls;
+
+static void add_output_time(enum output_group group, unsigned long long started_us)
+{
+    output_us[group] = output_us[group] + (clock_now_us() - started_us);
+}
+
+static void timed_actor_changed(const struct script_actor_view *actor)
+{
+    unsigned long long started_us;
+
+    started_us = clock_now_us();
+    on_actor_changed(actor);
+    actor_calls = actor_calls + 1u;
+    add_output_time(OUTPUT_ACTORS, started_us);
+}
+
+static void timed_camera_moved(int x, int y)
+{
+    unsigned long long started_us;
+
+    started_us = clock_now_us();
+    on_camera_moved(x, y);
+    add_output_time(OUTPUT_CAMERA, started_us);
+}
+
+static void timed_soul_chain_moved(const float *x, const float *y, int is_out)
+{
+    unsigned long long started_us;
+
+    started_us = clock_now_us();
+    script_view_chain_moved(x, y, is_out);
+    add_output_time(OUTPUT_SOUL, started_us);
+}
+
+static void timed_soul_cursor_moved(int is_shown, float x, float y, float from_x, float from_y, int motion)
+{
+    unsigned long long started_us;
+
+    started_us = clock_now_us();
+    script_view_cursor_moved(is_shown, x, y, from_x, from_y, motion);
+    add_output_time(OUTPUT_SOUL, started_us);
+}
+
+static void timed_soul_core_marked(int object_index, int slot, float x, float y, int is_dead, float opacity)
+{
+    unsigned long long started_us;
+
+    started_us = clock_now_us();
+    script_view_core_marked(object_index, slot, x, y, is_dead, opacity);
+    add_output_time(OUTPUT_SOUL, started_us);
+}
+
+static void timed_soul_mark_changed(const char *object_name, int age_ticks, float x, float y)
+{
+    unsigned long long started_us;
+
+    started_us = clock_now_us();
+    script_view_mark_changed(object_name, age_ticks, x, y);
+    add_output_time(OUTPUT_SOUL, started_us);
+}
+
+static void timed_soul_object_styled(const char *object_name, unsigned int class_id, int has_core, int is_active, int is_dead, int is_phone_view)
+{
+    unsigned long long started_us;
+
+    started_us = clock_now_us();
+    on_soul_object_styled(object_name, class_id, has_core, is_active, is_dead, is_phone_view);
+    add_output_time(OUTPUT_SOUL, started_us);
+}
+
+static void timed_effect_moved(const char *name, float x, float y, float aim_degrees)
+{
+    unsigned long long started_us;
+
+    started_us = clock_now_us();
+    script_view_effect_moved(name, x, y, aim_degrees);
+    add_output_time(OUTPUT_EFFECTS, started_us);
+}
+
+static void timed_effect_spawned(int id, const char *name, float x, float y)
+{
+    unsigned long long started_us;
+
+    started_us = clock_now_us();
+    on_effect_spawned(id, name, x, y);
+    add_output_time(OUTPUT_EFFECTS, started_us);
+}
+
+void script_bridge_take_output_times(char *text, unsigned int size)
+{
+    snprintf(text, size, "actors_us=%llu actor_calls=%u camera_us=%llu soul_us=%llu effects_us=%llu", output_us[OUTPUT_ACTORS], actor_calls, output_us[OUTPUT_CAMERA], output_us[OUTPUT_SOUL], output_us[OUTPUT_EFFECTS]);
+    memset(output_us, 0, sizeof(output_us));
+    actor_calls = 0u;
+}
+
+void script_bridge_forget_output_times(void)
+{
+    memset(output_us, 0, sizeof(output_us));
+    actor_calls = 0u;
+}
+
 static const struct script_outputs bridge_outputs = {
     .stage_cleared = on_stage_cleared,
     .scene_change_was_forced = on_scene_change_was_forced,
     .room_loaded = on_room_loaded,
     .camera_cut = on_camera_cut,
-    .camera_moved = on_camera_moved,
+    .camera_moved = timed_camera_moved,
     .world_origin_changed = on_world_origin_changed,
     .ui_clip_started = on_ui_clip_started,
     .hud_changed = on_hud_changed,
     .screen_filter_changed = on_screen_filter_changed,
     .mask_fade_color_changed = on_mask_fade_color_changed,
-    .actor_changed = on_actor_changed,
+    .actor_changed = timed_actor_changed,
     .brightness_changed = on_brightness_changed,
     .background_color_level_changed = on_background_color_level_changed,
     .mask_fade_changed = on_mask_fade_changed,
@@ -871,14 +982,14 @@ static const struct script_outputs bridge_outputs = {
     .iris_alpha_ramped = on_iris_alpha_ramped,
     .iris_moved = on_iris_moved,
     .iris_deleted = on_iris_deleted,
-    .effect_spawned = on_effect_spawned,
+    .effect_spawned = timed_effect_spawned,
     .effect_deleted = on_effect_deleted,
     .staff_roll_changed = script_view_staff_roll_changed,
     .effect_status_set = script_view_effect_status_set,
     .effect_fade_out_started = script_view_effect_fade_out_started,
     .effect_stepping_changed = script_view_effect_stepping_changed,
     .effect_signalled = script_view_effect_signalled,
-    .effect_moved = script_view_effect_moved,
+    .effect_moved = timed_effect_moved,
     .narration_changed = on_narration_changed,
     .balloon_opened = on_balloon_opened,
     .balloon_closed = on_balloon_closed,
@@ -894,10 +1005,10 @@ static const struct script_outputs bridge_outputs = {
     .sounds_stopped = on_sounds_stopped,
     .soul_vision_changed = on_soul_vision_changed,
     .phone_view_ended = scene_stage_clear_room,
-    .soul_cursor_moved = script_view_cursor_moved,
-    .soul_chain_moved = script_view_chain_moved,
-    .soul_core_marked = script_view_core_marked,
-    .soul_mark_changed = script_view_mark_changed,
+    .soul_cursor_moved = timed_soul_cursor_moved,
+    .soul_chain_moved = timed_soul_chain_moved,
+    .soul_core_marked = timed_soul_core_marked,
+    .soul_mark_changed = timed_soul_mark_changed,
     .soul_flash_changed = script_view_soul_flash_changed,
     .film_frame_changed = script_view_film_frame_changed,
     .swirl_changed = script_view_swirl_changed,
@@ -907,7 +1018,7 @@ static const struct script_outputs bridge_outputs = {
     .movie_started = start_movie_with_its_sound,
     .movie_of_class_started = on_movie_of_class_started,
     .soul_sparks_changed = script_view_soul_sparks_changed,
-    .soul_object_styled = on_soul_object_styled,
+    .soul_object_styled = timed_soul_object_styled,
     .marked = on_marked,
     .talk_changed = on_talk_changed
 };

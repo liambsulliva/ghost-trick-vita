@@ -36,6 +36,7 @@
 #include "ds_units.h"
 
 #define TICK_LONG_US 8000ull
+#define TICK_OUTPUT_TEXT_MAX 160
 #define MICROSECONDS_PER_VM_TICK 16666ULL
 #define AUDIO_MOST_SPEED_OUT_OF_256 (32 * PLAYBACK_SPEED_NORMAL)
 #define AUDIO_SPEED_SMOOTHING 8
@@ -869,7 +870,12 @@ static int run_one_tick(void)
     }
     script_bridge_finish_tick();
     if (clock_now_us() - started_us > TICK_LONG_US) {
-        run_log_write("script tick_long tick=%u route_us=%llu machine_us=%llu bridge_us=%llu", data->machine.tick, route_us, tick_us - route_us, clock_now_us() - started_us - tick_us);
+        char output_times[TICK_OUTPUT_TEXT_MAX];
+
+        script_bridge_take_output_times(output_times, sizeof(output_times));
+        run_log_write("script tick_long tick=%u route_us=%llu machine_us=%llu bridge_us=%llu %s", data->machine.tick, route_us, tick_us - route_us, clock_now_us() - started_us - tick_us, output_times);
+    } else {
+        script_bridge_forget_output_times();
     }
     if (data->machine.is_finished) {
         finish_run();
