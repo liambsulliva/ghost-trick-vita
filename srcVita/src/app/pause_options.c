@@ -512,7 +512,7 @@ static void act_on_row(void)
         break;
     case JOB_LANGUAGE:
         dropdown_is_open = 1;
-        dropdown_hovered = game_settings_now()->language;
+        dropdown_hovered = asset_language_position_of(asset_language_carried_or_english(game_settings_now()->language));
         break;
     case JOB_CREDITS:
         staff_credits_start(&credits);
@@ -531,12 +531,15 @@ static void act_on_row(void)
 
 static void choose_language(int index)
 {
+    int language;
+
     dropdown_is_open = 0;
-    if (game_settings_now()->language == index) {
+    language = asset_language_carried_at(index);
+    if (game_settings_now()->language == language) {
         return;
     }
-    game_settings_now()->language = index;
-    run_log_write("pause option language=%s", languages[index]);
+    game_settings_now()->language = language;
+    run_log_write("pause option language=%s", languages[language]);
     game_settings_apply();
     settings_changed = 1;
 }
@@ -549,7 +552,7 @@ static int step_dropdown(unsigned int pressed)
         choose_language(dropdown_hovered);
     } else if ((pressed & INPUT_UP) && dropdown_hovered > 0) {
         dropdown_hovered = dropdown_hovered - 1;
-    } else if ((pressed & INPUT_DOWN) && dropdown_hovered < LANGUAGE_COUNT - 1) {
+    } else if ((pressed & INPUT_DOWN) && dropdown_hovered < asset_language_carried_count() - 1) {
         dropdown_hovered = dropdown_hovered + 1;
     }
     return PAUSE_OPTIONS_STAYS;
@@ -696,7 +699,7 @@ void pause_options_enter_on_language(void)
     selected = dropdown_row();
     scroll = scroll_target();
     dropdown_is_open = 1;
-    dropdown_hovered = game_settings_now()->language;
+    dropdown_hovered = asset_language_position_of(asset_language_carried_or_english(game_settings_now()->language));
     leaves_with_dropdown = 1;
 }
 
@@ -741,7 +744,7 @@ static int dropdown_row(void)
 
 static float dropdown_top(void)
 {
-    return row_y[dropdown_row()] + DROP_OVERLAP - (DROP_PAD + (float)LANGUAGE_COUNT * DROP_ITEM_STEP) - scroll;
+    return row_y[dropdown_row()] + DROP_OVERLAP - (DROP_PAD + (float)asset_language_carried_count() * DROP_ITEM_STEP) - scroll;
 }
 
 static int language_at(float x, float y)
@@ -752,7 +755,7 @@ static int language_at(float x, float y)
     if (x < VALUE_LEFT || x > VALUE_RIGHT) {
         return -1;
     }
-    for (index = 0; index < LANGUAGE_COUNT; index++) {
+    for (index = 0; index < asset_language_carried_count(); index++) {
         centre = dropdown_top() + DROP_FIRST + (float)index * DROP_ITEM_STEP;
         if (fabsf(y - centre) <= DROP_ITEM_STEP / 2.0f) {
             return index;
@@ -878,7 +881,7 @@ static const char *value_key(const struct option_row *row, char *key, unsigned i
     } else if (row->job == JOB_MUSIC_TYPE) {
         snprintf(key, key_size, "row.%s", game_settings_now()->music_type == GAME_MUSIC_ORIGINAL ? "original" : "arranged");
     } else if (row->job == JOB_LANGUAGE) {
-        snprintf(key, key_size, "language.%s", languages[game_settings_now()->language]);
+        snprintf(key, key_size, "language.%s", languages[asset_language_carried_or_english(game_settings_now()->language)]);
     } else if (row->job == JOB_HINTS) {
         snprintf(key, key_size, "%s", hint_delay_keys[game_settings_now()->hint_delay]);
     } else if (switch_of(row->job) != NULL) {
@@ -959,13 +962,13 @@ static void draw_dropdown(float x_offset)
     int index;
 
     top = dropdown_top();
-    pause_draw_slice("box", VALUE_LEFT + x_offset, top, VALUE_RIGHT - VALUE_LEFT, DROP_PAD + (float)LANGUAGE_COUNT * DROP_ITEM_STEP, 1.0f);
-    for (index = 0; index < LANGUAGE_COUNT; index++) {
+    pause_draw_slice("box", VALUE_LEFT + x_offset, top, VALUE_RIGHT - VALUE_LEFT, DROP_PAD + (float)asset_language_carried_count() * DROP_ITEM_STEP, 1.0f);
+    for (index = 0; index < asset_language_carried_count(); index++) {
         centre = top + DROP_FIRST + (float)index * DROP_ITEM_STEP;
         if (index == dropdown_hovered) {
             pause_draw_slice("choice", VALUE_LEFT + DROP_CHOICE_INSET + x_offset, centre - DROP_CHOICE_HALF, VALUE_RIGHT - VALUE_LEFT - 2.0f * DROP_CHOICE_INSET, 2.0f * DROP_CHOICE_HALF, 1.0f);
         }
-        snprintf(key, sizeof(key), "language.%s", languages[index]);
+        snprintf(key, sizeof(key), "language.%s", languages[asset_language_carried_at(index)]);
         pause_draw_text(key, (VALUE_LEFT + VALUE_RIGHT) / 2.0f + x_offset, centre, PAUSE_ANCHOR_CENTRE, index == 0 ? 1.0f : GREYED_ALPHA);
     }
 }

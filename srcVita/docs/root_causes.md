@@ -1937,6 +1937,14 @@ Guard: `ds_effect_movies.py` reads the `bws.` movie, walks its timeline the way 
 
 Not done: ids 42, 240, 248, 249 and 255 (full-screen, over the page limit) and 123, 141, 170 and 216 (driven by status labels the game sets). Branching frame scripts play as plain timelines. The built-in call ids are named from the remaster's records, not from the native interpreter. Not checked on the device; the pale band to a core in the capture may be `soul_beam` (root cause 250) rather than effect 84 or 91.
 
+### 257. DS mode listed languages it had no text or font for
+
+The DS set baked English only, but the app's language list was its fixed nine, so DS mode showed blank rows for the languages the cartridge font cannot write (Japanese, both Chinese, Korean) and offered French, Italian, German and Spanish with English text. The user decided on 2026-11-15 that DS mode shows only the five languages the USA cartridge carries, each baked from the cartridge's own message files.
+
+The class: the app assumed every set carries every language; which languages a set has was never recorded by the bake that makes them.
+
+Guard: the converter writes `lang/languages.txt` from what it baked: the remastered set its nine, the DS set English and each language whose DS code differs from English's and whose script message files the cartridge holds (`ds_languages.py`; fr, gr, it and sp, read from `<script>.<code>.xml.lz` and `system_0000.<code>.msg.xml.lz`). The DS overlays run the shared text, interface, balloon and menu bake per language, with the `cpac_3d.bin` texture group for that language. The app lists, uses and maps the system language only to listed languages and falls back to English without rewriting the saved setting (`asset_language_carries`, `asset_language_carried_or_english`); a set with no list shows all nine, as before. `ds_languages.check_listed_languages` refuses a listed language with no overlay, a list unlike the bake, or a language with no texture group, which replaces a silent fall back to English textures. `tests/tools/test_ds_languages.py`, `tests/unit/test_asset_language.c` and `tests/unit/test_pause_options.c` cover it.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

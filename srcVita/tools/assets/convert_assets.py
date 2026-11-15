@@ -20,6 +20,7 @@ import class_movies
 import ds_effect_movies
 import ds_music
 import ds_rom
+import ds_languages
 import ds_rooms
 import ds_set
 import ds_sounds
@@ -339,10 +340,11 @@ def convert_language(packs, base_set, base_language, language, text_key, ds_rom_
 
 def convert_other_languages(packs, set_description, text_key, ds_rom_path, output_folder, record, base, tables):
     if not set_description.get("languages") or not narration.set_uses_text(set_description) or text_key is None:
-        return {}, set()
+        english_only = languages.list_files(languages.load_languages()[:1])
+        return english_only, set(english_only)
     every_language = languages.load_languages(os.path.join(ASSET_TOOLS_FOLDER, set_description["languages"]))
-    files = {}
-    paths = set()
+    files = languages.list_files(every_language)
+    paths = set(files)
     failures = []
     for language in languages.other_languages(every_language):
         language_files, language_paths, language_failures = convert_language(packs, set_description, every_language[0], language, text_key, ds_rom_path, output_folder, record, base, tables)
@@ -688,8 +690,15 @@ def convert_ds_set_description(set_description, output_folder, ds_rom_path=DEFAU
         files.update({"animations/" + name + ".anim": text.encode("ascii") for name, text in art["animation_texts"].items()})
         files.update(art["files"])
         files.update(script_assets.table_files(set_description, output_folder, art["motion_lines"], art["narration_lines"], texture_sizes, texture_sizes, list(art["animation_texts"]), art["talk_textures"]))
+        base = {"files": dict(files), "texture_sizes": texture_sizes, "animation_texts": art["animation_texts"], "motion_lines": art["motion_lines"]}
+        work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
+        try:
+            language_files, language_paths = ds_languages.bake_overlays(set_description, scripts, arm9, cartridge, ds_rom_path, output_folder, record, work_folder, base)
+        finally:
+            delete_work_folder(work_folder)
+        files.update(language_files)
         manifest = asset_writers.manifest_text([], plate_names, [], [DS_ART]).encode("ascii")
-        write_outputs(output_folder, record, [], files, manifest, list(script_paths) + plate_paths + art["texture_paths"])
+        write_outputs(output_folder, record, [], files, manifest, list(script_paths) + plate_paths + art["texture_paths"], language_paths)
     finally:
         record.save()
     print("ds set: %d plates, %d textures, %d animations, %d sounds, %d music tracks" % (len(plate_names), len(art["texture_paths"]), len(art["animation_texts"]), len(set_description["sounds"]), len(music_files) - sum(1 for name in music_files if name.endswith(".loop"))))
@@ -723,7 +732,7 @@ def convert_and_report(set_description, arguments):
                 allow_rom_reads()
             return 0
         convert_set_description(set_description, arguments.output, arguments.apk_folder, text_key, arguments.ds_rom)
-    except (narration.NarrationError, ds_rom.RomRefused, script_assets.ScriptBakeError, ApkReadRefused, RomReadRefused, chapter_assets.ChapterBakeError, remaster_tables.TablesError, remaster_scripts.RemasterScriptError) as error:
+    except (narration.NarrationError, ds_rom.RomRefused, script_assets.ScriptBakeError, ApkReadRefused, RomReadRefused, chapter_assets.ChapterBakeError, remaster_tables.TablesError, remaster_scripts.RemasterScriptError, ds_languages.DsLanguageError) as error:
         print("error: " + str(error), file=sys.stderr)
         return 1
     except ConversionFailed as failed:
