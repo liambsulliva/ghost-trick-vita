@@ -248,6 +248,18 @@ class CatTests(unittest.TestCase):
         width, height, texture_format = ds_pause.asset_writers.read_gtex_header(gtex)
         self.assertEqual((width, height, texture_format), (pause_art.PAGE_SIZE, pause_art.PAGE_SIZE, ds_pause.asset_writers.FORMAT_RGBA8888))
 
+    def test_a_soft_cat_keeps_its_size_and_colour_and_softens_its_edge(self):
+        image = np.zeros((8, 8, 4), dtype=np.uint8)
+        image[2:6, 2:6] = RED
+        soft = pause_art.softened(image)
+        self.assertEqual(soft.shape, image.shape)
+        self.assertEqual(tuple(soft[3, 3]), tuple(RED))
+        self.assertTrue(0 < soft[1, 3, 3] < 255)
+        self.assertEqual(tuple(soft[1, 3, :3]), tuple(RED[:3]))
+        self.assertEqual(soft[0, 0, 3], 0)
+        gtex = pause_art.cat_page_gtex(None, "pause_cat_00", np.zeros((pause_art.PAGE_SIZE, pause_art.PAGE_SIZE, 4), dtype=np.uint8), pause_art.SOFT_FILTER)
+        self.assertEqual(ds_pause.asset_writers.read_gtex_header(gtex)[2], ds_pause.asset_writers.FORMAT_RGBA8888)
+
 
 if __name__ == "__main__":
     unittest.main()

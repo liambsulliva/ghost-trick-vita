@@ -1857,6 +1857,20 @@ The Visual Filter row flipped on one press, and the app then restarts to load th
 
 Guard: the row opens the options' yes or no dialog first (`row.filter_ask`, `bar.filter_warning`, in every language) and flips only on yes; a pinned filter still does nothing. `tests/unit/test_pause_options.c` checks a press opens the dialog, No leaves the filter alone and Yes switches it.
 
+### 248. Talk text sat further from the box's left edge than from its top and bottom
+
+In both sets the first glyph of a talk page began further in from the box's left edge than the text block sat from the box's top and bottom: the remastered set placed it 40 pixels in from the bottom box (15.5 above and below a full page) and 24 in from the top box (21.5), and the DS set kept the DS window's own margin, which root cause 245 measured against a different frame. The user asked for the left margin to equal the top and bottom margin, the same way in both sets.
+
+The class: a text margin set by hand per set and per box, so the two sets and the three boxes drifted apart.
+
+Guard: both talk bakers pass their finished rows through `talk_assets.even_left_margins`, which measures, for each box kind, the median top-and-bottom ink margin of the fullest pages that fit inside the box, and moves every page so its ink starts that far from the box's left edge (`BOX_LEFT`). Centred system lines are left alone. It replaces root cause 245's `APP_BOX_LEFT` shift. The remastered set lands at 15.5 (bottom) and 21.5 (top), the DS set at 10 and 16, since its font and line pitch are the cartridge's. `tests/tools/test_talk_margins.py` checks the margin on synthetic pages, that a fixed talk stays, that a page spilling out of its box does not set the margin, and that the box edges match `script_view.c`.
+
+### 249. The DS pause and loading cat was drawn with hard pixel steps
+
+Root cause 244 baked the DS cat at its DS pixels, enlarged with no filtering. The user asked for a slightly smoothed cat at the same size and from the same sprites.
+
+Guard: `pause_art.SOFT_FILTER` keeps the nearest-neighbour enlargement and then runs a 1-2-1 blur on premultiplied colour (`softened`), so each DS pixel's edge blends over one screen pixel without darkening the outline; the page stays uncompressed RGBA. `ds_pause.bake_cat` uses it. `tests/tools/test_ds_pause.py` checks the size and colour are kept, the edge is part-covered and the page stays RGBA8888.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
