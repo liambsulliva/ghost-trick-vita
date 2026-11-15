@@ -1871,6 +1871,16 @@ Root cause 244 baked the DS cat at its DS pixels, enlarged with no filtering. Th
 
 Guard: `pause_art.SOFT_FILTER` keeps the nearest-neighbour enlargement and then runs a 1-2-1 blur on premultiplied colour (`softened`), so each DS pixel's edge blends over one screen pixel without darkening the outline; the page stays uncompressed RGBA. `ds_pause.bake_cat` uses it. `tests/tools/test_ds_pause.py` checks the size and colour are kept, the edge is part-covered and the page stays RGBA8888.
 
+### 250. The soul and its line to a core did not draw in DS mode
+
+The app draws the soul in the ghost world from four textures the remastered set cuts from Android art: flat blobs for the body and puddle (`soul_blob`), an orb at its base (`soul_orb`), the glow on each core (`soul_glow`) and the band to the next core (`soul_beam`). The DS set had none of them, so only the possessed object's lavender tint showed. A melonDS capture of the Chapter 1 tutorial shows the DS draws the soul the same way: a flat cyan body, a lavender-white orb at its base, a blue glow on the cores and a pale band, from `cpac_3d.bin` block 0 textures 6 (a disc), 15 (a small glow), 14 (a soft glow) and 28 (a band), with the body in texture 26's cyan.
+
+The class: an app texture slot with no `ds_textures` entry, found only when someone sees it missing on the device.
+
+Guard: `ds_textures` fills the four slots, and a part can take the main colour of another cartridge texture (`flat_color_of`), so the blob is the cartridge's own cyan. The blob keeps the 59% disc share `script_view.c` draws it by. `tests/tools/test_ds_texture_slots.py` collects every texture name the app's source asks for, and the banner names, and fails unless each has a `ds_textures` entry or is in its list of known cartridge gaps, which names why. `tests/tools/test_ds_ui.py` checks the colour rule and the blob's disc share. `soul_ring` was dropped from both sets: nothing drew it, the app only preloaded it.
+
+Not done: the flower of lines around the soul (`soul_dim`, a flipbook in the remastered set) and Ray's light, which is effect movie `ef01_light_000`/`001` (effect ids 84 and 91) in the remastered set; the DS set bakes no effects yet.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

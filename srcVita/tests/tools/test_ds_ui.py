@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import tempfile
 import unittest
@@ -13,7 +14,7 @@ RED = bytes((255, 0, 0, 255))
 BLUE = bytes((0, 0, 255, 255))
 CLEAR = bytes(4)
 GAME_DESCRIPTION = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "tools", "assets", "game.json")
-TEXTURES_THE_APP_DRAWS_WITH_NO_PARTS_OF_ITS_OWN = ["talk_box_top", "talk_box_bottom", "ui_choice_buttons", "ui_select_button", "ui_tap_balloon", "rewind_rocks_far", "rewind_rocks_mid", "rewind_rocks_near", "soul_spokes", "hud_pills", "pause_backdrop", "title_logo"]
+TEXTURES_THE_APP_DRAWS_WITH_NO_PARTS_OF_ITS_OWN = ["talk_box_top", "talk_box_bottom", "ui_choice_buttons", "ui_select_button", "ui_tap_balloon", "rewind_rocks_far", "rewind_rocks_mid", "rewind_rocks_near", "soul_spokes", "hud_pills", "pause_backdrop", "title_logo", "soul_glow", "soul_orb", "soul_blob", "soul_beam"]
 
 
 def image(width, height, pixels):
@@ -143,6 +144,22 @@ class PillSheetTests(unittest.TestCase):
         cell_width = sheet["width"] // 2
         cell_height = sheet["height"] // pills
         self.assertEqual(cells, sorted((column * cell_width, row * cell_height, cell_width, cell_height) for row in range(pills) for column in range(2)))
+
+    def test_a_part_can_take_the_main_colour_of_another_texture(self):
+        pack = FakePack({1: image(2, 1, [RED, CLEAR]), 2: image(3, 1, [BLUE, BLUE, RED])})
+        width, height, rgba = ds_ui.compose({"name": "t", "width": 2, "height": 1, "parts": [{"texture": 1, "flat_color_of": 2}]}, lambda index, opaque: pack.texture(index))
+        self.assertEqual(pixel(rgba, width, 0, 0), BLUE)
+        self.assertEqual(pixel(rgba, width, 1, 0)[3], 0)
+        self.assertNotEqual(ds_ui.source_of({"parts": [{"texture": 1, "flat_color_of": 2}]}, pack, 1), ds_ui.source_of({"parts": [{"texture": 1}]}, pack, 1))
+
+    def test_the_ds_soul_blob_keeps_the_disc_share_the_app_draws_it_by(self):
+        with open(GAME_DESCRIPTION, encoding="utf-8") as source:
+            blob = next(entry for entry in json.load(source)["ds_textures"] if entry["name"] == "soul_blob")
+        with open(os.path.join(os.path.dirname(GAME_DESCRIPTION), "..", "..", "src", "app", "script_view.c"), encoding="utf-8") as source:
+            share = float(re.search(r"#define SOUL_BLOB_DISC_FRACTION ([0-9.]+)f", source.read()).group(1))
+        part = blob["parts"][0]
+        self.assertEqual(part["x"], part["y"])
+        self.assertAlmostEqual((blob["width"] - 2 * part["x"]) / blob["width"], share, delta=0.01)
 
 
 if __name__ == "__main__":

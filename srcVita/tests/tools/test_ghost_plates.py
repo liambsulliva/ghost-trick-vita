@@ -37,7 +37,7 @@ class GhostPlatesTest(unittest.TestCase):
 
 class GhostTurnTest(unittest.TestCase):
     def test_only_soul_red_classes_turn_with_the_ghost(self):
-        soul_view = {"owner": "a", "ring": "b", "classes": {"0000000a": [0.85, 0.12, 0.07, 1, 0], "0000000b": [0.7, 0.38, 0.03, 1, 1], "0000000c": [0.17, 0.41, 0.66, 1, 1]}}
+        soul_view = {"owner": "a", "classes": {"0000000a": [0.85, 0.12, 0.07, 1, 0], "0000000b": [0.7, 0.38, 0.03, 1, 1], "0000000c": [0.17, 0.41, 0.66, 1, 1]}}
         flags = {line.split()[1]: line.split()[-1] for line in script_assets.soul_text(soul_view).splitlines() if line.startswith("class ")}
         self.assertEqual(flags, {"0000000a": "1", "0000000b": "0", "0000000c": "0"})
 

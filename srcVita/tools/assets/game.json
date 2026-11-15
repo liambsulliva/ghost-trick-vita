@@ -1048,12 +1048,6 @@
       "height": 256
     },
     {
-      "name": "soul_ring",
-      "source": "natives/android/charfiles/3d/05_effect/cmn_shig_00/23_cmn_shig_00_01_iml4.tex.691230823",
-      "width": 512,
-      "height": 512
-    },
-    {
       "name": "phone_cap",
       "source": "natives/android/charfiles/3d/04_item/demotell01_iml4.tex.691230823",
       "width": 128,
@@ -1781,6 +1775,55 @@
   ],
   "ds_textures": [
     {
+      "name": "soul_glow",
+      "width": 128,
+      "height": 128,
+      "parts": [
+        {
+          "texture": 14,
+          "width": 128,
+          "height": 128
+        }
+      ]
+    },
+    {
+      "name": "soul_orb",
+      "width": 64,
+      "height": 64,
+      "parts": [
+        {
+          "texture": 15,
+          "width": 64,
+          "height": 64
+        }
+      ]
+    },
+    {
+      "name": "soul_blob",
+      "width": 54,
+      "height": 54,
+      "parts": [
+        {
+          "texture": 6,
+          "x": 11,
+          "y": 11,
+          "flat_color_of": 26
+        }
+      ]
+    },
+    {
+      "name": "soul_beam",
+      "width": 256,
+      "height": 64,
+      "parts": [
+        {
+          "texture": 28,
+          "width": 256,
+          "height": 64
+        }
+      ]
+    },
+    {
       "name": "pause_backdrop",
       "width": 240,
       "height": 136,
@@ -2296,7 +2339,6 @@
   ],
   "soul_view": {
     "owner": "cicel",
-    "ring": "soul_ring",
     "cores": [
       "shadanki"
     ],

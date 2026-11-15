@@ -80,6 +80,26 @@ def cut_out(image, rule):
     return width, height, bytes(result)
 
 
+def main_color(image):
+    width, height, rgba = image
+    counts = {}
+    for place in range(0, width * height * RGBA_BYTES, RGBA_BYTES):
+        if rgba[place + 3] == FULL_ALPHA:
+            color = rgba[place:place + 3]
+            counts[color] = counts.get(color, 0) + 1
+    if not counts:
+        raise DsUiError("a DS texture to take a colour from has no opaque pixel")
+    return max(counts, key=lambda color: (counts[color], color))
+
+
+def flat_colored(image, color):
+    width, height, rgba = image
+    result = bytearray(rgba)
+    for place in range(0, width * height * RGBA_BYTES, RGBA_BYTES):
+        result[place:place + 3] = color
+    return width, height, bytes(result)
+
+
 def place_in_cell(image, cell, align):
     cell_x, cell_y, cell_width, cell_height = cell
     if image[0] > cell_width or image[1] > cell_height:
@@ -125,6 +145,8 @@ def compose(description, texture_of):
             image = cropped(image, part["crop"])
         if "cut_out" in part:
             image = cut_out(image, part["cut_out"])
+        if "flat_color_of" in part:
+            image = flat_colored(image, main_color(texture_of(part["flat_color_of"], False)))
         if "cell" in part:
             image = trimmed(image)
             x, y = place_in_cell(image, part["cell"], part.get("align", [0.5, 0.5]))
@@ -141,8 +163,9 @@ def compose(description, texture_of):
 def source_of(description, pack, language):
     sources = []
     for part in description["parts"]:
-        stored = pack.texture_bytes(part["texture"], language)
-        sources.append(len(stored).to_bytes(4, "little") + stored)
+        for index in [part["texture"]] + ([part["flat_color_of"]] if "flat_color_of" in part else []):
+            stored = pack.texture_bytes(index, language)
+            sources.append(len(stored).to_bytes(4, "little") + stored)
     return b"".join(sources)
 
 
