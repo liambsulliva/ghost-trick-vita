@@ -279,6 +279,16 @@ static void on_brightness_changed(int signed_level)
     scene_effects_set_flash(scene_stage_effects(), (float)white_level / ((float)NATIVE_BRIGHTNESS_SCALE));
 }
 
+static void hide_the_card(void)
+{
+    if (!card_is_showing) {
+        return;
+    }
+    card_is_showing = 0;
+    scene_stage_hide_card();
+    write_cue("card", "hide");
+}
+
 static void on_mask_fade_changed(int is_alive, int alpha)
 {
     mask_fade_alpha = (float)alpha / ((float)NATIVE_ALPHA_FULL);
@@ -287,10 +297,8 @@ static void on_mask_fade_changed(int is_alive, int alpha)
         mask_fade_is_white = 0;
         mask_fade_alpha = 0.0f;
     }
-    if (!is_alive && card_is_showing) {
-        card_is_showing = 0;
-        scene_stage_hide_card();
-        write_cue("card", "hide");
+    if (!is_alive) {
+        hide_the_card();
     }
 }
 
@@ -998,6 +1006,9 @@ void script_bridge_finish_tick(void)
 {
     run_due_overlays();
     shake_balloons();
+    if (card_is_showing && (int)(tick - card_started_tick) >= CARD_FADE_OUT_ENDS) {
+        hide_the_card();
+    }
     apply_fade();
     apply_mask_rule();
     if (zoom_ticks_left > 0) {
