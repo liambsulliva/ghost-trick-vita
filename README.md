@@ -114,7 +114,7 @@ The port follows the DS game's own code wherever it can. The changes below are d
 
 ## Roadmap
 
-1. **Finish the remaining script opcodes**, on the same data-driven code. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
+1. **Finish the modes still missing inside script ops.** Every opcode the game's scripts use now runs. A few modes inside them still log and carry on instead: some beam, iris and framing modes, some eyecatch kinds, some motion-table words, some GameApp messages, and the hourglass pill. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
 2. **The rest of the settings.** Resolution, and the ghost world's background color for Sissel and, once unlocked, Missile.
 3. **Upload to VitaDB.**
 
