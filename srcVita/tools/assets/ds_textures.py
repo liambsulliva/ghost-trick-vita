@@ -1,5 +1,6 @@
 import struct
 
+import ds_effects
 import ds_sprites
 
 PACK_PATH = "cpac_3d.bin"
@@ -12,6 +13,8 @@ FORMAT_4_COLORS = 2
 FORMAT_16_COLORS = 3
 FORMAT_256_COLORS = 4
 FORMAT_A5I3 = 6
+FORMAT_DIRECT = 7
+DIRECT_ALPHA_BIT = 0x8000
 INDEX_BITS = {FORMAT_4_COLORS: 2, FORMAT_16_COLORS: 4, FORMAT_256_COLORS: 8}
 SMALLEST_ROW = 8
 FULL_ALPHA = 255
@@ -41,6 +44,18 @@ def translucent_indexes(data, index_bits):
     return [(byte & mask, (byte >> index_bits) * FULL_ALPHA // alpha_levels) for byte in data]
 
 
+def direct_colors(data, width_code, width, height):
+    row_width = SMALLEST_ROW << width_code
+    if width > row_width or width == 0 or height == 0 or len(data) < row_width * height * 2:
+        raise TextureRefused("a DS texture's size does not match its pixels")
+    words = struct.unpack_from("<%dH" % (row_width * height), data, 0)
+    rgba = bytearray()
+    for row in range(height):
+        for word in words[row * row_width:row * row_width + width]:
+            rgba += bytes(color_of(word)) + bytes((FULL_ALPHA if word & DIRECT_ALPHA_BIT else 0,))
+    return width, height, bytes(rgba)
+
+
 def decode(texture_bytes, first_color_is_clear=True):
     if len(texture_bytes) < HEADER_SIZE:
         raise TextureRefused("a DS texture is shorter than its header")
@@ -59,6 +74,8 @@ def decode(texture_bytes, first_color_is_clear=True):
         indexes = translucent_indexes(data, 5)
     elif texture_format == FORMAT_A5I3:
         indexes = translucent_indexes(data, 3)
+    elif texture_format == FORMAT_DIRECT:
+        return direct_colors(data, width_code, width, height)
     else:
         raise TextureRefused("DS texture format %d is not decoded" % texture_format)
     row_width = SMALLEST_ROW << width_code
@@ -79,8 +96,10 @@ class TexturePack:
 
     def texture_bytes(self, index, language=1):
         try:
+            if isinstance(index, dict):
+                return ds_effects.EffectPack(self.pack).texture_bytes(index["effect"], index["item"], language)
             return self.pack.entry(TEXTURE_BLOCK, index, language)
-        except ds_sprites.SpriteRefused as error:
+        except (ds_sprites.SpriteRefused, ds_effects.EffectRefused) as error:
             raise TextureRefused(str(error))
 
     def texture(self, index, language=1, first_color_is_clear=True):

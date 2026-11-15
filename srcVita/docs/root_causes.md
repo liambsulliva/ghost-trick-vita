@@ -1889,6 +1889,16 @@ The class: a screen-filling texture drawn at its texel size, which holds only wh
 
 Guard: the pause menu stretches the backdrop across the screen (`draw_across_screen`), as the loading screen does. `tests/unit/test_pause_menu.c` checks an 8 by 8 backdrop is drawn over the whole screen.
 
+### 252. The TRICK, TRACE and FATE banners had no words in DS mode
+
+The centre labels between the red lines drew nothing, and the log listed `banner_trick`, `banner_trace`, `banner_averted`, `banner_changed` and `banner_star` missing. A search of `cpac_3d.bin` block 0, where the interface textures are, found no such lettering, because the DS keeps it in effect files. The eyecatch command (`func_02013a88`) sets game modes 9 to 0xd, `func_02032488` starts `pGameEyeCatch`, whose init (`func_020318c4`, `func_02031b88`) spawns a generic effect with kind 326, 331, 241 or 211 from `data_02099d08`, and `func_0204235c` loads that kind from `cpac_3d.bin` block 3 (`func_0201e888(reader, 3, kind)`). An effect file is a count, offsets, a `bws.` script and `sdt.` textures behind an 8-byte header whose bit 0 marks LZ10. In each eyecatch effect, item 2 is the fluted band, item 3 the lettering ("Trick Time!", "Trace Complete!", "Fate Averted!", "Fate Changed!", one per language) and item 4 the star.
+
+The class: DS art drawn by an effect, not by an interface texture or a sprite resource.
+
+Guard: `ds_effects.py` reads block 3 effects, and a `ds_textures` part can name `{"effect": kind, "item": n}`; DS direct-colour textures (format 7) decode too. The five banners crop the lettering to the shape `ui_clips.py` draws them at. `tests/tools/test_ds_effects.py` checks the container, that every effect a set names decodes in all five languages, that every texture item of every block 3 effect decodes, and the banners' shape. Before calling a DS slot a cartridge gap, follow the native class that draws it to the block it loads from.
+
+Not done: the DS fluted band (item 2) has no slot and the app draws its own red band; timing follows the remaster's keyframes, since the `bws.` script is not decoded; the banners draw at about 2.5 Vita pixels a DS pixel against 2.83 for the whole screen.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

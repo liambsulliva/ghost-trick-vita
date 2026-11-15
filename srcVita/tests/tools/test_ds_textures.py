@@ -36,6 +36,12 @@ class DecodeTests(unittest.TestCase):
         _, _, rgba = ds_textures.decode(texture(ds_textures.FORMAT_4_COLORS, 0, 8, 1, bytes([0b11100100, 0]), [0, RED, GREEN, BLUE]))
         self.assertEqual([pixel(rgba, 8, x, 0)[:3] for x in range(1, 4)], [(255, 0, 0), (0, 255, 0), (0, 0, 255)])
 
+    def test_direct_colors_take_alpha_from_the_top_bit(self):
+        data = struct.pack("<8H", 0x8000 | GREEN, RED, *([0] * 6))
+        _, _, rgba = ds_textures.decode(texture(ds_textures.FORMAT_DIRECT, 0, 8, 1, data, []))
+        self.assertEqual(pixel(rgba, 8, 0, 0), (0, 255, 0, 255))
+        self.assertEqual(pixel(rgba, 8, 1, 0)[3], 0)
+
     def test_translucent_formats_split_each_byte_into_alpha_and_color(self):
         _, _, rgba = ds_textures.decode(texture(ds_textures.FORMAT_A3I5, 0, 8, 1, bytes([(7 << 5) | 1, (3 << 5) | 2] + [0] * 6), [0, RED, GREEN]))
         self.assertEqual(pixel(rgba, 8, 0, 0), (255, 0, 0, 255))

@@ -11,11 +11,6 @@ APP_SOURCES = os.path.join(SRC_VITA, "src", "app", "*.c")
 SLOT_DEFINE = re.compile(r'#define \w*TEXTURE "([a-z_0-9]+)"')
 BANNER_NAME = re.compile(r"banner_[a-z]+")
 KNOWN_CARTRIDGE_GAPS = {
-    "banner_averted": "no lettering in cpac_3d block 0",
-    "banner_changed": "no lettering in cpac_3d block 0",
-    "banner_star": "no lettering in cpac_3d block 0",
-    "banner_trace": "no lettering in cpac_3d block 0",
-    "banner_trick": "no lettering in cpac_3d block 0",
     "film_corner": "not found",
     "film_strip": "not found",
     "hud_button_art": "DS pills are whole sprites in hud_pills",

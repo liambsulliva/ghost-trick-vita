@@ -5,7 +5,7 @@ import bake_record
 import ds_textures
 
 TEXTURE_FOLDER = "textures"
-CODE_FILES = ["ds_ui.py", "ds_textures.py", "asset_writers.py"]
+CODE_FILES = ["ds_ui.py", "ds_textures.py", "ds_effects.py", "asset_writers.py"]
 RGBA_BYTES = 4
 FULL_ALPHA = 255
 

@@ -1775,6 +1775,103 @@
   ],
   "ds_textures": [
     {
+      "name": "banner_trick",
+      "width": 273,
+      "height": 60,
+      "parts": [
+        {
+          "texture": {
+            "effect": 326,
+            "item": 3
+          },
+          "crop": [
+            0,
+            12,
+            256,
+            60
+          ],
+          "x": 8,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "name": "banner_trace",
+      "width": 264,
+      "height": 60,
+      "parts": [
+        {
+          "texture": {
+            "effect": 211,
+            "item": 3
+          },
+          "crop": [
+            0,
+            12,
+            256,
+            60
+          ],
+          "x": 4,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "name": "banner_averted",
+      "width": 278,
+      "height": 60,
+      "parts": [
+        {
+          "texture": {
+            "effect": 241,
+            "item": 3
+          },
+          "crop": [
+            0,
+            12,
+            256,
+            60
+          ],
+          "x": 11,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "name": "banner_changed",
+      "width": 276,
+      "height": 60,
+      "parts": [
+        {
+          "texture": {
+            "effect": 331,
+            "item": 3
+          },
+          "crop": [
+            0,
+            12,
+            256,
+            60
+          ],
+          "x": 10,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "name": "banner_star",
+      "width": 80,
+      "height": 80,
+      "parts": [
+        {
+          "texture": {
+            "effect": 326,
+            "item": 4
+          }
+        }
+      ]
+    },
+    {
       "name": "soul_glow",
       "width": 128,
       "height": 128,
