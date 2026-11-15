@@ -1450,7 +1450,7 @@ static void draw_soul(void)
     float screen_x;
     float screen_y;
 
-    if (!soul_is_on || tables == NULL) {
+    if (!soul_is_on || swirl_is_on || tables == NULL) {
         return;
     }
     soul_transition_draw_ghost_lines(scene_stage_soul_ghost());
