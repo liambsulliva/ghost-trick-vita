@@ -491,6 +491,41 @@ static void test_a_sharp_set_draws_each_pill_as_one_sprite_from_its_own_sheet(vo
     script_ui_view_hud_changed(&view);
 }
 
+static void test_a_sharp_set_draws_the_rewind_button_whole_with_its_words(void)
+{
+    static struct script_tables tables;
+    struct script_hud_view view;
+    const struct cached_texture *sheet;
+    const struct fake_draw *draw;
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    fake_files_add_rgba_texture("assets/textures/rewind_button.gtex", 8, 8);
+    texture_cache_init("assets/textures", TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
+    texture_cache_use_sharp_art(1);
+    sheet = texture_cache_load_now("rewind_button");
+    CHECK(sheet->state == CACHED_TEXTURE_READY);
+    memset(&tables, 0, sizeof(tables));
+    script_ui_view_start(&tables);
+    scene_stage_hide_card();
+    scene_stage_set_fade(0.0f);
+    memset(&view, 0, sizeof(view));
+    view.rewind_select_ticks = SCRIPT_REWIND_SLIDE_TICKS;
+    script_ui_view_hud_changed(&view);
+    CHECK(pill_draws_now() > 0);
+    draw = the_only_draw_from(sheet->texture);
+    CHECK(draw != NULL);
+    if (draw != NULL) {
+        CHECK(draw->texture_area.y == 0.0f);
+        CHECK(draw->texture_area.height == 0.5f);
+        CHECK(draw->screen_area.x + draw->screen_area.width / 2.0f == 480.0f);
+    }
+    texture_cache_use_sharp_art(0);
+    memset(&view, 0, sizeof(view));
+    script_ui_view_hud_changed(&view);
+}
+
 int main(void)
 {
     test_a_shown_pill_answers_a_tap_inside_it();
@@ -505,5 +540,6 @@ int main(void)
     test_every_open_choice_panel_draws_its_button_icon_and_caption_over_the_swirl();
     test_choice_panels_still_draw_without_their_button_art();
     test_a_sharp_set_draws_each_pill_as_one_sprite_from_its_own_sheet();
+    test_a_sharp_set_draws_the_rewind_button_whole_with_its_words();
     return test_finish("unit/script_ui_view");
 }

@@ -1909,6 +1909,14 @@ Guard: `ds_talk_icons.py` reads the table and each icon's art per cartridge lang
 
 The port's choice: DS mode shows the cartridge's own pills, d-pad and buttons, not Vita buttons as the remastered set does, because DS mode's HUD draws the same cartridge pills and they work by touch; the cartridge has no CROSS, L or R picture. Not checked: the vertical place against a DS capture (melonDS cannot touch through to the tutorial), and whether icon 281 (texture 982) is the hourglass.
 
+### 254. The DS rewind button had no words
+
+Seen on the Vita: in DS mode the rewind screen showed its red rocks and the orange button, but not "Rewind Time" on the button. The app draws the button as the plain orange shape (`ui_select_button`) and lays the words over it from a cell of the remastered `hud_sheet`, which the DS set does not have. The cartridge keeps each of these buttons as one texture with its words in it: "Rewind Time" is `cpac_3d.bin` texture 672, with 677 and 682 its highlighted and pressed states, one per cartridge language (beside "From Beginning", 642, and "After Fate-Change", 657).
+
+The class: a DS button whose words the cartridge draws into the button, which the app builds from a shape and a label from another set's sheet. Root cause 242 found the same for the pills.
+
+Guard: with sharp art on, the app draws the rewind button whole from `rewind_button` (resting and pressed cells, from 672 and 682) at the pills' 45/16 screen pixels a DS pixel, centred where the remastered button sits. `tests/unit/test_script_ui_view.c` checks a sharp set draws it as one sprite from the resting cell, centred; `tests/tools/test_ds_texture_slots.py` makes the DS set carry it.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

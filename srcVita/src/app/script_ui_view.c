@@ -113,6 +113,10 @@
 #define REWIND_LABEL_SHEET_Y 112.0f
 #define REWIND_LABEL_SHEET_WIDTH 420.0f
 #define REWIND_LABEL_SHEET_HEIGHT 72.0f
+#define WHOLE_REWIND_TEXTURE "rewind_button"
+#define WHOLE_REWIND_CELL_WIDTH 360.0f
+#define WHOLE_REWIND_CELL_HEIGHT 112.5f
+#define WHOLE_REWIND_STATES 2.0f
 #define TOUCH_SLOP_PIXELS 6.0f
 #define TAP_BALLOON_MAX 9
 #define HINT_BALLOON_SLOT 8
@@ -858,6 +862,27 @@ static void draw_rewind_select(void)
         slide = 0.0f;
     }
     button_x = REWIND_BUTTON_X + slide * REWIND_SLIDE_PIXELS;
+    if (texture_cache_sharp_art_is_on()) {
+        const struct cached_texture *whole;
+        struct renderer_rect part;
+
+        whole = ready_texture(WHOLE_REWIND_TEXTURE);
+        if (whole == NULL) {
+            return;
+        }
+        area.width = WHOLE_REWIND_CELL_WIDTH;
+        area.height = WHOLE_REWIND_CELL_HEIGHT;
+        area.x = button_x + (REWIND_BUTTON_WIDTH - area.width) / 2.0f;
+        area.y = REWIND_BUTTON_Y + (REWIND_BUTTON_HEIGHT - area.height) / 2.0f;
+        part.x = 0.0f;
+        part.y = brightness >= 1.0f ? 1.0f / WHOLE_REWIND_STATES : 0.0f;
+        part.width = 1.0f;
+        part.height = 1.0f / WHOLE_REWIND_STATES;
+        tint = white;
+        tint.alpha = alpha;
+        renderer_draw_sprite(whole->texture, area, part, tint);
+        return;
+    }
     draw_select_button(button_x, REWIND_BUTTON_Y, alpha, brightness);
     sheet = ready_texture(PILL_SHEET_TEXTURE);
     if (sheet != NULL) {
