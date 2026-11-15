@@ -1897,6 +1897,100 @@
       ]
     },
     {
+      "name": "card_clock",
+      "width": 110,
+      "height": 110,
+      "parts": [
+        {
+          "texture": {
+            "effect": 202,
+            "item": 1
+          },
+          "crop": [
+            9,
+            9,
+            110,
+            110
+          ]
+        }
+      ]
+    },
+    {
+      "name": "card_wave",
+      "width": 144,
+      "height": 128,
+      "parts": [
+        {
+          "texture": {
+            "effect": 202,
+            "item": 2
+          },
+          "x": 8
+        }
+      ]
+    },
+    {
+      "name": "card_hand_hour",
+      "width": 26,
+      "height": 72,
+      "parts": [
+        {
+          "texture": 191,
+          "x": 5
+        }
+      ]
+    },
+    {
+      "name": "card_hand_minute",
+      "width": 16,
+      "height": 76,
+      "parts": [
+        {
+          "texture": 190,
+          "y": 4
+        }
+      ]
+    },
+    {
+      "name": "card_top_text",
+      "width": 108,
+      "height": 32,
+      "parts": [
+        {
+          "texture": {
+            "effect": 281,
+            "item": 2
+          },
+          "crop": [
+            10,
+            17,
+            108,
+            32
+          ]
+        }
+      ]
+    },
+    {
+      "name": "card_bottom_text",
+      "width": 131,
+      "height": 29,
+      "parts": [
+        {
+          "texture": {
+            "effect": 281,
+            "item": 2
+          },
+          "crop": [
+            0,
+            83,
+            128,
+            29
+          ],
+          "x": 1
+        }
+      ]
+    },
+    {
       "name": "soul_glow",
       "width": 128,
       "height": 128,

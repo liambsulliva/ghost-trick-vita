@@ -1953,6 +1953,16 @@ The class: a picture the DS only ever draws with words baked in, which a screen 
 
 Guard: a `ds_textures` part may name a range of textures in `text_free_of` with a `text_rule`. `ds_ui.text_free` masks each texture's lettering (green above the limit, grown by `grow` pixels, then anything far from the running median) and takes each pixel's median from the textures whose words miss it. A pixel every texture covers is filled from its mirror across the centre, then from its neighbours. `pause_backdrop` is 1042 to 1135, cropped to 16:9. The user chose this over the remaster's art on 2026-11-15, knowing the time line covers every card's centre, so a band there stays smudged. The cartridge-only LiveArea draws the logo over the same backdrop. `tests/tools/test_ds_ui.py` checks the median on synthetic cards and that the DS backdrop has no fill.
 
+### 259. The Minutes Before Death card drew its bands but no words in DS mode
+
+Seen on the Vita: the card before a death showed its bands without "4 Minutes Before Death", its clock or its hands. Native `uBeforeDeathEffect` (`func_02048100`, `func_02048188`) makes a watch, `uSwfPlayWatch` (`func_02047720`, `func_0204776c`), which plays `cpac_3d.bin` block 3 effect 202 (item 1 the red clock face, item 2 the red ring); its draw (`func_0204791c`) gives the two hands block 0 textures 190 and 191. After 24 ticks `func_02048224` makes the telop (`func_02047bc8`), effect 281, whose item 2 holds the localized lettering. That is the eyecatch banners' route (root cause 252), but `test_ds_texture_slots.py` read only `banner_*` names from `ui_clips.py`, so the card's slots, like every other texture a clip names, had neither a DS entry nor a listed gap and the guard still passed.
+
+The class: a texture slot named only in the clip tables, which the slot guard never read.
+
+Guard: `card_clock`, `card_wave`, `card_hand_hour`, `card_hand_minute`, `card_top_text` and `card_bottom_text` map onto those effect items and textures, each at the shape the clip draws it, the text in every cartridge language. `tests/tools/test_ds_texture_slots.py` now collects every texture `ui_clips.all_clips()` draws and lists the rest as known gaps; `tests/tools/test_ds_effects.py` checks that every clip sprite with a DS entry keeps the clip's shape.
+
+Not done: the middle line (time from textures 177 to 189, place from room labels 687 on, chosen by `func_020265fc` through `data_0209b7b4`) has no app slot; the DS has no seconds hand; `hud_disc`, the death count and `wipe_time_passing` are not traced. Which hand is hour and which minute is read from their length. Not checked on the device or in melonDS.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

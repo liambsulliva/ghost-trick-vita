@@ -4,16 +4,24 @@ import os
 import re
 import unittest
 
+import ui_clips
+
 SRC_VITA = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 GAME_DESCRIPTION = os.path.join(SRC_VITA, "tools", "assets", "game.json")
-UI_CLIPS = os.path.join(SRC_VITA, "tools", "assets", "ui_clips.py")
 APP_SOURCES = os.path.join(SRC_VITA, "src", "app", "*.c")
 SLOT_DEFINE = re.compile(r'#define \w*TEXTURE "([a-z_0-9]+)"')
-BANNER_NAME = re.compile(r"banner_[a-z]+")
+NO_TEXTURE = "-"
 KNOWN_CARTRIDGE_GAPS = {
+    "card_hand_seconds": "the DS watch has two hands, textures 190 and 191",
+    "digit_0": "death count not traced",
+    "digit_1": "death count not traced",
+    "digit_2": "death count not traced",
+    "digit_3": "death count not traced",
+    "digit_label": "death count not traced",
     "film_corner": "not found",
     "film_strip": "not found",
     "hud_button_art": "DS pills are whole sprites in hud_pills",
+    "hud_disc": "the DS card backdrop is one texture, effect 281 item 1",
     "hud_sheet": "Vita button glyphs have no cartridge art",
     "narration_arrow": "the DS shows none",
     "phone_cap": "not found",
@@ -24,6 +32,8 @@ KNOWN_CARTRIDGE_GAPS = {
     "talk_cursor": "the DS shows none",
     "ui_hourglass": "the DS has three whole frames, the app wants parts",
     "ui_mark": "not found",
+    "ui_wave_quadrant": "DS 80 is a half arc",
+    "wipe_time_passing": "not in cpac_3d block 0",
 }
 
 
@@ -32,8 +42,7 @@ def slots_the_app_asks_for():
     for path in glob.glob(APP_SOURCES):
         with open(path, encoding="utf-8") as source:
             names.update(SLOT_DEFINE.findall(source.read()))
-    with open(UI_CLIPS, encoding="utf-8") as source:
-        names.update(set(BANNER_NAME.findall(source.read())) - {"banner_clip"})
+    names.update(element["texture"] for clip in ui_clips.all_clips() for element in clip["elements"] if element["texture"] != NO_TEXTURE)
     return names
 
 
@@ -45,7 +54,7 @@ def ds_texture_names():
 class DsTextureSlotTests(unittest.TestCase):
     def test_every_texture_slot_the_app_draws_has_a_ds_entry_or_a_known_gap(self):
         asked = slots_the_app_asks_for()
-        self.assertTrue({"soul_blob", "soul_glow", "soul_orb", "soul_beam", "banner_trick"} <= asked)
+        self.assertTrue({"soul_blob", "soul_glow", "soul_orb", "soul_beam", "banner_trick", "card_clock", "digit_label"} <= asked)
         self.assertEqual(asked - ds_texture_names(), set(KNOWN_CARTRIDGE_GAPS))
 
     def test_a_known_gap_is_a_slot_the_app_asks_for_and_has_no_entry(self):
