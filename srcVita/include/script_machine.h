@@ -230,6 +230,10 @@ struct script_free_unit {
     struct script_actor actor;
 };
 
+#define SCRIPT_FADE_IN_KIND 0
+#define SCRIPT_FADE_OUT_KIND 1
+#define SCRIPT_FADE_FULL_SCALE 0x100
+
 struct script_fade {
     int kind;
     int level;
@@ -674,6 +678,9 @@ int script_ghost_copy_shown_level(const struct script_ghost_copy *copy);
 void script_fades_add(struct script_machine *machine, const struct script_vm *vm, int kind, int frames);
 void script_fades_set_mask(struct script_machine *machine, int target_alpha, int frames);
 void script_fades_end_mask(struct script_machine *machine);
+void script_fade_start(struct script_fade *fade, int kind, int frames, int scale);
+int script_fade_step(struct script_fade *fade);
+int script_fade_brightness(const struct script_fade *fade);
 void script_balloons_count_down(struct script_machine *machine);
 void script_balloons_report_opened(struct script_machine *machine);
 void script_balloons_tap(struct script_machine *machine, int tap_group);

@@ -1723,6 +1723,16 @@ The class: any setting whose effect needs a relaunch is lost if the relaunch com
 
 Guard: `viewer_app_keep_settings_for_relaunch` saves the settings and waits for the write, and `main` calls it before it leaves the loop to relaunch. `tests/integration/test_asset_sets.c` picks DS, relaunches through it, loads the settings again and checks that the DS set is chosen.
 
+### 232. The Credits row in Options could not play the credits
+
+Options listed Credits greyed out, on the title and in the pause menu, because the staff roll lived only inside the script machine: the ending's scripts start each page (op 0xf8), fade it in (0xb), hold the script while it runs (0xf9), sometimes wait (0x2f), fade it out (0xc) and close it (0xfa), with a demo scene between pages. Nothing outside a running script knew a page's fades or the music under the roll, so the title, where no script is loaded, had nothing to play.
+
+Native (root cause 125) sets the page timing in `func_0203dcc0`, `func_02064750` and `func_02064b88`, and the closing in `func_0203ddc4`; the fades are the ending script's. Page 0 in `st15_demo000` fades in over 15 ticks, waits 120 after the page and fades out over 45. Pages 1 to 10 reach a shared `0x2d` call that fades in over 25 and out over 45. Music 35 starts (op 0x106) before page 0.
+
+The class: anything the script gives a sequence, a later screen that replays it needs baked, not copied by hand.
+
+Guard: the converter reads each 0xf8 site, follows a `0x2d` call, and bakes `staffpage <page> <screens> <fade in> <hold> <fade out>` plus `staffmusic <name>` from the music started before the first page (`staff_roll_rows` in `chapter_assets.py`). It stops the bake if a page is not followed by a fade in, the page's wait and a fade out, or is started twice with different fades. `script_staff_page_row_read` reads the row for both the script tables and `staff_credits.c`. The credits player runs every baked page in page order on the native `script_staff_roll` machine and the fade arithmetic of `script_fades.c` (`script_fade_start`, `script_fade_step`), and draws pages through the same `script_view_draw_staff_page` the ending uses. It skips the scenes, waits in black until a page's screens are loaded, and plays the baked music. It hands back whatever music the menu had (`music_remember`, `music_restore`) when the roll ends, on CIRCLE or on a tap of the back pill. The Options row is greyed only when the set bakes no staff pages, as the DS set does. Tests: `tests/tools/test_staff_roll_rows.py`, `tests/unit/test_staff_credits.c` (page order, fades from and to black, waiting for art, the hold, music and its hand-back) and `tests/unit/test_pause_options.c` (the row is selectable, CROSS plays, CIRCLE and the last page return to Options).
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

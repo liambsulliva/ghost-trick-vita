@@ -246,18 +246,24 @@ static int read_fx_movie_line(struct script_tables *tables, const char *line)
 
 static int read_staff_page_line(struct script_tables *tables, const char *line)
 {
-    int page;
-    int screen_count;
+    struct script_staff_page_row row;
 
-    if (sscanf(line, "staffpage %d %d", &page, &screen_count) != 2 || screen_count <= 0) {
+    if (!script_staff_page_row_read(line, &row)) {
         return 0;
     }
-    if (page < 0 || page >= SCRIPT_STAFF_PAGE_MAX) {
+    if (row.page < 0 || row.page >= SCRIPT_STAFF_PAGE_MAX) {
         tables->rows_dropped = tables->rows_dropped + 1;
         return 1;
     }
-    tables->staff_page_screens[page] = screen_count;
+    tables->staff_page_screens[row.page] = row.screen_count;
     return 1;
+}
+
+static int read_staff_music_line(const char *line)
+{
+    char name[ASSET_NAME_MAX];
+
+    return script_staff_music_row_read(line, name, sizeof(name));
 }
 
 static int read_fx_jump_line(struct script_tables *tables, const char *line)
@@ -386,6 +392,9 @@ static int read_effect_line(struct script_tables *tables, const char *line)
     }
     if (text_line_starts_with(line, "staffpage ")) {
         return read_staff_page_line(tables, line);
+    }
+    if (text_line_starts_with(line, "staffmusic ")) {
+        return read_staff_music_line(line);
     }
     if (text_line_starts_with(line, "fxjump ")) {
         return read_fx_jump_line(tables, line);

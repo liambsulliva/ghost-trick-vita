@@ -5,6 +5,8 @@
 #define PAUSE_OPTIONS_LEAVES 1
 
 void pause_options_show_unlock(int is_shown);
+int pause_options_read_credits(const char *scripts_folder);
+int pause_options_credits_are_playing(void);
 void pause_options_enter(void);
 void pause_options_enter_on_language(void);
 int pause_options_step(unsigned int pressed);

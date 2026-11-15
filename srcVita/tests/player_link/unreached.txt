@@ -6,7 +6,6 @@ asset_sets_running_filter
 game_save_for_chapter_select
 loading_screen_cat_feet_x
 loading_screen_shown_progress
-music_request_play
 music_request_starve
 pause_cat_page_count
 pause_chapters_current
@@ -16,6 +15,7 @@ pause_clock_minutes
 pause_clock_place
 pause_menu_cursor
 pause_menu_phase
+pause_options_credits_are_playing
 pause_options_dialog_is_open
 pause_options_dropdown_is_open
 pause_options_is_on_controls_page

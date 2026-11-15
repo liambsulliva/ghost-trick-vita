@@ -2,20 +2,20 @@
 #include "script_machine.h"
 #include "ds_units.h"
 
-#define FADE_IN_KIND 0
-#define FADE_OUT_KIND 1
+#define FADE_IN_KIND SCRIPT_FADE_IN_KIND
+#define FADE_OUT_KIND SCRIPT_FADE_OUT_KIND
 #define WHITE_IN_KIND 2
 #define WHITE_OUT_KIND 3
 #define LEVEL_FULL 0x100000
 #define LEVEL_FULL_WHOLE 256
 #define LOW_BRIGHTNESS_FOR_HALF_STRENGTH 8
 #define SHORT_FRAMES_FOR_HALF_STRENGTH 12
-#define FULL_SCALE 0x100
+#define FULL_SCALE SCRIPT_FADE_FULL_SCALE
 #define HALF_SCALE 0x80
 #define MASK_FIXED_BITS 12
 #define MASK_FIXED_ONE (1 << MASK_FIXED_BITS)
 
-static int brightness_from_level(const struct script_fade *fade)
+int script_fade_brightness(const struct script_fade *fade)
 {
     int whole;
 
@@ -36,7 +36,6 @@ static int brightness_from_level(const struct script_fade *fade)
 
 void script_fades_add(struct script_machine *machine, const struct script_vm *vm, int kind, int frames)
 {
-    struct script_fade *fade;
     int scale;
 
     if (machine->fade_count >= SCRIPT_FADE_MAX) {
@@ -52,11 +51,29 @@ void script_fades_add(struct script_machine *machine, const struct script_vm *vm
     if (kind == WHITE_IN_KIND && machine->brightness <= LOW_BRIGHTNESS_FOR_HALF_STRENGTH && frames < SHORT_FRAMES_FOR_HALF_STRENGTH) {
         scale = HALF_SCALE;
     }
-    fade = &machine->fades[machine->fade_count];
+    script_fade_start(&machine->fades[machine->fade_count], kind, frames, scale);
+    machine->fade_count = machine->fade_count + 1;
+}
+
+void script_fade_start(struct script_fade *fade, int kind, int frames, int scale)
+{
     fade->kind = kind;
     fade->level = frames == 0 ? 0 : (LEVEL_FULL / FULL_SCALE) * scale;
     fade->step = frames == 0 ? 0 : fade->level / frames;
-    machine->fade_count = machine->fade_count + 1;
+}
+
+int script_fade_step(struct script_fade *fade)
+{
+    int brightness;
+
+    brightness = script_fade_brightness(fade);
+    if (fade->level != 0) {
+        fade->level = fade->level - fade->step;
+        if (fade->level < 0) {
+            fade->level = 0;
+        }
+    }
+    return brightness;
 }
 
 void script_fades_end_mask(struct script_machine *machine)
@@ -113,14 +130,11 @@ static void update_brightness(struct script_machine *machine)
         struct script_fade fade;
 
         fade = machine->fades[index];
-        machine->brightness = brightness_from_level(&fade);
         if (fade.level == 0) {
+            machine->brightness = script_fade_brightness(&fade);
             continue;
         }
-        fade.level = fade.level - fade.step;
-        if (fade.level < 0) {
-            fade.level = 0;
-        }
+        machine->brightness = script_fade_step(&fade);
         machine->fades[kept] = fade;
         kept = kept + 1;
     }

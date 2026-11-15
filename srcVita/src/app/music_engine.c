@@ -201,6 +201,24 @@ void music_request_volume(int volume_out_of_256, int ticks)
     audio_mailbox_unlock();
 }
 
+void music_remember(struct music_memory *memory)
+{
+    audio_mailbox_lock();
+    snprintf(memory->track_name, sizeof(memory->track_name), "%s", mailbox.track_name);
+    memory->should_play = mailbox.should_play;
+    memory->is_looping = mailbox.is_looping;
+    audio_mailbox_unlock();
+}
+
+void music_restore(const struct music_memory *memory, int fade_ticks)
+{
+    if (memory->should_play && memory->track_name[0] != '\0') {
+        music_request_play(memory->track_name, memory->is_looping);
+        return;
+    }
+    music_request_stop(fade_ticks);
+}
+
 void music_request_starve(int milliseconds)
 {
     audio_mailbox_lock();

@@ -5,6 +5,8 @@
 #include "script_tables.h"
 
 void script_view_start(const struct script_tables *tables);
+void script_view_draw_staff_page(int page, int screen_count, float scroll);
+int script_view_staff_page_is_ready(int page, int screen_count);
 void script_view_talk_changed(const struct script_talk_view *view);
 void script_view_soul_changed(int is_on, int with_effect);
 void script_view_cursor_moved(int is_shown, float x, float y, float from_x, float from_y, int motion);
