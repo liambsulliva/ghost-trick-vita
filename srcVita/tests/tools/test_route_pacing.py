@@ -202,5 +202,19 @@ class KeptPacingTest(unittest.TestCase):
         self.assertEqual(self.read(self.kept), self.read(self.baked))
 
 
+class ChapterStartsTest(unittest.TestCase):
+    def test_the_settled_replay_s_chapter_starts_go_into_the_scripts_folder_only_when_changed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            cues = os.path.join(folder, "cues.tsv")
+            scripts = os.path.join(folder, "scripts")
+            os.makedirs(scripts)
+            with open(route_pacing.chapter_starts_path_of(cues), "w") as output:
+                output.write("chapter_start 2\nscript chapter\n")
+            self.assertTrue(route_pacing.keep_chapter_starts(cues, scripts))
+            self.assertFalse(route_pacing.keep_chapter_starts(cues, scripts))
+            with open(os.path.join(scripts, route_pacing.CHAPTER_STARTS_FILE_NAME)) as source:
+                self.assertEqual(source.read(), "chapter_start 2\nscript chapter\n")
+
+
 if __name__ == "__main__":
     unittest.main()

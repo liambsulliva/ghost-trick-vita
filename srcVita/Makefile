@@ -195,8 +195,9 @@ read-ahead: build/tests/golden/script_replay
 
 route-check: build/tests/golden/script_replay
 	@mkdir -p build/golden
-	build/tests/golden/script_replay --scripts $(PLAN_SCRIPTS) --timing remaster --auto-paced --marks --stop-tick $(PLAN_STOP_TICK) > build/golden/route_marks.txt
+	build/tests/golden/script_replay --scripts $(PLAN_SCRIPTS) --timing remaster --auto-paced --marks --stop-tick $(PLAN_STOP_TICK) --cues build/golden/route_cues.txt --chapter-starts build/golden/chapter_starts.txt > build/golden/route_marks.txt
 	python3 -I tools/route_check.py build/golden/route_marks.txt $(PLAN_SCRIPTS)/route_steps.txt --most-passed-over $(STEPS_THE_STORY_PASSES_OVER) --must-reach GOTO
+	python3 -I tools/chapter_starts_check.py build/tests/golden/script_replay $(PLAN_SCRIPTS) build/golden/chapter_starts.txt build/golden/route_cues.txt
 
 check-libs: check-sdk $(OBJS)
 	@$(foreach library,$(LIBS),if $(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) $(filter-out $(library),$(LIBS)) -o build/without_one_library.elf 2>/dev/null; then echo "the link does not need $(library)"; exit 1; fi;)

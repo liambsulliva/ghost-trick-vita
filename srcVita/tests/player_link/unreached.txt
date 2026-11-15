@@ -4,6 +4,7 @@ asset_manifest_find_animation
 asset_manifest_find_background
 asset_sets_running_filter
 game_save_for_chapter_select
+game_save_write_chapter_start
 loading_screen_cat_feet_x
 loading_screen_shown_progress
 music_request_starve

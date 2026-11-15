@@ -12,6 +12,7 @@ import script_pack
 
 TICKS_PER_SECOND = 60
 PACING_FILE_NAME = "route_pacing.txt"
+CHAPTER_STARTS_FILE_NAME = "chapter_starts.txt"
 ROUTE_STEPS_FILE_NAME = "route_steps.txt"
 READY_MARK = "route_step_ready"
 BEGAN_MARK = "route_step_began"
@@ -174,8 +175,17 @@ def keep_settled(kept_path, pacing_path):
         bake_record.write_if_different(kept_path, source.read())
 
 
+def chapter_starts_path_of(cues_path):
+    return cues_path + "." + CHAPTER_STARTS_FILE_NAME
+
+
 def replay(replay_binary, scripts_folder, cues_path, stop_tick):
-    subprocess.run([replay_binary, "--scripts", scripts_folder, "--timing", "remaster", "--auto-paced", "--cues", cues_path, "--stop-tick", str(stop_tick)], check=True, stdout=subprocess.DEVNULL)
+    subprocess.run([replay_binary, "--scripts", scripts_folder, "--timing", "remaster", "--auto-paced", "--cues", cues_path, "--chapter-starts", chapter_starts_path_of(cues_path), "--stop-tick", str(stop_tick)], check=True, stdout=subprocess.DEVNULL)
+
+
+def keep_chapter_starts(cues_path, scripts_folder):
+    with open(chapter_starts_path_of(cues_path), "rb") as source:
+        return bake_record.write_if_different(os.path.join(scripts_folder, CHAPTER_STARTS_FILE_NAME), source.read())
 
 
 def main():
@@ -210,6 +220,7 @@ def main():
         print("route pacing pass %d: %d steps stretched, %d extra ticks, %d kept short%s" % (pass_number, len(dwells), sum(dwells[index] - base_dwell(route, route["steps"][index]) for index in dwells), len(windows_too_short), "" if changed else ", settled"))
         if not changed:
             keep_settled(arguments.kept, pacing_path)
+            keep_chapter_starts(arguments.cues, arguments.scripts)
             script_pack.write_pack(arguments.scripts)
             for index in sorted(failed):
                 step = route["steps"][index]

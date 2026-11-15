@@ -16,6 +16,8 @@ static struct script_route_pad route_pad;
 static struct script_input route_input;
 static FILE *rows_output;
 static FILE *cues_output;
+static FILE *chapter_starts_output;
+static int chapter_start_written[GAME_SAVE_CHAPTER_COUNT + 2];
 static struct script_machine machine;
 static struct script_cue_list cue_lists[SCRIPT_SOURCE_MAX];
 static int cue_list_count;
@@ -86,6 +88,28 @@ static void write_state(const char *path, const char *script)
     fclose(file);
 }
 
+static void write_chapter_start_when_due(const char *name)
+{
+    static struct game_save save;
+    static char text[GAME_SAVE_TEXT_MAX];
+    unsigned int size;
+    int chapter;
+
+    if (chapter_starts_output == NULL || strcmp(name, GAME_SAVE_CHAPTER_SELECT_SCRIPT) != 0) {
+        return;
+    }
+    game_save_capture(&save, &machine, name);
+    chapter = game_save_chapter_of_start(&save);
+    if (chapter < 1 || chapter > GAME_SAVE_CHAPTER_COUNT || chapter_start_written[chapter]) {
+        return;
+    }
+    size = game_save_write_chapter_start(&save, text, sizeof(text));
+    if (size > 0) {
+        fwrite(text, 1, size, chapter_starts_output);
+        chapter_start_written[chapter] = 1;
+    }
+}
+
 static void save_state_when_due(const char *what, const char *name)
 {
     int index;
@@ -93,6 +117,7 @@ static void save_state_when_due(const char *what, const char *name)
     if (strcmp(what, "script_begun") != 0) {
         return;
     }
+    write_chapter_start_when_due(name);
     for (index = 0; index < state_save_count; index++) {
         if (!state_was_saved[index] && strcmp(name, state_save_scripts[index]) == 0) {
             state_was_saved[index] = 1;
@@ -575,6 +600,8 @@ int main(int argument_count, char **arguments)
                 state_save_count = state_save_count + 1;
             }
             index = index + 2;
+        } else if (strcmp(arguments[index], "--chapter-starts") == 0) {
+            chapter_starts_output = fopen(arguments[++index], "w");
         } else if (strcmp(arguments[index], "--load-state") == 0) {
             state_load_path = arguments[++index];
         } else if (strcmp(arguments[index], "--start") == 0) {
@@ -668,6 +695,9 @@ int main(int argument_count, char **arguments)
     }
     if (rows_output != NULL) {
         fclose(rows_output);
+    }
+    if (chapter_starts_output != NULL) {
+        fclose(chapter_starts_output);
     }
     if (cues_output != NULL) {
         fclose(cues_output);
