@@ -688,18 +688,8 @@
           "faces": {
             "cicel": 34
           }
-        },
-        {
-          "talk": "m13_2160",
-          "faces": {
-            "cicel": "cat"
-          }
         }
       ],
-      "cat_portrait": {
-        "animation": "st01_neko_001",
-        "frame": 0
-      },
       "portraits": {
         "cicel": 0,
         "linne": 1,

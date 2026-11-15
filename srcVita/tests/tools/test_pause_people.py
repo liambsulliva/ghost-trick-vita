@@ -2,8 +2,6 @@ import json
 import os
 import unittest
 
-import numpy as np
-
 import pause_people
 
 GAME_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tools", "assets", "game.json")
@@ -50,24 +48,13 @@ class TableLinesTest(unittest.TestCase):
 class RevealLinesTest(unittest.TestCase):
     def test_reveals_number_their_stages_and_name_the_face_each_one_shows(self):
         people = small_people()
-        people["reveals"] = [{"note": ["cicel", 120], "faces": {"cicel": 34}}, {"talk": "m13_2160", "faces": {"cicel": "cat"}}]
+        people["reveals"] = [{"note": ["cicel", 120], "faces": {"cicel": 34}}, {"talk": "m13_2160", "faces": {"cicel": 35}}]
         lines = pause_people.table_lines(people)
         self.assertIn("reveal 1 note 1 3 120", lines)
         self.assertIn("reveal_face 1 3 pause_face_34", lines)
         self.assertIn("reveal 2 talk m13_2160", lines)
-        self.assertIn("reveal_face 2 3 pause_face_cat", lines)
+        self.assertIn("reveal_face 2 3 pause_face_35", lines)
         self.assertIn(("pause_face_34", people_portrait(34)), pause_people.art_sources(dict(people, portrait="p%02d", place_picture="q%02d")))
-
-    def test_the_cat_portrait_puts_the_cat_on_the_lit_side_over_its_blue_shadow(self):
-        cell = np.zeros((40, 30, 4), dtype=np.uint8)
-        cell[:, :, 3] = 255
-        backdrop = pause_people.portrait_backdrop(200)
-        self.assertEqual(backdrop.shape[:2], (pause_people.PORTRAIT_SIZE[1], pause_people.PORTRAIT_SIZE[0]))
-        self.assertEqual(tuple(backdrop[192, 10].round()), (0.0, 0.0, 0.0))
-        self.assertEqual(tuple(backdrop[192, 330].round()), tuple(float(c) for c in pause_people.PORTRAIT_MAROON))
-        canvas = backdrop.copy()
-        pause_people.lay_over(canvas, 300, 100, cell[:, :, 3].astype(np.float32) / 255.0, np.array(pause_people.PORTRAIT_SHADOW, np.float32))
-        self.assertEqual(tuple(canvas[110, 310].round()), tuple(float(c) for c in pause_people.PORTRAIT_SHADOW))
 
 
 class ThumbPlacesTest(unittest.TestCase):
@@ -98,7 +85,7 @@ class GameTableTest(unittest.TestCase):
             self.assertTrue(("note" in reveal) != ("talk" in reveal), reveal)
             for name, face in reveal["faces"].items():
                 self.assertIn(name, names)
-                self.assertTrue(face == pause_people.CAT_FACE or face not in people["portraits"].values(), face)
+                self.assertTrue(face not in people["portraits"].values(), face)
 
 
 if __name__ == "__main__":
