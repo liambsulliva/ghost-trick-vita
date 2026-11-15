@@ -2,7 +2,7 @@
 
 The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real Vita and plays the game at 60 fps, using art converted from the remaster.
 
-The game runs from the DS's own script bytes on the script VM (see [The script VM](#the-script-vm)). The whole story is baked as one set, and parts of the game are still missing. See [What is missing](#what-is-missing).
+The game runs from the DS's own script bytes on the script VM (see [The script VM](#the-script-vm)). The whole story plays from start to finish. [Known issues](#known-issues) lists what still differs from the original.
 
 No game data lives in this folder. Converted assets, captures, reference video and the text key stay in the ignored `extracted/` and `build/` folders.
 
@@ -87,6 +87,23 @@ The package's LiveArea icon, background and startup image are built while the pa
 4. Install `srcVita/build/ghosttrick.vpk` on the Vita with VitaShell. The Vita reads LiveArea art only when a package is installed, so replacing `eboot.bin` alone does not change it.
 
 A package with the logo contains game art, so keep it for your own Vita. The package published on GitHub is built with `make -C srcVita release`, which always uses the monogram, as if no game files were present.
+
+### Publish a release
+
+Releases are built and published by `.github/workflows/release.yml`. To cut one:
+
+1. Set `APP_VER` in `Makefile` to the new version as `MM.mm`, so `01.01` for v1.1.0.
+2. Commit, then tag and push the tag:
+
+   ```bash
+   git tag v1.1.0
+   ```
+
+   ```bash
+   git push origin v1.1.0
+   ```
+
+The workflow builds in the `vitasdk/vitasdk` container. It refuses a tag whose major and minor numbers do not match `APP_VER`, runs `tools/rom_audit.py`, installs vitaGL, vitaShaRK, SceShaccCgExt, libmathneon and taihen with `vdpm`, runs `make -C srcVita release`, and attaches `ghosttrick-<tag>.vpk` and its SHA-256 to a GitHub release of that tag, with notes listing the changes since the last one. Running the workflow by hand with an existing tag rebuilds and republishes that tag.
 
 ## Make the assets
 
@@ -291,9 +308,9 @@ In the debug build's commands file, `play_script route` starts the opening, from
 
 `make -C srcVita golden` compares the VM's fetches with the saved DS trace, on a machine that has one in `extracted/trace/vm_golden/`. It exits 2 with a message otherwise.
 
-## What is missing
+## Known issues
 
-Rechecked against the code on 2026-11-15. The device and footage findings were last checked on the device on 2026-11-07, so later engine work may have fixed some of them. Items under "Built, not proven" are written but not checked on the device.
+These are the known differences from the original. Bug-fix releases work through them. Items under "Built, not proven" are written but have not been checked on the device.
 
 **Built, not proven**
 
@@ -303,7 +320,7 @@ Rechecked against the code on 2026-11-15. The device and footage findings were l
 - The Back pill, shown only in a ghost view the player opened.
 - Effect 31, the loops on the corpse in ghost view, drawn as the remaster movie `cmn_shig_01` (native kind 0x1d, from the st01_game000 effect list) and shown only in ghost view.
 
-**Open Chapter 1 findings**, checked against the reference footage
+**Chapter 1 differences**, found against the reference footage
 
 - The umbrella is dim and see-through in the phone view.
 - A second speech bubble is missing late in the chapter.
@@ -323,7 +340,7 @@ Rechecked against the code on 2026-11-15. The device and footage findings were l
 - Effects 8 (`efc_tsunagu`, kind 0xd8) and 9 (`efc_chain`, kind 0xce) have no art in any remaster effect list. `coreactionexchangecore` is an unconfirmed candidate for 8. Notes are in `extracted/audit_notes_2026-11-06/effects_8_9.md`.
 - Effects without art are noted in the log and not drawn.
 
-**Not in the port yet**
+**Not in the port**
 
 - **Soul view class gates.** They are not drawn.
 - **Some `EyeCatch` banners.** Trick, DestinyUpdate, DestinyLock and NumberGet are drawn; any other kind logs `eyecatch_kind_not_ported` and draws nothing.

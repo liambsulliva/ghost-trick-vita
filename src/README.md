@@ -2,6 +2,8 @@
 
 The Nintendo DS decompilation of Ghost Trick. It is the ground truth for the Vita port in [srcVita](../srcVita/README.md). Most of the code is Thumb, in `thumb/`, and files and functions are named by address.
 
+The released Vita port does not wait on it: the port runs the DS game's own script bytes on its own VM and reads the matched functions here as the reference for how the game behaves. Matching goes on alongside the port's bug-fix releases.
+
 ## What the progress chart counts
 
 The chart in [the root README](../README.md#decompilation-progress) shows the **full prepared code inventory**, not the number of functions required for Chapter 1. The latter still needs runtime dependency tracing. The denominator comes from ds-decomp's current symbol configuration; the older Ghidra export has a different function census. Shared code ranges count once in byte totals. DS Protect is excluded from the Vita target.

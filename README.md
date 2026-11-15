@@ -1,14 +1,12 @@
 # Ghost Trick Vita
 
-A PS Vita port using the original DS game logic and a single-screen interface, drawn with either the 2023 remaster's art or the DS cartridge's own.
+A PS Vita port of Ghost Trick that runs the original DS game logic with a single-screen interface, drawn with either the 2023 remaster's art or the DS cartridge's own.
 
-## Where the port stands
+## Status
 
-The whole game is routed and plays from start to finish. An automatic playthrough of 1719 route steps follows a reference playthrough from the opening of Chapter 1 to the closing credits and back to the title screen, replayed on a computer through the same input code the Vita uses. It finishes with no step failed, no scene skipped and no stand-in for the game's own logic; one step the route passes over is left out of the count.
+The whole story plays on the Vita from the opening of Chapter 1 through the closing credits and back to the title screen, with saves, chapter select, the Record and the Options menu. Every release is checked by an automatic playthrough that follows a reference playthrough through all 18 chapters, using the same input code as a player, with no step failed, no scene skipped and no stand-in for the game's own logic.
 
-The same playthrough has run on a real Vita. On 2026-11-13 the debug build played the route by itself, at up to 30 ticks a frame, and did all 1718 steps in about 53 minutes. It saved every chapter from 2 to 18 on the way and had no softlock and no crash. The title screen had not appeared in the log when the run was stopped, 47 seconds after the last step. The port now boots into a title screen and returns to it at the story's end, so far checked on the Mac only. What is left is the script opcodes that still log as not ported (16 were met on that run) and a few slow stretches where large textures load.
-
-The app installs and runs from locally converted art: the remaster's, the DS cartridge's, or both. The one-command setup below prepares the whole game.
+The app installs and runs from art converted on your own computer: the remaster's, the DS cartridge's, or both. The one-command setup below prepares the whole game. Later versions fix bugs as they are found; [Known issues](srcVita/README.md#known-issues) lists the differences from the original that remain.
 
 ## Legal disclaimer
 
@@ -33,18 +31,18 @@ Click the preview to open the [interactive treemap](https://liambsulliva.github.
 
 ## Run it on a Vita
 
-The VPK holds only the app. It has no game data in it, so it also needs art, sound and text converted from your own copies of the game. The app plays the game from the DS game's own scripts, with its music, sounds, narration and dialogue. Your DS cartridge dump alone is enough: it gives the DS set, drawn with the cartridge's own art, text and sound. Adding your copy of the remaster's Android release also gives the remastered set. [The app's README](srcVita/README.md#controls) lists the buttons.
+Download the app, `ghosttrick-<version>.vpk`, from the [Releases page](https://github.com/liambsulliva/ghost-trick-vita/releases), or build it yourself. The VPK holds only the app. It has no game data in it, so it also needs art, sound and text converted from your own copies of the game. The app plays the game from the DS game's own scripts, with its music, sounds, narration and dialogue. Your DS cartridge dump alone is enough: it gives the DS set, drawn with the cartridge's own art, text and sound. Adding your copy of the remaster's Android release also gives the remastered set. [The app's README](srcVita/README.md#controls) lists the buttons.
 
 You need:
 
 - Python 3, `make`, `clang` and ImageMagick 7 (the `magick` command). The converter draws the game's text with `magick`, which needs FreeType support: `magick -list format | grep OTF` should print a line.
 - About 3.6 GB of free disk space for the game files and the converted game.
 - Your own dump of the USA DS cartridge. Your own copy of the remaster's Android release is optional: without it the port uses the cartridge's own art, text and sound only.
-- VitaSDK, to build the VPK. [The app's README](srcVita/README.md#build-and-test) lists its libraries.
+- VitaSDK, only to build the VPK yourself instead of downloading it. [The app's README](srcVita/README.md#build-and-test) lists its libraries.
 - A Vita that can install homebrew with VitaShell.
 - The Vita's shader compiler at `ur0:data/libshacccg.suprx`. It does not come with the VPK. Extract it once with ShaRKF00D, if another app has not already made you do this.
 
-The converter steps have been run on macOS only. This project's own testing installs with Vita Companion, so the VitaShell install and FTP copy below are the usual routes, but they have not been tried with this build.
+The setup script runs on macOS.
 
 Run every command below from the top of this repository.
 
@@ -73,9 +71,9 @@ Everything under `extracted/` is ignored by git. `tools/rom_audit.py` refuses a 
 
 ### Copy everything to the Vita
 
-Install `srcVita/build/ghosttrick.vpk` with VitaShell from anywhere under `ux0:`, then copy what is inside `extracted/vita_assets/game_ds/` to `ux0:data/ghosttrick/assets_ds/` and, if you built it, what is inside `extracted/vita_assets/game/` to `ux0:data/ghosttrick/assets/`. Copy each folder's contents, not the folder itself: a path like `ux0:data/ghosttrick/assets/game/manifest.txt` will not be found. With both sets installed, Options' Visual Filter picks one; with one, that one runs.
+Install the VPK from the Releases page, or `srcVita/build/ghosttrick.vpk` if you built it, with VitaShell from anywhere under `ux0:`, then copy what is inside `extracted/vita_assets/game_ds/` to `ux0:data/ghosttrick/assets_ds/` and, if you built it, what is inside `extracted/vita_assets/game/` to `ux0:data/ghosttrick/assets/`. Copy each folder's contents, not the folder itself: a path like `ux0:data/ghosttrick/assets/game/manifest.txt` will not be found. With both sets installed, Options' Visual Filter picks one; with one, that one runs.
 
-To copy by hand, put the Vita and this computer on the same Wi-Fi network. In VitaShell, press SELECT to start its FTP server. If SELECT starts USB instead, press START and set **SELECT button** to **FTP**. Then connect an FTP client to the address VitaShell shows.
+The fastest way to copy the sets is VitaShell's USB mode: press SELECT in VitaShell, and the memory card opens as a drive on this computer. FTP works too but takes hours for the remastered set's 30,000 files: put the Vita and this computer on the same Wi-Fi network, set VitaShell's **SELECT button** option to **FTP** under START, press SELECT and connect an FTP client to the address VitaShell shows.
 
 ### Check that it worked
 
@@ -93,7 +91,13 @@ If you see something else:
 
 The log is `ux0:data/ghosttrick/run.log`. It keeps earlier launches, so read below the last `--- launch` line.
 
-After updating this repository, run the setup script again and copy the files across again. The file formats can change, and older files do not always produce an error: some just play wrongly.
+### Update to a new version
+
+Pull this repository at the new version's tag, run the setup script again, install the new VPK and copy both sets across again. The script converts only what changed. Copy the sets even if the app seems to start: the file formats can change between versions, and older files do not always produce an error, some just play wrongly. Saves and settings stay where they are.
+
+## Report a bug
+
+Open an issue on GitHub with what you saw, the chapter and scene, and the part of `ux0:data/ghosttrick/run.log` below the last `--- launch` line. Please leave game text and art out of the issue.
 
 ## Changes from the original
 
@@ -113,11 +117,12 @@ The port follows the DS game's own code wherever it can. The changes below are d
 - **A high-contrast mode.** An Options setting that makes cores easier to pick out in crowded rooms, for players with low vision.
 - **Vita buttons instead of touch alone.** Every touch action also has a button. The on-screen prompts, and the buttons the characters name in dialogue in every language, show the Vita's buttons rather than the remaster's keyboard keys, so Ray's tutorial says SELECT for the Record. [The app's README](srcVita/README.md#controls) lists them.
 
-## Roadmap
+## Future updates
 
-1. **Finish the modes still missing inside script ops.** Every opcode the game's scripts use now runs. A few modes inside them still log and carry on instead: some beam, iris and framing modes, some eyecatch kinds, some motion-table words, some GameApp messages, and the hourglass pill. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
-2. **The rest of the settings.** Resolution, and the ghost world's background color for Sissel and, once unlocked, Missile.
-3. **Upload to VitaDB.**
+1. **Bug fixes**, from reports and from the [known issues](srcVita/README.md#known-issues).
+2. **The last modes inside script ops.** Every opcode the game's scripts use runs. A few rarely seen modes inside them log and carry on instead: some beam, iris and framing modes, some eyecatch kinds, some motion-table words and some GameApp messages.
+3. **The rest of the settings.** Resolution, and the ghost world's background color for Sissel and, once unlocked, Missile.
+4. **Upload to VitaDB.**
 
 ## Working on the port
 
