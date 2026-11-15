@@ -98,9 +98,36 @@ class DsSetNamesTests(unittest.TestCase):
 
     def test_frames_pack_left_to_right_and_wrap_onto_a_new_row(self):
         frames = [(600, 10, b"", 0, 0), (600, 20, b"", 0, 0), (4, 4, b"", 0, 0)]
-        places, width, height = ds_set.place_frames(frames)
-        self.assertEqual(places, [(0, 0), (0, 11), (601, 11)])
-        self.assertEqual((width, height), (605, 31))
+        places, page_sizes = ds_set.place_frames(frames)
+        self.assertEqual(places, [(0, 0, 0), (0, 0, 11), (0, 601, 11)])
+        self.assertEqual(page_sizes, [(605, 31)])
+
+    def test_frames_that_would_pass_the_page_height_start_a_new_page(self):
+        frames = [(1000, 1000, b"", 0, 0)] * 5
+        places, page_sizes = ds_set.place_frames(frames)
+        self.assertEqual([place[0] for place in places], [0, 0, 1, 1, 2])
+        self.assertEqual(places[2], (1, 0, 0))
+        self.assertEqual(page_sizes, [(1000, 2001), (1000, 2001), (1000, 1000)])
+
+    def test_no_page_is_larger_than_the_app_s_texture_limit(self):
+        header_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "include", "texture_file.h")
+        with open(header_path, encoding="utf-8") as header:
+            limit = int(header.read().split("#define TEXTURE_FILE_MAX_DIMENSION ")[1].split()[0])
+        self.assertLessEqual(ds_set.PAGE_WIDTH, limit)
+        self.assertLessEqual(ds_set.PAGE_HEIGHT, limit)
+        frames = [(416, 240, b"", 0, 0)] * 400
+        _, page_sizes = ds_set.place_frames(frames)
+        self.assertGreater(len(page_sizes), 1)
+        for width, height in page_sizes:
+            self.assertLessEqual(width, limit)
+            self.assertLessEqual(height, limit)
+
+    def test_later_pages_carry_their_number_and_each_frame_names_its_own_page(self):
+        self.assertEqual(ds_set.page_name(7, 0), "ds_sprite_7")
+        self.assertEqual(ds_set.page_name(7, 2), "ds_sprite_7_2")
+        frame = ds_set.anim_frame(7, (4, 2, b"", 1, 1), (1, 4, 2), [(8, 8), (16, 4)])
+        self.assertEqual(frame["texture"], "ds_sprite_7_1")
+        self.assertEqual((frame["u"], frame["v"], frame["u_size"], frame["v_size"]), (0.25, 0.5, 0.25, 0.5))
 
     def test_a_page_whose_cartridge_bytes_have_not_changed_is_not_decoded_again(self):
         folder = tempfile.mkdtemp()
@@ -110,14 +137,14 @@ class DsSetNamesTests(unittest.TestCase):
         with mock.patch.object(ds_set.ds_sprites, "resolve", return_value={}), \
                 mock.patch.object(ds_set.ds_sprites, "resource_parts", return_value=(b"p", b"g", b"c", b"a")), \
                 mock.patch.object(ds_set.ds_sprites, "frames_of_parts", return_value=frames) as decode:
-            first = ds_set.page_of_resource(5, mock.Mock(), b"", record, "code")
-            second = ds_set.page_of_resource(5, mock.Mock(), b"", record, "code")
+            first = ds_set.pages_of_resource(5, mock.Mock(), b"", record, "code")
+            second = ds_set.pages_of_resource(5, mock.Mock(), b"", record, "code")
         self.assertEqual(decode.call_count, 1)
         self.assertEqual(first, second)
-        self.assertEqual(second[1], [(2, 1, None, -1, -2)])
+        self.assertEqual(second[0], [(2, 1, None, -1, -2)])
 
     def test_an_empty_frame_draws_nothing(self):
-        frame = ds_set.anim_frame("ds_sprite_1", (0, 0, b"", 0, 0), (0, 0), 8, 8)
+        frame = ds_set.anim_frame(1, (0, 0, b"", 0, 0), (0, 0, 0), [(8, 8)])
         self.assertEqual(frame["texture"], "-")
 
 

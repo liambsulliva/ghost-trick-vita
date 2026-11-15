@@ -1817,6 +1817,14 @@ The class: interface art the DS keeps whole where the remaster keeps parts.
 
 Guard: a sharp set (`texture_cache_sharp_art_is_on`) draws each pill as one sprite from `hud_pills`, a sheet with one row per `script_pill_id` and a resting and a pressed column, each cell 88 by 32 DS pixels. The converter trims each cartridge texture to its ink and sets it against the side of the cell that faces the screen edge (`cell` and `align` parts in `ds_ui.py`), and the app places the cell the same way: left pills from their left edge, right pills from their right edge, the rest centred, 4 pixels from the top or bottom. With no sheet the pills draw nothing, and the remastered set is untouched. `tests/unit/test_script_ui_view.c` checks every pill draws once from its own cell and stays on screen; `tests/tools/test_ds_ui.py` checks the sheet has two cells for every pill in `script_outputs.h`. Not done: the pills carry no Vita button, the green pills of Missile's ghost world (592 to 607) are not used, and the placing has not been seen on the device.
 
+### 243. DS sprite pages taller than the app's texture limit drew as magenta blocks
+
+The DS converter packed every frame of a resource onto one page, 1024 wide and as tall as the frames needed. The cartridge holds each frame as its own cell and draws them one at a time (`func_0200b598`, `func_0200bf54`), so nothing on the DS bounds a resource's total size. Four junkyard resources (3773, 4039, 4319, 4320) came out taller than `TEXTURE_FILE_MAX_DIMENSION` (4096), the app refused them (`texture missing name=ds_sprite_3773 reason=header code=-4`) and the crane and platform drew as magenta placeholders on the device.
+
+The class: converter output larger than a limit the app enforces, the same as root cause 240's manifest list.
+
+Guard: `place_frames` in `ds_set.py` starts a new page when a frame would pass 2048 rows, pages after the first are named `ds_sprite_<resource>_<page>`, and each animation frame names its own page. `tests/tools/test_ds_set_guard.py` reads the limit from `include/texture_file.h` and checks no page of a tall resource passes it, that every frame lands whole on one page, and that a frame names the page it was placed on.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

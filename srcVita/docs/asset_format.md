@@ -91,7 +91,7 @@ What the DS set holds, and where each part comes from:
 | Part | Source | Native reader |
 |---|---|---|
 | Room plates `ds_plate_<id>` | `cpac_2d.bin` block 4, at the plate id the room table gives: a 4-byte width and height, a 256-colour BGR555 palette at byte 512, then one byte per pixel from byte 1024, in 16 by 16 blocks of 8 by 8 tiles. Colour 0 is clear. Ghost-world versions get the set's ramps | `data_02083328`, `func_02009a28` |
-| Sprite pages `ds_sprite_<resource>` | Every frame of a motion table's resource, packed left to right on one page at DS size | `func_0200b598`, `func_0200bf54`, `func_0200c2c0`, `func_0200857c` |
+| Sprite pages `ds_sprite_<resource>` | Every frame of a motion table's resource, packed left to right at DS size on pages at most 2048 rows tall, later pages named `ds_sprite_<resource>_<page>` | `func_0200b598`, `func_0200bf54`, `func_0200c2c0`, `func_0200857c` |
 | Motion animations `t_<table>` | One frame per frame word, 4 ticks each, so their motion lines give 1 record per DS frame. A table name two resources share gets the resource id on the end | |
 | Narration lines and the talk font | The script's language file and the DS font, in the text palette (`cpac_2d.bin` block 0, entry 5), rendered at DS size and placed in the cartridge's text boxes, then scaled nearest-neighbour by 2.8125. Icons keep their width but are not drawn yet | `func_0201c7c8`, `func_0201c350`, `data_02084a8c`, `func_02017b60`, `func_020197b4` |
 | Faces `ds_face_<entry>` | `cpac_3d.bin` block 0, a `.tds` texture at the entry the face table names, at DS size (128 by 192, head icons 64 by 64) | `data_02085724`, `func_0201e664` |

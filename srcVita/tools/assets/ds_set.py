@@ -17,6 +17,8 @@ SPRITE_PAGE_NAME = "ds_sprite_%d"
 SDAT_PATH = "sound_data.sdat"
 TEXTURE_FOLDER = "textures"
 PAGE_WIDTH = 1024
+PAGE_HEIGHT = 2048
+SPRITE_LATER_PAGE_NAME = "ds_sprite_%d_%d"
 FRAME_GAP = 1
 DS_TICKS_PER_FRAME = 4
 SPRITE_CODE_FILES = ["asset_writers.py", "ds_set.py", "ds_sprites.py"]
@@ -100,25 +102,40 @@ def animation_names(rows):
 
 def place_frames(frames):
     places = []
+    page_sizes = []
+    page = 0
     x = 0
     y = 0
     row_height = 0
+    page_width = 1
+    page_height = 1
     for width, height, _, _, _ in frames:
         if x > 0 and x + width > PAGE_WIDTH:
             x = 0
             y = y + row_height + FRAME_GAP
             row_height = 0
-        places.append((x, y))
+        if y + height > PAGE_HEIGHT and (x > 0 or y > 0):
+            page_sizes.append((page_width, page_height))
+            page = page + 1
+            x = 0
+            y = 0
+            row_height = 0
+            page_width = 1
+            page_height = 1
+        places.append((page, x, y))
+        page_width = max(page_width, x + width)
+        page_height = max(page_height, y + height)
         x = x + width + FRAME_GAP
         row_height = max(row_height, height)
-    page_width = min(PAGE_WIDTH, max([place[0] + frame[0] for place, frame in zip(places, frames)] + [1]))
-    page_height = max([place[1] + frame[1] for place, frame in zip(places, frames)] + [1])
-    return places, page_width, page_height
+    page_sizes.append((page_width, page_height))
+    return places, page_sizes
 
 
-def page_rgba(frames, places, page_width, page_height):
+def page_rgba(frames, places, page, page_width, page_height):
     rgba = bytearray(page_width * page_height * 4)
-    for (width, height, pixels, _, _), (left, top) in zip(frames, places):
+    for (width, height, pixels, _, _), (frame_page, left, top) in zip(frames, places):
+        if frame_page != page:
+            continue
         for row in range(height):
             start = ((top + row) * page_width + left) * 4
             rgba[start:start + width * 4] = pixels[row * width * 4:(row + 1) * width * 4]
@@ -129,29 +146,40 @@ def source_of_parts(parts):
     return b"".join(len(part).to_bytes(4, "little") + part for part in parts)
 
 
-def page_of_resource(resource, cartridge, arm9, record, code):
-    relative_path = TEXTURE_FOLDER + "/" + SPRITE_PAGE_NAME % resource + ".gtex"
+def page_name(resource, page):
+    return SPRITE_PAGE_NAME % resource if page == 0 else SPRITE_LATER_PAGE_NAME % (resource, page)
+
+
+def page_path(resource, page):
+    return TEXTURE_FOLDER + "/" + page_name(resource, page) + ".gtex"
+
+
+def pages_of_resource(resource, cartridge, arm9, record, code):
+    first_path = page_path(resource, 0)
     parts = ds_sprites.resource_parts(cartridge.sprites, ds_sprites.resolve(arm9, resource))
     key = record.key_for(code, {"resource": resource}, source_of_parts(parts))
-    details = record.details_of(relative_path)
-    if "layouts" in details and record.read_if_current(relative_path, key) is not None:
-        return relative_path, [tuple(layout) for layout in details["layouts"]], [tuple(place) for place in details["places"]], details["size"][0], details["size"][1]
+    details = record.details_of(first_path)
+    if "page_sizes" in details and all(record.read_if_current(page_path(resource, page), key) is not None for page in range(len(details["page_sizes"]))):
+        return [tuple(layout) for layout in details["layouts"]], [tuple(place) for place in details["places"]], [tuple(size) for size in details["page_sizes"]]
     frames = ds_sprites.frames_of_parts(*parts)
     if not frames:
         raise ds_sprites.SpriteRefused("no frames")
-    places, page_width, page_height = place_frames(frames)
+    places, page_sizes = place_frames(frames)
     layouts = [(width, height, None, left, top) for width, height, _, left, top in frames]
-    record.store(relative_path, key, asset_writers.gtex_bytes(page_width, page_height, asset_writers.FORMAT_RGBA8888, page_rgba(frames, places, page_width, page_height)),
-                 {"layouts": [[width, height, None, left, top] for width, height, _, left, top in layouts], "places": [list(place) for place in places], "size": [page_width, page_height]})
-    return relative_path, layouts, places, page_width, page_height
+    saved = {"layouts": [list(layout) for layout in layouts], "places": [list(place) for place in places], "page_sizes": [list(size) for size in page_sizes]}
+    for page, (page_width, page_height) in enumerate(page_sizes):
+        record.store(page_path(resource, page), key, asset_writers.gtex_bytes(page_width, page_height, asset_writers.FORMAT_RGBA8888, page_rgba(frames, places, page, page_width, page_height)), saved if page == 0 else {})
+    return layouts, places, page_sizes
 
 
-def anim_frame(texture, frame, place, page_width, page_height):
+def anim_frame(resource, frame, place, page_sizes):
     width, height, _, left, top = frame
     if width == 0 or height == 0:
         return {"texture": "-", "ticks": DS_TICKS_PER_FRAME, "x": 0, "y": 0, "width": 0, "height": 0, "u": 0, "v": 0, "u_size": 0, "v_size": 0}
-    return {"texture": texture, "ticks": DS_TICKS_PER_FRAME, "x": left, "y": top, "width": width, "height": height,
-            "u": place[0] / page_width, "v": place[1] / page_height, "u_size": width / page_width, "v_size": height / page_height}
+    page, x, y = place
+    page_width, page_height = page_sizes[page]
+    return {"texture": page_name(resource, page), "ticks": DS_TICKS_PER_FRAME, "x": left, "y": top, "width": width, "height": height,
+            "u": x / page_width, "v": y / page_height, "u_size": width / page_width, "v_size": height / page_height}
 
 
 def bake_motion_tables(set_description, scripts, arm9, cartridge, record):
@@ -169,19 +197,18 @@ def bake_motion_tables(set_description, scripts, arm9, cartridge, record):
             continue
         if resource not in pages:
             try:
-                relative_path, layouts, places, page_width, page_height = page_of_resource(resource, cartridge, arm9, record, code)
+                pages[resource] = pages_of_resource(resource, cartridge, arm9, record, code)
             except ds_sprites.SpriteRefused as error:
                 refused[resource] = str(error)
                 continue
-            texture_paths.append(relative_path)
-            texture_sizes[SPRITE_PAGE_NAME % resource] = (page_width, page_height)
-            pages[resource] = (layouts, places, page_width, page_height)
-        frames, places, page_width, page_height = pages[resource]
+            for page, size in enumerate(pages[resource][2]):
+                texture_paths.append(page_path(resource, page))
+                texture_sizes[page_name(resource, page)] = size
+        frames, places, page_sizes = pages[resource]
         name = names[(path, offset)]
         if name not in animation_texts:
-            texture = SPRITE_PAGE_NAME % resource
             picked = [min(frame, len(frames) - 1) for frame in ds_frames]
-            animation_texts[name] = asset_writers.anim_text(name, 0, [anim_frame(texture, frames[index], places[index], page_width, page_height) for index in picked])
+            animation_texts[name] = asset_writers.anim_text(name, 0, [anim_frame(resource, frames[index], places[index], page_sizes) for index in picked])
         motion_lines[script_assets.SCRIPTS_FOLDER + "/" + script_assets.script_name(path) + script_assets.MOTIONS_EXTENSION].append("motion %x %s 1" % (offset, name))
         scripts_tables = set_description["scripts"]["motion_tables"].setdefault(path, {})
         scripts_tables[stem] = name
