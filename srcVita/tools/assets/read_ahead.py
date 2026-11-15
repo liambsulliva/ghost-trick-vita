@@ -190,6 +190,21 @@ def bundle_text(scripts_folder, animation_folder, script_name):
     return "".join(parts)
 
 
+def write_bundle(scripts_folder, animation_folder, script_name):
+    bundle = bundle_text(scripts_folder, animation_folder, script_name)
+    bake_record.write_if_different(os.path.join(scripts_folder, script_name + BUNDLE_EXTENSION), packed_file.packed(bundle.encode("ascii")))
+    return bundle
+
+
+def write_every_bundle(scripts_folder, animation_folder):
+    if not os.path.isdir(scripts_folder):
+        return []
+    names = sorted(path[:-len(MOTIONS_EXTENSION)] for path in os.listdir(scripts_folder) if path.endswith(MOTIONS_EXTENSION))
+    for script_name in names:
+        write_bundle(scripts_folder, animation_folder, script_name)
+    return names
+
+
 def next_scripts_from_cues(cues_path, scripts_folder):
     nexts = {}
     script_name = None
@@ -258,8 +273,7 @@ def main():
         bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + AHEAD_EXTENSION), ahead_text(entries, nexts.get(script_name), nexts_by_mark.get(script_name) if not os.path.exists(os.path.join(arguments.scripts_folder, script_name + MOTIONS_EXTENSION)) else None).encode("ascii"))
         if not os.path.exists(os.path.join(arguments.scripts_folder, script_name + MOTIONS_EXTENSION)):
             continue
-        bundle = bundle_text(arguments.scripts_folder, arguments.animation_folder, script_name)
-        bake_record.write_if_different(os.path.join(arguments.scripts_folder, script_name + BUNDLE_EXTENSION), packed_file.packed(bundle.encode("ascii")))
+        bundle = write_bundle(arguments.scripts_folder, arguments.animation_folder, script_name)
         print("read ahead %s: %d textures, %d animations" % (script_name, len(entries), bundle.count("animation ")))
     script_pack.write_pack(arguments.scripts_folder)
     return 0

@@ -62,6 +62,7 @@ DEFAULT_DS_ROM_PATH = os.path.join(REPOSITORY_FOLDER, "extracted", "ds_rom", "ga
 TEXTURE_TOOL_PATH = os.path.join(SRC_VITA_FOLDER, "build", "tools", "texture_tool")
 FORMAT_NAMES = {asset_writers.FORMAT_RGBA8888: "RGBA8888", asset_writers.FORMAT_DXT5: "DXT5", asset_writers.FORMAT_DXT1: "DXT1"}
 OUTPUT_FOLDER_NAMES = output_folders.NAMES
+ANIMATION_FOLDER_NAME = "animations"
 TEXTURE_CODE_FILES = ["asset_writers.py", "astc_decode.c", "astc_decode.h", "etc_decode.c", "etc_decode.h", "texture_encoder.py", "texture_tool.c"]
 COMPOSED_CODE_FILES = TEXTURE_CODE_FILES + ["bubble_art.py"]
 TEXT_CODE_FILES = ["asset_writers.py", "chapter_assets.py", "font_file.py", "line_renderer.py", "message_cues.py", "message_file.py", "narration.py", "talk_assets.py", "texture_encoder.py"]
@@ -450,6 +451,7 @@ def write_outputs(output_folder, record, texture_results, files, manifest, scrip
     wanted_paths = set(files) | set("textures/" + result["name"] + ".gtex" for result in texture_results) | set(script_paths) | outputs_of_the_read_ahead_step(output_folder) | {script_assets.SCRIPTS_FOLDER + "/" + script_pack.PACK_FILE_NAME} | set(language_paths)
     bake_record.remove_files_not_listed(output_folder, OUTPUT_FOLDER_NAMES, wanted_paths)
     languages.remove_overlay_files_not_listed(output_folder, wanted_paths)
+    read_ahead.write_every_bundle(os.path.join(output_folder, script_assets.SCRIPTS_FOLDER), os.path.join(output_folder, ANIMATION_FOLDER_NAME))
     script_pack.write_pack(os.path.join(output_folder, script_assets.SCRIPTS_FOLDER))
     record.forget_all_except(wanted_paths)
     bake_record.write_if_different(os.path.join(output_folder, "manifest.txt"), manifest)
@@ -682,7 +684,6 @@ def convert_ds_set_description(set_description, output_folder, ds_rom_path=DEFAU
             art["texture_paths"] = art["texture_paths"] + effect_paths
             set_description, backdrop_paths = ds_backdrops.add_to_set(set_description, cartridge, record)
             art["texture_paths"] = art["texture_paths"] + backdrop_paths
-            art["texture_paths"] = art["texture_paths"] + effect_paths
         finally:
             delete_work_folder(work_folder)
         texture_sizes = dict(ds_set.plate_sizes(set_description["plates"], plate_entries), **art["texture_sizes"])

@@ -1993,6 +1993,16 @@ Guard: `ds_backdrops.py` bakes any palette-cycled cartridge BG named in `ds_back
 
 Not done: the ring's screen size is read from native units (4096 to 96 DS pixels) and may be too large if native projects in perspective; the glow's size and turn and the particles keep the remaster's values; system sounds 14 and 15 and the closing `uSoulCloseEffect` are not added. Not checked on the device or in melonDS.
 
+### 263. The junkyard crane drew as a stretched, blocky jib in DS mode
+
+Seen on the Vita: the crane over the junkyard showed a huge beige jib end and a band of tall lattice under the wrecking ball. The app reads a script's animations from its packed bundle (`scripts/<script>.anims`, inside `scripts.pack`), which only the read-ahead step wrote; the converter kept bundles as they were. Root cause 243 split tall DS sprite pages and changed the texture coordinates in `animations/*.anim`, but the bundles kept those of the old 994x6056 page, so on the new 833x1927 page the crane (`t_topa_wait`, resource 3773) sampled a 349x76 corner and stretched it to its 416x240 frame. 41 of the DS set's 126 bundles were stale (47 animations: the crane, its ropes, `dcraneb`, `jodo`, `bigniku`). Native draws each frame from its own cells (`func_0200b598`, `func_0200bf54`), so the port's page coordinates must match the pages it bakes.
+
+The class: an output built from other outputs and rebuilt only by a separate step, so it goes stale when they change.
+
+Guard: `write_outputs` calls `read_ahead.write_every_bundle` after writing the animations and motions and before packing the scripts, so every conversion rebuilds every bundle from what it just wrote, in both sets. `tests/tools/test_anim_bundles.py` checks that a stale bundle is rewritten, that every bundle equals `bundle_text` of its motions and animations, and that the pack carries it.
+
+Not done: the `.ahead` lists still come only from `make read-ahead`, and name only a split resource's first page; rerun it for the DS set. Not checked on the device.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
