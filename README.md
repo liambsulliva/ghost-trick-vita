@@ -106,7 +106,7 @@ The port follows the DS game's own code wherever it can. The changes below are d
 - **Save at any point.** The pause menu's Save keeps the game whenever the player has the controls, not only at the game's own checkpoints. Loading picks up again from the start of the scene it was saved in.
 - **New Game and Options on the title screen.** The DS title offers Chapter Select, Continue, Language and erase, and a new game only when there is no save. The port also always offers New Game, which asks first over a save, and Options.
 - **The Record shows who Sissel really is.** Once the story reveals that Sissel is not the blond man in the red suit (that man is Yomiel), Sissel's Record entry shows the soul with sunglasses instead of the man's face. What the player has learned stays through every save, load and chapter, until the saves are erased from the title screen.
-- **Two looks, and no remaster needed for the DS one.** Visual Filter chooses between the remaster's art and the DS cartridge's own, scaled up sharp from the DS's resolution. Until roadmap item 2 is done, the DS look leaves out the parts of the screen not decoded yet. Each look is a separate set that takes nothing from the other, so the DS look plays from the cartridge alone. A change takes effect at the title screen, where the app restarts into the other set.
+- **Two looks, and no remaster needed for the DS one.** Visual Filter chooses between the remaster's art and the DS cartridge's own, scaled up sharp from the DS's resolution. The DS look leaves out the parts of the screen not decoded yet. Each look is a separate set that takes nothing from the other, so the DS look plays from the cartridge alone. A change takes effect at the title screen, where the app restarts into the other set.
 - **Trick straight from the ghost world.** In the original, the player has to leave the ghost world before they can trick the object the soul is in. In the port, the Trick pill also shows in the ghost world whenever that object has a trick ready. Tapping it or pressing CROSS leaves the ghost world and does the trick in one go, and whatever the trick sets off plays as it would after the two separate presses. Ray's Chapter 1 tutorial no longer tells the player they must first return to the land of the living to trick, in every language. [The app's README](srcVita/README.md#controls) has the detail.
 - **Hints for a player who is stuck.** After five minutes with no progress on a puzzle, a "?" balloon appears over Sissel. Pressing it shows which object the solution uses next. [The app's README](srcVita/README.md#hints) has the rules.
 - **A high-contrast mode.** An Options setting that makes cores easier to pick out in crowded rooms, for players with low vision.
@@ -115,11 +115,8 @@ The port follows the DS game's own code wherever it can. The changes below are d
 ## Roadmap
 
 1. **Finish the remaining script opcodes**, on the same data-driven code. [What is missing](srcVita/README.md#what-is-missing) lists the open work in detail.
-2. **A DS-faithful look.** The cartridge's pause menu, talk window, balloons, HUD, effects and movies are not decoded yet, so the DS set draws none of them.
-3. **Every language the remaster has.** Spanish, French, German, Italian, Japanese, Korean, Simplified Chinese and Traditional Chinese, alongside English.
-4. **The rest of the settings.** Resolution, and the ghost world's background color for Sissel and, once unlocked, Missile.
-5. **Upload to VitaDB.**
-6. **A remastered set from the APK alone.** Building it without the cartridge needs the remaster's own scene scripts and tables in place of the DS ones.
+2. **The rest of the settings.** Resolution, and the ghost world's background color for Sissel and, once unlocked, Missile.
+3. **Upload to VitaDB.**
 
 ## Working on the port
 
