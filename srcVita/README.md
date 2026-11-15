@@ -21,6 +21,7 @@ No game data lives in this folder. Converted assets, captures, reference video a
 | `tools/assets/extract_text_key.py` | Finds the text key in your own copy of the Android package |
 | `tools/vita_loop.py` | Installs, launches and reads back from the Vita |
 | `tools/pause_render.py` | Draws the pause menu, or with `--title` the title screen or `--loading` the loading screen, on the Mac from the baked set, after a list of button presses, through `tests/golden/pause_render.c` |
+| `tests/golden/scene_render.c` | Plays the game on the Mac from a baked set with auto-play and saves the screen as PPM pictures at a tick, route step, script or act: `make scene-render`, then run `build/host/scene_render <set folder> <output folder> tick:N [frames] [frames between]` from `extracted/vita_assets`. `tests/host/` holds its disk files and software renderer |
 | `tools/audio_check.py` | Judges a run log's audio timing and checksums, with no listener |
 | `tools/mutation_check.py` | Breaks the code on purpose to prove the tests notice |
 | `docs/asset_format.md` | The file formats shared by the converter and the app |
@@ -338,15 +339,7 @@ In the debug build's commands file, `play_script route` starts the opening, from
 
 ## Known issues
 
-These are the known differences from the original. Bug-fix releases work through them. Items under "Built, not proven" are written but have not been checked on the device.
-
-**Built, not proven**
-
-- The chain's bend and trail. This needs a faster burst.
-- The camera panning with the tip while it is held.
-- Tap balloons advancing only while play runs.
-- The Back pill, shown only in a ghost view the player opened.
-- Effect 31, the loops on the corpse in ghost view, drawn as the remaster movie `cmn_shig_01` (native kind 0x1d, from the st01_game000 effect list) and shown only in ghost view.
+These are the known differences from the original. Bug-fix releases work through them.
 
 **Chapter 1 differences**, found against the reference footage
 
@@ -356,10 +349,8 @@ These are the known differences from the original. Bug-fix releases work through
 - The thin pill words.
 - The soul's fly-in from the trick pill.
 - Film-still bubbles are about 40% too wide, and the bubble close is squashed.
-- The camera is about 110 px off in the stairs room.
 - The split-screen's left panel is black for about 1.4 s at its start.
 - Short black or white holds that the footage does not have.
-- The stairs walk is slow.
 - Pacing: narration pages in the opening run about 9.6 s longer in total than the footage (the first page alone about 4 s). Talk pages cycle about every 2.8 s, against 2.5 s.
 
 **Effects**
@@ -371,7 +362,6 @@ These are the known differences from the original. Bug-fix releases work through
 **Not in the port**
 
 - **Soul view class gates.** They are not drawn.
-- **Some `EyeCatch` banners.** Trick, DestinyUpdate, DestinyLock and NumberGet are drawn; any other kind logs `eyecatch_kind_not_ported` and draws nothing.
 - **Touch.** The back touch pad is not read. The front screen works alongside the buttons: tap pills, balloons, Rewind Time and talk, drag the soul in Ghost view, and drag the camera where the game allows it.
 The VM's timing comes from the script, except narration holds, which follow `chain.txt`'s timing profile, and the card's ramp and the close-up's dissolve, which are named constants in `script_bridge.c`.
 

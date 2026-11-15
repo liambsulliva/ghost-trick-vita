@@ -1804,6 +1804,17 @@ The class: a switch inside a ported op whose default case logs. The note is keye
 
 Guard: `tests/tools/check_script_modes.py` reads the engine's own tables and scans every script of both sets for a `GameApp` verb, an `EyeCatch` kind, a beam or light mode, or a motion-table word the engine has no case for; it finds none, so no script in the game reaches `eyecatch_kind_not_ported` or `motion_word_not_ported`. `tests/tools/test_script_modes.py` checks the scan on made-up scripts. `tests/unit/test_event_frame_command.c`, `test_light_ops.c`, `test_pinned_light_draw.c` and `test_framing_both_ways.c` run each mode.
 
+### 241. Visual findings could only be checked on the device
+
+The Chapter 1 list in the README dated from 2026-11-07 and nothing on the Mac could show whether an item still held, so fixed items stayed listed. `tests/golden/scene_render.c` now plays the real app code on the Mac with auto-play: `tests/host/host_platform.c` reads the baked set from disk and `tests/host/host_renderer.c` draws the renderer's calls in software (the Vita's blend, tint and flat modes, DXT1 and DXT5). It reaches a tick, route step, script or act with fast-forward and saves frames at normal speed.
+
+Checked with it against `chapter1_720p60.mp4` (the footage's 4:3 picture is 720 px wide at the port's own 2.8125 px per DS pixel, so the two overlay directly):
+
+- The stairs walk is not slow. From the room appearing to "It's done." takes 12.3 s in both, and the camera's drop starts 3.7 s in, in both.
+- The stairs room's camera is not off. The port's picture sits exactly 120 px left of the footage's, which is `(960 - 720) / 2`: the camera is at the room's left edge, so the wide view slides to stay inside the art, as `docs/asset_format.md` says. Where the room is wide enough (the corpse's corner, 12 s later) the shift is 0.
+
+Guard: none in `make test`; the tool needs the baked set. Run it before listing or closing a visual finding.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
