@@ -41,18 +41,21 @@ class SetUpGameTest(unittest.TestCase):
                 set_up_game.pack_members(apk)
             self.assertIn("assets/data02", str(caught.exception))
 
-    def run_stages_with(self, folder, apk):
+    def run_stages_with(self, folder, apk, with_rom=True):
         calls = []
         rom = os.path.join(folder, "game.nds")
-        with open(rom, "wb") as output:
-            output.write(b"rom")
+        if with_rom:
+            with open(rom, "wb") as output:
+                output.write(b"rom")
         arguments = mock.Mock(apk=apk, ds_rom=rom)
         with mock.patch.object(set_up_game, "APK_FOLDER", os.path.join(folder, "remaster_apk")), \
                 mock.patch.object(set_up_game, "TEXT_KEY_PATH", os.path.join(folder, "remaster_apk", "text_key.bin")), \
+                mock.patch.object(set_up_game, "TABLES_PATH", os.path.join(folder, "remaster_apk", "remaster_tables.json")), \
+                mock.patch.object(set_up_game, "read_tables", side_effect=lambda path: calls.append("tables")), \
                 mock.patch.object(set_up_game, "check_tools"), \
                 mock.patch.object(set_up_game, "copy_packs", side_effect=lambda path: calls.append("copy")), \
                 mock.patch.object(set_up_game, "find_text_key", side_effect=lambda path: calls.append("key")), \
-                mock.patch.object(set_up_game, "convert", side_effect=lambda path: calls.append("remastered")), \
+                mock.patch.object(set_up_game, "convert", side_effect=lambda path: calls.append("remastered" if path is not None else "remastered from the package alone")), \
                 mock.patch.object(set_up_game, "convert_ds_set", side_effect=lambda path: calls.append("ds")), \
                 mock.patch.object(set_up_game, "run_with_progress", side_effect=lambda command, label, environment=None: calls.append(next((word for word in command if word.startswith("PLAN_SET=")), command[-1])) or []), \
                 mock.patch.object(set_up_game, "vitasdk_folder", return_value=None), \
@@ -73,6 +76,19 @@ class SetUpGameTest(unittest.TestCase):
         self.assertEqual(calls, ["copy", "key", "srcVita/tools/assets", "ds", "remastered", "PLAN_SET=game_ds", "PLAN_SET=game"])
         self.assertIn("ux0:data/ghosttrick/assets_ds/", shown)
         self.assertIn("ux0:data/ghosttrick/assets/", shown)
+
+    def test_with_only_the_android_package_the_tables_are_read_and_only_the_remastered_set_is_built(self):
+        with tempfile.TemporaryDirectory() as folder:
+            calls, shown = self.run_stages_with(folder, os.path.join(folder, "game.apk"), with_rom=False)
+        self.assertEqual(calls, ["copy", "key", "tables", "srcVita/tools/assets", "remastered from the package alone", "PLAN_SET=game"])
+        self.assertIn("ux0:data/ghosttrick/assets/", shown)
+        self.assertNotIn("assets_ds", shown)
+
+    def test_with_neither_copy_the_setup_stops_by_name(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaises(set_up_game.SetupFailed) as caught:
+                self.run_stages_with(folder, None, with_rom=False)
+        self.assertIn("--apk", str(caught.exception))
 
     def test_the_bar_shows_share_and_sizes(self):
         self.assertIn(" 50%", set_up_game.bar_text(512, 1024, 0))

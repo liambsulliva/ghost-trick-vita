@@ -31,13 +31,13 @@ Click the preview to open the [interactive treemap](https://liambsulliva.github.
 
 ## Run it on a Vita
 
-Download the app, `ghosttrick-<version>.vpk`, from the [Releases page](https://github.com/liambsulliva/ghost-trick-vita/releases), or build it yourself. The VPK holds only the app. It has no game data in it, so it also needs art, sound and text converted from your own copies of the game. The app plays the game from the DS game's own scripts, with its music, sounds, narration and dialogue. Your DS cartridge dump alone is enough: it gives the DS set, drawn with the cartridge's own art, text and sound. Adding your copy of the remaster's Android release also gives the remastered set. [The app's README](srcVita/README.md#controls) lists the buttons.
+Download the app, `ghosttrick-<version>.vpk`, from the [Releases page](https://github.com/liambsulliva/ghost-trick-vita/releases), or build it yourself. The VPK holds only the app. It has no game data in it, so it also needs art, sound and text converted from your own copies of the game. The app plays the game from the DS game's own scripts, with its music, sounds, narration and dialogue. Either of your copies is enough. Your DS cartridge dump gives the DS set, drawn with the cartridge's own art, text and sound. Your copy of the remaster's Android release gives the remastered set; without a cartridge, its scripts and tables are [compiled from the package itself](srcVita/README.md#without-the-ds-cartridge). With both, you get both sets. [The app's README](srcVita/README.md#controls) lists the buttons.
 
 You need:
 
 - Python 3, `make`, `clang` and ImageMagick 7 (the `magick` command). The converter draws the game's text with `magick`, which needs FreeType support: `magick -list format | grep OTF` should print a line.
 - About 3.6 GB of free disk space for the game files and the converted game.
-- Your own dump of the USA DS cartridge. Your own copy of the remaster's Android release is optional: without it the port uses the cartridge's own art, text and sound only.
+- Your own dump of the USA DS cartridge, your own copy of the remaster's Android release, or both.
 - VitaSDK, only to build the VPK yourself instead of downloading it. [The app's README](srcVita/README.md#build-and-test) lists its libraries.
 - A Vita that can install homebrew with VitaShell.
 - The Vita's shader compiler at `ur0:data/libshacccg.suprx`. It does not come with the VPK. Extract it once with ShaRKF00D, if another app has not already made you do this.
@@ -48,7 +48,7 @@ Run every command below from the top of this repository.
 
 ### Set everything up with one command
 
-`srcVita/tools/set_up_game.py` does the whole preparation in one go. Give it your own dump of the USA DS cartridge (game code `BGTE`) and, for the remastered art, your copy of the Android package:
+`srcVita/tools/set_up_game.py` does the whole preparation in one go. Give it your own dump of the USA DS cartridge (game code `BGTE`), your copy of the Android package, or both:
 
 ```bash
 python3 -I srcVita/tools/set_up_game.py --apk "path/to/your-copy.apk" --ds-rom "path/to/your-cartridge.nds"
@@ -58,9 +58,9 @@ It prints each stage as it starts, with a progress bar while it copies the game 
 
 1. **Check the tools.** `make`, `clang` and `magick` with FreeType support.
 2. **Copy the game files out of the Android package.** It takes `re_chunk_000.pak`, `data01` and `data02` (about 3.1 GB) from the package's `assets/` folder into `extracted/remaster_apk/`. They were only tested with Android v1.0.0, packaged as one APK with all three files.
-3. **Find the text key.** The narration and speech bubbles are stored encrypted. The key is not in this repository, so it is found in your own package, saved as `extracted/remaster_apk/text_key.bin` and never printed.
+3. **Find the text key.** The narration and speech bubbles are stored encrypted. The key is not in this repository, so it is found in your own package, saved as `extracted/remaster_apk/text_key.bin` and never printed. With no cartridge, it also reads the game tables out of the package's code into `extracted/remaster_apk/remaster_tables.json`.
 4. **Build the converter.**
-5. **Convert the art, sound, text and DS scripts.** The cartridge's own set goes into `extracted/vita_assets/game_ds/`, and with the Android package the remastered set goes into `extracted/vita_assets/game/` (about 3.3 GB). The app plays the game from the DS game's own scripts, so the cartridge dump is required. A cartridge from another region is refused, because no other region's scripts have been checked. [The asset format](srcVita/docs/asset_format.md#two-art-sets) explains the two sets.
+5. **Convert the art, sound, text and DS scripts.** The cartridge's own set goes into `extracted/vita_assets/game_ds/`, and with the Android package the remastered set goes into `extracted/vita_assets/game/` (about 3.3 GB). The remastered set takes the DS scripts from the cartridge when you give one, and otherwise compiles them from the package. A cartridge from another region is refused, because no other region's scripts have been checked. [The asset format](srcVita/docs/asset_format.md#two-art-sets) explains the two sets.
 6. **Plan the loading.** It replays the game on this computer and writes, for each scene, the list of textures to read ahead and one bundle of its animations.
 7. **Build the package**, if VitaSDK is installed. [The app's README](srcVita/README.md#build-and-test) lists its libraries.
 8. **Copy everything to the Vita.** The script tells you what to install and copy, which the next section explains.

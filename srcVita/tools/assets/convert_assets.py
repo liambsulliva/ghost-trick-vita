@@ -1,4 +1,5 @@
 import argparse
+import collections
 import concurrent.futures
 import json
 import os
@@ -33,6 +34,8 @@ import page_tiles
 import output_folders
 import pause_art
 import read_ahead
+import remaster_scripts
+import remaster_tables
 import route_pacing
 import script_assets
 import script_pack
@@ -316,7 +319,9 @@ def convert_language(packs, base_set, base_language, language, text_key, ds_rom_
         delete_work_folder(work_folder)
     failures = [(language["code"] + " " + name, reason) for name, reason in failures + talk_failures + art_failures]
     pause_files, pause_results = convert_pause_art(packs, localized, language_record, tables["table_texts"], tables["timelines"], tables["crops"], key)
-    if language["ds"] != base_language["ds"]:
+    if ds_rom_path is None:
+        script_assets.bake_remaster_language_cues(localized, packs, key, language_record)
+    elif language["ds"] != base_language["ds"]:
         script_assets.bake_language_cues(localized, ds_rom_path, language_record)
     results = text_results + talk_results + hud_results + art_results + pause_results
     texture_sizes = dict(base["texture_sizes"])
@@ -399,6 +404,9 @@ def audio_output_files(music_results, sound_results):
 def ds_music_output_files(set_description, rom_path, music_results, record):
     section = set_description.get("ds_music")
     if section is None:
+        return {}
+    if rom_path is None:
+        print("DS music left out: an Android-only build has no DS cartridge to read it from")
         return {}
     with ds_rom.DsRom(rom_path) as rom:
         sdat = rom.read_file(section["archive"])
@@ -503,10 +511,22 @@ def delete_work_folder(work_folder):
         raise
 
 
+def remaster_source(apk_folder):
+    logged = collections.Counter()
+    return {"apk_folder": apk_folder, "tables": chapter_assets.RemasterTables(remaster_tables.load_tables(apk_folder)), "log": lambda kind, detail: logged.update([kind]), "logged": logged}
+
+
+def print_remaster_log(remaster):
+    if remaster is not None and remaster["logged"]:
+        print("left out of the Android scripts: " + ", ".join("%s %d" % item for item in sorted(remaster["logged"].items())))
+
+
 def convert_set_description(set_description, output_folder, apk_folder, text_key, ds_rom_path=DEFAULT_DS_ROM_PATH):
     remove_old_work_folders()
     packs = pack_files.PackSet(apk_folder)
-    set_description = chapter_assets.expand_set(set_description, packs, ds_rom_path, text_key)
+    remaster = remaster_source(apk_folder) if ds_rom_path is None and "chapter" in set_description else None
+    set_description = chapter_assets.expand_set(set_description, packs, ds_rom_path, text_key, remaster)
+    print_remaster_log(remaster)
     set_description = effect_movies.add_to_set(set_description, packs)
     set_description = class_movies.add_to_set(set_description)
     animations = set_description.get("animations", [])
@@ -527,7 +547,10 @@ def convert_set_description(set_description, output_folder, apk_folder, text_key
     make_output_folders(output_folder)
     record = bake_record.BakeRecord(output_folder)
     try:
-        script_paths = script_assets.bake_or_keep_scripts(set_description, ds_rom_path, output_folder, record)
+        if remaster is not None:
+            script_paths = script_assets.bake_remaster_scripts(set_description, packs, text_key, record)
+        else:
+            script_paths = script_assets.bake_or_keep_scripts(set_description, ds_rom_path, output_folder, record)
         class_movies.check_every_class_has_a_movie(set_description, output_folder, script_paths)
         work_folder = tempfile.mkdtemp(prefix=WORK_FOLDER_PREFIX)
         try:
@@ -611,6 +634,33 @@ def allow_apk_reads():
 hooks_added = []
 
 
+class RomReadRefused(RuntimeError):
+    pass
+
+
+refused_rom_paths = []
+ROM_SUFFIX = ".nds"
+
+
+def refuse_rom_reads_hook(event, args):
+    if not refused_rom_paths or event not in AUDITED_FILE_EVENTS:
+        return
+    path = path_of_audited_event(args)
+    if path is not None and (path in refused_rom_paths or path.lower().endswith(ROM_SUFFIX)):
+        raise RomReadRefused("the Android-only build must read nothing from the DS cartridge, but it opened " + path)
+
+
+def refuse_rom_reads(paths):
+    if refuse_rom_reads_hook not in hooks_added:
+        sys.addaudithook(refuse_rom_reads_hook)
+        hooks_added.append(refuse_rom_reads_hook)
+    refused_rom_paths[:] = sorted(set(os.path.realpath(path) for path in paths))
+
+
+def allow_rom_reads():
+    refused_rom_paths[:] = []
+
+
 def convert_ds_set_description(set_description, output_folder, ds_rom_path=DEFAULT_DS_ROM_PATH):
     remove_old_work_folders()
     cartridge = ds_set.Cartridge(ds_rom_path)
@@ -662,8 +712,15 @@ def convert_and_report(set_description, arguments):
             return 0
         text_key = narration.load_text_key(set_description, arguments.apk_folder)
         subprocess.run(["make", "-C", ASSET_TOOLS_FOLDER], check=True)
+        if arguments.apk_only:
+            refuse_rom_reads([arguments.ds_rom, DEFAULT_DS_ROM_PATH])
+            try:
+                convert_set_description(set_description, arguments.output, arguments.apk_folder, text_key, None)
+            finally:
+                allow_rom_reads()
+            return 0
         convert_set_description(set_description, arguments.output, arguments.apk_folder, text_key, arguments.ds_rom)
-    except (narration.NarrationError, ds_rom.RomRefused, script_assets.ScriptBakeError, ApkReadRefused) as error:
+    except (narration.NarrationError, ds_rom.RomRefused, script_assets.ScriptBakeError, ApkReadRefused, RomReadRefused, chapter_assets.ChapterBakeError, remaster_tables.TablesError, remaster_scripts.RemasterScriptError) as error:
         print("error: " + str(error), file=sys.stderr)
         return 1
     except ConversionFailed as failed:
@@ -682,6 +739,7 @@ def main():
     parser.add_argument("--apk-folder", default=DEFAULT_APK_FOLDER, help="folder holding the remaster's pack files")
     parser.add_argument("--art", choices=[REMASTERED_ART, DS_ART], default=REMASTERED_ART, help="which art set to build: the remaster's, from the APK, or the DS cartridge's alone, which reads nothing from the APK")
     parser.add_argument("--ds-rom", default=DEFAULT_DS_ROM_PATH, help="your own USA DS ROM, read only for a set with a scripts section")
+    parser.add_argument("--apk-only", action="store_true", help="build the remaster's art set from the Android package alone: scripts are compiled from the APK and the DS ROM is never opened")
     arguments = parser.parse_args()
     set_description = load_set_description(arguments.set)
     exit_code = convert_and_report(set_description, arguments)

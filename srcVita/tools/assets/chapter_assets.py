@@ -8,7 +8,10 @@ import ds_rom
 import effect_movies
 import frame_layout
 import pack_files
+import languages
+import remaster_scripts
 import resource_list
+import timeline_file
 
 ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))), "tools"))
@@ -106,10 +109,125 @@ TAG_EFFECT = -8
 TAG_CORE_VALUE = -10
 CORE_VALUE_INFO_MASK = 0xfff
 PRELOADED_TABLES_PER_SCRIPT = 32
+FACE_SYMBOL_PREFIXES = ("iCutin::", "iFacePanel::")
 
 
 class ChapterBakeError(ValueError):
     pass
+
+
+class Arm9Tables:
+    def __init__(self, arm9):
+        self.arm9 = arm9
+
+    def room(self, room):
+        width, height, rows_address = struct.unpack_from("<HHI", self.arm9, ROOM_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + ROOM_ROW_SIZE * room)
+        rows = []
+        position = rows_address - ARM9_LOAD_ADDRESS
+        while 0 <= position < len(self.arm9) - 8:
+            rows.append(struct.unpack_from("<4H", self.arm9, position))
+            position = position + 8
+            if rows[-1][0] == ROOM_ROW_END:
+                break
+        return width, height, rows
+
+    def is_trickless(self, info):
+        fields = struct.unpack_from("<4H", self.arm9, CORE_INFO_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + CORE_INFO_ROW_SIZE * info)
+        return fields[CORE_INFO_ACTION_FIELD] in CORE_INFO_NO_ACTIONS
+
+    def sound_row(self, kind):
+        if kind >= SOUND_ROW_COUNT:
+            return None
+        index, group, _, _ = struct.unpack_from("<hhHH", self.arm9, SOUND_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + SOUND_ROW_SIZE * kind)
+        return index, group
+
+    def effect_kind(self, effect_id):
+        return effect_kind_of(self.arm9, effect_id)
+
+    def effect_list_row(self, effect_id):
+        kind = self.effect_kind(effect_id)
+        return None if kind >= FIRST_CLASS_EFFECT_KIND else effect_list_row_of_kind(kind)
+
+    def effect_factory(self, kind):
+        return effect_factory_of(self.arm9, kind)
+
+    def face_rows(self, packs):
+        paths = face_paths(packs)
+        rows = {}
+        for face_id in range(1, FACE_ROW_COUNT):
+            resource, _, flip, _, _, _, _ = struct.unpack_from("<7H", self.arm9, FACE_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + FACE_ROW_SIZE * face_id)
+            rows[face_id] = (face_texture_of(paths, resource), flip)
+        return rows
+
+
+class RemasterTables:
+    def __init__(self, tables):
+        self.tables = tables
+
+    def room(self, room):
+        entry = self.tables["rooms"].get(str(room))
+        if entry is None:
+            raise ChapterBakeError("the Android package's tables have no room %d" % room)
+        return entry["size"][0], entry["size"][1], [tuple(row) for row in entry["rows"]]
+
+    def is_trickless(self, info):
+        rows = self.tables["core_infos"]
+        return info < len(rows) and rows[info] is not None and rows[info][CORE_INFO_ACTION_FIELD] == self.tables["no_action_label"]
+
+    def sound_row(self, kind):
+        rows = self.tables["sound_rows"]
+        return tuple(rows[kind]) if kind < len(rows) and rows[kind] is not None else None
+
+    def effect_kind(self, effect_id):
+        return self.tables["effect_kinds"][effect_id]
+
+    def effect_list_row(self, effect_id):
+        kind = self.effect_kind(effect_id)
+        return None if kind >= FIRST_CLASS_EFFECT_KIND else kind
+
+    def effect_factory(self, kind):
+        return self.tables["class_factories"][kind - FIRST_CLASS_EFFECT_KIND]
+
+    def face_rows(self, packs):
+        listed = dict(resource_list.read_list(packs, "texture", FACE_LIST_NAME))
+        return {face_id: (listed.get(row[0]), row[2]) for face_id, row in enumerate(self.tables["face_rows"]) if face_id}
+
+
+def scripts_of(source):
+    return RomScripts(source) if hasattr(source, "file_id_of") else source
+
+
+def tables_of(source):
+    return Arm9Tables(source) if isinstance(source, (bytes, bytearray)) else source
+
+
+class RomScripts:
+    def __init__(self, rom):
+        self.rom = rom
+
+    def has(self, path):
+        return self.rom.file_id_of(path + ROM_SUFFIX) is not None
+
+    def script(self, path):
+        return read_script(self.rom, path)
+
+
+class RemasterScripts:
+    def __init__(self, packs, symbols, messages, shared_tables, log):
+        self.packs = packs
+        self.symbols = symbols
+        self.messages = messages
+        self.shared_tables = shared_tables
+        self.log = log
+        self.classes, self.by_type = remaster_scripts.load_classes()
+
+    def has(self, path):
+        return path_exists(self.packs, remaster_scripts.script_pack_path(path))
+
+    def script(self, path):
+        data = self.packs.read(remaster_scripts.script_pack_path(path))
+        plain = remaster_scripts.compile_script(path, data, self.classes, self.by_type, self.symbols, self.messages, remaster_scripts.table_names(self.packs, path, self.shared_tables), self.log)
+        return Script(path, plain)
 
 
 class Script:
@@ -161,15 +279,16 @@ def read_script(rom, path):
     return Script(path, plain)
 
 
-def discover_chain(rom, entry, stages, follow=(), stop_before=()):
+def discover_chain(source, entry, stages, follow=(), stop_before=()):
+    source = scripts_of(source)
     prefixes = tuple(stage + "/" for stage in stages)
     scripts = collections.OrderedDict()
     waiting = collections.deque([entry])
     while waiting:
         path = waiting.popleft()
-        if path in scripts or path in stop_before or rom.file_id_of(path + ROM_SUFFIX) is None:
+        if path in scripts or path in stop_before or not source.has(path):
             continue
-        scripts[path] = read_script(rom, path)
+        scripts[path] = source.script(path)
         for target in scripts[path].strings_of_ops((SCRIPT_CHANGE_OP,)):
             if target.startswith(prefixes) or target in follow:
                 waiting.append(target)
@@ -191,13 +310,10 @@ def signed(value):
     return value - 0x10000 if value >= 0x8000 else value
 
 
-def read_room_bands(arm9, room):
-    _, height, rows_address = struct.unpack_from("<HHI", arm9, ROOM_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + ROOM_ROW_SIZE * room)
+def read_room_bands(tables, room):
+    _, height, rows = tables_of(tables).room(room)
     bands = []
-    position = rows_address - ARM9_LOAD_ADDRESS
-    while 0 <= position < len(arm9) - 8:
-        tag, key, amount, _ = struct.unpack_from("<4H", arm9, position)
-        position = position + 8
+    for tag, key, amount, _ in rows:
         if tag == ROOM_ROW_END:
             break
         if tag == ROOM_BAND_FROM_ROOM_HEIGHT or tag == ROOM_BAND_FROM_KEY:
@@ -207,13 +323,10 @@ def read_room_bands(arm9, room):
     return bands
 
 
-def read_room(arm9, room):
-    width, height, rows_address = struct.unpack_from("<HHI", arm9, ROOM_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + ROOM_ROW_SIZE * room)
+def read_room(tables, room):
+    width, height, rows = tables_of(tables).room(room)
     plates = []
-    position = rows_address - ARM9_LOAD_ADDRESS
-    while 0 <= position < len(arm9) - 8:
-        plate_id, x, y, _ = struct.unpack_from("<4H", arm9, position)
-        position = position + 8
+    for plate_id, x, y, _ in rows:
         if plate_id == ROOM_ROW_END:
             break
         if plate_id >= ROOM_ROW_TAGS_FROM:
@@ -255,7 +368,7 @@ def rooms_of_scripts_naming(scripts, words):
     return rooms
 
 
-def plates_and_rooms(packs, scripts, arm9, soul_ramp, ghost_ramps=None):
+def plates_and_rooms(packs, scripts, tables, soul_ramp, ghost_ramps=None):
     plate_paths = {}
     for script in scripts.values():
         for plate_id, path in read_list_or_nothing(packs, "bg", script.list_name()):
@@ -266,7 +379,7 @@ def plates_and_rooms(packs, scripts, arm9, soul_ramp, ghost_ramps=None):
             return None
         return {"name": os.path.basename(plate_paths[plate_id])[:-len(".user")].lower(), "source": plate_source(plate_paths[plate_id])}
 
-    return room_rows(scripts, arm9, soul_ramp, ghost_ramps, remaster_plate)
+    return room_rows(scripts, tables, soul_ramp, ghost_ramps, remaster_plate)
 
 
 def strip_table_variant(stem):
@@ -335,8 +448,15 @@ def resolve_tables(packs, scripts):
             script_tables[stem] = folder
             paths_by_folder[folder] = folders[folder]
             frames_by_folder[folder].update(frames)
+    frameless = {folder for folder, path in paths_by_folder.items() if not timeline_file.has_frames(packs.read(resource_list.pack_path_of(path)))}
+    for script_tables in motion_tables.values():
+        for stem in [stem for stem, folder in script_tables.items() if folder in frameless]:
+            unresolved.append(stem)
+            del script_tables[stem]
     animations = []
     for folder, path in paths_by_folder.items():
+        if folder in frameless:
+            continue
         animations.append({"name": folder, "timeline": resource_list.pack_path_of(path), "ds_frames": frame_layout.WholeFrames(sorted(frames_by_folder[folder])), "table_only": True})
     return animations, motion_tables, sorted(set(unresolved))
 
@@ -367,13 +487,8 @@ def core_infos_used(scripts):
     return sorted(infos)
 
 
-def trickless_core_infos(arm9, scripts):
-    trickless = []
-    for info in core_infos_used(scripts):
-        fields = struct.unpack_from("<4H", arm9, CORE_INFO_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + CORE_INFO_ROW_SIZE * info)
-        if fields[CORE_INFO_ACTION_FIELD] in CORE_INFO_NO_ACTIONS:
-            trickless.append(info)
-    return trickless
+def trickless_core_infos(tables, scripts):
+    return [info for info in core_infos_used(scripts) if tables_of(tables).is_trickless(info)]
 
 
 def music_ids_used(scripts):
@@ -389,13 +504,14 @@ def path_exists(packs, path):
     return pack_files.path_hash_key(path) in packs.entries
 
 
-def audio_rows(packs, scripts, arm9):
+def audio_rows(packs, scripts, tables):
     sounds = {}
     sound_kinds = {}
     for kind in sound_kinds_used(scripts):
-        if kind >= SOUND_ROW_COUNT:
+        row = tables_of(tables).sound_row(kind)
+        if row is None:
             continue
-        index, group, _, _ = struct.unpack_from("<hhHH", arm9, SOUND_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + SOUND_ROW_SIZE * kind)
+        index, group = row
         if group not in SOUND_GROUP_NAMES:
             continue
         name = "%s_%03d" % (SOUND_GROUP_NAMES[group], index)
@@ -422,17 +538,18 @@ def effect_factory_of(arm9, kind):
     return struct.unpack_from("<I", arm9, EFFECT_FACTORY_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + 4 * (kind - FIRST_CLASS_EFFECT_KIND))[0]
 
 
-def chapter_card_rows(packs, scripts, arm9, cards):
-    first_kind = effect_kind_of(arm9, cards["first_effect_id"])
-    factory = effect_factory_of(arm9, first_kind)
+def chapter_card_rows(packs, scripts, tables, cards):
+    tables = tables_of(tables)
+    first_kind = tables.effect_kind(cards["first_effect_id"])
+    factory = tables.effect_factory(first_kind)
     effect_ids = {cards["first_effect_id"]}
     for script in scripts.values():
         effect_ids.update(spawned_effect_ids(script))
     textures = []
     effects = []
     for effect_id in sorted(effect_ids):
-        kind = effect_kind_of(arm9, effect_id)
-        if kind < FIRST_CLASS_EFFECT_KIND or effect_factory_of(arm9, kind) != factory:
+        kind = tables.effect_kind(effect_id)
+        if kind < FIRST_CLASS_EFFECT_KIND or tables.effect_factory(kind) != factory:
             continue
         chapter_index = kind - first_kind
         source = cards["source"] % chapter_index
@@ -529,7 +646,7 @@ def spawned_effect_ids(script):
                 yield arguments[0]
 
 
-def spawned_effect_movies(packs, scripts, arm9, ids_with_rows):
+def spawned_effect_movies(packs, scripts, tables, ids_with_rows):
     movies = collections.OrderedDict()
     differing = set()
     lists_read = {}
@@ -537,10 +654,9 @@ def spawned_effect_movies(packs, scripts, arm9, ids_with_rows):
         for effect_id in spawned_effect_ids(script):
             if effect_id in ids_with_rows:
                 continue
-            kind = effect_kind_of(arm9, effect_id)
-            if kind >= FIRST_CLASS_EFFECT_KIND:
+            row = tables_of(tables).effect_list_row(effect_id)
+            if row is None:
                 continue
-            row = effect_list_row_of_kind(kind)
             name = effect_movie_names_by_row(packs, script.list_name(), lists_read).get(row) or effect_movie_names_by_row(packs, COMMON_EFFECT_LIST, lists_read).get(row)
             if name is None or not path_exists(packs, effect_movies.USER_PATH % (name, name)):
                 continue
@@ -630,14 +746,6 @@ def name_entry_of(core_labels, name_id):
     return core_labels["name_entry"] + name_id
 
 
-def read_face_rows(arm9):
-    rows = {}
-    for face_id in range(1, FACE_ROW_COUNT):
-        resource, _, flip, _, _, _, _ = struct.unpack_from("<7H", arm9, FACE_TABLE_ADDRESS - ARM9_LOAD_ADDRESS + FACE_ROW_SIZE * face_id)
-        rows[face_id] = (resource, flip)
-    return rows
-
-
 def face_paths(packs):
     paths = [path for _, path in resource_list.read_list(packs, "texture", FACE_LIST_NAME) if FACE_FOLDER_MARK in path.lower()]
     return sorted(paths, key=lambda path: path.lower())
@@ -668,6 +776,12 @@ def use_language_text(set_description, rom_path, base_ds, literal_system_lines):
     if talk is None:
         return
     language = set_description.get("scripts", {}).get("language", base_ds)
+    if rom_path is None:
+        missing = sorted(label for label in talk.get("system_lines", {}) if label not in literal_system_lines)
+        if missing:
+            raise ChapterBakeError("an Android-only build takes system lines from the languages file, which has no text for " + ", ".join(missing))
+        talk["system_line_texts"] = dict(talk.get("system_line_texts", {}), **literal_system_lines)
+        return
     if language == base_ds and not literal_system_lines:
         return
     with ds_rom.DsRom(rom_path) as rom:
@@ -702,13 +816,63 @@ def read_chain(set_description, rom_path):
     return section, scripts, arm9, languages, system_line_texts
 
 
-def room_rows(scripts, arm9, soul_ramp, ghost_ramps, name_of_plate):
+def read_remaster_chain(set_description, packs, text_key, tables, log):
+    section = dict(set_description["scripts"])
+    symbols = tables.tables["symbols"]
+
+    def chain_of(source):
+        return discover_chain(source, section["entry"], stages_of(set_description), section.get("follow", ()), section.get("stop_before", ()))
+
+    reached = list(chain_of(RemasterScripts(packs, symbols, {}, {}, lambda kind, detail: None)))
+    messages = remaster_scripts.message_labels(packs, text_key, remaster_scripts.message_paths(packs, reached), log)
+    shared = remaster_scripts.shared_table_names(packs, remaster_scripts.chara_list_names(reached))
+    scripts = chain_of(RemasterScripts(packs, symbols, messages, shared, log))
+    section["files"] = list(scripts)
+    return section, scripts, tables, {}, literal_system_line_texts(set_description)
+
+
+def literal_system_line_texts(set_description):
+    wanted = set_description.get("talk", {}).get("system_lines", {})
+    if not wanted:
+        return {}
+    every_language = languages.load_languages(os.path.join(ASSET_TOOLS_FOLDER, set_description["languages"])) if "languages" in set_description else []
+    literals = every_language[0].get("system_lines", {}) if every_language else {}
+    missing = sorted(label for label in wanted if label not in literals)
+    if missing:
+        raise ChapterBakeError("an Android-only build takes system lines from the languages file, which has no text for " + ", ".join(missing))
+    return {label: literals[label] for label in wanted}
+
+
+def remaster_cue_pages(scripts, entries_for):
+    cue_pages = {}
+    for path, script in scripts.items():
+        entries = entries_for(path)
+        labels = {label: [list(page) for page in entries[label]] for label in script.strings_of_ops((NARRATION_OP,)) if label in entries}
+        if labels:
+            cue_pages[path] = labels
+    return cue_pages
+
+
+def remaster_cue_texts(packs, cue_pages, text_key):
+    names_of_file = collections.defaultdict(set)
+    for labels in cue_pages.values():
+        for pages in labels.values():
+            for file_path, name in pages:
+                names_of_file[file_path].add(name)
+    texts = {}
+    for file_path, names in names_of_file.items():
+        found = message_file.read_entries(packs.read(file_path), names, text_key)
+        texts.update({(file_path, name): text for name, text in found.items()})
+    return {path: message_cues.remaster_cue_text({label: [texts[(file_path, name)] for file_path, name in pages] for label, pages in labels.items()}) for path, labels in cue_pages.items()}
+
+
+def room_rows(scripts, tables, soul_ramp, ghost_ramps, name_of_plate):
     ghost_rooms = {ghost: rooms_of_scripts_naming(scripts, set(ramp["commands"])) for ghost, ramp in (ghost_ramps or {}).items()}
     plates = collections.OrderedDict()
     room_plates = {}
     room_sizes = {}
     for room in rooms_used(scripts):
-        width, height, rows = read_room(arm9, room)
+        width, height, rows = read_room(tables, room)
         room_sizes[str(room)] = [width, height]
         placed = []
         for plate_id, x, y in rows:
@@ -729,14 +893,17 @@ def room_rows(scripts, arm9, soul_ramp, ghost_ramps, name_of_plate):
     return list(plates.values()), room_plates, room_sizes
 
 
-def expand_set(set_description, packs, rom_path, text_key):
+def expand_set(set_description, packs, rom_path, text_key, remaster=None):
     if "chapter" not in set_description:
         return set_description
     refuse_a_closing_card_beside_the_game_s_own_cards(set_description)
     expanded = dict(set_description)
     chapter = set_description["chapter"]
     soul_ramp = set_description.get("soul_view", {}).get("ramp")
-    section, scripts, arm9, languages, system_line_texts = read_chain(set_description, rom_path)
+    if remaster is None:
+        section, scripts, arm9, languages, system_line_texts = read_chain(set_description, rom_path)
+    else:
+        section, scripts, arm9, languages, system_line_texts = read_remaster_chain(set_description, packs, text_key, remaster["tables"], remaster["log"])
     plates, room_plates, room_sizes = plates_and_rooms(packs, scripts, arm9, soul_ramp, set_description.get("soul_view", {}).get("ghost_ramps"))
     expanded["plates"] = plates
     section["room_plates"] = room_plates
@@ -825,16 +992,18 @@ def expand_set(set_description, packs, rom_path, text_key):
     expanded["narration"] = narration_rows
     expanded["bubble_text"] = bubble_rows
     expanded["script_balloons"] = balloon_rows
-    paths = face_paths(packs)
-    face_rows = read_face_rows(arm9)
+    face_rows = tables_of(arm9).face_rows(packs)
     talk = dict(set_description.get("talk", {}))
     talk["entries"] = {label: entries_for(path)[label] for label, path in talk_labels.items()}
     talk["language_files"] = {label: languages.get(path) for label, path in talk_labels.items()}
     talk["language_paths"] = dict(talk_labels)
     talk["system_line_texts"] = system_line_texts
     talk["face_rows"] = face_rows
-    talk["face_paths"] = paths
+    if remaster is not None:
+        talk["face_symbols"] = {name: value for name, value in remaster["tables"].tables["symbols"].items() if name.startswith(FACE_SYMBOL_PREFIXES)}
     expanded["talk"] = talk
+    if remaster is not None:
+        expanded["remaster_scripts"] = {"plains": {path: script.plain for path, script in scripts.items()}, "cue_pages": remaster_cue_pages(scripts, entries_for)}
     expanded["scripts"] = section
     expanded["script_table_names"] = {path: [script.table_name_at(operands[0] | (operands[1] << 16)) for _, _, op, operands in script.operations if op == MOTION_OP] for path, script in scripts.items()}
     return expanded

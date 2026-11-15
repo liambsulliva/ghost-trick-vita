@@ -17,7 +17,7 @@ import message_file
 import pack_files
 import remaster_scripts
 
-LEAST_SAME_SHARE = 0.985
+LEAST_SAME_SHARE = 0.995
 NO_OPS = (0x12e, 0x12f, 0x130, 0xc4)
 JUMP_OP = 0x22
 DEBUG_OP = 0x12e
@@ -137,7 +137,8 @@ def main():
     kinds = word_kinds(classes)
     listed = [line.strip() for line in open(os.path.join(arguments.apk, "GTPD_ANDROID_Release.list"))]
     message_paths = [path for path in listed if path.endswith(".msg.22") and "/text/" in path and in_packs(packs, path)]
-    shared_tables = remaster_scripts.shared_table_names(packs, remaster_scripts.chara_list_names(listed))
+    listed_scripts = [path[len(remaster_scripts.SCRIPT_FOLDER):-len(remaster_scripts.SCRIPT_SUFFIX)] + remaster_scripts.DS_SCRIPT_SUFFIX for path in listed if path.startswith(remaster_scripts.SCRIPT_FOLDER) and path.endswith(remaster_scripts.SCRIPT_SUFFIX)]
+    shared_tables = remaster_scripts.shared_table_names(packs, remaster_scripts.chara_list_names(listed_scripts))
     messages = remaster_scripts.message_labels(packs, text_key, message_paths, lambda kind, detail: logged.update([kind]))
     totals = collections.Counter()
     differing = collections.Counter()

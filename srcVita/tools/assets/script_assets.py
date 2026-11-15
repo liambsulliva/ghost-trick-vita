@@ -27,6 +27,7 @@ ACT_END_HIGH_OPERAND = 2
 ACT_NAME_OPERAND = 3
 SCRIPT_CODE_FILES = ["ds_rom.py", "message_cues.py", "script_assets.py", "ui_clips.py", "../../../tools/lz.py"]
 CUES_EXTENSION = ".cues"
+REMASTER_SOURCE = "remaster"
 MOTIONS_EXTENSION = ".motions"
 CHAIN_FILE = SCRIPTS_FOLDER + "/chain.txt"
 PRELOAD_FILE = SCRIPTS_FOLDER + "/chain.preload"
@@ -215,6 +216,42 @@ def bake_language_cues(set_description, rom_path, record):
     with ds_rom.DsRom(rom_path) as rom:
         scripts = {path: read_one_script(rom, record, code, path) for path in section["files"]}
         return bake_cue_files(rom, record, code, section, scripts)
+
+
+def bake_remaster_cues(set_description, packs, text_key, record, code):
+    import chapter_assets
+
+    remaster = set_description["remaster_scripts"]
+    try:
+        texts = chapter_assets.remaster_cue_texts(packs, remaster["cue_pages"], text_key)
+    except (ValueError, message_cues.CueError) as error:
+        raise ScriptBakeError("narration cues: " + str(error)) from None
+    relative_paths = []
+    for path in set_description["scripts"]["files"]:
+        if path not in texts:
+            continue
+        relative_path = SCRIPTS_FOLDER + "/" + script_name(path) + CUES_EXTENSION
+        text = texts[path].encode("ascii")
+        key = record.key_for(code, {"path": path, "source": REMASTER_SOURCE}, text)
+        if record.read_if_current(relative_path, key) is None:
+            record.store(relative_path, key, text)
+        relative_paths.append(relative_path)
+    return relative_paths
+
+
+def bake_remaster_scripts(set_description, packs, text_key, record):
+    section = set_description["scripts"]
+    code = bake_record.code_fingerprint(SCRIPT_CODE_FILES)
+    for path in section["files"]:
+        plain = set_description["remaster_scripts"]["plains"][path]
+        key = record.key_for(code, {"path": path, "source": REMASTER_SOURCE}, plain)
+        if record.read_if_current(baked_path(path), key) is None:
+            record.store(baked_path(path), key, plain)
+    return [baked_path(path) for path in section["files"]] + bake_remaster_cues(set_description, packs, text_key, record, code)
+
+
+def bake_remaster_language_cues(set_description, packs, text_key, record):
+    return bake_remaster_cues(set_description, packs, text_key, record, bake_record.code_fingerprint(SCRIPT_CODE_FILES))
 
 
 def read_baked_script(output_folder, path):

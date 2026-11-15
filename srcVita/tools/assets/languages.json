@@ -5,7 +5,10 @@
       "code": "en",
       "slot": 1,
       "ds": "en",
-      "art": "en"
+      "art": "en",
+      "system_lines": {
+        "sys_add_data": "New info has been added."
+      }
     },
     {
       "key": "japanese",

@@ -44,6 +44,15 @@ CHARA_LIST_KIND = "chara"
 EXPANDED_SUFFIX = "_expand"
 NO_ART_RESOURCE = 0
 NO_ART_TABLE = "no_art"
+TEXT_FOLDER = "natives/android/gamedesign/text/"
+MESSAGE_SUFFIX = ".msg.22"
+NUMBERED_MESSAGE_FORMAT = "%s/%s_%04d"
+MESSAGE_NUMBER_LIMIT = 10000
+SCENE_MESSAGE_FORMAT = "%s/%s_%s%03d"
+SCENE_MESSAGE_KINDS = ("game", "demo")
+SCENE_NUMBER_LIMIT = 1000
+STAGE_MESSAGE_NAMES = ("id",)
+SHARED_MESSAGE_FILES = ("database/database",)
 
 
 class RemasterScriptError(ValueError):
@@ -165,6 +174,18 @@ def message_labels(packs, text_key, paths, log):
     return labels
 
 
+def message_paths(packs, script_paths):
+    stages = sorted({os.path.dirname(path) for path in script_paths if os.path.dirname(path)})
+    names = list(SHARED_MESSAGE_FILES)
+    for stage in stages:
+        names.extend(NUMBERED_MESSAGE_FORMAT % (stage, stage, number) for number in range(MESSAGE_NUMBER_LIMIT))
+        names.extend("%s/%s_%s" % (stage, stage, name) for name in STAGE_MESSAGE_NAMES)
+        names.extend(SCENE_MESSAGE_FORMAT % (stage, stage, kind, number) for kind in SCENE_MESSAGE_KINDS for number in range(SCENE_NUMBER_LIMIT))
+    names.extend(os.path.dirname(path) + "/" + script_label(path) for path in script_paths if os.path.dirname(path))
+    paths = [TEXT_FOLDER + name + MESSAGE_SUFFIX for name in dict.fromkeys(names)]
+    return [path for path in paths if pack_files.path_hash_key(path) in packs.entries]
+
+
 def chara_names(packs, list_name):
     try:
         rows = resource_list.read_list(packs, CHARA_LIST_KIND, list_name)
@@ -173,9 +194,8 @@ def chara_names(packs, list_name):
     return {resource_id: os.path.basename(path)[:-len(".user")].lower() for resource_id, path in rows}
 
 
-def chara_list_names(listed_paths):
-    folder = resource_list.LIST_FOLDER + CHARA_LIST_KIND + "/"
-    return [path[len(folder):-len(SCRIPT_SUFFIX)] for path in listed_paths if path.startswith(folder) and path.endswith(SCRIPT_SUFFIX)]
+def chara_list_names(script_paths):
+    return list(dict.fromkeys(list_name_of(path) for path in script_paths))
 
 
 def shared_table_names(packs, list_names):

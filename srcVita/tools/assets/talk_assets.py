@@ -38,6 +38,10 @@ NEW_PAGE_CODE = 0x02
 FACE_CODE = 0x08
 POSE_CODE = 0x19
 HEAD_CODE = 0x1b
+FACE_ATTRIBUTE = "CutInOrFace"
+FADE_ATTRIBUTE = "CutInFade"
+CUTIN_SYMBOL_PREFIX = "iCutin::"
+HEAD_SYMBOL_PREFIX = "iFacePanel::"
 BOX_BOTTOM = 0
 BOX_TOP_ALONE = 1
 BOX_TOP_WITH_HEAD = 2
@@ -317,6 +321,26 @@ def read_ds_faces(section):
     return faces
 
 
+def layout_of_attributes(attributes, symbols):
+    value = attributes.get(FACE_ATTRIBUTE, "")
+    if value.startswith(CUTIN_SYMBOL_PREFIX) and value in symbols:
+        return {"code": POSE_CODE if attributes.get(FADE_ATTRIBUTE) else FACE_CODE, "value": symbols[value]}
+    if value.startswith(HEAD_SYMBOL_PREFIX) and value in symbols:
+        return {"code": HEAD_CODE, "value": symbols[value]}
+    return None
+
+
+def read_remaster_faces(packs, section, text_key):
+    attributes = {}
+    for path in sorted({path for pages in section["entries"].values() for path, _ in pages}):
+        attributes.update(message_file.read_attributes(packs.read(path), text_key))
+    return {label: [layout_of_attributes(attributes.get(name, {}), section["face_symbols"]) for _, name in pages] for label, pages in section["entries"].items()}
+
+
+def faces_of(packs, section, text_key):
+    return read_remaster_faces(packs, section, text_key) if "face_symbols" in section else read_ds_faces(section)
+
+
 def system_line_section(text, line):
     words = text.split(" ")
     wrapped = text if "\n" in text else " ".join(words[:line["words_on_first_row"]]) + "\n" + " ".join(words[line["words_on_first_row"]:])
@@ -345,8 +369,8 @@ def layout_of_page(section, layouts, label, page_index):
         return head, 0, BOX_TOP_WITH_HEAD if head is not None else BOX_TOP_ALONE, 0
     if entry["value"] not in section["face_rows"]:
         return None, 0, BOX_BOTTOM, 0
-    resource, flip = section["face_rows"][entry["value"]]
-    return chapter_assets.face_texture_of(section["face_paths"], resource), flip, BOX_BOTTOM, 1 if changes_instantly else 0
+    path, flip = section["face_rows"][entry["value"]]
+    return path, flip, BOX_BOTTOM, 1 if changes_instantly else 0
 
 
 def line_tops(line_count, box_top, box_height):
@@ -378,7 +402,7 @@ def faces_the_set_will_use(packs, set_description, text_key):
 
 def parse_all_pages(packs, section, text_key):
     raw_pages = read_all_pages(packs, section, text_key)
-    faces = read_ds_faces(section)
+    faces = faces_of(packs, section, text_key)
     left_out = set(section.get("pages_left_out", []))
     every_name = {name for pages in section["entries"].values() for _, name in pages}
     if left_out - every_name:

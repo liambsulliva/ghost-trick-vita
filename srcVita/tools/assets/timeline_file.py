@@ -148,6 +148,11 @@ def page_holding(starts, page_count, cell_index):
     return None
 
 
+def has_frames(data):
+    root = read_objects(data)[-1]
+    return root is not None and root["kind"] == "root" and root["ds_frame_count"] > 0 and bool(root["record_indices"])
+
+
 def build_timeline(objects):
     root = objects[-1]
     if root["kind"] != "root":

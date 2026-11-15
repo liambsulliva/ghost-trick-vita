@@ -1749,6 +1749,48 @@ The class: an output the converter writes but does not name as wanted, which the
 
 Guard: `wanted_paths` includes the language paths again. `tests/tools/test_texture_layout.py` writes a base texture and a French overlay texture through `write_outputs`, then checks that both are still on disk in their buckets and that the overlay is still reused from the record; with the language paths left out the test fails.
 
+### 235. A remastered build could not be made without the DS cartridge
+
+The remastered set read four things from the cartridge: the scene scripts, the ARM9 tables (rooms, sounds, core infos, faces, effect kinds), the DS language files for faces and narration cues, and the system line's text. A player with only the Android release could not build it. The remaster holds the same scripts as RSZ record lists, keeps the tables in `libruntime.so`'s static constructors, and keeps faces and cue timing in its message files, so none of this needs the cartridge.
+
+Native: the script VM step `func_02023fdc` defines what a compiled 1LMG script must hold, and the motion frame reader `func_0200853c` defines how a motion table packs its frames (a value is written only when it changes). The remaster's tables differ from the cartridge's in places: rooms 153 to 188 are shifted by three, the cartridge's face reader ran on past the table's 271 rows, and 12 effects are the remaster's replacements. The compiled scripts match 99.6% of paired DS ops (root cause 238); the rest are the remaster's edits, and they also reach six scripts and two rooms the DS chain never enters.
+
+The class: every read of the cartridge in the remastered path, including ones a later change adds.
+
+Guard: `convert_assets.py --apk-only` sets an audit hook that refuses opening the ROM path or any `.nds` file, so a new cartridge read stops the build plainly. Every ARM9 table read goes through one provider (`Arm9Tables` or `RemasterTables` in `chapter_assets.py`), and scripts come through one source (`RomScripts` or `RemasterScripts`) in `discover_chain`, so ds_set.py and the combined build keep the cartridge path unchanged. `tests/tools/test_apk_only_build.py` covers the tripwire, both providers, faces (a cut-in with `CutInFade` is the pose code), cues, system lines, message-file discovery and the script bake. `tests/tools/check_remaster_scripts.py` and `check_remaster_tables.py` compare the package against the cartridge on real data. Mutations for each guard are in `tools/mutation_check.py`.
+
+### 236. The remaster's placeholder character stopped the conversion
+
+Found by the first Android-only conversion: the remaster's chara lists name `dummy` for ids it has no art for, and its timeline has no records and a frame count of -1, so `timeline_file.decode_timeline` refused it and the whole set failed. The DS names never matched it, so the combined build had not met it.
+
+The class: a chara row that points at a timeline with no frames, which is the remaster's way of saying "no art", like resource id 0.
+
+Guard: `resolve_tables` drops every animation whose timeline has no frames (`timeline_file.has_frames`) and lists its tables with the other tables with no art, so `dummy` and `st04_nabe_000` draw nothing, as native does for a missing table. `test_apk_only_build.py` checks `has_frames`.
+
+### 237. Two remaster pages had tags the message reader refused
+
+Found by the Android-only cue bake: `<TRCK mono_pos_set posY ="5" />` and `<TRCK mes_bgm_stop time= "120" />` put spaces around `=`, and `message_file.TRCK_TAG_PATTERN` and `ATTRIBUTE_PATTERN` allowed none, so the reader called them unknown tags.
+
+The class: TRCK attributes written with spaces around the equals sign, in any page of any language.
+
+Guard: both patterns allow spaces around `=`. `test_apk_only_build.py` reads a page whose tags have them.
+
+### 238. Compiled scripts lost every motion table past their first 64 KB
+
+Found by the whole-game replay on the Android-only scripts: Chapter 3 stopped at route step 563 (`w_bell1` in st03_game010), where every route step passes on the cartridge's scripts. In that 120 KB script, 163 of 454 motion ops pointed into the middle of a table or at an op. The class table gave `SC_MOTIONTBL`'s second word as `hi0`, the top half of the record index (always 0), where native op 0x117 reads the top half of the table's byte offset. `SC_SCRIPT`'s block end had the same fault (`c0`). An offset under 64 KB still came out right, so small scripts and the unit tests passed, and the real-data check absorbed the misses in its 1.5% margin.
+
+The class: an offset word in the class table whose high half is not the same offset's.
+
+Guard: both classes now use `O`, the high half of the offset fixup. `tests/tools/test_remaster_scripts.py` fails when any `o<n>` word is not followed by `O<n>`, and compiles a script whose table and block end lie past 64 KB. `check_remaster_scripts.py` now needs 99.5% of paired ops the same (the fix raised it from 99.40% to 99.63%). The whole-game replay on Android-only scripts is the test that found it.
+
+### 239. Compiled scripts wrote learned constants where the record had a value
+
+Found by the whole-game replay on the Android-only scripts after root cause 238: Chapter 17 looped from route step 1645. The c_hook trick in st14_game033 never started Lynne's act, because the pipe puzzle never sent `pipe_clr`. Op 0x92 (`SC_GET_DIST_X`) compared `pipe_ofs2` with `pipe4` at offset 0 where the cartridge's script uses offset 2. The class table gave that word as `c0`: every paired sample the rules were learned from had 0 there, so a constant fit as well as the record's own field. A sweep found 31 classes the same way: high halves of 32-bit fields written as 0, string fields written as one DS string offset (`SC_EFFECT_PAUSE` `c432`), and single-sample classes whose every word was a constant (`SC_CICELTALK_FLAG_ON`).
+
+The class: a word rule that is a constant while the record holds a field that fits every sample.
+
+Guard: those words now read the field (`hi<n>` after `lo<n>`, the unread field in order, `s<n>` for names). A field no rule reads must be listed in its row's `unread`, and `tests/tools/test_remaster_scripts.py` fails otherwise. It also checks that the distance op keeps both offsets. `SC_CODE32`, `SC_SETPAL` and `SC_MOVIE_MOTION_SUSPEND` keep their constants, because no field fits their samples.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

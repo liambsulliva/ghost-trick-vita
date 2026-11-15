@@ -1,4 +1,5 @@
 import os
+import re
 import struct
 import sys
 import unittest
@@ -146,6 +147,35 @@ class CompileTests(unittest.TestCase):
         self.assertEqual(names[motions[1][0]], ["st01_cicel_003_01.mtbl.xml"])
         table_op = operations(decoded)[0]
         self.assertEqual(table_op[3][0] | table_op[3][1] << 16, motions[0][0])
+
+    def test_every_offset_word_is_followed_by_the_high_half_of_the_same_offset(self):
+        for name, row in CLASSES.items():
+            words = row.get("words", [])
+            for index, rule in enumerate(words):
+                if rule.startswith("o"):
+                    self.assertEqual(words[index + 1:index + 2], ["O" + rule[1:]], name)
+
+    def test_every_field_is_read_by_a_word_rule_or_named_as_unread(self):
+        for name, row in CLASSES.items():
+            rules = row.get("words", row.get("motion"))
+            if rules is None:
+                continue
+            read = {int(number) for rule in rules if not rule.startswith("c") for number in re.findall(r"\d+", rule)}
+            self.assertEqual(sorted(set(range(len(row["fields"]))) - read), sorted(row.get("unread", [])), name)
+
+    def test_a_distance_op_keeps_both_of_its_record_s_offsets(self):
+        decoded, _ = compiled([("SC_GET_DIST_X", ["pipe_ofs2", 2, "pipe4", 1])])
+        self.assertEqual(operations(decoded)[0][3][1::2], [2, 1])
+
+    def test_a_table_and_a_block_end_past_64_kb_are_reached_whole(self):
+        filler = [("SC_WAIT", [1])] * 17000
+        records = [("SC_SCRIPT", [0]), ("SC_JUMP", [4 + len(filler) + 2]), ("SC_MOTIONTBL", [4 + len(filler), 0, 1, 0, 0, 0]), ("SC_NULL", [])] + filler + [("SC_MTBL", [0xfffd, 1, 30]), ("SC_MTBL_LOOP", [0xfffe, 0])]
+        decoded, _ = compiled(records, tables={30: "st01_cicel_003"})
+        ops = operations(decoded)
+        table = [item for item in decoded[3] if item[1] == "motion"][0]
+        self.assertGreater(table[0], 0xffff)
+        self.assertEqual(ops[1][3][0] | ops[1][3][1] << 16, table[0])
+        self.assertEqual(ops[0][3][1] | ops[0][3][2] << 16, lmg_decode.CODE_START + decoded[0]["code_size"])
 
     def test_a_record_class_the_table_does_not_know_is_refused(self):
         data = bytearray(user_file([("SC_WAIT", [1]), ("SC_WAIT", [2])]))

@@ -11,14 +11,19 @@ STRING_AREA_OFFSET = 32
 ENTRY_POINTERS_OFFSET = 72
 ENTRY_NAME_POINTER_OFFSET = 24
 ENTRY_TEXT_POINTERS_OFFSET = 40
+ATTRIBUTE_COUNT_OFFSET = 20
+ATTRIBUTE_TYPES_OFFSET = 56
+ATTRIBUTE_NAMES_OFFSET = 64
+ENTRY_ATTRIBUTES_POINTER_OFFSET = 32
+ATTRIBUTE_STRING_TYPE = 2
 ENGLISH_SLOT = 1
 TEXT_KEY_FILE_NAME = "text_key.bin"
 TEXT_KEY_SIZE = 16
 ENTRY_NAME_PATTERN = re.compile(r"[A-Za-z0-9_]+")
 
 TAG_PATTERN = re.compile(r"<[^>]*>")
-TRCK_TAG_PATTERN = re.compile(r'<TRCK\s+(\w+)((?:\s+\w+="[^"]*")*)\s*/>$')
-ATTRIBUTE_PATTERN = re.compile(r'(\w+)="([^"]*)"')
+TRCK_TAG_PATTERN = re.compile(r'<TRCK\s+(\w+)((?:\s+\w+\s*=\s*"[^"]*")*)\s*/>$')
+ATTRIBUTE_PATTERN = re.compile(r'(\w+)\s*=\s*"([^"]*)"')
 MONO_TYPE_PREFIX = "MONO_TYPE_"
 PARAGRAPH_MARK = "\u2029"
 
@@ -135,6 +140,28 @@ def read_entry_names(data, key):
     entry_count, _, string_area_start = read_header(data)
     string_area = decode_string_area(data[string_area_start:], key)
     return [read_entry_and_name(data, string_area, string_area_start, index)[1] for index in range(entry_count)]
+
+
+def read_attributes(data, key):
+    entry_count, _, string_area_start = read_header(data)
+    string_area = decode_string_area(data[string_area_start:], key)
+    count = read_u32(data, ATTRIBUTE_COUNT_OFFSET)
+    types_at = read_u64(data, ATTRIBUTE_TYPES_OFFSET)
+    names_at = read_u64(data, ATTRIBUTE_NAMES_OFFSET)
+    kinds = [read_number(data, types_at + 4 * index, "<i") for index in range(count)]
+    names = [read_string(string_area, string_area_start, read_u64(data, names_at + 8 * index)) for index in range(count)]
+    attributes = {}
+    for index in range(entry_count):
+        entry, name = read_entry_and_name(data, string_area, string_area_start, index)
+        values_at = read_u64(data, entry + ENTRY_ATTRIBUTES_POINTER_OFFSET)
+        values = {}
+        for slot, (kind, attribute) in enumerate(zip(kinds, names)):
+            if kind == ATTRIBUTE_STRING_TYPE:
+                values[attribute] = read_string(string_area, string_area_start, read_u64(data, values_at + 8 * slot))
+            else:
+                values[attribute] = read_number(data, values_at + 8 * slot, "<q")
+        attributes[name] = values
+    return attributes
 
 
 def read_tag(tag_text):

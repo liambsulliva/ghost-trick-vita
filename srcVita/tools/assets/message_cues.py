@@ -1,3 +1,4 @@
+import re
 import struct
 
 CONTROL_CODE_BASE = 0xff00
@@ -9,6 +10,11 @@ PAGE_LIMIT_CODE = 0x15
 NEW_GROUP_CODE = 0x16
 PAGE_OPTIONS_CODE = 0x22
 OPTIONS_MASK = 0xff
+REMASTER_NEW_GROUP_VERB = "paragraph_end"
+REMASTER_HOLD_VERB = "mes_wait_set"
+REMASTER_LIMIT_VERB = "auto_pf"
+REMASTER_OPTIONS_VERB = "mono_type_set"
+REMASTER_TAG_PATTERN = re.compile(r"<TRCK\s[^>]*/>")
 
 
 class CueError(ValueError):
@@ -109,4 +115,33 @@ def cue_text(language_data, labels, wanted_labels):
         lines.append("message " + label)
         for page in pages_of_message(language_data, targets[label]):
             lines.append(page_line(page))
+    return "\n".join(lines) + "\n"
+
+
+def remaster_page(text):
+    import message_file
+
+    page = new_page()
+    for tag in REMASTER_TAG_PATTERN.findall(text):
+        try:
+            verb, attributes = message_file.read_tag(tag)
+            if verb == REMASTER_NEW_GROUP_VERB:
+                page["groups"] = page["groups"] + 1
+            elif verb == REMASTER_HOLD_VERB:
+                page["holds"][page["groups"]] = message_file.number_attribute(verb, attributes, "time")
+            elif verb == REMASTER_LIMIT_VERB:
+                page["limit"] = message_file.number_attribute(verb, attributes, "time")
+            elif verb == REMASTER_OPTIONS_VERB:
+                page["options"] = message_file.number_attribute(verb, attributes, "type", message_file.MONO_TYPE_PREFIX) & OPTIONS_MASK
+        except message_file.MessageFileError as error:
+            raise CueError(str(error)) from None
+    return page
+
+
+def remaster_cue_text(pages_of_label):
+    lines = []
+    for label, pages in pages_of_label.items():
+        lines.append("message " + label)
+        for text in pages:
+            lines.append(page_line(remaster_page(text)))
     return "\n".join(lines) + "\n"

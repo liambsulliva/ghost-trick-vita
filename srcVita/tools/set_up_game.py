@@ -18,6 +18,7 @@ OUTPUT_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "vita_assets", SET_
 DS_OUTPUT_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "vita_assets", DS_SET_NAME)
 DEVICE_FOLDERS = {SET_NAME: "ux0:data/ghosttrick/assets/", DS_SET_NAME: "ux0:data/ghosttrick/assets_ds/"}
 TEXT_KEY_PATH = os.path.join(APK_FOLDER, "text_key.bin")
+TABLES_PATH = os.path.join(APK_FOLDER, "remaster_tables.json")
 DEFAULT_VITASDK = "/usr/local/vitasdk"
 PACK_NAMES = ("re_chunk_000.pak", "data01", "data02")
 APK_PACK_FOLDER = "assets/"
@@ -29,9 +30,9 @@ STATUS_WIDTH = 100
 STAGES = (
     "Check the tools",
     "Copy the game files out of the Android package",
-    "Find the text key",
+    "Find the text key and, with no cartridge, the game tables",
     "Build the converter",
-    "Convert the cartridge's art and, with the Android package, the remaster's",
+    "Convert the cartridge's art, the remaster's, or both",
     "Plan the loading",
     "Build the package",
     "Copy everything to the Vita",
@@ -168,8 +169,13 @@ def find_text_key(apk_path):
     run_with_progress([sys.executable, "-I", os.path.join(TOOLS_FOLDER, "assets", "extract_text_key.py"), apk_path], "searching the package")
 
 
+def read_tables(apk_path):
+    run_with_progress([sys.executable, "-I", os.path.join(TOOLS_FOLDER, "assets", "remaster_tables.py"), "--package", apk_path, "--apk-folder", APK_FOLDER], "reading the game tables")
+
+
 def convert(ds_rom):
-    lines = run_with_progress([sys.executable, "-I", os.path.join(TOOLS_FOLDER, "assets", "convert_assets.py"), "--set", SET_NAME, "--output", OUTPUT_FOLDER, "--ds-rom", ds_rom], "converting the remaster's art")
+    source = ["--ds-rom", ds_rom] if ds_rom is not None else ["--apk-only"]
+    lines = run_with_progress([sys.executable, "-I", os.path.join(TOOLS_FOLDER, "assets", "convert_assets.py"), "--set", SET_NAME, "--output", OUTPUT_FOLDER] + source, "converting the remaster's art")
     show_summary(lines)
 
 
@@ -206,6 +212,9 @@ def run_stages(arguments):
     check_tools()
 
     with_apk = apk_is_available(arguments)
+    with_rom = os.path.exists(arguments.ds_rom)
+    if not with_rom and not with_apk:
+        raise SetupFailed("no DS ROM at %s and no Android package; name your own USA cartridge dump with --ds-rom, your Android package with --apk, or both" % arguments.ds_rom)
     if not with_apk:
         stage_header(2, "no Android package given, so only the cartridge's own art is built")
         stage_header(3, "no Android package given, skipped")
@@ -220,17 +229,21 @@ def run_stages(arguments):
         else:
             stage_header(3)
             find_text_key(arguments.apk)
+        if not with_rom and not os.path.exists(TABLES_PATH):
+            if arguments.apk is None:
+                raise SetupFailed("no DS ROM, and the game tables were never read out of the Android package; name it again with --apk")
+            read_tables(arguments.apk)
 
     stage_header(4)
     run_with_progress(["make", "-C", "srcVita/tools/assets"], "building the converter")
 
-    if not os.path.exists(arguments.ds_rom):
-        raise SetupFailed("no DS ROM at %s; the app plays the game from the DS game's own scripts, so name your own USA cartridge dump with --ds-rom" % arguments.ds_rom)
-    stage_header(5)
-    sets = [DS_SET_NAME]
-    convert_ds_set(arguments.ds_rom)
+    stage_header(5, "" if with_rom else "no DS ROM, so the remaster's scripts are compiled from the Android package")
+    sets = []
+    if with_rom:
+        convert_ds_set(arguments.ds_rom)
+        sets.append(DS_SET_NAME)
     if with_apk:
-        convert(arguments.ds_rom)
+        convert(arguments.ds_rom if with_rom else None)
         sets.append(SET_NAME)
 
     stage_header(6)
@@ -253,7 +266,7 @@ def run_stages(arguments):
 def main():
     parser = argparse.ArgumentParser(description="Prepares everything the Vita app needs from your own copies of the game, in one go.")
     parser.add_argument("--apk", help="your copy of the remaster's Android package, for the remastered art; without it only the cartridge's own art is built")
-    parser.add_argument("--ds-rom", default=DEFAULT_DS_ROM, help="your own dump of the USA DS cartridge (game code BGTE)")
+    parser.add_argument("--ds-rom", default=DEFAULT_DS_ROM, help="your own dump of the USA DS cartridge (game code BGTE); without it the remaster's art is built from the Android package alone")
     arguments = parser.parse_args()
     started = time.time()
     try:
