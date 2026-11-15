@@ -2343,7 +2343,7 @@ static int a_push_lands_on(const struct script_machine *machine, int from_node, 
     return 0;
 }
 
-static int first_hop_toward(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot)
+static int search_first_hop_toward(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot)
 {
     int came_from[SCRIPT_OBJECT_MAX * SCRIPT_CORE_SLOT_COUNT];
     int queue[SCRIPT_OBJECT_MAX * SCRIPT_CORE_SLOT_COUNT];
@@ -2393,6 +2393,136 @@ static int first_hop_toward(const struct script_machine *machine, int target_obj
     *hop_object = node / SCRIPT_CORE_SLOT_COUNT;
     *hop_slot = node % SCRIPT_CORE_SLOT_COUNT;
     return 1;
+}
+
+#define LAYOUT_HASH_START 2166136261u
+#define LAYOUT_HASH_PRIME 16777619u
+
+#define ROUTE_HOP_MEMORY_MAX 8
+
+struct route_hop_memory {
+    int is_kept;
+    unsigned int layout;
+    int start;
+    int target;
+    int found;
+    int hop;
+    int aim_is_kept;
+    int aim_found;
+    float aim_x;
+    float aim_y;
+};
+
+static struct route_hop_memory hop_memories[ROUTE_HOP_MEMORY_MAX];
+static int next_hop_memory;
+static unsigned int route_searches;
+
+static unsigned int mix_word(unsigned int hash, unsigned int word)
+{
+    return (hash ^ word) * LAYOUT_HASH_PRIME;
+}
+
+static unsigned int float_bits(float value)
+{
+    unsigned int bits;
+
+    memcpy(&bits, &value, sizeof(bits));
+    return bits;
+}
+
+static unsigned int core_layout(const struct script_machine *machine)
+{
+    unsigned int hash;
+    int object_index;
+    int slot;
+
+    hash = mix_word(LAYOUT_HASH_START, (unsigned int)machine->object_count);
+    hash = mix_word(hash, (unsigned int)machine->soul.active_ghost);
+    hash = mix_word(hash, float_bits(script_soul_reach(machine)));
+    for (object_index = 0; object_index < machine->object_count; object_index++) {
+        hash = mix_word(hash, (unsigned int)machine->objects[object_index].actor.shape);
+        for (slot = 0; slot < SCRIPT_CORE_SLOT_COUNT; slot++) {
+            float x;
+            float y;
+
+            if (!object_can_be_a_core(&machine->objects[object_index], slot)) {
+                hash = mix_word(hash, 0u);
+                continue;
+            }
+            core_position(machine, object_index, slot, &x, &y);
+            hash = mix_word(hash, 1u);
+            hash = mix_word(hash, float_bits(x));
+            hash = mix_word(hash, float_bits(y));
+        }
+    }
+    return hash;
+}
+
+static struct route_hop_memory *hop_memory_of(const struct script_machine *machine, int target_object, int target_slot)
+{
+    struct route_hop_memory *memory;
+    unsigned int layout;
+    int start;
+    int target;
+    int hop_object;
+    int hop_slot;
+    int index;
+
+    layout = core_layout(machine);
+    start = machine->soul.active_object * SCRIPT_CORE_SLOT_COUNT + machine->soul.active_slot;
+    target = target_object * SCRIPT_CORE_SLOT_COUNT + target_slot;
+    for (index = 0; index < ROUTE_HOP_MEMORY_MAX; index++) {
+        memory = &hop_memories[index];
+        if (memory->is_kept && memory->layout == layout && memory->start == start && memory->target == target) {
+            return memory;
+        }
+    }
+    memory = &hop_memories[next_hop_memory];
+    next_hop_memory = (next_hop_memory + 1) % ROUTE_HOP_MEMORY_MAX;
+    memory->is_kept = 1;
+    memory->layout = layout;
+    memory->start = start;
+    memory->target = target;
+    memory->aim_is_kept = 0;
+    memory->found = search_first_hop_toward(machine, target_object, target_slot, &hop_object, &hop_slot);
+    memory->hop = memory->found ? hop_object * SCRIPT_CORE_SLOT_COUNT + hop_slot : NO_CORE;
+    route_searches = route_searches + 1u;
+    return memory;
+}
+
+static int first_hop_toward(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot)
+{
+    const struct route_hop_memory *memory;
+
+    memory = hop_memory_of(machine, target_object, target_slot);
+    if (!memory->found) {
+        return 0;
+    }
+    *hop_object = memory->hop / SCRIPT_CORE_SLOT_COUNT;
+    *hop_slot = memory->hop % SCRIPT_CORE_SLOT_COUNT;
+    return 1;
+}
+
+static int aim_at_the_first_hop(const struct script_machine *machine, int target_object, int target_slot, float *aim_x, float *aim_y)
+{
+    struct route_hop_memory *memory;
+
+    memory = hop_memory_of(machine, target_object, target_slot);
+    if (!memory->found) {
+        return 0;
+    }
+    if (!memory->aim_is_kept) {
+        memory->aim_found = a_push_lands_on(machine, memory->start, memory->hop, &memory->aim_x, &memory->aim_y);
+        memory->aim_is_kept = 1;
+    }
+    *aim_x = memory->aim_x;
+    *aim_y = memory->aim_y;
+    return memory->aim_found;
+}
+
+unsigned int script_soul_route_searches(void)
+{
+    return route_searches;
 }
 
 static void mark_route_aim(struct script_machine *machine, int object_index, int slot)
@@ -3045,7 +3175,7 @@ int script_soul_route_hop_aim(const struct script_machine *machine, int target_o
     if (!script_soul_route_hop(machine, target_object, target_slot, &hop_object, &hop_slot)) {
         return 0;
     }
-    return a_push_lands_on(machine, machine->soul.active_object * SCRIPT_CORE_SLOT_COUNT + machine->soul.active_slot, hop_object * SCRIPT_CORE_SLOT_COUNT + hop_slot, aim_x, aim_y);
+    return aim_at_the_first_hop(machine, target_object, target_slot, aim_x, aim_y);
 }
 
 int script_soul_route_balloon_group(const struct script_machine *machine, const char *name)

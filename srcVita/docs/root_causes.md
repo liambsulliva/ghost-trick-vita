@@ -1522,6 +1522,16 @@ The class: every texture whose packed file is larger than the heap's largest fre
 
 Guard: the read and unpack moved from the Vita reader thread into `src/app/texture_read.c`, which the host fake reader runs too. `file_read_whole_into` (`file.h`) takes the buffer from the caller. When the heap refuses it, the file is read into the end of the reserved block and unpacked into its start, which do not overlap when both fit in 16 MB. A plain file stays where it was read, and `read_buffer_release` frees any pointer inside the block. While the block is held, the read reports `FILE_ERR_MEMORY` and is retried as before. `tests/unit/test_texture_read.c` checks a 1.6 MB packed 2048 px page with a 1 MB heap (read and unpacked in the block, its texels right, the block free after release), a read while the block is held, a plain 2 MB file, and that a packed file the heap can hold is freed once unpacked.
 
+### 211. Auto-play searched the whole core graph twice every tick of a move
+
+In the fast-forward run of build `0acccb48-ff`, 617 ticks spent over 15 ms in the route pad, and 1392 over 15 ms in the machine. How many of the machine's were this search is not yet measured; the phase split in `script tick_long` (runner, objects, motion, rest) names them on the next run. At 2074 s in st13_game012 a move toward the mino took 35 ms of machine and 33 ms of route each tick, 22 frames of 71 ms in a row. The Mac replay ran the same ticks in microseconds, so it ran the same work far faster: on the Vita, `first_hop_toward` (`script_soul.c`) is a breadth-first search over every pair of cores. Each link it tries runs `a_push_lands_on`, up to 17 simulated pushes of up to 90 ticks, and each simulated tick checks every core. `route_move_is_done` ran it inside the machine on every tick of a move step to name the next hop, and the route pad ran it again with one more `a_push_lands_on` (`script_soul_route_hop_aim`) to aim the stick. Nothing it reads changes while the cores stand still, so most ticks repeated the last answer.
+
+Native: none. The route and its pad are the port's auto-play harness (`script_route.c`, `script_route_pad.c`); a player never runs them, so this slowed only fast-forward runs and their stutter scans.
+
+The class: every move step in every chapter's route, in the machine and in the pad.
+
+Guard: `script_soul.c` keeps the last eight answers, each keyed by the active core, the target and a hash of everything the search reads: the object count, the ghost, the reach, each object's shape, which slots can be cores and where each core is. A search runs again only when one of those changes, and the stick's aim is kept with its hop. The whole-game replay's marks are byte for byte the same with and without the memory. `tests/unit/test_route_pad.c` (`test_the_route_searches_again_only_when_a_core_moves`) asks 30 times with nothing moved and checks that no new search ran, then moves a core and checks that one did and the hop changed.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

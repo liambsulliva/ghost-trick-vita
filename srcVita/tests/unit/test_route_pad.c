@@ -342,6 +342,32 @@ static void test_a_missile_hop_never_steps_from_a_core_to_one_of_its_shape(void)
     CHECK_INT(hop_object, 2);
 }
 
+static void test_the_route_searches_again_only_when_a_core_moves(void)
+{
+    unsigned int searches;
+    int hop_object;
+    int hop_slot;
+    float aim_x;
+    float aim_y;
+    int tick;
+
+    start_a_move_with_missile_and_cores(3);
+    machine.objects[1].actor.x = BODY_X + 90;
+    place_core(2, "lantern", BODY_X + 40);
+    CHECK(script_soul_route_hop_aim(&machine, 1, 0, &aim_x, &aim_y));
+    searches = script_soul_route_searches();
+    for (tick = 0; tick < 30; tick++) {
+        CHECK(script_soul_route_hop(&machine, 1, 0, &hop_object, &hop_slot));
+        CHECK(script_soul_route_hop_aim(&machine, 1, 0, &aim_x, &aim_y));
+    }
+    CHECK_INT(script_soul_route_searches(), searches);
+    CHECK_INT(hop_object, 2);
+    machine.objects[2].actor.y = ROW_Y + 200;
+    CHECK(script_soul_route_hop(&machine, 1, 0, &hop_object, &hop_slot));
+    CHECK_INT(script_soul_route_searches(), searches + 1u);
+    CHECK_INT(hop_object, 1);
+}
+
 static void test_a_began_wait_holds_only_just_after_the_act_starts(void)
 {
     start_with_one_step(SCRIPT_ROUTE_WAIT, "-", "began:gate:gate_a");
@@ -429,6 +455,7 @@ int main(void)
     test_a_core_on_the_line_is_the_hop_a_push_takes();
     test_the_pad_aims_past_a_core_a_slanted_push_can_miss();
     test_a_missile_hop_never_steps_from_a_core_to_one_of_its_shape();
+    test_the_route_searches_again_only_when_a_core_moves();
     test_a_began_wait_holds_only_just_after_the_act_starts();
     test_a_near_wait_holds_while_two_actors_are_close_along_x();
     test_a_cores_wait_holds_while_two_first_cores_are_within_a_distance();
