@@ -6,6 +6,7 @@
 #include "input.h"
 #include "memory.h"
 #include "pause_widgets.h"
+#include "run_log.h"
 #include "text_lines.h"
 #include "texture_cache.h"
 
@@ -33,6 +34,7 @@
 #define DIALOG_BUTTON_HEIGHT 56.0f
 #define DIALOG_BUTTON_SPACE 40.0f
 #define DIALOG_SHADE (150.0f / 255.0f)
+#define PART_SLACK 0.5f
 #define FLOOR_LINE_HEIGHT 2.0f
 #define FLOOR_LINE_RED (110.0f / 255.0f)
 #define FLOOR_LINE_OTHER (16.0f / 255.0f)
@@ -49,7 +51,7 @@ struct widget {
 static struct widget widgets[PAUSE_WIDGETS_MOST];
 static int widget_count;
 static char preview_plate[ASSET_NAME_MAX];
-static float preview_crop[4];
+static float preview_part[4];
 
 static void add_widget(const char *key, float x, float y, float width, float height, float corner)
 {
@@ -66,6 +68,11 @@ static void add_widget(const char *key, float x, float y, float width, float hei
     widget->height = height;
     widget->corner = corner;
     widget_count = widget_count + 1;
+}
+
+static int part_is_inside_the_picture(const float *part)
+{
+    return part[0] >= 0.0f && part[1] >= 0.0f && part[2] > 0.0f && part[3] > 0.0f && part[0] + part[2] <= 1.0f && part[1] + part[3] <= 1.0f;
 }
 
 int pause_widgets_read_text(const char *text, unsigned int text_size)
@@ -101,8 +108,11 @@ int pause_widgets_read_text(const char *text, unsigned int text_size)
         } else if (sscanf(line, "glyph %47s %f %f %f", name, &x, &y, &width) == 4) {
             snprintf(key, sizeof(key), "glyph.%s", name);
             add_widget(key, x, y, width, width, 0.0f);
-        } else if (sscanf(line, "preview " ASSET_NAME_SCAN " %f %f %f %f", preview_plate, &preview_crop[0], &preview_crop[1], &preview_crop[2], &preview_crop[3]) == 5) {
-            continue;
+        } else if (sscanf(line, "preview " ASSET_NAME_SCAN " %f %f %f %f", preview_plate, &preview_part[0], &preview_part[1], &preview_part[2], &preview_part[3]) == 5) {
+            if (!part_is_inside_the_picture(preview_part)) {
+                run_log_write("pause preview part_outside plate=%s", preview_plate);
+                preview_plate[0] = '\0';
+            }
         } else if (sscanf(line, "cell %47s %f %f %f %f", name, &x, &y, &width, &height) == 5) {
             snprintf(key, sizeof(key), "cell.%s", name);
             add_widget(key, x, y, width, height, 0.0f);
@@ -150,6 +160,8 @@ const char *pause_preview_plate(void)
 int pause_draw_preview(float x, float y, float width, float height, float from, float to)
 {
     const struct cached_texture *texture;
+    float plate_width;
+    float plate_height;
 
     if (preview_plate[0] == '\0') {
         return 0;
@@ -158,7 +170,9 @@ int pause_draw_preview(float x, float y, float width, float height, float from, 
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
         return 0;
     }
-    pause_draw_from(preview_plate, preview_crop[0] + preview_crop[2] * from, preview_crop[1], preview_crop[2] * (to - from), preview_crop[3], x + width * from, y, width * (to - from), height, 1.0f);
+    plate_width = (float)texture->width;
+    plate_height = (float)texture->height;
+    pause_draw_from(preview_plate, (preview_part[0] + preview_part[2] * from) * plate_width, preview_part[1] * plate_height, preview_part[2] * (to - from) * plate_width, preview_part[3] * plate_height, x + width * from, y, width * (to - from), height, 1.0f);
     return 1;
 }
 
@@ -199,6 +213,9 @@ void pause_draw_from(const char *sheet, float u, float v, float u_size, float v_
 
     texture = texture_cache_use_or_start_loading(sheet);
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY || texture->width == 0 || texture->height == 0 || alpha <= 0.0f || width <= 0.0f || height <= 0.0f) {
+        return;
+    }
+    if (u < -PART_SLACK || v < -PART_SLACK || u + u_size > (float)texture->width + PART_SLACK || v + v_size > (float)texture->height + PART_SLACK) {
         return;
     }
     screen.x = x;

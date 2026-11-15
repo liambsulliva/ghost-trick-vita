@@ -1,3 +1,5 @@
+import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -136,6 +138,17 @@ class WidgetSheetTest(unittest.TestCase):
         lines = pause_art.glyph_lines()
         self.assertEqual([line.split()[1] for line in lines][:4], pause_art.hud_art.FACE_ORDER)
         self.assertEqual(lines[1], "glyph %s %d 0 %d %d" % (pause_art.hud_art.FACE_ORDER[1], pause_art.hud_art.GLYPH_CELL, pause_art.hud_art.GLYPH_CELL, pause_art.hud_art.GLYPH_CELL))
+
+    def test_the_preview_s_part_is_fractions_of_its_plate(self):
+        self.assertEqual(pause_art.preview_lines({"preview": {"plate": "room", "part": [0.25, 0.125, 0.5, 0.75]}}), ["preview room 0.250000 0.125000 0.500000 0.750000"])
+        self.assertEqual(pause_art.preview_lines({}), [])
+        with self.assertRaises(ValueError):
+            pause_art.preview_lines({"preview": {"plate": "room", "part": [60, 70, 832, 468]}})
+
+    def test_the_game_s_preview_part_stays_inside_its_plate(self):
+        with open(os.path.join(os.path.dirname(pause_art.__file__), "game.json")) as file:
+            widgets = json.load(file)["pause"]["widgets"]
+        self.assertEqual(len(pause_art.preview_lines(widgets)), 1)
 
     def test_a_pill_slice_is_clear_at_its_corners_and_solid_down_its_middle(self):
         work = tempfile.mkdtemp()
