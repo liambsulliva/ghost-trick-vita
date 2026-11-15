@@ -1,11 +1,9 @@
 #include <string.h>
 #include <psp2/kernel/threadmgr.h>
-#include "clock.h"
-#include "memory.h"
 #include "read_buffer.h"
-#include "texture_file.h"
 #include "background_reader.h"
 #include "file.h"
+#include "texture_read.h"
 
 #define READER_STACK_SIZE (64 * 1024)
 #define READER_PRIORITY 0x10000100
@@ -28,36 +26,10 @@ static SceUID work_available;
 static SceUID read_finished;
 static int reader_started;
 
-static int unpack_texture(struct finished_read *finished)
-{
-    unsigned char *unpacked;
-    unsigned int unpacked_size;
-    int was_unpacked;
-
-    unpacked_size = texture_file_unpacked_size(finished->data);
-    unpacked = read_buffer_take(unpacked_size);
-    if (unpacked == NULL) {
-        mem_free(finished->data);
-        finished->data = NULL;
-        return FILE_ERR_MEMORY;
-    }
-    was_unpacked = texture_file_unpack(finished->data, finished->size, unpacked, unpacked_size);
-    mem_free(finished->data);
-    if (!was_unpacked) {
-        read_buffer_release(unpacked);
-        finished->data = NULL;
-        return FILE_ERR_READ;
-    }
-    finished->data = unpacked;
-    finished->size = unpacked_size;
-    return FILE_OK;
-}
-
 static int reader_thread(SceSize argument_size, void *arguments)
 {
     struct read_request request;
     struct finished_read finished;
-    unsigned long long started_us;
 
     (void)argument_size;
     (void)arguments;
@@ -70,22 +42,7 @@ static int reader_thread(SceSize argument_size, void *arguments)
         sceKernelUnlockMutex(queue_lock, 1);
 
         finished.request_id = request.request_id;
-        finished.data = NULL;
-        finished.size = 0;
-        finished.unpack_us = 0;
-        started_us = clock_now_us();
-        finished.result = file_read_whole_timing_open(request.path, &finished.data, &finished.size, &finished.open_us);
-        finished.read_us = clock_now_us() - started_us - finished.open_us;
-        if (finished.result == FILE_OK && texture_file_is_packed(finished.data, finished.size)) {
-            started_us = clock_now_us();
-            finished.result = unpack_texture(&finished);
-            finished.unpack_us = clock_now_us() - started_us;
-        }
-        if (finished.result == FILE_OK && request.wants_grayscale) {
-            started_us = clock_now_us();
-            background_reader_make_grayscale(&finished);
-            finished.unpack_us = finished.unpack_us + clock_now_us() - started_us;
-        }
+        texture_read_whole(request.path, request.wants_grayscale, &finished);
 
         sceKernelLockMutex(queue_lock, 1, NULL);
         finished_reads[next_finished_to_add] = finished;

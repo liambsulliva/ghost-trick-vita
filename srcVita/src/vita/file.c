@@ -30,7 +30,7 @@ static int read_in_chunks(SceUID fd, unsigned char *buffer, unsigned int length)
     return 1;
 }
 
-int file_read_whole_timing_open(const char *path, unsigned char **data, unsigned int *size, unsigned long long *open_us)
+int file_read_whole_into(const char *path, const struct file_buffers *buffers, unsigned char **data, unsigned int *size, unsigned long long *open_us)
 {
     SceUID fd;
     SceOff length;
@@ -53,7 +53,7 @@ int file_read_whole_timing_open(const char *path, unsigned char **data, unsigned
         sceIoClose(fd);
         return FILE_ERR_READ;
     }
-    buffer = mem_alloc((unsigned int)length);
+    buffer = buffers->make(buffers->context, (unsigned int)length);
     if (buffer == NULL) {
         sceIoClose(fd);
         return FILE_ERR_MEMORY;
@@ -61,12 +61,34 @@ int file_read_whole_timing_open(const char *path, unsigned char **data, unsigned
     read_all = read_in_chunks(fd, buffer, (unsigned int)length);
     sceIoClose(fd);
     if (!read_all) {
-        mem_free(buffer);
+        buffers->give_back(buffers->context, buffer);
         return FILE_ERR_READ;
     }
     *data = buffer;
     *size = (unsigned int)length;
     return FILE_OK;
+}
+
+static unsigned char *make_heap_buffer(void *context, unsigned int size)
+{
+    (void)context;
+    return mem_alloc(size);
+}
+
+static void give_back_heap_buffer(void *context, unsigned char *buffer)
+{
+    (void)context;
+    mem_free(buffer);
+}
+
+int file_read_whole_timing_open(const char *path, unsigned char **data, unsigned int *size, unsigned long long *open_us)
+{
+    struct file_buffers heap;
+
+    heap.make = make_heap_buffer;
+    heap.give_back = give_back_heap_buffer;
+    heap.context = NULL;
+    return file_read_whole_into(path, &heap, data, size, open_us);
 }
 
 int file_read_whole(const char *path, unsigned char **data, unsigned int *size)

@@ -9,5 +9,7 @@ void read_buffer_forget_reserve(void);
 unsigned char *read_buffer_take(unsigned int size);
 void read_buffer_release(unsigned char *data);
 int read_buffer_reserve_is_free(void);
+unsigned char *read_buffer_take_whole_reserve(void);
+int read_buffer_holds(const unsigned char *data);
 
 #endif

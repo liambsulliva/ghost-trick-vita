@@ -1512,6 +1512,16 @@ The class: everything the ghost view draws over the world, in every dead talk an
 
 Guard: `draw_soul` (`script_view.c`) draws nothing while the swirl is on; the swirl itself covers the ghost-tinted world beneath. `tests/unit/test_swirl_hides_soul_view.c` draws a marked dead core, a live core and the soul with the swirl off, on and off again.
 
+### 210. Packed textures over about 1.2 MB could not be read once the heap broke up, and fast-forward ran at normal speed
+
+In the fast-forward run of build `0acccb48-ff`, from 2597 s in Chapter 14, four 2048 px textures (`fx_deadtricklight_00`, `st14_04stop_407_000_00_t00` and `_01_t00`, `st14_04-256wall_407_00_t00`) logged `texture retry ... reason=heap` over 1000 times each and never loaded until a scene change at 3152 s. At 3230 s `st14_linne_675_00_t00` did the same. While drawn art is loading, fast-forward runs one tick a frame (`slowed_for_art_frames=60`), so the game played at normal speed, with that art missing. The heap held 77 MB of its 112 MB, but no free block much over 1.2 MB: every packed file that loaded after 2597 s was 1.21 MB or smaller on the card, and every one refused was 1.30 MB or larger. The reader allocated the packed file from the heap before unpacking it, and only the unpack (root cause 194) could fall back on the reserved 16 MB block. So a large packed file failed with `FILE_ERR_MEMORY` before the block was ever tried.
+
+Native: the DS streams art from the ROM into fixed VRAM banks and has no heap for it, so this is the port's own reader.
+
+The class: every texture whose packed file is larger than the heap's largest free block, in every chapter, and any plain file the same.
+
+Guard: the read and unpack moved from the Vita reader thread into `src/app/texture_read.c`, which the host fake reader runs too. `file_read_whole_into` (`file.h`) takes the buffer from the caller. When the heap refuses it, the file is read into the end of the reserved block and unpacked into its start, which do not overlap when both fit in 16 MB. A plain file stays where it was read, and `read_buffer_release` frees any pointer inside the block. While the block is held, the read reports `FILE_ERR_MEMORY` and is retried as before. `tests/unit/test_texture_read.c` checks a 1.6 MB packed 2048 px page with a 1 MB heap (read and unpacked in the block, its texels right, the block free after release), a read while the block is held, a plain 2 MB file, and that a packed file the heap can hold is freed once unpacked.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes; the remaster's title art is used instead. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

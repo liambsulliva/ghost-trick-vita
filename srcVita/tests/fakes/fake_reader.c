@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "background_reader.h"
+#include "texture_read.h"
 #include "fake_reader.h"
 #include "file.h"
 
@@ -94,10 +95,7 @@ static void complete_first_pending(struct finished_read *finished)
         reads_out_of_memory = reads_out_of_memory - 1;
         finished->result = FILE_ERR_MEMORY;
     } else {
-        finished->result = file_read_whole(pending[0].path, &finished->data, &finished->size);
-        if (finished->result == FILE_OK && pending[0].wants_grayscale) {
-            background_reader_make_grayscale(finished);
-        }
+        texture_read_whole(pending[0].path, pending[0].wants_grayscale, finished);
     }
     for (index = 1; index < pending_count; index++) {
         pending[index - 1] = pending[index];

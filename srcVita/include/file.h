@@ -12,6 +12,13 @@
 #define FILE_ERR_WRITE -6
 
 int file_read_whole(const char *path, unsigned char **data, unsigned int *size);
+struct file_buffers {
+    unsigned char *(*make)(void *context, unsigned int size);
+    void (*give_back)(void *context, unsigned char *buffer);
+    void *context;
+};
+
+int file_read_whole_into(const char *path, const struct file_buffers *buffers, unsigned char **data, unsigned int *size, unsigned long long *open_us);
 int file_read_whole_timing_open(const char *path, unsigned char **data, unsigned int *size, unsigned long long *open_us);
 int file_write_whole(const char *path, const unsigned char *data, unsigned int size);
 int file_append(const char *path, const unsigned char *data, unsigned int size);

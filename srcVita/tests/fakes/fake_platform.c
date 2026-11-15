@@ -180,6 +180,33 @@ int fake_files_exists(const char *path)
     return find_file(path) != NULL;
 }
 
+int file_read_whole_into(const char *path, const struct file_buffers *buffers, unsigned char **data, unsigned int *size, unsigned long long *open_us)
+{
+    struct fake_file *file;
+    unsigned char *buffer;
+
+    *open_us = 0;
+    file = find_file(path);
+    if (file == NULL) {
+        if (read_misses < MISSED_PATH_MAX) {
+            snprintf(missed_paths[read_misses], FILE_PATH_MAX, "%s", path);
+            read_misses = read_misses + 1;
+        }
+        return FILE_ERR_OPEN;
+    }
+    if (file->size == 0) {
+        return FILE_ERR_SIZE;
+    }
+    buffer = buffers->make(buffers->context, file->size);
+    if (buffer == NULL) {
+        return FILE_ERR_MEMORY;
+    }
+    memcpy(buffer, file->data, file->size);
+    *data = buffer;
+    *size = file->size;
+    return FILE_OK;
+}
+
 int file_read_whole(const char *path, unsigned char **data, unsigned int *size)
 {
     struct fake_file *file;

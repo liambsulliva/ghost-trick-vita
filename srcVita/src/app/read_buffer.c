@@ -40,9 +40,19 @@ unsigned char *read_buffer_take(unsigned int size)
     return data;
 }
 
+int read_buffer_holds(const unsigned char *data)
+{
+    return reserved != NULL && data >= reserved && data < reserved + READ_BUFFER_RESERVED_BYTES;
+}
+
+unsigned char *read_buffer_take_whole_reserve(void)
+{
+    return take_reserved(READ_BUFFER_RESERVED_BYTES) ? reserved : NULL;
+}
+
 void read_buffer_release(unsigned char *data)
 {
-    if (data != NULL && data == reserved) {
+    if (data != NULL && read_buffer_holds(data)) {
         __sync_synchronize();
         reserved_is_taken = 0;
         return;
