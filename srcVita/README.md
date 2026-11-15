@@ -1,6 +1,6 @@
 # srcVita
 
-The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real Vita and plays the game at 60 fps, using art converted from the remaster.
+The PS Vita app for the Ghost Trick port, built on vitaGL. It installs on a real Vita and plays the game at 60 fps with the remastered art, or a fixed 30 fps with the DS art, whose sprites change at most 15 times a second; the Options Framerate row is then held at 30.
 
 The game runs from the DS's own script bytes on the script VM (see [The script VM](#the-script-vm)). The whole story plays from start to finish. [Known issues](#known-issues) lists what still differs from the original.
 
@@ -141,7 +141,7 @@ python3 -I tools/rom_audit.py
 
 ### LiveArea art
 
-The package's LiveArea icon, background and startup image are built while the package is built. With your extracted game files in place they come from the game's title logo; without them they are a plain monogram. To bundle the logo into your own package:
+The package's LiveArea icon, background and startup image are built while the package is built. With the remaster's extracted files in place they come from the remaster's title logo; with only your DS cartridge dump at `extracted/ds_rom/game.nds` they come from the cartridge's own title logo over DS mode's red; with neither they are a plain monogram. To bundle the remaster's logo into your own package:
 
 1. Run the setup script in [the top-level README](../README.md#set-everything-up-with-one-command), which puts the remaster's files in `extracted/remaster_apk`.
 2. Build the converter's texture tool, which the logo needs to decode the game's texture:

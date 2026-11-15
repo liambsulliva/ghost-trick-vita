@@ -129,12 +129,37 @@ static void test_a_language_texture_is_read_from_its_bucket_like_the_base_set(vo
     texture_cache_set_bucket_count(0u);
 }
 
+static void test_a_set_carries_only_the_languages_its_list_names(void)
+{
+    static const char listed[] = "fr\nde\nxx\n";
+
+    fake_files_reset();
+    fake_files_add("assets/lang/languages.txt", (const unsigned char *)listed, (unsigned int)strlen(listed));
+    asset_language_init("assets");
+    CHECK_INT(asset_language_carried_count(), 3);
+    CHECK(asset_language_carries(ASSET_LANGUAGE_ENGLISH));
+    CHECK(asset_language_carries(FRENCH));
+    CHECK(!asset_language_carries(JAPANESE));
+    CHECK_INT(asset_language_carried_at(1), FRENCH);
+    CHECK_INT(asset_language_carried_at(2), 4);
+    CHECK_INT(asset_language_position_of(4), 2);
+    CHECK_INT(asset_language_carried_or_english(8), ASSET_LANGUAGE_ENGLISH);
+    CHECK_INT(asset_language_from_system(0), ASSET_LANGUAGE_ENGLISH);
+    CHECK_INT(asset_language_from_system(2), FRENCH);
+    CHECK_INT(asset_language_use(JAPANESE), 0);
+    CHECK_INT(asset_language_now(), ASSET_LANGUAGE_ENGLISH);
+    fake_files_reset();
+    asset_language_init("assets");
+    CHECK_INT(asset_language_carried_count(), ASSET_LANGUAGE_COUNT);
+}
+
 int main(void)
 {
     test_a_language_overrides_only_the_paths_its_names_list();
     test_english_and_a_language_without_files_use_the_base_set();
     test_the_system_language_picks_the_matching_game_language();
     test_a_first_boot_starts_in_the_system_language();
+    test_a_set_carries_only_the_languages_its_list_names();
     test_the_texture_cache_reads_a_language_texture_from_its_folder();
     test_a_language_texture_is_read_from_its_bucket_like_the_base_set();
     return test_finish("unit/asset_language");

@@ -293,6 +293,14 @@
     }
   },
   "pause": {
+    "ds_art": {
+      "title_buttons": {
+        "resting": 192,
+        "selected": 193,
+        "pressed": 194
+      },
+      "flame": 31
+    },
     "label_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
     "labels": [
       "RESUME",
@@ -384,6 +392,7 @@
         "yes": "Yes",
         "no": "No",
         "restore_ask": "Return every setting to its default?",
+        "filter_ask": "Switch the look and restart the game?",
         "title_ask": "Return to Title without saving?",
         "title_save_ask": "Save the current game state",
         "title_save_ask_more": "and return to the title screen?",
@@ -457,6 +466,7 @@
         "save_manual": "Save your progress to the Manual Save slot.",
         "save_ask_note": "Play picks up from the start of this scene.",
         "reset_warning": "This cannot be undone.",
+        "filter_warning": "Progress since your last save will be lost.",
         "chapters": "Replay a chapter from its start.",
         "chapter_locked": "Reach this chapter to replay it.",
         "title_warning": "Progress will be lost without saving.",
@@ -1048,12 +1058,6 @@
       "source": "natives/android/charfiles/3d/04_item/circlesubtex03_iml4.tex.691230823",
       "width": 64,
       "height": 256
-    },
-    {
-      "name": "soul_ring",
-      "source": "natives/android/charfiles/3d/05_effect/cmn_shig_00/23_cmn_shig_00_01_iml4.tex.691230823",
-      "width": 512,
-      "height": 512
     },
     {
       "name": "phone_cap",
@@ -1781,9 +1785,694 @@
       ]
     }
   ],
+  "ds_textures": [
+    {
+      "name": "rewind_button",
+      "width": 128,
+      "height": 80,
+      "parts": [
+        {
+          "texture": 672,
+          "cell": [
+            0,
+            0,
+            128,
+            40
+          ]
+        },
+        {
+          "texture": 682,
+          "cell": [
+            0,
+            40,
+            128,
+            40
+          ]
+        }
+      ]
+    },
+    {
+      "name": "banner_trick",
+      "width": 273,
+      "height": 60,
+      "parts": [
+        {
+          "texture": {
+            "effect": 326,
+            "item": 3
+          },
+          "crop": [
+            0,
+            12,
+            256,
+            60
+          ],
+          "x": 8,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "name": "banner_trace",
+      "width": 264,
+      "height": 60,
+      "parts": [
+        {
+          "texture": {
+            "effect": 211,
+            "item": 3
+          },
+          "crop": [
+            0,
+            12,
+            256,
+            60
+          ],
+          "x": 4,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "name": "banner_averted",
+      "width": 278,
+      "height": 60,
+      "parts": [
+        {
+          "texture": {
+            "effect": 241,
+            "item": 3
+          },
+          "crop": [
+            0,
+            12,
+            256,
+            60
+          ],
+          "x": 11,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "name": "banner_changed",
+      "width": 276,
+      "height": 60,
+      "parts": [
+        {
+          "texture": {
+            "effect": 331,
+            "item": 3
+          },
+          "crop": [
+            0,
+            12,
+            256,
+            60
+          ],
+          "x": 10,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "name": "banner_star",
+      "width": 80,
+      "height": 80,
+      "parts": [
+        {
+          "texture": {
+            "effect": 326,
+            "item": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "soul_glow",
+      "width": 128,
+      "height": 128,
+      "parts": [
+        {
+          "texture": 14,
+          "width": 128,
+          "height": 128
+        }
+      ]
+    },
+    {
+      "name": "soul_orb",
+      "width": 64,
+      "height": 64,
+      "parts": [
+        {
+          "texture": 15,
+          "width": 64,
+          "height": 64
+        }
+      ]
+    },
+    {
+      "name": "soul_blob",
+      "width": 54,
+      "height": 54,
+      "parts": [
+        {
+          "texture": 6,
+          "x": 11,
+          "y": 11,
+          "flat_color_of": 26
+        }
+      ]
+    },
+    {
+      "name": "soul_beam",
+      "width": 256,
+      "height": 64,
+      "parts": [
+        {
+          "texture": 28,
+          "width": 256,
+          "height": 64
+        }
+      ]
+    },
+    {
+      "name": "pause_backdrop",
+      "width": 240,
+      "height": 136,
+      "fill": [
+        123,
+        8,
+        8
+      ],
+      "parts": []
+    },
+    {
+      "name": "title_logo",
+      "width": 256,
+      "height": 76,
+      "parts": [
+        {
+          "texture": 1042,
+          "opaque": true,
+          "crop": [
+            0,
+            46,
+            256,
+            76
+          ],
+          "cut_out": {
+            "other_channels_above": 40,
+            "red_above": 180,
+            "grow": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "hud_pills",
+      "width": 176,
+      "height": 320,
+      "parts": [
+        {
+          "texture": 542,
+          "cell": [
+            0,
+            0,
+            88,
+            32
+          ],
+          "align": [
+            0,
+            1
+          ]
+        },
+        {
+          "texture": 547,
+          "cell": [
+            88,
+            0,
+            88,
+            32
+          ],
+          "align": [
+            0,
+            1
+          ]
+        },
+        {
+          "texture": 93,
+          "cell": [
+            0,
+            32,
+            88,
+            32
+          ],
+          "align": [
+            1,
+            0
+          ]
+        },
+        {
+          "texture": 94,
+          "cell": [
+            88,
+            32,
+            88,
+            32
+          ],
+          "align": [
+            1,
+            0
+          ]
+        },
+        {
+          "texture": 552,
+          "cell": [
+            0,
+            64,
+            88,
+            32
+          ],
+          "align": [
+            0,
+            1
+          ]
+        },
+        {
+          "texture": 557,
+          "cell": [
+            88,
+            64,
+            88,
+            32
+          ],
+          "align": [
+            0,
+            1
+          ]
+        },
+        {
+          "texture": 91,
+          "cell": [
+            0,
+            96,
+            88,
+            32
+          ],
+          "align": [
+            0,
+            0
+          ]
+        },
+        {
+          "texture": 92,
+          "cell": [
+            88,
+            96,
+            88,
+            32
+          ],
+          "align": [
+            0,
+            0
+          ]
+        },
+        {
+          "texture": 582,
+          "cell": [
+            0,
+            128,
+            88,
+            32
+          ],
+          "align": [
+            1,
+            1
+          ]
+        },
+        {
+          "texture": 587,
+          "cell": [
+            88,
+            128,
+            88,
+            32
+          ],
+          "align": [
+            1,
+            1
+          ]
+        },
+        {
+          "texture": 95,
+          "cell": [
+            0,
+            160,
+            88,
+            32
+          ],
+          "align": [
+            0.5,
+            1
+          ]
+        },
+        {
+          "texture": 96,
+          "cell": [
+            88,
+            160,
+            88,
+            32
+          ],
+          "align": [
+            0.5,
+            1
+          ]
+        },
+        {
+          "texture": 97,
+          "cell": [
+            0,
+            192,
+            88,
+            32
+          ],
+          "align": [
+            0.5,
+            1
+          ]
+        },
+        {
+          "texture": 98,
+          "cell": [
+            88,
+            192,
+            88,
+            32
+          ],
+          "align": [
+            0.5,
+            1
+          ]
+        },
+        {
+          "texture": 99,
+          "cell": [
+            0,
+            224,
+            88,
+            32
+          ],
+          "align": [
+            0.5,
+            1
+          ]
+        },
+        {
+          "texture": 100,
+          "cell": [
+            88,
+            224,
+            88,
+            32
+          ],
+          "align": [
+            0.5,
+            1
+          ]
+        },
+        {
+          "texture": 562,
+          "cell": [
+            0,
+            256,
+            88,
+            32
+          ],
+          "align": [
+            1,
+            1
+          ]
+        },
+        {
+          "texture": 567,
+          "cell": [
+            88,
+            256,
+            88,
+            32
+          ],
+          "align": [
+            1,
+            1
+          ]
+        },
+        {
+          "texture": 572,
+          "cell": [
+            0,
+            288,
+            88,
+            32
+          ],
+          "align": [
+            0,
+            1
+          ]
+        },
+        {
+          "texture": 577,
+          "cell": [
+            88,
+            288,
+            88,
+            32
+          ],
+          "align": [
+            0,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "talk_box_top",
+      "width": 584,
+      "height": 144,
+      "parts": [
+        {
+          "texture": 23,
+          "crop": [
+            0,
+            0,
+            32,
+            48
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 90,
+          "height": 144
+        },
+        {
+          "texture": 23,
+          "crop": [
+            31,
+            0,
+            1,
+            48
+          ],
+          "x": 90,
+          "y": 0,
+          "width": 404,
+          "height": 144
+        },
+        {
+          "texture": 23,
+          "crop": [
+            0,
+            0,
+            32,
+            48
+          ],
+          "x": 494,
+          "y": 0,
+          "width": 90,
+          "height": 144,
+          "flip_x": true
+        }
+      ]
+    },
+    {
+      "name": "talk_box_bottom",
+      "width": 960,
+      "height": 132,
+      "parts": [
+        {
+          "texture": 23,
+          "crop": [
+            0,
+            0,
+            32,
+            48
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 90,
+          "height": 132
+        },
+        {
+          "texture": 23,
+          "crop": [
+            31,
+            0,
+            1,
+            48
+          ],
+          "x": 90,
+          "y": 0,
+          "width": 780,
+          "height": 132
+        },
+        {
+          "texture": 23,
+          "crop": [
+            0,
+            0,
+            32,
+            48
+          ],
+          "x": 870,
+          "y": 0,
+          "width": 90,
+          "height": 132,
+          "flip_x": true
+        }
+      ]
+    },
+    {
+      "name": "rewind_rocks_far",
+      "width": 64,
+      "height": 384,
+      "parts": [
+        {
+          "texture": 172
+        }
+      ]
+    },
+    {
+      "name": "rewind_rocks_mid",
+      "width": 64,
+      "height": 384,
+      "parts": [
+        {
+          "texture": 174
+        }
+      ]
+    },
+    {
+      "name": "rewind_rocks_near",
+      "width": 64,
+      "height": 384,
+      "parts": [
+        {
+          "texture": 173
+        }
+      ]
+    },
+    {
+      "name": "soul_spokes",
+      "width": 16,
+      "height": 64,
+      "parts": [
+        {
+          "texture": 11
+        }
+      ]
+    },
+    {
+      "name": "ui_choice_buttons",
+      "width": 512,
+      "height": 236,
+      "parts": [
+        {
+          "texture": 88,
+          "crop": [
+            19,
+            3,
+            130,
+            34
+          ],
+          "corner": 9,
+          "x": 125,
+          "y": 125,
+          "width": 100,
+          "height": 100,
+          "target_corner": 30
+        },
+        {
+          "texture": 88,
+          "crop": [
+            19,
+            3,
+            130,
+            34
+          ],
+          "corner": 9,
+          "x": 0,
+          "y": 117,
+          "width": 116,
+          "height": 116,
+          "target_corner": 35
+        }
+      ]
+    },
+    {
+      "name": "ui_select_button",
+      "width": 116,
+      "height": 116,
+      "parts": [
+        {
+          "texture": 193,
+          "crop": [
+            12,
+            5,
+            232,
+            38
+          ],
+          "corner": 12,
+          "x": 0,
+          "y": 0,
+          "width": 116,
+          "height": 116,
+          "target_corner": 40
+        }
+      ]
+    },
+    {
+      "name": "ui_tap_balloon",
+      "width": 512,
+      "height": 256,
+      "parts": [
+        {
+          "texture": 122,
+          "crop": [
+            11,
+            332,
+            41,
+            39
+          ],
+          "x": 2,
+          "y": 2,
+          "width": 225,
+          "height": 216
+        }
+      ]
+    }
+  ],
   "soul_view": {
     "owner": "cicel",
-    "ring": "soul_ring",
     "cores": [
       "shadanki"
     ],

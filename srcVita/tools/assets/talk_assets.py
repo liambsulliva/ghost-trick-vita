@@ -28,7 +28,8 @@ ATLAS_CELL_GAP = 4
 COLOR_BLACK = 0
 COLOR_OF_TAG = {"c1": 1, "c2": 2}
 COLOR_SYSTEM_GREEN = 3
-COLOR_SHIFT = 14
+COLOR_SHIFT = 13
+COLOR_AS_IS = 4
 IGNORED_VERBS = ("s0", "mes_se_play", "mesquake_win")
 QUAKE_LEVEL_OF_TYPE = {"iQuake::LEVEL_M": 1, "iQuake::LEVEL_L": 2}
 QUAKE_LEVEL_UNLESS_NAMED = 1
@@ -46,6 +47,9 @@ BOX_BOTTOM = 0
 BOX_TOP_ALONE = 1
 BOX_TOP_WITH_HEAD = 2
 TOP_WITH_HEAD_TEXT_LEFT = 282
+BOX_LEFT = {BOX_BOTTOM: 0.0, BOX_TOP_ALONE: 188.0, BOX_TOP_WITH_HEAD: 255.5}
+BOX_TOP_EDGE = {BOX_BOTTOM: BOTTOM_BOX_TOP, BOX_TOP_ALONE: TOP_BOX_TOP, BOX_TOP_WITH_HEAD: TOP_BOX_TOP}
+BOX_HEIGHT_OF = {BOX_BOTTOM: BOTTOM_BOX_HEIGHT, BOX_TOP_ALONE: TOP_BOX_HEIGHT, BOX_TOP_WITH_HEAD: TOP_BOX_HEIGHT}
 TEXT_RIGHT = 960 - BOTTOM_TEXT_LEFT
 ENDING_PRESS = 0
 ENDING_PAUSE_THEN_NEXT = 1
@@ -373,6 +377,63 @@ def layout_of_page(section, layouts, label, page_index):
     return path, flip, BOX_BOTTOM, 1 if changes_instantly else 0
 
 
+def glyph_shapes_of_rows(rows):
+    return [tuple(int(value) for value in row.split()[1:]) for row in rows if row.startswith("glyph ")]
+
+
+def ink_of_line(fields, shapes):
+    x, y = int(fields[1]), int(fields[2])
+    inked = [shapes[int(code) & ((1 << COLOR_SHIFT) - 1)] for code in fields[4:]]
+    inked = [shape for shape in inked if shape[2] * shape[3] > 0]
+    if not inked:
+        return None
+    return x + inked[0][4], y + min(shape[5] for shape in inked), y + max(shape[5] + shape[3] for shape in inked)
+
+
+def pages_of_rows(rows, fixed_talks):
+    pages = []
+    label = None
+    for index, row in enumerate(rows):
+        fields = row.split()
+        if not fields:
+            continue
+        if fields[0] == "talk":
+            label = fields[1]
+        elif fields[0] == "page":
+            pages.append({"box": int(fields[3]), "fixed": label in fixed_talks, "lines": []})
+        elif fields[0] == "line" and pages:
+            pages[-1]["lines"].append(index)
+    return pages
+
+
+def even_left_margins(rows, fixed_talks=()):
+    shapes = glyph_shapes_of_rows(rows)
+    pages = pages_of_rows(rows, set(fixed_talks))
+    for page in pages:
+        inks = [ink_of_line(rows[index].split(), shapes) for index in page["lines"]]
+        inks = [ink for ink in inks if ink is not None]
+        page["ink"] = (min(ink[0] for ink in inks), min(ink[1] for ink in inks), max(ink[2] for ink in inks)) if inks else None
+    margins = {}
+    for box in BOX_LEFT:
+        movable = [page for page in pages if page["box"] == box and not page["fixed"] and page["ink"] is not None and page["ink"][1] >= BOX_TOP_EDGE[box] and page["ink"][2] <= BOX_TOP_EDGE[box] + BOX_HEIGHT_OF[box]]
+        if not movable:
+            continue
+        most = max(len(page["lines"]) for page in movable)
+        full = [page for page in movable if len(page["lines"]) == most]
+        gaps = [((page["ink"][1] - BOX_TOP_EDGE[box]) + (BOX_TOP_EDGE[box] + BOX_HEIGHT_OF[box] - page["ink"][2])) / 2.0 for page in full]
+        margins[box] = sorted(gaps)[len(gaps) // 2]
+    result = list(rows)
+    for page in pages:
+        if page["fixed"] or page["ink"] is None or page["box"] not in margins:
+            continue
+        shift = int(round(BOX_LEFT[page["box"]] + margins[page["box"]] - page["ink"][0]))
+        for index in page["lines"]:
+            fields = result[index].split(" ")
+            fields[1] = str(int(fields[1]) + shift)
+            result[index] = " ".join(fields)
+    return result, margins
+
+
 def line_tops(line_count, box_top, box_height):
     baseline_row, _ = line_renderer.line_box(PIXELS_PER_EM)
     block_height = (line_count - 1) * LINE_PITCH + PIXELS_PER_EM
@@ -467,6 +528,7 @@ def bake_talk(packs, set_description, text_key, work_folder, record, code, font_
                     if line_left + line_width > TEXT_RIGHT:
                         failures.append((label, "a line is %d px wider than its box" % (line_left + line_width - TEXT_RIGHT)))
                     rows.append("line %d %d %d %s" % (line_left, top, len(line), codes))
+    rows, _ = even_left_margins(rows, list(section.get("system_lines", {})))
     return {TALK_FILE: ("\n".join(rows) + "\n").encode("ascii")}, [result], failures, used_faces
 
 

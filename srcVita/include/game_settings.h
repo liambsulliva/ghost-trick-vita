@@ -65,6 +65,9 @@ int game_settings_volume_gain(int level);
 float game_settings_darkness(void);
 void game_settings_set_bundled_art(int has_remastered, int has_ds);
 int game_settings_filter_is_pinned(void);
+void game_settings_set_art_fps_cap(int fps_cap);
+int game_settings_fps_is_pinned(void);
+int game_settings_fps_cap(void);
 int game_settings_visual_filter(void);
 int game_settings_hint_delay_ticks(void);
 

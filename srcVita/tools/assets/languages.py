@@ -11,6 +11,7 @@ ASSET_TOOLS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 LANGUAGES_FILE = os.path.join(ASSET_TOOLS_FOLDER, "languages.json")
 OVERLAY_FOLDER = output_folders.LANGUAGE_FOLDER
 NAMES_FILE = "names.txt"
+LIST_PATH = OVERLAY_FOLDER + "/languages.txt"
 ART_PATH_MARK = ".tex."
 DS_TEXT_MARK = ".%s.msg.xml"
 KEEPS_ITS_FONTS = ("languages", "key_font")
@@ -87,6 +88,10 @@ def localized_set(set_description, base_language, language):
     if talk is not None and "system_lines" in talk:
         talk["system_lines"] = {label: dict(line, file=line["file"].replace(DS_TEXT_MARK % base_language["ds"], DS_TEXT_MARK % language["ds"])) for label, line in talk["system_lines"].items()}
     return localized
+
+
+def list_files(baked_languages):
+    return {LIST_PATH: "".join(language["code"] + "\n" for language in baked_languages).encode("ascii")}
 
 
 def is_overlay_path(relative_path):

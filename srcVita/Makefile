@@ -41,7 +41,8 @@ OBJS := $(patsubst src/%.c,$(OBJECT_FOLDER)/%.o,$(SRCS))
 LIVEAREA_FOLDER := build/sce_sys
 RELEASE ?= 0
 LIVEAREA_ASSETS_PRESENT := $(and $(wildcard ../extracted/remaster_apk/GTPD_ANDROID_Release.list),$(wildcard build/tools/texture_tool))
-LIVEAREA_STYLE := $(if $(and $(filter-out 1,$(RELEASE)),$(LIVEAREA_ASSETS_PRESENT)),logo,monogram)
+LIVEAREA_DS_PRESENT := $(wildcard ../extracted/ds_rom/game.nds)
+LIVEAREA_STYLE := $(if $(filter 1,$(RELEASE)),monogram,$(if $(LIVEAREA_ASSETS_PRESENT),logo,$(if $(LIVEAREA_DS_PRESENT),ds_logo,monogram)))
 LIVEAREA_SOURCE := build/livearea_$(LIVEAREA_STYLE)
 LIVEAREA_IMAGE_NAMES := icon0.png livearea/contents/bg.png livearea/contents/startup.png
 

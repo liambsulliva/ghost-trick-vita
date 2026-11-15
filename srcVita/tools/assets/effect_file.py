@@ -478,7 +478,10 @@ def resolve_character(records, character, sprites_by_id, shapes_by_id):
 
 
 def read_timeline(user_bytes):
-    records = read_records(user_bytes)
+    return timeline_of_records(read_records(user_bytes))
+
+
+def timeline_of_records(records):
     stage = first_of(records, "stage")
     sprites = []
     sprites_by_id = {}
@@ -595,16 +598,9 @@ def movie_jumps(scripts, labels, baked_per_movie_frame, baked_frames):
     return rows
 
 
-def read_effect(user_bytes):
-    records = read_records(user_bytes)
-    sheet = first_of(records, "sheet")
-    timeline = read_timeline(user_bytes)
-    main = next(sprite for sprite in timeline["sprites"] if sprite["sprite_id"] == 0)
+def playback_of(timeline, main, baked_frames):
     movie_frames = len(main["frames"])
-    baked_frames = len(sheet["frame_cells"])
-    ticks = ticks_per_baked_frame(main["fps"], movie_frames, baked_frames)
     baked_per_movie_frame = baked_frames / float(movie_frames) if movie_frames else 1.0
-
     labels = {}
     for index, frame in enumerate(main["frames"]):
         if frame["label"]:
@@ -647,6 +643,40 @@ def read_effect(user_bytes):
     if len(vertices) == 4:
         quad_vertices = (vertices[0], vertices[3], vertices[2], vertices[1])
 
+    if loop_start is not None:
+        after_last = "loop"
+    elif removes_itself_at is not None:
+        after_last = "end"
+    elif stops_at is not None or movie_frames == 1:
+        after_last = "hold"
+    else:
+        after_last = "end"
+
+    frame_count = baked_frames
+    if jumps:
+        after_last = "end" if removes_itself_at is not None else "loop"
+        loop_start = 0
+    elif loop_jump_frame is not None:
+        frame_count = min(frame_count, loop_jump_frame + 1)
+    if removes_itself_at is not None:
+        frame_count = min(frame_count, removes_itself_at + 1)
+
+    return {"labels": labels, "statuses": statuses, "jumps": jumps, "sounds": sounds, "vertices": quad_vertices, "loop_start": loop_start, "after_last": after_last, "frame_count": frame_count}
+
+
+def read_effect(user_bytes):
+    records = read_records(user_bytes)
+    sheet = first_of(records, "sheet")
+    timeline = read_timeline(user_bytes)
+    main = next(sprite for sprite in timeline["sprites"] if sprite["sprite_id"] == 0)
+    movie_frames = len(main["frames"])
+    baked_frames = len(sheet["frame_cells"])
+    ticks = ticks_per_baked_frame(main["fps"], movie_frames, baked_frames)
+    baked_per_movie_frame = baked_frames / float(movie_frames) if movie_frames else 1.0
+
+    playback = playback_of(timeline, main, baked_frames)
+    quad_vertices = playback["vertices"]
+
     stem = stem_from_page(sheet["pages"][0])
     pivot = LAST_SHAPE_PIVOT.get(stem)
     pivot_points = last_shape_points(timeline, main, pivot) if pivot else None
@@ -679,24 +709,6 @@ def read_effect(user_bytes):
             quads.append({"page": page, "source": source, "corners": corners, "matrix": matrix, "rgba": (1.0, 1.0, 1.0, 1.0), "blend": "alpha"})
         frames.append({"index": index, "cell": cell, "quads": quads})
 
-    if loop_start is not None:
-        after_last = "loop"
-    elif removes_itself_at is not None:
-        after_last = "end"
-    elif stops_at is not None or movie_frames == 1:
-        after_last = "hold"
-    else:
-        after_last = "end"
-
-    frame_count = baked_frames
-    if jumps:
-        after_last = "end" if removes_itself_at is not None else "loop"
-        loop_start = 0
-    elif loop_jump_frame is not None:
-        frame_count = min(frame_count, loop_jump_frame + 1)
-    if removes_itself_at is not None:
-        frame_count = min(frame_count, removes_itself_at + 1)
-
     return {
         "name": stem,
         "pages": sheet["pages"],
@@ -711,15 +723,15 @@ def read_effect(user_bytes):
         "mode": sheet["mode"],
         "movie_fps": main["fps"],
         "movie_frames": movie_frames,
-        "frame_count": frame_count,
+        "frame_count": playback["frame_count"],
         "ticks_per_frame": ticks,
         "frame_rate": TICKS_PER_SECOND / ticks,
-        "loop_start": loop_start,
-        "after_last": after_last,
-        "labels": labels,
-        "statuses": statuses,
-        "jumps": jumps,
-        "sounds": sounds,
+        "loop_start": playback["loop_start"],
+        "after_last": playback["after_last"],
+        "labels": playback["labels"],
+        "statuses": playback["statuses"],
+        "jumps": playback["jumps"],
+        "sounds": playback["sounds"],
         "vertices": quad_vertices,
         "last_shape_pivot": pivot,
         "frames": frames,

@@ -394,7 +394,7 @@ def is_soul_red(style):
 
 
 def soul_text(soul_view):
-    lines = ["owner " + soul_view["owner"], "ring " + soul_view["ring"]]
+    lines = ["owner " + soul_view["owner"]]
     lines.extend("core " + name for name in soul_view.get("cores", []))
     lines.extend("trickless %d" % info for info in soul_view.get("trickless_core_infos", []))
     for class_id, style in soul_view.get("classes", {}).items():
@@ -534,7 +534,7 @@ def balloons_text(balloons, texture_sizes):
             part = with_thorn_chosen_by_text(part, texture_sizes)
             if part["texture"] not in texture_sizes:
                 continue
-            width, height = texture_sizes[part["texture"]]
+            width, height = (size * part.get("texture_scale", 1.0) for size in texture_sizes[part["texture"]])
             dx, dy = part["dx"], part["dy"]
             if part.get("fits") in texture_sizes and "thorn_sizes" not in part:
                 text_width, text_height = texture_sizes[part["fits"]]
@@ -599,7 +599,6 @@ def table_files(set_description, output_folder, motion_lines, narration_lines, t
         texts[SOUL_FILE] = soul_text(set_description["soul_view"])
     if "core_labels" in set_description:
         texts[CORE_LABELS_FILE] = core_labels_text(set_description["core_labels"], texture_sizes)
-        extra_textures.append(set_description["soul_view"]["ring"])
     if "route" in set_description:
         texts[ROUTE_FILE] = route_steps_text(set_description["route"])
     if set_description.get("ui_clips"):

@@ -332,6 +332,41 @@ static void test_every_listed_language_can_be_chosen_and_is_applied(void)
     game_settings_on_language(NULL);
 }
 
+static void test_the_language_list_shows_only_the_languages_the_set_carries(void)
+{
+    static const char listed[] = "en\nfr\nit\nde\nes\n";
+    int index;
+
+    game_settings_on_language(use_language_in_test);
+    start_options();
+    fake_files_add("set/lang/languages.txt", (const unsigned char *)listed, (unsigned int)strlen(listed));
+    asset_language_init("set");
+    CHECK_INT(asset_language_carried_count(), 5);
+    game_settings_now()->language = 1;
+    game_settings_apply();
+    CHECK_INT(asset_language_now(), ASSET_LANGUAGE_ENGLISH);
+    press_down_to(LANGUAGE_ROW);
+    pause_options_step(INPUT_CROSS);
+    CHECK(pause_options_dropdown_is_open());
+    for (index = 0; index < 8; index++) {
+        pause_options_step(INPUT_DOWN);
+    }
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->language, 5);
+    CHECK_INT(asset_language_now(), 5);
+    pause_options_step(INPUT_CROSS);
+    pause_options_step(INPUT_UP);
+    pause_options_step(INPUT_UP);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->language, 3);
+    fake_files_reset();
+    asset_language_init("set");
+    CHECK_INT(asset_language_carried_count(), ASSET_LANGUAGE_COUNT);
+    game_settings_now()->language = 0;
+    game_settings_apply();
+    game_settings_on_language(NULL);
+}
+
 static void test_controls_opens_a_page_that_circle_closes(void)
 {
     start_options();
@@ -425,6 +460,27 @@ static void test_display_switches_flip_save_and_reach_the_renderer(void)
     CHECK_INT(fake_renderer_vsync_is_on(), 1);
 }
 
+static void test_the_ds_art_set_pins_the_frame_rate_at_thirty(void)
+{
+    fake_renderer_reset();
+    start_options();
+    game_settings_set_art_fps_cap(GAME_FPS_CAPPED);
+    CHECK_INT(game_settings_fps_is_pinned(), 1);
+    CHECK_INT(game_settings_fps_cap(), GAME_FPS_CAPPED);
+    CHECK_INT(fake_renderer_vblanks_per_frame(), 2);
+    press_down_to(FPS_CAP_ROW);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(game_settings_now()->fps_cap, GAME_FPS_FULL);
+    game_settings_apply();
+    CHECK_INT(fake_renderer_vblanks_per_frame(), 2);
+    game_settings_set_art_fps_cap(GAME_FPS_FULL);
+    CHECK_INT(game_settings_fps_is_pinned(), 0);
+    CHECK_INT(fake_renderer_vblanks_per_frame(), 1);
+    CHECK_INT(pause_options_step(INPUT_CIRCLE), PAUSE_OPTIONS_LEAVES);
+    game_settings_defaults(game_settings_now());
+    game_settings_apply();
+}
+
 static void test_the_visual_filter_chooses_only_when_both_art_sets_are_bundled(void)
 {
     start_options();
@@ -444,9 +500,20 @@ static void test_the_visual_filter_chooses_only_when_both_art_sets_are_bundled(v
     CHECK_INT(game_settings_filter_is_pinned(), 0);
     CHECK_INT(game_settings_visual_filter(), GAME_FILTER_REMASTERED);
     pause_options_step(INPUT_CROSS);
+    CHECK_INT(pause_options_dialog_is_open(), 1);
+    CHECK_INT(game_settings_visual_filter(), GAME_FILTER_REMASTERED);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(pause_options_dialog_is_open(), 0);
+    CHECK_INT(game_settings_visual_filter(), GAME_FILTER_REMASTERED);
+    pause_options_step(INPUT_CROSS);
+    pause_options_step(INPUT_LEFT);
+    pause_options_step(INPUT_CROSS);
+    CHECK_INT(pause_options_dialog_is_open(), 0);
     CHECK_INT(game_settings_now()->visual_filter, GAME_FILTER_DS);
     CHECK_INT(game_settings_visual_filter(), GAME_FILTER_DS);
+    pause_options_step(INPUT_CROSS);
     pause_options_step(INPUT_LEFT);
+    pause_options_step(INPUT_CROSS);
     CHECK_INT(game_settings_visual_filter(), GAME_FILTER_REMASTERED);
     game_settings_set_bundled_art(1, 0);
 }
@@ -535,10 +602,12 @@ int main(void)
     test_music_type_switches_the_music_folder_setting();
     test_the_language_list_opens_on_cross_and_circle_closes_it_first();
     test_every_listed_language_can_be_chosen_and_is_applied();
+    test_the_language_list_shows_only_the_languages_the_set_carries();
     test_controls_opens_a_page_that_circle_closes();
     test_a_tap_on_a_flame_sets_that_level();
     test_the_unlock_row_shows_only_when_built_in_and_flips_a_saved_setting();
     test_display_switches_flip_save_and_reach_the_renderer();
+    test_the_ds_art_set_pins_the_frame_rate_at_thirty();
     test_the_visual_filter_chooses_only_when_both_art_sets_are_bundled();
     test_dragging_the_list_scrolls_it_without_picking_a_row();
     test_the_text_speed_slider_steps_cycles_and_takes_a_tap();

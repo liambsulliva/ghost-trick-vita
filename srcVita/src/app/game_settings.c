@@ -27,6 +27,7 @@ static void (*language_user)(int language);
 static char music_folders[2][FILE_PATH_MAX];
 static int has_remastered_art = 1;
 static int has_ds_art;
+static int art_fps_cap = GAME_FPS_FULL;
 
 static int clamp_level(int value, int least)
 {
@@ -213,7 +214,7 @@ void game_settings_apply(void)
     if (music_folders[current.music_type][0] != '\0') {
         music_engine_use_folder(music_folders[current.music_type]);
     }
-    renderer_set_vblanks_per_frame(GAME_FPS_FULL / current.fps_cap);
+    renderer_set_vblanks_per_frame(GAME_FPS_FULL / game_settings_fps_cap());
     renderer_set_vsync(current.vsync);
     if (language_user != NULL) {
         language_user(current.language);
@@ -229,6 +230,22 @@ void game_settings_set_bundled_art(int has_remastered, int has_ds)
 {
     has_remastered_art = has_remastered != 0;
     has_ds_art = has_ds != 0;
+}
+
+void game_settings_set_art_fps_cap(int fps_cap)
+{
+    art_fps_cap = fps_cap == GAME_FPS_CAPPED ? GAME_FPS_CAPPED : GAME_FPS_FULL;
+    renderer_set_vblanks_per_frame(GAME_FPS_FULL / game_settings_fps_cap());
+}
+
+int game_settings_fps_is_pinned(void)
+{
+    return art_fps_cap != GAME_FPS_FULL;
+}
+
+int game_settings_fps_cap(void)
+{
+    return game_settings_fps_is_pinned() ? art_fps_cap : current.fps_cap;
 }
 
 int game_settings_filter_is_pinned(void)

@@ -6,7 +6,7 @@ A PS Vita port of Ghost Trick that runs the original DS game logic with a single
 
 The whole story plays on the Vita from the opening of Chapter 1 through the closing credits and back to the title screen, with saves, chapter select, the Record and the Options menu. Every release is checked by an automatic playthrough that follows a reference playthrough through all 18 chapters, using the same input code as a player, with no step failed, no scene skipped and no stand-in for the game's own logic.
 
-It plays in all nine of the remaster's languages, [chosen in Options](srcVita/README.md#languages). The app installs and runs from art converted on your own computer: the remaster's, the DS cartridge's, or both. The one-command setup below prepares the whole game. Later versions fix bugs as they are found; [Known issues](srcVita/README.md#known-issues) lists the differences from the original that remain.
+The languages it offers, [chosen in Options](srcVita/README.md#languages), depend on the copy of the game you bring: the remastered set has all nine of the remaster's languages, and the DS set has the five on the USA cartridge (English, French, Italian, German and Spanish). The app installs and runs from art converted on your own computer: the remaster's, the DS cartridge's, or both. The one-command setup below prepares the whole game. Later versions fix bugs as they are found; [Known issues](srcVita/README.md#known-issues) lists the differences from the original that remain.
 
 ## Legal disclaimer
 

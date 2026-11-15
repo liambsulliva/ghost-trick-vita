@@ -465,6 +465,30 @@ static void test_every_menu_sprite_lands_on_whole_pixels_through_a_pan(void)
     CHECK_INT(off_grid, 0);
 }
 
+static void test_a_backdrop_smaller_than_the_screen_still_covers_it(void)
+{
+    const struct cached_texture *backdrop;
+    int draw;
+    int covered;
+
+    start_with_art();
+    open_until_shown();
+    backdrop = texture_cache_use_or_start_loading("pause_backdrop");
+    CHECK(backdrop != NULL && backdrop->width < RENDERER_WIDTH);
+    fake_renderer_clear_draws();
+    pause_menu_draw();
+    covered = 0;
+    for (draw = 0; draw < fake_renderer_draw_count(); draw++) {
+        const struct fake_draw *made;
+
+        made = fake_renderer_draw(draw);
+        if (backdrop != NULL && made->texture == backdrop->texture && made->screen_area.x == 0.0f && made->screen_area.y == 0.0f && made->screen_area.width == (float)RENDERER_WIDTH && made->screen_area.height == (float)RENDERER_HEIGHT) {
+            covered = 1;
+        }
+    }
+    CHECK_INT(covered, 1);
+}
+
 static void test_the_menu_stays_shut_without_its_art(void)
 {
     fake_files_reset();
@@ -494,6 +518,7 @@ int main(void)
     test_title_asks_first_and_yes_hands_over_once_the_screen_is_black();
     test_title_saves_first_when_yes_is_kept();
     test_every_menu_sprite_lands_on_whole_pixels_through_a_pan();
+    test_a_backdrop_smaller_than_the_screen_still_covers_it();
     test_the_menu_stays_shut_without_its_art();
     return test_finish("unit/pause_menu");
 }

@@ -91,13 +91,18 @@ What the DS set holds, and where each part comes from:
 | Part | Source | Native reader |
 |---|---|---|
 | Room plates `ds_plate_<id>` | `cpac_2d.bin` block 4, at the plate id the room table gives: a 4-byte width and height, a 256-colour BGR555 palette at byte 512, then one byte per pixel from byte 1024, in 16 by 16 blocks of 8 by 8 tiles. Colour 0 is clear. Ghost-world versions get the set's ramps | `data_02083328`, `func_02009a28` |
-| Sprite pages `ds_sprite_<resource>` | Every frame of a motion table's resource, packed left to right on one page at DS size | `func_0200b598`, `func_0200bf54`, `func_0200c2c0`, `func_0200857c` |
+| Sprite pages `ds_sprite_<resource>` | Every frame of a motion table's resource, packed left to right at DS size on pages at most 2048 rows tall, later pages named `ds_sprite_<resource>_<page>` | `func_0200b598`, `func_0200bf54`, `func_0200c2c0`, `func_0200857c` |
 | Motion animations `t_<table>` | One frame per frame word, 4 ticks each, so their motion lines give 1 record per DS frame. A table name two resources share gets the resource id on the end | |
 | Narration lines and the talk font | The script's language file and the DS font, in the text palette (`cpac_2d.bin` block 0, entry 5), rendered at DS size and placed in the cartridge's text boxes, then scaled nearest-neighbour by 2.8125. Icons keep their width but are not drawn yet | `func_0201c7c8`, `func_0201c350`, `data_02084a8c`, `func_02017b60`, `func_020197b4` |
+| Faces `ds_face_<entry>` | `cpac_3d.bin` block 0, a `.tds` texture at the entry the face table names, at DS size (128 by 192, head icons 64 by 64) | `data_02085724`, `func_0201e664` |
+| Interface textures (`talk_box_top`, `talk_box_bottom`, `ui_choice_buttons`, `ui_select_button`, `ui_tap_balloon`, `rewind_rocks_*`, `soul_spokes`, `soul_glow`, `soul_orb`, `soul_blob`, `soul_beam`) | `cpac_3d.bin` block 0, the parts the set description's `ds_textures` lists, a part optionally recoloured flat to another texture's main colour (`flat_color_of`), or a texture item of a block 3 effect (`{"effect", "item"}`, `ds_effects.py`) for the `banner_*` labels, placed where the app's layout for the remastered texture of the same name reads them | `func_0201e664` |
+| HUD pills `hud_pills` | `cpac_3d.bin` block 0, each button's resting and touched texture, one row per pill and one column per state, 88 by 32 DS pixels a cell | `func_0204f850` |
+| Menu sheets `pause_widgets`, `pause_labels`, the cat pages `pause_cat_<page>` and their tables under `pause/` | The remastered set's cell names and layout, written in the cartridge's main font at whole DS pixels; title buttons from `cpac_3d.bin` textures 192 to 194, the meter flame from 31, the cat from the DS set's own `st01_neko` sprite pages; the port's own shapes hardened to DS pixels | `func_0201e664`, `func_0200b598` |
+| `title_logo`, `pause_backdrop` | The logo cut out of the cartridge's title picture (`cpac_3d.bin` texture 1042); the backdrop is a flat red, because the cartridge has no title backdrop without the logo | `func_0201e664` |
 | Music `music_ds/bgm<id>_new` | `sound_data.sdat`, the sequence at the music id | `ds_music.py` |
 | Sounds `sounds/<group>_<index>` | `sound_data.sdat`'s sequence archives `SEQ_SE_SYS` and `SEQ_SE_GIM` | `func_02007250`, `func_02004a84` |
 
-All DS textures are uncompressed (format 0), and the texture cache samples every texture of a DS set nearest-neighbour. Anything the cartridge's decoders do not cover yet, such as the pause menu, the talk window and the pre-rendered movies, has no file in the set: the app logs it once as missing and draws nothing.
+All DS textures are uncompressed (format 0), and the texture cache samples every texture of a DS set nearest-neighbour. Anything the cartridge's decoders do not cover yet, such as the pause menu, the title and the pre-rendered movies, has no file in the set: the app logs it once as missing and draws nothing.
 
 ## Animations: `.anim`
 

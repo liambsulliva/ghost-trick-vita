@@ -6,13 +6,15 @@ import bake_record
 import chapter_assets
 import ds_rom
 import ds_sprites
+import ds_talk_icons
 import ds_text
+import ds_textures
 import lz
 import narration
 import talk_assets
 
 TEXTURE_FOLDER = "textures"
-CODE_FILES = ["ds_set_text.py", "ds_text.py"]
+CODE_FILES = ["ds_set_text.py", "ds_text.py", "ds_talk_icons.py"]
 DS_STEP = 16
 SCREEN_STEP = 45
 CAMERA_LEFT_ON_SCREEN = 120
@@ -49,6 +51,13 @@ FULL_ALPHA = 255
 WHITE = b"\xff\xff\xff"
 CLEAR = b"\x00\x00\x00\x00"
 GLYPH_LIMIT = 512
+HEAD_TABLE_ADDRESS = 0x02099cb0
+HEAD_ROW_SIZE = 6
+HEAD_ICON_OFFSET = 2
+HEAD_ROW_COUNT = 14
+NO_HEAD_TEXTURE = 0xffff
+FACE_NAME = "ds_face_%d"
+FACE_CODE_FILES = ["ds_set_text.py", "ds_textures.py"]
 
 
 class DsSetTextError(ValueError):
@@ -274,7 +283,7 @@ def placed_glyphs(font, items, color):
             continue
         code = item[1]
         if code in shapes.font.icon_widths:
-            placed.append({"x": cursor, "pixels": (), "color": color})
+            placed.append({"x": cursor, "pixels": (), "color": color, "icon": code})
             cursor = cursor + shapes.font.icon_widths[code] + 2 * ds_text.LETTER_GAP
             previous = code
             continue
@@ -310,14 +319,17 @@ def glyph_cell(pixels, phase_y, alphas):
 
 
 class TalkGlyphs:
-    def __init__(self, alphas, keeps_row_phase=True):
+    def __init__(self, alphas, keeps_row_phase=True, icons=None):
         self.alphas = alphas
         self.keeps_row_phase = keeps_row_phase
+        self.icons = icons or {}
         self.keys = {}
 
     def id_of(self, glyph, ds_x, ds_y):
-        phase_y = ds_y % DS_STEP if glyph["pixels"] and self.keeps_row_phase else 0
-        key = (glyph["pixels"], phase_y, screen_of(ds_x + glyph["advance"]) - screen_of(ds_x))
+        art = self.icons.get(glyph.get("icon"))
+        phase_y = ds_y % DS_STEP if (glyph["pixels"] or art is not None) and self.keeps_row_phase else 0
+        shape = ("icon", glyph["icon"]) if art is not None else glyph["pixels"]
+        key = (shape, phase_y, screen_of(ds_x + glyph["advance"]) - screen_of(ds_x))
         if key not in self.keys:
             self.keys[key] = len(self.keys)
         return self.keys[key]
@@ -325,7 +337,10 @@ class TalkGlyphs:
     def cells(self):
         cells = []
         for pixels, phase_y, advance in self.keys:
-            cell = glyph_cell(pixels, phase_y, self.alphas)
+            if pixels[:1] == ("icon",):
+                cell = ds_talk_icons.icon_cell(self.icons[pixels[1]], phase_y, screen_of)
+            else:
+                cell = glyph_cell(pixels, phase_y, self.alphas)
             cell["advance"] = advance
             cells.append(cell)
         return cells
@@ -339,8 +354,78 @@ def talk_layout(items):
     entry = None
     for item in items:
         if item[0] == "control" and item[1] in (talk_assets.FACE_CODE, talk_assets.POSE_CODE, talk_assets.HEAD_CODE):
-            entry = item[1]
+            entry = (item[1], item[2][0] if item[2] else 0)
     return entry
+
+
+class Faces:
+    def __init__(self, face_rows=None, head_textures=None):
+        self.face_rows = face_rows or {}
+        self.head_textures = {int(value): texture for value, texture in (head_textures or {}).items()}
+        self.used = []
+
+    def name_of(self, texture):
+        if texture not in self.used:
+            self.used.append(texture)
+        return FACE_NAME % texture
+
+    def of_layout(self, layout):
+        if layout is None:
+            return talk_assets.NO_FACE, 0, talk_assets.BOX_BOTTOM
+        code, value = layout
+        if code == talk_assets.HEAD_CODE:
+            if value in self.head_textures:
+                return self.name_of(self.head_textures[value]), 0, talk_assets.BOX_TOP_WITH_HEAD
+            return talk_assets.NO_FACE, 0, talk_assets.BOX_TOP_WITH_HEAD if not self.head_textures else talk_assets.BOX_TOP_ALONE
+        if value not in self.face_rows:
+            return talk_assets.NO_FACE, 0, talk_assets.BOX_BOTTOM
+        texture, flip = self.face_rows[value]
+        return self.name_of(texture), flip, talk_assets.BOX_BOTTOM
+
+
+def read_face_rows(arm9):
+    rows = {}
+    for face_id in range(1, chapter_assets.FACE_ROW_COUNT):
+        texture, _, flip, _, _, _, _ = struct.unpack_from("<7H", arm9, chapter_assets.FACE_TABLE_ADDRESS - chapter_assets.ARM9_LOAD_ADDRESS + chapter_assets.FACE_ROW_SIZE * face_id)
+        if texture != chapter_assets.NO_FACE_RESOURCE and texture >= chapter_assets.FIRST_FACE_RESOURCE:
+            rows[face_id] = (texture, flip)
+    return rows
+
+
+def read_head_textures(arm9):
+    textures = {}
+    for value in range(1, HEAD_ROW_COUNT + 1):
+        texture, = struct.unpack_from("<H", arm9, HEAD_TABLE_ADDRESS - ds_text.ARM9_LOAD_ADDRESS + HEAD_ROW_SIZE * (value - 1) + HEAD_ICON_OFFSET)
+        if texture != NO_HEAD_TEXTURE:
+            textures[value] = texture
+    return textures
+
+
+def bake_face_textures(record, textures, faces):
+    code = bake_record.code_fingerprint(FACE_CODE_FILES)
+    paths = []
+    sizes = {}
+    refused = []
+    for texture in faces.used:
+        name = FACE_NAME % texture
+        relative_path = TEXTURE_FOLDER + "/" + name + ".gtex"
+        try:
+            source = textures.texture_bytes(texture)
+            key = record.key_for(code, {"texture": texture}, source)
+            gtex_bytes = record.read_if_current(relative_path, key)
+            if gtex_bytes is None:
+                width, height, rgba = ds_textures.decode(source)
+                gtex_bytes = asset_writers.gtex_bytes(width, height, asset_writers.FORMAT_RGBA8888, rgba)
+                record.store(relative_path, key, gtex_bytes)
+        except ds_textures.TextureRefused as error:
+            refused.append("%d (%s)" % (texture, error))
+            continue
+        width, height, _ = asset_writers.read_gtex_header(gtex_bytes)
+        paths.append(relative_path)
+        sizes[name] = (width, height)
+    if refused:
+        print("ds faces with no decoded texture: %d (%s)" % (len(refused), ", ".join(refused[:12])))
+    return paths, sizes
 
 
 def page_items(items):
@@ -384,11 +469,10 @@ def talk_page_fields(page):
     return fields
 
 
-def talk_page_row(page, layout, line_count):
-    box_kind = talk_assets.BOX_TOP_WITH_HEAD if layout == talk_assets.HEAD_CODE else talk_assets.BOX_BOTTOM
+def talk_page_row(page, layout, line_count, faces, changes_instantly):
+    face, flip, box_kind = faces.of_layout(layout)
     fields = talk_page_fields(page)
-    changes_instantly = 1 if layout == talk_assets.POSE_CODE else 0
-    return "page %s 0 %d %d %d %d %d %d %d %d %d" % (talk_assets.NO_FACE, box_kind, fields["reveal_is_fade"], fields["ending"], line_count, changes_instantly, fields["flashes"], fields["quake_level"], fields["quake_frames"], fields["pauses_before"])
+    return "page %s %d %d %d %d %d %d %d %d %d %d" % (face, flip, box_kind, fields["reveal_is_fade"], fields["ending"], line_count, changes_instantly, fields["flashes"], fields["quake_level"], fields["quake_frames"], fields["pauses_before"])
 
 
 def talk_line_rows(font, glyphs, lines, window, kind, color, center_x=None, tint=None):
@@ -405,23 +489,27 @@ def talk_line_rows(font, glyphs, lines, window, kind, color, center_x=None, tint
         codes = []
         for glyph in placed:
             glyph_tint = tint if tint is not None else TINT_OF_DS_COLOR.get(glyph["color"], 0)
+            if glyph.get("icon") is not None:
+                glyph_tint = talk_assets.COLOR_AS_IS
             codes.append(str(glyphs.id_of(glyph, ds_x + glyph["x"], ds_y) | (glyph_tint << talk_assets.COLOR_SHIFT)))
         rows.append("line %d %d %d %s" % (screen_x_of(ds_x + placed[0]["x"]), screen_y_of(ds_y), len(codes), " ".join(codes)))
     return rows, color
 
 
-def talk_message_rows(font, glyphs, windows, label, message):
+def talk_message_rows(font, glyphs, windows, label, message, faces=None):
+    faces = faces or Faces()
     rows = ["talk " + label]
     color = TALK_COLOR
     layout = None
     raw_pages = page_items(message["items"])
     for page_index, page in enumerate(message["pages"]):
         raw = raw_pages[page_index] if page_index < len(raw_pages) else []
-        layout = talk_layout(raw) or layout
-        window = windows[TOP_ROW if layout == talk_assets.HEAD_CODE else BOTTOM_ROW]
+        own_layout = talk_layout(raw)
+        layout = own_layout or layout
+        window = windows[TOP_ROW if layout is not None and layout[0] == talk_assets.HEAD_CODE else BOTTOM_ROW]
         lines = [line for paragraph in page for line in paragraph]
         line_rows, color = talk_line_rows(font, glyphs, lines, window, page_line_count(raw), color)
-        rows.append(talk_page_row(raw, layout, len(line_rows)))
+        rows.append(talk_page_row(raw, layout, len(line_rows), faces, 1 if own_layout is not None and own_layout[0] == talk_assets.POSE_CODE else 0))
         rows.extend(line_rows)
     return rows
 
@@ -433,20 +521,20 @@ def system_line_rows(font, glyphs, windows, label, message, line):
     return ["talk " + label, page] + line_rows
 
 
-def talk_rows_with(glyphs, font, windows, talk_messages, system_lines, system_messages):
+def talk_rows_with(glyphs, font, windows, talk_messages, system_lines, system_messages, faces=None):
     rows = []
     for label, message in talk_messages:
-        rows.extend(talk_message_rows(font, glyphs, windows, label, message))
+        rows.extend(talk_message_rows(font, glyphs, windows, label, message, faces))
     for label, line in system_lines.items():
         if label in system_messages:
             rows.extend(system_line_rows(font, glyphs, windows, label, system_messages[label], line))
     return rows
 
 
-def talk_rows(font, palette, windows, talk_messages, system_lines, system_messages):
+def talk_rows(font, palette, windows, talk_messages, system_lines, system_messages, faces=None, icons=None):
     for keeps_row_phase in (True, False):
-        glyphs = TalkGlyphs(ink_alphas(palette, TALK_COLOR), keeps_row_phase)
-        rows = talk_rows_with(glyphs, font, windows, talk_messages, system_lines, system_messages)
+        glyphs = TalkGlyphs(ink_alphas(palette, TALK_COLOR), keeps_row_phase, icons)
+        rows = talk_rows_with(glyphs, font, windows, talk_messages, system_lines, system_messages, faces)
         if len(glyphs.keys) <= GLYPH_LIMIT:
             return glyphs, rows
     raise DsSetTextError("the DS talk text needs %d glyph cells, more than the %d the talk book holds" % (len(glyphs.keys), GLYPH_LIMIT))
@@ -513,10 +601,14 @@ def bake_text(set_description, scripts, rom_path, record, work_folder):
         palette = read_text_palette(rom.read_file(PACK_PATH))
         book = MessageBook(rom, scripts, language)
         system_messages = read_system_messages(rom, system_lines)
-    return bake_from_messages(record, font, palette, read_window_rows(arm9), book, scripts, system_lines, system_messages)
+        textures = ds_textures.TexturePack(rom.read_file(ds_textures.PACK_PATH))
+    faces = Faces(read_face_rows(arm9), read_head_textures(arm9))
+    icons = ds_talk_icons.read_icon_art(textures, ds_talk_icons.read_icon_rows(arm9), ds_textures.LANGUAGE_NUMBERS.get(language, 1))
+    return bake_from_messages(record, font, palette, read_window_rows(arm9), book, scripts, system_lines, system_messages, faces, textures, icons)
 
 
-def bake_from_messages(record, font, palette, windows, book, scripts, system_lines=None, system_messages=None):
+def bake_from_messages(record, font, palette, windows, book, scripts, system_lines=None, system_messages=None, faces=None, textures=None, icons=None):
+    faces = faces or Faces()
     baker = Baker(record, font, palette, windows)
     narration_labels, talk_labels = labels_of_scripts(scripts)
     narration_lines = {}
@@ -534,12 +626,14 @@ def bake_from_messages(record, font, palette, windows, book, scripts, system_lin
             missing.append(label)
         elif all(label != known for known, _ in talk_messages):
             talk_messages.append((label, message))
-    glyphs, message_rows = talk_rows(GlyphShapes(font), palette, windows, talk_messages, system_lines or {}, system_messages or {})
+    glyphs, message_rows = talk_rows(GlyphShapes(font), palette, windows, talk_messages, system_lines or {}, system_messages or {}, faces, icons)
     talk_files = {}
     if message_rows:
         glyph_rows = bake_talk_atlas(baker, glyphs)
-        talk_files[talk_assets.TALK_FILE] = ("\n".join(["font " + talk_assets.FONT_TEXTURE] + glyph_rows + message_rows) + "\n").encode("ascii")
+        all_rows, _ = talk_assets.even_left_margins(["font " + talk_assets.FONT_TEXTURE] + glyph_rows + message_rows, list(system_lines or {}))
+        talk_files[talk_assets.TALK_FILE] = ("\n".join(all_rows) + "\n").encode("ascii")
     if missing:
         print("ds text labels with no DS message: %d (%s)" % (len(set(missing)), ", ".join(sorted(set(missing))[:12])))
-    return {"narration_lines": narration_lines, "talk_files": talk_files, "talk_textures": talk_assets.talk_texture_names(talk_files), "bubble_rows": [],
-            "texture_paths": baker.texture_paths, "texture_sizes": baker.texture_sizes}
+    face_paths, face_sizes = bake_face_textures(record, textures, faces) if textures is not None else ([], {})
+    return {"narration_lines": narration_lines, "talk_files": talk_files, "talk_textures": talk_assets.talk_texture_names(talk_files) + [FACE_NAME % texture for texture in faces.used], "bubble_rows": [],
+            "texture_paths": baker.texture_paths + face_paths, "texture_sizes": dict(baker.texture_sizes, **face_sizes)}

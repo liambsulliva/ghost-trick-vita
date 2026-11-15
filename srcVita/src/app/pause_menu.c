@@ -982,14 +982,15 @@ static void draw_part(const struct cached_texture *texture, float x, float y, fl
     renderer_draw_sprite(texture->texture, rect(x, y, width, height), rect(u / (float)texture->width, v / (float)texture->height, width / (float)texture->width, height / (float)texture->height), white(alpha));
 }
 
-static void draw_whole(const char *name, float x, float y, float alpha)
+static void draw_across_screen(const char *name, float x)
 {
     const struct cached_texture *texture;
 
     texture = texture_cache_use_or_start_loading(name);
-    if (texture != NULL) {
-        draw_part(texture, x, y, 0.0f, 0.0f, (float)texture->width, (float)texture->height, alpha);
+    if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
+        return;
     }
+    renderer_draw_sprite(texture->texture, rect(x, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT), rect(0.0f, 0.0f, 1.0f, 1.0f), white(1.0f));
 }
 
 static void draw_cat_frame(int row, float feet_x, float alpha)
@@ -1078,9 +1079,9 @@ static void draw_menu(void)
 
     camera_x = whole(pause_menu_camera_x());
     side_x = (float)side_of(picked) * SCREEN_WIDTH - camera_x;
-    draw_whole(BACKDROP_NAME, -camera_x, 0.0f, 1.0f);
+    draw_across_screen(BACKDROP_NAME, -camera_x);
     if (camera_x != 0.0f) {
-        draw_whole(BACKDROP_NAME, side_x, 0.0f, 1.0f);
+        draw_across_screen(BACKDROP_NAME, side_x);
     }
     spotlight = texture_cache_use_or_start_loading(SPOTLIGHT_NAME);
     if (spotlight != NULL) {

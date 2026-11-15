@@ -22,7 +22,17 @@ def build(folder, *extra):
 class MakeLiveAreaTest(unittest.TestCase):
     def test_missing_assets_give_the_same_images_as_the_monogram_option(self):
         with tempfile.TemporaryDirectory() as plain, tempfile.TemporaryDirectory() as missing, tempfile.TemporaryDirectory() as empty:
-            self.assertEqual(build(plain, "--monogram"), build(missing, "--assets-folder", os.path.join(empty, "none")))
+            self.assertEqual(build(plain, "--monogram"), build(missing, "--assets-folder", os.path.join(empty, "none"), "--ds-rom", os.path.join(empty, "none.nds")))
+
+    def test_a_cartridge_alone_gives_its_own_logo_the_same_way_each_time(self):
+        rom = os.path.join(SRC_VITA, "..", "extracted", "ds_rom", "game.nds")
+        if not os.path.isfile(rom):
+            self.skipTest("no DS cartridge dump")
+        with tempfile.TemporaryDirectory() as plain, tempfile.TemporaryDirectory() as empty, tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
+            none = os.path.join(empty, "none")
+            logo = build(first, "--assets-folder", none)
+            self.assertNotEqual(build(plain, "--monogram"), logo)
+            self.assertEqual(build(second, "--assets-folder", none), logo)
 
     def test_present_assets_give_the_logo_the_same_way_each_time(self):
         assets = os.path.join(SRC_VITA, "..", "extracted", "remaster_apk")

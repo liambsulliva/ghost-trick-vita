@@ -1924,6 +1924,152 @@ One pairing differs inside the hold. At the forward time jump (port tick 73049, 
 
 Guard: none in code; the README names the movie end.
 
+### 256. The DS set had no faces and no interface art, because one of the cartridge's two packs was never read
+
+Found on the Vita: with Visual Filter on DS, every talk drew its text with no box and no face, and the log listed `talk_box_top`, `talk_box_bottom`, `ui_choice_buttons`, `ui_tap_balloon`, the rewind rocks and more as missing. The DS converter read only `cpac_2d.bin`. The DS draws its faces and nearly all of its interface on the 3D layer, as textured quads whose textures sit in `cpac_3d.bin` block 0 (`.tds` files, 1,136 of them, loaded by the same entry loader `func_0201e664`). The face table at `data_02085724`, which the remastered set already reads for its own faces, names a face by its entry in that block, so face 3's first field, 216, is texture 216. Entries from 322 on come in groups of five, one per cartridge language.
+
+The class: art the DS draws from a pack the converter does not open.
+
+Guard: `tools/assets/ds_textures.py` decodes the five texture formats the cartridge uses (4, 16 and 256 colours, A3I5 and A5I3) and refuses anything else. `ds_set_text.py` reads each page's face, pose and head codes, as the remastered set does, and bakes `ds_face_<entry>` at DS size for every face a page names; the head icons come from the cartridge's own head table (root cause 261). `tools/assets/ds_ui.py` builds each interface texture the app names from the parts `ds_textures` gives it in the set description: a crop of a cartridge texture, scaled to the nearest pixel into the place the app's layout reads, with nine-slice parts for panels. A texture whose source is missing or does not decode is left out and named on one line, so the app still logs it and draws nothing. `tests/tools/test_ds_textures.py`, `test_ds_ui.py` and the face tests in `test_ds_set_text.py` cover the decoder, the composer, the page fields and the description.
+
+What the DS really shows is read from the cartridge running in melonDS: `tools/ds_screen_dump.py` presses buttons on a schedule, saves the video memory and captures the main screen's finished picture, 3D layer included, through the DS display capture unit; `tools/ds_screen_render.py` draws both screens from a dump. The top talk box was matched against such a capture (a 208 by 48 box at x 24, built from texture 23). The bottom box uses the same texture and has not been seen in a capture, because the captures stop at the first touch tutorial: the tools press buttons but cannot touch.
+
+### 257. The DS set's HUD buttons could not be built from the remaster's pill pieces
+
+The app builds each HUD pill from pieces of two remaster textures: a ring in three slices, a fill it draws itself, an icon, a word and a Vita button. The DS has each button as one finished texture, resting and touched (`cpac_3d.bin` block 0: Ghost 542 and 547, Back 552 and 557, Trick 582 and 587, Swap 562 and 567, Cancel 572 and 577, the notebook 91 and 92, the hourglass 93 and 94, Jowd 95 and 96, the switch to Missile 97 and 98 and to Sissel 99 and 100), drawn by the HUD board `func_0204f850`. No crop of those fits the ring, word and icon cells, so the DS set had no pills at all and the player could not see which buttons were up.
+
+The class: interface art the DS keeps whole where the remaster keeps parts.
+
+Guard: a sharp set (`texture_cache_sharp_art_is_on`) draws each pill as one sprite from `hud_pills`, a sheet with one row per `script_pill_id` and a resting and a pressed column, each cell 88 by 32 DS pixels. The converter trims each cartridge texture to its ink and sets it against the side of the cell that faces the screen edge (`cell` and `align` parts in `ds_ui.py`), and the app places the cell the same way: left pills from their left edge, right pills from their right edge, the rest centred, 4 pixels from the top or bottom. With no sheet the pills draw nothing, and the remastered set is untouched. `tests/unit/test_script_ui_view.c` checks every pill draws once from its own cell and stays on screen; `tests/tools/test_ds_ui.py` checks the sheet has two cells for every pill in `script_outputs.h`. Not done: the pills carry no Vita button, the green pills of Missile's ghost world (592 to 607) are not used, and the placing has not been seen on the device.
+
+### 258. DS sprite pages taller than the app's texture limit drew as magenta blocks
+
+The DS converter packed every frame of a resource onto one page, 1024 wide and as tall as the frames needed. The cartridge holds each frame as its own cell and draws them one at a time (`func_0200b598`, `func_0200bf54`), so nothing on the DS bounds a resource's total size. Four junkyard resources (3773, 4039, 4319, 4320) came out taller than `TEXTURE_FILE_MAX_DIMENSION` (4096), the app refused them (`texture missing name=ds_sprite_3773 reason=header code=-4`) and the crane and platform drew as magenta placeholders on the device.
+
+The class: converter output larger than a limit the app enforces, the same as root cause 240's manifest list.
+
+Guard: `place_frames` in `ds_set.py` starts a new page when a frame would pass 2048 rows, pages after the first are named `ds_sprite_<resource>_<page>`, and each animation frame names its own page. `tests/tools/test_ds_set_guard.py` reads the limit from `include/texture_file.h` and checks no page of a tall resource passes it, that every frame lands whole on one page, and that a frame names the page it was placed on.
+
+### 259. DS mode had no title screen art and its pause menu never opened
+
+The title, pause menu and loading screen are the port's own, and the converter drew their sheets from the Android package: a font file for every word, shapes it draws itself, the cat from remastered pages, a backdrop and a logo. The DS set reads no package, so it baked none of them. The title showed a red line on black, and START did nothing, because `pause_menu_is_ready` waits for the cat's frames, the labels and the widget table.
+
+The class: art the port builds for itself from one set's sources, which the other set then lacks whole.
+
+Guard: `ds_pause.py` builds the same sheets and tables, cell for cell, from the cartridge. Words are written in the cartridge's main font (`fonts2bpp_en.imb`, the one `ds_text.py` reads for talk) at two screen pixels a DS pixel, labels at three with a one-pixel rim. The title buttons are the cartridge's orange buttons (`cpac_3d.bin` block 0, textures 192 resting, 193 selected, 194 pressed, loaded by `func_0201e664`), the meter flame is texture 31, and the port's own pills, arrows and bin are the remastered shapes hardened to whole DS pixels. The cat is the DS set's own `st01_neko` animations: `pause_art.cat_frames` now takes its pages from whoever holds them, and `ds_set.SpritePages` hands it the sprite pages the cartridge frames were packed on (`func_0200b598`), stored pixel for pixel. The logo is cut out of the cartridge's title picture (texture 1042) by a `cut_out` part in `ds_ui.py`, which keeps what is not the red backdrop. The backdrop is a flat red `fill`, the user's choice on 2026-11-15, because every cartridge picture with that backdrop has a logo or chapter text over it. `tests/tools/test_ds_pause.py` checks the DS sheet has every cell the remastered sheet has, that every menu string can be written in the DS font (the four languages the cartridge never had are named and left out), that the sheet fits the app's texture limit and that a label fits its cell.
+
+Not done in DS mode: the Record screen (`pause/people.txt`) and the clock (`pause/clock.txt`), the spotlight under the cat, the option preview plate, and the Vita button glyphs, which sit on `hud_sheet`.
+
+### 260. DS talk text sat far from the left edge of its box
+
+The DS set places talk text where the DS does: the window's own left edge and margin (`data_02084a8c`), mapped into the middle 720 pixels of the screen. The app draws its boxes where the remaster has them: the bottom box across all 960 pixels, the top box 584 wide at 188, or at 255.5 beside a head icon. So text began 120 pixels further in than the bottom box and 67 further in than a top box with no head, and looked indented.
+
+The class: DS content placed by the DS screen inside a frame the app places by the remaster's layout.
+
+Guard: `talk_message_rows` in `ds_set_text.py` moves each page's lines left by the distance between the DS window's mapped edge and the edge of the box the app draws for that page (`APP_BOX_LEFT`), so the text keeps the DS margin inside the box. Centred system lines are not moved. `tests/tools/test_ds_set_text.py` checks the margin for a bottom page and a top page with no head, and reads the three box edges out of `script_view.c` so the two cannot drift apart.
+
+### 261. Ray's speech bubble showed Missile's head
+
+Root cause 256 gave the DS set a hand-written list of head icons copied from the remastered set's four entries, and it sent head values 4 and 5 to Missile's picture. Native reads the icon from a table: `func_0201d95c` indexes `data_02099cb0` (6-byte rows) with the head value less one, and the row's second word is the `cpac_3d.bin` texture, 0xffff for no icon. Value 4, Ray, is the desk lamp (314); 2 is Missile (315); 5, 6 and 14 have no icon, which is how the game keeps the first voice in Chapter 1 unseen.
+
+The class: a table the cartridge holds, retyped by hand from the other set.
+
+Guard: `read_head_textures` in `ds_set_text.py` reads all 14 rows from the cartridge and the set description lists none. `tests/tools/test_ds_set_text.py` checks a row with no icon gives a top box with no head. Not checked: the remastered set's `head_faces` still lists only values 1, 3, 4 and 5, with 4 and 5 on one file.
+
+### 262. Switching the Visual Filter restarted the game without warning
+
+The Visual Filter row flipped on one press, and the app then restarts to load the other art set, so a player lost the progress since the last save with no notice.
+
+Guard: the row opens the options' yes or no dialog first (`row.filter_ask`, `bar.filter_warning`, in every language) and flips only on yes; a pinned filter still does nothing. `tests/unit/test_pause_options.c` checks a press opens the dialog, No leaves the filter alone and Yes switches it.
+
+### 263. Talk text sat further from the box's left edge than from its top and bottom
+
+In both sets the first glyph of a talk page began further in from the box's left edge than the text block sat from the box's top and bottom: the remastered set placed it 40 pixels in from the bottom box (15.5 above and below a full page) and 24 in from the top box (21.5), and the DS set kept the DS window's own margin, which root cause 260 measured against a different frame. The user asked for the left margin to equal the top and bottom margin, the same way in both sets.
+
+The class: a text margin set by hand per set and per box, so the two sets and the three boxes drifted apart.
+
+Guard: both talk bakers pass their finished rows through `talk_assets.even_left_margins`, which measures, for each box kind, the median top-and-bottom ink margin of the fullest pages that fit inside the box, and moves every page so its ink starts that far from the box's left edge (`BOX_LEFT`). Centred system lines are left alone. It replaces root cause 260's `APP_BOX_LEFT` shift. The remastered set lands at 15.5 (bottom) and 21.5 (top), the DS set at 10 and 16, since its font and line pitch are the cartridge's. `tests/tools/test_talk_margins.py` checks the margin on synthetic pages, that a fixed talk stays, that a page spilling out of its box does not set the margin, and that the box edges match `script_view.c`.
+
+### 264. The DS pause and loading cat was drawn with hard pixel steps
+
+Root cause 259 baked the DS cat at its DS pixels, enlarged with no filtering. The user asked for a slightly smoothed cat at the same size and from the same sprites.
+
+Guard: `pause_art.SOFT_FILTER` keeps the nearest-neighbour enlargement and then runs a 1-2-1 blur on premultiplied colour (`softened`), so each DS pixel's edge blends over one screen pixel without darkening the outline; the page stays uncompressed RGBA. `ds_pause.bake_cat` uses it. `tests/tools/test_ds_pause.py` checks the size and colour are kept, the edge is part-covered and the page stays RGBA8888.
+
+### 265. The soul and its line to a core did not draw in DS mode
+
+The app draws the soul in the ghost world from four textures the remastered set cuts from Android art: flat blobs for the body and puddle (`soul_blob`), an orb at its base (`soul_orb`), the glow on each core (`soul_glow`) and the band to the next core (`soul_beam`). The DS set had none of them, so only the possessed object's lavender tint showed. A melonDS capture of the Chapter 1 tutorial shows the DS draws the soul the same way: a flat cyan body, a lavender-white orb at its base, a blue glow on the cores and a pale band, from `cpac_3d.bin` block 0 textures 6 (a disc), 15 (a small glow), 14 (a soft glow) and 28 (a band), with the body in texture 26's cyan.
+
+The class: an app texture slot with no `ds_textures` entry, found only when someone sees it missing on the device.
+
+Guard: `ds_textures` fills the four slots, and a part can take the main colour of another cartridge texture (`flat_color_of`), so the blob is the cartridge's own cyan. The blob keeps the 59% disc share `script_view.c` draws it by. `tests/tools/test_ds_texture_slots.py` collects every texture name the app's source asks for, and the banner names, and fails unless each has a `ds_textures` entry or is in its list of known cartridge gaps, which names why. `tests/tools/test_ds_ui.py` checks the colour rule and the blob's disc share. `soul_ring` was dropped from both sets: nothing drew it, the app only preloaded it.
+
+Not done: the flower of lines around the soul (`soul_dim`, a flipbook in the remastered set) and Ray's light, which is effect movie `ef01_light_000`/`001` (effect ids 84 and 91) in the remastered set; the DS set bakes no effects yet.
+
+### 266. The DS pause menu showed a red block in a corner and a cat in pieces
+
+Seen on the Vita: in DS mode the pause menu drew a red rectangle in the top-left corner over a dark screen, and the cat showed only its eye, an ear and its red scarf. `pause_menu.c` drew the backdrop at its own pixel size, which filled the screen only because the remastered backdrop is 960 by 544. Root cause 259 gave the DS set a flat red backdrop 240 by 136, so it covered a quarter of the width, and the black cat stood on the dark clear colour where only its light parts showed. The cat pages were whole. The loading screen already stretched the same texture to the screen.
+
+The class: a screen-filling texture drawn at its texel size, which holds only while every set bakes it at screen size.
+
+Guard: the pause menu stretches the backdrop across the screen (`draw_across_screen`), as the loading screen does. `tests/unit/test_pause_menu.c` checks an 8 by 8 backdrop is drawn over the whole screen.
+
+### 267. The TRICK, TRACE and FATE banners had no words in DS mode
+
+The centre labels between the red lines drew nothing, and the log listed `banner_trick`, `banner_trace`, `banner_averted`, `banner_changed` and `banner_star` missing. A search of `cpac_3d.bin` block 0, where the interface textures are, found no such lettering, because the DS keeps it in effect files. The eyecatch command (`func_02013a88`) sets game modes 9 to 0xd, `func_02032488` starts `pGameEyeCatch`, whose init (`func_020318c4`, `func_02031b88`) spawns a generic effect with kind 326, 331, 241 or 211 from `data_02099d08`, and `func_0204235c` loads that kind from `cpac_3d.bin` block 3 (`func_0201e888(reader, 3, kind)`). An effect file is a count, offsets, a `bws.` script and `sdt.` textures behind an 8-byte header whose bit 0 marks LZ10. In each eyecatch effect, item 2 is the fluted band, item 3 the lettering ("Trick Time!", "Trace Complete!", "Fate Averted!", "Fate Changed!", one per language) and item 4 the star.
+
+The class: DS art drawn by an effect, not by an interface texture or a sprite resource.
+
+Guard: `ds_effects.py` reads block 3 effects, and a `ds_textures` part can name `{"effect": kind, "item": n}`; DS direct-colour textures (format 7) decode too. The five banners crop the lettering to the shape `ui_clips.py` draws them at. `tests/tools/test_ds_effects.py` checks the container, that every effect a set names decodes in all five languages, that every texture item of every block 3 effect decodes, and the banners' shape. Before calling a DS slot a cartridge gap, follow the native class that draws it to the block it loads from.
+
+Not done: the DS fluted band (item 2) has no slot and the app draws its own red band; timing follows the remaster's keyframes, since the `bws.` script is not decoded; the banners draw at about 2.5 Vita pixels a DS pixel against 2.83 for the whole screen.
+
+### 268. DS talk text left a gap where the DS draws a button picture
+
+The DS message text carries icon codes 275 to 286. Native looks each up in `data_02084ae8` (8-byte rows: code, `cpac_3d.bin` texture, width, height; `func_0201bddc`) and places a sprite from `func_02018fa8`, one letter gap past the pen and centred 17 rows below the row top (the sprite's default place, `setPos(-(0x80 - w / 2), -0x40)`, plus the row's y + 1, less 0x90 in the top window), then moves the pen on by the width and two gaps. The DS talk baker kept the advance and drew nothing, so Ray's tutorial read "try the ___ button". The talk tint could only multiply a glyph by a text colour, so a coloured picture had no way to show either.
+
+The class: every icon on every talk page in every chapter and language.
+
+Guard: `ds_talk_icons.py` reads the table and each icon's art per cartridge language, and `TalkGlyphs` bakes each icon as its own colour cell in the talk atlas. A glyph code's tint field is now three bits at bit 13 (`script_talk.h`, `talk_assets.COLOR_SHIFT`), and tint 4 draws a cell as it is (`script_view.c`'s `text_colors`). `tests/tools/test_ds_talk_icons.py` checks the table, the placement, that an icon with no art keeps its gap, and that the baker and the app agree on the tint field. Every set's `talk.txt` must be rebaked with this change, which the converter's fingerprint does on its own.
+
+The port's choice: DS mode shows the cartridge's own pills, d-pad and buttons, not Vita buttons as the remastered set does, because DS mode's HUD draws the same cartridge pills and they work by touch; the cartridge has no CROSS, L or R picture. Not checked: the vertical place against a DS capture (melonDS cannot touch through to the tutorial), and whether icon 281 (texture 982) is the hourglass.
+
+### 269. The DS rewind button had no words
+
+Seen on the Vita: in DS mode the rewind screen showed its red rocks and the orange button, but not "Rewind Time" on the button. The app draws the button as the plain orange shape (`ui_select_button`) and lays the words over it from a cell of the remastered `hud_sheet`, which the DS set does not have. The cartridge keeps each of these buttons as one texture with its words in it: "Rewind Time" is `cpac_3d.bin` texture 672, with 677 and 682 its highlighted and pressed states, one per cartridge language (beside "From Beginning", 642, and "After Fate-Change", 657).
+
+The class: a DS button whose words the cartridge draws into the button, which the app builds from a shape and a label from another set's sheet. Root cause 257 found the same for the pills.
+
+Guard: with sharp art on, the app draws the rewind button whole from `rewind_button` (resting and pressed cells, from 672 and 682) at the pills' 45/16 screen pixels a DS pixel, centred where the remastered button sits. `tests/unit/test_script_ui_view.c` checks a sharp set draws it as one sprite from the resting cell, centred; `tests/tools/test_ds_texture_slots.py` makes the DS set carry it.
+
+### 270. Thought and shout balloons did not draw in DS mode
+
+The remastered set builds its balloon rows in `chapter_assets.expand` from Android bubble art and a text texture per label; `ds_set.expand` never built them, so the DS set wrote an empty `balloons.txt` and every op 0x51 balloon logged `no_balloon_row`. Native draws a worded balloon (`uBalloonPicture`, `func_02044b48`) as one texture that text parser type 1 composes: ovals (`func_0201a254`, `func_0201a680`) from pieces 110 to 113 for one line or 116 to 119 for two or three on canvas 109 or 115, the middle a run of 6-pixel segments as wide as the widest line; thorns (`func_0201a3ac`) from 114, 108 or 107 by width; the palette from `cpac_2d.bin` block 0 entry 7 (`func_0201a97c`); text in the balloon font placed by `func_0201aa88`, control code 3 centring a line (`func_0201a1b4`). The shape grows white over 8 ticks, then the real palette shows the text (`func_02044800`, `func_02044d7c`).
+
+The class: a table the app reads that one set builds and the other never does. And a second: a balloon row found by its label alone, though six labels open with two different kinds.
+
+Guard: `ds_balloons.py` reads the native tables from the arm9 and composes every label and kind op 0x51 opens, shapes shared by geometry (52) plus one text each (309); a part may carry `texture_scale` so DS-size art draws at DS size. `script_tables_find_balloon` matches a row's kind when the row names one (remastered rows keep -1, any kind). `tests/tools/test_ds_balloons.py` fails unless every op 0x51 label and kind in the game chain has a row with baked textures, and checks the oval and thorn rules; `tests/unit/test_balloon_row_kinds.c` covers the kind match. The bake matches the melonDS capture of "So long, sister." pixel for pixel.
+
+Not done: op 0x52's "!" and other bursts (`uSwfPlayForBalloon`, effect art), op 0x45's tap balloons, the close animation, and two- or three-line and thorn layouts against a capture.
+
+### 271. DS mode drew no effect movies: not the soul's flower of lines, not Ray's light
+
+The DS set listed no effect movies, so DS mode left out every effect a script spawns as a movie, among them the flower of lines around the soul (effect 31) and Ray's light (84 and 91). Native builds every effect whose kind (`data_02086624`) is below 0x8000 as a `uScriptGameEffect`, a `uSwfPlayGame` (`func_02052ad8`, `func_02066af8`); its `func_02066074` loads the movie through `func_0204235c(kind)`, which reads `cpac_3d.bin` block 3 entry `kind` (`func_0201e888`). That entry holds a `bws.` movie (shapes, sprites, frames with matrices, 5-bit colour and percent alpha, and ActionScript-style frame scripts) and its own LZ textures. The flower is entry 29: ten two-colour quarter textures, each drawn four times turned, at 15 fps, looping.
+
+The class: effect art the cartridge keeps as SWF-like movies, which the converter did not read; the remaster bakes the same movies into frame pages.
+
+Guard: `ds_effect_movies.py` reads the `bws.` movie, walks its timeline the way the remastered movies play (`effect_file.playback_of`, now shared by both sets), renders each frame from the cartridge textures and writes the same movie rows and pages for every spawned effect id of a sprite kind that has no row of its own; `only_in_soul_view` and sounds come from `game.json` by id. Movies over 16 MB of pages, or drawing nothing at bake time, are left out and named. `tests/tools/test_ds_effect_movies.py` checks matrix order, colour, `setVertex` corners and nested playback on synthetic movies, and on the cartridge that every block 3 movie reads, that every spawned sprite-kind id gets a row and that the flower is four turned copies of one quarter.
+
+Not done: ids 42, 240, 248, 249 and 255 (full-screen, over the page limit) and 123, 141, 170 and 216 (driven by status labels the game sets). Branching frame scripts play as plain timelines. The built-in call ids are named from the remaster's records, not from the native interpreter. Not checked on the device; the pale band to a core in the capture may be `soul_beam` (root cause 265) rather than effect 84 or 91.
+
+### 272. DS mode listed languages it had no text or font for
+
+The DS set baked English only, but the app's language list was its fixed nine, so DS mode showed blank rows for the languages the cartridge font cannot write (Japanese, both Chinese, Korean) and offered French, Italian, German and Spanish with English text. The user decided on 2026-11-15 that DS mode shows only the five languages the USA cartridge carries, each baked from the cartridge's own message files.
+
+The class: the app assumed every set carries every language; which languages a set has was never recorded by the bake that makes them.
+
+Guard: the converter writes `lang/languages.txt` from what it baked: the remastered set its nine, the DS set English and each language whose DS code differs from English's and whose script message files the cartridge holds (`ds_languages.py`; fr, gr, it and sp, read from `<script>.<code>.xml.lz` and `system_0000.<code>.msg.xml.lz`). The DS overlays run the shared text, interface, balloon and menu bake per language, with the `cpac_3d.bin` texture group for that language. The app lists, uses and maps the system language only to listed languages and falls back to English without rewriting the saved setting (`asset_language_carries`, `asset_language_carried_or_english`); a set with no list shows all nine, as before. `ds_languages.check_listed_languages` refuses a listed language with no overlay, a list unlike the bake, or a language with no texture group, which replaces a silent fall back to English textures. `tests/tools/test_ds_languages.py`, `tests/unit/test_asset_language.c` and `tests/unit/test_pause_options.c` cover it.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

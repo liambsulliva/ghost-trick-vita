@@ -1,4 +1,3 @@
-import os
 import shutil
 import struct
 import tempfile
@@ -168,6 +167,78 @@ class TalkTests(unittest.TestCase):
         self.assertEqual(int(page[3]), talk_assets.BOX_TOP_WITH_HEAD)
         self.assertEqual(int(page[5]), talk_assets.ENDING_PAUSE_THEN_CLOSE)
         self.assertEqual(rows[2].split()[1], str(ds_set_text.screen_x_of(48 + 8)))
+
+
+    def test_head_icons_are_read_from_the_cartridge_s_rows_and_an_empty_row_has_none(self):
+        table = bytearray(ds_set_text.HEAD_ROW_SIZE * ds_set_text.HEAD_ROW_COUNT)
+        for row in range(ds_set_text.HEAD_ROW_COUNT):
+            struct.pack_into("<H", table, row * ds_set_text.HEAD_ROW_SIZE + ds_set_text.HEAD_ICON_OFFSET, ds_set_text.NO_HEAD_TEXTURE)
+        struct.pack_into("<H", table, 3 * ds_set_text.HEAD_ROW_SIZE + ds_set_text.HEAD_ICON_OFFSET, 314)
+        arm9 = bytes(ds_set_text.HEAD_TABLE_ADDRESS - ds_text.ARM9_LOAD_ADDRESS) + bytes(table)
+        textures = ds_set_text.read_head_textures(arm9)
+        self.assertEqual(textures, {4: 314})
+        faces = ds_set_text.Faces({}, textures)
+        self.assertEqual(faces.of_layout((talk_assets.HEAD_CODE, 4)), ("ds_face_314", 0, talk_assets.BOX_TOP_WITH_HEAD))
+        self.assertEqual(faces.of_layout((talk_assets.HEAD_CODE, 6))[2], talk_assets.BOX_TOP_ALONE)
+
+
+class FakeTextures:
+    def __init__(self, known):
+        self.known = known
+
+    def texture_bytes(self, index, language=1):
+        if index not in self.known:
+            raise ds_set_text.ds_textures.TextureRefused("no texture %d" % index)
+        return self.known[index]
+
+
+def face_fields(items, faces):
+    rows = ds_set_text.talk_message_rows(font(), ds_set_text.TalkGlyphs({1: 0, 2: 127, 3: 255}), windows(), "a", {"items": items, "pages": ds_text.pages_of_items(items)}, faces)
+    return [tuple(row.split()[1:4]) + (row.split()[7],) for row in rows if row.startswith("page ")]
+
+
+class FaceTests(unittest.TestCase):
+    def faces(self):
+        return ds_set_text.Faces({7: (220, 0), 8: (220, 1)}, {"1": 310})
+
+    def test_a_face_code_names_the_cartridge_texture_of_its_table_row_and_its_flip(self):
+        faces = self.faces()
+        items = [control(talk_assets.FACE_CODE, 8)] + chars(1)
+        self.assertEqual(face_fields(items, faces), [("ds_face_220", "1", str(talk_assets.BOX_BOTTOM), "0")])
+        self.assertEqual(faces.used, [220])
+
+    def test_a_face_stays_for_later_pages_and_only_a_pose_change_is_instant(self):
+        items = [control(talk_assets.FACE_CODE, 7)] + chars(1) + [control(ds_text.NEW_PAGE)] + chars(2) + [control(ds_text.NEW_PAGE), control(talk_assets.POSE_CODE, 8)] + chars(1) + [control(ds_text.NEW_PAGE)] + chars(2)
+        self.assertEqual(face_fields(items, self.faces()), [("ds_face_220", "0", "0", "0"), ("ds_face_220", "0", "0", "0"), ("ds_face_220", "1", "0", "1"), ("ds_face_220", "1", "0", "0")])
+
+    def test_a_head_code_names_its_head_texture_and_one_with_no_head_keeps_the_top_box_alone(self):
+        faces = self.faces()
+        self.assertEqual(face_fields([control(talk_assets.HEAD_CODE, 1)] + chars(1), faces), [("ds_face_310", "0", str(talk_assets.BOX_TOP_WITH_HEAD), "0")])
+        self.assertEqual(face_fields([control(talk_assets.HEAD_CODE, 2)] + chars(1), faces), [(talk_assets.NO_FACE, "0", str(talk_assets.BOX_TOP_ALONE), "0")])
+
+    def test_a_face_with_no_table_row_draws_no_face(self):
+        self.assertEqual(face_fields([control(talk_assets.FACE_CODE, 99)] + chars(1), self.faces()), [(talk_assets.NO_FACE, "0", "0", "0")])
+
+    def test_face_rows_skip_rows_that_name_no_texture(self):
+        arm9 = bytearray(ds_set_text.chapter_assets.FACE_TABLE_ADDRESS - ds_set_text.chapter_assets.ARM9_LOAD_ADDRESS + ds_set_text.chapter_assets.FACE_ROW_SIZE * ds_set_text.chapter_assets.FACE_ROW_COUNT)
+        start = ds_set_text.chapter_assets.FACE_TABLE_ADDRESS - ds_set_text.chapter_assets.ARM9_LOAD_ADDRESS
+        struct.pack_into("<7H", arm9, start + 14 * 3, 216, 7, 1, 0, 0, 0, 1)
+        struct.pack_into("<7H", arm9, start + 14 * 4, 0x8000, 0, 0, 0, 0, 0, 0)
+        self.assertEqual(ds_set_text.read_face_rows(bytes(arm9)), {3: (216, 1)})
+
+    def test_used_faces_bake_once_and_a_missing_texture_is_left_out(self):
+        import test_ds_textures
+        folder = tempfile.mkdtemp()
+        try:
+            record = bake_record.BakeRecord(folder)
+            faces = self.faces()
+            faces.used = [220, 221]
+            textures = FakeTextures({220: test_ds_textures.texture(ds_set_text.ds_textures.FORMAT_256_COLORS, 0, 8, 1, bytes([1] * 8), [0, 0x1f])})
+            paths, sizes = ds_set_text.bake_face_textures(record, textures, faces)
+            self.assertEqual(paths, ["textures/ds_face_220.gtex"])
+            self.assertEqual(sizes, {"ds_face_220": (8, 1)})
+        finally:
+            shutil.rmtree(folder)
 
 
 def control(code, *parameters):

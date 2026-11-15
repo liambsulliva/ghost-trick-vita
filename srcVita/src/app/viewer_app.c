@@ -289,6 +289,7 @@ static void load_manifest(void)
     }
     art_sets = manifest->art_sets != 0 ? manifest->art_sets : ASSET_ART_REMASTERED;
     texture_cache_use_sharp_art(art_sets == ASSET_ART_DS);
+    game_settings_set_art_fps_cap(art_sets == ASSET_ART_DS ? GAME_FPS_CAPPED : GAME_FPS_FULL);
     run_log_write("manifest loaded scenes=%d backgrounds=%d animations=%d left_out=%d art=%d", manifest->scene_count, manifest->background_count, manifest->animation_count, manifest->names_left_out, art_sets);
 }
 
