@@ -50,6 +50,8 @@ SOURCE_MUTATIONS = [
     ("the Visual Filter change never starts the other set", "src/main.c", "    viewer_app_start(asset_sets_choose(ASSET_SETS_REMASTERED_FOLDER, ASSET_SETS_DS_FOLDER));\n    use_the_memory_this_device_has();\n    log_memory_and_textures();\n    run_log_write(\"art set switch done", "    viewer_app_start(ASSET_SETS_REMASTERED_FOLDER);\n    use_the_memory_this_device_has();\n    log_memory_and_textures();\n    run_log_write(\"art set switch done", ["visual_filter_switch@both"]),
     ("the hint is never offered", "src/app/script_hints.c", "hints->stuck_ticks >= hints->delay_ticks && the_bubble_can_show(machine)", "hints->stuck_ticks > hints->delay_ticks * 100 && the_bubble_can_show(machine)", ["hint_after_wait"]),
     ("a finger does not drag the soul", "src/app/script_input.c", "        script_soul_set_touch(machine, 1, world_x, world_y);", "        script_soul_set_touch(machine, 0, world_x, world_y);", ["touch_drag_soul"]),
+    ("a dialogue choice never reports that it opened", "src/app/script_choice.c", '    mark(machine, "choice_opened", names);', "    (void)names;", ["choice_panels@both"]),
+    ("a talk page never counts as open", "src/app/script_talk.c", "    machine->pause_bit = 1;\n    machine->talk_is_open = 1;", "    machine->pause_bit = 1;", ["talk_boxes@both"]),
     ("a language's own files are never used", "src/app/asset_language.c", "    if (language == ASSET_LANGUAGE_ENGLISH || !language_folder(", "    if (language >= ASSET_LANGUAGE_ENGLISH || !language_folder(", ["pictures language_ja@remastered differ from language_en", "pictures language_fr@remastered differ from language_en"]),
 ]
 

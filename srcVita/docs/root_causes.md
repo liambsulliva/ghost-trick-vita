@@ -2292,6 +2292,14 @@ The class: a widget table line one set's bake writes and the other's leaves out.
 
 Guard: `game.json` names the DS plate for the same room (`ds_plate`, the cartridge's plate for room `st01-00-02`, the same 8:3 framing), and the DS bake appends `pause_art.preview_lines(widgets, "ds_plate")`. `tests/tools/test_pause_art.py` checks both lines share the part, the DS bake writes the line, and both plates sit on the same room row in the baked `rooms.txt`.
 
+### 299. A view test that skipped the texture cache's start hung the whole test run
+
+Found while running the tests for root causes 290 to 298: `make test-parallel` sat on one core for over 15 minutes with no output. `test_ending_credits_have_no_side_bars` drew a staff page without `texture_cache_init`, and `find_entry_by_name` in `texture_cache.c` never returned. The name index marked an empty link with -1, so before the init its zeroed memory read as entry 0 linked to itself. No `make` step limited how long a test could run, so the hang stalled the run silently. The cache is the port's own, so no native function is involved.
+
+The class: an index whose empty value is not zero, so memory that was never started looks like a loop, and a test run that waits on a hung test forever.
+
+Guard: the bucket links hold an entry's index plus one, so zeroed memory is an empty index, and the credits test starts the cache as the other view tests do. `make test` and `make test-parallel` stop any test binary still running after `TEST_SECONDS_MOST` (300) seconds and fail it by name. `tests/unit/test_texture_cache_before_init.c` looks names up before the init and checks each call returns. The same run found the in-process switch test of root cause 295 watching for reads before `asset_sets_choose`, which opens each set's manifest to see which sets exist; it now chooses first, as the other DS-set test does. The smoke flows `choice_panels` and `talk_boxes` gained the mutations `test_smoke_mutations.py` asks every flow to have.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

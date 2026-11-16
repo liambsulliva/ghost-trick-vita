@@ -63,6 +63,9 @@ TEST_HEADERS := $(wildcard include/*.h) $(wildcard tests/*.h) $(wildcard tests/f
 APP_TEST_OBJECTS := $(patsubst src/app/%.c,build/test_objects/app/%.o,$(APP_SRCS))
 FAKE_TEST_OBJECTS := $(patsubst tests/fakes/%.c,build/test_objects/fakes/%.o,$(FAKE_SRCS))
 TEST_RUNS := $(addprefix run-,$(TEST_BINS))
+# A test that hangs fails by name after this many seconds instead of stalling the run with no output (root cause 299).
+TEST_SECONDS_MOST ?= 300
+RUN_TEST_WITH_LIMIT = perl -e '$$s = shift; $$SIG{ALRM} = sub { print STDERR "FAIL $$ARGV[0]: still running after $$s seconds\n"; kill "KILL", $$pid; exit 124 }; $$pid = fork; if (!$$pid) { exec @ARGV; exit 127 } alarm $$s; waitpid $$pid, 0; exit($$? & 127 ? 128 + ($$? & 127) : $$? >> 8)' $(TEST_SECONDS_MOST)
 
 .PHONY: all release clean check-sdk check-libs test test-binaries test-parallel test-all golden coverage always-rebuild $(TEST_RUNS)
 
@@ -207,10 +210,10 @@ $(PLAYER_LINK_CHECK): $(PLAYER_LINK_MAP) tests/player_link/unreached.txt tests/t
 	@touch $@
 
 test: $(PLAYER_LINK_CHECK) $(TEST_BINS)
-	@failed=0; for test_binary in $(TEST_BINS); do $$test_binary || failed=1; done; exit $$failed
+	@failed=0; for test_binary in $(TEST_BINS); do $(RUN_TEST_WITH_LIMIT) $$test_binary || failed=1; done; exit $$failed
 
 $(TEST_RUNS): run-%: %
-	@$*
+	@$(RUN_TEST_WITH_LIMIT) $*
 
 test-parallel: $(TEST_RUNS)
 

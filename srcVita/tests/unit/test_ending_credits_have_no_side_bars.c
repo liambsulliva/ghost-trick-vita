@@ -1,10 +1,14 @@
 #include <string.h>
+#include "fakes/fake_platform.h"
+#include "fakes/fake_reader.h"
 #include "fakes/fake_renderer.h"
+#include "fakes/fake_texture_files.h"
 #include "renderer.h"
 #include "script_file.h"
 #include "script_machine.h"
 #include "script_tables.h"
 #include "script_view.h"
+#include "texture_cache.h"
 #include "test_support.h"
 
 #define OP_END 0x0
@@ -78,7 +82,10 @@ static void test_the_ending_credits_draw_no_bars_beside_the_pages_or_the_scenes_
     int ticks_with_the_roll;
     int bars;
 
+    fake_files_reset();
     fake_renderer_reset();
+    fake_reader_reset();
+    texture_cache_init("tex", 1u << 20);
     script_tables_clear(&tables);
     script_view_start(&tables);
     script_machine_init(&machine, &outputs, SCRIPT_TIMING_DS, NULL);

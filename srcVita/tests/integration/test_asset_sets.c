@@ -105,6 +105,7 @@ static void test_a_filter_picked_on_the_title_survives_the_next_launch(void)
 static void test_a_switch_in_the_same_process_runs_the_other_set_alone(void)
 {
     struct input_state no_input;
+    const char *folder;
     int frame;
 
     set_up_platform();
@@ -121,8 +122,10 @@ static void test_a_switch_in_the_same_process_runs_the_other_set_alone(void)
     CHECK_INT(asset_sets_switch_is_due(), 1);
     viewer_app_keep_settings_for_switch();
     viewer_app_stop();
+    folder = asset_sets_choose("remastered", "ds");
+    CHECK_TEXT(folder, "ds");
     fake_files_watch_reads_under("remastered/");
-    viewer_app_start(asset_sets_choose("remastered", "ds"));
+    viewer_app_start(folder);
     CHECK_INT(asset_sets_switch_is_due(), 0);
     CHECK(texture_cache_sharp_art_is_on());
     CHECK(viewer_app_play_scene("opening"));

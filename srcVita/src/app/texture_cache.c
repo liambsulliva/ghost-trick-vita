@@ -25,7 +25,7 @@
 #define READ_AHEAD_WANT_LASTS_FRAMES 2u
 #define READ_AHEAD_LEAST_ROOM_BYTES (4u * 1024u * 1024u)
 #define NAME_BUCKET_COUNT 4096u
-#define NO_ENTRY (-1)
+#define NO_ENTRY 0
 #define FILL_JOB_MAX 8
 #define ABSENT_NAME_MOST 64
 #define ABSENT_LINE_MAX 128
@@ -36,6 +36,7 @@ enum texture_wanter {
 };
 
 static struct cached_texture entries[TEXTURE_CACHE_ENTRY_MAX];
+/* Links hold an entry's index plus one, so zeroed memory is an empty index rather than entry 0 linked to itself (root cause 299). */
 static int first_entry_in_bucket[NAME_BUCKET_COUNT];
 static int next_entry_in_bucket[TEXTURE_CACHE_ENTRY_MAX];
 static unsigned int read_ahead_checked_frame;
@@ -101,7 +102,7 @@ static void remember_name(struct cached_texture *entry)
     index = (int)(entry - entries);
     bucket = name_bucket(entry->name);
     next_entry_in_bucket[index] = first_entry_in_bucket[bucket];
-    first_entry_in_bucket[bucket] = index;
+    first_entry_in_bucket[bucket] = index + 1;
 }
 
 static void stop_using_entry(struct cached_texture *entry)
@@ -115,8 +116,8 @@ static void stop_using_entry(struct cached_texture *entry)
     }
     index = (int)(entry - entries);
     bucket = name_bucket(entry->name);
-    for (link = &first_entry_in_bucket[bucket]; *link != NO_ENTRY; link = &next_entry_in_bucket[*link]) {
-        if (*link == index) {
+    for (link = &first_entry_in_bucket[bucket]; *link != NO_ENTRY; link = &next_entry_in_bucket[*link - 1]) {
+        if (*link == index + 1) {
             *link = next_entry_in_bucket[index];
             break;
         }
@@ -129,9 +130,9 @@ static struct cached_texture *find_entry_by_name(const char *name)
 {
     int index;
 
-    for (index = first_entry_in_bucket[name_bucket(name)]; index != NO_ENTRY; index = next_entry_in_bucket[index]) {
-        if (strcmp(entries[index].name, name) == 0) {
-            return &entries[index];
+    for (index = first_entry_in_bucket[name_bucket(name)]; index != NO_ENTRY; index = next_entry_in_bucket[index - 1]) {
+        if (strcmp(entries[index - 1].name, name) == 0) {
+            return &entries[index - 1];
         }
     }
     return NULL;
