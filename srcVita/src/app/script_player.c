@@ -951,6 +951,7 @@ static int run_one_tick(void)
     if (data->machine.route_is_driving) {
         struct input_state frame;
 
+        route_pad.reads_at_once = ticks_per_frame_when_fast > 1;
         script_route_pad_frame(&route_pad, &data->machine, &frame);
         script_input_frame(&route_input, &data->machine, &frame);
     }

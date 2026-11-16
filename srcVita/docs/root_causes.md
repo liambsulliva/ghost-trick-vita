@@ -2164,6 +2164,14 @@ The class: art the whole game shares put on a chapter start's preload list, wher
 
 Guard: the DS text bake hands only the talk font to the preload, as the remastered bake does, and `script_assets.chapter_preload_text` refuses more than 64 textures. `tests/tools/test_script_assets.py` checks the limit.
 
+### 283. Fast-forward still read every page for two seconds
+
+Reported by the user watching a DS autoplay at `ff 4`: dialogue crawled, each page holding at its end. The route pad (`read_the_page` in `script_route_pad.c`) waited `TICKS_TO_READ_A_PAGE` (120 ticks) after a page finished revealing before it pressed CROSS, and never pressed while text was still revealing, whatever the fast-forward rate. Native has no reading pause of its own; a press finishes a revealing page and the next moves on (`script_talk_note_press`).
+
+The class: a pause meant for a person watching at normal speed kept in the fast-forward path.
+
+Guard: while fast-forward runs more than one tick a frame, the pad presses CROSS on every tick a page or narration holds the player, so dialogue moves as fast as the game takes presses. `tests/unit/test_route_pad.c` checks that a waiting page gets its press at once under fast-forward and not at normal speed.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

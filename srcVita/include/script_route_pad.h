@@ -14,6 +14,7 @@ struct script_route_pad {
     unsigned int choice_seen_at;
     int has_pressed;
     unsigned int last_press_at;
+    int reads_at_once;
 };
 
 void script_route_pad_reset(struct script_route_pad *pad);

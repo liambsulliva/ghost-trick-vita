@@ -495,8 +495,23 @@ static void test_a_camera_step_scrolls_until_its_object_is_in_view(void)
     CHECK_INT(machine.soul.is_on, 0);
 }
 
+static void test_a_fast_forward_presses_through_a_page_at_once(void)
+{
+    struct input_state frame;
+
+    start_with_one_step(SCRIPT_ROUTE_WAIT, "body", "");
+    machine.talk.phase = SCRIPT_TALK_WAITING;
+    script_route_pad_frame(&route_pad, &machine, &frame);
+    CHECK((frame.pressed & INPUT_CROSS) == 0);
+    script_route_pad_reset(&route_pad);
+    route_pad.reads_at_once = 1;
+    script_route_pad_frame(&route_pad, &machine, &frame);
+    CHECK((frame.pressed & INPUT_CROSS) != 0);
+}
+
 int main(void)
 {
+    test_a_fast_forward_presses_through_a_page_at_once();
     test_a_dead_talk_plays_the_swirl_opening_and_a_restart_does_not();
     test_a_camera_step_scrolls_until_its_object_is_in_view();
     test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up();
