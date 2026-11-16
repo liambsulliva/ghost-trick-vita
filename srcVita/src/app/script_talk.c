@@ -145,6 +145,42 @@ static int read_line_row(const char *line, struct script_talk_book *book)
     return 1;
 }
 
+static int compare_ints(const void *left, const void *right)
+{
+    int a;
+    int b;
+
+    a = *(const int *)left;
+    b = *(const int *)right;
+    return (a > b) - (a < b);
+}
+
+static float median_ink_middle(const struct script_talk_book *book)
+{
+    static int doubled_middles[SCRIPT_TALK_GLYPH_MAX];
+    int count;
+    int index;
+
+    count = 0;
+    for (index = 0; index < book->glyph_count; index++) {
+        const struct script_talk_glyph *glyph;
+
+        glyph = &book->glyphs[index];
+        if (glyph->width > 0 && glyph->height > 0) {
+            doubled_middles[count] = glyph->top * 2 + glyph->height;
+            count = count + 1;
+        }
+    }
+    if (count == 0) {
+        return 0.0f;
+    }
+    qsort(doubled_middles, (size_t)count, sizeof(doubled_middles[0]), compare_ints);
+    if (count % 2 == 1) {
+        return (float)doubled_middles[count / 2] / 2.0f;
+    }
+    return (float)(doubled_middles[count / 2 - 1] + doubled_middles[count / 2]) / 4.0f;
+}
+
 int script_talk_book_parse(const char *text, unsigned int text_size, struct script_talk_book *book)
 {
     char line[TALK_LINE_TEXT_MAX];
@@ -181,6 +217,7 @@ int script_talk_book_parse(const char *text, unsigned int text_size, struct scri
             return 0;
         }
     }
+    book->ink_middle = median_ink_middle(book);
     return 1;
 }
 

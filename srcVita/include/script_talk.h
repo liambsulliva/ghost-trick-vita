@@ -82,6 +82,7 @@ struct script_talk_book {
     int page_count;
     int line_count;
     int text_count;
+    float ink_middle;
 };
 
 enum script_text_speed {

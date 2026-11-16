@@ -2540,14 +2540,14 @@
           "target_corner": 30
         },
         {
-          "texture": 88,
+          "texture": 193,
           "crop": [
-            19,
-            3,
-            130,
-            34
+            12,
+            5,
+            232,
+            38
           ],
-          "corner": 9,
+          "corner": 12,
           "x": 0,
           "y": 117,
           "width": 116,

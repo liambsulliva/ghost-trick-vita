@@ -422,6 +422,45 @@ static void test_choice_panels_still_draw_without_their_button_art(void)
     CHECK_INT(draws_with_texture(font, 0.0f, 544.0f), 10);
 }
 
+static float caption_ink_middle_in_first_row(const char *book_text, unsigned int size)
+{
+    static struct script_talk_book book;
+    struct script_hud_view view;
+    renderer_texture font;
+    int index;
+
+    CHECK(script_talk_book_parse(book_text, size, &book));
+    start_choice_textures(1);
+    font = texture_cache_load_now("talk_font")->texture;
+    open_three_panels(&view, &book);
+    script_ui_view_hud_changed(&view);
+    fake_renderer_clear_draws();
+    script_ui_view_draw();
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        const struct fake_draw *draw;
+
+        draw = fake_renderer_draw(index);
+        if (!draw->is_filled_rect && draw->texture == font) {
+            return draw->screen_area.y + draw->screen_area.height / 2.0f;
+        }
+    }
+    return -1.0f;
+}
+
+static void test_a_caption_sits_at_the_same_height_in_its_panel_whatever_the_font(void)
+{
+    static const char low_ink_book[] = "font talk_font\nglyph 0 0 8 26 0 10 9\ntalk cap_one\npage - 0 0 0 0 1 0\nline 40 440 3 0 0 0\ntalk cap_two\npage - 0 0 0 0 1 0\nline 40 440 1 0\n";
+    static const char high_ink_book[] = "font talk_font\nglyph 0 0 8 31 0 34 9\ntalk cap_one\npage - 0 0 0 0 1 0\nline 40 440 3 0 0 0\ntalk cap_two\npage - 0 0 0 0 1 0\nline 40 440 1 0\n";
+    float low;
+    float high;
+
+    low = caption_ink_middle_in_first_row(low_ink_book, sizeof(low_ink_book) - 1);
+    high = caption_ink_middle_in_first_row(high_ink_book, sizeof(high_ink_book) - 1);
+    CHECK(low > 0.0f && high > 0.0f);
+    CHECK(low - high < 0.5f && high - low < 0.5f);
+    CHECK(low > 150.0f && low < 165.0f);
+}
+
 static const struct fake_draw *the_only_draw_from(renderer_texture texture)
 {
     const struct fake_draw *found;
@@ -539,6 +578,7 @@ int main(void)
     test_the_start_button_shows_top_right_with_the_ui_and_steps_aside_for_the_hourglass();
     test_every_open_choice_panel_draws_its_button_icon_and_caption_over_the_swirl();
     test_choice_panels_still_draw_without_their_button_art();
+    test_a_caption_sits_at_the_same_height_in_its_panel_whatever_the_font();
     test_a_sharp_set_draws_each_pill_as_one_sprite_from_its_own_sheet();
     test_a_sharp_set_draws_the_rewind_button_whole_with_its_words();
     return test_finish("unit/script_ui_view");

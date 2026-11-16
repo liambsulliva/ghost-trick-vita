@@ -41,7 +41,7 @@
 #define CHOICE_CHECK_SIZE 62.0f
 #define CHOICE_CIRCLE_SIZE 52.0f
 #define CHOICE_TEXT_SHIFT 24.0f
-#define CHOICE_TEXT_INK_MIDDLE 18.0f
+#define CHOICE_TEXT_LIFT 5.0f
 #define CHOICE_BACK_HINT_X 760.0f
 #define CHOICE_BACK_HINT_Y 470.0f
 #define CHOICE_GLYPH_SIZE 36.0f
@@ -1572,7 +1572,7 @@ static void draw_caption(const struct script_talk_book *book, const struct scrip
     }
     first = &book->lines[page->first_line];
     last = &book->lines[page->first_line + page->line_count - 1];
-    shift_y = centre_y - ((float)(first->y + last->y) / 2.0f + CHOICE_TEXT_INK_MIDDLE);
+    shift_y = centre_y - ((float)(first->y + last->y) / 2.0f + book->ink_middle - CHOICE_TEXT_LIFT);
     for (index = 0; index < page->line_count; index++) {
         const struct script_talk_line *line;
         float x;

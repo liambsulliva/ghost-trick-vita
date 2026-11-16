@@ -2196,6 +2196,14 @@ The class: a route-pad mode that the device plays but that the route check never
 
 Guard: the fast path presses only once a page waits for a press (`script_soul_page_wants_a_press`), as normal speed does, and only drops the 120-tick reading pause. `script_replay --reads-at-once` replays with the fast path, and `make route-check` now replays the whole route both ways through `route_check.py`. `tests/unit/test_route_pad.c` checks a page still opening or writing gets no press under fast-forward.
 
+### 287. DS choice captions sat below their panels, and the marked panel was not orange
+
+Reported by the user on the Vita: in DS mode the text of a dialogue choice sat below its box, though it was centred across it, and the panels should be orange like the port's other buttons. `draw_caption` in `script_ui_view.c` centred a caption with a fixed ink middle of 18 pixels, measured on the remastered talk font (glyph tops near 10, ink middle 23). The DS talk font is baked from the cartridge font (`ds_text.py`) with its ink lower in the line (tops near 34, ink middle 49.5), so every DS caption drew about 26 pixels low. Both of the DS set's choice cells were cut from cartridge texture 88, a black box with a red rim, so the marked panel only grew. The panels are the port's own layout, so no native function places them.
+
+The class: a text position tuned to one font's metrics, used with every font.
+
+Guard: `script_talk_book_parse` measures the book's ink middle as the median glyph middle (`ink_middle`), and captions centre on it with the panel art's 5-pixel lift. The remastered set lands where it did. The DS set bakes the marked cell from texture 193, the orange button the rewind select uses. `tests/unit/test_script_ui_view.c` checks a caption lands at the same height in its panel for a font with high ink and one with low ink.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
