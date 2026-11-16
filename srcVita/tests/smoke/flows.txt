@@ -145,7 +145,8 @@ until 2500000 log save game_cleared
 
 flow pause_and_resume
 about START opens the pause menu in free play, CROSS on Resume closes it, and the game carries on.
-sets remastered
+guards 284 294
+sets remastered ds
 start {ghost_on_scene}
 shows pause_menu
 launch
@@ -616,3 +617,18 @@ press cross
 until 600 pause_submenu
 wait 30
 capture options
+
+flow talk_boxes
+about A talk page keeps as much room between its text and the box's left edge as above and below it, in both sets.
+sets remastered ds
+shows talk top_talk
+launch
+use new_game
+auto_play
+until 20000 shows talk
+wait 80
+capture talk
+until 20000 log route_step_done name=0:
+until 20000 shows talk
+wait 80
+capture top_talk

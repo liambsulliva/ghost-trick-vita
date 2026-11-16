@@ -150,6 +150,24 @@ class WidgetSheetTest(unittest.TestCase):
             widgets = json.load(file)["pause"]["widgets"]
         self.assertEqual(len(pause_art.preview_lines(widgets)), 1)
 
+    def test_both_sets_preview_the_same_room_and_the_ds_widget_table_carries_it(self):
+        assets = os.path.dirname(pause_art.__file__)
+        with open(os.path.join(assets, "game.json")) as file:
+            widgets = json.load(file)["pause"]["widgets"]
+        self.assertEqual(pause_art.preview_lines(widgets, "ds_plate")[0].split()[2:], pause_art.preview_lines(widgets)[0].split()[2:])
+        with open(os.path.join(assets, "ds_pause.py")) as source:
+            self.assertIn('pause_art.preview_lines(widgets, "ds_plate")', source.read())
+        extracted = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(assets))), "extracted", "vita_assets")
+        rooms = [os.path.join(extracted, folder, "scripts", "rooms.txt") for folder in ("game", "game_ds")]
+        if not all(os.path.exists(path) for path in rooms):
+            self.skipTest("needs both baked sets")
+        rows = []
+        for path, plate in zip(rooms, (widgets["preview"]["plate"], widgets["preview"]["ds_plate"])):
+            with open(path, encoding="ascii") as source:
+                rows.append([line.split()[1] for line in source if line.startswith("plate ") and line.split()[2] == plate])
+        self.assertTrue(rows[0])
+        self.assertEqual(rows[0], rows[1])
+
     def test_a_pill_slice_is_clear_at_its_corners_and_solid_down_its_middle(self):
         work = tempfile.mkdtemp()
         try:

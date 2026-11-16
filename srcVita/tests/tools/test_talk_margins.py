@@ -23,6 +23,14 @@ class TalkMarginTests(unittest.TestCase):
         self.assertEqual(int(moved[10].split()[1]), int(round(expected)))
         self.assertEqual([row.split()[2] for row in moved if row.startswith("line")], [row.split()[2] for row in rows if row.startswith("line")])
 
+    def test_a_rounder_box_corner_moves_the_text_that_much_further_right(self):
+        top = talk_assets.BOTTOM_BOX_TOP
+        rows = ["font f"] + GLYPHS + ["talk a"] + page(talk_assets.BOX_BOTTOM, [(120, top + 5), (120, top + 45), (120, top + 85)])
+        square, margins = talk_assets.even_left_margins(rows)
+        rounded, _ = talk_assets.even_left_margins(rows, corner=20)
+        self.assertEqual(int(rounded[5].split()[1]) - int(square[5].split()[1]), 20)
+        self.assertEqual(int(rounded[5].split()[1]), int(round(margins[talk_assets.BOX_BOTTOM] + 20)))
+
     def test_a_top_box_page_keeps_its_margin_from_its_own_left_edge_and_fixed_talks_stay(self):
         top = talk_assets.TOP_BOX_TOP
         rows = ["font f"] + GLYPHS + ["talk a"] + page(talk_assets.BOX_TOP_WITH_HEAD, [(400, top + 10), (400, top + 50)]) + ["talk sys"] + page(talk_assets.BOX_BOTTOM, [(333, talk_assets.BOTTOM_BOX_TOP + 40)])

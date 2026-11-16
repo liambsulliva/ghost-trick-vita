@@ -274,6 +274,14 @@ class CatTests(unittest.TestCase):
         with open(ds_pause.__file__, encoding="utf-8") as source:
             self.assertIn("pause_art.GRID_FILTER", source.read())
 
+    def test_a_cat_on_the_backdrop_grid_shows_only_colours_the_art_has(self):
+        image = np.zeros((45, 45, 4), dtype=np.uint8)
+        for column in range(45):
+            image[:, column] = RED if (column * 2 // 11) % 2 == 0 else (10, 200, 30, 255)
+        grid = pause_art.on_backdrop_grid(image)
+        source_colours = set(map(tuple, image.reshape(-1, 4).tolist()))
+        self.assertTrue(set(map(tuple, grid.reshape(-1, 4).tolist())) <= source_colours)
+
 
 if __name__ == "__main__":
     unittest.main()

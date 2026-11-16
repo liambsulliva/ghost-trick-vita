@@ -969,7 +969,7 @@ static void draw_dropdown(float x_offset)
             pause_draw_slice("choice", VALUE_LEFT + DROP_CHOICE_INSET + x_offset, centre - DROP_CHOICE_HALF, VALUE_RIGHT - VALUE_LEFT - 2.0f * DROP_CHOICE_INSET, 2.0f * DROP_CHOICE_HALF, 1.0f);
         }
         snprintf(key, sizeof(key), "language.%s", languages[asset_language_carried_at(index)]);
-        pause_draw_text(key, (VALUE_LEFT + VALUE_RIGHT) / 2.0f + x_offset, centre, PAUSE_ANCHOR_CENTRE, index == 0 ? 1.0f : GREYED_ALPHA);
+        pause_draw_text(key, (VALUE_LEFT + VALUE_RIGHT) / 2.0f + x_offset, centre, PAUSE_ANCHOR_CENTRE, 1.0f);
     }
 }
 

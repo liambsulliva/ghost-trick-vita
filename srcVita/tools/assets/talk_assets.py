@@ -406,7 +406,7 @@ def pages_of_rows(rows, fixed_talks):
     return pages
 
 
-def even_left_margins(rows, fixed_talks=()):
+def even_left_margins(rows, fixed_talks=(), corner=0):
     shapes = glyph_shapes_of_rows(rows)
     pages = pages_of_rows(rows, set(fixed_talks))
     for page in pages:
@@ -426,7 +426,7 @@ def even_left_margins(rows, fixed_talks=()):
     for page in pages:
         if page["fixed"] or page["ink"] is None or page["box"] not in margins:
             continue
-        shift = int(round(BOX_LEFT[page["box"]] + margins[page["box"]] - page["ink"][0]))
+        shift = int(round(BOX_LEFT[page["box"]] + margins[page["box"]] + corner - page["ink"][0]))
         for index in page["lines"]:
             fields = result[index].split(" ")
             fields[1] = str(int(fields[1]) + shift)
@@ -528,7 +528,7 @@ def bake_talk(packs, set_description, text_key, work_folder, record, code, font_
                     if line_left + line_width > TEXT_RIGHT:
                         failures.append((label, "a line is %d px wider than its box" % (line_left + line_width - TEXT_RIGHT)))
                     rows.append("line %d %d %d %s" % (line_left, top, len(line), codes))
-    rows, _ = even_left_margins(rows, list(section.get("system_lines", {})))
+    rows, _ = even_left_margins(rows, list(section.get("system_lines", {})), section.get("box_corner", 0))
     return {TALK_FILE: ("\n".join(rows) + "\n").encode("ascii")}, [result], failures, used_faces
 
 

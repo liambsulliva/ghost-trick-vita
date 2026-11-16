@@ -367,6 +367,43 @@ static void test_the_language_list_shows_only_the_languages_the_set_carries(void
     game_settings_on_language(NULL);
 }
 
+static void test_every_language_in_the_open_list_draws_in_full_white(void)
+{
+    static const char *const names[] = { "english", "japanese", "french", "italian", "german", "spanish", "chinese_traditional", "chinese_simplified", "korean" };
+    char widgets[1024];
+    unsigned int used;
+    const struct fake_draw *draw;
+    int index;
+    int language_draws;
+
+    start_options();
+    fake_renderer_reset();
+    fake_files_add_rgba_texture("tex/pause_widgets.gtex", 256, 512);
+    texture_cache_init("tex", 1u << 20);
+    CHECK(texture_cache_load_now("pause_widgets")->state == CACHED_TEXTURE_READY);
+    used = (unsigned int)snprintf(widgets, sizeof(widgets), "slice box 8 0 0 30 30\nslice choice 8 0 32 30 30\n");
+    for (index = 0; index < ASSET_LANGUAGE_COUNT; index++) {
+        used += (unsigned int)snprintf(widgets + used, sizeof(widgets) - used, "text language.%s 0 %d 100 20\n", names[index], 200 + index * 30);
+    }
+    CHECK(pause_widgets_read_text(widgets, used) > 0);
+    game_settings_now()->language = 0;
+    press_down_to(LANGUAGE_ROW);
+    pause_options_step(INPUT_CROSS);
+    CHECK(pause_options_dropdown_is_open());
+    fake_renderer_clear_draws();
+    pause_options_draw(0.0f);
+    language_draws = 0;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        draw = fake_renderer_draw(index);
+        if (!draw->is_filled_rect && draw->texture_area.y * 512.0f >= 199.0f) {
+            language_draws = language_draws + 1;
+            CHECK(draw->color.alpha > 0.99f);
+        }
+    }
+    CHECK(language_draws >= ASSET_LANGUAGE_COUNT);
+    pause_options_step(INPUT_CIRCLE);
+}
+
 static void test_controls_opens_a_page_that_circle_closes(void)
 {
     start_options();
@@ -603,6 +640,7 @@ int main(void)
     test_the_language_list_opens_on_cross_and_circle_closes_it_first();
     test_every_listed_language_can_be_chosen_and_is_applied();
     test_the_language_list_shows_only_the_languages_the_set_carries();
+    test_every_language_in_the_open_list_draws_in_full_white();
     test_controls_opens_a_page_that_circle_closes();
     test_a_tap_on_a_flame_sets_that_level();
     test_the_unlock_row_shows_only_when_built_in_and_flips_a_saved_setting();

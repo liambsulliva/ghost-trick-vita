@@ -333,7 +333,7 @@ static void report_soul_view(struct script_machine *machine)
     }
     for (index = 0; index < machine->object_count; index++) {
         if (machine->outputs->soul_object_styled != NULL && machine->objects[index].actor.exists) {
-            machine->outputs->soul_object_styled(machine->objects[index].name, machine->objects[index].actor.class_id, machine->objects[index].actor.has_core, soul->is_on && index == soul->active_object, machine->objects[index].is_dead, machine->phone_view_is_on);
+            machine->outputs->soul_object_styled(machine->objects[index].name, machine->objects[index].actor.class_id, machine->objects[index].actor.has_core, soul->is_on && index == soul->active_object, core_is_for_the_dead(machine, index), machine->phone_view_is_on);
         }
         if (!soul->is_on || machine->outputs->soul_core_marked == NULL) {
             continue;
@@ -346,7 +346,7 @@ static void report_soul_view(struct script_machine *machine)
                 continue;
             }
             core_position(machine, index, slot, &x, &y);
-            machine->outputs->soul_core_marked(index, slot, x, y, machine->objects[index].is_dead, core_mark_opacity(&machine->objects[index].actor));
+            machine->outputs->soul_core_marked(index, slot, x, y, core_is_for_the_dead(machine, index), core_mark_opacity(&machine->objects[index].actor));
         }
     }
 }
