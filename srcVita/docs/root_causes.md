@@ -2172,6 +2172,22 @@ The class: a pause meant for a person watching at normal speed kept in the fast-
 
 Guard: while fast-forward runs more than one tick a frame, the pad presses CROSS on every tick a page or narration holds the player, so dialogue moves as fast as the game takes presses. `tests/unit/test_route_pad.c` checks that a waiting page gets its press at once under fast-forward and not at normal speed.
 
+### 284. The DS pause and loading cat had finer pixels than the backdrop behind it
+
+Asked by the user on the Vita: the DS cat should keep its size but show pixels as large as the backdrop's. The cat was baked at 5.625 screen pixels per cartridge pixel and softened (root cause 264). The DS backdrop is a 256-pixel-wide cartridge picture stretched across 960 screen pixels, 3.75 to a pixel. The pause menu is the port's own, so no native function draws either.
+
+The class: menu art from the cartridge drawn on a pixel grid other than the screen it sits on.
+
+Guard: `pause_art.GRID_FILTER` keeps the cat's baked size and then averages it into blocks of `DS_BACKDROP_SCREEN_PIXELS_PER_PIXEL` (960/256) with hard edges (`on_backdrop_grid`); `ds_pause.bake_cat` uses it in place of the soft filter. `tests/tools/test_ds_pause.py` checks the size is kept, alpha is only fully on or off, and colour changes fall on the backdrop's grid.
+
+### 285. The DS soul was drawn with an invented flame
+
+Reported by the user on the Vita: the soul in DS mode still moved like the remastered build. `soul_body_blobs` in `soul_chain.c` draws a made-up flame of ten rising wisps and a base blob, with no native source. Native draws the soul as a particle cloud (`uSoulTentacle`, emitter `func_0205e930` set up by `func_0205f59c`, stepped every tick by `func_0205eb78`, drawn by `func_0205f080`). It has 64 hard discs, cartridge 3D texture 24 tinted `0x76c0`. Each spawns within 2 pixels of the soul with a random size of up to 7.94 times a 2.4-pixel quad, rises up to 2 pixels a tick, sways on a spring toward its spawn x (`vx += (tx - x) >> 1`) and shrinks by 0x59a a tick. Turning the soul on starts a burst: for 36 ticks the draws come from the top half of each range, and each respawn holds the rest for `level` ticks. The lavender orb belongs to every core (`uSoulBGGimmickCore`, `func_0205d0d4`), not to the soul.
+
+The class: an effect drawn from a guess where native code exists.
+
+Guard: `soul_cloud.c` ports the emitter for a soul at rest. `script_view.c` steps it every tick and draws it in place of the blob flame and soul orb whenever the DS art runs. `tests/unit/test_soul_cloud.c` checks an off cloud is empty, a lit cloud rises from the soul within native reach and size, and turning it off lets it die out. Not ported: the spawn along a reaching chain's segments, and the boss's dark-blue colour (`0x3500`).
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

@@ -12,6 +12,7 @@
 #include "script_ui_view.h"
 #include "script_view.h"
 #include "soul_chain.h"
+#include "soul_cloud.h"
 #include "soul_transition.h"
 #include "swirl_waves.h"
 #include "texture_cache.h"
@@ -200,6 +201,7 @@ static const struct script_tables *tables;
 static struct script_talk_view talk;
 static int talk_is_showing;
 static int soul_is_on;
+static struct soul_cloud ds_soul_cloud;
 static struct view_effect effects[VIEW_EFFECT_MAX];
 static unsigned int age_ticks;
 static int cursor_is_shown;
@@ -250,6 +252,7 @@ void script_view_start(const struct script_tables *new_tables)
     sparks_movie = script_tables_find_fx_movie(tables, SOUL_SPARKS_MOVIE);
     talk_is_showing = 0;
     soul_is_on = 0;
+    soul_cloud_reset(&ds_soul_cloud);
     cursor_is_shown = 0;
     hint_pulse_is_on = 0;
     age_ticks = 0;
@@ -274,6 +277,7 @@ void script_view_talk_changed(const struct script_talk_view *view)
 void script_view_soul_changed(int is_on, int with_effect)
 {
     soul_is_on = is_on;
+    soul_cloud_set_on(&ds_soul_cloud, is_on);
     scene_stage_set_soul_mode(is_on);
     if (!with_effect) {
         soul_transition_stop();
@@ -606,6 +610,9 @@ void script_view_advance(void)
 
     script_ui_view_advance();
     age_ticks = age_ticks + 1;
+    if (texture_cache_sharp_art_is_on()) {
+        soul_cloud_step(&ds_soul_cloud, cursor_x, cursor_y);
+    }
     if (phone_split_index >= 0) {
         (void)texture_cache_use_or_start_loading(PHONE_CAP_TEXTURE);
         (void)texture_cache_use_or_start_loading(PHONE_STRIP_TEXTURE);
@@ -1092,6 +1099,22 @@ static void draw_soul_body(float x, float y)
     }
 }
 
+static void draw_ds_soul_cloud(void)
+{
+    struct soul_cloud_particle particles[SOUL_CLOUD_PARTICLES];
+    int count;
+    int index;
+
+    count = soul_cloud_particles(&ds_soul_cloud, particles);
+    for (index = 0; index < count; index++) {
+        float screen_x;
+        float screen_y;
+
+        scene_view_world_to_screen(scene_stage_view(), particles[index].x, particles[index].y, &screen_x, &screen_y);
+        draw_blob(screen_x, screen_y, particles[index].size * VITA_PIXELS_PER_DS_PIXEL / 2.0f);
+    }
+}
+
 static void draw_lightning(float from_x, float from_y, float to_x, float to_y);
 static void draw_lightning_stream(float from_x, float from_y, float to_x, float to_y);
 static void draw_soul_beam(float from_x, float from_y, float to_x, float to_y);
@@ -1466,8 +1489,12 @@ static void draw_soul(void)
     }
     scene_view_world_to_screen(scene_stage_view(), cursor_x, cursor_y, &screen_x, &screen_y);
     draw_soul_motion(screen_x, screen_y);
-    draw_soul_body(screen_x, screen_y);
-    draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, SOUL_ORB_SIZE, orb);
+    if (texture_cache_sharp_art_is_on()) {
+        draw_ds_soul_cloud();
+    } else {
+        draw_soul_body(screen_x, screen_y);
+        draw_centered(SOUL_ORB_TEXTURE, screen_x, screen_y, SOUL_ORB_SIZE, orb);
+    }
     draw_possession_sparks();
     if (flash_alpha > 0.0f) {
         struct renderer_rect whole_screen;

@@ -261,5 +261,19 @@ class CatTests(unittest.TestCase):
         self.assertEqual(ds_pause.asset_writers.read_gtex_header(gtex)[2], ds_pause.asset_writers.FORMAT_RGBA8888)
 
 
+    def test_a_cat_on_the_backdrop_grid_keeps_its_size_with_pixels_the_backdrop_size(self):
+        image = np.zeros((30, 30, 4), dtype=np.uint8)
+        image[0:15, 0:15] = RED
+        grid = pause_art.on_backdrop_grid(image)
+        self.assertEqual(grid.shape, image.shape)
+        self.assertEqual(set(np.unique(grid[:, :, 3])), {0, 255})
+        columns = [len(set(map(tuple, grid[row, :, :].tolist()))) for row in range(30)]
+        self.assertTrue(max(columns) <= 2)
+        edges = [x for x in range(1, 30) if tuple(grid[0, x]) != tuple(grid[0, x - 1])]
+        self.assertTrue(all(abs(x / pause_art.DS_BACKDROP_SCREEN_PIXELS_PER_PIXEL - round(x / pause_art.DS_BACKDROP_SCREEN_PIXELS_PER_PIXEL)) * pause_art.DS_BACKDROP_SCREEN_PIXELS_PER_PIXEL < 1 for x in edges))
+        with open(ds_pause.__file__, encoding="utf-8") as source:
+            self.assertIn("pause_art.GRID_FILTER", source.read())
+
+
 if __name__ == "__main__":
     unittest.main()

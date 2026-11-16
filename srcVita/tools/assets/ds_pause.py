@@ -262,7 +262,7 @@ def bake_cat(pause, record, code, work_folder, animation_texts, sprite_pages):
     animations = cat_animations(pause["cat_animations"], animation_texts)
     textures = sorted(set(frame["texture"] for animation in animations for frame in pause_art.frames_from_text(animation["text"])))
     key = record.key_for(code, {"animations": animations, "fidget": pause["cat_fidget"]}, b"".join(sprite_pages.source(texture) for texture in textures))
-    table, results = pause_art.bake_cat_pages(work_folder, record, key, animations, lambda animation, texture: art_sized_page(sprite_pages, texture), pause_art.SOFT_FILTER)
+    table, results = pause_art.bake_cat_pages(work_folder, record, key, animations, lambda animation, texture: art_sized_page(sprite_pages, texture), pause_art.GRID_FILTER)
     files = {pause_art.CAT_TABLE_PATH: table, pause_art.CAT_TRACK_PATH: pause_art.cat_track_text(table, animations, pause["cat_fidget"])}
     names = [result["name"] for result in results]
     return files, [TEXTURE_FOLDER + "/" + name + ".gtex" for name in names], {name: (pause_art.PAGE_SIZE, pause_art.PAGE_SIZE) for name in names}
