@@ -2156,6 +2156,14 @@ Guard: `ds_movies.py` follows that chain in the cartridge code for every movie r
 
 Not done: Final's own sound (0x1eb with `func_0202a080`) is not played; `time_jump` and `long_jump` bake the same file twice. Not checked on the device.
 
+### 282. DS chapter starts queued every face in the game ahead of the first room
+
+Found on the Vita in a DS autoplay run: at the opening, 128 textures waited over 2 seconds, the worst a room plate (`ds_plate_9`) at 16.8 seconds. The DS set's `chain.preload` listed all 109 DS face textures, because the DS text bake added every face it used to the talk textures the chapter start preloads. The remastered set lists only its talk font and windows there and loads a face when a talk page draws it (`draw_face` in `script_view.c`). The chapter preload is the port's own; native loads a face when its talk shows it.
+
+The class: art the whole game shares put on a chapter start's preload list, where it queues in front of the first room.
+
+Guard: the DS text bake hands only the talk font to the preload, as the remastered bake does, and `script_assets.chapter_preload_text` refuses more than 64 textures. `tests/tools/test_script_assets.py` checks the limit.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

@@ -638,5 +638,5 @@ def bake_from_messages(record, font, palette, windows, book, scripts, system_lin
     if missing:
         print("ds text labels with no DS message: %d (%s)" % (len(set(missing)), ", ".join(sorted(set(missing))[:12])))
     face_paths, face_sizes = bake_face_textures(record, textures, faces) if textures is not None else ([], {})
-    return {"narration_lines": narration_lines, "talk_files": talk_files, "talk_textures": talk_assets.talk_texture_names(talk_files) + [FACE_NAME % texture for texture in faces.used], "bubble_rows": [],
+    return {"narration_lines": narration_lines, "talk_files": talk_files, "talk_textures": talk_assets.talk_texture_names(talk_files), "bubble_rows": [],
             "texture_paths": baker.texture_paths + face_paths, "texture_sizes": dict(baker.texture_sizes, **face_sizes)}

@@ -379,3 +379,16 @@ class ConverterExitTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ChapterPreloadTests(unittest.TestCase):
+    SECTION = {"card_texture": "chapter_card", "room_plates": {}, "sound_kinds": {}}
+
+    def test_a_chapter_start_preloads_its_card_and_the_shared_extras(self):
+        text = script_assets.chapter_preload_text({}, self.SECTION, {}, ["talk_font"])
+        self.assertEqual(text, "texture talk_font\ntexture chapter_card\n")
+
+    def test_a_chapter_start_refuses_to_preload_art_the_whole_game_shares(self):
+        extras = ["face_%d" % index for index in range(script_assets.CHAPTER_PRELOADED_TEXTURES_MOST)]
+        with self.assertRaises(ValueError):
+            script_assets.chapter_preload_text({}, self.SECTION, {}, extras)

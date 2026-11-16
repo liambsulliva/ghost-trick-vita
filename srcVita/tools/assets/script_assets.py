@@ -42,6 +42,7 @@ UI_CLIPS_FILE = SCRIPTS_FOLDER + "/ui_clips.txt"
 EFFECTS_FILE = SCRIPTS_FOLDER + "/effects.txt"
 CHAPTER_PRELOADED_MESSAGES = 6
 CHAPTER_PRELOADED_ROOMS = 2
+CHAPTER_PRELOADED_TEXTURES_MOST = 64
 NARRATION_OP = 0x5d
 BUBBLE_MARGIN_WIDTH = 30
 TICKS_PER_SECOND = 60
@@ -460,7 +461,10 @@ def chapter_preload_text(set_description, section, narration_lines, extra_textur
             textures.extend(line["texture"] for line in paragraph)
     for room_plates in list(section.get("room_plates", {}).values())[:CHAPTER_PRELOADED_ROOMS]:
         textures.extend(plate[0] for plate in room_plates)
-    lines = ["texture " + name for name in dict.fromkeys(textures)]
+    names = list(dict.fromkeys(textures))
+    if len(names) > CHAPTER_PRELOADED_TEXTURES_MOST:
+        raise ValueError("a chapter start would preload %d textures, more than %d; art the whole game shares loads when it is drawn" % (len(names), CHAPTER_PRELOADED_TEXTURES_MOST))
+    lines = ["texture " + name for name in names]
     lines.extend("sound " + name for name in dict.fromkeys(section.get("sound_kinds", {}).values()))
     return "\n".join(lines) + "\n"
 
