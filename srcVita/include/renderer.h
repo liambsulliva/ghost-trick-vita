@@ -52,4 +52,15 @@ void renderer_snapshot_end(void);
 void renderer_draw_snapshot(struct renderer_rect screen_area, float alpha);
 void renderer_draw_turned_snapshot(float center_x, float center_y, float half_width, float half_height, float degrees, float alpha);
 
+static inline struct renderer_rect renderer_whole_texture(void)
+{
+    struct renderer_rect area;
+
+    area.x = 0.0f;
+    area.y = 0.0f;
+    area.width = 1.0f;
+    area.height = 1.0f;
+    return area;
+}
+
 #endif

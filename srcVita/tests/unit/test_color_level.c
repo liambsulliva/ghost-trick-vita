@@ -13,12 +13,6 @@ static void on_background(int level) { background_level = level; }
 static void on_marked(const char *what, const char *name) { (void)what; (void)name; }
 static const struct script_outputs outputs = { .marked = on_marked, .background_color_level_changed = on_background };
 
-static void put_u16(unsigned char *at, unsigned int value)
-{
-    at[0] = (unsigned char)(value & 0xffu);
-    at[1] = (unsigned char)(value >> 8);
-}
-
 static void test_bg_takes_the_palette_level(void)
 {
     static const unsigned int words[] = { 0xf7, 2, 176, 0x2f, 600, 0x0 };

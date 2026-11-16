@@ -15,12 +15,6 @@ static const struct script_outputs no_outputs;
 static struct script_source source;
 static unsigned char bytes[SCRIPT_FILE_HEADER_SIZE + TABLE_WORDS * 2];
 
-static void put_u16(unsigned char *at, unsigned int value)
-{
-    at[0] = (unsigned char)(value & 0xffu);
-    at[1] = (unsigned char)(value >> 8);
-}
-
 static void start_with_frames_that_loop(void)
 {
     unsigned int table[TABLE_WORDS];

@@ -85,7 +85,6 @@ MUSIC_OPS = (0x106, 0x107, 0x10a)
 TAG_BEGIN = -3
 TAG_SOUND = -9
 TAG_EFFECT = -8
-PRELOADED_TABLES_PER_SCRIPT = 32
 
 
 class ChapterBakeError(ValueError):

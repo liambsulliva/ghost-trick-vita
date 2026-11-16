@@ -368,17 +368,6 @@ static const struct cached_texture *ready_texture(const char *name)
     return texture != NULL && texture->state == CACHED_TEXTURE_READY ? texture : NULL;
 }
 
-static struct renderer_rect whole_texture(void)
-{
-    struct renderer_rect area;
-
-    area.x = 0.0f;
-    area.y = 0.0f;
-    area.width = 1.0f;
-    area.height = 1.0f;
-    return area;
-}
-
 static struct renderer_rect centered_area(float x, float y, float width, float height)
 {
     struct renderer_rect area;
@@ -646,7 +635,7 @@ static void draw_element(const struct ui_element *element, const struct playing_
         if (rotation != 0.0f) {
             draw_turned_sprite(texture->texture, x, y, width, height, rotation, tint);
         } else {
-            renderer_draw_sprite(texture->texture, centered_area(x, y, width, height), whole_texture(), tint);
+            renderer_draw_sprite(texture->texture, centered_area(x, y, width, height), renderer_whole_texture(), tint);
         }
         break;
     }
@@ -693,9 +682,9 @@ static void draw_rock_layer(const char *name, float pixels_per_tick, float alpha
     area.width = REWIND_ROCK_WIDTH;
     area.height = REWIND_ROCK_HEIGHT;
     area.y = -scroll;
-    renderer_draw_sprite(rocks->texture, area, whole_texture(), tint);
+    renderer_draw_sprite(rocks->texture, area, renderer_whole_texture(), tint);
     area.y = area.y + REWIND_ROCK_HEIGHT;
-    renderer_draw_sprite(rocks->texture, area, whole_texture(), tint);
+    renderer_draw_sprite(rocks->texture, area, renderer_whole_texture(), tint);
 }
 
 static void draw_slice(const struct cached_texture *art, float x, float y, float width, float height, float u, float v, float cell_width, float cell_height, struct renderer_color tint)
@@ -1015,7 +1004,7 @@ static void draw_narration_arrow(void)
     area.y = NARRATION_ARROW_Y + (float)phase / (float)(NARRATION_ARROW_BOB_TICKS / 2) * NARRATION_ARROW_BOB_PIXELS;
     area.width = NARRATION_ARROW_WIDTH;
     area.height = NARRATION_ARROW_HEIGHT;
-    renderer_draw_sprite(arrow->texture, area, whole_texture(), white);
+    renderer_draw_sprite(arrow->texture, area, renderer_whole_texture(), white);
 }
 
 static float pill_pulse_brightness(void)

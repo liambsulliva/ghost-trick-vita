@@ -26,12 +26,6 @@ static unsigned int offset_of(const char *text)
     return 0;
 }
 
-static void put_u16(unsigned char *at, unsigned int value)
-{
-    at[0] = (unsigned char)(value & 0xffu);
-    at[1] = (unsigned char)(value >> 8);
-}
-
 static unsigned int make_script(const unsigned int *words, unsigned int word_count)
 {
     unsigned int index;

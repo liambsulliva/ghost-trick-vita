@@ -3,14 +3,8 @@
 
 #define REACH 48.0f
 #define D_PAD_STEP 6.0f
-#define TENTHS 10.0f
 
 static struct soul_chain chain;
-
-static int tenths(float value)
-{
-    return (int)(value * TENTHS + (value < 0.0f ? -0.5f : 0.5f));
-}
 
 static int ticks_until_resting(void)
 {

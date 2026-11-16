@@ -6,17 +6,6 @@
 
 static struct scene_effects effects;
 
-static int nearly(float actual, float expected)
-{
-    float difference;
-
-    difference = actual - expected;
-    if (difference < 0.0f) {
-        difference = -difference;
-    }
-    return difference < 0.01f;
-}
-
 static void advance_ticks(int ticks)
 {
     scene_effects_advance(&effects, (unsigned long long)ticks * MICROSECONDS_PER_TICK);

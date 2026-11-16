@@ -244,7 +244,6 @@ void soul_transition_draw_ghost_lines(void)
     static const struct renderer_color white = { 1.0f, 1.0f, 1.0f, 1.0f };
     static const struct renderer_color pure_red = { 1.0f, 0.0f, 0.0f, 1.0f };
     struct renderer_rect area;
-    struct renderer_rect whole_texture;
 
     if (fine_lines_texture == RENDERER_NO_TEXTURE) {
         make_fine_lines_texture();
@@ -253,11 +252,7 @@ void soul_transition_draw_ghost_lines(void)
     area.y = 0.0f;
     area.width = (float)RENDERER_WIDTH;
     area.height = (float)RENDERER_HEIGHT;
-    whole_texture.x = 0.0f;
-    whole_texture.y = 0.0f;
-    whole_texture.width = 1.0f;
-    whole_texture.height = 1.0f;
-    renderer_draw_sprite(fine_lines_texture, area, whole_texture, white);
+    renderer_draw_sprite(fine_lines_texture, area, renderer_whole_texture(), white);
     area.y = SCREEN_CENTER_Y - VITA_PIXELS_PER_DS_PIXEL * (float)sweep_native_y - SWEEP_FOOTAGE_NUDGE - SWEEP_HEIGHT / 2.0f;
     area.height = SWEEP_HEIGHT;
     renderer_draw_filled_rect(area, pure_red);

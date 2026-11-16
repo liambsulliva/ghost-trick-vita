@@ -44,7 +44,6 @@ enum script_effect_kind {
 #define SCRIPT_FX_MOVIE_MAX 256
 #define SCRIPT_FX_FRAME_MAX 16384
 #define SCRIPT_FX_AFTER_END 0
-#define SCRIPT_FX_AFTER_LOOP 1
 #define SCRIPT_FX_AFTER_HOLD 2
 
 struct script_fx_frame {

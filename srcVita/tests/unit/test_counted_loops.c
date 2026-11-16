@@ -12,12 +12,6 @@ static const struct script_outputs no_outputs;
 static struct script_source source;
 static unsigned char bytes[SCRIPT_FILE_HEADER_SIZE + 12];
 
-static void put_u16(unsigned char *at, unsigned int value)
-{
-    at[0] = (unsigned char)(value & 0xffu);
-    at[1] = (unsigned char)(value >> 8);
-}
-
 static void start_with_a_looping_table(void)
 {
     static const unsigned int table[] = { 0xfffd, 0, 0, 1 | (HOLD_TICKS << FRAME_HOLD_SHIFT), 2 | (HOLD_TICKS << FRAME_HOLD_SHIFT), 0xffff };

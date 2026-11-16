@@ -41,12 +41,6 @@ static int was_marked(const char *text)
     return 0;
 }
 
-static void put_u16(unsigned char *at, unsigned int value)
-{
-    at[0] = (unsigned char)(value & 0xffu);
-    at[1] = (unsigned char)(value >> 8);
-}
-
 #define TICKS_UNTIL_A_LATE_BOOK 2500
 #define TICKS_AFTER_A_LATE_BOOK 2900
 

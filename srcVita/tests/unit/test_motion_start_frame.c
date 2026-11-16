@@ -16,12 +16,6 @@ static struct script_source source;
 static unsigned char bytes[SCRIPT_FILE_HEADER_SIZE + TABLE_WORDS * 2];
 static struct script_vm vm;
 
-static void put_u16(unsigned char *at, unsigned int value)
-{
-    at[0] = (unsigned char)(value & 0xffu);
-    at[1] = (unsigned char)(value >> 8);
-}
-
 static void queue_a_table_with_a_point_between_its_frames(void)
 {
     static const unsigned int table[TABLE_WORDS] = {

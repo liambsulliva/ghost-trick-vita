@@ -2,12 +2,6 @@
 #include "test_support.h"
 
 #define SLIDE_PX 236.25f
-#define TENTHS 10.0f
-
-static int tenths(float value)
-{
-    return (int)(value * TENTHS + (value < 0.0f ? -0.5f : 0.5f));
-}
 
 static void test_belts_slide_in_before_the_panels_come_up(void)
 {

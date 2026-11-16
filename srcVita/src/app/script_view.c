@@ -539,17 +539,6 @@ void script_view_advance(void)
     }
 }
 
-static struct renderer_rect whole_texture(void)
-{
-    struct renderer_rect area;
-
-    area.x = 0.0f;
-    area.y = 0.0f;
-    area.width = 1.0f;
-    area.height = 1.0f;
-    return area;
-}
-
 static void draw_named_texture(const char *name, float x, float y, float width, float height, struct renderer_color tint)
 {
     const struct cached_texture *texture;
@@ -563,7 +552,7 @@ static void draw_named_texture(const char *name, float x, float y, float width, 
     area.y = y;
     area.width = width;
     area.height = height;
-    renderer_draw_sprite(texture->texture, area, whole_texture(), tint);
+    renderer_draw_sprite(texture->texture, area, renderer_whole_texture(), tint);
 }
 
 static void draw_flipbook(const struct script_flipbook *book, unsigned int age, float center_x, float center_y, float width, float height, struct renderer_color tint)
@@ -805,7 +794,7 @@ static void draw_face(const struct script_talk_page *page)
     area.y = FACE_Y;
     area.width = FACE_WIDTH;
     area.height = FACE_HEIGHT;
-    uv = whole_texture();
+    uv = renderer_whole_texture();
     if (!page->face_is_flipped) {
         uv.x = 1.0f;
         uv.width = -1.0f;
@@ -1230,7 +1219,7 @@ static void draw_flat_dot(float center_x, float center_y, float radius, struct r
     area.y = center_y - size / 2.0f;
     area.width = size;
     area.height = size;
-    renderer_draw_flat_sprite(texture->texture, area, whole_texture(), color);
+    renderer_draw_flat_sprite(texture->texture, area, renderer_whole_texture(), color);
 }
 
 static void draw_lightning(float from_x, float from_y, float to_x, float to_y)
@@ -1505,7 +1494,7 @@ static void draw_movie(void)
         renderer_draw_filled_rect(area, movie_black);
         return;
     }
-    renderer_draw_sprite(texture->texture, area, whole_texture(), white);
+    renderer_draw_sprite(texture->texture, area, renderer_whole_texture(), white);
 }
 
 static void draw_phone_split_under_the_film(const struct phone_split_layout *split)

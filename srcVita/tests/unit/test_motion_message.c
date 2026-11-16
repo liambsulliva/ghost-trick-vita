@@ -16,12 +16,6 @@ static struct script_source source;
 static const char strings[] = "\0\0tapeT\0EVENT\0fire\0";
 static unsigned char bytes[SCRIPT_FILE_HEADER_SIZE + TABLE_WORDS * 2 + sizeof(strings) - 1];
 
-static void put_u16(unsigned char *at, unsigned int value)
-{
-    at[0] = (unsigned char)(value & 0xffu);
-    at[1] = (unsigned char)(value >> 8);
-}
-
 static void start_with_a_table_that_sends_a_message(void)
 {
     static const unsigned int table[TABLE_WORDS] = { 0xfffd, 0, 0, 0xfff9, TARGET_OFFSET, VERB_OFFSET, ARG_OFFSET, 1 | (1u << FRAME_HOLD_SHIFT), 0xffff };

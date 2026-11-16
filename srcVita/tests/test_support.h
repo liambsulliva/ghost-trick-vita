@@ -45,6 +45,30 @@ static int test_check_count;
         } \
     } while (0)
 
+#define TENTHS 10.0f
+
+static inline void put_u16(unsigned char *at, unsigned int value)
+{
+    at[0] = (unsigned char)(value & 0xffu);
+    at[1] = (unsigned char)(value >> 8);
+}
+
+static inline int nearly(float actual, float expected)
+{
+    float difference;
+
+    difference = actual - expected;
+    if (difference < 0.0f) {
+        difference = -difference;
+    }
+    return difference < 0.01f;
+}
+
+static inline int tenths(float value)
+{
+    return (int)(value * TENTHS + (value < 0.0f ? -0.5f : 0.5f));
+}
+
 static int test_finish(const char *suite_name)
 {
     printf("%s: %d checks, %d failures\n", suite_name, test_check_count, test_failure_count);

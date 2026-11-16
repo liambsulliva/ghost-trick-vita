@@ -11,17 +11,6 @@
 
 #define LONGEST_UPDATE_US 500000ULL
 
-static int nearly(float actual, float expected)
-{
-    float difference;
-
-    difference = actual - expected;
-    if (difference < 0.0f) {
-        difference = -difference;
-    }
-    return difference < 0.01f;
-}
-
 static const struct scene_effects *effects(void)
 {
     return &scene_stage_view()->effects;

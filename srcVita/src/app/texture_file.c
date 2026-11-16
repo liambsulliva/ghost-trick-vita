@@ -1,5 +1,6 @@
 #include <string.h>
 #include "texture_file.h"
+#include "little_endian.h"
 
 #define DXT_BLOCK_SIZE_IN_PIXELS 4
 #define PACKED_MATCH_FLAG 0x80000000u
@@ -13,34 +14,6 @@
 #define LUMA_BLUE_WEIGHT 19u
 #define LUMA_WEIGHT_SHIFT 8u
 #define RGBA_BYTES_PER_PIXEL 4u
-
-static unsigned int read_u16_little_endian(const unsigned char *bytes)
-{
-    return (unsigned int)bytes[0] | ((unsigned int)bytes[1] << 8);
-}
-
-static void write_u16_little_endian(unsigned char *bytes, unsigned int value)
-{
-    bytes[0] = (unsigned char)(value & 0xffu);
-    bytes[1] = (unsigned char)(value >> 8);
-}
-
-static void write_u32_little_endian(unsigned char *bytes, unsigned int value)
-{
-    write_u16_little_endian(bytes, value & 0xffffu);
-    write_u16_little_endian(&bytes[2], value >> 16);
-}
-
-static unsigned int read_u32_little_endian(const unsigned char *bytes)
-{
-    unsigned int value;
-
-    value = bytes[0];
-    value = value | ((unsigned int)bytes[1] << 8);
-    value = value | ((unsigned int)bytes[2] << 16);
-    value = value | ((unsigned int)bytes[3] << 24);
-    return value;
-}
 
 static int format_is_known(unsigned int format)
 {

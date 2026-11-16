@@ -1,22 +1,9 @@
 #include "bmp_image.h"
+#include "little_endian.h"
 
 #define BMP_INFO_HEADER_SIZE 40
 #define BMP_PLANE_COUNT 1
 #define BMP_BITS_PER_PIXEL 24
-
-static void write_u16_little_endian(unsigned char *bytes, unsigned int value)
-{
-    bytes[0] = (unsigned char)(value & 0xff);
-    bytes[1] = (unsigned char)((value >> 8) & 0xff);
-}
-
-static void write_u32_little_endian(unsigned char *bytes, unsigned int value)
-{
-    bytes[0] = (unsigned char)(value & 0xff);
-    bytes[1] = (unsigned char)((value >> 8) & 0xff);
-    bytes[2] = (unsigned char)((value >> 16) & 0xff);
-    bytes[3] = (unsigned char)((value >> 24) & 0xff);
-}
 
 unsigned int bmp_row_size(unsigned int width)
 {

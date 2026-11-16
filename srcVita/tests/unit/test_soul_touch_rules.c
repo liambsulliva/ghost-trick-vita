@@ -10,7 +10,6 @@
 #define PEN_PAST_EVERY_CORE_X 230.0f
 #define TICKS_FOR_A_DRAG 60
 #define TICKS_TO_SETTLE 60
-#define NO_OBJECT (-1)
 
 static struct script_machine machine;
 static const struct script_outputs no_outputs;

@@ -4,7 +4,6 @@
 #include "audio_port.h"
 #include "audio_thread.h"
 
-#define FAKE_AUDIO_PORT_RUNNING 0
 #define FAKE_AUDIO_STEP_LIMIT 100000
 #define FAKE_AUDIO_MUSIC_SHORTEST_BLOCK_US 70800ULL
 #define FAKE_AUDIO_SOUND_SHORTEST_BLOCK_US 110ULL

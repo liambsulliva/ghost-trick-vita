@@ -14,12 +14,6 @@ static unsigned char next_scene[SCRIPT_FILE_HEADER_SIZE + 64];
 
 static const char strings[] = "\0\0b\0";
 
-static void put_u16(unsigned char *at, unsigned int value)
-{
-    at[0] = (unsigned char)(value & 0xffu);
-    at[1] = (unsigned char)(value >> 8);
-}
-
 static unsigned int make_script(unsigned char *into, const unsigned int *words, unsigned int word_count)
 {
     unsigned int index;

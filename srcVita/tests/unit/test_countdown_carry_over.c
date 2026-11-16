@@ -34,12 +34,6 @@ static int was_marked(const char *text)
     return 0;
 }
 
-static void put_u16(unsigned char *at, unsigned int value)
-{
-    at[0] = (unsigned char)(value & 0xffu);
-    at[1] = (unsigned char)(value >> 8);
-}
-
 static void start_a_scene_with_the_countdown(int is_running)
 {
     static const unsigned int words[] = { 0x2f, 6000, 0x0 };

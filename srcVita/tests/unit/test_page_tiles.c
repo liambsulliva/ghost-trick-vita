@@ -2,18 +2,12 @@
 #include "page_tiles.h"
 #include "test_support.h"
 
-#define TENTHS 10.0f
 
 static const char two_by_two_page[] =
     "tile big 2840 2600 big_t00 0 0 2048 2048 0 0 2046 2046\n"
     "tile big 2840 2600 big_t10 2044 0 796 2048 2046 0 2840 2046\n"
     "tile big 2840 2600 big_t01 0 2044 2048 556 0 2046 2046 2600\n"
     "tile big 2840 2600 big_t11 2044 2044 796 556 2046 2046 2840 2600\n";
-
-static int tenths(float value)
-{
-    return (int)(value * TENTHS + (value < 0.0f ? -0.5f : 0.5f));
-}
 
 static struct renderer_rect rect(float x, float y, float width, float height)
 {

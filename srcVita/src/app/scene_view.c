@@ -5,6 +5,7 @@
 #include "page_tiles.h"
 #include "iris_pattern.h"
 #include "memory.h"
+#include "renderer.h"
 #include "run_log.h"
 #include "scene_view.h"
 #include "spotlight_mask.h"
@@ -47,17 +48,6 @@ static const struct renderer_color ghost_copy_lavender = { 16.0f / 31.0f, 16.0f 
 
 static renderer_texture iris_texture;
 static int largest_logged_mask_rect_count;
-
-static struct renderer_rect whole_texture_area(void)
-{
-    struct renderer_rect area;
-
-    area.x = 0.0f;
-    area.y = 0.0f;
-    area.width = 1.0f;
-    area.height = 1.0f;
-    return area;
-}
 
 static struct renderer_rect whole_screen_area(void)
 {
@@ -554,7 +544,7 @@ static void draw_card(const char *texture_name)
     area.y = (RENDERER_HEIGHT - SCENE_VIEW_CARD_HEIGHT) / 2.0f;
     area.width = SCENE_VIEW_CARD_WIDTH;
     area.height = SCENE_VIEW_CARD_HEIGHT;
-    draw_texture_or_placeholder(texture_name, area, whole_texture_area());
+    draw_texture_or_placeholder(texture_name, area, renderer_whole_texture());
 }
 
 static float world_x_to_screen(const struct screen_view *view, float x)
@@ -672,7 +662,7 @@ static void draw_iris(const struct scene_effects *effects, const struct screen_v
     circle.width = radius * 2.0f;
     circle.height = radius * 2.0f;
     if (iris_texture != RENDERER_NO_TEXTURE) {
-        renderer_draw_sprite(iris_texture, circle, whole_texture_area(), edge);
+        renderer_draw_sprite(iris_texture, circle, renderer_whole_texture(), edge);
     }
     renderer_draw_filled_rects(rects, spotlight_mask_rects_around_area(circle, rects), cover);
 }
@@ -746,7 +736,7 @@ static void draw_overlays(const struct scene_stage *stage, const struct screen_v
         }
         width = overlay->width * overlay->size_fraction;
         height = overlay->height * overlay->size_fraction;
-        draw_texture_or_placeholder(overlay->texture_name, world_area_to_screen(view, overlay->shake_x + overlay->x + (overlay->width - width) / 2.0f, overlay->shake_y + overlay->y + (overlay->height - height) / 2.0f, width, height), whole_texture_area());
+        draw_texture_or_placeholder(overlay->texture_name, world_area_to_screen(view, overlay->shake_x + overlay->x + (overlay->width - width) / 2.0f, overlay->shake_y + overlay->y + (overlay->height - height) / 2.0f, width, height), renderer_whole_texture());
     }
 }
 
@@ -774,7 +764,7 @@ static void draw_text_line(const struct scene_text_line *line)
     area.height = (float)texture->height;
     tint = white;
     tint.alpha = line->alpha;
-    renderer_draw_sprite(texture->texture, area, whole_texture_area(), tint);
+    renderer_draw_sprite(texture->texture, area, renderer_whole_texture(), tint);
 }
 
 static void draw_text_lines(const struct scene_stage *stage)

@@ -9,7 +9,6 @@
 #include "script_flags.h"
 
 #define FILE_NAME_MAX 512
-#define TEXT_BYTES_MAX (1024 * 1024)
 
 static struct script_route_pad route_pad;
 static struct script_input route_input;

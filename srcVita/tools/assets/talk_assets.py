@@ -27,7 +27,6 @@ COLOR_BLACK = 0
 COLOR_OF_TAG = {"c1": 1, "c2": 2}
 COLOR_SYSTEM_GREEN = 3
 COLOR_SHIFT = 14
-IGNORED_VERBS = ("s0", "mes_se_play", "mesflash", "mesquake")
 NEW_PAGE_CODE = 0x02
 FACE_CODE = 0x08
 POSE_CODE = 0x19

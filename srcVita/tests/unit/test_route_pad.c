@@ -27,12 +27,6 @@ static struct script_route route;
 static const struct script_outputs no_outputs;
 static unsigned char scene[SCRIPT_FILE_HEADER_SIZE + 16];
 
-static void put_u16(unsigned char *at, unsigned int value)
-{
-    at[0] = (unsigned char)(value & 0xffu);
-    at[1] = (unsigned char)(value >> 8);
-}
-
 static void place_core(int index, const char *name, int x)
 {
     machine.objects[index].name = name;

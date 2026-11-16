@@ -1,4 +1,5 @@
 #include "packed_file.h"
+#include "little_endian.h"
 
 #include <string.h>
 
@@ -20,7 +21,6 @@
 #define DYNAMIC_BLOCK 2
 #define REPEAT_PREVIOUS_LENGTH 16
 #define REPEAT_ZERO_SHORT 17
-#define REPEAT_ZERO_LONG 18
 #define MOST_LITERAL_LENGTH_CODES_SENT 286
 #define FIXED_DISTANCE_CODE_BITS 5
 
@@ -51,11 +51,6 @@ static const unsigned char length_extra_bits[LENGTH_SYMBOLS] = { 0, 0, 0, 0, 0, 
 static const unsigned short distance_bases[DISTANCE_CODES] = { 1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577 };
 static const unsigned char distance_extra_bits[DISTANCE_CODES] = { 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13 };
 static const unsigned char code_length_order[CODE_LENGTH_CODES] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
-
-static unsigned int read_u32_little_endian(const unsigned char *bytes)
-{
-    return (unsigned int)bytes[0] | ((unsigned int)bytes[1] << 8) | ((unsigned int)bytes[2] << 16) | ((unsigned int)bytes[3] << 24);
-}
 
 int packed_file_is_packed(const unsigned char *bytes, unsigned int size)
 {
