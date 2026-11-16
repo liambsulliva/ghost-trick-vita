@@ -468,9 +468,9 @@
       "skip_places": [5, 6, 7, 8, 9, 10, 17, 19, 23],
       "first_people": [3, 1, 8, 10],
       "first_places": [1],
-      "unknown_portraits": ["crew"],
+      "unknown_portraits": [],
       "shared_portraits": [["cicel", "cicel_evil"]],
-      "portraits": {"cicel": 0, "linne": 1, "ribbon": 2, "cubanelle": 3, "jawed": 4, "kuneri": 6, "sith": 8, "sanbou": 9, "killer_jo": 7, "missile": 12, "enma": 13, "eimin": 14, "daijin": 15, "barten": 16, "kalon": 20, "doctor": 18, "erai": 28, "shujin_B": 26, "keiji_B": 21, "keiji_G": 22, "keikan_A": 23, "keibi_A": 24, "killer_po": 11, "kanri": 19, "yukai_M": 32, "cock": 29, "yukai_W": 33, "Rock": 25, "leaflet": 17, "mother": 27, "waitress": 30, "cicel_evil": 0},
+      "portraits": {"cicel": 0, "linne": 1, "ribbon": 2, "cubanelle": 3, "jawed": 4, "kuneri": 6, "sith": 8, "sanbou": 9, "killer_jo": 7, "missile": 12, "enma": 13, "eimin": 14, "daijin": 15, "barten": 31, "kalon": 20, "doctor": 18, "erai": 28, "shujin_B": 26, "keiji_B": 21, "keiji_G": 22, "keikan_A": 23, "keibi_A": 24, "killer_po": 11, "kanri": 19, "yukai_M": 32, "cock": 29, "yukai_W": 33, "Rock": 25, "leaflet": 17, "mother": 27, "waitress": 30, "cicel_evil": 0, "crew": 10},
       "place_pictures": {"stage01_00": 0, "stage02_00": 1, "stage02_01": 2, "stage03_00": 3, "stage03_07": 4, "stage04_00": 5, "stage04_01": 6, "stage05_00": 7, "stage06_00": 8, "stage07_00": 9, "stage09_00": 10, "stage11_00": 11, "stage13_00": 12, "stage14_00": 13}
     },
     "spotlight_source": "natives/android/charfiles/3d/06_id/02_database/cmn_dbi_01_01_iml4.tex.691230823"
