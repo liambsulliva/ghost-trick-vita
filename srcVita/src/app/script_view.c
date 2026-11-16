@@ -56,22 +56,6 @@
 #define SOUL_BLOB_DISC_FRACTION 0.59f
 #define SOUL_ORB_SIZE 56.0f
 #define SOUL_TWO_PI 6.2831853f
-#define SOUL_BASE_RISE 4.0f
-#define SOUL_BASE_RADIUS 28.0f
-#define SOUL_BASE_LUMP_COUNT 7
-#define SOUL_BASE_LUMP_REACH 13.0f
-#define SOUL_BASE_LUMP_JITTER 3.0f
-#define SOUL_BASE_LUMP_RADIUS 19.0f
-#define SOUL_WISP_COUNT 10u
-#define SOUL_WISP_LIFE_STEPS 15u
-#define SOUL_WISP_START_RISE 22.0f
-#define SOUL_WISP_RISE 70.0f
-#define SOUL_WISP_SWAY_TURNS 5.0f
-#define SOUL_WISP_SWAY_NEAR 1.5f
-#define SOUL_WISP_SWAY_FAR 13.0f
-#define SOUL_WISP_RADIUS_LEAST 13.0f
-#define SOUL_WISP_RADIUS_SPREAD 10.0f
-#define SOUL_WISP_RADIUS_SMALLEST 1.0f
 #define CORE_GLOW_SIZE 84.0f
 #define CORE_ORB_SIZE 40.0f
 #define MARK_ART_TEXTURE "ui_mark"
@@ -1039,54 +1023,16 @@ static float seeded_fraction(unsigned int seed, unsigned int salt)
     return (float)((value >> 8) & 1023u) / 1023.0f;
 }
 
-static void draw_soul_base(float x, float y, unsigned int step)
-{
-    int index;
-
-    draw_blob(x, y - SOUL_BASE_RISE, SOUL_BASE_RADIUS);
-    for (index = 0; index < SOUL_BASE_LUMP_COUNT; index++) {
-        float angle;
-        float reach;
-
-        angle = (float)index * SOUL_TWO_PI / (float)SOUL_BASE_LUMP_COUNT + seeded_fraction(step, (unsigned int)index) * 0.5f;
-        reach = SOUL_BASE_LUMP_REACH + seeded_fraction(step, (unsigned int)index + 16u) * SOUL_BASE_LUMP_JITTER;
-        draw_blob(x + cosf(angle) * reach, y - SOUL_BASE_RISE + sinf(angle) * reach, SOUL_BASE_LUMP_RADIUS);
-    }
-}
-
-static void draw_soul_wisp(float x, float y, unsigned int step)
-{
-    unsigned int index;
-
-    for (index = 0; index < SOUL_WISP_COUNT; index++) {
-        unsigned int age;
-        unsigned int cycle;
-        unsigned int seed;
-        float along;
-        float rise;
-        float sway;
-        float radius;
-
-        age = step + index * SOUL_WISP_LIFE_STEPS / SOUL_WISP_COUNT;
-        cycle = age / SOUL_WISP_LIFE_STEPS;
-        seed = index * 97u + cycle * 13u;
-        along = (float)(age % SOUL_WISP_LIFE_STEPS) / (float)SOUL_WISP_LIFE_STEPS;
-        rise = SOUL_WISP_START_RISE + SOUL_WISP_RISE * along * (0.75f + 0.5f * seeded_fraction(seed, 2u));
-        sway = sinf(seeded_fraction(seed, 3u) * SOUL_TWO_PI + along * SOUL_WISP_SWAY_TURNS) * (SOUL_WISP_SWAY_NEAR + SOUL_WISP_SWAY_FAR * along);
-        radius = (SOUL_WISP_RADIUS_LEAST + seeded_fraction(seed, 1u) * SOUL_WISP_RADIUS_SPREAD) * (1.0f - along);
-        if (radius >= SOUL_WISP_RADIUS_SMALLEST) {
-            draw_blob(x + sway, y - rise, radius);
-        }
-    }
-}
-
 static void draw_soul_body(float x, float y)
 {
-    unsigned int step;
+    struct soul_chain_blob blobs[SOUL_BODY_BLOBS];
+    int blob_count;
+    int index;
 
-    step = soul_animation_step(age_ticks);
-    draw_soul_wisp(x, y, step);
-    draw_soul_base(x, y, step);
+    blob_count = soul_body_blobs(x, y, 1.0f, soul_animation_step(age_ticks), blobs);
+    for (index = 0; index < blob_count; index++) {
+        draw_blob(blobs[index].x, blobs[index].y, blobs[index].radius);
+    }
 }
 
 static void draw_lightning(float from_x, float from_y, float to_x, float to_y);

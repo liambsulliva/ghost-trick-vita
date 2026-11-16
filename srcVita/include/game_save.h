@@ -43,6 +43,7 @@ void game_save_apply_after_start(const struct game_save *save, struct script_mac
 const char *game_save_path(enum game_save_slot slot);
 int game_save_store(const struct game_save *save, enum game_save_slot slot);
 int game_save_store_as_newest(const struct game_save *save, enum game_save_slot slot);
+int game_save_is_writing(void);
 void game_save_wait(void);
 int game_save_load(struct game_save *save, enum game_save_slot slot);
 int game_save_load_newest(struct game_save *save);

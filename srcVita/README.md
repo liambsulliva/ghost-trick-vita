@@ -255,6 +255,15 @@ The app opens on the title screen (`src/app/title_menu.c`), as does the pause me
 
 The pause menu keeps settings in `ux0:data/ghosttrick/settings.txt`, the Manual Save and Autosave slots in `save_manual.txt` and `save_auto.txt`, each chapter's start in `chapter_NN.txt`, and how much of Sissel the Record reveals in `record_reveal.txt` (`src/app/record_reveal.c`; the triggers and faces are the `reveal` lines the converter writes into `pause/people.txt` from `game.json`'s `reveals`, and erasing the saves deletes it); the saves use `src/app/game_save.c`'s text format. A save holds the state at the start of the current script. Saves and settings are written by one thread that runs writes in order (`src/vita/work_queue.c`), and every load waits for it.
 
+### Save icon
+
+Every save `src/app/game_save.c` queues (the Autosave slot, the Manual slot and each chapter's start) shows a soul in the bottom-right corner (`src/app/save_icon.c`). Settings and Record writes do not. The DS code has no indicator to follow: its save write is `func_020090a4` (`src/base/pick_result_a4.c`), and no caller that draws while it runs has been found.
+
+- The flame is the control soul's, built by the same `soul_body_blobs` in `src/app/soul_chain.c`, at one third of its size and 24 px from the right and bottom edges.
+- It is redrawn 8 times a second on real time, with each disc nudged up to 0.6 px per drawing and a flat core in place of the glowing orb, so it reads as drawn by hand next to the control soul's smooth motion.
+- It fades in over 0.25 s, holds for 1.5 s or until the write thread is idle, whichever is longer, and fades out over 0.5 s. A save during that time restarts the hold.
+- It draws over the game, dialogue, the loading screen and the pause menu, and not on the title screen. There is no Options switch.
+
 The pause menu's Chapters grid fills the chapter being played in dark red, in a grey ring or, under the cursor, a red one, and opens with the cursor on it. Picking it asks "Start from the beginning?"; picking any other reached chapter asks to play that chapter from its start. From the title screen no chapter is being played, so none is marked.
 
 ## Debug controls

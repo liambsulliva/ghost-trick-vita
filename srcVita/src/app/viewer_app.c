@@ -27,6 +27,7 @@
 #include "scene_view.h"
 #include "script_player.h"
 #include "script_ui_view.h"
+#include "save_icon.h"
 #include "toast.h"
 #include "script_view.h"
 #include "sound_engine.h"
@@ -747,6 +748,7 @@ void viewer_app_update(const struct input_state *input, unsigned long long elaps
     if (input->pressed != 0) {
         run_log_write("input pressed buttons=0x%04x", input->pressed);
     }
+    save_icon_update(elapsed_us, game_save_is_writing());
     if (title_menu_is_open()) {
         title_menu_update(input, elapsed_us);
         take_title_request();
@@ -943,6 +945,7 @@ void viewer_app_draw(void)
     }
     if (!pause_menu_shows_game()) {
         pause_menu_draw();
+        save_icon_draw();
         draw_brightness();
         return;
     }
@@ -978,6 +981,7 @@ void viewer_app_draw(void)
         toast_draw();
     }
     pause_menu_draw();
+    save_icon_draw();
     draw_brightness();
 }
 

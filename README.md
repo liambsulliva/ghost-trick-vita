@@ -104,6 +104,7 @@ The port follows the DS game's own code wherever it can. The changes below are d
 - **Holding CIRCLE moves through dialogue.** While talk or narration shows, a held CIRCLE finishes each page and moves on as fast as the game allows. It never picks a choice.
 - **Timed system lines can be skipped.** Lines the original closes by itself after a short hold, such as "New info is added", also close on a CROSS press or a held CIRCLE, like any other dialogue.
 - **Save at any point.** The pause menu's Save keeps the game whenever the player has the controls, not only at the game's own checkpoints. Loading picks up again from the start of the scene it was saved in.
+- **A soul shows when the game saves.** A small soul flickers in the bottom-right corner each time a save is written. [The app's README](srcVita/README.md#save-icon) has the details.
 - **New Game and Options on the title screen.** The DS title offers Chapter Select, Continue, Language and erase, and a new game only when there is no save. The port also always offers New Game, which asks first over a save, and Options.
 - **The Record shows who Sissel really is.** Once the story reveals that Sissel is not the blond man in the red suit (that man is Yomiel), Sissel's Record entry shows the soul with sunglasses instead of the man's face. What the player has learned stays through every save, load and chapter, until the saves are erased from the title screen.
 - **A high-contrast mode.** An Options setting that makes cores easier to pick out in crowded rooms, for players with low vision.

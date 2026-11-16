@@ -214,6 +214,11 @@ static float cloud_fraction(unsigned int seed, unsigned int salt)
     return (float)((value >> 8) & 1023u) / 1023.0f;
 }
 
+float soul_seeded_fraction(unsigned int seed, unsigned int salt)
+{
+    return cloud_fraction(seed, salt);
+}
+
 unsigned int soul_animation_step(unsigned int age_ticks)
 {
     return age_ticks / SOUL_TICKS_PER_ANIMATION_STEP;
@@ -274,6 +279,69 @@ int soul_chain_cloud(const float *x, const float *y, float scale, unsigned int s
             next_at = next_at + CLOUD_SPACING * scale;
         }
         walked = walked + length;
+    }
+    return count;
+}
+
+#define SOUL_TWO_PI 6.2831853f
+#define SOUL_BASE_RISE 4.0f
+#define SOUL_BASE_RADIUS 28.0f
+#define SOUL_BASE_LUMP_COUNT 7u
+#define SOUL_BASE_LUMP_REACH 13.0f
+#define SOUL_BASE_LUMP_JITTER 3.0f
+#define SOUL_BASE_LUMP_RADIUS 19.0f
+#define SOUL_WISP_COUNT 10u
+#define SOUL_WISP_LIFE_STEPS 15u
+#define SOUL_WISP_START_RISE 22.0f
+#define SOUL_WISP_RISE 70.0f
+#define SOUL_WISP_SWAY_TURNS 5.0f
+#define SOUL_WISP_SWAY_NEAR 1.5f
+#define SOUL_WISP_SWAY_FAR 13.0f
+#define SOUL_WISP_RADIUS_LEAST 13.0f
+#define SOUL_WISP_RADIUS_SPREAD 10.0f
+#define SOUL_WISP_RADIUS_SMALLEST 1.0f
+
+int soul_body_blobs(float x, float y, float scale, unsigned int step, struct soul_chain_blob *blobs)
+{
+    unsigned int index;
+    int count;
+
+    count = 0;
+    for (index = 0; index < SOUL_WISP_COUNT; index++) {
+        unsigned int age;
+        unsigned int seed;
+        float along;
+        float rise;
+        float sway;
+        float radius;
+
+        age = step + index * SOUL_WISP_LIFE_STEPS / SOUL_WISP_COUNT;
+        seed = index * 97u + (age / SOUL_WISP_LIFE_STEPS) * 13u;
+        along = (float)(age % SOUL_WISP_LIFE_STEPS) / (float)SOUL_WISP_LIFE_STEPS;
+        rise = SOUL_WISP_START_RISE + SOUL_WISP_RISE * along * (0.75f + 0.5f * cloud_fraction(seed, 2u));
+        sway = sinf(cloud_fraction(seed, 3u) * SOUL_TWO_PI + along * SOUL_WISP_SWAY_TURNS) * (SOUL_WISP_SWAY_NEAR + SOUL_WISP_SWAY_FAR * along);
+        radius = (SOUL_WISP_RADIUS_LEAST + cloud_fraction(seed, 1u) * SOUL_WISP_RADIUS_SPREAD) * (1.0f - along);
+        if (radius >= SOUL_WISP_RADIUS_SMALLEST) {
+            blobs[count].x = x + sway * scale;
+            blobs[count].y = y - rise * scale;
+            blobs[count].radius = radius * scale;
+            count++;
+        }
+    }
+    blobs[count].x = x;
+    blobs[count].y = y - SOUL_BASE_RISE * scale;
+    blobs[count].radius = SOUL_BASE_RADIUS * scale;
+    count++;
+    for (index = 0; index < SOUL_BASE_LUMP_COUNT; index++) {
+        float angle;
+        float reach;
+
+        angle = (float)index * SOUL_TWO_PI / (float)SOUL_BASE_LUMP_COUNT + cloud_fraction(step, index) * 0.5f;
+        reach = SOUL_BASE_LUMP_REACH + cloud_fraction(step, index + 16u) * SOUL_BASE_LUMP_JITTER;
+        blobs[count].x = x + cosf(angle) * reach * scale;
+        blobs[count].y = y + (sinf(angle) * reach - SOUL_BASE_RISE) * scale;
+        blobs[count].radius = SOUL_BASE_LUMP_RADIUS * scale;
+        count++;
     }
     return count;
 }
