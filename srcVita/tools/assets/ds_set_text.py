@@ -607,10 +607,10 @@ def bake_text(set_description, scripts, rom_path, record, work_folder):
         textures = ds_textures.TexturePack(rom.read_file(ds_textures.PACK_PATH))
     faces = Faces(read_face_rows(arm9), read_head_textures(arm9))
     icons = ds_talk_icons.read_icon_art(textures, ds_talk_icons.read_icon_rows(arm9), ds_textures.LANGUAGE_NUMBERS.get(language, 1))
-    return bake_from_messages(record, font, palette, read_window_rows(arm9), book, scripts, system_lines, system_messages, faces, textures, icons)
+    return bake_from_messages(record, font, palette, read_window_rows(arm9), book, scripts, system_lines, system_messages, faces, textures, icons, set_description.get("talk", {}).get("ds_box_corner", 0))
 
 
-def bake_from_messages(record, font, palette, windows, book, scripts, system_lines=None, system_messages=None, faces=None, textures=None, icons=None):
+def bake_from_messages(record, font, palette, windows, book, scripts, system_lines=None, system_messages=None, faces=None, textures=None, icons=None, corner=0):
     faces = faces or Faces()
     baker = Baker(record, font, palette, windows)
     narration_labels, talk_labels = labels_of_scripts(scripts)
@@ -633,7 +633,7 @@ def bake_from_messages(record, font, palette, windows, book, scripts, system_lin
     talk_files = {}
     if message_rows:
         glyph_rows = bake_talk_atlas(baker, glyphs)
-        all_rows, _ = talk_assets.even_left_margins(["font " + talk_assets.FONT_TEXTURE] + glyph_rows + message_rows, list(system_lines or {}))
+        all_rows, _ = talk_assets.even_left_margins(["font " + talk_assets.FONT_TEXTURE] + glyph_rows + message_rows, list(system_lines or {}), corner)
         talk_files[talk_assets.TALK_FILE] = ("\n".join(all_rows) + "\n").encode("ascii")
     if missing:
         print("ds text labels with no DS message: %d (%s)" % (len(set(missing)), ", ".join(sorted(set(missing))[:12])))

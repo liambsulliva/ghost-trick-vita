@@ -11,6 +11,7 @@
 #include "pause_save.h"
 #include "script_machine.h"
 #include "renderer.h"
+#include "run_log.h"
 #include "test_support.h"
 #include "texture_cache.h"
 
@@ -500,8 +501,39 @@ static void test_the_menu_stays_shut_without_its_art(void)
     CHECK(!pause_menu_is_open());
 }
 
+static int spotlight_lines;
+
+static void note_spotlight_line(const char *line)
+{
+    if (strstr(line, "pause_spotlight") != NULL) {
+        spotlight_lines = spotlight_lines + 1;
+    }
+}
+
+static int the_menu_asks_for_the_spotlight(int sharp_art)
+{
+    start_with_art();
+    texture_cache_use_sharp_art(sharp_art);
+    spotlight_lines = 0;
+    run_log_watch(note_spotlight_line);
+    fake_files_reset();
+    open_until_shown();
+    pause_menu_draw();
+    run_log_watch(NULL);
+    texture_cache_use_sharp_art(0);
+
+    return spotlight_lines > 0;
+}
+
+static void test_the_ds_pause_menu_never_asks_for_the_remastered_spotlight(void)
+{
+    CHECK_INT(the_menu_asks_for_the_spotlight(0), 1);
+    CHECK_INT(the_menu_asks_for_the_spotlight(1), 0);
+}
+
 int main(void)
 {
+    test_the_ds_pause_menu_never_asks_for_the_remastered_spotlight();
     test_select_opens_straight_onto_the_record_and_circle_returns_to_the_game();
     test_a_held_direction_repeats_after_a_pause_but_only_from_a_fresh_press();
     test_a_direction_held_into_the_menu_never_repeats();

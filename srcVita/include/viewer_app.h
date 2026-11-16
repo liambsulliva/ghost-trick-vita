@@ -17,7 +17,7 @@ int viewer_app_play_scene(const char *name);
 int viewer_app_play_script(const char *name);
 int viewer_app_has_assets(void);
 
-int viewer_app_wants_relaunch(void);
-void viewer_app_keep_settings_for_relaunch(void);
+int viewer_app_wants_other_set(void);
+void viewer_app_keep_settings_for_switch(void);
 
 #endif

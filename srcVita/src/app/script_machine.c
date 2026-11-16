@@ -1032,17 +1032,6 @@ static void report_staff_roll(struct script_machine *machine)
     }
 }
 
-static void set_credits(struct script_machine *machine, int is_on)
-{
-    if (machine->credits_are_on == is_on) {
-        return;
-    }
-    machine->credits_are_on = is_on;
-    if (machine->outputs->credits_changed != NULL) {
-        machine->outputs->credits_changed(is_on);
-    }
-}
-
 static void start_staff_roll(struct script_machine *machine, int page)
 {
     char text[32];
@@ -1052,7 +1041,6 @@ static void start_staff_roll(struct script_machine *machine, int page)
     }
     machine->mode_byte = SCRIPT_MODE_STAFF_ROLL;
     script_staff_roll_start(&machine->staff_roll, page);
-    set_credits(machine, 1);
     snprintf(text, sizeof(text), "%d screens=%d", page, machine->staff_roll.screen_count);
     mark_staff_roll(machine, "staff_roll_started", text);
     report_staff_roll(machine);
@@ -1799,9 +1787,6 @@ static void load_pending_script(struct script_machine *machine)
     if (source == NULL) {
         machine->is_finished = 1;
         machine->title_is_wanted = strcmp(name, SCRIPT_TITLE_SCENE) == 0 || strcmp(name, SCRIPT_GAME_TITLE_SCENE) == 0;
-        if (machine->title_is_wanted) {
-            set_credits(machine, 0);
-        }
         if (machine->outputs->marked != NULL) {
             machine->outputs->marked("script_change_past_baked_files", name);
         }

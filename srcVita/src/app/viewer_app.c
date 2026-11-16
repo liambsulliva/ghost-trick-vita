@@ -1052,12 +1052,12 @@ int viewer_app_has_assets(void)
     return manifest != NULL;
 }
 
-int viewer_app_wants_relaunch(void)
+int viewer_app_wants_other_set(void)
 {
     return title_menu_is_open() && asset_sets_switch_is_due();
 }
 
-void viewer_app_keep_settings_for_relaunch(void)
+void viewer_app_keep_settings_for_switch(void)
 {
     game_settings_save(GAME_SETTINGS_PATH);
     work_queue_wait();

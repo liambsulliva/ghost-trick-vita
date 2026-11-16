@@ -429,7 +429,7 @@ static int art_is_settled(void)
     int page;
 
     settled = texture_is_settled(BACKDROP_NAME);
-    settled = texture_is_settled(SPOTLIGHT_NAME) && settled;
+    settled = (texture_cache_sharp_art_is_on() || texture_is_settled(SPOTLIGHT_NAME)) && settled;
     settled = texture_is_settled(LABEL_SHEET_NAME) && settled;
     settled = texture_is_settled(PAUSE_WIDGET_SHEET) && settled;
     settled = texture_is_settled(PAUSE_GLYPH_SHEET) && settled;
@@ -446,7 +446,9 @@ static void keep_art(void)
     int page;
 
     texture_cache_keep_or_start_reading_ahead(BACKDROP_NAME);
-    texture_cache_keep_or_start_reading_ahead(SPOTLIGHT_NAME);
+    if (!texture_cache_sharp_art_is_on()) {
+        texture_cache_keep_or_start_reading_ahead(SPOTLIGHT_NAME);
+    }
     texture_cache_keep_or_start_reading_ahead(LABEL_SHEET_NAME);
     texture_cache_keep_or_start_reading_ahead(PAUSE_WIDGET_SHEET);
     texture_cache_keep_or_start_reading_ahead(PAUSE_GLYPH_SHEET);
@@ -1086,7 +1088,7 @@ static void draw_menu(void)
     if (camera_x != 0.0f) {
         draw_across_screen(BACKDROP_NAME, side_x);
     }
-    spotlight = texture_cache_use_or_start_loading(SPOTLIGHT_NAME);
+    spotlight = texture_cache_sharp_art_is_on() ? NULL : texture_cache_use_or_start_loading(SPOTLIGHT_NAME);
     if (spotlight != NULL) {
         draw_part(spotlight, CENTRE_X - (float)(spotlight->width / 2u) - camera_x, SPOTLIGHT_CENTRE_Y - (float)(spotlight->height / 2u), 0.0f, 0.0f, (float)spotlight->width, (float)spotlight->height, 1.0f);
     }

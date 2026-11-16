@@ -278,7 +278,7 @@ def bake(pause, art, pack, rom_path, language, record, work_folder, animation_te
     def build_widgets():
         cells, refused = widget_cells(font, pack, language, work_folder, widgets, art)
         sheet, lines = pause_art.pack_widget_cells(cells)
-        return sheet, lines, refused
+        return sheet, lines + pause_art.preview_lines(widgets, "ds_plate"), refused
 
     def build_labels():
         sheet, lines = label_sheet(font, work_folder, pause["labels"])

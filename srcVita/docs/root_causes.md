@@ -2220,6 +2220,78 @@ The class: a merge that changes what the app logs, loads or asks, without a smok
 
 Guard: both log kinds are listed as `ok`. The resident list asks for `hud_pills` in place of `hud_button_art` while the DS art runs, the start pill, which has no DS art, does not ask for it, and the DS title leaves the notebook out, as it drew nothing there already. The gap list moved from `test_ds_texture_slots.py` into `game.json` (`ds_absent_textures`, a reason for each name, `*` for a prefix). The converter writes it into the DS set as `absent_textures.txt`, and the texture cache logs a declared name as `texture absent`, a known kind, so any other miss still fails. The flow answers Yes before each relaunch. `tests/unit/test_script_ui_view.c` and `tests/unit/test_title_menu.c` check the DS set never asks for the remastered pill art, `tests/unit/test_texture_cache.c` checks a declared name logs as absent and any other as missing, and `make smoke` on both sets runs before each device run.
 
+### 290. DS choice panels were black until marked
+
+Reported by the user on the Vita after root cause 287: the DS dialogue choices showed orange only on the marked panel, while the title's buttons are orange at rest and gain a red ring when selected. The plain choice cell was still cut from cartridge texture 88, a black box with a red rim. The DS title bakes its buttons from cartridge textures 192 (resting, orange with a light bevel) and 193 (selected, the same with a red ring), set in `game.json` under `pause.ds_art.title_buttons`. The panels are the port's own layout, so no native function places them.
+
+The class: one kind of button drawn from different cartridge art in different menus.
+
+Guard: the plain DS choice cell is baked from texture 192 (ink box 14, 8, 228 by 32), the marked one from 193 as before. `tests/tools/test_ds_button_and_box_art.py` checks the DS choice cells use exactly the title's resting and selected textures.
+
+### 291. Talk text sat close to the left edge of the rounder DS box
+
+Reported by the user on the Vita: wrapped talk lines came close to the box edges, and the DS box, with rounder corners than the remastered one, squeezed its text against the left side. `even_left_margins` in `talk_assets.py` (both sets pass through it) set each box's left margin to the median top and bottom gap of its full pages, measured from the box's straight edge. The DS box art (cartridge texture 23) rounds 7 DS pixels in from its corner, about 20 Vita pixels at the box's scale, and the remastered art about 10, so the DS text began 10 pixels from the box edge, inside the curve. The boxes are the port's layout, so no native function places them.
+
+The class: a margin measured from a box's straight edge, ignoring how far its art rounds in.
+
+Guard: `even_left_margins` adds the box art's corner rounding to the left margin, from `talk.box_corner` (10) and `talk.ds_box_corner` (20) in `game.json`. `tests/tools/test_talk_margins.py` checks the corner moves the text by exactly that much, `tests/tools/test_ds_button_and_box_art.py` measures the rounding of both DS talk boxes from the cartridge art and checks it equals `ds_box_corner`, and the smoke flow `talk_boxes` captures a bottom and a top box in both sets.
+
+### 292. Dead-talk corpses after Chapter 1 showed normal cores
+
+Reported by the user on the Vita: corpses after Chapter 1 showed blue cores with no squiggly outline. Native colours a core warm in two cases (`func_0205d0d4`): the object is a `uGmkDeadTalk` (`func_02058b4c`, type 0x020cf27c, glow 0x19f), or op 0xe1 set bit 2 of its byte 0xde (`func_02058b64`, `func_020267f4`, glow 0x17bf). The port's core marks and object styles (`report_soul_view` in `script_soul.c`) passed only the op 0xe1 flag, though the soul's own rules (`core_is_for_the_dead`) already counted the dead-talk class. Chapter 1's corpse is marked by op 0xe1; later dead-talk corpses are not.
+
+The class: two answers to "is this a corpse" in one module.
+
+Guard: the core marks and object styles ask `core_is_for_the_dead`, as the soul does. `tests/unit/test_dead_talk_core_looks_dead.c` checks a dead-talk body and an op 0xe1 body both mark and style as dead while a lamp does not. Not ported: the two native warm colours differ (orange for dead talk, yellow for op 0xe1); the port draws one.
+
+### 293. Every language but English was greyed in the language list
+
+Reported by the user on the Vita: the language list drew every language but the first at the greyed alpha, though all nine work (root cause 230). `draw_dropdown` in `pause_options.c` still dimmed every row after the first, a leftover from when English was the only language the set carried. The list is the port's own menu, so no native function draws it.
+
+The class: a placeholder state left in a list after the feature behind it landed.
+
+Guard: every row of the list draws at full white, and the language list already shows only the languages the set carries (`asset_language_carried_count`). `tests/unit/test_pause_options.c` opens the list and checks every language row draws at full alpha.
+
+### 294. The DS menu cat looked blurry on the backdrop's grid
+
+Reported by the user on the Vita after root cause 284: the pause and loading cat still did not match the backdrop's pixels and looked softly rasterized. `on_backdrop_grid` in `pause_art.py` averaged each 3.75-pixel block of the cat, which the bake had scaled to 5.625 screen pixels per cartridge pixel. A block covers 1.5 cartridge pixels, so most blocks mixed two colours into a shade the cartridge art does not have, and outlines and the scarf showed stepped gradients. The menu is the port's own, so no native function draws it.
+
+The class: resampling pixel art onto a grid by averaging, which invents colours wherever the grids do not line up.
+
+Guard: each block takes the one cartridge colour under its centre from the point-scaled art, with alpha fully on or off, so the cat keeps its size and the backdrop's 3.75-pixel grid and shows only its own colours. `tests/tools/test_ds_pause.py` checks a striped picture whose stripes do not fit the grid comes out in its own colours only.
+
+### 295. Switching the Visual Filter froze the Vita on a black screen
+
+Reported by the user on the Vita: picking Remastered under Visual Filter froze the console on a black screen until a hard reboot, and the other way froze it until HOME closed the app. The log shows both switches reach `exit clean relaunch=1`, then the new process logs its first lines and stops inside `renderer_init` (`vglInitExtended`). The app handed itself to `sceAppMgrLoadExec` with vitaGL still running and every worker thread alive. This SDK's vitaGL has no `vglEnd`, so the GPU cannot be ended first, and the next process's GPU start races the old one's teardown. The relaunch is the port's own, so no native function is involved.
+
+The class: handing the process to the system while it still holds the GPU.
+
+Guard: the app no longer relaunches. When the filter changes on the title, `main` saves the settings, stops the viewer and starts it again on the other set's folder in the same process (`switch_to_the_other_set`), with `asset_sets_choose` and the memory budget run again; `sceAppMgrLoadExec` is gone. `tests/integration/test_asset_sets.c` starts the remastered set, switches in place and checks the DS set runs with sharp art and reads nothing from the remastered folder, and the smoke flow `visual_filter_switch` switches to DS and back in one run on both sets.
+
+### 296. The DS pause menu asked for the remastered spotlight
+
+Found by the smoke test once `pause_and_resume` ran on the DS set (root cause 294): `pause_menu.c` asked for `pause_spotlight` every frame, which only the remastered set bakes (from the APK), so the DS log filled with `texture missing`. The pause menu is the port's own, so no native function draws it.
+
+The class: menu art from one set asked for by the other, as in root cause 289.
+
+Guard: with sharp art on, the menu neither waits for, keeps nor draws the spotlight. `tests/unit/test_pause_menu.c` checks the remastered menu asks for it and the DS menu never does, and `pause_and_resume` runs on both sets.
+
+### 297. The ending credits drew black bars over the wide screen
+
+Reported by the user on the Vita: the ending's credit scenes showed black bars at both sides. Root cause 213 drew them from the first staff page to the title so the scenes kept the 4:3 frame of the pages. The user wants the ending to fill the screen; only the credits under Options keep their own frame. Native is 4:3 throughout, so this is the port's choice.
+
+The class: a frame choice for one credits screen applied to the other.
+
+Guard: the machine no longer tracks the credits for the view, and `script_view.c` draws no side bars; the staff pages still draw at the DS frame's size in the middle. `tests/unit/test_ending_credits_have_no_side_bars.c` plays a page, a scene after it and `GOTO TITLE` and checks no full-height black bar is drawn on any tick.
+
+### 298. The DS High Contrast preview was an empty black panel
+
+Reported by the user on the Vita: the preview under High Contrast showed only its black box in the DS set. The remastered widget table ends with a `preview` line naming the plate to show; the DS widget bake (`ds_pause.py`) never wrote one, so `pause_draw_preview` had no plate. The menu is the port's own, so no native function draws it.
+
+The class: a widget table line one set's bake writes and the other's leaves out.
+
+Guard: `game.json` names the DS plate for the same room (`ds_plate`, the cartridge's plate for room `st01-00-02`, the same 8:3 framing), and the DS bake appends `pause_art.preview_lines(widgets, "ds_plate")`. `tests/tools/test_pause_art.py` checks both lines share the part, the DS bake writes the line, and both plates sit on the same room row in the baked `rooms.txt`.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

@@ -234,19 +234,13 @@ def on_backdrop_grid(image, cell=DS_BACKDROP_SCREEN_PIXELS_PER_PIXEL):
     height, width = image.shape[:2]
     rows = np.minimum((np.arange(height) / cell).astype(int), int((height - 1) / cell))
     columns = np.minimum((np.arange(width) / cell).astype(int), int((width - 1) / cell))
-    blocks = (rows.max() + 1, columns.max() + 1)
-    alpha = image[:, :, 3].astype(float) / 255.0
-    sums = np.zeros(blocks + (4,))
-    counts = np.zeros(blocks)
-    index = (rows[:, None].repeat(width, axis=1), columns[None, :].repeat(height, axis=0))
-    np.add.at(sums, index, np.concatenate([image[:, :, :3].astype(float) * alpha[:, :, None], alpha[:, :, None]], axis=2))
-    np.add.at(counts, index, 1.0)
-    cover = sums[:, :, 3] / counts
-    colour = np.where(sums[:, :, 3:4] > 0, sums[:, :, :3] / np.maximum(sums[:, :, 3:4], 1e-6), 0.0)
-    solid = cover >= 0.5
-    block_pixels = np.concatenate([np.clip(np.rint(colour), 0, 255), np.where(solid, 255, 0)[:, :, None]], axis=2).astype(np.uint8)
+    centre_rows = np.minimum(((np.arange(rows.max() + 1) + 0.5) * cell).astype(int), height - 1)
+    centre_columns = np.minimum(((np.arange(columns.max() + 1) + 0.5) * cell).astype(int), width - 1)
+    block_pixels = image[centre_rows][:, centre_columns].copy()
+    solid = block_pixels[:, :, 3] >= 128
+    block_pixels[:, :, 3] = np.where(solid, 255, 0)
     block_pixels[~solid] = 0
-    return block_pixels[index]
+    return block_pixels[rows[:, None], columns[None, :]]
 
 
 def softened(image):
@@ -670,14 +664,14 @@ def glyph_lines():
     return ["glyph %s %d %d %d %d" % (kind, x, y, width, hud_art.GLYPH_CELL) for kind, x, y, width in hud_art.glyph_cells()]
 
 
-def preview_lines(widgets):
+def preview_lines(widgets, plate_key="plate"):
     preview = widgets.get("preview")
     if preview is None:
         return []
     left, top, width, height = preview["part"]
     if left < 0 or top < 0 or width <= 0 or height <= 0 or left + width > 1 or top + height > 1:
         raise ValueError("the preview's part must be fractions of its plate, inside it: %r" % (preview["part"],))
-    return ["preview %s %.6f %.6f %.6f %.6f" % (preview["plate"], left, top, width, height)]
+    return ["preview %s %.6f %.6f %.6f %.6f" % (preview[plate_key], left, top, width, height)]
 
 
 def bake_widgets(packs, tool_path, work_folder, record, code, widgets):

@@ -1024,7 +1024,6 @@ static const struct script_outputs bridge_outputs = {
     .effect_spawned = timed_effect_spawned,
     .effect_deleted = on_effect_deleted,
     .staff_roll_changed = script_view_staff_roll_changed,
-    .credits_changed = script_view_credits_changed,
     .effect_status_set = script_view_effect_status_set,
     .effect_fade_out_started = script_view_effect_fade_out_started,
     .effect_stepping_changed = script_view_effect_stepping_changed,

@@ -1,7 +1,6 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
-#include <psp2/appmgr.h>
 #include <psp2/kernel/processmgr.h>
 #include "asset_sets.h"
 #include "clock.h"
@@ -46,7 +45,6 @@
 #define KEEP_AWAKE_FRAMES 30
 #define FIRST_TIMED_FRAME 2
 #define LOG_PATH FILE_DATA_FOLDER "/run.log"
-#define RELAUNCH_PATH "app0:eboot.bin"
 
 static const struct renderer_color clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
@@ -56,6 +54,19 @@ static void use_the_memory_this_device_has(void)
 
     device_stats_read(&stats);
     texture_cache_set_budget(texture_cache_budget_for_free_memory(stats.video_memory_free + stats.main_memory_free));
+}
+
+static void log_memory_and_textures(void);
+
+static void switch_to_the_other_set(void)
+{
+    run_log_write("art set switch starts");
+    viewer_app_keep_settings_for_switch();
+    viewer_app_stop();
+    viewer_app_start(asset_sets_choose(ASSET_SETS_REMASTERED_FOLDER, ASSET_SETS_DS_FOLDER));
+    use_the_memory_this_device_has();
+    log_memory_and_textures();
+    run_log_write("art set switch done has_assets=%d", viewer_app_has_assets());
 }
 
 static void log_memory_and_textures(void)
@@ -393,10 +404,8 @@ static void run_main_loop(void)
 #endif
 
     while (!quit_requested) {
-        if (viewer_app_wants_relaunch()) {
-            run_log_write("relaunch for the other art set");
-            viewer_app_keep_settings_for_relaunch();
-            break;
+        if (viewer_app_wants_other_set()) {
+            switch_to_the_other_set();
         }
         if (frame_number % KEEP_AWAKE_FRAMES == 0) {
             keep_awake_tick();
@@ -495,7 +504,6 @@ static void run_main_loop(void)
 int main(void)
 {
     int full_resolution;
-    int relaunch_is_wanted;
 
     keep_awake_tick();
     file_make_folder(FILE_DATA_FOLDER);
@@ -519,14 +527,10 @@ int main(void)
 
     run_main_loop();
 
-    relaunch_is_wanted = viewer_app_wants_relaunch();
     viewer_app_stop();
     renderer_shutdown();
-    run_log_write("exit clean relaunch=%d", relaunch_is_wanted);
+    run_log_write("exit clean");
     run_log_flush();
-    if (relaunch_is_wanted) {
-        sceAppMgrLoadExec(RELAUNCH_PATH, NULL, NULL);
-    }
     sceKernelExitProcess(0);
     return 0;
 }

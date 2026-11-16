@@ -28,6 +28,8 @@
   "languages": "languages.json",
   "narration_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
   "talk": {
+    "box_corner": 10,
+    "ds_box_corner": 20,
     "pages_left_out": ["st01_0000_m01_0460_05", "st01_0000_m01_0460_06", "st01_0000_m01_0460_07"],
     "system_lines": {
       "sys_add_data": {
@@ -353,6 +355,7 @@
       "bar_points": 26,
       "preview": {
         "plate": "st01-00-02",
+        "ds_plate": "ds_plate_8",
         "part": [
           0.041667,
           0.12963,
@@ -2550,14 +2553,14 @@
       "height": 236,
       "parts": [
         {
-          "texture": 88,
+          "texture": 192,
           "crop": [
-            19,
-            3,
-            130,
-            34
+            14,
+            8,
+            228,
+            32
           ],
-          "corner": 9,
+          "corner": 10,
           "x": 125,
           "y": 125,
           "width": 100,

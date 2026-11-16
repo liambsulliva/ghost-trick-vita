@@ -145,7 +145,8 @@ until 2500000 log save game_cleared
 
 flow pause_and_resume
 about START opens the pause menu in free play, CROSS on Resume closes it, and the game carries on.
-sets remastered
+guards 284 294
+sets remastered ds
 start {ghost_on_scene}
 shows pause_menu
 launch
@@ -489,12 +490,13 @@ until 600 log credits end
 wait 30
 expect title_submenu
 
-flow visual_filter_relaunch
-about With both sets installed, Visual Filter on the title asks, saves the choice on Yes and relaunches into the DS set, and from there back into the remastered one.
-guards 217 231
+flow visual_filter_switch
+about With both sets installed, Visual Filter on the title asks, saves the choice on Yes and switches to the DS set in the same run, and from there back to the remastered one, without restarting the app.
+guards 217 231 295
 sets both
 log_has settings saved=1
-launch relaunches
+log_has art set switch done has_assets=1
+launch
 use open_title_options
 press down
 press down
@@ -505,7 +507,8 @@ press right
 wait 20
 press left
 press cross
-launch relaunches
+until 900 log art set switch done
+until 900 title
 expect set ds
 expect setting visual_filter 1
 use open_title_options
@@ -518,7 +521,8 @@ press left
 wait 20
 press left
 press cross
-launch
+until 900 log art set switch done
+until 900 title
 expect set remastered
 expect setting visual_filter 0
 use new_game
@@ -616,3 +620,18 @@ press cross
 until 600 pause_submenu
 wait 30
 capture options
+
+flow talk_boxes
+about A talk page keeps as much room between its text and the box's left edge as above and below it, in both sets.
+sets remastered ds
+shows talk top_talk
+launch
+use new_game
+auto_play
+until 20000 shows talk
+wait 80
+capture talk
+until 20000 log route_step_done name=0:
+until 20000 shows talk
+wait 80
+capture top_talk

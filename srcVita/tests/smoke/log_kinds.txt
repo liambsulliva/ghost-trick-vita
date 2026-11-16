@@ -103,6 +103,7 @@ ok animation coverage
 ok animation evicted
 ok animation read_from_card
 ok animation selected
+ok art set
 ok asset sets
 ok background selected
 ok background shown
@@ -146,7 +147,6 @@ ok phone_book plates
 ok pose held
 ok reader large_buffer
 ok record reveal
-ok relaunch for
 ok renderer ready
 ok renderer snapshot_target
 ok right_stick x

@@ -75,7 +75,7 @@ static void test_only_a_remastered_set_runs_the_remastered_set_pinned(void)
     CHECK_INT(game_settings_filter_is_pinned(), 1);
 }
 
-static void test_with_both_sets_the_saved_filter_picks_and_a_change_waits_for_a_relaunch(void)
+static void test_with_both_sets_the_saved_filter_picks_and_a_change_waits_for_the_switch(void)
 {
     set_up_platform();
     add_set("remastered", "art remastered\n");
@@ -88,7 +88,7 @@ static void test_with_both_sets_the_saved_filter_picks_and_a_change_waits_for_a_
     CHECK_INT(asset_sets_switch_is_due(), 1);
 }
 
-static void test_a_filter_picked_on_the_title_survives_the_relaunch(void)
+static void test_a_filter_picked_on_the_title_survives_the_next_launch(void)
 {
     set_up_platform();
     add_set(ASSET_SETS_REMASTERED_FOLDER, "art remastered\n");
@@ -96,10 +96,42 @@ static void test_a_filter_picked_on_the_title_survives_the_relaunch(void)
     CHECK_TEXT(asset_sets_choose(ASSET_SETS_REMASTERED_FOLDER, ASSET_SETS_DS_FOLDER), ASSET_SETS_REMASTERED_FOLDER);
     game_settings_now()->visual_filter = GAME_FILTER_DS;
     CHECK_INT(asset_sets_switch_is_due(), 1);
-    viewer_app_keep_settings_for_relaunch();
+    viewer_app_keep_settings_for_switch();
     game_settings_defaults(game_settings_now());
     game_settings_load(GAME_SETTINGS_PATH);
     CHECK_TEXT(asset_sets_choose(ASSET_SETS_REMASTERED_FOLDER, ASSET_SETS_DS_FOLDER), ASSET_SETS_DS_FOLDER);
+}
+
+static void test_a_switch_in_the_same_process_runs_the_other_set_alone(void)
+{
+    struct input_state no_input;
+    int frame;
+
+    set_up_platform();
+    add_set("remastered", "art remastered\n");
+    add_set("ds", "art ds\n");
+    viewer_app_start(asset_sets_choose("remastered", "ds"));
+    CHECK(!texture_cache_sharp_art_is_on());
+    memset(&no_input, 0, sizeof(no_input));
+    for (frame = 0; frame < FRAMES_TO_PLAY; frame++) {
+        viewer_app_update(&no_input, FRAME_US);
+        viewer_app_draw();
+    }
+    game_settings_now()->visual_filter = GAME_FILTER_DS;
+    CHECK_INT(asset_sets_switch_is_due(), 1);
+    viewer_app_keep_settings_for_switch();
+    viewer_app_stop();
+    fake_files_watch_reads_under("remastered/");
+    viewer_app_start(asset_sets_choose("remastered", "ds"));
+    CHECK_INT(asset_sets_switch_is_due(), 0);
+    CHECK(texture_cache_sharp_art_is_on());
+    CHECK(viewer_app_play_scene("opening"));
+    for (frame = 0; frame < FRAMES_TO_PLAY; frame++) {
+        viewer_app_update(&no_input, FRAME_US);
+        viewer_app_draw();
+    }
+    CHECK_INT(fake_files_watched_reads(), 0);
+    viewer_app_stop();
 }
 
 static void test_the_ds_set_reads_nothing_from_the_remastered_set(void)
@@ -153,8 +185,9 @@ int main(void)
 {
     test_only_a_ds_set_runs_the_ds_set_pinned();
     test_only_a_remastered_set_runs_the_remastered_set_pinned();
-    test_with_both_sets_the_saved_filter_picks_and_a_change_waits_for_a_relaunch();
-    test_a_filter_picked_on_the_title_survives_the_relaunch();
+    test_with_both_sets_the_saved_filter_picks_and_a_change_waits_for_the_switch();
+    test_a_filter_picked_on_the_title_survives_the_next_launch();
+    test_a_switch_in_the_same_process_runs_the_other_set_alone();
     test_the_ds_set_reads_nothing_from_the_remastered_set();
     test_the_remastered_set_reads_nothing_from_the_ds_set();
     return test_finish("integration/asset_sets");
