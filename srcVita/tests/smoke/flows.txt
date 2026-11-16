@@ -80,6 +80,25 @@ until 300000 log script reached
 stall 0
 capture {action}
 
+flow choice_panels
+about A dialogue choice shows each panel with its caption inside the box, in both sets.
+guards 287
+sets remastered ds
+shows choice
+start {choose_scene}
+route_steps {choose_steps}
+launch
+use continue
+auto_play
+ff 32
+stall 20000 route_step_done
+until 300000 log choice_opened
+stall 0
+ff 1
+wait 20
+capture choice
+until 20000 log route_step_done name={choose_step}:
+
 flow retry_after_failure
 about A rescue that fails by design ends in the game-over menu, and the retry plays the scene again to the step after it.
 sets remastered

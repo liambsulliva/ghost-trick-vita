@@ -2202,7 +2202,7 @@ Reported by the user on the Vita: in DS mode the text of a dialogue choice sat b
 
 The class: a text position tuned to one font's metrics, used with every font.
 
-Guard: `script_talk_book_parse` measures the book's ink middle as the median glyph middle (`ink_middle`), and captions centre on it with the panel art's 5-pixel lift. The remastered set lands where it did. The DS set bakes the marked cell from texture 193, the orange button the rewind select uses. `tests/unit/test_script_ui_view.c` checks a caption lands at the same height in its panel for a font with high ink and one with low ink.
+Guard: `script_talk_book_parse` measures the book's ink middle as the median glyph middle (`ink_middle`), and captions centre on it with the panel art's 5-pixel lift. The remastered set lands where it did. The DS set bakes the marked cell from texture 193, the orange button the rewind select uses. `tests/unit/test_script_ui_view.c` checks a caption lands at the same height in its panel for a font with high ink and one with low ink, and the smoke flow `choice_panels` captures an open choice in both sets.
 
 ### 288. The DS soul lost the lighter circle at its centre
 
