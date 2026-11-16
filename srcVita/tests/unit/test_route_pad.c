@@ -509,9 +509,24 @@ static void test_a_fast_forward_presses_through_a_page_at_once(void)
     CHECK((frame.pressed & INPUT_CROSS) != 0);
 }
 
+static void test_a_fast_forward_leaves_a_page_still_writing_alone(void)
+{
+    struct input_state frame;
+
+    start_with_one_step(SCRIPT_ROUTE_WAIT, "body", "");
+    route_pad.reads_at_once = 1;
+    machine.talk.phase = SCRIPT_TALK_REVEALING;
+    script_route_pad_frame(&route_pad, &machine, &frame);
+    CHECK((frame.pressed & INPUT_CROSS) == 0);
+    machine.talk.phase = SCRIPT_TALK_OPENING;
+    script_route_pad_frame(&route_pad, &machine, &frame);
+    CHECK((frame.pressed & INPUT_CROSS) == 0);
+}
+
 int main(void)
 {
     test_a_fast_forward_presses_through_a_page_at_once();
+    test_a_fast_forward_leaves_a_page_still_writing_alone();
     test_a_dead_talk_plays_the_swirl_opening_and_a_restart_does_not();
     test_a_camera_step_scrolls_until_its_object_is_in_view();
     test_the_pad_opens_the_ghost_view_only_once_its_pill_is_up();

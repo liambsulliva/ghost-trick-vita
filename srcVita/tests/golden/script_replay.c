@@ -13,6 +13,7 @@
 #define TEXT_BYTES_MAX (1024 * 1024)
 
 static struct script_route_pad route_pad;
+static int reads_at_once;
 static struct script_input route_input;
 static FILE *rows_output;
 static FILE *cues_output;
@@ -622,6 +623,8 @@ int main(int argument_count, char **arguments)
             auto_press = SCRIPT_AUTO_FAST;
         } else if (strcmp(arguments[index], "--auto-paced") == 0) {
             auto_press = SCRIPT_AUTO_PACED;
+        } else if (strcmp(arguments[index], "--reads-at-once") == 0) {
+            reads_at_once = 1;
         } else if (strcmp(arguments[index], "--marks") == 0) {
             marks_to_stdout = 1;
         } else if (strcmp(arguments[index], "--rows") == 0) {
@@ -662,6 +665,7 @@ int main(int argument_count, char **arguments)
     machine.auto_press = SCRIPT_AUTO_OFF;
     machine.route_is_driving = auto_press != SCRIPT_AUTO_OFF;
     script_route_pad_reset(&route_pad);
+    route_pad.reads_at_once = reads_at_once;
     script_input_reset(&route_input);
     add_every_script_of_the_chain(folder);
     read_room_bounds(folder);

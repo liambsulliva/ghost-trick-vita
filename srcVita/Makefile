@@ -235,6 +235,8 @@ route-check: build/tests/golden/script_replay
 	@mkdir -p build/golden
 	build/tests/golden/script_replay --scripts $(PLAN_SCRIPTS) --timing remaster --auto-paced --marks --stop-tick $(PLAN_STOP_TICK) --cues build/golden/route_cues.txt --chapter-starts build/golden/chapter_starts.txt > build/golden/route_marks.txt
 	python3 -I tools/route_check.py build/golden/route_marks.txt $(PLAN_SCRIPTS)/route_steps.txt --most-passed-over $(STEPS_THE_STORY_PASSES_OVER) --must-reach GOTO
+	build/tests/golden/script_replay --scripts $(PLAN_SCRIPTS) --timing remaster --auto-paced --reads-at-once --marks --stop-tick $(PLAN_STOP_TICK) > build/golden/route_marks_fast.txt
+	python3 -I tools/route_check.py build/golden/route_marks_fast.txt $(PLAN_SCRIPTS)/route_steps.txt --most-passed-over $(STEPS_THE_STORY_PASSES_OVER) --must-reach GOTO
 	$(if $(filter game,$(PLAN_SET)),python3 -I tests/tools/check_undrawn_effects.py $(PLAN_SCRIPTS))
 	python3 -I tools/chapter_starts_check.py build/tests/golden/script_replay $(PLAN_SCRIPTS) build/golden/chapter_starts.txt build/golden/route_cues.txt
 

@@ -2188,6 +2188,14 @@ The class: an effect drawn from a guess where native code exists.
 
 Guard: `soul_cloud.c` ports the emitter for a soul at rest. `script_view.c` steps it every tick and draws it in place of the blob flame and soul orb whenever the DS art runs. `tests/unit/test_soul_cloud.c` checks an off cloud is empty, a lit cloud rises from the soul within native reach and size, and turning it off lets it die out. Not ported: the spawn along a reaching chain's segments, and the boss's dark-blue colour (`0x3500`).
 
+### 286. Fast-forward pressed through pages still writing and lost Chapter 2's first fate
+
+Seen on the Vita at `ff 8` (DS set): after the caster trick in st02_game004 the route waited for `sys_act080`, Lynne died, and the game-over retry looped 34 times. Root cause 283's fast path pressed CROSS on every tick a talk was open, including while a page was opening or writing out. Each press there cut a page short (`script_talk_note_press`), so talks ended in a few ticks. Actors that run beside a talk then had far less time than at normal speed, and the fate came out differently. The normal-speed replay never ran this path, so `make route-check` passed.
+
+The class: a route-pad mode that the device plays but that the route check never replays.
+
+Guard: the fast path presses only once a page waits for a press (`script_soul_page_wants_a_press`), as normal speed does, and only drops the 120-tick reading pause. `script_replay --reads-at-once` replays with the fast path, and `make route-check` now replays the whole route both ways through `route_check.py`. `tests/unit/test_route_pad.c` checks a page still opening or writing gets no press under fast-forward.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

@@ -41,12 +41,12 @@ static int read_the_page(struct script_route_pad *pad, const struct script_machi
         pad->page_was_waiting = 0;
         return 0;
     }
-    if (pad->reads_at_once) {
-        press(pad, machine, frame, INPUT_CROSS);
+    if (!script_soul_page_wants_a_press(machine)) {
         pad->page_was_waiting = 0;
         return 1;
     }
-    if (!script_soul_page_wants_a_press(machine)) {
+    if (pad->reads_at_once) {
+        press(pad, machine, frame, INPUT_CROSS);
         pad->page_was_waiting = 0;
         return 1;
     }
