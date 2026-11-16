@@ -57,6 +57,7 @@ SRC_VITA_FOLDER = os.path.dirname(os.path.dirname(ASSET_TOOLS_FOLDER))
 REPOSITORY_FOLDER = os.path.dirname(SRC_VITA_FOLDER)
 ENCODER_CHANNELS = 2
 REMASTERED_ART = "remastered"
+ABSENT_TEXTURES_FILE = "absent_textures.txt"
 DS_ART = "ds"
 DEFAULT_APK_FOLDER = os.path.join(REPOSITORY_FOLDER, "extracted", "remaster_apk")
 DEFAULT_DS_ROM_PATH = os.path.join(REPOSITORY_FOLDER, "extracted", "ds_rom", "game.nds")
@@ -709,11 +710,19 @@ def convert_ds_set_description(set_description, output_folder, ds_rom_path=DEFAU
         finally:
             delete_work_folder(work_folder)
         files.update(language_files)
+        files[ABSENT_TEXTURES_FILE] = absent_textures_text(set_description).encode("ascii")
         manifest = asset_writers.manifest_text([], plate_names, [], [DS_ART]).encode("ascii")
         write_outputs(output_folder, record, [], files, manifest, list(script_paths) + plate_paths + art["texture_paths"], language_paths)
     finally:
         record.save()
     print("ds set: %d plates, %d textures, %d animations, %d sounds, %d music tracks" % (len(plate_names), len(art["texture_paths"]), len(art["animation_texts"]), len(set_description["sounds"]), len(music_files) - sum(1 for name in music_files if name.endswith(".loop"))))
+
+
+def absent_textures_text(set_description):
+    names = sorted(set_description.get("ds_absent_textures", {}))
+    for name in names:
+        asset_writers.check_name(name.rstrip("*"))
+    return "".join(name + "\n" for name in names)
 
 
 def exit_so_the_work_folder_is_deleted(signal_number, _frame):

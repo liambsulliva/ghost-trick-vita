@@ -667,8 +667,46 @@ static void test_large_compressed_pages_are_filled_off_the_frame_and_shown_only_
     fake_work_queue_reset();
 }
 
+static int absent_lines;
+static int missing_lines;
+
+static void note_missing_kind(const char *line)
+{
+    if (strstr(line, "texture absent name=") != NULL) {
+        absent_lines = absent_lines + 1;
+    }
+    if (strstr(line, "texture missing name=") != NULL) {
+        missing_lines = missing_lines + 1;
+    }
+}
+
+static void test_a_texture_the_set_declares_absent_logs_as_absent_not_missing(void)
+{
+    static const char absent_text[] = "hud_sheet\nstaff_*\n";
+
+    fake_files_reset();
+    fake_renderer_reset();
+    fake_reader_reset();
+    fake_files_add("set/absent_textures.txt", (const unsigned char *)absent_text, (unsigned int)strlen(absent_text));
+    texture_cache_init("tex", 1u << 20);
+    CHECK_INT(texture_cache_read_absent_names("set/absent_textures.txt"), 2);
+    absent_lines = 0;
+    missing_lines = 0;
+    run_log_watch(note_missing_kind);
+    texture_cache_load_now("hud_sheet");
+    texture_cache_load_now("staff_03_01");
+    CHECK_INT(absent_lines, 2);
+    CHECK_INT(missing_lines, 0);
+    texture_cache_load_now("hud_pills");
+    CHECK_INT(missing_lines, 1);
+    run_log_watch(NULL);
+    texture_cache_init("tex", 1u << 20);
+    CHECK_INT(texture_cache_read_absent_names("set/none.txt"), 0);
+}
+
 int main(void)
 {
+    test_a_texture_the_set_declares_absent_logs_as_absent_not_missing();
     test_requested_texture_stays_loading_until_its_read_finishes();
     test_large_compressed_pages_are_filled_off_the_frame_and_shown_only_once_filled();
     test_grayscale_name_reads_the_plain_file();

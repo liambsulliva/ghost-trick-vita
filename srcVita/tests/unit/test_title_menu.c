@@ -10,6 +10,7 @@
 #include "pause_options.h"
 #include "pause_widgets.h"
 #include "renderer.h"
+#include "run_log.h"
 #include "test_support.h"
 #include "texture_cache.h"
 #include "title_menu.h"
@@ -511,8 +512,44 @@ static void test_the_menu_is_not_ready_without_its_art(void)
     CHECK(!title_menu_is_ready());
 }
 
+static int notebook_art_lines;
+
+static void note_notebook_art_line(const char *line)
+{
+    if (strstr(line, "hud_button_art") != NULL) {
+        notebook_art_lines = notebook_art_lines + 1;
+    }
+}
+
+static int the_title_asks_for_the_notebook_art(int sharp_art)
+{
+    start_with_art(1);
+    fake_files_reset();
+    fake_files_add("set/pause/widgets.txt", (const unsigned char *)widget_text, (unsigned int)strlen(widget_text));
+    fake_files_add_rgba_texture("set/textures/pause_widgets.gtex", 512, 512);
+    texture_cache_init("set/textures", 8u << 20);
+    texture_cache_use_sharp_art(sharp_art);
+    notebook_art_lines = 0;
+    run_log_watch(note_notebook_art_line);
+    title_menu_open();
+    wait_steps(SETTLE_STEPS);
+    fake_reader_release_reads(64);
+    wait_steps(4);
+    title_menu_draw();
+    run_log_watch(NULL);
+    texture_cache_use_sharp_art(0);
+    return notebook_art_lines > 0;
+}
+
+static void test_the_ds_title_never_asks_for_the_remastered_notebook_art(void)
+{
+    CHECK_INT(the_title_asks_for_the_notebook_art(0), 1);
+    CHECK_INT(the_title_asks_for_the_notebook_art(1), 0);
+}
+
 int main(void)
 {
+    test_the_ds_title_never_asks_for_the_remastered_notebook_art();
     test_without_a_save_only_new_game_options_and_language_show();
     test_with_a_save_the_cursor_starts_on_continue_and_picks_it();
     test_the_cursor_moves_to_the_nearest_entry_each_way();

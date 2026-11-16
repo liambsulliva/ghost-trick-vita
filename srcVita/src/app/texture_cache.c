@@ -27,6 +27,8 @@
 #define NAME_BUCKET_COUNT 4096u
 #define NO_ENTRY (-1)
 #define FILL_JOB_MAX 8
+#define ABSENT_NAME_MOST 64
+#define ABSENT_LINE_MAX 128
 
 enum texture_wanter {
     WANTED_BY_DRAWING,
@@ -254,9 +256,58 @@ static int read_ahead_has_room(void)
     return totals.bytes_in_use + READ_AHEAD_LEAST_ROOM_BYTES <= budget || find_entry_to_evict(WANTED_BY_READ_AHEAD) != NULL;
 }
 
+static char absent_names[ABSENT_NAME_MOST][ASSET_NAME_MAX];
+static int absent_name_count;
+
+static int is_declared_absent(const char *name)
+{
+    int index;
+
+    for (index = 0; index < absent_name_count; index++) {
+        size_t length;
+
+        length = strlen(absent_names[index]);
+        if (length > 0 && absent_names[index][length - 1] == '*') {
+            if (strncmp(name, absent_names[index], length - 1) == 0) {
+                return 1;
+            }
+        } else if (strcmp(name, absent_names[index]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int texture_cache_read_absent_names(const char *path)
+{
+    unsigned char *bytes;
+    unsigned int size;
+    unsigned int offset;
+    char line[ABSENT_LINE_MAX];
+
+    absent_name_count = 0;
+    if (file_read_whole(path, &bytes, &size) != FILE_OK) {
+        return 0;
+    }
+    offset = 0;
+    while (offset < size && absent_name_count < ABSENT_NAME_MOST) {
+        offset = text_lines_read_next((const char *)bytes, size, offset, line, sizeof(line));
+        if (line[0] != '\0' && strlen(line) < ASSET_NAME_MAX) {
+            snprintf(absent_names[absent_name_count], ASSET_NAME_MAX, "%s", line);
+            absent_name_count = absent_name_count + 1;
+        }
+    }
+    mem_free(bytes);
+    return absent_name_count;
+}
+
 static void mark_missing(struct cached_texture *entry, const char *reason, int code)
 {
-    run_log_write("texture missing name=%s reason=%s code=%d", entry->name, reason, code);
+    if (is_declared_absent(entry->name)) {
+        run_log_write("texture absent name=%s", entry->name);
+    } else {
+        run_log_write("texture missing name=%s reason=%s code=%d", entry->name, reason, code);
+    }
     entry->texture = RENDERER_NO_TEXTURE;
     entry->width = 0;
     entry->height = 0;
@@ -625,6 +676,7 @@ void texture_cache_init(const char *texture_folder, unsigned int budget_bytes)
 {
     memset(entries, 0, sizeof(entries));
     forget_all_names();
+    absent_name_count = 0;
     read_ahead_checked_frame = 0;
     memset(&totals, 0, sizeof(totals));
     snprintf(folder, sizeof(folder), "%s", texture_folder);

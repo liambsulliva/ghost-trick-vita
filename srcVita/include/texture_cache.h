@@ -67,5 +67,6 @@ void texture_cache_clear(void);
 void texture_cache_use_language(int language);
 void texture_cache_use_sharp_art(int is_on);
 int texture_cache_sharp_art_is_on(void);
+int texture_cache_read_absent_names(const char *path);
 
 #endif

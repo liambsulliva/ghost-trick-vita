@@ -242,7 +242,7 @@ static int art_is_settled(void)
 
     settled = texture_is_settled(BACKDROP_NAME);
     settled = texture_is_settled(TITLE_LOGO_NAME) && settled;
-    settled = texture_is_settled(TITLE_HUD_ART_NAME) && settled;
+    settled = (texture_cache_sharp_art_is_on() || texture_is_settled(TITLE_HUD_ART_NAME)) && settled;
     settled = texture_is_settled(PAUSE_WIDGET_SHEET) && settled;
     settled = texture_is_settled(PAUSE_GLYPH_SHEET) && settled;
     return settled;
@@ -252,7 +252,9 @@ static void keep_art(void)
 {
     texture_cache_keep_or_start_reading_ahead(BACKDROP_NAME);
     texture_cache_keep_or_start_reading_ahead(TITLE_LOGO_NAME);
-    texture_cache_keep_or_start_reading_ahead(TITLE_HUD_ART_NAME);
+    if (!texture_cache_sharp_art_is_on()) {
+        texture_cache_keep_or_start_reading_ahead(TITLE_HUD_ART_NAME);
+    }
     texture_cache_keep_or_start_reading_ahead(PAUSE_WIDGET_SHEET);
     texture_cache_keep_or_start_reading_ahead(PAUSE_GLYPH_SHEET);
 }
@@ -722,6 +724,9 @@ static void draw_item(int item, float camera_x, float alpha)
     if (item == TITLE_ITEM_ERASE) {
         pause_draw_cell("trash", x, spot->y, alpha);
     } else if (item == TITLE_ITEM_RECORD) {
+        if (texture_cache_sharp_art_is_on()) {
+            return;
+        }
         pause_draw_from(TITLE_HUD_ART_NAME, NOTEBOOK_U, NOTEBOOK_V, NOTEBOOK_TEXELS, NOTEBOOK_TEXELS, whole(x - NOTEBOOK_SIZE / 2.0f), whole(spot->y - NOTEBOOK_SIZE / 2.0f), NOTEBOOK_SIZE, NOTEBOOK_SIZE, alpha);
     } else {
         pause_draw_text_within(label_keys[item], x - pause_text_width(label_keys[item]) * pause_fit_scale(label_keys[item], LABEL_ROOM) / 2.0f, spot->y, LABEL_ROOM, alpha);

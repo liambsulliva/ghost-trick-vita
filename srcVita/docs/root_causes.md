@@ -2204,6 +2204,22 @@ The class: a text position tuned to one font's metrics, used with every font.
 
 Guard: `script_talk_book_parse` measures the book's ink middle as the median glyph middle (`ink_middle`), and captions centre on it with the panel art's 5-pixel lift. The remastered set lands where it did. The DS set bakes the marked cell from texture 193, the orange button the rewind select uses. `tests/unit/test_script_ui_view.c` checks a caption lands at the same height in its panel for a font with high ink and one with low ink.
 
+### 288. The DS soul lost the lighter circle at its centre
+
+Reported by the user on the Vita after root cause 285: the DS soul had no light circle in its middle. The port leaves the soul's own core out of the core marks (`script_soul.c`), because the remastered soul draws its own orb, and root cause 285 dropped that orb for the DS cloud. Native draws every core's orb, the soul's current core (`+0x68`) included (`func_0205d0d4`, glow `0x7e60` and orb `0x76d6`), as translucent polygons. The DS draws translucent polygons after opaque ones, so the orb shows over the soul's opaque particle cloud.
+
+The class: a part of the soul that the remastered drawing gave the soul, while native gives it to the core.
+
+Guard: `draw_soul` in `script_view.c` draws the core orb (`draw_core_orb`, the same glow and orb as every other core) at the soul over the DS cloud. `tests/unit/test_swirl_hides_soul_view.c` checks the orb draws after the cloud's last particle. Not ported: native fades the current core's orb in over its first 60 ticks (`+0x58`), and gives special cores other colours (`func_02058b4c`, `func_02058b64`).
+
+### 289. The smoke test failed 63 checks after the branches merged
+
+Seen running `make smoke` on both sets before a device run. Three causes came in with branches merged after the smoke test was written. `language carried` (`asset_language.c`) and `phone_book plates` (`pause_menu.c`) are new log kinds that `tests/smoke/log_kinds.txt` did not list, which failed 60 flows. The DS set has no `hud_button_art`, because its pills are whole sprites in `hud_pills`, but `keep_the_interface_art_resident` in `script_ui_view.c` asked for it every tick, and the title (`title_menu.c`) for the Record button's notebook, so both logged it missing. The DS set lacks 32 textures in all, each one a slot the cartridge has no art for, and every miss failed the flows. Visual Filter now asks before it restarts the game (root cause 244), and `visual_filter_relaunch` never answered the prompt. Interface art is the port's own, so no native function is involved.
+
+The class: a merge that changes what the app logs, loads or asks, without a smoke run.
+
+Guard: both log kinds are listed as `ok`. The resident list asks for `hud_pills` in place of `hud_button_art` while the DS art runs, the start pill, which has no DS art, does not ask for it, and the DS title leaves the notebook out, as it drew nothing there already. The gap list moved from `test_ds_texture_slots.py` into `game.json` (`ds_absent_textures`, a reason for each name, `*` for a prefix). The converter writes it into the DS set as `absent_textures.txt`, and the texture cache logs a declared name as `texture absent`, a known kind, so any other miss still fails. The flow answers Yes before each relaunch. `tests/unit/test_script_ui_view.c` and `tests/unit/test_title_menu.c` check the DS set never asks for the remastered pill art, `tests/unit/test_texture_cache.c` checks a declared name logs as absent and any other as missing, and `make smoke` on both sets runs before each device run.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.

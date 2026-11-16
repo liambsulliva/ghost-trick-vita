@@ -6,6 +6,7 @@
 #include "texture_cache.h"
 #include "scene_stage.h"
 #include "script_ui_view.h"
+#include "run_log.h"
 #include "test_support.h"
 
 #define PILL_FULLY_SHOWN 8
@@ -461,6 +462,40 @@ static void test_a_caption_sits_at_the_same_height_in_its_panel_whatever_the_fon
     CHECK(low > 150.0f && low < 165.0f);
 }
 
+static int pill_art_lines;
+
+static void note_pill_art_line(const char *line)
+{
+    if (strstr(line, "hud_button_art") != NULL) {
+        pill_art_lines = pill_art_lines + 1;
+    }
+}
+
+static int pill_art_is_read(int sharp_art)
+{
+    int tick;
+
+    start_choice_textures(1);
+    texture_cache_use_sharp_art(sharp_art);
+    pill_art_lines = 0;
+    run_log_watch(note_pill_art_line);
+    for (tick = 0; tick < 16; tick++) {
+        script_ui_view_advance();
+        fake_reader_release_reads(64);
+        texture_cache_upload_finished_reads(64);
+        texture_cache_begin_frame();
+    }
+    run_log_watch(NULL);
+    texture_cache_use_sharp_art(0);
+    return pill_art_lines > 0;
+}
+
+static void test_the_ds_set_never_asks_for_the_remastered_pill_art(void)
+{
+    CHECK_INT(pill_art_is_read(0), 1);
+    CHECK_INT(pill_art_is_read(1), 0);
+}
+
 static const struct fake_draw *the_only_draw_from(renderer_texture texture)
 {
     const struct fake_draw *found;
@@ -579,6 +614,7 @@ int main(void)
     test_every_open_choice_panel_draws_its_button_icon_and_caption_over_the_swirl();
     test_choice_panels_still_draw_without_their_button_art();
     test_a_caption_sits_at_the_same_height_in_its_panel_whatever_the_font();
+    test_the_ds_set_never_asks_for_the_remastered_pill_art();
     test_a_sharp_set_draws_each_pill_as_one_sprite_from_its_own_sheet();
     test_a_sharp_set_draws_the_rewind_button_whole_with_its_words();
     return test_finish("unit/script_ui_view");

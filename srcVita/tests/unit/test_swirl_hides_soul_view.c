@@ -98,10 +98,48 @@ static void test_the_swirl_hides_every_part_of_the_ghost_view(void)
     CHECK_INT(draws_of(glow), 2);
 }
 
+static void test_the_ds_soul_shows_its_core_orb_over_its_cloud(void)
+{
+    renderer_texture blob;
+    renderer_texture orb;
+    int last_blob;
+    int last_orb;
+    int index;
+    int tick;
+
+    start_in_the_ghost_view_on_a_dead_core();
+    fake_files_add_rgba_texture("tex/soul_blob.gtex", 2, 2);
+    texture_cache_use_sharp_art(1);
+    blob = loaded("soul_blob");
+    orb = loaded("soul_orb");
+    loaded("soul_glow");
+    for (tick = 0; tick < 40; tick++) {
+        script_view_advance();
+    }
+    fake_renderer_clear_draws();
+    script_view_draw_on_world();
+    last_blob = -1;
+    last_orb = -1;
+    for (index = 0; index < fake_renderer_draw_count(); index++) {
+        const struct fake_draw *draw;
+
+        draw = fake_renderer_draw(index);
+        if (draw->texture == blob) {
+            last_blob = index;
+        } else if (draw->texture == orb) {
+            last_orb = index;
+        }
+    }
+    CHECK(last_blob >= 0);
+    CHECK(last_orb > last_blob);
+    texture_cache_use_sharp_art(0);
+}
+
 int main(void)
 {
     test_the_ghost_view_draws_its_cores_without_the_swirl();
     test_the_swirl_hides_every_part_of_the_ghost_view();
+    test_the_ds_soul_shows_its_core_orb_over_its_cloud();
     fake_files_reset();
     return test_finish("unit/swirl_hides_soul_view");
 }

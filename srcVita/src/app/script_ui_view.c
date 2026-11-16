@@ -415,12 +415,13 @@ static void keep_every_clip_texture_resident(void)
 
 static void keep_the_interface_art_resident(void)
 {
-    static const char *const resident_textures[] = { HOURGLASS_TEXTURE, CHOICE_TEXTURE, SIDE_LABEL_TEXTURE, REWIND_BUTTON_TEXTURE, REWIND_FAR_ROCKS_TEXTURE, REWIND_MID_ROCKS_TEXTURE, REWIND_NEAR_ROCKS_TEXTURE, TAP_ART_TEXTURE, NARRATION_ARROW_TEXTURE, PILL_ART_TEXTURE, PILL_SHEET_TEXTURE };
+    static const char *const resident_textures[] = { HOURGLASS_TEXTURE, CHOICE_TEXTURE, SIDE_LABEL_TEXTURE, REWIND_BUTTON_TEXTURE, REWIND_FAR_ROCKS_TEXTURE, REWIND_MID_ROCKS_TEXTURE, REWIND_NEAR_ROCKS_TEXTURE, TAP_ART_TEXTURE, NARRATION_ARROW_TEXTURE, PILL_SHEET_TEXTURE };
     size_t index;
 
     for (index = 0; index < sizeof(resident_textures) / sizeof(resident_textures[0]); index++) {
         (void)texture_cache_use_or_start_loading(resident_textures[index]);
     }
+    (void)texture_cache_use_or_start_loading(texture_cache_sharp_art_is_on() ? WHOLE_PILL_TEXTURE : PILL_ART_TEXTURE);
     keep_every_clip_texture_resident();
 }
 
@@ -1376,6 +1377,9 @@ static void draw_start_pill(void)
     const struct cached_texture *art;
     const struct cached_texture *sheet;
 
+    if (texture_cache_sharp_art_is_on()) {
+        return;
+    }
     art = ready_texture(PILL_ART_TEXTURE);
     sheet = ready_texture(PILL_SHEET_TEXTURE);
     if (art == NULL || sheet == NULL || !ui_is_showing()) {

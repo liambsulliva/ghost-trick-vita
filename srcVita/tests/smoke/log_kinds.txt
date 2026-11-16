@@ -96,6 +96,7 @@ known script script_change_past_baked_files | the story's last jump, GOTO TITLE,
 known script stored_only | ops the port files as stores only
 known sound dropped | fast-forward starts sounds faster than the voices free up
 known sound prepare_list_full | the whole game names more sounds than are prepared ahead; the rest load when first played
+known texture absent | DS mode: slots the cartridge has no art for, each with its reason in game.json ds_absent_textures; nothing is drawn
 known title needs_art | the DS set bakes no title art, so it starts in the opening
 ok --- launch
 ok animation coverage
@@ -125,6 +126,7 @@ ok frame long
 ok frame_change object
 ok input pressed
 ok input start
+ok language carried
 ok language use
 ok loop ended
 ok manifest loaded
@@ -140,6 +142,7 @@ ok music thread
 ok music window
 ok page tiles
 ok pause *
+ok phone_book plates
 ok pose held
 ok reader large_buffer
 ok record reveal
@@ -239,6 +242,7 @@ ok sound thread
 ok sound window
 ok stats fps
 ok system state
+ok texture absent_list
 ok texture language
 ok texture loaded
 ok texture retry

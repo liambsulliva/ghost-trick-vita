@@ -1785,6 +1785,31 @@
       ]
     }
   ],
+  "ds_absent_textures": {
+    "card_hand_seconds": "the DS watch has two hands, textures 190 and 191",
+    "chapter_card_00": "the chapter card is the remaster's; the DS card is not decoded",
+    "core_ring": "the remaster's core ring has no DS entry",
+    "digit_0": "death count not traced",
+    "digit_1": "death count not traced",
+    "digit_2": "death count not traced",
+    "digit_3": "death count not traced",
+    "digit_label": "death count not traced",
+    "film_corner": "not found",
+    "film_strip": "not found",
+    "hud_button_art": "DS pills are whole sprites in hud_pills",
+    "hud_disc": "the DS card backdrop is one texture, effect 281 item 1",
+    "hud_sheet": "Vita button glyphs have no cartridge art",
+    "narration_arrow": "the DS shows none",
+    "phone_cap": "not found",
+    "phone_strip": "not found",
+    "side_label": "not in cpac_3d",
+    "staff_*": "the staff pages are the remaster's; the DS staff roll is not decoded",
+    "talk_cursor": "the DS shows none",
+    "ui_hourglass": "the DS has three whole frames, the app wants parts",
+    "ui_mark": "not found",
+    "ui_wave_quadrant": "DS 80 is a half arc",
+    "wipe_time_passing": "not in cpac_3d block 0"
+  },
   "ds_textures": [
     {
       "name": "rewind_button",

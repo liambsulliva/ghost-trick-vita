@@ -45,6 +45,7 @@
 #ifndef TEXTURE_FOLDER_BUCKETS
 #define TEXTURE_FOLDER_BUCKETS 0u
 #endif
+#define ABSENT_TEXTURES_FILE "absent_textures.txt"
 #define NEW_ILLUSTRATIONS_TOAST "bar.new_illustrations"
 #define DEFAULT_MUSIC_TYPE GAME_MUSIC_ORIGINAL
 #define ORIGINAL_MUSIC_SUBFOLDER "music_ds"
@@ -526,6 +527,7 @@ static void draw_brightness(void)
 void viewer_app_start(const char *folder)
 {
     char texture_folder[FILE_PATH_MAX];
+    char absent_path[FILE_PATH_MAX];
     char animation_folder[FILE_PATH_MAX];
     char scene_folder[FILE_PATH_MAX];
     char music_folder[FILE_PATH_MAX];
@@ -551,6 +553,8 @@ void viewer_app_start(const char *folder)
 
     texture_cache_init(texture_folder, TEXTURE_CACHE_DEFAULT_BUDGET_BYTES);
     texture_cache_set_bucket_count(TEXTURE_FOLDER_BUCKETS);
+    asset_subfolder_path(absent_path, ABSENT_TEXTURES_FILE);
+    run_log_write("texture absent_list names=%d", texture_cache_read_absent_names(absent_path));
     animation_library_init(animation_folder);
     animation_library_set_in_use_check(scene_stage_plays_animation);
     scene_player_init(scene_folder);

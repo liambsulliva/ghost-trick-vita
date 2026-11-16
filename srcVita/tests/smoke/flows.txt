@@ -471,7 +471,7 @@ wait 30
 expect title_submenu
 
 flow visual_filter_relaunch
-about With both sets installed, Visual Filter on the title saves the choice and relaunches into the DS set, and from there back into the remastered one.
+about With both sets installed, Visual Filter on the title asks, saves the choice on Yes and relaunches into the DS set, and from there back into the remastered one.
 guards 217 231
 sets both
 log_has settings saved=1
@@ -483,6 +483,9 @@ press down
 press down
 expect options_row 4
 press right
+wait 20
+press left
+press cross
 launch relaunches
 expect set ds
 expect setting visual_filter 1
@@ -493,6 +496,9 @@ press down
 press down
 expect options_row 4
 press left
+wait 20
+press left
+press cross
 launch
 expect set remastered
 expect setting visual_filter 0
