@@ -98,6 +98,7 @@ jobs:
           tag_name: ${{ env.TAG }}
           name: Ghost Trick Vita ${{ env.TAG }}
           generate_release_notes: true
+          prerelease: ${{ contains(env.TAG, '-') }}
           fail_on_unmatched_files: true
           files: |
             dist/ghosttrick-${{ env.TAG }}.vpk

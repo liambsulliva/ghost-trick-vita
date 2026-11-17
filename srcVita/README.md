@@ -164,7 +164,7 @@ A package with the logo contains game art, so keep it for your own Vita. The pac
 
 Releases are built and published by `.github/workflows/release.yml`. To cut one:
 
-1. Set `APP_VER` in `Makefile` to the new version as `MM.mm`, so `01.01` for v1.1.0.
+1. Set `APP_VER` in `Makefile` to the new version as `MM.mm`, so `01.01` for v1.1.0. A pre-release such as v1.0.0-beta.1 shares its `APP_VER` with v1.0.0.
 2. Commit, then tag and push the tag:
 
    ```bash
@@ -175,7 +175,7 @@ Releases are built and published by `.github/workflows/release.yml`. To cut one:
    git push origin v1.1.0
    ```
 
-The workflow builds in the `vitasdk/vitasdk` container. It refuses a tag whose major and minor numbers do not match `APP_VER`, runs `tools/rom_audit.py`, installs vitaGL, vitaShaRK, SceShaccCgExt, libmathneon and taihen with `vdpm`, runs `make -C srcVita release`, and attaches `ghosttrick-<tag>.vpk` and its SHA-256 to a GitHub release of that tag, with notes listing the changes since the last one. Running the workflow by hand with an existing tag rebuilds and republishes that tag.
+The workflow builds in the `vitasdk/vitasdk` container. It refuses a tag whose major and minor numbers do not match `APP_VER`, runs `tools/rom_audit.py`, installs vitaGL, vitaShaRK, SceShaccCgExt, libmathneon and taihen with `vdpm`, runs `make -C srcVita release`, and attaches `ghosttrick-<tag>.vpk` and its SHA-256 to a GitHub release of that tag, with notes listing the changes since the last one. A tag with a hyphen in it, such as `v1.0.0-beta.1` or `v1.0.0-rc.1`, is published as a pre-release, so the Releases page does not show it as the latest version. Running the workflow by hand with an existing tag rebuilds and republishes that tag.
 
 ## Make the assets
 
