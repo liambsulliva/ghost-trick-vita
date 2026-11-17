@@ -61,9 +61,29 @@ Same class as root cause 18 and the op 0x6b entry (`root_causes.md:387`): an op 
 - 0x43 (choice family) has no `case` in `script_choice.c`. Native calls `func_02015bdc` on the child at `+0xc` of `func_0201003c()` (`func_02015bcc`). S once the child is known.
 - 0x75, 0x7c and 0xee are filed stores-only. 0xee is fine (`root_causes.md:873`). 0x7c's string is the Minutes Before Death card's time (`root_causes.md:2325`), so the card's middle line is not drawn. 0x75 writes `func_020265ec(game, w1)` and `func_0201fcd0` on entries 0 and 2 of `game+0xe4c`, the list 0x78 reads (item 3). M.
 
-### 6. Modes inside ported ops (GameApp commands, eyecatch kinds, motion words) — not yet audited
+### 6. Arguments inside ported GameApp verbs and ops fall through silently — visible, some change flow (both)
 
-The comparison against native is in progress and will be added here.
+All 13 native GameApp verbs have a port verb, all five eyecatch kinds (modes 9 to 0xd) are ported, and so is every motion-table word native has (0xfff0, 0xfff3 to 0xffff). The gaps are the arguments inside known verbs: about 45 native verb|arg pairs reach no port case and write no note, and `tests/tools/check_script_modes.py` scans verbs, eyecatch kinds and motion words but not the argument inside a known verb, so none of them shows in a scan or a `_not_ported` line. The ARM9 string data is not in this checkout, so several arguments below are named by their data address; the use counts need the bake.
+
+Flow or state first:
+
+- **`Exception`**: `script_soul.c:1342` matches 19 arguments; native `func_02013b18` compares 52. The 33 missing include two that queue a demo request (`func_020110ec`, as op 0x68; `data_02084310` also deletes the `cf93c` object, `data_0208437c` adds a 15-frame white fade), the game-over talk toggle (`data_020843f8`/`data_02084410` → `func_02015758`), 14 on/off pairs for `game+0x10` bits 16, 20, 21, 23, 24, 25 and 27 (`func_020142c0` to `func_02014338`), closing balloon slots 2 to 7 (`func_02010858`), deleting objects by class or name, and a sub-state push with a white fade (`data_02084684`). Native `data_02084328` also sets mode 3 where the port only clears the pause bit. M-L.
+- **`SVTUTO`**: two of native's seven arguments are missing (`func_0203e098` driving `func_0203de90`; port `script_soul.c:1231`). State 10 (`data_0209ac88`) shows Back, waits for a 0xa000 press, pushes `ac10` and sets mode 3; if a script sends it, the port's tutorial view never closes. State 2 sends `onTouch` every held tick. S.
+- **`EyeCatch NumberGet`**: native mode 0xc in `func_02032488` first searches the phone book (`func_0201260c`, `func_02037194`); with no match it shows no banner, restores the mode, clears the pause bit and sends `02099e60|02099e6c`. The port (`script_soul.c:961`) always plays BANGO, as for `NumberGetForce`. S.
+- **Op 0x5c's word 2** (`script_ops_media.c:486`, run as 0x37): native `func_02011958` → `func_02014a8c` takes param 1 when word 2 is 0xffff, which skips the talk main state (`data_02084770`) and the pill hide; 0x5c never sets `game+8` bit 2, and a null label falls back to `func_02015a34`'s fixed label. S-M.
+- **`FreeCamera TutorialStart`** is only a flag (`script_soul.c:1540`). Native `func_020357dc` also makes the `cd9f4` object, sets mode 3 (`func_02011080`), switches the main state to `cd9d8` and holds `game+0x1a` for 0x1e; `TutorialEnd` deletes it and switches to `cd7b4`. S.
+- **Op 0xdb's third word (Direct)** is ignored (`script_ops_media.c:488`); native `func_020267d8` → `func_02014b80` uses `uKaiwaGameOverDirect` and sets the pause bit. M.
+- **`System`** knows only `ChangeMode` (`script_soul.c:1421`); native `func_020134d4` also handles `data_0208411c` (`func_020112b4`: clears `game+0x103c`, `+0xc` bit 24, sets bit 22, which stops the status sub-screen push). S.
+- **`Button`** lacks 6 of native's 30 arguments (`script_soul.c:1254`, native `func_020135c8`): slots 10 and 11 on and off, and `data_02084280`/`data_0208428c`, which make the `020ced04` object (`func_0204ed8c`). S.
+
+Visual or audio only:
+
+- `CustomSoulVision` `CloseStatus`, `OpenStatus`, `CancelCameraHosei` (`func_020337f8`) fall through at `script_soul.c:1387`. S.
+- Op 0x117's fifth word is never read (`script_motion.c:677`); native `func_020280c8` passes both flags to `func_0205991c`, and `func_0205964c` can keep the old table running until the controller's `+0x10` counter ends, which could shift op 0xa9 waits. M.
+- `Timeleap RESTART FINAL` should build native's final mode (`func_0203e538`, state `ce058` with argument 1, the long jump movie); the port plays the same movie for both (`script_soul.c:1555`). S.
+- Motion word 0xfff3 is skipped (`script_motion.c:58`); native `func_020083fc` sets actor `+0xc2`, read only by the exchange outline (`func_02058bac` → `func_02034b3c`). S.
+- `Message` forwards for any argument (`script_soul.c:1536`); native `func_02013a5c` only for `data_020842c8`. Minor.
+- Ops 0x10c, 0x10d and 0x10e drop native's extra sound words (0x10c's words 2 and 3, 0x10d's node or position, 0x10e's stop fade). Minor.
 
 ### 7. DS mode draws nothing in slots the cartridge art is not decoded for — visible (DS)
 
@@ -95,14 +115,14 @@ Both names went into `ds_absent_textures` in `5f20d0c7` (2026-11-15), the day be
 
 ### 12. Known issues and Still open entries that look stale — minor
 
-- `root_causes.md` Still open says op 0x9f "is not ported"; `script_motion.c:1057` now runs it (`set_core_info`). Its Chapter 18 entry lists 0xf6 as unported; `script_machine.c:1244` runs it.
+- `root_causes.md` Still open says op 0x9f "is not ported"; `script_motion.c:1057` now runs it (`set_core_info`). Its Chapter 18 entry lists 0xf6 as unported; `script_machine.c:1244` runs it. Its effect list names `uTimeOverChainEffect` (id 50) as unported, but root cause 116's `step_the_white_wipe` ports it; only the ring drawn on the white is open. Root cause 43's "Still open: … `CORETALK`" is done: `start_dead_talk` sends it (root cause 75).
 - README Known issues ends with a paragraph about the VM's timing source ("The VM's timing comes from the script…") that is not an issue, and the `## Debug controls` section opens with two paragraphs about the loading screen.
 - The README's Known issues name no DS-only differences at all, although item 7 lists many. A beta's notes should say what DS mode lacks.
 - Effort: S.
 
 ### 13. Other still-open items worth a beta note — visible (both)
 
-From `root_causes.md` Still open, unchanged by this audit: telephone lines and neon are tracked and not drawn; effect classes with no port (`uTimeOverChainEffect` 50, `uPhoneBorderEffect` 59, `uBlackDarkness` 151/228/229, `uLanternLightBlackSt02_01` 119 with 57 sites in stage 2, `uNightVisionGoggle`, `uElectricTorch`); the ripple (effect 6, 50 sites); one light circle at a time; the title screen plays no music and shows no boot logos; 49 talk and balloon labels the remaster's text lacks; the Minutes Before Death card's middle line. Each is already documented there with its native function.
+From `root_causes.md` Still open, unchanged by this audit: telephone lines and neon are tracked and not drawn; effect classes with no port (`uPhoneBorderEffect` 59, `uBlackDarkness` 151/228/229, `uLanternLightBlackSt02_01` 119 with 57 sites in stage 2, `uNightVisionGoggle`, `uElectricTorch`); the ripple (effect 6, 50 sites); one light circle at a time; the title screen plays no music and shows no boot logos; 49 talk and balloon labels the remaster's text lacks; the Minutes Before Death card's middle line. Each is already documented there with its native function.
 
 ## Quick wins
 
@@ -115,7 +135,9 @@ Small, low risk, fixed in the shared op table or the VM rather than per asset, a
 5. **Op 0xf4**: share 0xf3's case (`script_machine.c:1240`), as native does (`case 0xf3: case 0xf4:`). The extra `+0xc9` byte can stay unported until its reader is found.
 6. **Make unported ops fail the smoke test**: replace `known script *_not_ported` with `known` lines per op for the ones left, and run `check_unrouted_ops.py` from `make test` against a checked-in list of the ops still unrouted, so the list can only shrink. The class guard root cause 18 asked for.
 7. **`title needs_art` → `fail`** now that both sets bake title art, and fix the `log_kinds.txt` reasons that cite README sections that do not exist.
-8. **Stale docs**: drop 0x9f and 0xf6 from Still open (item 12) and move the README's misplaced paragraphs.
+8. **Stale docs**: drop 0x9f, 0xf6, effect 50 and `CORETALK` from Still open (item 12) and move the README's misplaced paragraphs.
+9. **Scan arguments inside known verbs**: teach `check_script_modes.py` the per-verb argument lists in `script_soul.c`, so the item 6 pairs the scripts actually send are listed and a new one fails. This also gives the use counts item 6 lacks.
+10. **`SVTUTO` state 10, `EyeCatch NumberGet`'s phone book check and `FreeCamera TutorialStart`'s mode and state** (item 6): each is a few lines in `script_soul.c`, following `func_0203de90`, `func_02032488` mode 0xc and `func_020357dc`. Do these after quick win 9 shows the scripts send them.
 
 ## Next steps once the Mac is back
 
