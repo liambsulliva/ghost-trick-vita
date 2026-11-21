@@ -303,6 +303,41 @@ class UploadAssetsTests(DeviceFreeTestCase):
                 vita_loop.upload_assets(self.set_folder)
         self.assertNotIn("textures/a.gtex", vita_loop.load_upload_record(self.set_folder))
 
+    def test_an_upload_that_stops_partway_leaves_its_mark_on_the_device(self):
+        with mock.patch.object(vita_loop, "upload_verified", side_effect=RuntimeError):
+            with self.assertRaises(RuntimeError):
+                vita_loop.upload_assets(self.set_folder)
+        self.assertIn(vita_loop.unfinished_upload_path_of(vita_loop.ASSETS_FOLDER), self.ftp.files)
+        self.assertEqual(vita_loop.sets_left_half_uploaded(), [vita_loop.ASSETS_FOLDER])
+
+    def test_the_mark_goes_up_before_the_first_file_changes(self):
+        seen = []
+        upload = vita_loop.upload_verified
+
+        def upload_and_look(connection, local_path, remote_path):
+            seen.append(vita_loop.unfinished_upload_path_of(vita_loop.ASSETS_FOLDER) in self.ftp.files)
+            return upload(connection, local_path, remote_path)
+
+        with mock.patch.object(vita_loop, "upload_verified", side_effect=upload_and_look):
+            vita_loop.upload_assets(self.set_folder)
+        self.assertEqual(seen, [True] * 7)
+
+    def test_an_upload_that_finishes_clears_the_mark_an_earlier_one_left(self):
+        with mock.patch.object(vita_loop, "upload_verified", side_effect=RuntimeError):
+            with self.assertRaises(RuntimeError):
+                vita_loop.upload_assets(self.set_folder)
+        self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
+        self.assertEqual(vita_loop.sets_left_half_uploaded(), [])
+        self.assertEqual(vita_loop.upload_assets(self.set_folder), 0)
+        self.assertEqual(vita_loop.sets_left_half_uploaded(), [])
+
+    def test_a_ds_set_is_marked_in_its_own_folder(self):
+        self.write_file("manifest.txt", b"art ds\nscene s\n")
+        with mock.patch.object(vita_loop, "upload_verified", side_effect=RuntimeError):
+            with self.assertRaises(RuntimeError):
+                vita_loop.upload_assets(self.set_folder)
+        self.assertEqual(vita_loop.sets_left_half_uploaded(), [vita_loop.DS_ASSETS_FOLDER])
+
     def test_a_folder_without_a_manifest_fails_before_using_the_device(self):
         empty_folder = os.path.join(self.folder.name, "empty")
         os.makedirs(empty_folder)
@@ -406,6 +441,12 @@ class LaunchTests(DeviceFreeTestCase):
         self.assertEqual(vita_loop.launch(5), 0)
         self.assertEqual(self.ftp.files[vita_loop.PREVIOUS_LOG_PATH], b"--- launch 1\nold\n")
         self.assertEqual(vita_loop.latest_run_lines(), ["--- launch 2", "new"])
+
+    def test_a_set_left_half_uploaded_is_never_launched(self):
+        self.ftp.files[vita_loop.unfinished_upload_path_of(vita_loop.DS_ASSETS_FOLDER)] = vita_loop.UNFINISHED_UPLOAD_TEXT
+        self.assertEqual(vita_loop.launch(5), 1)
+        self.send_device_command.assert_not_called()
+        self.assertIn("upload stopped partway in " + vita_loop.DS_ASSETS_FOLDER, self.output.getvalue())
 
     def test_the_first_launch_has_no_log_to_set_aside(self):
         self.send_device_command.side_effect = self.app_writes_a_new_log

@@ -51,6 +51,8 @@ UPLOAD_PROGRESS_EVERY = 100
 STORE_TRIES = 10
 SECONDS_BETWEEN_STORE_TRIES = 1
 PARTIAL_FILE_SUFFIX = ".new"
+UNFINISHED_UPLOAD_NAME = "upload_unfinished.txt"
+UNFINISHED_UPLOAD_TEXT = b"An upload of this set stopped partway. Run upload-assets on it again.\n"
 SECONDS_FOR_APP_TEARDOWN = 3
 SECONDS_FOR_DEVICE_REPLY = 3
 SECONDS_FOR_PROMOTE_REPLY = 60
@@ -321,6 +323,18 @@ def device_has_the_recorded_copy(connection, record, relative_path, digest, remo
     return not checks_the_device or remote_size_or_none(connection, remote_path) == local_size
 
 
+def unfinished_upload_path_of(root):
+    return root + "/" + UNFINISHED_UPLOAD_NAME
+
+
+def sets_left_half_uploaded():
+    connection = open_ftp()
+    try:
+        return [root for root in (ASSETS_FOLDER, DS_ASSETS_FOLDER) if remote_size_or_none(connection, unfinished_upload_path_of(root)) is not None]
+    finally:
+        connection.close()
+
+
 def upload_assets(folder, checks_the_device=False):
     if not os.path.isfile(os.path.join(folder, "manifest.txt")):
         print("no manifest.txt in: " + folder)
@@ -335,6 +349,7 @@ def upload_assets(folder, checks_the_device=False):
     connection = open_ftp()
     try:
         made_folders = set()
+        marked_unfinished = False
         local_files = list_local_files(folder)
         for local_path, relative_path in local_files:
             digest = sha256_of_file(local_path)
@@ -346,6 +361,10 @@ def upload_assets(folder, checks_the_device=False):
             if remote_folder not in made_folders:
                 make_folders(connection, remote_folder)
                 made_folders.add(remote_folder)
+            if not marked_unfinished:
+                make_folders(connection, root)
+                store_with_retries(connection, unfinished_upload_path_of(root), UNFINISHED_UPLOAD_TEXT)
+                marked_unfinished = True
             if record.get(relative_path) == digest and move_earlier_copy(connection, relative_path, remote_path, os.path.getsize(local_path), root):
                 moved = moved + 1
                 continue
@@ -367,6 +386,7 @@ def upload_assets(folder, checks_the_device=False):
             delete_if_present(connection, root + "/" + loop_path)
             if record.pop(loop_path, None) is not None:
                 save_upload_record(record, folder)
+        delete_if_present(connection, unfinished_upload_path_of(root))
     finally:
         connection.close()
     print("assets root", root)
@@ -426,6 +446,10 @@ def set_aside_old_log():
 
 
 def launch(seconds=30):
+    half_uploaded = sets_left_half_uploaded()
+    if half_uploaded:
+        print("not launching: an upload stopped partway in", ", ".join(half_uploaded) + "; run upload-assets on that set again")
+        return 1
     clear_pending_commands()
     set_aside_old_log()
     markers_before = count_launch_markers()
