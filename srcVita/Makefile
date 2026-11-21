@@ -1,7 +1,7 @@
 TARGET   := ghosttrick
 TITLE    := Ghost Trick Vita
 TITLE_ID := GHTR00001
-APP_VER  := 01.00
+APP_VER  := 00.09
 BUILD_ID := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(shell git diff --quiet HEAD -- . 2>/dev/null || echo -dirty)-$(shell date +%Y%m%d%H%M%S)
 
 ifeq ($(DEBUG),1)
