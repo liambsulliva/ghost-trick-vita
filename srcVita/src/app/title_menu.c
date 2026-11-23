@@ -109,11 +109,6 @@ int title_menu_item_enters_game(int item)
     return item >= 0 && item < TITLE_MENU_ITEM_COUNT && enters_game[item];
 }
 
-static void pick_sound(int item)
-{
-    sound(title_menu_item_enters_game(item) ? PICK_SOUND_KIND : CURSOR_SOUND_KIND);
-}
-
 int title_menu_is_ready(void)
 {
     return pause_widgets_has("slice.title_button") && pause_widgets_has("title.new_game");
@@ -394,11 +389,11 @@ static void pick(void)
         }
         break;
     case TITLE_ITEM_ERASE:
-        pick_sound(cursor);
+        sound(CURSOR_SOUND_KIND);
         ask(JOB_ERASE, "row.reset_ask", "bar.reset_warning");
         break;
     default:
-        pick_sound(cursor);
+        sound(CURSOR_SOUND_KIND);
         open_submenu(cursor);
         break;
     }

@@ -436,7 +436,7 @@ static void test_the_trash_looks_pressed_while_its_ask_is_open_and_not_after_no(
     CHECK_INT(slice_draws(176.0f, 0.0f, 48.0f), 3);
 }
 
-static void test_moving_the_cursor_plays_the_cursor_sound_and_a_submenu_pick_the_pick_sound(void)
+static void test_moving_the_cursor_and_opening_the_chapters_both_play_the_cursor_sound(void)
 {
     start_with_art(1);
     open_until_shown();
@@ -447,7 +447,7 @@ static void test_moving_the_cursor_plays_the_cursor_sound_and_a_submenu_pick_the
     press(INPUT_CROSS);
     CHECK_INT(title_menu_phase(), TITLE_PHASE_PANNING_OUT);
     CHECK_INT(sound_count, 2);
-    CHECK_INT(sounds[1], PICK_SOUND);
+    CHECK_INT(sounds[1], CURSOR_SOUND);
 }
 
 static int steer_to(int item)
@@ -471,7 +471,7 @@ static int steer_to(int item)
     return 0;
 }
 
-static void test_only_buttons_that_enter_the_game_play_the_pick_sound(void)
+static void test_the_start_sound_plays_only_when_a_press_leaves_for_the_game(void)
 {
     int with_save;
     int item;
@@ -496,7 +496,7 @@ static void test_only_buttons_that_enter_the_game_play_the_pick_sound(void)
             sound_count = 0;
             press(INPUT_CROSS);
             CHECK_INT(sound_count, 1);
-            CHECK_INT(sounds[0], title_menu_item_enters_game(item) && !(item == TITLE_ITEM_NEW_GAME && with_save) ? PICK_SOUND : CURSOR_SOUND);
+            CHECK_INT(sounds[0], item == TITLE_ITEM_CONTINUE || (item == TITLE_ITEM_NEW_GAME && !with_save) ? PICK_SOUND : CURSOR_SOUND);
             left_menu = 0;
             for (step = 0; step < LEAVE_STEPS; step++) {
                 press(0);
@@ -566,10 +566,10 @@ int main(void)
     test_tapping_an_entry_selects_it_and_lifting_on_it_picks_it();
     test_a_cleared_game_shows_the_notebook_only_once_the_people_screen_is_loaded();
     test_the_screen_fades_in_from_black_and_a_pick_flashes_white_holds_then_fades_to_black();
-    test_moving_the_cursor_plays_the_cursor_sound_and_a_submenu_pick_the_pick_sound();
+    test_moving_the_cursor_and_opening_the_chapters_both_play_the_cursor_sound();
     test_a_picked_button_looks_pressed_through_the_hold_and_the_fade();
     test_the_trash_looks_pressed_while_its_ask_is_open_and_not_after_no();
-    test_only_buttons_that_enter_the_game_play_the_pick_sound();
+    test_the_start_sound_plays_only_when_a_press_leaves_for_the_game();
     test_the_menu_is_not_ready_without_its_art();
     return test_finish("unit/title_menu");
 }
