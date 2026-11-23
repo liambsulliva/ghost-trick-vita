@@ -152,15 +152,12 @@ static struct renderer_rect blob_area(const struct soul_chain_blob *blob)
     return area;
 }
 
-void save_icon_draw_at(float x, float y, float scale, float alpha, int is_lit)
+static void draw_blobs(const struct soul_chain_blob *body, int body_count, const struct soul_chain_blob *core, float alpha, int is_lit)
 {
     static const struct renderer_rect whole = { 0.0f, 0.0f, 1.0f, 1.0f };
-    struct soul_chain_blob body[SOUL_BODY_BLOBS];
-    struct soul_chain_blob core[SAVE_ICON_CORE_BLOBS];
     struct renderer_color flame = { 1.0f, 1.0f, 1.0f, 1.0f };
     struct renderer_color orb = { 0.73f, 0.74f, 0.94f, 1.0f };
     const struct cached_texture *texture;
-    int count;
     int index;
 
     texture = texture_cache_use_or_start_loading(BLOB_TEXTURE);
@@ -177,19 +174,35 @@ void save_icon_draw_at(float x, float y, float scale, float alpha, int is_lit)
     }
     flame.alpha = alpha;
     orb.alpha = alpha;
-    count = body_at(x, y, scale, body);
-    for (index = 0; index < count; index++) {
+    for (index = 0; index < body_count; index++) {
         renderer_draw_sprite(texture->texture, blob_area(&body[index]), whole, flame);
     }
-    core_at(x, y, scale, core);
     for (index = 0; index < SAVE_ICON_CORE_BLOBS; index++) {
         renderer_draw_flat_sprite(texture->texture, blob_area(&core[index]), whole, orb);
     }
 }
 
+void save_icon_draw_at(float x, float y, float scale, float alpha, int is_lit)
+{
+    struct soul_chain_blob body[SOUL_BODY_BLOBS];
+    struct soul_chain_blob core[SAVE_ICON_CORE_BLOBS];
+    int count;
+
+    count = body_at(x, y, scale, body);
+    core_at(x, y, scale, core);
+    draw_blobs(body, count, core, alpha, is_lit);
+}
+
 void save_icon_draw(void)
 {
-    if (is_showing) {
-        save_icon_draw_at(centre_x(), centre_y(), SAVE_ICON_SCALE, save_icon_alpha(), 1);
+    struct soul_chain_blob body[SOUL_BODY_BLOBS];
+    struct soul_chain_blob core[SAVE_ICON_CORE_BLOBS];
+    int count;
+
+    if (!is_showing) {
+        return;
     }
+    count = save_icon_body(body);
+    save_icon_core(core);
+    draw_blobs(body, count, core, save_icon_alpha(), 1);
 }
