@@ -387,7 +387,7 @@ static void pick(void)
         break;
     case TITLE_ITEM_NEW_GAME:
         if (shown[TITLE_ITEM_CONTINUE]) {
-            pick_sound(cursor);
+            sound(CURSOR_SOUND_KIND);
             ask(JOB_NEW_GAME, "row.new_game_ask", NULL);
         } else {
             leave_with(TITLE_REQUEST_NEW_GAME, 0);

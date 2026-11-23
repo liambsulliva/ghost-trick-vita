@@ -235,14 +235,19 @@ static void test_a_new_game_over_a_save_asks_first(void)
     CHECK_INT(title_menu_cursor(), TITLE_ITEM_OPTIONS);
     press(INPUT_LEFT);
     CHECK_INT(title_menu_cursor(), TITLE_ITEM_NEW_GAME);
+    sound_count = 0;
     press(INPUT_CROSS);
     CHECK(title_menu_dialog_is_open());
+    CHECK_INT(sound_count, 1);
+    CHECK_INT(sounds[0], CURSOR_SOUND);
     press(INPUT_CROSS);
     CHECK_INT(title_menu_phase(), TITLE_PHASE_SHOWING);
     press(INPUT_CROSS);
     press(INPUT_LEFT);
+    sound_count = 0;
     press(INPUT_CROSS);
     CHECK_INT(title_menu_phase(), TITLE_PHASE_HOLDING);
+    CHECK_INT(sounds[sound_count - 1], PICK_SOUND);
     wait_steps(LEAVE_STEPS);
     CHECK_INT(title_menu_takes_request(&chapter), TITLE_REQUEST_NEW_GAME);
 }
@@ -491,7 +496,7 @@ static void test_only_buttons_that_enter_the_game_play_the_pick_sound(void)
             sound_count = 0;
             press(INPUT_CROSS);
             CHECK_INT(sound_count, 1);
-            CHECK_INT(sounds[0], title_menu_item_enters_game(item) ? PICK_SOUND : CURSOR_SOUND);
+            CHECK_INT(sounds[0], title_menu_item_enters_game(item) && !(item == TITLE_ITEM_NEW_GAME && with_save) ? PICK_SOUND : CURSOR_SOUND);
             left_menu = 0;
             for (step = 0; step < LEAVE_STEPS; step++) {
                 press(0);
