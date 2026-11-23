@@ -202,6 +202,11 @@ class UploadAssetsTests(DeviceFreeTestCase):
         relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
         self.assertEqual(relative_paths, ["manifest.txt", "textures/a.gtex", "animations/a.anim", "scenes/s.scene", "music/song.loop", "music/song.ogg", "sounds/ping.ogg"])
 
+    def test_the_list_of_absent_textures_is_uploaded_with_the_set(self):
+        self.write_file("absent_textures.txt", b"hud_sheet\n")
+        relative_paths = [relative_path for _, relative_path in vita_loop.list_local_files(self.set_folder)]
+        self.assertEqual(relative_paths[:2], ["manifest.txt", "absent_textures.txt"])
+
     def test_baked_scripts_are_listed(self):
         os.makedirs(os.path.join(self.set_folder, "scripts"))
         self.write_file("scripts/a-b.lmg", b"script")

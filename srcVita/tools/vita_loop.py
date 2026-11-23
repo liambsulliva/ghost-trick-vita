@@ -52,6 +52,7 @@ STORE_TRIES = 10
 SECONDS_BETWEEN_STORE_TRIES = 1
 PARTIAL_FILE_SUFFIX = ".new"
 UNFINISHED_UPLOAD_NAME = "upload_unfinished.txt"
+ABSENT_TEXTURES_FILE = "absent_textures.txt"
 UNFINISHED_UPLOAD_TEXT = b"An upload of this set stopped partway. Run upload-assets on it again.\n"
 SECONDS_FOR_APP_TEARDOWN = 3
 SECONDS_FOR_DEVICE_REPLY = 3
@@ -253,6 +254,8 @@ def save_upload_record(record, folder=None):
 
 def list_local_files(folder):
     files = [(os.path.join(folder, "manifest.txt"), "manifest.txt")]
+    if os.path.isfile(os.path.join(folder, ABSENT_TEXTURES_FILE)):
+        files.append((os.path.join(folder, ABSENT_TEXTURES_FILE), ABSENT_TEXTURES_FILE))
     for folder_name in output_folders.NAMES:
         if not os.path.isdir(os.path.join(folder, folder_name)):
             continue
