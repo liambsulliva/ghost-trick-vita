@@ -265,19 +265,23 @@ static void answer_the_phone_book(struct script_route_pad *pad, const struct scr
     if (!script_phone_book_takes_input(machine)) {
         return;
     }
-    if (step->action == SCRIPT_ROUTE_PHONE_STAY) {
+    if (step->action == SCRIPT_ROUTE_PHONE_STAY && !machine->phone_book.is_traced) {
         if (pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
             press(pad, machine, frame, INPUT_CIRCLE);
         }
         return;
     }
-    wanted = step->slot == 0 ? machine->phone_book.cursor : script_phone_book_index_of(machine, step->slot);
+    if (machine->phone_book.is_traced) {
+        wanted = step->action == SCRIPT_ROUTE_PHONE_STAY ? SCRIPT_PHONE_TRACE_STAY_HERE : SCRIPT_PHONE_TRACE_GO_THERE;
+    } else {
+        wanted = step->slot == 0 ? machine->phone_book.cursor : script_phone_book_index_of(machine, step->slot);
+    }
     if (wanted < 0) {
         return;
     }
     if (wanted != machine->phone_book.cursor) {
         if (pad_may_press(pad, machine, TICKS_BETWEEN_CURSOR_MOVES)) {
-            press(pad, machine, frame, INPUT_DOWN);
+            press(pad, machine, frame, machine->phone_book.is_traced && wanted < machine->phone_book.cursor ? INPUT_UP : INPUT_DOWN);
         }
         return;
     }

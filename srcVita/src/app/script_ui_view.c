@@ -66,6 +66,11 @@
 #define PHONE_BOOK_WHEEL_REACH 2
 #define PHONE_BOOK_WHEEL_TITLE_Y 72.0f
 #define PHONE_BOOK_WHEEL_HINT_Y 472.0f
+#define PHONE_TRACE_PANEL_WIDTH 400.0f
+#define PHONE_TRACE_FIRST_PANEL_Y 232.0f
+#define PHONE_TRACE_PANEL_PITCH 112.0f
+#define PHONE_TRACE_PROMPT_BAR "bar"
+#define PHONE_TRACE_PROMPT "trace"
 #define DEGREES_TO_RADIANS 0.017453293f
 #define BAND_CENTER_Y 272.0f
 #define BAND_STRIPE_COUNT 29
@@ -1468,12 +1473,25 @@ static void draw_phone_book_hint(const char *glyph, const char *key, float left,
 
 static const float phone_book_wheel_x[PHONE_BOOK_WHEEL_REACH + 1] = { 0.0f, 8.0f, 20.0f };
 static const float phone_book_wheel_y[PHONE_BOOK_WHEEL_REACH + 1] = { 0.0f, 32.0f, 60.0f };
+static const char *const phone_trace_words[SCRIPT_PHONE_TRACE_CHOICES] = {
+    [SCRIPT_PHONE_TRACE_GO_THERE] = "bar.go_there",
+    [SCRIPT_PHONE_TRACE_STAY_HERE] = "bar.stay_here"
+};
+
+static void phone_book_wheel_spot(int offset, float centre_x, float *x, float *y)
+{
+    int reach;
+
+    reach = offset < 0 ? -offset : offset;
+    *x = centre_x + phone_book_wheel_x[reach] * PHONE_BOOK_PLATE_SCALE;
+    *y = PHONE_BOOK_WHEEL_CENTRE_Y + (offset < 0 ? -phone_book_wheel_y[reach] : phone_book_wheel_y[reach]) * PHONE_BOOK_PLATE_SCALE;
+}
 
 static void draw_phone_book_wheel(float centre_x)
 {
     int offset;
     int index;
-    int reach;
+    float x;
     float y;
 
     for (offset = -PHONE_BOOK_WHEEL_REACH; offset <= PHONE_BOOK_WHEEL_REACH; offset++) {
@@ -1481,9 +1499,114 @@ static void draw_phone_book_wheel(float centre_x)
         if (index < 0 || index >= hud.phone_book_count) {
             continue;
         }
-        reach = offset < 0 ? -offset : offset;
-        y = offset < 0 ? -phone_book_wheel_y[reach] : phone_book_wheel_y[reach];
-        phone_book_plates_draw(hud.phone_book_places[index], hud.phone_book_note_levels[index], offset == 0, centre_x + phone_book_wheel_x[reach] * PHONE_BOOK_PLATE_SCALE, PHONE_BOOK_WHEEL_CENTRE_Y + y * PHONE_BOOK_PLATE_SCALE, PHONE_BOOK_PLATE_SCALE);
+        phone_book_wheel_spot(offset, centre_x, &x, &y);
+        phone_book_plates_draw(hud.phone_book_places[index], hud.phone_book_note_levels[index], offset == 0, x, y, PHONE_BOOK_PLATE_SCALE);
+    }
+}
+
+static int phone_trace_plates_are_baked(void)
+{
+    return phone_book_plates_find_choice(SCRIPT_PHONE_TRACE_GO_THERE, 0) != NULL && phone_book_plates_find_choice(SCRIPT_PHONE_TRACE_STAY_HERE, 0) != NULL && phone_book_plates_find_prompt(PHONE_TRACE_PROMPT) != NULL;
+}
+
+static float phone_trace_panel_centre_y(int choice)
+{
+    return PHONE_TRACE_FIRST_PANEL_Y + (float)choice * PHONE_TRACE_PANEL_PITCH;
+}
+
+static int phone_trace_choice_box(int choice, struct renderer_rect *box)
+{
+    const struct phone_book_plate *plate;
+    float x;
+    float y;
+
+    if (choice < 0 || choice >= SCRIPT_PHONE_TRACE_CHOICES) {
+        return 0;
+    }
+    if (!phone_trace_plates_are_baked()) {
+        box->x = (float)RENDERER_WIDTH / 2.0f - PHONE_TRACE_PANEL_WIDTH / 2.0f;
+        box->y = phone_trace_panel_centre_y(choice) - CHOICE_PANEL_HEIGHT / 2.0f;
+        box->width = PHONE_TRACE_PANEL_WIDTH;
+        box->height = CHOICE_PANEL_HEIGHT;
+        return 1;
+    }
+    plate = phone_book_plates_find_choice(choice, choice == hud.phone_book_cursor);
+    if (plate == NULL) {
+        return 0;
+    }
+    phone_book_wheel_spot(choice - hud.phone_book_cursor, (float)RENDERER_WIDTH / 2.0f, &x, &y);
+    box->x = x + plate->left * PHONE_BOOK_PLATE_SCALE;
+    box->y = y + plate->top * PHONE_BOOK_PLATE_SCALE;
+    box->width = plate->width * PHONE_BOOK_PLATE_SCALE;
+    box->height = plate->height * PHONE_BOOK_PLATE_SCALE;
+    return 1;
+}
+
+int script_ui_view_phone_choice_at(float x, float y)
+{
+    struct renderer_rect box;
+    int choice;
+
+    if (!hud.phone_book_is_up || !hud.phone_book_is_traced) {
+        return -1;
+    }
+    for (choice = 0; choice < SCRIPT_PHONE_TRACE_CHOICES; choice++) {
+        if (phone_trace_choice_box(choice, &box) && point_is_in_box(x, y, box.x, box.y, box.width, box.height)) {
+            return choice;
+        }
+    }
+    return -1;
+}
+
+static void draw_stretched_button(const struct cached_texture *art, float x, float y, float width, float height, float cell_x, float cell_y, float cell_size);
+
+static void draw_phone_trace_plates(float centre_x)
+{
+    const struct phone_book_plate *bar;
+    float prompt_y;
+    int choice;
+    float x;
+    float y;
+
+    bar = phone_book_plates_find_prompt(PHONE_TRACE_PROMPT_BAR);
+    prompt_y = PHONE_BOOK_WHEEL_TITLE_Y;
+    if (bar != NULL) {
+        prompt_y = PHONE_BOOK_WHEEL_TITLE_Y - (bar->top + bar->height / 2.0f) * PHONE_BOOK_PLATE_SCALE;
+        phone_book_plates_draw_prompt(PHONE_TRACE_PROMPT_BAR, centre_x, prompt_y, PHONE_BOOK_PLATE_SCALE);
+    }
+    phone_book_plates_draw_prompt(PHONE_TRACE_PROMPT, centre_x, prompt_y, PHONE_BOOK_PLATE_SCALE);
+    for (choice = 0; choice < SCRIPT_PHONE_TRACE_CHOICES; choice++) {
+        phone_book_wheel_spot(choice - hud.phone_book_cursor, centre_x, &x, &y);
+        phone_book_plates_draw_choice(choice, choice == hud.phone_book_cursor, x, y, PHONE_BOOK_PLATE_SCALE);
+    }
+}
+
+static void draw_phone_trace_panels(float centre_x)
+{
+    const struct cached_texture *art;
+    struct renderer_rect box;
+    int choice;
+
+    art = ready_texture(CHOICE_TEXTURE);
+    pause_draw_text("bar.phone_trace_ask", centre_x, PHONE_BOOK_TITLE_Y, PAUSE_ANCHOR_CENTRE, 1.0f);
+    for (choice = 0; choice < SCRIPT_PHONE_TRACE_CHOICES; choice++) {
+        if (!phone_trace_choice_box(choice, &box)) {
+            continue;
+        }
+        if (art != NULL && choice == hud.phone_book_cursor) {
+            draw_stretched_button(art, box.x - CHOICE_MARKED_GROWTH, box.y - CHOICE_MARKED_GROWTH, box.width + CHOICE_MARKED_GROWTH * 2.0f, box.height + CHOICE_MARKED_GROWTH * 2.0f, CHOICE_MARKED_CELL_X, CHOICE_MARKED_CELL_Y, CHOICE_MARKED_CELL_SIZE);
+        } else if (art != NULL) {
+            draw_stretched_button(art, box.x, box.y, box.width, box.height, CHOICE_PLAIN_CELL_X, CHOICE_PLAIN_CELL_Y, CHOICE_PLAIN_CELL_SIZE);
+        } else {
+            struct renderer_color fill;
+
+            fill.red = choice == hud.phone_book_cursor ? 0.77f : 0.0f;
+            fill.green = 0.0f;
+            fill.blue = 0.0f;
+            fill.alpha = 0.85f;
+            renderer_draw_filled_rect(box, fill);
+        }
+        pause_draw_text(phone_trace_words[choice], centre_x, box.y + box.height / 2.0f, PAUSE_ANCHOR_CENTRE, 1.0f);
     }
 }
 
@@ -1492,6 +1615,7 @@ static void draw_phone_book(void)
     struct renderer_rect screen;
     struct renderer_color shade;
     float centre_x;
+    float hint_y;
     int offset;
     int is_wheel;
 
@@ -1508,6 +1632,18 @@ static void draw_phone_book(void)
     shade.alpha = PHONE_BOOK_SHADE;
     renderer_draw_filled_rect(screen, shade);
     centre_x = (float)RENDERER_WIDTH / 2.0f;
+    if (hud.phone_book_is_traced) {
+        is_wheel = phone_trace_plates_are_baked();
+        if (is_wheel) {
+            draw_phone_trace_plates(centre_x);
+        } else {
+            draw_phone_trace_panels(centre_x);
+        }
+        hint_y = is_wheel ? PHONE_BOOK_WHEEL_HINT_Y : PHONE_BOOK_HINT_Y;
+        draw_phone_book_hint("cross", "row.ok", centre_x - PHONE_BOOK_HINT_FROM_CENTRE, hint_y);
+        draw_phone_book_hint("circle", "bar.stay_here", centre_x + PHONE_BOOK_HINT_FROM_CENTRE / 4.0f, hint_y);
+        return;
+    }
     is_wheel = phone_book_plates_is_loaded();
     pause_draw_text("bar.phone_tab", centre_x, is_wheel ? PHONE_BOOK_WHEEL_TITLE_Y : PHONE_BOOK_TITLE_Y, PAUSE_ANCHOR_CENTRE, 1.0f);
     if (is_wheel) {
@@ -1522,8 +1658,9 @@ static void draw_phone_book(void)
         }
         pause_people_draw_place(hud.phone_book_places[index], centre_x - PHONE_BOOK_PLACE_WIDTH / 2.0f + (float)offset * (PHONE_BOOK_PLACE_WIDTH + PHONE_BOOK_PLACE_GAP), PHONE_BOOK_PLACE_TOP, PHONE_BOOK_PLACE_WIDTH, PHONE_BOOK_PLACE_HEIGHT, offset == 0);
     }
-    draw_phone_book_hint("cross", "bar.go_there", centre_x - PHONE_BOOK_HINT_FROM_CENTRE, is_wheel ? PHONE_BOOK_WHEEL_HINT_Y : PHONE_BOOK_HINT_Y);
-    draw_phone_book_hint("circle", "bar.stay_here", centre_x + PHONE_BOOK_HINT_FROM_CENTRE / 4.0f, is_wheel ? PHONE_BOOK_WHEEL_HINT_Y : PHONE_BOOK_HINT_Y);
+    hint_y = is_wheel ? PHONE_BOOK_WHEEL_HINT_Y : PHONE_BOOK_HINT_Y;
+    draw_phone_book_hint("cross", "bar.go_there", centre_x - PHONE_BOOK_HINT_FROM_CENTRE, hint_y);
+    draw_phone_book_hint("circle", "bar.stay_here", centre_x + PHONE_BOOK_HINT_FROM_CENTRE / 4.0f, hint_y);
 }
 
 static void draw_sheet_slice(const struct cached_texture *art, float x, float y, float width, float height, float cell_x, float cell_y, float cell_width, float cell_height, struct renderer_color tint)

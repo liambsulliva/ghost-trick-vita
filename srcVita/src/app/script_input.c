@@ -188,6 +188,7 @@ static void steer_the_phone_book(struct script_input *input, struct script_machi
     int pressed_x;
     int pressed_y;
     int stick_is_out;
+    int tapped_choice;
 
     pressed_x = axis_of(frame->pressed, INPUT_LEFT, INPUT_RIGHT);
     pressed_y = axis_of(frame->pressed, INPUT_UP, INPUT_DOWN);
@@ -195,10 +196,18 @@ static void steer_the_phone_book(struct script_input *input, struct script_machi
     if (pressed_x == 0 && pressed_y == 0 && stick_is_out && !input->stick_was_out) {
         stick_aim_first_push(frame->stick_x, frame->stick_y, &pressed_x, &pressed_y);
     }
+    tapped_choice = -1;
+    if (machine->phone_book.is_traced && frame->touch_is_down && !input->touch_was_down) {
+        tapped_choice = script_ui_view_phone_choice_at(frame->touch_x, frame->touch_y);
+    }
     input->stick_was_out = stick_is_out;
     input->touch_was_down = frame->touch_is_down;
     input->touch_is_dragging = 0;
     script_soul_set_held(machine, 0.0f, 0.0f);
+    if (tapped_choice >= 0) {
+        script_phone_book_choose(machine, tapped_choice);
+        return;
+    }
     script_phone_book_move_cursor(machine, pressed_y != 0 ? pressed_y : pressed_x);
     if (frame->pressed & INPUT_CROSS) {
         script_phone_book_go_there(machine);

@@ -22,18 +22,25 @@ static void note_place(struct script_machine *machine, unsigned int place)
 void script_phone_book_open(struct script_machine *machine, unsigned int mode, unsigned int place)
 {
     struct script_phone_book *book;
-    char detail[48];
+    char detail[64];
     int id;
 
     book = &machine->phone_book;
+    book->is_traced = script_soul_fate_section_is_on(machine) != 0;
     if (machine->outputs->marked != NULL) {
-        snprintf(detail, sizeof(detail), "mode=%u place=%u", mode, place);
+        snprintf(detail, sizeof(detail), "mode=%u place=%u trace=%d", mode, place, book->is_traced);
         machine->outputs->marked("phone_book_opened", detail);
     }
     note_place(machine, FIRST_PLACE);
     note_place(machine, place);
     book->count = 0;
     book->cursor = 0;
+    if (book->is_traced) {
+        book->count = SCRIPT_PHONE_TRACE_CHOICES;
+        book->cursor = SCRIPT_PHONE_TRACE_GO_THERE;
+        machine->phone_book_is_open = 1;
+        return;
+    }
     for (id = 1; id < SCRIPT_PHONE_BOOK_MOST; id++) {
         if (machine->note_levels[PLACE_LIST][id] == 0) {
             continue;
@@ -56,6 +63,9 @@ int script_phone_book_index_of(const struct script_machine *machine, int place)
 {
     int index;
 
+    if (machine->phone_book.is_traced) {
+        return -1;
+    }
     for (index = 0; index < machine->phone_book.count; index++) {
         if (machine->phone_book.places[index] == place) {
             return index;
@@ -67,9 +77,15 @@ int script_phone_book_index_of(const struct script_machine *machine, int place)
 void script_phone_book_move_cursor(struct script_machine *machine, int steps)
 {
     struct script_phone_book *book;
+    int wanted;
 
     book = &machine->phone_book;
     if (!script_phone_book_takes_input(machine) || steps == 0) {
+        return;
+    }
+    if (book->is_traced) {
+        wanted = book->cursor + steps;
+        book->cursor = wanted < 0 ? 0 : (wanted >= book->count ? book->count - 1 : wanted);
         return;
     }
     book->cursor = ((book->cursor + steps) % book->count + book->count) % book->count;
@@ -94,6 +110,10 @@ void script_phone_book_go_there(struct script_machine *machine)
     if (!script_phone_book_takes_input(machine)) {
         return;
     }
+    if (machine->phone_book.is_traced) {
+        answer(machine, machine->phone_book.cursor == SCRIPT_PHONE_TRACE_STAY_HERE ? "cancel" : "movie");
+        return;
+    }
     machine->phone_book_place = machine->phone_book.places[machine->phone_book.cursor];
     answer(machine, "movie");
 }
@@ -106,14 +126,24 @@ void script_phone_book_stay_here(struct script_machine *machine)
     answer(machine, "cancel");
 }
 
+void script_phone_book_choose(struct script_machine *machine, int choice)
+{
+    if (!script_phone_book_takes_input(machine) || !machine->phone_book.is_traced || choice < 0 || choice >= SCRIPT_PHONE_TRACE_CHOICES) {
+        return;
+    }
+    machine->phone_book.cursor = choice;
+    script_phone_book_go_there(machine);
+}
+
 void script_phone_book_fill_view(const struct script_machine *machine, struct script_hud_view *view)
 {
     int index;
 
     view->phone_book_is_up = script_phone_book_takes_input(machine);
+    view->phone_book_is_traced = view->phone_book_is_up && machine->phone_book.is_traced;
     view->phone_book_count = view->phone_book_is_up ? machine->phone_book.count : 0;
     view->phone_book_cursor = machine->phone_book.cursor;
-    for (index = 0; index < view->phone_book_count; index++) {
+    for (index = 0; !view->phone_book_is_traced && index < view->phone_book_count; index++) {
         view->phone_book_places[index] = machine->phone_book.places[index];
         view->phone_book_note_levels[index] = machine->note_levels[LEVEL_LIST][machine->phone_book.places[index]];
     }

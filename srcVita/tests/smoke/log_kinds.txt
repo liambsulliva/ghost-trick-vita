@@ -29,6 +29,7 @@ fail music submit_failed
 fail music thread_failed
 fail music wrong_rate
 fail opening needs_scripts
+fail phone_book plate
 fail reader thread_failed
 fail renderer drew_destroyed_texture
 fail renderer drew_unfilled_texture
@@ -58,6 +59,7 @@ fail script path_too_long
 fail script problem
 fail script route_hop_beyond_reach
 fail script route_pacing_stale
+fail script route_place_in_traced_call
 fail script route_step_failed
 fail script submit_failed
 fail script time_dropped

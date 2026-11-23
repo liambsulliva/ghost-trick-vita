@@ -3,11 +3,16 @@
 
 #include "script_outputs.h"
 
+#define SCRIPT_PHONE_TRACE_GO_THERE 0
+#define SCRIPT_PHONE_TRACE_STAY_HERE 1
+#define SCRIPT_PHONE_TRACE_CHOICES 2
+
 struct script_phone_book {
     int places[SCRIPT_PHONE_BOOK_MOST];
     int count;
     int cursor;
     int answers;
+    int is_traced;
 };
 
 struct script_machine;
@@ -18,6 +23,7 @@ int script_phone_book_index_of(const struct script_machine *machine, int place);
 void script_phone_book_move_cursor(struct script_machine *machine, int steps);
 void script_phone_book_go_there(struct script_machine *machine);
 void script_phone_book_stay_here(struct script_machine *machine);
+void script_phone_book_choose(struct script_machine *machine, int choice);
 void script_phone_book_fill_view(const struct script_machine *machine, struct script_hud_view *view);
 
 #endif

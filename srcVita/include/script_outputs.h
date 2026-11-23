@@ -104,6 +104,7 @@ struct script_hud_view {
     int pulse_ticks;
     struct script_pill_view pills[SCRIPT_PILL_COUNT];
     int phone_book_is_up;
+    int phone_book_is_traced;
     int phone_book_count;
     int phone_book_cursor;
     int phone_book_places[SCRIPT_PHONE_BOOK_MOST];

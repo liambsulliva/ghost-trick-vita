@@ -14,9 +14,11 @@ SRC_VITA = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 ROM_PATH = os.path.join(os.path.dirname(SRC_VITA), "extracted", "ds_rom", "game.nds")
 PHONE_BOOK_HEADER = os.path.join(SRC_VITA, "include", "phone_book_plates.h")
 RED = (255, 0, 0, 255)
+GO_THERE = 0x8062
+STAY_HERE = 0x8065
 
 
-def fake_arm9(rows, reveals):
+def fake_arm9(rows, reveals, choices=(GO_THERE, STAY_HERE)):
     size = ds_phone_book.PLATE_TABLE_ADDRESS - ds_phone_book.ARM9_LOAD_ADDRESS + ds_phone_book.PLACE_COUNT * ds_phone_book.LEVEL_COUNT * 2
     arm9 = bytearray(size)
     for place, resources in rows.items():
@@ -24,6 +26,7 @@ def fake_arm9(rows, reveals):
     for place in range(ds_phone_book.PLACE_COUNT):
         offset = ds_phone_book.REVEAL_TABLE_ADDRESS - ds_phone_book.ARM9_LOAD_ADDRESS + place * 2
         arm9[offset:offset + 2] = bytes(reveals.get(place, (ds_phone_book.NO_REVEAL, ds_phone_book.NO_REVEAL)))
+    struct.pack_into("<%dH" % ds_phone_book.TRACE_CHOICE_COUNT, arm9, ds_phone_book.TRACE_TABLE_ADDRESS - ds_phone_book.ARM9_LOAD_ADDRESS, *choices)
     return bytes(arm9)
 
 
@@ -46,6 +49,26 @@ class TableTests(unittest.TestCase):
     def test_a_short_arm9_is_refused(self):
         with self.assertRaises(ds_phone_book.PhoneBookRefused):
             ds_phone_book.read_places(b"\0" * 16)
+        with self.assertRaises(ds_phone_book.PhoneBookRefused):
+            ds_phone_book.read_trace_choices(b"\0" * 16)
+
+    def test_a_traced_call_reads_go_there_and_stay_here_and_bakes_both_states_and_the_prompts(self):
+        arm9 = fake_arm9({1: (0x8011, 0x8011, 0x8011)}, {})
+        choices = ds_phone_book.read_trace_choices(arm9)
+        self.assertEqual(choices, (GO_THERE, STAY_HERE))
+        resources = ds_phone_book.plate_resources(ds_phone_book.read_places(arm9), choices)
+        for resource in choices:
+            for state in ds_phone_book.STATES:
+                self.assertIn(resource + state, resources)
+        for prompt in (ds_phone_book.PROMPT_BAR, ds_phone_book.PROMPT_WHERE_TO, ds_phone_book.PROMPT_TRACE):
+            self.assertIn(prompt, resources)
+
+    def test_the_traced_call_lines_match_what_the_app_reads(self):
+        places = [{"place": 22, "resources": (0x8014, 0x8017, 0x801a), "reveals": (20, 30)}]
+        lines = ds_phone_book.table_lines(places, {}, {}, (GO_THERE, STAY_HERE))
+        self.assertEqual(lines[2:], ["choice 0 32866", "choice 1 32869", "prompt bar 32777", "prompt where_to 32782", "prompt trace 32783"])
+        with open(PHONE_BOOK_HEADER, encoding="utf-8") as header:
+            self.assertIn("#define PHONE_BOOK_PLATES_CHOICES %d" % ds_phone_book.TRACE_CHOICE_COUNT, header.read())
 
     def test_plates_pack_without_overlap_on_a_power_of_two_sheet(self):
         frames = {resource: frame(128, 32, (resource & 0xff, 0, 0, 255)) for resource in range(0x8011, 0x8011 + 20)}
@@ -122,6 +145,23 @@ class CartridgePhoneBookTests(unittest.TestCase):
                 for resource in row["resources"]:
                     for state in ds_phone_book.STATES:
                         self.assertIn(resource + state, plates, "%s place %d plate %#x" % (code, row["place"], resource + state))
+
+    def test_every_cartridge_language_bakes_go_there_stay_here_and_the_three_prompts(self):
+        choices = ds_phone_book.read_trace_choices(self.arm9)
+        self.assertEqual(choices, (GO_THERE, STAY_HERE))
+        for code, language in sorted(ds_textures.LANGUAGE_NUMBERS.items()):
+            record = bake_record.BakeRecord(os.path.join(self.folder, code))
+            files, _, _ = ds_phone_book.bake(self.arm9, self.sprites, language, record)
+            lines = files[ds_phone_book.TABLE_PATH].decode("ascii").splitlines()
+            plates = set(int(line.split()[1]) for line in lines if line.startswith("plate "))
+            for resource in choices:
+                for state in ds_phone_book.STATES:
+                    self.assertIn(resource + state, plates, "%s choice plate %#x" % (code, resource + state))
+            for name, resource in ds_phone_book.PROMPTS:
+                self.assertIn(resource, plates, "%s prompt %s" % (code, name))
+                self.assertIn("prompt %s %d" % (name, resource), lines)
+            self.assertIn("choice 0 %d" % GO_THERE, lines)
+            self.assertIn("choice 1 %d" % STAY_HERE, lines)
 
     def test_the_junkyard_plate_differs_between_languages(self):
         junkyard = ds_phone_book.read_places(self.arm9)[1]["resources"][0]

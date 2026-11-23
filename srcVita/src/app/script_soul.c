@@ -2412,6 +2412,9 @@ static void go_to_route_step(struct script_machine *machine, int step_index)
 static void finish_route_step(struct script_machine *machine, const struct script_route_step *step)
 {
     mark_route_step(machine, "route_step_done", step);
+    if (step->action == SCRIPT_ROUTE_PHONE_CALL && step->slot != 0 && machine->phone_book.is_traced) {
+        mark_route_step(machine, "route_place_in_traced_call", step);
+    }
     if (!script_hints_have_passed_step(machine, machine->soul.route_step)) {
         mark_route_step(machine, "hint_behind_route", step);
     }
