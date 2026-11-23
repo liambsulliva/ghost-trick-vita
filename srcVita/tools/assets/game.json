@@ -2802,6 +2802,20 @@
           "width": 116,
           "height": 116,
           "target_corner": 35
+        },
+        {
+          "texture": 196,
+          "x": 364,
+          "y": 13,
+          "width": 48,
+          "height": 48
+        },
+        {
+          "texture": 197,
+          "x": 433,
+          "y": 19,
+          "width": 48,
+          "height": 48
         }
       ]
     },
