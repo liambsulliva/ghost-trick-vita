@@ -31,6 +31,7 @@ SMOOTH_FILTER = "Lanczos"
 SHARP_FILTER = "point"
 SOFT_FILTER = "soft"
 GRID_FILTER = "grid"
+SOFT_GRID_FILTER = "soft_grid"
 DS_BACKDROP_SCREEN_PIXELS_PER_PIXEL = 960 / 256
 SOFT_TAPS = (1.0, 2.0, 1.0)
 SPOTLIGHT_NAME = "pause_spotlight"
@@ -230,16 +231,17 @@ def grid_for(placed):
     return width, height, anchor_x, anchor_y
 
 
-def on_backdrop_grid(image, cell=DS_BACKDROP_SCREEN_PIXELS_PER_PIXEL):
+def on_backdrop_grid(image, cell=DS_BACKDROP_SCREEN_PIXELS_PER_PIXEL, keeps_soft_edges=False):
     height, width = image.shape[:2]
     rows = np.minimum((np.arange(height) / cell).astype(int), int((height - 1) / cell))
     columns = np.minimum((np.arange(width) / cell).astype(int), int((width - 1) / cell))
     centre_rows = np.minimum(((np.arange(rows.max() + 1) + 0.5) * cell).astype(int), height - 1)
     centre_columns = np.minimum(((np.arange(columns.max() + 1) + 0.5) * cell).astype(int), width - 1)
     block_pixels = image[centre_rows][:, centre_columns].copy()
-    solid = block_pixels[:, :, 3] >= 128
-    block_pixels[:, :, 3] = np.where(solid, 255, 0)
-    block_pixels[~solid] = 0
+    if not keeps_soft_edges:
+        solid = block_pixels[:, :, 3] >= 128
+        block_pixels[:, :, 3] = np.where(solid, 255, 0)
+        block_pixels[~solid] = 0
     return block_pixels[rows[:, None], columns[None, :]]
 
 
@@ -267,13 +269,13 @@ def scaled_grid(work_folder, grid_shape, pixels, left, top, resize_filter=SMOOTH
     out_path = os.path.join(work_folder, "pause_grid_out.rgba")
     with open(in_path, "wb") as output:
         output.write(grid.tobytes())
-    subprocess.run(["magick", "-size", "%dx%d" % (grid_width, grid_height), "-depth", "8", "rgba:" + in_path, "-filter", SHARP_FILTER if resize_filter in (SOFT_FILTER, GRID_FILTER) else resize_filter, "-resize", "%dx%d!" % (out_w, out_h), "-depth", "8", "rgba:" + out_path], check=True, capture_output=True)
+    subprocess.run(["magick", "-size", "%dx%d" % (grid_width, grid_height), "-depth", "8", "rgba:" + in_path, "-filter", SHARP_FILTER if resize_filter in (SOFT_FILTER, GRID_FILTER, SOFT_GRID_FILTER) else resize_filter, "-resize", "%dx%d!" % (out_w, out_h), "-depth", "8", "rgba:" + out_path], check=True, capture_output=True)
     with open(out_path, "rb") as source:
         scaled = np.frombuffer(source.read(), dtype=np.uint8).reshape(out_h, out_w, 4)
     if resize_filter == SOFT_FILTER:
         scaled = softened(scaled)
-    if resize_filter == GRID_FILTER:
-        scaled = on_backdrop_grid(scaled)
+    if resize_filter in (GRID_FILTER, SOFT_GRID_FILTER):
+        scaled = on_backdrop_grid(scaled, keeps_soft_edges=resize_filter == SOFT_GRID_FILTER)
     os.remove(in_path)
     os.remove(out_path)
     ys, xs = np.nonzero(scaled[:, :, 3])
@@ -346,7 +348,7 @@ def bake_cat(packs, tool_path, work_folder, record, code, timelines, crops, anim
 
 
 def cat_page_gtex(work_folder, name, page, resize_filter):
-    if resize_filter in (SHARP_FILTER, SOFT_FILTER, GRID_FILTER):
+    if resize_filter in (SHARP_FILTER, SOFT_FILTER, GRID_FILTER, SOFT_GRID_FILTER):
         return asset_writers.gtex_bytes(PAGE_SIZE, PAGE_SIZE, asset_writers.FORMAT_RGBA8888, page.tobytes())
     blocks = texture_encoder.encode_rgba(work_folder, name, PAGE_SIZE, PAGE_SIZE, page.tobytes(), "dxt5")
     return asset_writers.gtex_bytes(PAGE_SIZE, PAGE_SIZE, asset_writers.FORMAT_DXT5, blocks)

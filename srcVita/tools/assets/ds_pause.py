@@ -295,16 +295,27 @@ def doubled_with_smooth_edges(pixels):
     return out
 
 
+def doubled_and_antialiased(pixels):
+    fine = doubled_with_smooth_edges(doubled_with_smooth_edges(pixels)).astype(np.float64)
+    height, width = fine.shape[0] // CAT_DENSITY, fine.shape[1] // CAT_DENSITY
+    blocks = fine.reshape(height, CAT_DENSITY, width, CAT_DENSITY, 4)
+    cover = blocks[..., 3:4]
+    alpha = cover.mean(axis=(1, 3))
+    weight = cover.sum(axis=(1, 3))
+    colour = np.where(weight > 0, (blocks[..., :3] * cover).sum(axis=(1, 3)) / np.maximum(weight, 1.0), 0.0)
+    return np.concatenate([np.rint(colour), np.rint(alpha)], axis=2).astype(np.uint8)
+
+
 def art_sized_page(sprite_pages, texture):
     width, height, rgba = sprite_pages.pixels(texture)
-    return enlarged(doubled_with_smooth_edges(np.frombuffer(rgba, dtype=np.uint8).reshape(height, width, 4)), frame_layout.ART_PER_DS_PIXEL // CAT_DENSITY)
+    return enlarged(doubled_and_antialiased(np.frombuffer(rgba, dtype=np.uint8).reshape(height, width, 4)), frame_layout.ART_PER_DS_PIXEL // CAT_DENSITY)
 
 
 def bake_cat(pause, record, code, work_folder, animation_texts, sprite_pages):
     animations = cat_animations(pause["cat_animations"], animation_texts)
     textures = sorted(set(frame["texture"] for animation in animations for frame in pause_art.frames_from_text(animation["text"])))
     key = record.key_for(code, {"animations": animations, "fidget": pause["cat_fidget"]}, b"".join(sprite_pages.source(texture) for texture in textures))
-    table, results = pause_art.bake_cat_pages(work_folder, record, key, animations, lambda animation, texture: art_sized_page(sprite_pages, texture), pause_art.GRID_FILTER)
+    table, results = pause_art.bake_cat_pages(work_folder, record, key, animations, lambda animation, texture: art_sized_page(sprite_pages, texture), pause_art.SOFT_GRID_FILTER)
     files = {pause_art.CAT_TABLE_PATH: table, pause_art.CAT_TRACK_PATH: pause_art.cat_track_text(table, animations, pause["cat_fidget"])}
     names = [result["name"] for result in results]
     return files, [TEXTURE_FOLDER + "/" + name + ".gtex" for name in names], {name: (pause_art.PAGE_SIZE, pause_art.PAGE_SIZE) for name in names}

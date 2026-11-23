@@ -244,6 +244,14 @@ class CatTests(unittest.TestCase):
         self.assertEqual(tuple(doubled[3, 3]), (0, 0, 0, 0))
         flat = np.full((3, 3, 4), 7, dtype=np.uint8)
         self.assertTrue((ds_pause.doubled_with_smooth_edges(flat) == 7).all())
+        soft = ds_pause.doubled_and_antialiased(page)
+        self.assertEqual(soft.shape, (4, 4, 4))
+        self.assertEqual(tuple(soft[0, 3]), ink)
+        self.assertEqual(soft[3, 3][3], 0)
+        partly = soft[(soft[..., 3] > 0) & (soft[..., 3] < 255)]
+        self.assertTrue(len(partly) > 0)
+        self.assertTrue((partly[:, :3] == ink[:3]).all())
+        self.assertTrue((ds_pause.doubled_and_antialiased(flat) == 7).all())
 
     def test_the_cat_baker_takes_its_pages_from_whoever_holds_them(self):
         page = solid(8, 4)
@@ -290,7 +298,7 @@ class CatTests(unittest.TestCase):
         edges = [x for x in range(1, 30) if tuple(grid[0, x]) != tuple(grid[0, x - 1])]
         self.assertTrue(all(abs(x / pause_art.DS_BACKDROP_SCREEN_PIXELS_PER_PIXEL - round(x / pause_art.DS_BACKDROP_SCREEN_PIXELS_PER_PIXEL)) * pause_art.DS_BACKDROP_SCREEN_PIXELS_PER_PIXEL < 1 for x in edges))
         with open(ds_pause.__file__, encoding="utf-8") as source:
-            self.assertIn("pause_art.GRID_FILTER", source.read())
+            self.assertIn("pause_art.SOFT_GRID_FILTER", source.read())
 
     def test_a_cat_on_the_backdrop_grid_shows_only_colours_the_art_has(self):
         image = np.zeros((45, 45, 4), dtype=np.uint8)
