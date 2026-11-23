@@ -24,6 +24,7 @@ struct scene_plate {
 };
 
 #define SCENE_COLOR_LEVEL_NORMAL 256
+#define SCENE_COLOR_FILTER_ALARM 9
 #define SCENE_NO_GHOST_COPY (-1)
 #define SCENE_GHOST_COPY_LEVEL_FULL 31
 
@@ -45,6 +46,7 @@ struct scene_object {
     int soul_is_flat;
     int soul_turns_with_ghost;
     int color_level;
+    int color_filter;
     int ghost_copy_level;
     float flash_alpha;
 };
@@ -85,6 +87,7 @@ void scene_stage_set_world_covered(int is_on);
 void scene_stage_set_object_flipped(const char *object_name, int is_flipped);
 void scene_stage_set_object_soul_tint(const char *object_name, float red, float green, float blue, float alpha, int is_flat, int turns_with_ghost);
 void scene_stage_set_object_color_level(const char *object_name, int level);
+void scene_stage_set_object_color_filter(const char *object_name, int filter);
 void scene_stage_set_object_ghost_copy(const char *object_name, int level);
 void scene_stage_set_object_flash(const char *object_name, float alpha);
 void scene_stage_set_background_color_level(int level);

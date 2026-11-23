@@ -117,11 +117,17 @@ static void begin_vm(struct script_vm *vm, enum script_vm_kind kind, const struc
 }
 
 static void clear_what_the_earlier_scene_left(struct script_machine *machine);
+static void drop_the_checkpoint(struct script_machine *machine);
 static void note_scene_began(struct script_machine *machine, const char *name);
 static unsigned int hash_text(unsigned int hash, const char *text);
 
 static void begin_script(struct script_machine *machine, const struct script_source *source)
 {
+    if (machine->scene_is_the_checkpoint) {
+        machine->scene_is_the_checkpoint = 0;
+    } else if (machine->scene_is_being_retried || !script_flags_read(&machine->flags, SCRIPT_FLAG_CHECKPOINT_OUTLIVES_THE_SCENE)) {
+        drop_the_checkpoint(machine);
+    }
     if (!machine->scene_is_being_retried) {
         script_flags_clear_chapter(&machine->flags);
     }
@@ -135,6 +141,9 @@ static void begin_script(struct script_machine *machine, const struct script_sou
     }
     script_soul_script_began(machine, source->name);
     script_machine_set_world_origin(machine, 0, 0);
+    machine->camera_home_is_set = 0;
+    machine->script_saved_camera_x = 0;
+    machine->script_saved_camera_y = 0;
     machine->object_count = 0;
     memset(machine->free_units, 0, sizeof(machine->free_units));
     machine->actor_count = 0;
@@ -274,6 +283,54 @@ struct script_object *script_machine_current_object(struct script_machine *machi
         return &machine->objects[vm->selected_object];
     }
     return vm->owner;
+}
+
+static void free_the_cores_of(struct script_machine *machine, struct script_vm *vm, const char *target)
+{
+    struct script_object *object;
+    int index;
+
+    if (target == NULL) {
+        return;
+    }
+    if (target[0] == '?') {
+        object = script_machine_current_object(machine, vm);
+        if (object != NULL) {
+            object->actor.busy_cores = 0;
+        }
+        return;
+    }
+    for (index = 0; index < machine->object_count; index++) {
+        if (script_machine_name_matches_target(machine->objects[index].name, target)) {
+            machine->objects[index].actor.busy_cores = 0;
+            if (target[0] != '*' && target[0] != '@') {
+                return;
+            }
+        }
+    }
+}
+
+static void drop_the_checkpoint(struct script_machine *machine)
+{
+    machine->checkpoint_scene[0] = '\0';
+}
+
+static void keep_a_checkpoint(struct script_machine *machine)
+{
+    if (machine->scene_name == NULL) {
+        return;
+    }
+    snprintf(machine->checkpoint_scene, sizeof(machine->checkpoint_scene), "%s", machine->scene_name);
+    memcpy(machine->checkpoint_game_flags, machine->flags.game, sizeof(machine->checkpoint_game_flags));
+    machine->checkpoint_fate_level = machine->fate_level;
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("checkpoint_kept", machine->checkpoint_scene);
+    }
+}
+
+int script_machine_checkpoint_is_offered(const struct script_machine *machine)
+{
+    return machine->checkpoint_scene[0] != '\0' && !script_flags_read(&machine->flags, SCRIPT_FLAG_CHECKPOINT_IS_NOT_OFFERED);
 }
 
 static void set_core_busy(struct script_object *object, int core, int is_busy)
@@ -1057,6 +1114,8 @@ static void step_staff_roll(struct script_machine *machine)
     if (script_staff_roll_step(&machine->staff_roll)) {
         machine->mode_byte = machine->mode_byte_under_the_staff_roll;
         machine->ending_mode_is_on = 0;
+        machine->main_picture_is_on_the_top_screen = 0;
+        memset(&machine->ending_picture, 0, sizeof(machine->ending_picture));
         mark_staff_roll(machine, "staff_roll_left", "-");
     } else if (was_holding && !script_staff_roll_holds_the_script(&machine->staff_roll)) {
         mark_staff_roll(machine, "staff_roll_page_over", "-");
@@ -1268,6 +1327,12 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
     case 0x7f:
     case 0x80:
         return SCRIPT_STEP_NEXT;
+    case 0xeb:
+        free_the_cores_of(machine, vm, script_machine_string(machine, vm, words[0]));
+        return SCRIPT_STEP_NEXT;
+    case 0xfd:
+        keep_a_checkpoint(machine);
+        return SCRIPT_STEP_NEXT;
     case 0xfe:
         machine->soul.rollback_is_on = 1;
         return SCRIPT_STEP_NEXT;
@@ -1279,6 +1344,12 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
             machine->chapter_mark = (int)words[0];
         }
         return SCRIPT_STEP_NEXT;
+    case 0x8:
+    case 0x9:
+        machine->main_picture_is_on_the_top_screen = op == 0x8;
+        return SCRIPT_STEP_NEXT;
+    case 0xc2:
+    case 0xc3:
     case 0xc4:
     case 0x12e:
     case 0x12f:
@@ -1903,6 +1974,24 @@ static void force_script_change(struct script_machine *machine, const char *path
         machine->outputs->scene_change_was_forced();
     }
     begin_script_change(machine, path);
+}
+
+int script_machine_go_back_to_the_checkpoint(struct script_machine *machine)
+{
+    const struct script_source *source;
+
+    if (!script_machine_checkpoint_is_offered(machine) || (machine->scene_name != NULL && strcmp(machine->scene_name, machine->checkpoint_scene) == 0)) {
+        return 0;
+    }
+    source = find_source(machine, machine->checkpoint_scene);
+    if (source == NULL) {
+        return 0;
+    }
+    memcpy(machine->flags.game, machine->checkpoint_game_flags, sizeof(machine->checkpoint_game_flags));
+    script_soul_set_fate_level(machine, machine->checkpoint_fate_level);
+    machine->scene_is_the_checkpoint = 1;
+    force_script_change(machine, source->name);
+    return 1;
 }
 
 void script_machine_reload_scene(struct script_machine *machine)

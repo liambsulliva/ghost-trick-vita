@@ -42,6 +42,11 @@ static const signed char shake_directions[SHAKE_DIRECTION_COUNT][2] = {
 #define CAMERA_BAND_SNAP_MARGIN 16
 #define CAMERA_BAND_SNAP_MOST 4
 #define SOUL_CAMERA_RETURN_SPEED_FIXED 0x4000
+#define CAMERA_HOME_SPEED_FIXED 0x10000
+#define BALLOON_PAN_SPEED_FIXED 0x10000
+#define CAMERA_END_ARG "end"
+#define CAMERA_HOME_END_ARG "custom cancel"
+#define NO_CAMERA_HOME 0xffffu
 #define CORE_PAN_LEFT_OF_THE_CORE 128
 #define CORE_PAN_ABOVE_THE_CORE 96
 
@@ -173,6 +178,9 @@ static void spawn_effect(struct script_machine *machine, struct script_vm *vm, c
         y = y + offset_y;
     }
     machine->outputs->effect_spawned((int)words[0], name, x, y);
+    if (machine->outputs->effect_scaled != NULL && (script_machine_u32(words, 5) != NATIVE_FIXED_ONE || script_machine_u32(words, 7) != NATIVE_FIXED_ONE)) {
+        machine->outputs->effect_scaled(name, fixed_to_float(script_machine_u32(words, 5)), fixed_to_float(script_machine_u32(words, 7)));
+    }
     if (object != NULL && object->actor.exists && signed_word(words[10]) >= 0 && words[15] == 0) {
         anchor_effect(machine, object, name, signed_word(words[10]), signed_word(words[11]), offset_x, offset_y);
     }
@@ -556,7 +564,7 @@ static void cut_camera(struct script_machine *machine, const unsigned int *words
     }
 }
 
-static void begin_pan(struct script_machine *machine, int target_x, int target_y, int speed_fixed, int sends_hosei_end)
+static void begin_pan_that_ends_with(struct script_machine *machine, int target_x, int target_y, int speed_fixed, int sends_hosei_end, const char *end_arg)
 {
     int delta_x;
     int delta_y;
@@ -574,7 +582,7 @@ static void begin_pan(struct script_machine *machine, int target_x, int target_y
         if (machine->outputs->camera_moved != NULL) {
             machine->outputs->camera_moved(target_x, target_y);
         }
-        script_machine_send(machine, "*", "camera", "end");
+        script_machine_send(machine, "*", "camera", end_arg);
         if (sends_hosei_end) {
             script_machine_send(machine, "*", "SYSTEM", "hosei end");
         }
@@ -600,6 +608,12 @@ static void begin_pan(struct script_machine *machine, int target_x, int target_y
     machine->pan_target_x = target_x;
     machine->pan_target_y = target_y;
     machine->pan_sends_hosei_end = sends_hosei_end;
+    machine->pan_end_arg = end_arg;
+}
+
+static void begin_pan(struct script_machine *machine, int target_x, int target_y, int speed_fixed, int sends_hosei_end)
+{
+    begin_pan_that_ends_with(machine, target_x, target_y, speed_fixed, sends_hosei_end, CAMERA_END_ARG);
 }
 
 static void pan_to_position(struct script_machine *machine, const unsigned int *words)
@@ -714,6 +728,45 @@ void script_machine_pan_camera_back_to(struct script_machine *machine, int x, in
     begin_pan(machine, x, y, SOUL_CAMERA_RETURN_SPEED_FIXED, 0);
 }
 
+void script_machine_pan_camera_to_balloon_owner(struct script_machine *machine, const struct script_object *owner)
+{
+    float node_x;
+    float node_y;
+
+    script_machine_node_position(owner, 0, &node_x, &node_y);
+    begin_pan(machine, machine->world_origin_x + (int)node_x - CORE_PAN_LEFT_OF_THE_CORE, machine->world_origin_y + camera_top_for_the_core(machine, (int)node_y), BALLOON_PAN_SPEED_FIXED, 0);
+}
+
+int script_machine_pan_camera_home(struct script_machine *machine)
+{
+    if (!machine->camera_home_is_set) {
+        return 0;
+    }
+    begin_pan_that_ends_with(machine, machine->camera_home_x, machine->camera_home_y, CAMERA_HOME_SPEED_FIXED, 0, CAMERA_HOME_END_ARG);
+    return 1;
+}
+
+static void set_camera_home(struct script_machine *machine, const unsigned int *words)
+{
+    if (words[0] == NO_CAMERA_HOME || words[1] == NO_CAMERA_HOME) {
+        machine->camera_home_is_set = 0;
+        return;
+    }
+    machine->camera_home_is_set = 1;
+    machine->camera_home_x = signed_word(words[0]);
+    machine->camera_home_y = signed_word(words[1]);
+}
+
+static void restore_the_saved_camera(struct script_machine *machine)
+{
+    machine->pan_is_active = 0;
+    machine->camera_x = clamped_x(machine, machine->script_saved_camera_x + machine->world_origin_x);
+    machine->camera_y = clamped_y(machine, machine->script_saved_camera_y + machine->world_origin_y);
+    if (machine->outputs->camera_cut != NULL) {
+        machine->outputs->camera_cut(machine->camera_x, machine->camera_y);
+    }
+}
+
 void script_machine_nearest_camera(const struct script_machine *machine, int *x, int *y)
 {
     *x = clamped_x(machine, *x);
@@ -777,10 +830,76 @@ static void show_camera(struct script_machine *machine)
     }
 }
 
+static void place_the_ending_picture(struct script_machine *machine, int x_fixed, int y_fixed)
+{
+    struct script_ending_picture *picture;
+
+    picture = &machine->ending_picture;
+    picture->x_fixed = x_fixed;
+    picture->y_fixed = y_fixed;
+    picture->ticks_left = 0;
+}
+
+static void show_the_ending_picture(struct script_machine *machine, const unsigned int *words)
+{
+    machine->ending_picture.is_shown = 1;
+    machine->ending_picture.id = (int)words[0];
+    place_the_ending_picture(machine, signed_word(words[1]) * NATIVE_FIXED_ONE, signed_word(words[2]) * NATIVE_FIXED_ONE);
+}
+
+static int fixed_distance(int from, int to)
+{
+    return to < from ? from - to : to - from;
+}
+
+static void slide_the_ending_picture(struct script_machine *machine, const unsigned int *words)
+{
+    struct script_ending_picture *picture;
+    int speed_fixed;
+    int longest;
+
+    picture = &machine->ending_picture;
+    speed_fixed = (int)script_machine_u32(words, 2);
+    if (speed_fixed <= 0) {
+        speed_fixed = NATIVE_FIXED_ONE;
+    }
+    picture->target_x_fixed = 0;
+    picture->target_y_fixed = 0;
+    longest = fixed_distance(picture->x_fixed, picture->target_x_fixed);
+    if (fixed_distance(picture->y_fixed, picture->target_y_fixed) > longest) {
+        longest = fixed_distance(picture->y_fixed, picture->target_y_fixed);
+    }
+    picture->ticks_left = longest / speed_fixed;
+    if (picture->ticks_left < 1) {
+        place_the_ending_picture(machine, picture->target_x_fixed, picture->target_y_fixed);
+        return;
+    }
+    picture->step_x_fixed = (picture->target_x_fixed - picture->x_fixed) / picture->ticks_left;
+    picture->step_y_fixed = (picture->target_y_fixed - picture->y_fixed) / picture->ticks_left;
+}
+
+static void step_the_ending_picture(struct script_machine *machine)
+{
+    struct script_ending_picture *picture;
+
+    picture = &machine->ending_picture;
+    if (picture->ticks_left <= 0) {
+        return;
+    }
+    picture->ticks_left = picture->ticks_left - 1;
+    picture->x_fixed = picture->x_fixed + picture->step_x_fixed;
+    picture->y_fixed = picture->y_fixed + picture->step_y_fixed;
+    if (picture->ticks_left == 0) {
+        picture->x_fixed = picture->target_x_fixed;
+        picture->y_fixed = picture->target_y_fixed;
+    }
+}
+
 void script_machine_update_camera(struct script_machine *machine)
 {
     int shake_moved;
 
+    step_the_ending_picture(machine);
     shake_moved = step_shake(machine);
     if (!machine->pan_is_active || (machine->pause_bit && !machine->soul.is_on)) {
         if (shake_moved) {
@@ -797,7 +916,7 @@ void script_machine_update_camera(struct script_machine *machine)
         machine->camera_x = machine->pan_target_x;
         machine->camera_y = machine->pan_target_y;
         machine->pan_is_active = 0;
-        script_machine_send(machine, "*", "camera", "end");
+        script_machine_send(machine, "*", "camera", machine->pan_end_arg != NULL ? machine->pan_end_arg : CAMERA_END_ARG);
         if (machine->pan_sends_hosei_end) {
             script_machine_send(machine, "*", "SYSTEM", "hosei end");
         }
@@ -838,12 +957,84 @@ static void set_color_level(struct script_machine *machine, struct script_vm *vm
     }
 }
 
+static void set_color_filter(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
+{
+    const char *name;
+    struct script_object *object;
+    int filter;
+    int index;
+
+    name = script_machine_string(machine, vm, words[0]);
+    if (name == NULL) {
+        return;
+    }
+    filter = (words[1] & 0xffu) == SCRIPT_COLOR_FILTER_ALARM ? SCRIPT_COLOR_FILTER_ALARM : SCRIPT_COLOR_FILTER_NONE;
+    if (name[0] == SELF_TARGET_MARK) {
+        object = script_machine_current_object(machine, vm);
+        if (object != NULL) {
+            object->actor.color_filter = filter;
+        }
+        return;
+    }
+    for (index = 0; index < machine->object_count; index++) {
+        if (script_machine_name_matches_target(machine->objects[index].name, name)) {
+            machine->objects[index].actor.color_filter = filter;
+        }
+    }
+}
+
+static void forget_the_anchor_of(struct script_machine *machine, const char *name)
+{
+    int index;
+
+    for (index = 0; index < SCRIPT_ANCHORED_EFFECT_MAX; index++) {
+        if (machine->anchored_effects[index].name != NULL && (strcmp(name, "*") == 0 || strcmp(machine->anchored_effects[index].name, name) == 0)) {
+            machine->anchored_effects[index].name = NULL;
+        }
+    }
+}
+
+static void run_effect_shape_op(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words)
+{
+    const char *name;
+
+    name = script_machine_string(machine, vm, words[0]);
+    if (name == NULL) {
+        return;
+    }
+    if (op == 0xb4) {
+        forget_the_anchor_of(machine, name);
+        if (machine->outputs->effect_placed != NULL) {
+            machine->outputs->effect_placed(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)));
+        }
+    } else if (op == 0xb5) {
+        if (machine->outputs->effect_seeked != NULL) {
+            machine->outputs->effect_seeked(name, (int)words[1]);
+        }
+    } else if (op == 0xb6) {
+        if (machine->outputs->effect_scaled != NULL) {
+            machine->outputs->effect_scaled(name, fixed_to_float(script_machine_u32(words, 1)), fixed_to_float(script_machine_u32(words, 3)));
+        }
+    } else if (machine->outputs->effect_scale_ramp_started != NULL) {
+        machine->outputs->effect_scale_ramp_started(name, signed_word(words[1]), fixed_to_float(script_machine_u32(words, 2)), fixed_to_float(script_machine_u32(words, 4)));
+    }
+}
+
 enum script_step_result script_ops_view_run(struct script_machine *machine, struct script_vm *vm, unsigned int op, const unsigned int *words)
 {
     unsigned int next_word;
     unsigned int length_with_force;
 
     switch (op) {
+    case 0x14:
+        set_color_filter(machine, vm, words);
+        break;
+    case 0xb4:
+    case 0xb5:
+    case 0xb6:
+    case 0xb7:
+        run_effect_shape_op(machine, vm, op, words);
+        break;
     case 0xf7:
         set_color_level(machine, vm, words);
         break;
@@ -906,6 +1097,16 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         break;
     case 0xd0:
         machine->pan_is_active = 0;
+        break;
+    case 0xd1:
+        machine->script_saved_camera_x = machine->camera_x;
+        machine->script_saved_camera_y = machine->camera_y;
+        break;
+    case 0xd2:
+        restore_the_saved_camera(machine);
+        break;
+    case 0xd3:
+        set_camera_home(machine, words);
         break;
     case 0xd7:
         script_machine_scroll_camera(machine, signed_word(words[0]) - machine->world_origin_x, signed_word(words[1]) - machine->world_origin_y);
@@ -1010,6 +1211,16 @@ enum script_step_result script_ops_view_run(struct script_machine *machine, stru
         return SCRIPT_STEP_MOVED_THEN_YIELD;
     case 0xc8:
         cut_camera(machine, words);
+        break;
+    case 0xc5:
+        show_the_ending_picture(machine, words);
+        return SCRIPT_STEP_NEXT_THEN_YIELD;
+    case 0xc6:
+        machine->ending_picture.is_shown = 1;
+        place_the_ending_picture(machine, signed_word(words[0]) * NATIVE_FIXED_ONE, signed_word(words[1]) * NATIVE_FIXED_ONE);
+        break;
+    case 0xd4:
+        slide_the_ending_picture(machine, words);
         break;
     default:
         break;

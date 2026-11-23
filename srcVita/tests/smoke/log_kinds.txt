@@ -80,7 +80,10 @@ fail texture missing
 fail texture_cache full
 fail texture_cache over_budget
 known pose absent | an object asked for a pose its set has no art for; nothing is drawn, as native does for a missing table
-known script *_not_ported | README, Future updates: rarely seen modes inside script ops log and carry on
+fail script op_not_ported
+known script eyecatch_kind_not_ported | README, Future updates: rarely seen modes inside script ops log and carry on
+known script gameapp_not_ported | README, Future updates: rarely seen modes inside script ops log and carry on
+known script motion_word_not_ported | README, Future updates: rarely seen modes inside script ops log and carry on
 known script effect_not_drawn | Known issues, Effects: effects without art are noted and not drawn
 known script free_unit_not_drawn | Still open: telephone lines and neon are tracked but not drawn
 known script movie_of_class_not_baked | Still open: effect classes with no port yet
@@ -174,16 +177,18 @@ ok screen flips
 ok script act_begun
 ok script animations
 ok script auto_play
+ok script balloon_tap_pans_first
 ok script chain
 ok script chain_moved_without_touch_targets
 ok script chain_read
+ok script checkpoint_kept
 ok script choice_cursor
 ok script choice_opened
 ok script choice_picked
 ok script core
+ok script countdown_carried_over
 ok script dead_talk_prompt_answered
 ok script dead_talk_prompt_opened
-ok script countdown_carried_over
 ok script exchange
 ok script exchange_cancelled
 ok script exchange_linked
@@ -199,15 +204,16 @@ ok script hint_has_no_target
 ok script hint_offered
 ok script hint_used
 ok script pack_read
+ok script paused
 ok script phone_book_answered
 ok script phone_book_opened
 ok script player_mark
 ok script reached
-ok script resumed
-ok script paused
 ok script read
 ok script ready
 ok script restart
+ok script resumed
+ok script retry_from_checkpoint
 ok script rewind_select
 ok script route_aim
 ok script route_block_already_played

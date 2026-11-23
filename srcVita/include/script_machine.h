@@ -18,6 +18,10 @@
 
 #define SCRIPT_NO_OBJECT (-1)
 #define SCRIPT_COLOR_LEVEL_NORMAL 256
+#define SCRIPT_COLOR_FILTER_NONE 0
+#define SCRIPT_COLOR_FILTER_ALARM 9
+#define SCRIPT_FLAG_CHECKPOINT_IS_NOT_OFFERED 0x1009u
+#define SCRIPT_FLAG_CHECKPOINT_OUTLIVES_THE_SCENE 0x100au
 #define SCRIPT_NOTE_LIST_COUNT 3
 #define SCRIPT_NOTE_ID_COUNT 64
 #define SCRIPT_SOURCE_MAX 256
@@ -149,6 +153,8 @@ struct script_actor {
     int level;
     int is_visible;
     int color_level;
+    int color_filter;
+    int palette_override;
     int is_flipped;
     int stepping_is_stopped;
     int speed_shift;
@@ -255,6 +261,21 @@ struct script_balloon {
     const char *tap_verb;
     const char *tap_arg;
     int is_hidden;
+    int reach_px;
+    int tap_keeps_the_camera;
+    int tap_waits_for_the_pan;
+};
+
+struct script_ending_picture {
+    int is_shown;
+    int id;
+    int x_fixed;
+    int y_fixed;
+    int step_x_fixed;
+    int step_y_fixed;
+    int target_x_fixed;
+    int target_y_fixed;
+    int ticks_left;
 };
 
 struct script_room_bounds {
@@ -597,6 +618,12 @@ struct script_machine {
     int pan_target_x;
     int pan_target_y;
     int pan_sends_hosei_end;
+    const char *pan_end_arg;
+    int camera_home_is_set;
+    int camera_home_x;
+    int camera_home_y;
+    int script_saved_camera_x;
+    int script_saved_camera_y;
     int shake_level;
     int shake_ticks_left;
     int shake_offset_x;
@@ -610,6 +637,8 @@ struct script_machine {
     struct script_staff_roll staff_roll;
     int mode_byte_under_the_staff_roll;
     int ending_mode_is_on;
+    int main_picture_is_on_the_top_screen;
+    struct script_ending_picture ending_picture;
     int phone_view_is_on;
     int phone_book_place;
     int phone_book_is_open;
@@ -643,6 +672,10 @@ struct script_machine {
     int scene_is_being_retried;
     char soul_core_kept_for_the_retry[SCRIPT_SOURCE_NAME_MAX];
     char scene_kept_for_the_retry[SCRIPT_SOURCE_NAME_MAX];
+    char checkpoint_scene[SCRIPT_SOURCE_NAME_MAX];
+    unsigned char checkpoint_game_flags[SCRIPT_GAME_FLAG_BANK_BYTES];
+    int checkpoint_fate_level;
+    int scene_is_the_checkpoint;
     int soul_slot_kept_for_the_retry;
     int demo_soul_is_on;
     unsigned int random_state;
@@ -659,6 +692,10 @@ void script_machine_set_swirl_with_effect(struct script_machine *machine, int is
 int script_machine_picture_is_hidden(const struct script_machine *machine);
 
 void script_machine_pan_camera_back_to(struct script_machine *machine, int x, int y);
+int script_machine_pan_camera_home(struct script_machine *machine);
+int script_machine_checkpoint_is_offered(const struct script_machine *machine);
+int script_machine_go_back_to_the_checkpoint(struct script_machine *machine);
+void script_machine_pan_camera_to_balloon_owner(struct script_machine *machine, const struct script_object *owner);
 #define SCRIPT_FIRST_CORE_NODE 10
 #define PAUSE_CLASS_NORMAL 0
 #define PAUSE_CLASS_ONE 1

@@ -113,6 +113,7 @@ static int set_object_without_reading_ahead(const char *object_name, const char 
         }
         object->has_soul_tint = 0;
         object->color_level = SCENE_COLOR_LEVEL_NORMAL;
+        object->color_filter = 0;
         object->hides_in_living_view = 0;
         object->hides_in_soul_view = 0;
         object->ghost_copy_level = SCENE_NO_GHOST_COPY;
@@ -185,6 +186,16 @@ void scene_stage_set_object_color_level(const char *object_name, int level)
     object = find_object(object_name);
     if (object != NULL) {
         object->color_level = level;
+    }
+}
+
+void scene_stage_set_object_color_filter(const char *object_name, int filter)
+{
+    struct scene_object *object;
+
+    object = find_object(object_name);
+    if (object != NULL) {
+        object->color_filter = filter;
     }
 }
 

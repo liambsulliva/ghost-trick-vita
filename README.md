@@ -129,7 +129,7 @@ The port follows the DS game's own code wherever it can. The changes below are d
 ## Future updates
 
 1. **Bug fixes**, from reports and from the [known issues](srcVita/README.md#known-issues).
-2. **The last script ops.** Every mode inside a ported op that the game's scripts use now runs. The whole-game replay still passes 20 ops that are not ported, which log and carry on: 0x08, 0x09, 0x14, 0x48, 0x49, 0x9a, 0xaf, 0xb4 to 0xb7, 0xc2, 0xc3, 0xc5, 0xd1 to 0xd4, 0xfd and 0x119. The root causes list [what is traced of them so far](srcVita/docs/root_causes.md#still-open).
+2. **The last script ops.** Every op the whole-game replay reaches now runs. Five of them keep their state and draw nothing yet: the ending's second-screen picture (0x08, 0x09, 0xc5, 0xd4), a guard's palette change (0x9a, 0xaf) and the listening range of a balloon (0x48). The checkpoint (0xfd) goes back to its scene and does not resume mid-scene. The root causes list [what is traced of them so far](srcVita/docs/root_causes.md#still-open).
 3. **The rest of the settings.** Resolution, and the ghost world's background color for Sissel and, once unlocked, Missile.
 4. **Upload to VitaDB.**
 

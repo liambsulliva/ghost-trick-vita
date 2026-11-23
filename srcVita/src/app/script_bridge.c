@@ -268,6 +268,7 @@ static void on_actor_changed(const struct script_actor_view *actor)
     scene_stage_place_object(actor->name, row->animation_name, (float)actor->x, (float)actor->y, (LEVEL_COUNT - actor->level) * LAYER_PER_LEVEL + (CREATION_INDEX_TOP - actor->creation_index), record_of(actor, row->records_per_frame));
     scene_stage_set_object_flipped(actor->name, actor->is_flipped);
     scene_stage_set_object_color_level(actor->name, actor->color_level);
+    scene_stage_set_object_color_filter(actor->name, actor->color_filter);
     scene_stage_set_object_views(actor->name, script_class_draws_in_living_view(actor->class_id), script_class_draws_in_soul_view(actor->class_id));
     scene_stage_set_object_ghost_copy(actor->name, actor->ghost_copy_level);
 }
@@ -1027,6 +1028,10 @@ static const struct script_outputs bridge_outputs = {
     .effect_status_set = script_view_effect_status_set,
     .effect_fade_out_started = script_view_effect_fade_out_started,
     .effect_stepping_changed = script_view_effect_stepping_changed,
+    .effect_placed = script_view_effect_placed,
+    .effect_seeked = script_view_effect_seeked,
+    .effect_scaled = script_view_effect_scaled,
+    .effect_scale_ramp_started = script_view_effect_scale_ramp_started,
     .effect_signalled = script_view_effect_signalled,
     .effect_moved = timed_effect_moved,
     .narration_changed = on_narration_changed,

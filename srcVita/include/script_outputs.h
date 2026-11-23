@@ -36,6 +36,7 @@ struct script_actor_view {
     int core_x;
     int core_y;
     int color_level;
+    int color_filter;
     int ghost_copy_level;
 };
 
@@ -176,6 +177,10 @@ struct script_outputs {
     void (*effect_deleted)(const char *name);
     void (*effect_signalled)(const char *name);
     void (*effect_moved)(const char *name, float x, float y, float aim_degrees);
+    void (*effect_placed)(const char *name, float x, float y);
+    void (*effect_seeked)(const char *name, int ticks);
+    void (*effect_scaled)(const char *name, float scale_x, float scale_y);
+    void (*effect_scale_ramp_started)(const char *name, int ticks, float scale_x, float scale_y);
     void (*effect_status_set)(const char *name, int status);
     void (*effect_fade_out_started)(const char *name, int ticks);
     void (*effect_stepping_changed)(const char *name, int is_stopped);

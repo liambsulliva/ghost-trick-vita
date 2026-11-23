@@ -163,6 +163,14 @@ struct view_effect {
     int is_stopped;
     int fade_ticks;
     int fade_ticks_left;
+    float scale_x;
+    float scale_y;
+    float ramp_from_x;
+    float ramp_from_y;
+    float ramp_to_x;
+    float ramp_to_y;
+    int ramp_ticks;
+    int ramp_tick;
 };
 
 struct view_core_mark {
@@ -457,6 +465,10 @@ void script_view_effect_spawned(const struct script_effect_row *row, const char 
     effect->is_stopped = 0;
     effect->fade_ticks = 0;
     effect->fade_ticks_left = 0;
+    effect->scale_x = 1.0f;
+    effect->scale_y = 1.0f;
+    effect->ramp_ticks = 0;
+    effect->ramp_tick = 0;
     fx_playhead_start(&effect->playhead);
     if (row->kind == SCRIPT_EFFECT_RAIN) {
         float center_x;
@@ -537,7 +549,80 @@ void script_view_effect_moved(const char *name, float x, float y, float aim_degr
 
 static int effect_is_named(const struct view_effect *effect, const char *name)
 {
-    return effect->in_use && (name[0] == '*' || strcmp(effect->name, name) == 0);
+    return effect->in_use && (name[0] == '*' || (name[0] == '@' && strstr(effect->name, name + 1) != NULL) || strcmp(effect->name, name) == 0);
+}
+
+void script_view_effect_placed(const char *name, float x, float y)
+{
+    int index;
+
+    for (index = 0; index < VIEW_EFFECT_MAX; index++) {
+        if (effect_is_named(&effects[index], name)) {
+            effects[index].x = x;
+            effects[index].y = y;
+        }
+    }
+}
+
+void script_view_effect_seeked(const char *name, int ticks)
+{
+    int index;
+    int tick;
+
+    for (index = 0; index < VIEW_EFFECT_MAX; index++) {
+        if (effect_is_named(&effects[index], name)) {
+            fx_playhead_start(&effects[index].playhead);
+            for (tick = 0; tick < ticks; tick++) {
+                fx_playhead_advance(&effects[index].playhead, effects[index].fx_movie, tables->fx_jumps);
+            }
+            effects[index].age_ticks = ticks;
+        }
+    }
+}
+
+void script_view_effect_scaled(const char *name, float scale_x, float scale_y)
+{
+    int index;
+
+    for (index = 0; index < VIEW_EFFECT_MAX; index++) {
+        if (effect_is_named(&effects[index], name)) {
+            effects[index].scale_x = scale_x;
+            effects[index].scale_y = scale_y;
+        }
+    }
+}
+
+void script_view_effect_scale_ramp_started(const char *name, int ticks, float scale_x, float scale_y)
+{
+    int index;
+
+    for (index = 0; index < VIEW_EFFECT_MAX; index++) {
+        if (effect_is_named(&effects[index], name)) {
+            effects[index].ramp_from_x = effects[index].scale_x;
+            effects[index].ramp_from_y = effects[index].scale_y;
+            effects[index].ramp_to_x = scale_x;
+            effects[index].ramp_to_y = scale_y;
+            effects[index].ramp_ticks = ticks;
+            effects[index].ramp_tick = 0;
+        }
+    }
+}
+
+static void step_the_scale_ramp(struct view_effect *effect)
+{
+    float share;
+
+    if (effect->ramp_ticks <= 0) {
+        return;
+    }
+    share = (float)effect->ramp_tick / (float)effect->ramp_ticks;
+    effect->scale_x = effect->ramp_from_x + (effect->ramp_to_x - effect->ramp_from_x) * share;
+    effect->scale_y = effect->ramp_from_y + (effect->ramp_to_y - effect->ramp_from_y) * share;
+    effect->ramp_tick = effect->ramp_tick + 1;
+    if (effect->ramp_tick > effect->ramp_ticks) {
+        effect->ramp_ticks = 0;
+        effect->ramp_tick = 0;
+    }
 }
 
 static void delete_effect_at(int index)
@@ -625,6 +710,7 @@ void script_view_advance(void)
     for (index = 0; index < VIEW_EFFECT_MAX; index++) {
         if (effects[index].in_use && !effects[index].is_stopped) {
             effects[index].age_ticks = effects[index].age_ticks + 1;
+            step_the_scale_ramp(&effects[index]);
             fx_playhead_advance(&effects[index].playhead, effects[index].fx_movie, tables->fx_jumps);
             if (effects[index].row->ticks > 0 && effects[index].age_ticks >= effects[index].row->ticks) {
                 effects[index].in_use = 0;
@@ -771,8 +857,8 @@ static void draw_fx_frame(const struct script_fx_movie *movie, const struct scri
         float x;
         float y;
 
-        x = frame->corners[index * 2];
-        y = frame->corners[index * 2 + 1];
+        x = frame->corners[index * 2] * effect->scale_x;
+        y = frame->corners[index * 2 + 1] * effect->scale_y;
         screen_corners[index * 2] = screen_x + (x * cosine - y * sine) * VITA_PIXELS_PER_DS_PIXEL;
         screen_corners[index * 2 + 1] = screen_y + (x * sine + y * cosine) * VITA_PIXELS_PER_DS_PIXEL;
     }
@@ -833,7 +919,7 @@ static void draw_effect(const struct view_effect *effect)
     scene_view_world_to_screen(scene_stage_view(), effect->x, effect->y, &screen_x, &screen_y);
     book = script_tables_find_flipbook(tables, effect->row->texture_name);
     if (book != NULL) {
-        draw_flipbook(book, (unsigned int)effect->age_ticks, screen_x, screen_y, effect->row->width, effect->row->height, white);
+        draw_flipbook(book, (unsigned int)effect->age_ticks, screen_x, screen_y, effect->row->width * effect->scale_x, effect->row->height * effect->scale_y, white);
         return;
     }
     keyed_pulse = script_tables_find_pulse(tables, effect->row->texture_name);

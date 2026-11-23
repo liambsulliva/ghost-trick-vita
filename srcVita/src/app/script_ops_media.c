@@ -6,6 +6,7 @@
 #define SOUND_KIND_REFUSED 33
 #define PARAGRAPH_ARG_COUNT 4
 #define TAP_BALLOON_ICON_KIND 5
+#define FIRST_TAP_BALLOON_SLOT 0
 #define SOUL_BALLOON_SLOT 1
 #define ANY_TAP_GROUP -1
 #define LABEL_THAT_CLOSES 0u
@@ -196,6 +197,27 @@ static void open_soul_balloon_that_sends(struct script_machine *machine, struct 
     balloon->tap_arg = script_machine_string(machine, vm, words[4]);
 }
 
+static void deliver_the_tap(struct script_machine *machine, int slot)
+{
+    struct script_balloon *balloon;
+
+    balloon = &machine->balloons[slot];
+    if (balloon->kind == SCRIPT_BALLOON_KIND_TAP_MARKS && balloon->label != NULL) {
+        script_talk_open(machine, balloon->label);
+    } else if (balloon->tap_target != NULL && balloon->tap_verb != NULL && balloon->tap_arg != NULL) {
+        script_machine_send(machine, balloon->tap_target, balloon->tap_verb, balloon->tap_arg);
+    }
+    balloon->in_use = 0;
+    if (machine->outputs->balloon_closed != NULL) {
+        machine->outputs->balloon_closed(slot);
+    }
+}
+
+static int the_tap_pans_to_the_owner(const struct script_machine *machine, const struct script_balloon *balloon)
+{
+    return balloon->tap_group == SCRIPT_TAP_GROUP_LEFT && !balloon->tap_keeps_the_camera && balloon->owner_object != SCRIPT_NO_OBJECT && machine->objects[balloon->owner_object].actor.exists;
+}
+
 void script_balloons_tap(struct script_machine *machine, int tap_group)
 {
     int index;
@@ -204,19 +226,38 @@ void script_balloons_tap(struct script_machine *machine, int tap_group)
         struct script_balloon *balloon;
 
         balloon = &machine->balloons[index];
-        if (!balloon->in_use || balloon->is_hidden || balloon->tap_group != tap_group) {
+        if (!balloon->in_use || balloon->is_hidden || balloon->tap_group != tap_group || balloon->tap_waits_for_the_pan) {
             continue;
         }
-        if (balloon->kind == SCRIPT_BALLOON_KIND_TAP_MARKS && balloon->label != NULL) {
-            script_talk_open(machine, balloon->label);
-        } else if (balloon->tap_target != NULL && balloon->tap_verb != NULL && balloon->tap_arg != NULL) {
-            script_machine_send(machine, balloon->tap_target, balloon->tap_verb, balloon->tap_arg);
-        }
         script_hints_player_did(machine, SCRIPT_ROUTE_TAP_BALLOON, NULL);
-        balloon->in_use = 0;
-        if (machine->outputs->balloon_closed != NULL) {
-            machine->outputs->balloon_closed(index);
+        if (the_tap_pans_to_the_owner(machine, balloon)) {
+            script_machine_pan_camera_to_balloon_owner(machine, &machine->objects[balloon->owner_object]);
+            if (machine->pan_is_active) {
+                if (machine->outputs->marked != NULL) {
+                    machine->outputs->marked("balloon_tap_pans_first", machine->objects[balloon->owner_object].name);
+                }
+                balloon->tap_waits_for_the_pan = 1;
+                continue;
+            }
         }
+        deliver_the_tap(machine, index);
+    }
+}
+
+static void balloon_anchor(const struct script_machine *machine, const struct script_balloon *balloon, float *x, float *y)
+{
+    const struct script_actor *actor;
+
+    actor = &machine->objects[balloon->owner_object].actor;
+    if (balloon->placement == SCRIPT_BALLOON_AT_WORLD_POINT) {
+        *x = balloon->offset_x;
+        *y = balloon->offset_y;
+    } else if (balloon->placement == SCRIPT_BALLOON_AT_SCREEN_POINT) {
+        *x = (float)machine->camera_x + balloon->offset_x;
+        *y = (float)machine->camera_y + balloon->offset_y;
+    } else {
+        *x = (float)(actor->x + actor->points[0][0]) + balloon->offset_x;
+        *y = (float)(actor->y + actor->points[0][1]) + balloon->offset_y;
     }
 }
 
@@ -266,6 +307,12 @@ void script_balloons_count_down(struct script_machine *machine)
         struct script_balloon *balloon;
 
         balloon = &machine->balloons[index];
+        if (balloon->in_use && balloon->tap_waits_for_the_pan) {
+            if (!machine->pan_is_active) {
+                deliver_the_tap(machine, index);
+            }
+            continue;
+        }
         if (!balloon->in_use || balloon->is_hidden || balloon->timer <= 0) {
             continue;
         }
@@ -285,7 +332,8 @@ void script_balloons_report_opened(struct script_machine *machine)
 
     for (index = 0; index < SCRIPT_BALLOON_MAX; index++) {
         struct script_balloon *balloon;
-        const struct script_actor *actor;
+        float anchor_x;
+        float anchor_y;
 
         balloon = &machine->balloons[index];
         if (!balloon->in_use || !balloon->open_is_pending) {
@@ -299,14 +347,8 @@ void script_balloons_report_opened(struct script_machine *machine)
             machine->outputs->balloon_opened(index, NULL, balloon->kind, 0.0f, 0.0f);
             continue;
         }
-        actor = &machine->objects[balloon->owner_object].actor;
-        if (balloon->placement == SCRIPT_BALLOON_AT_WORLD_POINT) {
-            machine->outputs->balloon_opened(index, balloon->label, balloon->kind, balloon->offset_x, balloon->offset_y);
-        } else if (balloon->placement == SCRIPT_BALLOON_AT_SCREEN_POINT) {
-            machine->outputs->balloon_opened(index, balloon->label, balloon->kind, (float)machine->camera_x + balloon->offset_x, (float)machine->camera_y + balloon->offset_y);
-        } else {
-            machine->outputs->balloon_opened(index, balloon->label, balloon->kind, (float)(actor->x + actor->points[0][0]) + balloon->offset_x, (float)(actor->y + actor->points[0][1]) + balloon->offset_y);
-        }
+        balloon_anchor(machine, balloon, &anchor_x, &anchor_y);
+        machine->outputs->balloon_opened(index, balloon->label, balloon->kind, anchor_x, anchor_y);
     }
 }
 
@@ -544,6 +586,16 @@ enum script_step_result script_ops_media_run(struct script_machine *machine, str
         break;
     case 0x4a:
         keep_balloons_hidden(machine, words[0] != 0);
+        break;
+    case 0x48:
+        if (machine->balloons[FIRST_TAP_BALLOON_SLOT].in_use) {
+            machine->balloons[FIRST_TAP_BALLOON_SLOT].reach_px = (int)words[0];
+        }
+        break;
+    case 0x49:
+        if (machine->balloons[FIRST_TAP_BALLOON_SLOT].in_use) {
+            machine->balloons[FIRST_TAP_BALLOON_SLOT].tap_keeps_the_camera = 1;
+        }
         break;
     case 0x54:
         place_balloon(machine, vm, words, SCRIPT_BALLOON_AT_WORLD_POINT);

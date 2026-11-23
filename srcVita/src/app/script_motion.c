@@ -546,6 +546,7 @@ static void report_actor_if_changed(struct script_machine *machine, const struct
     view.is_flipped = actor->is_flipped;
     view.class_id = actor->class_id;
     view.color_level = actor->color_level;
+    view.color_filter = actor->color_filter;
     view.has_core = actor->has_core;
     view.core_x = actor->x + actor->core_x;
     view.core_y = actor->y + actor->core_y;
@@ -590,6 +591,8 @@ static void begin_actor(struct script_machine *machine, struct script_actor *act
     actor->class_id = class_id;
     actor->level = script_class_default_level(actor->class_id);
     actor->color_level = SCRIPT_COLOR_LEVEL_NORMAL;
+    actor->color_filter = SCRIPT_COLOR_FILTER_NONE;
+    actor->palette_override = 0;
 }
 
 static void create_actor(struct script_machine *machine, struct script_vm *vm, const unsigned int *words)
@@ -1030,6 +1033,20 @@ enum script_step_result script_ops_actor_run(struct script_machine *machine, str
         object = script_machine_current_object(machine, vm);
         if (object != NULL && object->actor.exists) {
             object->actor.is_visible = 0;
+        }
+        break;
+    case 0x9a:
+        object = script_machine_current_object(machine, vm);
+        if (object != NULL && object->actor.exists && script_class_is_human(object->actor.class_id)) {
+            object->actor.palette_override = (short)words[0] < 0 ? 0 : (int)words[0];
+        }
+        break;
+    case 0xaf:
+        if (script_machine_string(machine, vm, words[0]) != NULL) {
+            object = script_machine_find_object(machine, script_machine_string(machine, vm, words[0]));
+            if (object != NULL && object->actor.exists) {
+                object->actor.palette_override = 0;
+            }
         }
         break;
     case 0x9b:

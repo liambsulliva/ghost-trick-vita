@@ -11,6 +11,7 @@
 #include "spotlight_mask.h"
 #include "texture_cache.h"
 
+#define ALARM_FILTER_GREEN_AND_BLUE 0.6f
 #define OFF_SCREEN_MARGIN_DS_PIXELS 120.0f
 #define READ_AHEAD_TICKS 120u
 #define LOWER_THAN_ANY_LAYER INT_MIN
@@ -334,7 +335,12 @@ static struct renderer_color object_paint(const struct scene_stage *stage, const
         *is_flat = object->soul_is_flat;
         return color;
     }
-    return color_at_level(stage->soul_mode_is_on ? SCENE_COLOR_LEVEL_NORMAL : object->color_level);
+    color = color_at_level(stage->soul_mode_is_on ? SCENE_COLOR_LEVEL_NORMAL : object->color_level);
+    if (!stage->soul_mode_is_on && object->color_filter == SCENE_COLOR_FILTER_ALARM) {
+        color.green = color.green * ALARM_FILTER_GREEN_AND_BLUE;
+        color.blue = color.blue * ALARM_FILTER_GREEN_AND_BLUE;
+    }
+    return color;
 }
 
 static const char *art_under_the_screen_filter(const struct scene_stage *stage, const char *texture_name, char *grayscale_name)

@@ -28,6 +28,7 @@ Severity: **blocks beta** (a player cannot go on, or loses progress), **visible*
 - Evidence: `src/app/script_opcodes.c` has a length for 0xfd and no family, so `run_op` logs `op_not_ported` (`script_machine.c:1537`). `root_causes.md:1245`: "Without op 0xfd a game over in the torpedo restarts at `st14_game031_Expand`". Hit in st01_game012, st01_game021, st02_game022, st09_game003, st13, st14_game021, st14_game040 and others (`root_causes.md:2317`, 949, 1120, 2334).
 - Native: case 0xfd → `func_02011b04` copies the scene name (`game+0x1c`) to `game+0x1058` and builds the checkpoint at `game+0x1098`; the rollback menu's second entry reads it through `func_02011c80`.
 - Effort: M (the store is S; the retry path that uses it, and the rollback menu in item 9, are the rest).
+- Partly fixed on 2026-11-23 by root cause 302: op 0xfd keeps the scene name, the 0x1000 flag bank and the fate level, and a retry from another scene goes back to the checkpoint's scene. The resume mid-scene and the rollback menu are still open.
 
 ### 3. Unported ops that write the script's condition or hold it — visible, may break branches (both)
 
@@ -57,6 +58,8 @@ Same class as root cause 18 and the op 0x6b entry (`root_causes.md:387`): an op 
 - Objects and stills: 0xdd and 0xde make and remove an object of type `data_020cfcf0` (0xde also calls `func_0200c82c`); 0xf4 is op 0xf3's still plus `func_0202681c` (byte `+0xc9` = 1) on the `uSpriteCaptureNormal`. The port routes 0xf3 and 0xf5 but not 0xf4. Whether `+0xc9` keeps the still grey, which would explain the Known issue of the film still after "(Unconscious, eh?)", is a guess to check. Visible; S-M.
 - Audio and globals: 0x10f (`func_0202a90c` on the sound object, `func_0200847c`), 0x169 and 0x16a (`data_020abf38`, `data_020abf34`; the second is read by `func_020521d4`), 0x8 and 0x9 (`game+0x103e` = 1 and `+0x1040` = 1 or 0; st15_demo110). Minor until a reader is found; S each.
 - No-ops natively: 0x44, 0x7d, 0xab (calls the empty `func_020280c4`, `src/vm/empty_0c4.c`) and 0xdc (advance, and 0xdc yields). They only add `op_not_ported` noise. Minor; S.
+
+Update, 2026-11-23 (root cause 302): the 20 ops the whole-game Vita run logged (0x08, 0x09, 0x14, 0x48, 0x49, 0x9a, 0xaf, 0xb4 to 0xb7, 0xc2, 0xc3, 0xc5, 0xd1 to 0xd4, 0xfd, 0x119) and 0xc6 and 0xeb now have a family, and `log_kinds.txt` fails a run on `op_not_ported`. Three notes above were wrong: 0x9a and 0xaf set and lift a palette override, 0x119 shares tile memory, and 0x14 and 0xb4 to 0xb7 are an actor colour filter and effect move, seek, scale and scale ramp. Still without a family: 0x6c, 0x78, 0xa8, 0xe4, 0xf2, 0x38, 0xda, 0x100, 0x101, 0x8c, 0x8d, 0x47, 0x4f, 0xb8, 0xdd, 0xde, 0xf4, 0x10f, 0x169, 0x16a, 0x44, 0x7d, 0xab and 0xdc; the whole-game replay reaches none of them.
 
 ### 5. Routed ops that do nothing although native does something — visible (both)
 

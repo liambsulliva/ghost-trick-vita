@@ -1143,7 +1143,8 @@ static void set_soul_view_with_effect(struct script_machine *machine, int is_on,
         soul->saved_camera_core = soul->active_object;
     } else if (holds_the_world && soul->camera_was_saved) {
         soul->camera_was_saved = 0;
-        if (soul->saved_camera_core == soul->active_object) {
+        if (script_machine_pan_camera_home(machine)) {
+        } else if (soul->saved_camera_core == soul->active_object) {
             script_machine_pan_camera_back_to(machine, soul->saved_camera_x, soul->saved_camera_y);
         }
     }
@@ -1872,6 +1873,13 @@ static void retry_the_fate_attempt(struct script_machine *machine, const char *w
     machine->route_step_after_retry = machine->soul.route_step;
     keep_the_core_the_soul_failed_on(machine);
     machine->scene_is_being_retried = 1;
+    if (script_machine_go_back_to_the_checkpoint(machine)) {
+        forget_the_core_kept_for_the_retry(machine);
+        if (machine->outputs->marked != NULL) {
+            machine->outputs->marked("retry_from_checkpoint", machine->checkpoint_scene);
+        }
+        return;
+    }
     script_machine_reload_scene(machine);
 }
 
