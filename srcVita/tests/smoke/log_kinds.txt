@@ -91,7 +91,7 @@ known script no_room_row | a script names a room the tables have no row for
 known script no_sound_row | a script names a sound the tables have no row for
 known script no_talk_row | Still open: talks the remaster's text lacks
 known script no_text_lines | Still open: talks the remaster's text lacks
-known script route_no_player_input | routing.md: dead_talk acts inside the game until its player input is ported
+known script route_no_player_input | routing.md: four dead_talk steps start their talk from a distance instead of walking onto the core that asks
 known script script_change_past_baked_files | the story's last jump, GOTO TITLE, names no script file
 known script stored_only | ops the port files as stores only
 known sound dropped | fast-forward starts sounds faster than the voices free up
@@ -181,6 +181,8 @@ ok script choice_cursor
 ok script choice_opened
 ok script choice_picked
 ok script core
+ok script dead_talk_prompt_answered
+ok script dead_talk_prompt_opened
 ok script countdown_carried_over
 ok script exchange
 ok script exchange_cancelled

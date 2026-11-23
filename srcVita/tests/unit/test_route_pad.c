@@ -279,6 +279,160 @@ static void test_a_dead_core_alone_does_not_start_the_dead_talk(void)
     CHECK(!gate_got("SYSTEM", "DEADTALK"));
 }
 
+static void rest_on_a_dead_gate_whose_scene_holds_a_dead_talk(enum script_route_action action, const char *object)
+{
+    start_with_one_step(action, object, "view");
+    machine.objects[1].is_dead = 1;
+    machine.objects[0].handler_count = 1;
+    machine.objects[0].handlers[0].verb = "SYSTEM";
+    machine.objects[0].handlers[0].arg = "DEADTALK";
+    run_ticks(1);
+    machine.soul.is_on = 1;
+}
+
+static void play_ticks_by_hand(int ticks)
+{
+    int tick;
+
+    for (tick = 0; tick < ticks; tick++) {
+        script_soul_step_before_tasks(&machine);
+        machine.tick = machine.tick + 1;
+    }
+}
+
+static void walk_by_hand_onto_the_dead_gate(void)
+{
+    int tick;
+
+    rest_on_a_dead_gate_whose_scene_holds_a_dead_talk(SCRIPT_ROUTE_MOVE, "gate");
+    for (tick = 0; tick < TICKS_FOR_A_MOVE && machine.soul.active_object != 1; tick++) {
+        run_ticks(1);
+    }
+    CHECK_INT(machine.soul.active_object, 1);
+    machine.route_is_driving = 0;
+    play_ticks_by_hand(2);
+}
+
+static void test_a_dead_core_asks_before_its_talk_and_yes_starts_it(void)
+{
+    walk_by_hand_onto_the_dead_gate();
+    CHECK(machine.soul.dead_talk_prompt_is_open);
+    CHECK(!machine.soul.dead_talk_is_on);
+    CHECK(!gate_got("SYSTEM", "DEADTALK"));
+    script_machine_note_press(&machine);
+    play_ticks_by_hand(2);
+    CHECK(!machine.soul.dead_talk_prompt_is_open);
+    CHECK(machine.soul.dead_talk_is_on);
+    CHECK(gate_got("SYSTEM", "DEADTALK"));
+}
+
+static void test_no_closes_the_dead_talk_prompt_and_stays_in_the_view(void)
+{
+    walk_by_hand_onto_the_dead_gate();
+    CHECK(machine.soul.dead_talk_prompt_is_open);
+    script_soul_note_ghost(&machine);
+    play_ticks_by_hand(2);
+    CHECK(!machine.soul.dead_talk_prompt_is_open);
+    CHECK(!machine.soul.dead_talk_is_on);
+    CHECK(machine.soul.is_on);
+    CHECK(!gate_got("SYSTEM", "DEADTALK"));
+}
+
+static void test_the_cursor_on_no_makes_a_press_decline(void)
+{
+    walk_by_hand_onto_the_dead_gate();
+    script_soul_note_direction(&machine, 1, 0);
+    play_ticks_by_hand(1);
+    script_machine_note_press(&machine);
+    play_ticks_by_hand(2);
+    CHECK(!machine.soul.dead_talk_prompt_is_open);
+    CHECK(!machine.soul.dead_talk_is_on);
+}
+
+static void test_a_press_on_the_dead_core_asks_again_after_a_no(void)
+{
+    walk_by_hand_onto_the_dead_gate();
+    script_soul_note_ghost(&machine);
+    play_ticks_by_hand(2);
+    CHECK(!machine.soul.dead_talk_prompt_is_open);
+    script_machine_note_press(&machine);
+    play_ticks_by_hand(2);
+    CHECK(machine.soul.dead_talk_prompt_is_open);
+}
+
+static void test_the_soul_does_not_move_while_the_dead_talk_prompt_is_up(void)
+{
+    float tip_x;
+
+    walk_by_hand_onto_the_dead_gate();
+    tip_x = machine.soul.tip_x;
+    script_soul_set_held(&machine, -1.0f, 0.0f);
+    play_ticks_by_hand(20);
+    CHECK(machine.soul.dead_talk_prompt_is_open);
+    CHECK(machine.soul.tip_x == tip_x);
+    CHECK_INT(machine.soul.active_object, 1);
+}
+
+static void test_the_other_ghosts_core_asks_and_yes_starts_a_core_talk(void)
+{
+    int tick;
+
+    start_with_one_step(SCRIPT_ROUTE_MOVE, "gate", "view");
+    machine.objects[0].handler_count = 1;
+    machine.objects[0].handlers[0].verb = "SYSTEM";
+    machine.objects[0].handlers[0].arg = "CORETALK";
+    machine.soul.ghost_core_objects[SCRIPT_GHOST_MISSILE] = 1;
+    machine.soul.ghost_core_slots[SCRIPT_GHOST_MISSILE] = 0;
+    run_ticks(1);
+    machine.soul.is_on = 1;
+    for (tick = 0; tick < TICKS_FOR_A_MOVE && machine.soul.active_object != 1; tick++) {
+        run_ticks(1);
+    }
+    machine.route_is_driving = 0;
+    play_ticks_by_hand(2);
+    CHECK(machine.soul.dead_talk_prompt_is_open);
+    script_machine_note_press(&machine);
+    play_ticks_by_hand(2);
+    CHECK(machine.soul.dead_talk_is_on);
+    CHECK(body_got("SYSTEM", "CORETALK"));
+    CHECK(!gate_got("SYSTEM", "DEADTALK"));
+}
+
+static void test_a_living_core_no_ghost_holds_does_not_ask(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_MOVE, "gate", "view");
+    machine.objects[0].handler_count = 1;
+    machine.objects[0].handlers[0].verb = "SYSTEM";
+    machine.objects[0].handlers[0].arg = "CORETALK";
+    run_ticks(1);
+    machine.soul.is_on = 1;
+    run_ticks(TICKS_FOR_A_MOVE);
+    CHECK_INT(machine.soul.active_object, 1);
+    CHECK(!machine.soul.dead_talk_prompt_is_open);
+    CHECK(!machine.soul.dead_talk_is_on);
+}
+
+static void test_the_pad_answers_yes_on_a_dead_talk_step(void)
+{
+    rest_on_a_dead_gate_whose_scene_holds_a_dead_talk(SCRIPT_ROUTE_DEAD_TALK, "gate");
+    script_soul_set_first_core(&machine, 1, 0);
+    machine.soul.dead_core_was_just_reached = 1;
+    run_ticks(TICKS_FOR_A_MOVE);
+    CHECK(machine.soul.dead_talk_is_on);
+    CHECK_INT(machine.soul.dead_talks_begun_by_the_prompt, 1);
+    CHECK(gate_got("SYSTEM", "DEADTALK"));
+}
+
+static void test_the_pad_declines_a_dead_talk_its_step_does_not_ask_for(void)
+{
+    rest_on_a_dead_gate_whose_scene_holds_a_dead_talk(SCRIPT_ROUTE_MOVE, "gate");
+    run_ticks(TICKS_FOR_A_MOVE * 2);
+    CHECK_INT(machine.soul.active_object, 1);
+    CHECK(!machine.soul.dead_talk_prompt_is_open);
+    CHECK(!machine.soul.dead_talk_is_on);
+    CHECK_INT(machine.soul.dead_talks_begun_by_the_prompt, 0);
+}
+
 static void test_the_pad_opens_the_ghost_view_once_the_next_core_comes_within_reach(void)
 {
     start_with_one_step(SCRIPT_ROUTE_GHOST_ON, "body", "reach:gate&playable");
@@ -548,6 +702,15 @@ int main(void)
     test_a_dead_talk_from_a_dead_core_talks_to_the_dead();
     test_a_scene_waiting_on_the_dead_core_starts_the_dead_talk_on_arrival();
     test_a_dead_core_alone_does_not_start_the_dead_talk();
+    test_a_dead_core_asks_before_its_talk_and_yes_starts_it();
+    test_no_closes_the_dead_talk_prompt_and_stays_in_the_view();
+    test_the_cursor_on_no_makes_a_press_decline();
+    test_a_press_on_the_dead_core_asks_again_after_a_no();
+    test_the_soul_does_not_move_while_the_dead_talk_prompt_is_up();
+    test_the_other_ghosts_core_asks_and_yes_starts_a_core_talk();
+    test_a_living_core_no_ghost_holds_does_not_ask();
+    test_the_pad_answers_yes_on_a_dead_talk_step();
+    test_the_pad_declines_a_dead_talk_its_step_does_not_ask_for();
     test_the_pad_offers_the_ghost_view_in_demo_mode();
     test_demo_mode_keeps_the_ghost_view_shut_while_input_is_off();
     return test_finish("unit/route_pad");

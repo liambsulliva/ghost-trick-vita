@@ -1040,6 +1040,37 @@ static int the_picture_is_covered(void)
     return stage->card_texture[0] != '\0' || stage->fade_amount >= 1.0f;
 }
 
+static void fill_the_dead_talk_dialog(struct pause_dialog *dialog)
+{
+    memset(dialog, 0, sizeof(*dialog));
+    dialog->is_open = hud.dead_talk_prompt_is_up;
+    dialog->option_count = 2;
+    dialog->options[0] = "row.yes";
+    dialog->options[1] = "row.no";
+    dialog->selected = hud.dead_talk_prompt_cursor;
+}
+
+int script_ui_view_dead_talk_option_at(float x, float y)
+{
+    struct pause_dialog dialog;
+    int option;
+
+    fill_the_dead_talk_dialog(&dialog);
+    option = pause_dialog_option_at(&dialog, x, y);
+    return option == PAUSE_DIALOG_NOTHING ? -1 : option;
+}
+
+static void draw_the_dead_talk_prompt(void)
+{
+    struct pause_dialog dialog;
+
+    if (!hud.dead_talk_prompt_is_up || hud.picture_is_hidden) {
+        return;
+    }
+    fill_the_dead_talk_dialog(&dialog);
+    pause_dialog_draw(&dialog, 0.0f);
+}
+
 int script_ui_view_pill_at(float x, float y)
 {
     int index;
@@ -1679,6 +1710,7 @@ void script_ui_view_draw(void)
     }
     draw_phone_book();
     draw_choice();
+    draw_the_dead_talk_prompt();
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
         if (playing[index].clip != NULL) {
             int element;

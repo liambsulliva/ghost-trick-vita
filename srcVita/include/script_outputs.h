@@ -86,6 +86,8 @@ struct script_hud_view {
     int active_ghost;
     int rewind_select_ticks;
     int rewind_press_ticks;
+    int dead_talk_prompt_is_up;
+    int dead_talk_prompt_cursor;
     int pulse_ticks;
     struct script_pill_view pills[SCRIPT_PILL_COUNT];
     int phone_book_is_up;

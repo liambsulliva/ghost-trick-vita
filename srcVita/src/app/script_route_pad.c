@@ -10,6 +10,7 @@
 #define TICKS_BEFORE_A_RETRY 60u
 #define TICKS_TO_READ_A_CHOICE 60u
 #define TICKS_BETWEEN_PRESSES 30u
+#define TICKS_BEFORE_DECLINING_A_DEAD_TALK 30u
 #define TICKS_BETWEEN_CURSOR_MOVES 6u
 #define TIP_IS_ON_THE_CORE_DS_PIXELS 0.5f
 
@@ -208,6 +209,16 @@ static void play_the_route_step(struct script_route_pad *pad, const struct scrip
     int group;
 
     step = script_soul_route_step(machine);
+    if (machine->soul.dead_talk_prompt_is_open) {
+        if (step == NULL || step->action != SCRIPT_ROUTE_DEAD_TALK) {
+            if (machine->tick - machine->soul.dead_talk_prompt_opened_at >= TICKS_BEFORE_DECLINING_A_DEAD_TALK && pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
+                press(pad, machine, frame, INPUT_CIRCLE);
+            }
+        } else if (script_soul_route_step_has_begun(machine) && pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
+            press(pad, machine, frame, INPUT_CROSS);
+        }
+        return;
+    }
     if (step == NULL || !script_soul_route_step_has_begun(machine)) {
         return;
     }

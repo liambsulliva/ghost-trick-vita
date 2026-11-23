@@ -119,6 +119,9 @@ static enum pill_group current_group(const struct script_machine *machine)
     if (machine->pause_bit && machine->talk.phase != SCRIPT_TALK_CLOSED) {
         return GROUP_NONE;
     }
+    if (soul->dead_talk_prompt_is_open) {
+        return GROUP_NONE;
+    }
     if (soul->is_on) {
         return machine->demo_soul_is_on ? GROUP_DEMO : GROUP_GHOST;
     }

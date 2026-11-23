@@ -12,6 +12,7 @@ void script_ui_view_tap_balloon_opened(int slot, int kind, float anchor_x, float
 void script_ui_view_tap_balloon_closed(int slot);
 void script_ui_view_hint_changed(const struct script_hint_view *view);
 int script_ui_view_pill_at(float x, float y);
+int script_ui_view_dead_talk_option_at(float x, float y);
 int script_ui_view_tap_balloon_kind_at(float x, float y);
 int script_ui_view_rewind_button_is_at(float x, float y);
 int script_ui_view_start_button_is_at(float x, float y);
