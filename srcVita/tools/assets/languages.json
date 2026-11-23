@@ -107,6 +107,7 @@
             },
             "bar": {
               "back": "もどる",
+              "skip": "スキップ",
               "loading": "ロード中",
               "controls": "ボタン操作を確認します。",
               "text_speed": "会話の文字が出る速さを選びます。ふつうはDSと同じです。",
@@ -274,6 +275,7 @@
             },
             "bar": {
               "back": "Retour",
+              "skip": "Passer",
               "loading": "Chargement",
               "controls": "Afficher les commandes.",
               "text_speed": "Vitesse d'affichage des dialogues. Normale correspond à la DS.",
@@ -441,6 +443,7 @@
             },
             "bar": {
               "back": "Indietro",
+              "skip": "Salta",
               "loading": "Caricamento",
               "controls": "Mostra i comandi.",
               "text_speed": "Velocità dei dialoghi. Normale corrisponde al DS.",
@@ -608,6 +611,7 @@
             },
             "bar": {
               "back": "Zurück",
+              "skip": "Überspringen",
               "loading": "Lädt",
               "controls": "Die Tastenbelegung ansehen.",
               "text_speed": "Wie schnell Gesprächstext erscheint. Normal entspricht der DS.",
@@ -775,6 +779,7 @@
             },
             "bar": {
               "back": "Atrás",
+              "skip": "Omitir",
               "loading": "Cargando",
               "controls": "Ver los controles.",
               "text_speed": "Rapidez de los diálogos. Normal es como en la DS.",
@@ -947,6 +952,7 @@
             },
             "bar": {
               "back": "返回",
+              "skip": "跳過",
               "loading": "讀取中",
               "controls": "查看按鍵操作。",
               "text_speed": "選擇對話文字出現的速度。普通與DS相同。",
@@ -1124,6 +1130,7 @@
             },
             "bar": {
               "back": "返回",
+              "skip": "跳过",
               "loading": "读取中",
               "controls": "查看按键操作。",
               "text_speed": "选择对话文字出现的速度。普通与DS相同。",
@@ -1301,6 +1308,7 @@
             },
             "bar": {
               "back": "돌아가기",
+              "skip": "건너뛰기",
               "loading": "로딩 중",
               "controls": "버튼 조작을 확인합니다.",
               "text_speed": "대화 텍스트가 나오는 속도입니다. 보통은 DS와 같습니다.",

@@ -693,6 +693,8 @@ int script_machine_picture_is_hidden(const struct script_machine *machine);
 
 void script_machine_pan_camera_back_to(struct script_machine *machine, int x, int y);
 int script_machine_pan_camera_home(struct script_machine *machine);
+int script_machine_skip_movie(struct script_machine *machine);
+void script_soul_movie_was_skipped(struct script_machine *machine);
 int script_machine_checkpoint_is_offered(const struct script_machine *machine);
 int script_machine_go_back_to_the_checkpoint(struct script_machine *machine);
 void script_machine_pan_camera_to_balloon_owner(struct script_machine *machine, const struct script_object *owner);

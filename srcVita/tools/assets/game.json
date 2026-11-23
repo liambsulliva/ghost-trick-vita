@@ -428,6 +428,7 @@
       },
       "bar": {
         "back": "Back",
+        "skip": "Skip",
         "loading": "Now Loading",
         "controls": "View the button controls.",
         "text_speed": "Choose how quickly talk text appears. Normal matches the DS.",

@@ -78,6 +78,7 @@ struct script_hud_view {
     int fate_level;
     int world_is_running;
     int is_hidden_for_movie;
+    int movie_can_be_skipped;
     int narration_arrow_is_on;
     int soul_view_is_on;
     int picture_is_hidden;
@@ -170,6 +171,7 @@ struct script_outputs {
     void (*swirl_changed)(int is_on);
     void (*swirl_effect_played)(int is_on);
     void (*movie_started)(const char *name);
+    void (*movie_skipped)(void);
     int (*movie_of_class_started)(unsigned int class_id);
     void (*soul_sparks_changed)(int elapsed_ticks, float x, float y);
     void (*marked)(const char *what, const char *name);

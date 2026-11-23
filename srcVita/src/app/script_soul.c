@@ -955,6 +955,7 @@ static void report_hud(struct script_machine *machine)
     view.fate_level = machine->fate_level;
     view.world_is_running = !machine->pause_bit && machine->mode_byte == SCRIPT_MODE_NORMAL && machine->eyecatch_ticks_left == 0;
     view.is_hidden_for_movie = machine->movie_ticks_left > 0 || machine->soul.phone_split_name[0] != '\0';
+    view.movie_can_be_skipped = machine->movie_ticks_left > 0;
     view.narration_arrow_is_on = script_narration_wants_a_press(&machine->narration);
     view.soul_view_is_on = machine->soul.is_on;
     view.picture_is_hidden = script_machine_picture_is_hidden(machine);
@@ -1036,6 +1037,16 @@ static void schedule_native_event(struct script_machine *machine, struct script_
     event->verb = verb;
     event->arg = arg;
     event->at = (long long)machine->tick + ticks;
+}
+
+void script_soul_movie_was_skipped(struct script_machine *machine)
+{
+    struct script_timed_event *event;
+
+    event = &machine->soul.time_jump_event;
+    if (event->target != NULL && event->at > (long long)machine->tick + 1) {
+        event->at = (long long)machine->tick + 1;
+    }
 }
 
 static int is_phone_border_effect(int effect_id)

@@ -213,6 +213,7 @@ ok script read
 ok script ready
 ok script restart
 ok script resumed
+ok script movie_skipped
 ok script retry_from_checkpoint
 ok script rewind_select
 ok script route_aim

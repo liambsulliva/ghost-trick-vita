@@ -1321,6 +1321,11 @@ int script_player_is_active(void)
     return is_active;
 }
 
+int script_player_skip_movie(void)
+{
+    return is_active && data != NULL && script_machine_skip_movie(&data->machine);
+}
+
 const unsigned char *script_player_note_levels(void)
 {
     return data == NULL ? NULL : &data->machine.note_levels[0][0];

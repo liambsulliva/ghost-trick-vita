@@ -383,6 +383,11 @@ void script_view_movie_started(const char *name)
     movie_last_ready_frame = -1;
 }
 
+void script_view_movie_stopped(void)
+{
+    playing_movie = NULL;
+}
+
 void script_view_soul_flash_changed(float alpha)
 {
     flash_alpha = alpha;

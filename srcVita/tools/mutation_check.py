@@ -99,7 +99,7 @@ MUTATIONS = [
     ("src/app/viewer_app.c", "debug_controls_are_on = 0;\n        open_title", "open_title"),
     ("src/app/viewer_app.c", "    title_menu_close();\n    pending_background_index = NO_PENDING_BACKGROUND;\n    scene_player_stop();\n    script_player_play(name);", "    pending_background_index = NO_PENDING_BACKGROUND;\n    scene_player_stop();\n    script_player_play(name);"),
     ("src/app/title_menu.c", "cursor = has_save ? TITLE_ITEM_CONTINUE : TITLE_ITEM_NEW_GAME;", "cursor = TITLE_ITEM_NEW_GAME;"),
-    ("src/app/title_menu.c", "if (shown[TITLE_ITEM_CONTINUE]) {\n            pick_sound(cursor);", "if (0) {\n            pick_sound(cursor);"),
+    ("src/app/title_menu.c", "if (shown[TITLE_ITEM_CONTINUE]) {\n            sound(CURSOR_SOUND_KIND);", "if (0) {\n            sound(CURSOR_SOUND_KIND);"),
     ("src/app/script_machine.c", "machine->title_is_wanted = strcmp(name, SCRIPT_TITLE_SCENE) == 0 || ", "machine->title_is_wanted = "),
     ("src/app/game_save.c", "save->game_cleared = save->game_cleared || newest.game_cleared;", ""),
     ("src/app/viewer_app.c", "} else if (debug_controls_are_on) {", "} else if (1) {"),

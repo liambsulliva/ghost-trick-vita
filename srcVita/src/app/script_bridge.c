@@ -825,6 +825,14 @@ static void start_movie_with_its_sound(const char *name)
     movie_started_at_tick = tick;
 }
 
+static void stop_the_movie_and_its_sound(void)
+{
+    script_view_movie_stopped();
+    movie_sound_kind_waiting = NO_MOVIE_SOUND;
+    sound_request_stop();
+    write_cue("movie", "skipped");
+}
+
 static void play_the_movie_sound_once_its_frames_are_ready(void)
 {
     int kind;
@@ -1061,6 +1069,7 @@ static const struct script_outputs bridge_outputs = {
     .screen_still_changed = script_view_screen_still_changed,
     .screen_still_faded = script_view_screen_still_faded,
     .movie_started = start_movie_with_its_sound,
+    .movie_skipped = stop_the_movie_and_its_sound,
     .movie_of_class_started = on_movie_of_class_started,
     .soul_sparks_changed = script_view_soul_sparks_changed,
     .soul_object_styled = timed_soul_object_styled,

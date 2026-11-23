@@ -1994,6 +1994,22 @@ int script_machine_go_back_to_the_checkpoint(struct script_machine *machine)
     return 1;
 }
 
+int script_machine_skip_movie(struct script_machine *machine)
+{
+    if (machine->movie_ticks_left <= 0) {
+        return 0;
+    }
+    machine->movie_ticks_left = 0;
+    script_soul_movie_was_skipped(machine);
+    if (machine->outputs->movie_skipped != NULL) {
+        machine->outputs->movie_skipped();
+    }
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("movie_skipped", machine->scene_name != NULL ? machine->scene_name : "-");
+    }
+    return 1;
+}
+
 void script_machine_reload_scene(struct script_machine *machine)
 {
     if (machine->scene_name != NULL && find_source(machine, machine->scene_name) != NULL) {

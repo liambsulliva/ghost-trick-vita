@@ -26,7 +26,11 @@ BUTTON_CORNER = 8
 BUTTON_MIDDLE = 8
 BUTTON_SCALE = 2
 BOOK_SCALE = 2
+CAT_DENSITY = 2
 GLYPH_LETTER_COLOR = "#ffffff"
+START_PLATE_INSET = 6
+START_PLATE_RADIUS = 8
+START_PLATE_STROKE = 2
 TITLE_BUTTONS = [("title_button", "resting"), ("title_button_selected", "selected"), ("title_button_pressed", "pressed"), ("title_icon", "resting"), ("title_icon_selected", "selected"), ("title_icon_pressed", "pressed")]
 FLAME_HEIGHT = 48
 FLAME_NUMBER_MIDDLE = 0.7
@@ -222,6 +226,12 @@ def widget_cells(font, pack, language, work_folder, widgets, art):
         word = text_pixels(font, letter, GLYPH_LETTER_COLOR, TEXT_SCALE)
         pasted_over(plate, word, (plate.shape[1] - word.shape[1]) // 2, (plate.shape[0] - word.shape[0]) // 2)
         cells.append(("wglyph", letter.lower(), plate))
+    start_plate = pixelated(pause_art.slice_pixels(work_folder, hud_art.START_WIDTH, hud_art.GLYPH_CELL - 2 * START_PLATE_INSET, START_PLATE_RADIUS, hud_art.INK_NAVY, hud_art.WHITE, START_PLATE_STROKE))
+    start_cell = np.zeros((hud_art.GLYPH_CELL, hud_art.START_WIDTH, 4), dtype=np.uint8)
+    start_cell[START_PLATE_INSET:START_PLATE_INSET + start_plate.shape[0]] = start_plate
+    start_word = text_pixels(font, "START", GLYPH_LETTER_COLOR, 1)
+    pasted_over(start_cell, start_word, (start_cell.shape[1] - start_word.shape[1]) // 2, (start_cell.shape[0] - start_word.shape[0]) // 2)
+    cells.append(("wglyph", "start", start_cell))
     return cells, refused
 
 
@@ -270,9 +280,24 @@ def cat_animations(wanted, animation_texts):
     return [{"name": pause_art.TABLE_PREFIX + entry["name"], "mirror": entry["mirror"], "walk": entry.get("walk", False), "text": animation_texts[pause_art.TABLE_PREFIX + entry["name"]]} for entry in wanted]
 
 
+def doubled_with_smooth_edges(pixels):
+    padded = np.pad(pixels, ((1, 1), (1, 1), (0, 0)), mode="edge")
+    above, below, left, right = padded[:-2, 1:-1], padded[2:, 1:-1], padded[1:-1, :-2], padded[1:-1, 2:]
+
+    def same(one, other):
+        return (one == other).all(axis=2)
+
+    out = np.repeat(np.repeat(pixels, CAT_DENSITY, axis=0), CAT_DENSITY, axis=1)
+    corners = ((0, 0, left, above, below, right), (0, 1, above, right, left, below), (1, 0, below, left, right, above), (1, 1, right, below, above, left))
+    for row, column, first, second, far_of_first, far_of_second in corners:
+        takes = same(first, second) & ~same(first, far_of_first) & ~same(second, far_of_second)
+        out[row::CAT_DENSITY, column::CAT_DENSITY][takes] = first[takes]
+    return out
+
+
 def art_sized_page(sprite_pages, texture):
     width, height, rgba = sprite_pages.pixels(texture)
-    return enlarged(np.frombuffer(rgba, dtype=np.uint8).reshape(height, width, 4), frame_layout.ART_PER_DS_PIXEL)
+    return enlarged(doubled_with_smooth_edges(np.frombuffer(rgba, dtype=np.uint8).reshape(height, width, 4)), frame_layout.ART_PER_DS_PIXEL // CAT_DENSITY)
 
 
 def bake_cat(pause, record, code, work_folder, animation_texts, sprite_pages):

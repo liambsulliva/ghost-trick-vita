@@ -44,6 +44,10 @@
 #define CHOICE_TEXT_LIFT 5.0f
 #define CHOICE_BACK_HINT_X 760.0f
 #define CHOICE_BACK_HINT_Y 470.0f
+#define SKIP_HINT_RIGHT 936.0f
+#define SKIP_HINT_Y 512.0f
+#define SKIP_HINT_GAP 8.0f
+#define SKIP_HINT_GLYPH_HEIGHT 32.0f
 #define CHOICE_GLYPH_SIZE 36.0f
 #define CHOICE_GLYPH_GAP 10.0f
 #define PHONE_BOOK_SHADE 0.6f
@@ -1692,6 +1696,18 @@ static void draw_choice(void)
     }
 }
 
+static void draw_the_skip_hint(void)
+{
+    float text_left;
+
+    if (!hud.movie_can_be_skipped) {
+        return;
+    }
+    text_left = SKIP_HINT_RIGHT - pause_text_width("bar.skip");
+    pause_draw_text("bar.skip", text_left, SKIP_HINT_Y, PAUSE_ANCHOR_LEFT, 1.0f);
+    (void)pause_draw_glyph_from_left("start", text_left - SKIP_HINT_GAP - pause_glyph_width("start", SKIP_HINT_GLYPH_HEIGHT), SKIP_HINT_Y, SKIP_HINT_GLYPH_HEIGHT, 1.0f);
+}
+
 void script_ui_view_draw(void)
 {
     int index;
@@ -1711,6 +1727,7 @@ void script_ui_view_draw(void)
     draw_phone_book();
     draw_choice();
     draw_the_dead_talk_prompt();
+    draw_the_skip_hint();
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
         if (playing[index].clip != NULL) {
             int element;

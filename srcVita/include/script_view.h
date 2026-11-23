@@ -20,6 +20,7 @@ void script_view_screen_still_faded(float alpha);
 void script_view_swirl_changed(int is_on);
 void script_view_swirl_effect_played(int is_on);
 void script_view_movie_started(const char *name);
+void script_view_movie_stopped(void);
 void script_view_soul_sparks_changed(int elapsed_ticks, float x, float y);
 void script_view_mark_changed(const char *object_name, int age_ticks, float x, float y);
 void script_view_effect_spawned(const struct script_effect_row *row, const char *name, float x, float y);

@@ -164,7 +164,7 @@ class SheetTests(unittest.TestCase):
         self.assertIn("cell arrow_down", keys)
         self.assertIn("cell trash", keys)
         self.assertIn("cell book", keys)
-        for kind in ("cross", "circle", "square", "triangle", "l", "r"):
+        for kind in ("cross", "circle", "square", "triangle", "l", "r", "start"):
             self.assertIn("wglyph " + kind, keys)
         widgets = pause["widgets"]
         for style in ("row", "header", "bar"):
@@ -229,6 +229,21 @@ class CatTests(unittest.TestCase):
         self.assertEqual(page.shape, (scale, 2 * scale, 4))
         self.assertTrue((page[:, :scale] == (255, 0, 0, 255)).all())
         self.assertTrue((page[:, scale:] == 0).all())
+
+    def test_a_doubled_page_keeps_flat_areas_and_rounds_a_stair_step(self):
+        ink = (10, 20, 30, 255)
+        page = np.zeros((2, 2, 4), dtype=np.uint8)
+        page[0, 1] = ink
+        page[1, 0] = ink
+        doubled = ds_pause.doubled_with_smooth_edges(page)
+        self.assertEqual(doubled.shape, (4, 4, 4))
+        self.assertEqual(tuple(doubled[0, 3]), ink)
+        self.assertEqual(tuple(doubled[1, 1]), ink)
+        self.assertEqual(tuple(doubled[0, 0]), (0, 0, 0, 0))
+        self.assertEqual(tuple(doubled[2, 2]), ink)
+        self.assertEqual(tuple(doubled[3, 3]), (0, 0, 0, 0))
+        flat = np.full((3, 3, 4), 7, dtype=np.uint8)
+        self.assertTrue((ds_pause.doubled_with_smooth_edges(flat) == 7).all())
 
     def test_the_cat_baker_takes_its_pages_from_whoever_holds_them(self):
         page = solid(8, 4)

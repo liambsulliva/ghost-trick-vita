@@ -17,6 +17,7 @@ void script_player_stop(void);
 void script_player_set_paused(int should_pause);
 int script_player_is_paused(void);
 int script_player_is_active(void);
+int script_player_skip_movie(void);
 const unsigned char *script_player_note_levels(void);
 int script_player_save_manual(void);
 int script_player_takes_new_chapter(void);

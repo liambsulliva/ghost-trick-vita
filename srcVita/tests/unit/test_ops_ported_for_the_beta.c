@@ -392,6 +392,34 @@ static void test_a_checkpoint_outlives_the_scene_when_its_flag_is_set(void)
     CHECK(machine.pending_script != NULL && strcmp(machine.pending_script, "a") == 0);
 }
 
+static int movies_skipped;
+
+static void movie_skipped(void)
+{
+    movies_skipped = movies_skipped + 1;
+}
+
+static void test_a_playing_movie_is_skipped_once_and_its_time_jump_comes_at_once(void)
+{
+    static const struct script_outputs movie_outputs = { .movie_skipped = movie_skipped };
+
+    script_machine_init(&machine, &movie_outputs, SCRIPT_TIMING_DS, NULL);
+    movies_skipped = 0;
+    CHECK(!script_machine_skip_movie(&machine));
+    CHECK_INT(movies_skipped, 0);
+    machine.movie_ticks_left = 300;
+    machine.soul.time_jump_event.target = "*";
+    machine.soul.time_jump_event.verb = "timeleap";
+    machine.soul.time_jump_event.arg = "jump";
+    machine.soul.time_jump_event.at = (long long)machine.tick + 300;
+    CHECK(script_machine_skip_movie(&machine));
+    CHECK_INT(machine.movie_ticks_left, 0);
+    CHECK_INT(movies_skipped, 1);
+    CHECK(machine.soul.time_jump_event.at == (long long)machine.tick + 1);
+    CHECK(!script_machine_skip_movie(&machine));
+    CHECK_INT(movies_skipped, 1);
+}
+
 int main(void)
 {
     test_no_op_of_the_twenty_logs_as_not_ported();
@@ -406,5 +434,6 @@ int main(void)
     test_a_tap_pans_to_the_owner_first_unless_the_script_keeps_the_camera();
     test_a_checkpoint_is_kept_until_the_scene_changes();
     test_a_checkpoint_outlives_the_scene_when_its_flag_is_set();
+    test_a_playing_movie_is_skipped_once_and_its_time_jump_comes_at_once();
     return test_finish("unit/ops_ported_for_the_beta");
 }
