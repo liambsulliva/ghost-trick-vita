@@ -144,20 +144,15 @@ static int choose_a_panel(struct script_route_pad *pad, const struct script_mach
     return 1;
 }
 
-static void push_the_stick_toward_the_next_core(const struct script_machine *machine, const struct script_route_step *step, struct input_state *frame)
+static void push_the_stick_toward(const struct script_machine *machine, int target, int slot, struct input_state *frame)
 {
-    int target;
     float core_x;
     float core_y;
     float along_x;
     float along_y;
     float length;
 
-    if (!machine->soul.is_on) {
-        return;
-    }
-    target = script_machine_index_of_object(machine, step->object);
-    if (target == SCRIPT_NO_OBJECT || !script_soul_route_hop_aim(machine, target, step->slot, &core_x, &core_y)) {
+    if (!machine->soul.is_on || target == SCRIPT_NO_OBJECT || !script_soul_route_hop_aim(machine, target, slot, &core_x, &core_y)) {
         return;
     }
     along_x = core_x - machine->soul.tip_x;
@@ -168,6 +163,61 @@ static void push_the_stick_toward_the_next_core(const struct script_machine *mac
     }
     frame->stick_x = along_x / length * STICK_AXIS_FOR_FULL_SPEED;
     frame->stick_y = along_y / length * STICK_AXIS_FOR_FULL_SPEED;
+}
+
+static void push_the_stick_toward_the_next_core(const struct script_machine *machine, const struct script_route_step *step, struct input_state *frame)
+{
+    push_the_stick_toward(machine, script_machine_index_of_object(machine, step->object), step->slot, frame);
+}
+
+static void open_the_ghost_view(struct script_route_pad *pad, const struct script_machine *machine, struct input_state *frame)
+{
+    if (script_pills_is_up(machine, SCRIPT_PILL_GHOST) && pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
+        press(pad, machine, frame, INPUT_L);
+    }
+}
+
+static void walk_to_the_dead_talk(struct script_route_pad *pad, const struct script_machine *machine, const struct script_route_step *step, struct input_state *frame)
+{
+    int target;
+
+    target = script_soul_route_dead_talk_core(machine, step);
+    if (target == SCRIPT_NO_OBJECT || machine->soul.active_object == target) {
+        return;
+    }
+    if (machine->soul.is_on) {
+        push_the_stick_toward(machine, target, 0, frame);
+        return;
+    }
+    if (machine->soul.active_object != SCRIPT_NO_OBJECT) {
+        pad->core_left_for_the_dead_talk = machine->objects[machine->soul.active_object].name;
+    }
+    open_the_ghost_view(pad, machine, frame);
+}
+
+static int walk_back_from_the_dead_talk(struct script_route_pad *pad, const struct script_machine *machine, struct input_state *frame)
+{
+    int target;
+
+    if (pad->core_left_for_the_dead_talk == NULL) {
+        return 0;
+    }
+    target = script_machine_index_of_object(machine, pad->core_left_for_the_dead_talk);
+    if (target == SCRIPT_NO_OBJECT || (!machine->soul.is_on && machine->soul.active_object == target)) {
+        pad->core_left_for_the_dead_talk = NULL;
+        return 0;
+    }
+    if (machine->soul.dead_talk_is_on) {
+        return 1;
+    }
+    if (!machine->soul.is_on) {
+        open_the_ghost_view(pad, machine, frame);
+    } else if (machine->soul.active_object != target) {
+        push_the_stick_toward(machine, target, 0, frame);
+    } else if (script_pills_is_up(machine, SCRIPT_PILL_BACK) && pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {
+        press(pad, machine, frame, INPUT_CIRCLE);
+    }
+    return 1;
 }
 
 static int a_character_pill_is_up(const struct script_machine *machine)
@@ -219,6 +269,9 @@ static void play_the_route_step(struct script_route_pad *pad, const struct scrip
         }
         return;
     }
+    if ((step == NULL || step->action != SCRIPT_ROUTE_DEAD_TALK) && walk_back_from_the_dead_talk(pad, machine, frame)) {
+        return;
+    }
     if (step == NULL || !script_soul_route_step_has_begun(machine)) {
         return;
     }
@@ -262,6 +315,9 @@ static void play_the_route_step(struct script_route_pad *pad, const struct scrip
     case SCRIPT_ROUTE_PHONE_CALL:
     case SCRIPT_ROUTE_PHONE_STAY:
         answer_the_phone_book(pad, machine, step, frame);
+        break;
+    case SCRIPT_ROUTE_DEAD_TALK:
+        walk_to_the_dead_talk(pad, machine, step, frame);
         break;
     case SCRIPT_ROUTE_CHARACTER:
         if (a_character_pill_is_up(machine) && pad_may_press(pad, machine, TICKS_BETWEEN_PRESSES)) {

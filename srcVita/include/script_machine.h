@@ -777,6 +777,7 @@ void script_soul_note_character_button(struct script_machine *machine);
 void script_soul_make_ghost_active(struct script_machine *machine, int ghost);
 float script_soul_reach(const struct script_machine *machine);
 const struct script_route_step *script_soul_route_step(const struct script_machine *machine);
+int script_soul_route_dead_talk_core(const struct script_machine *machine, const struct script_route_step *step);
 int script_soul_route_step_has_begun(const struct script_machine *machine);
 int script_soul_route_hop(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot);
 void script_soul_travel_to_core(struct script_machine *machine, int object_index, int slot);

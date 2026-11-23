@@ -14,6 +14,7 @@
 #define SECOND_CORE_DISABLED_BIT 2
 #define ROUTE_ACTION_MOST_TICKS 1800u
 #define ROUTE_TICKS_TO_WAIT_FOR_A_CORE_TALK 60u
+#define ROUTE_TICKS_TO_WALK_TO_A_DEAD_TALK 900u
 #define SOUL_TOUCH_GRAB_DS_PIXELS 16.0f
 #define SOUL_PEN_DEAD_ZONE_DS_PIXELS 3.0f
 #define SOUL_JUMP_SOUND_KIND 16
@@ -157,6 +158,11 @@ static void core_position(const struct script_machine *machine, int object_index
 static int core_is_for_the_dead(const struct script_machine *machine, int object_index)
 {
     return machine->objects[object_index].is_dead || machine->objects[object_index].actor.class_id == DEAD_TALK_GIMMICK_CLASS_ID;
+}
+
+static int core_asks_before_its_talk(const struct script_machine *machine, int object_index)
+{
+    return machine->objects[object_index].actor.class_id == DEAD_TALK_GIMMICK_CLASS_ID;
 }
 
 static int object_holds_the_other_ghost(const struct script_machine *machine, int object_index)
@@ -1519,7 +1525,7 @@ static int the_scene_starts_its_dead_talk_on_arrival(const struct script_machine
 
 static int a_dead_talk_prompt_may_open(const struct script_machine *machine)
 {
-    return (the_soul_rests_on_the_other_ghosts_core(machine) && the_scene_holds_a_core_talk(machine)) || (the_soul_rests_on_a_dead_core(machine) && !the_scene_starts_its_dead_talk_on_arrival(machine));
+    return (the_soul_rests_on_the_other_ghosts_core(machine) && the_scene_holds_a_core_talk(machine)) || (the_soul_rests_on_a_dead_core(machine) && core_asks_before_its_talk(machine, machine->soul.active_object) && !the_scene_starts_its_dead_talk_on_arrival(machine));
 }
 
 static int something_else_holds_the_screen(const struct script_machine *machine)
@@ -2894,6 +2900,52 @@ static void mark_no_player_input(struct script_machine *machine, const struct sc
     mark_route_step(machine, "route_no_player_input", step);
 }
 
+int script_soul_route_dead_talk_core(const struct script_machine *machine, const struct script_route_step *step)
+{
+    int named;
+    int index;
+
+    named = step->object[0] != '\0' ? script_machine_index_of_object(machine, step->object) : SCRIPT_NO_OBJECT;
+    if (named != SCRIPT_NO_OBJECT && core_asks_before_its_talk(machine, named) && object_can_be_a_core(&machine->objects[named], 0)) {
+        return named;
+    }
+    if (!the_scene_holds_a_core_talk(machine)) {
+        return NO_CORE;
+    }
+    for (index = 0; index < machine->object_count; index++) {
+        if (object_holds_the_other_ghost(machine, index) && object_can_be_a_core(&machine->objects[index], 0)) {
+            return index;
+        }
+    }
+    return NO_CORE;
+}
+
+static int the_step_names_a_corpse_the_soul_is_on(const struct script_machine *machine, const struct script_route_step *step)
+{
+    int named;
+
+    named = step->object[0] != '\0' ? script_machine_index_of_object(machine, step->object) : SCRIPT_NO_OBJECT;
+    return named != SCRIPT_NO_OBJECT && named == machine->soul.active_object && machine->objects[named].is_dead && !core_asks_before_its_talk(machine, named);
+}
+
+static int the_route_is_still_walking_to_the_dead_talk(struct script_machine *machine, const struct script_route_step *step)
+{
+    const struct script_soul *soul;
+    int target;
+    int hop_object;
+    int hop_slot;
+
+    soul = &machine->soul;
+    target = script_soul_route_dead_talk_core(machine, step);
+    if (target == NO_CORE || machine->tick - soul->route_step_began_at >= ROUTE_TICKS_TO_WALK_TO_A_DEAD_TALK) {
+        return 0;
+    }
+    if (!soul->is_on) {
+        return 1;
+    }
+    return soul->active_object != NO_CORE && soul->active_object != target && script_soul_route_hop(machine, target, 0, &hop_object, &hop_slot);
+}
+
 static int route_step_is_done(struct script_machine *machine, const struct script_route_step *step)
 {
     int camera_push_x;
@@ -2925,6 +2977,13 @@ static int route_step_is_done(struct script_machine *machine, const struct scrip
         }
         if (soul->dead_talk_prompt_is_open || (soul->dead_core_was_just_reached && (a_dead_talk_prompt_may_open(machine) || machine->tick - soul->route_step_began_at < ROUTE_TICKS_TO_WAIT_FOR_A_CORE_TALK))) {
             return 0;
+        }
+        if (the_route_is_still_walking_to_the_dead_talk(machine, step)) {
+            return 0;
+        }
+        if (the_step_names_a_corpse_the_soul_is_on(machine, step)) {
+            script_hints_player_did(machine, SCRIPT_ROUTE_DEAD_TALK, step->object);
+            return 1;
         }
         mark_no_player_input(machine, step);
         start_dead_talk(machine, step->object[0] != '\0' ? script_machine_index_of_object(machine, step->object) : NO_CORE, 1);

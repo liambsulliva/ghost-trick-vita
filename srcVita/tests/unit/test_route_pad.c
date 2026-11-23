@@ -17,6 +17,7 @@
 #define CHOOSE_DWELL_TICKS 200
 #define TICKS_FOR_THE_REWIND 200
 #define TICKS_FOR_A_DEAD_TALK_TO_START 5
+#define DEAD_TALK_GIMMICK_CLASS 0x2981d97eu
 #define OPEN_CHOICE_OP 0x3b
 #define GATE_OUT_OF_REACH 300
 #define CAMERA_TARGET_AWAY 600
@@ -282,7 +283,7 @@ static void test_a_dead_core_alone_does_not_start_the_dead_talk(void)
 static void rest_on_a_dead_gate_whose_scene_holds_a_dead_talk(enum script_route_action action, const char *object)
 {
     start_with_one_step(action, object, "view");
-    machine.objects[1].is_dead = 1;
+    machine.objects[1].actor.class_id = DEAD_TALK_GIMMICK_CLASS;
     machine.objects[0].handler_count = 1;
     machine.objects[0].handlers[0].verb = "SYSTEM";
     machine.objects[0].handlers[0].arg = "DEADTALK";
@@ -410,6 +411,21 @@ static void test_a_living_core_no_ghost_holds_does_not_ask(void)
     CHECK_INT(machine.soul.active_object, 1);
     CHECK(!machine.soul.dead_talk_prompt_is_open);
     CHECK(!machine.soul.dead_talk_is_on);
+}
+
+static void test_a_corpse_raises_no_prompt_and_its_step_starts_no_talk(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_DEAD_TALK, "gate", "view");
+    machine.objects[1].is_dead = 1;
+    run_ticks(1);
+    machine.soul.is_on = 1;
+    script_soul_set_first_core(&machine, 1, 0);
+    machine.soul.dead_core_was_just_reached = 1;
+    run_ticks(TICKS_FOR_A_MOVE * 2);
+    CHECK(!machine.soul.dead_talk_prompt_is_open);
+    CHECK(!machine.soul.dead_talk_is_on);
+    CHECK(!gate_got("SYSTEM", "DEADTALK"));
+    CHECK(script_soul_route_step(&machine) == NULL || script_soul_route_step(&machine)->action != SCRIPT_ROUTE_DEAD_TALK);
 }
 
 static void test_the_pad_answers_yes_on_a_dead_talk_step(void)
@@ -700,6 +716,7 @@ int main(void)
     test_the_pad_presses_the_rewind_button_once_it_is_up();
     test_a_dead_talk_from_a_living_core_is_a_core_talk();
     test_a_dead_talk_from_a_dead_core_talks_to_the_dead();
+    test_a_corpse_raises_no_prompt_and_its_step_starts_no_talk();
     test_a_scene_waiting_on_the_dead_core_starts_the_dead_talk_on_arrival();
     test_a_dead_core_alone_does_not_start_the_dead_talk();
     test_a_dead_core_asks_before_its_talk_and_yes_starts_it();

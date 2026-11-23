@@ -15,6 +15,7 @@ struct script_route_pad {
     int has_pressed;
     unsigned int last_press_at;
     int reads_at_once;
+    const char *core_left_for_the_dead_talk;
 };
 
 void script_route_pad_reset(struct script_route_pad *pad);
