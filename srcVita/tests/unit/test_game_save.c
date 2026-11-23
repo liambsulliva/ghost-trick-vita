@@ -121,6 +121,25 @@ static void test_the_save_screen_asks_then_saves_and_yes_resumes_play(void)
     CHECK_INT(pause_save_step(INPUT_CIRCLE), PAUSE_SAVE_LEAVES);
 }
 
+static void test_no_after_a_finished_save_goes_to_the_title(void)
+{
+    pause_save_use(fake_save_now, fake_slot_has_data);
+    save_calls = 0;
+    save_result = 1;
+    pause_save_enter();
+    pause_save_step(INPUT_CROSS);
+    pause_save_step(INPUT_CROSS);
+    CHECK_INT(save_calls, 1);
+    CHECK_INT(pause_save_dialog_is_open(), 1);
+    CHECK_INT(pause_save_step(INPUT_RIGHT), PAUSE_SAVE_STAYS);
+    CHECK_INT(pause_save_step(INPUT_CROSS), PAUSE_SAVE_GOES_TO_TITLE);
+    pause_save_enter();
+    pause_save_step(INPUT_CROSS);
+    pause_save_step(INPUT_CROSS);
+    CHECK_INT(pause_save_step(INPUT_CIRCLE), PAUSE_SAVE_STAYS);
+    CHECK_INT(pause_save_dialog_is_open(), 0);
+}
+
 static void test_no_or_a_failed_save_keeps_the_save_screen(void)
 {
     pause_save_use(fake_save_now, fake_slot_has_data);
@@ -286,6 +305,7 @@ int main(void)
     test_a_save_without_flags_or_cut_short_is_refused();
     test_the_newest_slot_wins_and_each_store_counts_up();
     test_the_save_screen_asks_then_saves_and_yes_resumes_play();
+    test_no_after_a_finished_save_goes_to_the_title();
     test_no_or_a_failed_save_keeps_the_save_screen();
     test_chapter_slots_store_by_number_and_erase_with_the_rest();
     test_an_unsaved_chapter_starts_through_the_native_chapter_select();

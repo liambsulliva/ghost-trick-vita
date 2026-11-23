@@ -77,6 +77,10 @@ void pause_menu_open(void);
 void pause_menu_open_on_record(void);
 int pause_menu_is_open(void);
 int pause_menu_takes_title_request(void);
+
+typedef void (*pause_sound_function)(int kind);
+
+void pause_menu_use_sound(pause_sound_function play);
 int pause_menu_takes_chapter_request(void);
 int pause_menu_shows_game(void);
 void pause_menu_update(const struct input_state *input, unsigned long long elapsed_us);

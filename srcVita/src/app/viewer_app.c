@@ -582,6 +582,7 @@ void viewer_app_start(const char *folder)
     (void)system_sounds_load(script_folder);
     (void)pause_options_read_credits(script_folder);
     title_menu_use_sound(system_sounds_play);
+    pause_menu_use_sound(system_sounds_play);
     illustrations_known_chapter = highest_reached_chapter();
     if (script_player_is_available()) {
         hud_is_visible = 0;

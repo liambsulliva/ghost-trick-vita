@@ -38,6 +38,7 @@
 #define SPOTLIGHT_CENTRE_Y (FLOOR_TOP - 80.0f)
 
 #define DARKEN_TICKS 8
+#define CURSOR_SOUND_KIND 1
 #define BLACK_TICKS 3
 #define SHOW_FADE_TICKS 10
 #define LABEL_STAGGER_TICKS 3
@@ -102,6 +103,7 @@ static int touched_item;
 static int touched_option;
 static struct pause_dialog title_dialog;
 static int title_is_wanted;
+static pause_sound_function play_sound;
 static int opened_on_record;
 static int title_asks_to_save;
 static int chapter_wanted;
@@ -522,6 +524,11 @@ int pause_menu_cursor(void)
     return cursor;
 }
 
+void pause_menu_use_sound(pause_sound_function play)
+{
+    play_sound = play;
+}
+
 static void move_cursor(int next)
 {
     if (next == cursor) {
@@ -532,7 +539,7 @@ static void move_cursor(int next)
     cursor_ticks = 0;
 }
 
-static void steer(unsigned int pressed)
+static void steer_the_cursor(unsigned int pressed)
 {
     int row;
 
@@ -545,6 +552,17 @@ static void steer(unsigned int pressed)
         move_cursor(cursor - PAUSE_MENU_ROWS);
     } else if ((pressed & INPUT_RIGHT) && side_of(cursor) < 0) {
         move_cursor(cursor + PAUSE_MENU_ROWS);
+    }
+}
+
+static void steer(unsigned int pressed)
+{
+    int cursor_before;
+
+    cursor_before = cursor;
+    steer_the_cursor(pressed);
+    if (cursor != cursor_before && play_sound != NULL) {
+        play_sound(CURSOR_SOUND_KIND);
     }
 }
 
@@ -611,6 +629,10 @@ static void step_save(unsigned int pressed)
     if (result == PAUSE_SAVE_LEAVES) {
         enter(PAUSE_PHASE_PANNING_BACK);
     } else if (result == PAUSE_SAVE_RESUMES) {
+        begin_hiding();
+    } else if (result == PAUSE_SAVE_GOES_TO_TITLE) {
+        title_is_wanted = 1;
+        run_log_write("pause return_to_title saved=1");
         begin_hiding();
     }
 }

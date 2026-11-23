@@ -98,6 +98,8 @@ static int step_dialog(unsigned int pressed)
         check_slots();
     } else if (was == DIALOG_DONE && chosen == 0) {
         return PAUSE_SAVE_RESUMES;
+    } else if (was == DIALOG_DONE && chosen == 1) {
+        return PAUSE_SAVE_GOES_TO_TITLE;
     }
     return PAUSE_SAVE_STAYS;
 }
