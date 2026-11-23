@@ -85,15 +85,6 @@ static void touch_began(struct script_input *input, struct script_machine *machi
     pill = script_ui_view_pill_at(x, y);
     balloon_kind = script_ui_view_tap_balloon_kind_at(x, y);
     run_log_write("touch began x=%d y=%d tick=%u pill=%d balloon=%d wants_tap=%d", (int)x, (int)y, machine->tick, pill, balloon_kind, script_soul_wants_a_tap(machine));
-    if (machine->soul.dead_talk_prompt_is_open) {
-        int option;
-
-        option = script_ui_view_dead_talk_option_at(x, y);
-        if (option >= 0) {
-            script_soul_note_dead_talk_answer(machine, option == 0);
-        }
-        return;
-    }
     if (pill >= 0) {
         press_the_pill(machine, pill);
         return;
@@ -216,8 +207,32 @@ static void steer_the_phone_book(struct script_input *input, struct script_machi
     }
 }
 
+static void steer_the_question(struct script_input *input, struct script_machine *machine, const struct input_state *frame)
+{
+    send_directions(input, machine, frame);
+    if (frame->touch_is_down && !input->touch_was_down) {
+        int option;
+
+        option = script_ui_view_question_option_at(frame->touch_x, frame->touch_y);
+        if (option >= 0) {
+            script_soul_note_question_answer(machine, option == SCRIPT_QUESTION_OPTION_YES);
+        }
+    }
+    input->touch_was_down = frame->touch_is_down;
+    input->touch_is_dragging = 0;
+    if (frame->pressed & (INPUT_CIRCLE | INPUT_L)) {
+        script_soul_note_question_answer(machine, 0);
+    } else if (frame->pressed & INPUT_CROSS) {
+        script_machine_note_press(machine);
+    }
+}
+
 void script_input_frame(struct script_input *input, struct script_machine *machine, const struct input_state *frame)
 {
+    if (machine->soul.question_is_open) {
+        steer_the_question(input, machine, frame);
+        return;
+    }
     if (script_phone_book_takes_input(machine)) {
         steer_the_phone_book(input, machine, frame);
         return;

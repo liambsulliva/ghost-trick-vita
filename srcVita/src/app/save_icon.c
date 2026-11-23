@@ -15,6 +15,7 @@
 #define CORE_LUMP_RADIUS 9.0f
 #define CORE_LUMP_REACH 6.0f
 #define TWO_PI 6.2831853f
+#define UNLIT_LEVEL 0.3f
 
 static unsigned long long age_us;
 static unsigned long long clock_us;
@@ -89,43 +90,53 @@ static float centre_y(void)
     return (float)RENDERER_HEIGHT - SAVE_ICON_MARGIN - EDGE_WOBBLE - SOUL_BODY_DROP * SAVE_ICON_SCALE;
 }
 
-static void wobble(struct soul_chain_blob *blob, unsigned int seed)
+static void wobble(struct soul_chain_blob *blob, unsigned int seed, float scale)
 {
-    blob->x = blob->x + (soul_seeded_fraction(seed, 40u) * 2.0f - 1.0f) * EDGE_WOBBLE;
-    blob->y = blob->y + (soul_seeded_fraction(seed, 41u) * 2.0f - 1.0f) * EDGE_WOBBLE;
+    blob->x = blob->x + (soul_seeded_fraction(seed, 40u) * 2.0f - 1.0f) * EDGE_WOBBLE * scale / SAVE_ICON_SCALE;
+    blob->y = blob->y + (soul_seeded_fraction(seed, 41u) * 2.0f - 1.0f) * EDGE_WOBBLE * scale / SAVE_ICON_SCALE;
 }
 
-int save_icon_body(struct soul_chain_blob *blobs)
+static int body_at(float x, float y, float scale, struct soul_chain_blob *blobs)
 {
     unsigned int step;
     int count;
     int index;
 
     step = save_icon_step();
-    count = soul_body_blobs(centre_x(), centre_y(), SAVE_ICON_SCALE, step, blobs);
+    count = soul_body_blobs(x, y, scale, step, blobs);
     for (index = 0; index < count; index++) {
-        wobble(&blobs[index], step * 29u + (unsigned int)index);
+        wobble(&blobs[index], step * 29u + (unsigned int)index, scale);
     }
     return count;
 }
 
-void save_icon_core(struct soul_chain_blob *blobs)
+static void core_at(float x, float y, float scale, struct soul_chain_blob *blobs)
 {
     unsigned int step;
     int index;
 
     step = save_icon_step();
-    blobs[0].x = centre_x();
-    blobs[0].y = centre_y();
-    blobs[0].radius = CORE_RADIUS * SAVE_ICON_SCALE;
+    blobs[0].x = x;
+    blobs[0].y = y;
+    blobs[0].radius = CORE_RADIUS * scale;
     for (index = 1; index < SAVE_ICON_CORE_BLOBS; index++) {
         float angle;
 
         angle = ((float)index + soul_seeded_fraction(step, 50u + (unsigned int)index)) * TWO_PI / (float)(SAVE_ICON_CORE_BLOBS - 1);
-        blobs[index].x = centre_x() + cosf(angle) * CORE_LUMP_REACH * SAVE_ICON_SCALE;
-        blobs[index].y = centre_y() + sinf(angle) * CORE_LUMP_REACH * SAVE_ICON_SCALE;
-        blobs[index].radius = CORE_LUMP_RADIUS * SAVE_ICON_SCALE;
+        blobs[index].x = x + cosf(angle) * CORE_LUMP_REACH * scale;
+        blobs[index].y = y + sinf(angle) * CORE_LUMP_REACH * scale;
+        blobs[index].radius = CORE_LUMP_RADIUS * scale;
     }
+}
+
+int save_icon_body(struct soul_chain_blob *blobs)
+{
+    return body_at(centre_x(), centre_y(), SAVE_ICON_SCALE, blobs);
+}
+
+void save_icon_core(struct soul_chain_blob *blobs)
+{
+    core_at(centre_x(), centre_y(), SAVE_ICON_SCALE, blobs);
 }
 
 static struct renderer_rect blob_area(const struct soul_chain_blob *blob)
@@ -141,7 +152,7 @@ static struct renderer_rect blob_area(const struct soul_chain_blob *blob)
     return area;
 }
 
-void save_icon_draw(void)
+void save_icon_draw_at(float x, float y, float scale, float alpha, int is_lit)
 {
     static const struct renderer_rect whole = { 0.0f, 0.0f, 1.0f, 1.0f };
     struct soul_chain_blob body[SOUL_BODY_BLOBS];
@@ -152,21 +163,33 @@ void save_icon_draw(void)
     int count;
     int index;
 
-    if (!is_showing) {
-        return;
-    }
     texture = texture_cache_use_or_start_loading(BLOB_TEXTURE);
     if (texture == NULL || texture->state != CACHED_TEXTURE_READY) {
         return;
     }
-    flame.alpha = save_icon_alpha();
-    orb.alpha = flame.alpha;
-    count = save_icon_body(body);
+    if (!is_lit) {
+        flame.red = UNLIT_LEVEL;
+        flame.green = UNLIT_LEVEL;
+        flame.blue = UNLIT_LEVEL;
+        orb.red = orb.red * UNLIT_LEVEL;
+        orb.green = orb.green * UNLIT_LEVEL;
+        orb.blue = orb.blue * UNLIT_LEVEL;
+    }
+    flame.alpha = alpha;
+    orb.alpha = alpha;
+    count = body_at(x, y, scale, body);
     for (index = 0; index < count; index++) {
         renderer_draw_sprite(texture->texture, blob_area(&body[index]), whole, flame);
     }
-    save_icon_core(core);
+    core_at(x, y, scale, core);
     for (index = 0; index < SAVE_ICON_CORE_BLOBS; index++) {
         renderer_draw_flat_sprite(texture->texture, blob_area(&core[index]), whole, orb);
+    }
+}
+
+void save_icon_draw(void)
+{
+    if (is_showing) {
+        save_icon_draw_at(centre_x(), centre_y(), SAVE_ICON_SCALE, save_icon_alpha(), 1);
     }
 }

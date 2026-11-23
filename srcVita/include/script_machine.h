@@ -299,6 +299,12 @@ enum script_auto_play {
     SCRIPT_AUTO_PACED
 };
 
+enum script_question_answer {
+    SCRIPT_QUESTION_ANSWER_NONE,
+    SCRIPT_QUESTION_ANSWER_YES,
+    SCRIPT_QUESTION_ANSWER_NO
+};
+
 struct script_timed_event {
     const char *target;
     const char *verb;
@@ -482,12 +488,20 @@ struct script_soul {
     int countdown_ticks;
     int dead_talk_is_on;
     int dead_talk_object;
-    int dead_core_was_just_reached;
-    int dead_talk_prompt_is_open;
-    int dead_talk_prompt_cursor;
-    unsigned int dead_talk_prompt_opened_at;
-    int dead_talk_answer_is_pending;
-    int dead_talks_begun_by_the_prompt;
+    int reached_object;
+    int reached_slot;
+    int corpse_object;
+    int corpse_slot;
+    int leap_holds_the_world;
+    int drag_is_a_reach;
+    int sparks_object;
+    int sparks_slot;
+    int question_is_open;
+    enum script_question_kind question_kind;
+    int question_cursor;
+    int question_answer_is_pending;
+    enum script_question_answer question_answer;
+    int dead_talks_begun_by_a_reach;
     int route_dead_talks_when_step_began;
     int dead_core_holds_the_tip;
     struct script_timed_event phone_event;
@@ -772,7 +786,9 @@ int script_soul_wants_a_tap(const struct script_machine *machine);
 void script_soul_set_touch(struct script_machine *machine, int is_down, float x, float y);
 void script_soul_drag_camera(struct script_machine *machine, float delta_x, float delta_y);
 void script_soul_note_ghost(struct script_machine *machine);
-void script_soul_note_dead_talk_answer(struct script_machine *machine, int is_yes);
+void script_soul_note_question_answer(struct script_machine *machine, int is_yes);
+void script_soul_open_question(struct script_machine *machine, enum script_question_kind kind);
+int script_soul_step_question(struct script_machine *machine);
 void script_soul_note_pill(struct script_machine *machine, enum script_pill_id id);
 void script_soul_note_tap(struct script_machine *machine, int tap_group);
 void script_soul_note_character_button(struct script_machine *machine);
@@ -783,6 +799,7 @@ int script_soul_route_dead_talk_core(const struct script_machine *machine, const
 int script_soul_route_step_has_begun(const struct script_machine *machine);
 int script_soul_route_hop(const struct script_machine *machine, int target_object, int target_slot, int *hop_object, int *hop_slot);
 void script_soul_travel_to_core(struct script_machine *machine, int object_index, int slot);
+int script_soul_core_the_scripts_see(const struct script_machine *machine, int *slot);
 int script_soul_route_camera_push(const struct script_machine *machine, int *push_x, int *push_y);
 int script_soul_route_hop_aim(const struct script_machine *machine, int target_object, int target_slot, float *aim_x, float *aim_y);
 unsigned int script_soul_route_searches(void);

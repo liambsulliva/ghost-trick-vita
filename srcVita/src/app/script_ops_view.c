@@ -317,8 +317,12 @@ static void place_light(struct script_machine *machine, const struct script_ligh
     x = 0.0f;
     y = 0.0f;
     if (light->place == SCRIPT_LIGHT_ON_THE_SOUL_CORE) {
-        if (machine->soul.active_object >= 0 && machine->objects[machine->soul.active_object].actor.exists) {
-            script_machine_node_position(&machine->objects[machine->soul.active_object], SCRIPT_FIRST_CORE_NODE + machine->soul.active_slot, &x, &y);
+        int soul_slot;
+        int soul_object;
+
+        soul_object = script_soul_core_the_scripts_see(machine, &soul_slot);
+        if (soul_object >= 0 && machine->objects[soul_object].actor.exists) {
+            script_machine_node_position(&machine->objects[soul_object], SCRIPT_FIRST_CORE_NODE + soul_slot, &x, &y);
         } else {
             x = LIGHT_X_WITH_NO_SOUL_CORE;
         }
@@ -634,6 +638,8 @@ static void pan_to_object(struct script_machine *machine, struct script_vm *vm, 
     float node_y;
     int target_x;
     int target_y;
+    int soul_object;
+    int soul_slot;
 
     name = script_machine_string(machine, vm, words[0]);
     if (name == NULL) {
@@ -644,8 +650,9 @@ static void pan_to_object(struct script_machine *machine, struct script_vm *vm, 
         script_machine_send(machine, "*", "SYSTEM", "hosei end");
         return;
     }
-    if (signed_word(words[1]) < 0 && machine->soul.active_object >= 0) {
-        script_machine_node_position(&machine->objects[machine->soul.active_object], SCRIPT_FIRST_CORE_NODE + machine->soul.active_slot, &node_x, &node_y);
+    soul_object = script_soul_core_the_scripts_see(machine, &soul_slot);
+    if (signed_word(words[1]) < 0 && soul_object >= 0) {
+        script_machine_node_position(&machine->objects[soul_object], SCRIPT_FIRST_CORE_NODE + soul_slot, &node_x, &node_y);
     } else {
         script_machine_node_position(object, signed_word(words[1]), &node_x, &node_y);
     }
@@ -668,11 +675,14 @@ static void pan_to_the_soul_core(struct script_machine *machine, const unsigned 
 {
     float core_x;
     float core_y;
+    int soul_object;
+    int soul_slot;
 
-    if (machine->soul.active_object < 0 || machine->soul.active_object >= machine->object_count) {
+    soul_object = script_soul_core_the_scripts_see(machine, &soul_slot);
+    if (soul_object < 0 || soul_object >= machine->object_count) {
         return;
     }
-    script_machine_node_position(&machine->objects[machine->soul.active_object], SCRIPT_FIRST_CORE_NODE + machine->soul.active_slot, &core_x, &core_y);
+    script_machine_node_position(&machine->objects[soul_object], SCRIPT_FIRST_CORE_NODE + soul_slot, &core_x, &core_y);
     begin_pan(machine, machine->world_origin_x + (int)core_x - CORE_PAN_LEFT_OF_THE_CORE, machine->world_origin_y + camera_top_for_the_core(machine, (int)core_y), (int)script_machine_u32(words, 0), 1);
 }
 
@@ -695,11 +705,14 @@ static void frame_the_core_and_the_followed_actor(struct script_machine *machine
     int middle_x;
     int target_y;
     int speed;
+    int soul_object;
+    int soul_slot;
 
-    if (machine->soul.active_object < 0 || machine->camera_follow_object == SCRIPT_NO_SELECTION || !machine->objects[machine->camera_follow_object].actor.exists) {
+    soul_object = script_soul_core_the_scripts_see(machine, &soul_slot);
+    if (soul_object < 0 || machine->camera_follow_object == SCRIPT_NO_SELECTION || !machine->objects[machine->camera_follow_object].actor.exists) {
         return;
     }
-    script_machine_node_position(&machine->objects[machine->soul.active_object], SCRIPT_FIRST_CORE_NODE + machine->soul.active_slot, &core_x, &core_y);
+    script_machine_node_position(&machine->objects[soul_object], SCRIPT_FIRST_CORE_NODE + soul_slot, &core_x, &core_y);
     script_machine_node_position(&machine->objects[machine->camera_follow_object], 0, &followed_x, &followed_y);
     middle_x = (int)((core_x + followed_x) / 2.0f);
     if ((float)middle_x - core_x > FRAMING_FARTHEST_FROM_CORE || core_x - (float)middle_x > FRAMING_FARTHEST_FROM_CORE) {

@@ -186,9 +186,8 @@ ok script choice_cursor
 ok script choice_opened
 ok script choice_picked
 ok script core
+ok script core_reached
 ok script countdown_carried_over
-ok script dead_talk_prompt_answered
-ok script dead_talk_prompt_opened
 ok script exchange
 ok script exchange_cancelled
 ok script exchange_linked
@@ -208,6 +207,8 @@ ok script paused
 ok script phone_book_answered
 ok script phone_book_opened
 ok script player_mark
+ok script question_answered
+ok script question_opened
 ok script reached
 ok script read
 ok script ready
@@ -216,6 +217,7 @@ ok script resumed
 ok script movie_skipped
 ok script retry_from_checkpoint
 ok script rewind_select
+ok script rollback_retry
 ok script route_aim
 ok script route_block_already_played
 ok script route_hop_distances

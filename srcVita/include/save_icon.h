@@ -17,5 +17,6 @@ unsigned int save_icon_step(void);
 int save_icon_body(struct soul_chain_blob *blobs);
 void save_icon_core(struct soul_chain_blob *blobs);
 void save_icon_draw(void);
+void save_icon_draw_at(float x, float y, float scale, float alpha, int is_lit);
 
 #endif

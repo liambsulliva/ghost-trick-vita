@@ -13,8 +13,7 @@
 #define FIRST_CORE_DISABLED_BIT 1
 #define SECOND_CORE_DISABLED_BIT 2
 #define ROUTE_ACTION_MOST_TICKS 1800u
-#define ROUTE_TICKS_TO_WAIT_FOR_A_CORE_TALK 60u
-#define ROUTE_TICKS_TO_WALK_TO_A_DEAD_TALK 900u
+#define ROUTE_TICKS_TO_REACH_A_DEAD_TALK 900u
 #define SOUL_TOUCH_GRAB_DS_PIXELS 16.0f
 #define SOUL_PEN_DEAD_ZONE_DS_PIXELS 3.0f
 #define SOUL_JUMP_SOUND_KIND 16
@@ -149,18 +148,13 @@ static void core_position(const struct script_machine *machine, int object_index
 }
 
 #define DEAD_TALK_GIMMICK_CLASS_ID 0x2981d97eu
-#define DEAD_TALK_PROMPT_YES 0
-#define DEAD_TALK_PROMPT_NO 1
-#define DEAD_TALK_ANSWER_NONE 0
-#define DEAD_TALK_ANSWER_YES 1
-#define DEAD_TALK_ANSWER_NO 2
 
 static int core_is_for_the_dead(const struct script_machine *machine, int object_index)
 {
     return machine->objects[object_index].is_dead || machine->objects[object_index].actor.class_id == DEAD_TALK_GIMMICK_CLASS_ID;
 }
 
-static int core_asks_before_its_talk(const struct script_machine *machine, int object_index)
+static int core_is_a_dead_talk_gimmick(const struct script_machine *machine, int object_index)
 {
     return machine->objects[object_index].actor.class_id == DEAD_TALK_GIMMICK_CLASS_ID;
 }
@@ -173,6 +167,26 @@ static int object_holds_the_other_ghost(const struct script_machine *machine, in
     soul = &machine->soul;
     other = soul->active_ghost == SCRIPT_GHOST_MISSILE ? SCRIPT_GHOST_CICEL : SCRIPT_GHOST_MISSILE;
     return object_index != NO_CORE && soul->ghost_core_objects[other] == object_index;
+}
+
+static int the_scene_holds_a_core_talk(const struct script_machine *machine)
+{
+    return script_machine_handles(machine, "SYSTEM", "CORETALK");
+}
+
+static int core_starts_a_talk_when_reached(const struct script_machine *machine, int object_index)
+{
+    return core_is_a_dead_talk_gimmick(machine, object_index) || (object_holds_the_other_ghost(machine, object_index) && the_scene_holds_a_core_talk(machine));
+}
+
+static int core_leaps_when_reached(const struct script_machine *machine, int object_index)
+{
+    return machine->objects[object_index].is_dead && !core_is_a_dead_talk_gimmick(machine, object_index);
+}
+
+static int core_answers_a_reach(const struct script_machine *machine, int object_index)
+{
+    return core_starts_a_talk_when_reached(machine, object_index) || core_leaps_when_reached(machine, object_index);
 }
 
 static void take_character_button(struct script_machine *machine);
@@ -188,6 +202,8 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
     }
     soul->active_object = object_index;
     soul->active_slot = slot;
+    soul->reached_object = NO_CORE;
+    soul->corpse_object = NO_CORE;
     machine->active_core_name = machine->objects[object_index].name;
     if (soul->is_on) {
         soul->mark_age_ticks = MARK_TICKS_BEFORE_THE_CORE_SHOWS;
@@ -195,15 +211,11 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
     if (machine->outputs->marked != NULL) {
         machine->outputs->marked("core", machine->objects[object_index].name);
     }
-    if (soul->is_on && object_holds_the_other_ghost(machine, object_index)) {
-        soul->dead_core_was_just_reached = 1;
-    }
     soul->ghost_core_objects[soul->active_ghost] = object_index;
     soul->ghost_core_slots[soul->active_ghost] = slot;
     if (soul->is_on) {
         if (core_is_for_the_dead(machine, object_index)) {
             script_machine_send(machine, "*", "SYSTEM", "SV_DEADCORE");
-            soul->dead_core_was_just_reached = 1;
         } else {
             script_machine_send(machine, "*", "SYSTEM", "SV_CHGCORE");
             script_machine_send(machine, "*", "SYSTEM", soul->active_ghost == SCRIPT_GHOST_MISSILE ? "SV_CHGCORE_MISSILE" : "SV_CHGCORE_CICEL");
@@ -268,6 +280,7 @@ static void drag_soul_to(struct script_machine *machine, int object_index, int s
     core_position(machine, object_index, slot, &target_x, &target_y);
     soul->drag_object = object_index;
     soul->drag_slot = slot;
+    soul->drag_is_a_reach = 0;
     soul->drag_stream_ticks = machine->objects[object_index].is_dead ? SOUL_LIGHTNING_TICKS : stream_ticks_for_distance(sqrtf((target_x - soul->drag_from_x) * (target_x - soul->drag_from_x) + (target_y - soul->drag_from_y) * (target_y - soul->drag_from_y)));
     soul->drag_ticks_left = SOUL_BEAM_TICKS + soul->drag_stream_ticks;
 }
@@ -283,11 +296,21 @@ void script_soul_travel_to_core(struct script_machine *machine, int object_index
     drag_soul_to(machine, object_index, slot);
 }
 
+int script_soul_core_the_scripts_see(const struct script_machine *machine, int *slot)
+{
+    if (machine->soul.corpse_object != NO_CORE && machine->soul.corpse_object < machine->object_count) {
+        *slot = machine->soul.corpse_slot;
+        return machine->soul.corpse_object;
+    }
+    *slot = machine->soul.active_slot;
+    return machine->soul.active_object;
+}
+
 static float core_mark_opacity(const struct script_actor *actor)
 {
     int shown_level;
 
-    if (!script_class_is_soul_start(actor->class_id)) {
+    if (!script_class_is_soul_start(actor->class_id) && !script_class_is_past_dead(actor->class_id)) {
         return 1.0f;
     }
     shown_level = script_ghost_copy_shown_level(&actor->ghost_copy);
@@ -309,7 +332,7 @@ static void report_soul_view(struct script_machine *machine)
             core_position(machine, soul->drag_object, soul->drag_slot, &target_x, &target_y);
             if (soul->drag_ticks_left > soul->drag_stream_ticks) {
                 machine->outputs->soul_cursor_moved(1, soul->drag_from_x, soul->drag_from_y, target_x, target_y, SCRIPT_SOUL_BEAM);
-            } else if (machine->objects[soul->drag_object].is_dead) {
+            } else if (soul->drag_is_a_reach || machine->objects[soul->drag_object].is_dead) {
                 machine->outputs->soul_cursor_moved(1, soul->drag_from_x, soul->drag_from_y, target_x, target_y, SCRIPT_SOUL_LIGHTNING);
             } else {
                 float along;
@@ -406,11 +429,89 @@ static void step_the_time_leap(struct script_machine *machine)
         if (soul->is_on) {
             set_soul_view_with_effect(machine, 0, 0);
             machine->pause_bit = 1;
+            soul->leap_holds_the_world = 1;
         }
     }
     if (soul->leap_message_at == (long long)machine->tick) {
+        if (soul->leap_holds_the_world) {
+            soul->leap_holds_the_world = 0;
+            machine->pause_bit = 0;
+        }
         script_machine_send(machine, "*", "timeleap", "start");
     }
+}
+
+static void start_the_possession_sparks(struct script_machine *machine, int object_index, int slot)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    soul->flash_ticks_left = SOUL_POSSESSION_FLASH_TICKS;
+    soul->sparks_elapsed_ticks = 1;
+    soul->sparks_object = object_index;
+    soul->sparks_slot = slot;
+}
+
+static void start_the_dead_trick(struct script_machine *machine)
+{
+    start_dead_trick_light(machine);
+    machine->soul.dead_light_ticks_left = DEAD_TRICK_LIGHT_TICKS;
+    machine->soul.dead_core_holds_the_tip = machine->soul.is_on;
+    start_time_leap(machine);
+}
+
+static void start_dead_talk(struct script_machine *machine, int object_index, int with_effect);
+static int the_scene_starts_its_dead_talk_on_arrival(const struct script_machine *machine);
+
+static void finish_the_reach(struct script_machine *machine)
+{
+    struct script_soul *soul;
+    int object_index;
+
+    soul = &machine->soul;
+    object_index = soul->reached_object;
+    soul->drag_is_a_reach = 0;
+    soul->dead_talks_begun_by_a_reach = soul->dead_talks_begun_by_a_reach + 1;
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("core_reached", machine->objects[object_index].name);
+    }
+    if (core_leaps_when_reached(machine, object_index)) {
+        soul->corpse_object = object_index;
+        soul->corpse_slot = soul->reached_slot;
+        machine->active_core_name = machine->objects[object_index].name;
+    }
+    if (soul->is_on && core_is_for_the_dead(machine, object_index)) {
+        script_machine_send(machine, "*", "SYSTEM", "SV_DEADCORE");
+    }
+    if (!core_leaps_when_reached(machine, object_index)) {
+        start_dead_talk(machine, object_index, 1);
+        return;
+    }
+    start_the_possession_sparks(machine, object_index, soul->reached_slot);
+    start_the_dead_trick(machine);
+    script_hints_player_did(machine, SCRIPT_ROUTE_DEAD_TALK, machine->objects[object_index].name);
+    if (soul->is_on && the_scene_starts_its_dead_talk_on_arrival(machine)) {
+        start_dead_talk(machine, object_index, 1);
+    }
+}
+
+static void reach_for_core(struct script_machine *machine, int object_index, int slot)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    soul->reached_object = object_index;
+    soul->reached_slot = slot;
+    if (machine->auto_press == SCRIPT_AUTO_FAST) {
+        finish_the_reach(machine);
+        return;
+    }
+    core_position(machine, soul->active_object, soul->active_slot, &soul->drag_from_x, &soul->drag_from_y);
+    soul->drag_object = object_index;
+    soul->drag_slot = slot;
+    soul->drag_is_a_reach = 1;
+    soul->drag_stream_ticks = SOUL_LIGHTNING_TICKS;
+    soul->drag_ticks_left = SOUL_BEAM_TICKS + SOUL_LIGHTNING_TICKS;
 }
 
 static void finish_drag_when_due(struct script_machine *machine)
@@ -422,34 +523,43 @@ static void finish_drag_when_due(struct script_machine *machine)
         return;
     }
     soul->drag_ticks_left = soul->drag_ticks_left - 1;
-    if (soul->drag_ticks_left == 0) {
-        if (machine->objects[soul->drag_object].is_dead) {
-            soul->flash_ticks_left = SOUL_POSSESSION_FLASH_TICKS;
-            soul->sparks_elapsed_ticks = 1;
-        }
-        arrive_at_core(machine, soul->drag_object, soul->drag_slot);
-        if (machine->objects[soul->drag_object].is_dead) {
-            start_dead_trick_light(machine);
-            soul->dead_light_ticks_left = DEAD_TRICK_LIGHT_TICKS;
-            soul->dead_core_holds_the_tip = soul->is_on;
-            start_time_leap(machine);
-        }
+    if (soul->drag_ticks_left > 0) {
+        return;
+    }
+    if (soul->drag_is_a_reach) {
+        finish_the_reach(machine);
+        return;
+    }
+    if (machine->objects[soul->drag_object].is_dead) {
+        start_the_possession_sparks(machine, soul->drag_object, soul->drag_slot);
+    }
+    arrive_at_core(machine, soul->drag_object, soul->drag_slot);
+    if (machine->objects[soul->drag_object].is_dead) {
+        start_the_dead_trick(machine);
     }
 }
 
 static void report_possession_effects(struct script_machine *machine)
 {
     struct script_soul *soul;
+    int sparks_object;
+    int sparks_slot;
 
     soul = &machine->soul;
     if (machine->outputs->soul_flash_changed != NULL) {
         machine->outputs->soul_flash_changed((float)soul->flash_ticks_left / (float)SOUL_POSSESSION_FLASH_TICKS);
     }
-    if (machine->outputs->soul_sparks_changed != NULL && soul->active_object != NO_CORE) {
+    sparks_object = soul->sparks_object;
+    sparks_slot = soul->sparks_slot;
+    if (sparks_object == NO_CORE || sparks_object >= machine->object_count) {
+        sparks_object = soul->active_object;
+        sparks_slot = soul->active_slot;
+    }
+    if (machine->outputs->soul_sparks_changed != NULL && sparks_object != NO_CORE) {
         float x;
         float y;
 
-        core_position(machine, soul->active_object, soul->active_slot, &x, &y);
+        core_position(machine, sparks_object, sparks_slot, &x, &y);
         machine->outputs->soul_sparks_changed(soul->sparks_elapsed_ticks, x, y);
     }
     if (soul->flash_ticks_left > 0) {
@@ -809,7 +919,10 @@ static void move_soul_tip(struct script_machine *machine)
             found_object = core_under_the_tip(machine, root_x, root_y, &found_slot);
             if (found_object != NO_CORE && script_exchange_link(machine, found_object, found_slot)) {
                 soul->touch_drags_the_tip = 0;
-            } else if (found_object != NO_CORE && (machine->auto_press == SCRIPT_AUTO_FAST || machine->objects[found_object].is_dead)) {
+            } else if (found_object != NO_CORE && core_answers_a_reach(machine, found_object)) {
+                soul_chain_rest_at(&soul->chain, root_x, root_y);
+                reach_for_core(machine, found_object, found_slot);
+            } else if (found_object != NO_CORE && machine->auto_press == SCRIPT_AUTO_FAST) {
                 soul_chain_rest_at(&soul->chain, root_x, root_y);
                 drag_soul_to(machine, found_object, found_slot);
             } else if (found_object != NO_CORE) {
@@ -953,7 +1066,7 @@ static void report_hud(struct script_machine *machine)
     }
     view.side_is_on = script_soul_fate_section_is_on(machine);
     view.fate_level = machine->fate_level;
-    view.world_is_running = !machine->pause_bit && machine->mode_byte == SCRIPT_MODE_NORMAL && machine->eyecatch_ticks_left == 0;
+    view.world_is_running = !machine->pause_bit && machine->mode_byte == SCRIPT_MODE_NORMAL && machine->eyecatch_ticks_left == 0 && !machine->soul.question_is_open;
     view.is_hidden_for_movie = machine->movie_ticks_left > 0 || machine->soul.phone_split_name[0] != '\0';
     view.movie_can_be_skipped = machine->movie_ticks_left > 0;
     view.narration_arrow_is_on = script_narration_wants_a_press(&machine->narration);
@@ -964,8 +1077,9 @@ static void report_hud(struct script_machine *machine)
     view.active_ghost = machine->soul.active_ghost;
     view.rewind_select_ticks = machine->soul.rewind_select_ticks;
     view.rewind_press_ticks = machine->soul.rewind_press_ticks;
-    view.dead_talk_prompt_is_up = machine->soul.dead_talk_prompt_is_open;
-    view.dead_talk_prompt_cursor = machine->soul.dead_talk_prompt_cursor;
+    view.question_is_up = machine->soul.question_is_open;
+    view.question_kind = machine->soul.question_kind;
+    view.question_cursor = machine->soul.question_cursor;
     script_pills_fill_view(machine, &view);
     script_phone_book_fill_view(machine, &view);
     script_choice_fill_view(machine, &view);
@@ -1118,6 +1232,15 @@ void script_soul_effect_signalled(struct script_machine *machine, const char *na
     schedule_native_event(machine, &machine->soul.phone_event, name, "end", PHONE_EFFECT_END_AFTER_TICKS);
 }
 
+static void forget_the_reach(struct script_soul *soul)
+{
+    if (soul->drag_is_a_reach) {
+        soul->drag_ticks_left = 0;
+        soul->drag_is_a_reach = 0;
+    }
+    soul->reached_object = NO_CORE;
+}
+
 static void close_the_view_task(struct script_soul *soul)
 {
     soul->view_demo_is_on = 0;
@@ -1136,7 +1259,9 @@ static void set_soul_view_with_effect(struct script_machine *machine, int is_on,
     }
     soul->is_on = is_on;
     soul->dead_core_holds_the_tip = 0;
-    soul->dead_core_was_just_reached = is_on && object_holds_the_other_ghost(machine, soul->active_object);
+    if (!is_on) {
+        forget_the_reach(soul);
+    }
     soul->view_is_a_tutorial = 0;
     if (is_on) {
         soul->view_was_entered_with_effect = with_effect;
@@ -1493,7 +1618,7 @@ static void run_event_frame_command(struct script_machine *machine, const char *
 static void start_dead_talk(struct script_machine *machine, int object_index, int with_effect)
 {
     if (object_index == NO_CORE) {
-        object_index = machine->soul.active_object;
+        object_index = machine->soul.reached_object != NO_CORE ? machine->soul.reached_object : machine->soul.active_object;
     }
     machine->soul.dead_talk_is_on = 1;
     machine->soul.dead_talk_object = object_index;
@@ -1508,141 +1633,20 @@ static void start_dead_talk(struct script_machine *machine, int object_index, in
     script_machine_send(machine, object_index != NO_CORE ? machine->objects[object_index].name : "*", "SYSTEM", "DEADTALK");
 }
 
-static int the_soul_rests_on_a_dead_core(const struct script_machine *machine)
-{
-    const struct script_soul *soul;
-
-    soul = &machine->soul;
-    return soul->is_on && !soul->is_leaving_view && !soul->dead_talk_is_on && soul->active_object != NO_CORE && core_is_for_the_dead(machine, soul->active_object);
-}
-
-static int the_soul_rests_on_the_other_ghosts_core(const struct script_machine *machine)
-{
-    const struct script_soul *soul;
-
-    soul = &machine->soul;
-    return soul->is_on && !soul->is_leaving_view && !soul->dead_talk_is_on && soul->active_object != NO_CORE && !core_is_for_the_dead(machine, soul->active_object) && object_holds_the_other_ghost(machine, soul->active_object);
-}
-
-static int the_scene_holds_a_core_talk(const struct script_machine *machine)
-{
-    return script_machine_handles(machine, "SYSTEM", "CORETALK");
-}
-
 static int the_scene_starts_its_dead_talk_on_arrival(const struct script_machine *machine)
 {
     return script_machine_handles(machine, "SYSTEM", "SV_DEADCORE") && script_machine_handles(machine, "SVTUTO", "onClick");
-}
-
-static int a_dead_talk_prompt_may_open(const struct script_machine *machine)
-{
-    return (the_soul_rests_on_the_other_ghosts_core(machine) && the_scene_holds_a_core_talk(machine)) || (the_soul_rests_on_a_dead_core(machine) && core_asks_before_its_talk(machine, machine->soul.active_object) && !the_scene_starts_its_dead_talk_on_arrival(machine));
-}
-
-static int something_else_holds_the_screen(const struct script_machine *machine)
-{
-    return machine->talk.phase != SCRIPT_TALK_CLOSED || machine->choice.is_open || machine->narration.is_running || machine->soul.view_change_ticks_left > 0 || script_exchange_is_on(machine);
-}
-
-static void close_the_dead_talk_prompt(struct script_machine *machine)
-{
-    machine->soul.dead_talk_prompt_is_open = 0;
-    machine->soul.dead_talk_answer_is_pending = DEAD_TALK_ANSWER_NONE;
-}
-
-static void answer_the_dead_talk_prompt(struct script_machine *machine, int is_yes)
-{
-    struct script_soul *soul;
-
-    soul = &machine->soul;
-    if (!soul->dead_talk_prompt_is_open) {
-        return;
-    }
-    close_the_dead_talk_prompt(machine);
-    if (machine->outputs->marked != NULL) {
-        machine->outputs->marked("dead_talk_prompt_answered", is_yes ? "yes" : "no");
-    }
-    if (is_yes) {
-        soul->dead_talks_begun_by_the_prompt = soul->dead_talks_begun_by_the_prompt + 1;
-        start_dead_talk(machine, soul->active_object, 1);
-    }
-}
-
-static void offer_the_dead_talk(struct script_machine *machine)
-{
-    struct script_soul *soul;
-
-    soul = &machine->soul;
-    if (soul->dead_talk_prompt_is_open) {
-        if (!a_dead_talk_prompt_may_open(machine)) {
-            close_the_dead_talk_prompt(machine);
-        }
-        return;
-    }
-    if (!soul->dead_core_was_just_reached) {
-        return;
-    }
-    if (the_soul_rests_on_a_dead_core(machine) && the_scene_starts_its_dead_talk_on_arrival(machine)) {
-        soul->dead_core_was_just_reached = 0;
-        start_dead_talk(machine, soul->active_object, 1);
-        return;
-    }
-    if (!a_dead_talk_prompt_may_open(machine)) {
-        soul->dead_core_was_just_reached = the_soul_rests_on_the_other_ghosts_core(machine);
-        return;
-    }
-    if (something_else_holds_the_screen(machine)) {
-        return;
-    }
-    soul->dead_core_was_just_reached = 0;
-    soul->dead_talk_prompt_is_open = 1;
-    soul->dead_talk_prompt_cursor = DEAD_TALK_PROMPT_YES;
-    soul->dead_talk_prompt_opened_at = machine->tick;
-    if (machine->outputs->marked != NULL) {
-        machine->outputs->marked("dead_talk_prompt_opened", machine->objects[soul->active_object].name);
-    }
-}
-
-static void steer_the_dead_talk_prompt(struct script_machine *machine)
-{
-    struct script_soul *soul;
-    int answer;
-
-    soul = &machine->soul;
-    answer = soul->dead_talk_answer_is_pending;
-    soul->dead_talk_answer_is_pending = DEAD_TALK_ANSWER_NONE;
-    if (!soul->dead_talk_prompt_is_open) {
-        return;
-    }
-    if (answer != DEAD_TALK_ANSWER_NONE) {
-        answer_the_dead_talk_prompt(machine, answer == DEAD_TALK_ANSWER_YES);
-    } else if (soul->direction_x != 0) {
-        soul->dead_talk_prompt_cursor = soul->direction_x > 0 ? DEAD_TALK_PROMPT_NO : DEAD_TALK_PROMPT_YES;
-    }
-}
-
-static void hold_the_soul_for_the_dead_talk_prompt(struct script_machine *machine)
-{
-    struct script_soul *soul;
-
-    soul = &machine->soul;
-    if (!soul->dead_talk_prompt_is_open) {
-        return;
-    }
-    soul->held_x = 0.0f;
-    soul->held_y = 0.0f;
-    soul->touch_is_down = 0;
-    soul->character_button_is_pending = 0;
-    soul->rollback_is_pending = 0;
 }
 
 static void run_dead_talk_command(struct script_machine *machine, const char *arg)
 {
     if (strcmp(arg, "Finish") == 0) {
         machine->soul.dead_talk_is_on = 0;
+        forget_the_reach(&machine->soul);
         script_machine_set_swirl(machine, 0);
     } else if (strcmp(arg, "Abort") == 0) {
         machine->soul.dead_talk_is_on = 0;
+        forget_the_reach(&machine->soul);
         script_machine_set_swirl(machine, 0);
         run_custom_soul_command(machine, "NoEffectFinish");
         return_from_soul_view(machine, SCRIPT_MODE_DEMO);
@@ -1916,7 +1920,103 @@ static int take_rollback(struct script_machine *machine)
         return 0;
     }
     script_pills_press(machine, SCRIPT_PILL_HOURGLASS, 0);
-    retry_the_fate_attempt(machine, "rollback_retry");
+    script_soul_open_question(machine, SCRIPT_QUESTION_ROLLBACK);
+    return 1;
+}
+
+struct question_rule {
+    const char *name;
+    int marked_option;
+};
+
+static const struct question_rule question_rules[SCRIPT_QUESTION_KIND_COUNT] = {
+    [SCRIPT_QUESTION_ROLLBACK] = { "rollback", SCRIPT_QUESTION_OPTION_NO }
+};
+
+void script_soul_open_question(struct script_machine *machine, enum script_question_kind kind)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    soul->question_is_open = 1;
+    soul->question_kind = kind;
+    soul->question_cursor = question_rules[kind].marked_option;
+    soul->question_answer_is_pending = SCRIPT_QUESTION_ANSWER_NONE;
+    soul->question_answer = SCRIPT_QUESTION_ANSWER_NONE;
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("question_opened", question_rules[kind].name);
+    }
+}
+
+static void act_on_the_answer(struct script_machine *machine, enum script_question_kind kind, int is_yes)
+{
+    switch (kind) {
+    case SCRIPT_QUESTION_ROLLBACK:
+        if (is_yes) {
+            retry_the_fate_attempt(machine, "rollback_retry");
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+static void answer_the_question(struct script_machine *machine, int is_yes)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    soul->question_is_open = 0;
+    soul->question_answer = is_yes ? SCRIPT_QUESTION_ANSWER_YES : SCRIPT_QUESTION_ANSWER_NO;
+    if (machine->outputs->marked != NULL) {
+        machine->outputs->marked("question_answered", is_yes ? "yes" : "no");
+    }
+    act_on_the_answer(machine, soul->question_kind, is_yes);
+}
+
+static void drop_the_input_the_question_holds(struct script_machine *machine)
+{
+    struct script_soul *soul;
+
+    soul = &machine->soul;
+    machine->press_is_pending = 0;
+    soul->ghost_is_pending = 0;
+    soul->character_button_is_pending = 0;
+    soul->tap_group_is_pending = 0;
+    soul->rollback_is_pending = 0;
+    soul->question_answer_is_pending = SCRIPT_QUESTION_ANSWER_NONE;
+    soul->direction_x = 0;
+    soul->direction_y = 0;
+    soul->held_x = 0.0f;
+    soul->held_y = 0.0f;
+    soul->touch_is_down = 0;
+}
+
+int script_soul_step_question(struct script_machine *machine)
+{
+    struct script_soul *soul;
+    int answer;
+
+    soul = &machine->soul;
+    if (!soul->question_is_open) {
+        return 0;
+    }
+    answer = soul->question_answer_is_pending;
+    if (answer == SCRIPT_QUESTION_ANSWER_NONE && machine->press_is_pending) {
+        answer = soul->question_cursor == SCRIPT_QUESTION_OPTION_YES ? SCRIPT_QUESTION_ANSWER_YES : SCRIPT_QUESTION_ANSWER_NO;
+    }
+    if (answer == SCRIPT_QUESTION_ANSWER_NONE && soul->ghost_is_pending) {
+        answer = SCRIPT_QUESTION_ANSWER_NO;
+    }
+    if (answer == SCRIPT_QUESTION_ANSWER_NONE && soul->direction_x != 0) {
+        soul->question_cursor = soul->direction_x > 0 ? SCRIPT_QUESTION_OPTION_NO : SCRIPT_QUESTION_OPTION_YES;
+    }
+    drop_the_input_the_question_holds(machine);
+    if (answer != SCRIPT_QUESTION_ANSWER_NONE) {
+        answer_the_question(machine, answer == SCRIPT_QUESTION_ANSWER_YES);
+    }
+    script_pills_step(machine);
+    report_hud(machine);
     return 1;
 }
 
@@ -1938,7 +2038,7 @@ int script_soul_ghost_view_offers_a_trick(const struct script_machine *machine)
     const struct script_soul *soul;
 
     soul = &machine->soul;
-    return soul->is_on && !soul->is_leaving_view && machine->mode_byte == SCRIPT_MODE_NORMAL && soul->tutorial_mode == TUTORIAL_NONE && !a_scripted_event_holds_the_soul(machine) && !script_exchange_is_on(machine) && soul->trick_is_on && soul->active_object != NO_CORE && soul->drag_ticks_left == 0 && soul->action_is_due_in == 0 && !soul->trick_waits_for_the_leave && !core_is_busy(machine) && !core_names_no_trick(machine);
+    return soul->is_on && !soul->is_leaving_view && machine->mode_byte == SCRIPT_MODE_NORMAL && soul->tutorial_mode == TUTORIAL_NONE && !a_scripted_event_holds_the_soul(machine) && !script_exchange_is_on(machine) && soul->trick_is_on && soul->active_object != NO_CORE && soul->drag_ticks_left == 0 && !soul->dead_core_holds_the_tip && soul->action_is_due_in == 0 && !soul->trick_waits_for_the_leave && !core_is_busy(machine) && !core_names_no_trick(machine);
 }
 
 static void take_trick_in_the_ghost_view(struct script_machine *machine)
@@ -1992,10 +2092,6 @@ static void take_press(struct script_machine *machine)
         script_choice_pick(machine, machine->choice.cursor);
         return;
     }
-    if (soul->dead_talk_prompt_is_open) {
-        answer_the_dead_talk_prompt(machine, soul->dead_talk_prompt_cursor == DEAD_TALK_PROMPT_YES);
-        return;
-    }
     if (game_over_waits_for_a_retry(machine)) {
         retry_after_the_game_over(machine);
         return;
@@ -2017,10 +2113,6 @@ static void take_press(struct script_machine *machine)
         return;
     }
     if (soul->is_on) {
-        if (machine->auto_press == SCRIPT_AUTO_OFF && !script_pills_is_up(machine, SCRIPT_PILL_TRICK) && a_dead_talk_prompt_may_open(machine)) {
-            soul->dead_core_was_just_reached = 1;
-            return;
-        }
         take_trick_in_the_ghost_view(machine);
         return;
     }
@@ -2044,10 +2136,6 @@ static void take_ghost_button(struct script_machine *machine)
     struct script_soul *soul;
 
     soul = &machine->soul;
-    if (soul->dead_talk_prompt_is_open) {
-        answer_the_dead_talk_prompt(machine, 0);
-        return;
-    }
     if (soul->view_change_ticks_left > 0 || soul->tutorial_holds_input) {
         return;
     }
@@ -2253,6 +2341,12 @@ static void follow_core_with_camera(struct script_machine *machine)
 
         core_position(machine, soul->exchange.target_object, soul->exchange.target_slot, &target_x, &target_y);
         follow_core_in_ghost_view(machine, (core_x + target_x) / 2.0f, (core_y + target_y) / 2.0f);
+    } else if (soul->is_on && soul->reached_object != NO_CORE && !soul->view_was_panned) {
+        float reached_x;
+        float reached_y;
+
+        core_position(machine, soul->reached_object, soul->reached_slot, &reached_x, &reached_y);
+        follow_core_in_ghost_view(machine, (core_x + reached_x) / 2.0f, (core_y + reached_y) / 2.0f);
     } else if (soul->is_on && soul->tip_input_is_held && soul->tip_is_out && !soul->view_was_panned) {
         follow_point_in_ghost_view(machine, soul->tip_x, soul->tip_y, GHOST_TIP_FOLLOW_LEFT, GHOST_TIP_FOLLOW_RIGHT, GHOST_TIP_FOLLOW_TOP, GHOST_TIP_FOLLOW_BOTTOM);
     } else if (soul->is_on && !soul->view_was_panned) {
@@ -2310,7 +2404,7 @@ static void go_to_route_step(struct script_machine *machine, int step_index)
     soul->route_character_presses_when_step_began = soul->character_presses_taken;
     soul->route_picks_when_step_began = machine->choice.picks;
     soul->route_phone_answers_when_step_began = machine->phone_book.answers;
-    soul->route_dead_talks_when_step_began = soul->dead_talks_begun_by_the_prompt;
+    soul->route_dead_talks_when_step_began = soul->dead_talks_begun_by_a_reach;
     soul->exchange.route_swaps_when_step_began = soul->exchange.swaps_done;
     soul->route_aimed_node = NO_CORE;
 }
@@ -2512,6 +2606,9 @@ static int route_token_holds(const struct script_machine *machine, const struct 
     case SCRIPT_ROUTE_WAIT_NOFLAG:
         return !script_flags_read(&machine->flags, (unsigned int)strtoul(first, NULL, 16));
     case SCRIPT_ROUTE_WAIT_CORE:
+        if (soul->is_on && soul->reached_object != NO_CORE && strcmp(machine->objects[soul->reached_object].name, first) == 0 && (second == NULL || soul->reached_slot == atoi(second))) {
+            return 1;
+        }
         return machine->active_core_name != NULL && strcmp(machine->active_core_name, first) == 0 && (second == NULL || soul->active_slot == atoi(second));
     case SCRIPT_ROUTE_WAIT_USABLE:
         object_index = script_machine_index_of_object(machine, first);
@@ -2678,7 +2775,7 @@ static int core_links_to(const struct script_machine *machine, int from, int nod
     if (!object_can_be_a_core(&machine->objects[node / SCRIPT_CORE_SLOT_COUNT], node % SCRIPT_CORE_SLOT_COUNT)) {
         return 0;
     }
-    if (node / SCRIPT_CORE_SLOT_COUNT != target_object && linking_that_core_would_swap(machine, from / SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT)) {
+    if (node / SCRIPT_CORE_SLOT_COUNT != target_object && (linking_that_core_would_swap(machine, from / SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT) || core_answers_a_reach(machine, node / SCRIPT_CORE_SLOT_COUNT))) {
         return 0;
     }
     return core_distance(machine, from / SCRIPT_CORE_SLOT_COUNT, from % SCRIPT_CORE_SLOT_COUNT, node / SCRIPT_CORE_SLOT_COUNT, node % SCRIPT_CORE_SLOT_COUNT) <= script_soul_reach(machine) + SOUL_TIP_PICKUP_NEAR && a_push_lands_on(machine, from, node, &aim_x, &aim_y);
@@ -2896,6 +2993,9 @@ static int route_move_is_done(struct script_machine *machine, const struct scrip
     if (soul->active_object == object_index && soul->active_slot == step->slot && soul->drag_ticks_left == 0) {
         return 1;
     }
+    if (soul->is_on && soul->reached_object == object_index && soul->reached_slot == step->slot) {
+        return 1;
+    }
     if (!soul->is_on || soul->active_object == NO_CORE || !object_can_be_a_core(&machine->objects[object_index], step->slot)) {
         return 0;
     }
@@ -2917,7 +3017,7 @@ int script_soul_route_dead_talk_core(const struct script_machine *machine, const
     int index;
 
     named = step->object[0] != '\0' ? script_machine_index_of_object(machine, step->object) : SCRIPT_NO_OBJECT;
-    if (named != SCRIPT_NO_OBJECT && core_asks_before_its_talk(machine, named) && object_can_be_a_core(&machine->objects[named], 0)) {
+    if (named != SCRIPT_NO_OBJECT && core_answers_a_reach(machine, named) && object_can_be_a_core(&machine->objects[named], 0)) {
         return named;
     }
     if (!the_scene_holds_a_core_talk(machine)) {
@@ -2936,10 +3036,10 @@ static int the_step_names_a_corpse_the_soul_is_on(const struct script_machine *m
     int named;
 
     named = step->object[0] != '\0' ? script_machine_index_of_object(machine, step->object) : SCRIPT_NO_OBJECT;
-    return named != SCRIPT_NO_OBJECT && named == machine->soul.active_object && machine->objects[named].is_dead && !core_asks_before_its_talk(machine, named);
+    return named != SCRIPT_NO_OBJECT && (named == machine->soul.active_object || named == machine->soul.corpse_object) && core_leaps_when_reached(machine, named);
 }
 
-static int the_route_is_still_walking_to_the_dead_talk(struct script_machine *machine, const struct script_route_step *step)
+static int the_route_is_still_reaching_for_the_dead_talk(struct script_machine *machine, const struct script_route_step *step)
 {
     const struct script_soul *soul;
     int target;
@@ -2948,13 +3048,18 @@ static int the_route_is_still_walking_to_the_dead_talk(struct script_machine *ma
 
     soul = &machine->soul;
     target = script_soul_route_dead_talk_core(machine, step);
-    if (target == NO_CORE || machine->tick - soul->route_step_began_at >= ROUTE_TICKS_TO_WALK_TO_A_DEAD_TALK) {
+    if (target == NO_CORE || machine->tick - soul->route_step_began_at >= ROUTE_TICKS_TO_REACH_A_DEAD_TALK) {
         return 0;
     }
-    if (!soul->is_on) {
+    if (!soul->is_on || soul->drag_is_a_reach) {
         return 1;
     }
     return soul->active_object != NO_CORE && soul->active_object != target && script_soul_route_hop(machine, target, 0, &hop_object, &hop_slot);
+}
+
+static int a_reach_began_the_dead_talk(const struct script_machine *machine)
+{
+    return machine->soul.dead_talks_begun_by_a_reach != machine->soul.route_dead_talks_when_step_began;
 }
 
 static int route_step_is_done(struct script_machine *machine, const struct script_route_step *step)
@@ -2983,13 +3088,10 @@ static int route_step_is_done(struct script_machine *machine, const struct scrip
     case SCRIPT_ROUTE_PHONE_STAY:
         return machine->phone_book.answers != soul->route_phone_answers_when_step_began;
     case SCRIPT_ROUTE_DEAD_TALK:
-        if (soul->dead_talks_begun_by_the_prompt != soul->route_dead_talks_when_step_began) {
+        if (a_reach_began_the_dead_talk(machine)) {
             return 1;
         }
-        if (soul->dead_talk_prompt_is_open || (soul->dead_core_was_just_reached && (a_dead_talk_prompt_may_open(machine) || machine->tick - soul->route_step_began_at < ROUTE_TICKS_TO_WAIT_FOR_A_CORE_TALK))) {
-            return 0;
-        }
-        if (the_route_is_still_walking_to_the_dead_talk(machine, step)) {
+        if (the_route_is_still_reaching_for_the_dead_talk(machine, step)) {
             return 0;
         }
         if (the_step_names_a_corpse_the_soul_is_on(machine, step)) {
@@ -3092,7 +3194,9 @@ static void run_route(struct script_machine *machine)
         if (soul->drag_ticks_left > 0 || soul->action_is_due_in > 0) {
             return;
         }
-        if (!route_wait_holds(machine, step->wait) || !the_game_waits_for_this_answer(machine, step)) {
+        if (step->action == SCRIPT_ROUTE_DEAD_TALK && a_reach_began_the_dead_talk(machine)) {
+            soul->route_ready_at = machine->tick;
+        } else if (!route_wait_holds(machine, step->wait) || !the_game_waits_for_this_answer(machine, step)) {
             soul->route_ready_at = 0;
             if (machine->tick - soul->route_step_began_at > ROUTE_WAIT_MOST_TICKS) {
                 give_up_on_route_step(machine, step);
@@ -3296,13 +3400,10 @@ void script_soul_step_before_tasks(struct script_machine *machine)
     if (machine->choice.is_open) {
         script_choice_move_cursor(machine, soul->direction_y);
     }
-    steer_the_dead_talk_prompt(machine);
     soul->direction_x = 0;
     soul->direction_y = 0;
     script_exchange_step(machine);
-    hold_the_soul_for_the_dead_talk_prompt(machine);
     move_soul_tip(machine);
-    offer_the_dead_talk(machine);
     send_tutorial_input(machine);
     move_free_camera(machine);
     pan_the_ghost_view(machine);
@@ -3346,9 +3447,9 @@ void script_soul_note_ghost(struct script_machine *machine)
     machine->soul.ghost_is_pending = 1;
 }
 
-void script_soul_note_dead_talk_answer(struct script_machine *machine, int is_yes)
+void script_soul_note_question_answer(struct script_machine *machine, int is_yes)
 {
-    machine->soul.dead_talk_answer_is_pending = is_yes ? DEAD_TALK_ANSWER_YES : DEAD_TALK_ANSWER_NO;
+    machine->soul.question_answer_is_pending = is_yes ? SCRIPT_QUESTION_ANSWER_YES : SCRIPT_QUESTION_ANSWER_NO;
 }
 
 void script_soul_note_pill(struct script_machine *machine, enum script_pill_id id)
@@ -3384,6 +3485,7 @@ void script_soul_make_ghost_active(struct script_machine *machine, int ghost)
         return;
     }
     soul->active_ghost = ghost;
+    soul->corpse_object = NO_CORE;
     if (soul->ghost_core_objects[ghost] != NO_CORE && soul->ghost_core_objects[ghost] < machine->object_count) {
         soul->active_object = soul->ghost_core_objects[ghost];
         soul->active_slot = soul->ghost_core_slots[ghost];
@@ -3476,6 +3578,9 @@ void script_soul_reset(struct script_machine *machine)
     machine->soul.route_step = -1;
     machine->soul.route_acted_step = -1;
     machine->soul.active_object = NO_CORE;
+    machine->soul.reached_object = NO_CORE;
+    machine->soul.corpse_object = NO_CORE;
+    machine->soul.sparks_object = NO_CORE;
     machine->soul.route_aimed_node = NO_CORE;
     machine->soul.ghost_core_objects[SCRIPT_GHOST_CICEL] = NO_CORE;
     machine->soul.ghost_core_objects[SCRIPT_GHOST_MISSILE] = NO_CORE;
@@ -3507,6 +3612,7 @@ void script_soul_set_first_core(struct script_machine *machine, int object_index
     }
     machine->soul.active_object = object_index;
     machine->soul.active_slot = slot;
+    machine->soul.corpse_object = NO_CORE;
     machine->soul.ghost_core_objects[machine->soul.active_ghost] = object_index;
     machine->soul.ghost_core_slots[machine->soul.active_ghost] = slot;
     machine->active_core_name = machine->objects[object_index].name;

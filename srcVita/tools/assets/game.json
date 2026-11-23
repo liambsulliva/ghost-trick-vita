@@ -415,7 +415,8 @@
         "on": "On",
         "original": "Original",
         "arranged": "Arranged",
-        "new_game_ask": "Start a new game from the beginning?"
+        "new_game_ask": "Start a new game from the beginning?",
+        "rollback_ask": "Start over from the beginning?"
       },
       "header": {
         "controls": "Controls",

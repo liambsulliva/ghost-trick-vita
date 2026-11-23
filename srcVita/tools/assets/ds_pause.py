@@ -177,10 +177,6 @@ def pasted_over(base, top, left, upper):
 
 def flame_pixels(font, flame, number, lit):
     cell = np.zeros((pause_art.FLAME_CELL[1], pause_art.FLAME_CELL[0], 4), dtype=np.uint8)
-    body = flame if lit else darkened(flame)
-    left = (cell.shape[1] - body.shape[1]) // 2
-    upper = (cell.shape[0] - body.shape[0]) // 2
-    cell[upper:upper + body.shape[0], left:left + body.shape[1]] = body
     digits = ink_box(text_pixels(font, str(number), pause_art.NAVY if lit else pause_art.NUMBER_DARK, NUMBER_SCALE))
     digit_left = (cell.shape[1] - digits.shape[1]) // 2
     digit_upper = int(cell.shape[0] * FLAME_NUMBER_MIDDLE) - digits.shape[0] // 2

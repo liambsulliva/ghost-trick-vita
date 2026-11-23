@@ -359,7 +359,7 @@ Touch is the main way to play, as the in-game tutorials teach. Every touch actio
 | L | Open the soul view, or go back from one you opened |
 | CIRCLE | Go back from the soul view, or unlock Missile's link. Held while dialogue or narration shows, it finishes and moves on through the text as fast as the game allows (a press each tick); it never picks a choice |
 | TRIANGLE or SQUARE | Tap the left or right balloon, when a script opens one that can be tapped; balloons show and answer only while the player has control, not during a scripted event |
-| R | The hourglass pill: restart the fate attempt from the start of the four minutes, as a retry after a death does. It shows and answers only during the four minutes before a death |
+| R | The hourglass pill: asks "Start over from the beginning?" (No marked) while the world holds still; Yes restarts the fate attempt from the start of the four minutes, as a retry after a death does, and No goes back to play. It shows and answers only during the four minutes before a death |
 | SELECT | Opens the pause menu straight on the Record (People) screen while the pause is offered (see START), as the notebook pill does; CIRCLE there goes back to the game |
 | START | Open the pause menu, as does a tap on the pause button at the top right: Resume, Save, Record, Title, Chapters and Options. The button shows, and START and SELECT answer, only in the living world while the player has the controls and a pill shows: never in Ghost view, where the world is already stopped, nor during a scripted event or a cutscene |
 

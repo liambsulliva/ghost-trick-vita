@@ -73,6 +73,16 @@ struct script_pill_view {
 
 #define SCRIPT_PHONE_BOOK_MOST 24
 
+enum script_question_kind {
+    SCRIPT_QUESTION_ROLLBACK,
+    SCRIPT_QUESTION_KIND_COUNT
+};
+
+enum script_question_option {
+    SCRIPT_QUESTION_OPTION_YES,
+    SCRIPT_QUESTION_OPTION_NO
+};
+
 struct script_hud_view {
     int side_is_on;
     int fate_level;
@@ -88,8 +98,9 @@ struct script_hud_view {
     int active_ghost;
     int rewind_select_ticks;
     int rewind_press_ticks;
-    int dead_talk_prompt_is_up;
-    int dead_talk_prompt_cursor;
+    int question_is_up;
+    enum script_question_kind question_kind;
+    int question_cursor;
     int pulse_ticks;
     struct script_pill_view pills[SCRIPT_PILL_COUNT];
     int phone_book_is_up;

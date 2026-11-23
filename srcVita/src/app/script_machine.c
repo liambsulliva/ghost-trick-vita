@@ -10,6 +10,7 @@
 #define STILL_ALPHA_STEPS 31
 #define GAME_START_AFTER_LOAD_TICKS 3
 #define LOAD_AFTER_TEARDOWN_TICKS 4
+#define NO_MUSIC 0
 #define SOUL_SOUND_KIND 14
 #define NARRATION_OVERHEAD_TICKS 3
 #define MOVIE_SOUND_KIND 82
@@ -880,11 +881,14 @@ static int ghost_target_position(const struct script_machine *machine, int along
 {
     float core_x;
     float core_y;
+    int soul_object;
+    int soul_slot;
 
-    if (machine->soul.active_object < 0 || !machine->objects[machine->soul.active_object].actor.exists) {
+    soul_object = script_soul_core_the_scripts_see(machine, &soul_slot);
+    if (soul_object < 0 || !machine->objects[soul_object].actor.exists) {
         return along_x ? TARGET_POSITION_WHEN_NONE : 0;
     }
-    script_machine_node_position(&machine->objects[machine->soul.active_object], SCRIPT_FIRST_CORE_NODE + machine->soul.active_slot, &core_x, &core_y);
+    script_machine_node_position(&machine->objects[soul_object], SCRIPT_FIRST_CORE_NODE + soul_slot, &core_x, &core_y);
     return (int)(along_x ? core_x : core_y) * NATIVE_FIXED_ONE;
 }
 
@@ -1970,6 +1974,7 @@ static void begin_script_change(struct script_machine *machine, const char *path
 static void force_script_change(struct script_machine *machine, const char *path)
 {
     machine->is_finished = 0;
+    machine->music_id = NO_MUSIC;
     if (machine->outputs->scene_change_was_forced != NULL) {
         machine->outputs->scene_change_was_forced();
     }
@@ -2025,6 +2030,9 @@ void script_machine_tick(struct script_machine *machine)
     int index;
 
     if (script_soul_step_eyecatch(machine)) {
+        return;
+    }
+    if (script_soul_step_question(machine)) {
         return;
     }
     if (machine->is_finished) {

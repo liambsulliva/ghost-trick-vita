@@ -767,6 +767,9 @@ static void compare_core_of_ghost(struct script_machine *machine, struct script_
 
     name = script_machine_string(machine, vm, words[0]);
     core_object = machine->soul.ghost_core_objects[ghost];
+    if (ghost == machine->soul.active_ghost && machine->soul.corpse_object >= 0) {
+        core_object = machine->soul.corpse_object;
+    }
     vm->condition = name != NULL && core_object >= 0 && core_object < machine->object_count && strcmp(machine->objects[core_object].name, name) == 0;
 }
 

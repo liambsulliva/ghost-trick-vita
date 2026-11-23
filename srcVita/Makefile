@@ -138,6 +138,7 @@ build/test_objects/tests/%.o: tests/%.c $(TEST_HEADERS)
 build/test_objects/tests/integration/test_main_loop.o: src/main.c
 build/test_objects/tests/unit/test_vita_calls.o: src/vita/keep_awake.c src/vita/system_state.c
 build/test_objects/tests/unit/test_vita_renderer.o: src/vita/renderer.c
+build/test_objects/tests/unit/test_vita_input.o: src/vita/input.c
 build/tests/unit/test_packed_file: | build/packed_vectors/manifest.txt
 
 build/packed_vectors/manifest.txt: tests/tools/make_packed_vectors.py tools/assets/packed_file.py

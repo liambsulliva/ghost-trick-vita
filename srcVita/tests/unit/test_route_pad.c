@@ -17,6 +17,10 @@
 #define CHOOSE_DWELL_TICKS 200
 #define TICKS_FOR_THE_REWIND 200
 #define TICKS_FOR_A_DEAD_TALK_TO_START 5
+#define TICKS_OF_THE_BEAM 6
+#define TICKS_OF_THE_LIGHTNING 72
+#define TICKS_FOR_A_REACH 200
+#define TICKS_FOR_THE_TIME_LEAP 300
 #define DEAD_TALK_GIMMICK_CLASS 0x2981d97eu
 #define OPEN_CHOICE_OP 0x3b
 #define GATE_OUT_OF_REACH 300
@@ -247,48 +251,38 @@ static void test_a_dead_talk_plays_the_swirl_opening_and_a_restart_does_not(void
     machine.outputs = &no_outputs;
 }
 
-static void walk_onto_a_dead_gate_while_the_body_handles(int handler_count)
-{
-    static const char *const verbs[2] = { "SYSTEM", "SVTUTO" };
-    static const char *const args[2] = { "SV_DEADCORE", "onClick" };
-    int index;
+static int reaches_marked;
+static int steps_played_without_the_player;
 
-    start_with_one_step(SCRIPT_ROUTE_MOVE, "gate", "view");
-    machine.objects[1].is_dead = 1;
-    machine.objects[0].handler_count = handler_count;
-    for (index = 0; index < handler_count; index++) {
-        machine.objects[0].handlers[index].verb = verbs[index];
-        machine.objects[0].handlers[index].arg = args[index];
+static void on_marked(const char *what, const char *detail)
+{
+    (void)detail;
+    if (strcmp(what, "core_reached") == 0) {
+        reaches_marked++;
+    } else if (strcmp(what, "route_no_player_input") == 0) {
+        steps_played_without_the_player++;
     }
-    run_ticks(1);
-    machine.soul.is_on = 1;
-    run_ticks(TICKS_FOR_A_MOVE);
-    CHECK_INT(machine.soul.active_object, 1);
 }
 
-static void test_a_scene_waiting_on_the_dead_core_starts_the_dead_talk_on_arrival(void)
+static const struct script_outputs marking_outputs = { .marked = on_marked };
+
+static void count_the_marks(void)
 {
-    walk_onto_a_dead_gate_while_the_body_handles(2);
-    CHECK(machine.soul.dead_talk_is_on);
-    CHECK(gate_got("SYSTEM", "DEADTALK"));
+    reaches_marked = 0;
+    steps_played_without_the_player = 0;
+    machine.outputs = &marking_outputs;
 }
 
-static void test_a_dead_core_alone_does_not_start_the_dead_talk(void)
+static void add_a_step(enum script_route_action action, const char *object, const char *wait)
 {
-    walk_onto_a_dead_gate_while_the_body_handles(1);
-    CHECK(!machine.soul.dead_talk_is_on);
-    CHECK(!gate_got("SYSTEM", "DEADTALK"));
-}
+    struct script_route_step *step;
 
-static void rest_on_a_dead_gate_whose_scene_holds_a_dead_talk(enum script_route_action action, const char *object)
-{
-    start_with_one_step(action, object, "view");
-    machine.objects[1].actor.class_id = DEAD_TALK_GIMMICK_CLASS;
-    machine.objects[0].handler_count = 1;
-    machine.objects[0].handlers[0].verb = "SYSTEM";
-    machine.objects[0].handlers[0].arg = "DEADTALK";
-    run_ticks(1);
-    machine.soul.is_on = 1;
+    step = &route.steps[route.step_count];
+    snprintf(step->script, sizeof(step->script), "a");
+    step->action = action;
+    snprintf(step->object, sizeof(step->object), "%s", object);
+    snprintf(step->wait, sizeof(step->wait), "%s", wait);
+    route.step_count = route.step_count + 1;
 }
 
 static void play_ticks_by_hand(int ticks)
@@ -301,105 +295,108 @@ static void play_ticks_by_hand(int ticks)
     }
 }
 
-static void walk_by_hand_onto_the_dead_gate(void)
+static void hold_right_until_the_chain_reaches_the_gate(void)
 {
     int tick;
 
-    rest_on_a_dead_gate_whose_scene_holds_a_dead_talk(SCRIPT_ROUTE_MOVE, "gate");
-    for (tick = 0; tick < TICKS_FOR_A_MOVE && machine.soul.active_object != 1; tick++) {
-        run_ticks(1);
-    }
-    CHECK_INT(machine.soul.active_object, 1);
     machine.route_is_driving = 0;
-    play_ticks_by_hand(2);
+    for (tick = 0; tick < TICKS_FOR_A_MOVE && !machine.soul.drag_is_a_reach; tick++) {
+        script_soul_set_held(&machine, 1.0f, 0.0f);
+        play_ticks_by_hand(1);
+    }
+    script_soul_set_held(&machine, 0.0f, 0.0f);
+    CHECK(machine.soul.drag_is_a_reach);
+    CHECK_INT(machine.soul.reached_object, 1);
 }
 
-static void test_a_dead_core_asks_before_its_talk_and_yes_starts_it(void)
+static void reach_by_hand_for_a_gate_whose_body_handles(unsigned int gate_class, int gate_is_dead, const char *first_arg, const char *second_arg)
 {
-    walk_by_hand_onto_the_dead_gate();
-    CHECK(machine.soul.dead_talk_prompt_is_open);
+    start_with_one_step(SCRIPT_ROUTE_MOVE, "gate", "view");
+    count_the_marks();
+    machine.objects[1].actor.class_id = gate_class;
+    machine.objects[1].is_dead = gate_is_dead;
+    machine.objects[0].handler_count = second_arg != NULL ? 2 : 1;
+    machine.objects[0].handlers[0].verb = "SYSTEM";
+    machine.objects[0].handlers[0].arg = first_arg;
+    machine.objects[0].handlers[1].verb = "SVTUTO";
+    machine.objects[0].handlers[1].arg = second_arg;
+    machine.soul.is_on = 1;
+    hold_right_until_the_chain_reaches_the_gate();
+}
+
+static void test_reaching_a_dead_talk_core_starts_its_talk_after_the_lightning_and_the_soul_stays(void)
+{
+    reach_by_hand_for_a_gate_whose_body_handles(DEAD_TALK_GIMMICK_CLASS, 0, "DEADTALK", NULL);
+    CHECK(!machine.soul.dead_talk_is_on);
+    CHECK_INT(machine.soul.drag_stream_ticks, TICKS_OF_THE_LIGHTNING);
+    play_ticks_by_hand(TICKS_OF_THE_LIGHTNING / 2);
     CHECK(!machine.soul.dead_talk_is_on);
     CHECK(!gate_got("SYSTEM", "DEADTALK"));
-    script_machine_note_press(&machine);
-    play_ticks_by_hand(2);
-    CHECK(!machine.soul.dead_talk_prompt_is_open);
+    play_ticks_by_hand(TICKS_OF_THE_LIGHTNING);
     CHECK(machine.soul.dead_talk_is_on);
     CHECK(gate_got("SYSTEM", "DEADTALK"));
+    CHECK_INT(machine.soul.active_object, 0);
+    CHECK_TEXT(machine.active_core_name, "body");
+    CHECK(!machine.soul.question_is_open);
+    CHECK_INT(reaches_marked, 1);
+    machine.outputs = &no_outputs;
 }
 
-static void test_no_closes_the_dead_talk_prompt_and_stays_in_the_view(void)
+static void test_reaching_the_other_ghosts_core_starts_a_core_talk_and_the_soul_stays(void)
 {
-    walk_by_hand_onto_the_dead_gate();
-    CHECK(machine.soul.dead_talk_prompt_is_open);
-    script_soul_note_ghost(&machine);
-    play_ticks_by_hand(2);
-    CHECK(!machine.soul.dead_talk_prompt_is_open);
-    CHECK(!machine.soul.dead_talk_is_on);
-    CHECK(machine.soul.is_on);
-    CHECK(!gate_got("SYSTEM", "DEADTALK"));
-}
-
-static void test_the_cursor_on_no_makes_a_press_decline(void)
-{
-    walk_by_hand_onto_the_dead_gate();
-    script_soul_note_direction(&machine, 1, 0);
-    play_ticks_by_hand(1);
-    script_machine_note_press(&machine);
-    play_ticks_by_hand(2);
-    CHECK(!machine.soul.dead_talk_prompt_is_open);
-    CHECK(!machine.soul.dead_talk_is_on);
-}
-
-static void test_a_press_on_the_dead_core_asks_again_after_a_no(void)
-{
-    walk_by_hand_onto_the_dead_gate();
-    script_soul_note_ghost(&machine);
-    play_ticks_by_hand(2);
-    CHECK(!machine.soul.dead_talk_prompt_is_open);
-    script_machine_note_press(&machine);
-    play_ticks_by_hand(2);
-    CHECK(machine.soul.dead_talk_prompt_is_open);
-}
-
-static void test_the_soul_does_not_move_while_the_dead_talk_prompt_is_up(void)
-{
-    float tip_x;
-
-    walk_by_hand_onto_the_dead_gate();
-    tip_x = machine.soul.tip_x;
-    script_soul_set_held(&machine, -1.0f, 0.0f);
-    play_ticks_by_hand(20);
-    CHECK(machine.soul.dead_talk_prompt_is_open);
-    CHECK(machine.soul.tip_x == tip_x);
-    CHECK_INT(machine.soul.active_object, 1);
-}
-
-static void test_the_other_ghosts_core_asks_and_yes_starts_a_core_talk(void)
-{
-    int tick;
-
     start_with_one_step(SCRIPT_ROUTE_MOVE, "gate", "view");
     machine.objects[0].handler_count = 1;
     machine.objects[0].handlers[0].verb = "SYSTEM";
     machine.objects[0].handlers[0].arg = "CORETALK";
     machine.soul.ghost_core_objects[SCRIPT_GHOST_MISSILE] = 1;
     machine.soul.ghost_core_slots[SCRIPT_GHOST_MISSILE] = 0;
-    run_ticks(1);
     machine.soul.is_on = 1;
-    for (tick = 0; tick < TICKS_FOR_A_MOVE && machine.soul.active_object != 1; tick++) {
-        run_ticks(1);
-    }
-    machine.route_is_driving = 0;
-    play_ticks_by_hand(2);
-    CHECK(machine.soul.dead_talk_prompt_is_open);
-    script_machine_note_press(&machine);
-    play_ticks_by_hand(2);
+    hold_right_until_the_chain_reaches_the_gate();
+    play_ticks_by_hand(TICKS_FOR_A_REACH);
     CHECK(machine.soul.dead_talk_is_on);
     CHECK(body_got("SYSTEM", "CORETALK"));
     CHECK(!gate_got("SYSTEM", "DEADTALK"));
+    CHECK_INT(machine.soul.active_object, 0);
+    CHECK_INT(machine.soul.ghost_core_objects[SCRIPT_GHOST_MISSILE], 1);
+    CHECK(!machine.soul.question_is_open);
 }
 
-static void test_a_living_core_no_ghost_holds_does_not_ask(void)
+static void test_reaching_a_corpse_starts_its_time_leap_and_the_soul_stays(void)
+{
+    int slot;
+
+    reach_by_hand_for_a_gate_whose_body_handles(0, 1, "SV_DEADCORE", NULL);
+    play_ticks_by_hand(TICKS_OF_THE_LIGHTNING + TICKS_OF_THE_BEAM);
+    CHECK(body_got("SYSTEM", "SV_DEADCORE"));
+    CHECK(machine.soul.leap_swirl_at > (long long)machine.tick);
+    CHECK(machine.soul.dead_core_holds_the_tip);
+    CHECK(!machine.soul.dead_talk_is_on);
+    CHECK(!gate_got("SYSTEM", "DEADTALK"));
+    CHECK_INT(machine.soul.active_object, 0);
+    CHECK_INT(machine.soul.reached_object, 1);
+    CHECK_TEXT(machine.active_core_name, "gate");
+    CHECK_INT(script_soul_core_the_scripts_see(&machine, &slot), 1);
+    CHECK(!machine.soul.question_is_open);
+    CHECK(!script_soul_ghost_view_offers_a_trick(&machine));
+    play_ticks_by_hand(TICKS_FOR_THE_TIME_LEAP);
+    CHECK(!machine.soul.is_on);
+    CHECK(body_got("timeleap", "start"));
+    CHECK(!machine.pause_bit);
+    CHECK_INT(machine.soul.active_object, 0);
+    machine.outputs = &no_outputs;
+}
+
+static void test_a_scene_waiting_on_the_dead_core_starts_the_dead_talk_when_the_corpse_is_reached(void)
+{
+    reach_by_hand_for_a_gate_whose_body_handles(0, 1, "SV_DEADCORE", "onClick");
+    play_ticks_by_hand(TICKS_FOR_A_REACH);
+    CHECK(machine.soul.dead_talk_is_on);
+    CHECK(gate_got("SYSTEM", "DEADTALK"));
+    CHECK_INT(machine.soul.active_object, 0);
+    machine.outputs = &no_outputs;
+}
+
+static void test_a_living_core_no_ghost_holds_is_a_plain_move(void)
 {
     start_with_one_step(SCRIPT_ROUTE_MOVE, "gate", "view");
     machine.objects[0].handler_count = 1;
@@ -409,44 +406,68 @@ static void test_a_living_core_no_ghost_holds_does_not_ask(void)
     machine.soul.is_on = 1;
     run_ticks(TICKS_FOR_A_MOVE);
     CHECK_INT(machine.soul.active_object, 1);
-    CHECK(!machine.soul.dead_talk_prompt_is_open);
     CHECK(!machine.soul.dead_talk_is_on);
+    CHECK_INT(machine.soul.reached_object, -1);
 }
 
-static void test_a_corpse_raises_no_prompt_and_its_step_starts_no_talk(void)
+static void make_the_gate_a_dead_talk_core(void)
+{
+    machine.objects[1].actor.class_id = DEAD_TALK_GIMMICK_CLASS;
+    machine.objects[0].handler_count = 1;
+    machine.objects[0].handlers[0].verb = "SYSTEM";
+    machine.objects[0].handlers[0].arg = "DEADTALK";
+}
+
+static void test_the_pad_does_a_dead_talk_step_by_reaching(void)
 {
     start_with_one_step(SCRIPT_ROUTE_DEAD_TALK, "gate", "view");
-    machine.objects[1].is_dead = 1;
+    count_the_marks();
+    make_the_gate_a_dead_talk_core();
     run_ticks(1);
     machine.soul.is_on = 1;
-    script_soul_set_first_core(&machine, 1, 0);
-    machine.soul.dead_core_was_just_reached = 1;
-    run_ticks(TICKS_FOR_A_MOVE * 2);
-    CHECK(!machine.soul.dead_talk_prompt_is_open);
-    CHECK(!machine.soul.dead_talk_is_on);
-    CHECK(!gate_got("SYSTEM", "DEADTALK"));
-    CHECK(script_soul_route_step(&machine) == NULL || script_soul_route_step(&machine)->action != SCRIPT_ROUTE_DEAD_TALK);
-}
-
-static void test_the_pad_answers_yes_on_a_dead_talk_step(void)
-{
-    rest_on_a_dead_gate_whose_scene_holds_a_dead_talk(SCRIPT_ROUTE_DEAD_TALK, "gate");
-    script_soul_set_first_core(&machine, 1, 0);
-    machine.soul.dead_core_was_just_reached = 1;
-    run_ticks(TICKS_FOR_A_MOVE);
+    run_ticks(TICKS_FOR_A_REACH);
     CHECK(machine.soul.dead_talk_is_on);
-    CHECK_INT(machine.soul.dead_talks_begun_by_the_prompt, 1);
     CHECK(gate_got("SYSTEM", "DEADTALK"));
+    CHECK_INT(machine.soul.active_object, 0);
+    CHECK_INT(machine.soul.dead_talks_begun_by_a_reach, 1);
+    CHECK_INT(reaches_marked, 1);
+    CHECK_INT(steps_played_without_the_player, 0);
+    CHECK(script_soul_route_step(&machine) == NULL);
+    machine.outputs = &no_outputs;
 }
 
-static void test_the_pad_declines_a_dead_talk_its_step_does_not_ask_for(void)
+static void test_a_move_onto_a_dead_talk_core_reaches_it_and_its_dead_talk_step_passes(void)
 {
-    rest_on_a_dead_gate_whose_scene_holds_a_dead_talk(SCRIPT_ROUTE_MOVE, "gate");
-    run_ticks(TICKS_FOR_A_MOVE * 2);
-    CHECK_INT(machine.soul.active_object, 1);
-    CHECK(!machine.soul.dead_talk_prompt_is_open);
-    CHECK(!machine.soul.dead_talk_is_on);
-    CHECK_INT(machine.soul.dead_talks_begun_by_the_prompt, 0);
+    start_with_one_step(SCRIPT_ROUTE_MOVE, "gate", "view");
+    add_a_step(SCRIPT_ROUTE_DEAD_TALK, "gate", "view & core:gate & no_talk");
+    count_the_marks();
+    make_the_gate_a_dead_talk_core();
+    run_ticks(1);
+    machine.soul.is_on = 1;
+    run_ticks(TICKS_FOR_A_REACH);
+    CHECK(machine.soul.dead_talk_is_on);
+    CHECK_INT(machine.soul.active_object, 0);
+    CHECK_INT(reaches_marked, 1);
+    CHECK_INT(steps_played_without_the_player, 0);
+    CHECK(script_soul_route_step(&machine) == NULL);
+    machine.outputs = &no_outputs;
+}
+
+static void test_the_pad_opens_the_view_for_a_dead_talk_and_closes_it_after(void)
+{
+    start_with_one_step(SCRIPT_ROUTE_DEAD_TALK, "gate", "playable");
+    count_the_marks();
+    make_the_gate_a_dead_talk_core();
+    script_soul_run_command(&machine, "Button", "Trick:On");
+    run_ticks(TICKS_FOR_A_PILL_TO_SLIDE_IN + TICKS_FOR_A_REACH);
+    CHECK(machine.soul.dead_talk_is_on);
+    CHECK(machine.soul.is_on);
+    CHECK_INT(steps_played_without_the_player, 0);
+    script_soul_run_command(&machine, "DeadTalk", "Finish");
+    run_ticks(TICKS_FOR_A_PILL_TO_SLIDE_IN * 2);
+    CHECK(!machine.soul.is_on);
+    CHECK_INT(machine.soul.active_object, 0);
+    machine.outputs = &no_outputs;
 }
 
 static void test_the_pad_opens_the_ghost_view_once_the_next_core_comes_within_reach(void)
@@ -716,18 +737,14 @@ int main(void)
     test_the_pad_presses_the_rewind_button_once_it_is_up();
     test_a_dead_talk_from_a_living_core_is_a_core_talk();
     test_a_dead_talk_from_a_dead_core_talks_to_the_dead();
-    test_a_corpse_raises_no_prompt_and_its_step_starts_no_talk();
-    test_a_scene_waiting_on_the_dead_core_starts_the_dead_talk_on_arrival();
-    test_a_dead_core_alone_does_not_start_the_dead_talk();
-    test_a_dead_core_asks_before_its_talk_and_yes_starts_it();
-    test_no_closes_the_dead_talk_prompt_and_stays_in_the_view();
-    test_the_cursor_on_no_makes_a_press_decline();
-    test_a_press_on_the_dead_core_asks_again_after_a_no();
-    test_the_soul_does_not_move_while_the_dead_talk_prompt_is_up();
-    test_the_other_ghosts_core_asks_and_yes_starts_a_core_talk();
-    test_a_living_core_no_ghost_holds_does_not_ask();
-    test_the_pad_answers_yes_on_a_dead_talk_step();
-    test_the_pad_declines_a_dead_talk_its_step_does_not_ask_for();
+    test_reaching_a_dead_talk_core_starts_its_talk_after_the_lightning_and_the_soul_stays();
+    test_reaching_the_other_ghosts_core_starts_a_core_talk_and_the_soul_stays();
+    test_reaching_a_corpse_starts_its_time_leap_and_the_soul_stays();
+    test_a_scene_waiting_on_the_dead_core_starts_the_dead_talk_when_the_corpse_is_reached();
+    test_a_living_core_no_ghost_holds_is_a_plain_move();
+    test_the_pad_does_a_dead_talk_step_by_reaching();
+    test_a_move_onto_a_dead_talk_core_reaches_it_and_its_dead_talk_step_passes();
+    test_the_pad_opens_the_view_for_a_dead_talk_and_closes_it_after();
     test_the_pad_offers_the_ghost_view_in_demo_mode();
     test_demo_mode_keeps_the_ghost_view_shut_while_input_is_off();
     return test_finish("unit/route_pad");

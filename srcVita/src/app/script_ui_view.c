@@ -71,6 +71,7 @@
 #define BAND_STRIPE_COUNT 29
 #define REVEAL_STRIP_COUNT 32
 #define REVEAL_RAMP_WIDTH 250.0f
+#define QUESTION_OPTION_COUNT 2
 #define HOURGLASS_TEXTURE "ui_hourglass"
 #define HOURGLASS_TEXTURE_WIDTH 480.0f
 #define HOURGLASS_TEXTURE_HEIGHT 1024.0f
@@ -1044,34 +1045,42 @@ static int the_picture_is_covered(void)
     return stage->card_texture[0] != '\0' || stage->fade_amount >= 1.0f;
 }
 
-static void fill_the_dead_talk_dialog(struct pause_dialog *dialog)
+static const char *const question_lines[SCRIPT_QUESTION_KIND_COUNT] = {
+    [SCRIPT_QUESTION_ROLLBACK] = "row.rollback_ask"
+};
+
+static void fill_the_question_dialog(struct pause_dialog *dialog)
 {
     memset(dialog, 0, sizeof(*dialog));
-    dialog->is_open = hud.dead_talk_prompt_is_up;
-    dialog->option_count = 2;
-    dialog->options[0] = "row.yes";
-    dialog->options[1] = "row.no";
-    dialog->selected = hud.dead_talk_prompt_cursor;
+    dialog->is_open = hud.question_is_up;
+    if ((unsigned int)hud.question_kind < (unsigned int)SCRIPT_QUESTION_KIND_COUNT && question_lines[hud.question_kind] != NULL) {
+        dialog->line_count = 1;
+        dialog->lines[0] = question_lines[hud.question_kind];
+    }
+    dialog->option_count = QUESTION_OPTION_COUNT;
+    dialog->options[SCRIPT_QUESTION_OPTION_YES] = "row.yes";
+    dialog->options[SCRIPT_QUESTION_OPTION_NO] = "row.no";
+    dialog->selected = hud.question_cursor;
 }
 
-int script_ui_view_dead_talk_option_at(float x, float y)
+int script_ui_view_question_option_at(float x, float y)
 {
     struct pause_dialog dialog;
     int option;
 
-    fill_the_dead_talk_dialog(&dialog);
+    fill_the_question_dialog(&dialog);
     option = pause_dialog_option_at(&dialog, x, y);
     return option == PAUSE_DIALOG_NOTHING ? -1 : option;
 }
 
-static void draw_the_dead_talk_prompt(void)
+static void draw_the_question(void)
 {
     struct pause_dialog dialog;
 
-    if (!hud.dead_talk_prompt_is_up || hud.picture_is_hidden) {
+    if (!hud.question_is_up || hud.picture_is_hidden) {
         return;
     }
-    fill_the_dead_talk_dialog(&dialog);
+    fill_the_question_dialog(&dialog);
     pause_dialog_draw(&dialog, 0.0f);
 }
 
@@ -1726,7 +1735,7 @@ void script_ui_view_draw(void)
     }
     draw_phone_book();
     draw_choice();
-    draw_the_dead_talk_prompt();
+    draw_the_question();
     draw_the_skip_hint();
     for (index = 0; index < PLAYING_CLIP_MAX; index++) {
         if (playing[index].clip != NULL) {

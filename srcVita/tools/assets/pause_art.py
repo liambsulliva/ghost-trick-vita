@@ -579,14 +579,8 @@ def trash_pixels(work_folder):
 
 def flame_pixels(work_folder, font_path, number, lit, points):
     k = WIDGET_SUPERSAMPLE
-    cx, cy = FLAME_CELL[0] * k / 2, FLAME_CELL[1] * k / 2
-    size = FLAME_SIZE * k
-    r = size * 0.42
-    ellipse = "ellipse %d,%d %d,%d 0,360" % (cx, cy + size * 0.18, r, r)
-    flame_tip = "polygon %d,%d %d,%d %d,%d" % (cx - r * 0.95, cy + size * 0.1, cx + r * 0.95, cy + size * 0.1, cx + r * 0.25, cy - size * 0.62)
-    color = FLAME_LIT if lit else FLAME_DARK
-    number_color = WHITE if lit else NUMBER_DARK
-    return supersampled(work_folder, FLAME_CELL[0], FLAME_CELL[1], ["-fill", color, "-stroke", "none", "-draw", ellipse, "-draw", flame_tip, "-font", font_path, "-pointsize", str(points * k), "-fill", number_color, "-gravity", "center", "-annotate", "+0+%d" % round(size * 0.2), str(number)])
+    number_color = NAVY if lit else NUMBER_DARK
+    return supersampled(work_folder, FLAME_CELL[0], FLAME_CELL[1], ["-font", font_path, "-pointsize", str(points * k), "-fill", number_color, "-stroke", "none", "-gravity", "center", "-annotate", "+0+%d" % round(FLAME_SIZE * k * 0.2), str(number)])
 
 
 def arrow_down_pixels(work_folder):

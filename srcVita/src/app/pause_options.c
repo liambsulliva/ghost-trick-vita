@@ -12,6 +12,7 @@
 #include "pause_widgets.h"
 #include "renderer.h"
 #include "run_log.h"
+#include "save_icon.h"
 #include "script_view.h"
 #include "staff_credits.h"
 
@@ -34,6 +35,8 @@
 #define FLAME_FIRST_X 545.0f
 #define FLAME_STEP 38.0f
 #define FLAME_RISE 2.0f
+#define METER_SOUL_SCALE 0.42f
+#define METER_SOUL_DROP 6.0f
 #define SCROLL_KEEP_BELOW 40.0f
 #define SCROLL_EASE 0.18f
 #define SCROLL_SNAP 0.5f
@@ -935,6 +938,7 @@ static void draw_row(int index, float x_offset)
     if (row->kind == ROW_METER) {
         level = level_of(row->job);
         for (step = 0; step < GAME_SETTING_STEPS; step++) {
+            save_icon_draw_at(FLAME_FIRST_X + (float)step * FLAME_STEP + x_offset, middle + METER_SOUL_DROP, METER_SOUL_SCALE, alpha, level != NULL && step < *level);
             pause_draw_flame(step + 1, level != NULL && step < *level, FLAME_FIRST_X + (float)step * FLAME_STEP + x_offset, middle - FLAME_RISE, alpha);
         }
         return;

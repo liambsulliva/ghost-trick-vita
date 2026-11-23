@@ -16,6 +16,8 @@ struct script_route_pad {
     unsigned int last_press_at;
     int reads_at_once;
     const char *core_left_for_the_dead_talk;
+    int opened_the_view_for_the_dead_talk;
+    unsigned int question_frames;
 };
 
 void script_route_pad_reset(struct script_route_pad *pad);

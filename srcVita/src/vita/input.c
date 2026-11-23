@@ -74,8 +74,6 @@ static void read_front_touch(struct input_state *state)
         touch_is_sampling = 1;
     }
     state->touch_is_down = 0;
-    state->touch_x = 0.0f;
-    state->touch_y = 0.0f;
     if (sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touch, 1) > 0 && touch.reportNum > 0) {
         state->touch_is_down = 1;
         state->touch_x = (float)touch.report[0].x / TOUCH_PANEL_UNITS_PER_SCREEN_PIXEL;
