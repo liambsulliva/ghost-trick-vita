@@ -85,7 +85,8 @@ class PictureTests(unittest.TestCase):
         self.assertEqual(cut.shape, (96, 128, 4))
         self.assertEqual(tuple(cut[48, 64]), (255, 255, 255, 255))
         self.assertEqual(ds_people.face_cutout(face, (64, 10)).shape, (96, 128, 4))
-        self.assertEqual(tuple(ds_people.face_cutout(face, (64, 300))[80 - 96, 70]), (255, 255, 255, 255))
+        face[180, 64 + 70] = 255
+        self.assertEqual(tuple(ds_people.face_cutout(face, (64, 300))[180 - 96, 70]), (255, 255, 255, 255))
 
     def test_a_stretch_repeats_rows_and_columns(self):
         image = np.arange(2 * 2 * 4, dtype=np.uint8).reshape(2, 2, 4)

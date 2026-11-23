@@ -99,6 +99,7 @@ Visual or audio only:
 - `film_corner`, `film_strip` (the film frame around stills and the split screen), `phone_cap`, `phone_strip` (the phone book), `ui_mark` (the player mark, `script_view.c:65`), `ui_hourglass` (the hourglass pill, `script_ui_view.c:70`; "the DS has three whole frames, the app wants parts"), `core_ring`, `ui_wave_quadrant`, `side_label`, `card_hand_seconds`, and the death count (`digit_0` to `digit_3`, `digit_label`).
 - Native: each comes from `cpac_2d.bin` / `cpac_3d.bin` art in the ROM; `game.json` names the block where known.
 - Effort: M to L in all; the player mark, the film frame and the hourglass are the ones a player meets in every chapter. Check each on screen before ranking further.
+- Update, 2026-11-23 (root cause 303): `staff_*`, `phone_cap`, `phone_strip` and `core_ring` are baked from the cartridge now, and the DS set has its Record. 19 slots stay on the list.
 
 ### 8. DS mode has six smoke flows; the remastered set has 25 — minor (DS)
 

@@ -374,7 +374,6 @@ int main(int argc, char **argv)
     run_log_open("render.log");
     fake_renderer_reset();
     fake_reader_reset();
-    texture_cache_use_sharp_art(getenv(DS_SET_VARIABLE) != NULL);
     for (index = 0; index < sizeof(tables) / sizeof(tables[0]); index++) {
         add_disk_file(argv[1], tables[index]);
     }
@@ -382,6 +381,7 @@ int main(int argc, char **argv)
         add_texture(argv[1], fixed_textures[index]);
     }
     texture_cache_init(SET "/textures", 256u << 20);
+    texture_cache_use_sharp_art(getenv(DS_SET_VARIABLE) != NULL);
     texture_cache_use_language(language_code != NULL ? language_of(language_code) : ASSET_LANGUAGE_ENGLISH);
     game_settings_defaults(game_settings_now());
     game_settings_now()->language = asset_language_now();
