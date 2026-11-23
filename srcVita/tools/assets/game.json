@@ -1791,7 +1791,6 @@
   "ds_absent_textures": {
     "card_hand_seconds": "the DS watch has two hands, textures 190 and 191",
     "chapter_card_00": "the chapter card is the remaster's; the DS card is not decoded",
-    "core_ring": "the remaster's core ring has no DS entry",
     "digit_0": "death count not traced",
     "digit_1": "death count not traced",
     "digit_2": "death count not traced",
@@ -1803,10 +1802,7 @@
     "hud_disc": "the DS card backdrop is one texture, effect 281 item 1",
     "hud_sheet": "Vita button glyphs have no cartridge art",
     "narration_arrow": "the DS shows none",
-    "phone_cap": "not found",
-    "phone_strip": "not found",
     "side_label": "not in cpac_3d",
-    "staff_*": "the staff pages are the remaster's; the DS staff roll is not decoded",
     "talk_cursor": "the DS shows none",
     "ui_hourglass": "the DS has three whole frames, the app wants parts",
     "ui_mark": "not found",
@@ -1814,6 +1810,47 @@
     "wipe_time_passing": "not in cpac_3d block 0"
   },
   "ds_textures": [
+    {
+      "name": "phone_cap",
+      "width": 32,
+      "height": 35,
+      "parts": [
+        {
+          "texture": 19,
+          "x": 0,
+          "y": 3
+        }
+      ]
+    },
+    {
+      "name": "phone_strip",
+      "width": 16,
+      "height": 16,
+      "parts": [
+        {
+          "texture": 20
+        }
+      ]
+    },
+    {
+      "name": "core_ring",
+      "width": 44,
+      "height": 44,
+      "parts": [
+        {
+          "texture": {
+            "effect": 35,
+            "item": 1
+          },
+          "crop": [
+            10,
+            10,
+            44,
+            44
+          ]
+        }
+      ]
+    },
     {
       "name": "rewind_button",
       "width": 128,

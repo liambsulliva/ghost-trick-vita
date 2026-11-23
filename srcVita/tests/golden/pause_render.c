@@ -7,6 +7,7 @@
 #include "fakes/fake_renderer.h"
 #include "game_settings.h"
 #include "input.h"
+#include "crc32.h"
 #include "pause_clock.h"
 #include "pause_menu.h"
 #include "pause_widgets.h"
@@ -24,6 +25,8 @@
 #define SETTLE_STEPS 80
 #define PAN_STEPS 40
 #define LOAD_ROUNDS 4
+#define TEXTURE_BUCKETS_ON_DISK 64u
+#define SKIP_MISSING_FILES_VARIABLE "PAUSE_RENDER_SKIPS_MISSING_FILES"
 
 static const char *const tables[] = { "pause/cat.txt", "pause/cat_track.txt", "pause/labels.txt", "pause/widgets.txt", "pause/people.txt", "pause/clock.txt" };
 static const char *const fixed_textures[] = { "pause_backdrop", "pause_spotlight", "pause_labels", "pause_widgets", "hud_sheet", "pause_people_thumbs", "pause_people_spot", "pause_clock", "title_logo", "hud_button_art" };
@@ -74,19 +77,24 @@ static void add_file_as(const char *disk_path, const char *fake_path, int is_req
     free(bytes);
 }
 
-static void add_disk_file(const char *assets_folder, const char *relative_path)
+static void add_disk_file_stored_at(const char *assets_folder, const char *stored_path, const char *relative_path)
 {
     char disk_path[PATH_MOST];
     char fake_path[PATH_MOST];
 
-    snprintf(disk_path, sizeof(disk_path), "%s/%s", assets_folder, relative_path);
+    snprintf(disk_path, sizeof(disk_path), "%s/%s", assets_folder, stored_path);
     snprintf(fake_path, sizeof(fake_path), "%s/%s", SET, relative_path);
-    add_file_as(disk_path, fake_path, 1);
+    add_file_as(disk_path, fake_path, getenv(SKIP_MISSING_FILES_VARIABLE) == NULL);
     if (language_code != NULL) {
-        snprintf(disk_path, sizeof(disk_path), "%s/%s/%s/%s", assets_folder, ASSET_LANGUAGE_FOLDER, language_code, relative_path);
+        snprintf(disk_path, sizeof(disk_path), "%s/%s/%s/%s", assets_folder, ASSET_LANGUAGE_FOLDER, language_code, stored_path);
         snprintf(fake_path, sizeof(fake_path), "%s/%s/%s/%s", SET, ASSET_LANGUAGE_FOLDER, language_code, relative_path);
         add_file_as(disk_path, fake_path, 0);
     }
+}
+
+static void add_disk_file(const char *assets_folder, const char *relative_path)
+{
+    add_disk_file_stored_at(assets_folder, relative_path, relative_path);
 }
 
 static int language_of(const char *code)
@@ -106,8 +114,11 @@ static void add_texture(const char *assets_folder, const char *name)
 {
     char relative_path[PATH_MOST];
 
+    char stored_path[PATH_MOST];
+
     snprintf(relative_path, sizeof(relative_path), "textures/%s.gtex", name);
-    add_disk_file(assets_folder, relative_path);
+    snprintf(stored_path, sizeof(stored_path), "textures/%02x/%s.gtex", crc32_add(0u, (const unsigned char *)name, (unsigned int)strlen(name)) % TEXTURE_BUCKETS_ON_DISK, name);
+    add_disk_file_stored_at(assets_folder, stored_path, relative_path);
     snprintf(texture_names[texture_name_count], ASSET_NAME_MAX, "%s", name);
     texture_name_count = texture_name_count + 1;
 }

@@ -18,7 +18,7 @@
 #include "texture_cache.h"
 
 #define TABLE_PATH "pause/people.txt"
-#define THUMB_SHEET "pause_people_thumbs"
+#define THUMB_SHEET PAUSE_PEOPLE_THUMB_SHEET
 #define ART_THUMB_SHEET "pause_art_thumbs"
 #define PAUSE_PEOPLE_READ_AHEAD_REACH 2
 #define ART_MOST 192
@@ -792,6 +792,13 @@ void pause_people_draw_place(int place, float x, float y, float width, float hei
     draw_thumb(art_for(PAUSE_PEOPLE_TAB_PLACES, place), x, y, width, height);
     if (is_framed) {
         draw_thumb("frame", x - FRAME_SPILL, y - FRAME_SPILL, width + 2.0f * FRAME_SPILL, height + 2.0f * FRAME_SPILL);
+    }
+}
+
+void pause_people_draw_first_person(float x, float y, float width, float height)
+{
+    if (order_count > 0) {
+        draw_thumb(art_for(PAUSE_PEOPLE_TAB_PEOPLE, order[0]), x, y, width, height);
     }
 }
 

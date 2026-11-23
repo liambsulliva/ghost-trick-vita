@@ -46,6 +46,7 @@
 #define NOTEBOOK_V 181.0f
 #define NOTEBOOK_TEXELS 80.0f
 #define NOTEBOOK_SIZE 52.0f
+#define RECORD_THUMB_HEIGHT 39.0f
 #define TOUCH_MARGIN 10.0f
 #define ACROSS_WEIGHT 2.0f
 #define CONE_SLOPE 0.5f
@@ -254,6 +255,9 @@ static void keep_art(void)
     texture_cache_keep_or_start_reading_ahead(TITLE_LOGO_NAME);
     if (!texture_cache_sharp_art_is_on()) {
         texture_cache_keep_or_start_reading_ahead(TITLE_HUD_ART_NAME);
+    }
+    if (texture_cache_sharp_art_is_on() && pause_people_is_loaded()) {
+        texture_cache_keep_or_start_reading_ahead(PAUSE_PEOPLE_THUMB_SHEET);
     }
     texture_cache_keep_or_start_reading_ahead(PAUSE_WIDGET_SHEET);
     texture_cache_keep_or_start_reading_ahead(PAUSE_GLYPH_SHEET);
@@ -725,6 +729,7 @@ static void draw_item(int item, float camera_x, float alpha)
         pause_draw_cell("trash", x, spot->y, alpha);
     } else if (item == TITLE_ITEM_RECORD) {
         if (texture_cache_sharp_art_is_on()) {
+            pause_people_draw_first_person(whole(x - NOTEBOOK_SIZE / 2.0f), whole(spot->y - RECORD_THUMB_HEIGHT / 2.0f), NOTEBOOK_SIZE, RECORD_THUMB_HEIGHT);
             return;
         }
         pause_draw_from(TITLE_HUD_ART_NAME, NOTEBOOK_U, NOTEBOOK_V, NOTEBOOK_TEXELS, NOTEBOOK_TEXELS, whole(x - NOTEBOOK_SIZE / 2.0f), whole(spot->y - NOTEBOOK_SIZE / 2.0f), NOTEBOOK_SIZE, NOTEBOOK_SIZE, alpha);

@@ -597,7 +597,7 @@ def staff_music_before(script, index):
     return None
 
 
-def staff_roll_rows(packs, scripts):
+def staff_roll_paces(scripts):
     paces = {}
     music_of_page = {}
     for script in scripts.values():
@@ -608,8 +608,24 @@ def staff_roll_rows(packs, scripts):
             if paces.setdefault(operands[0], pace) != pace:
                 raise ValueError("staff roll page %d is started twice with different fades" % operands[0])
             music_of_page.setdefault(operands[0], staff_music_before(script, index))
-    textures = []
+    return paces, music_of_page
+
+
+def staff_roll_text(paces, music_of_page, screen_counts):
     lines = []
+    for page in sorted(paces):
+        if screen_counts.get(page, 0) == 0:
+            raise ValueError("staff roll page %d is started by a script but has no screens" % page)
+        lines.append("staffpage %d %d %d %d %d" % ((page, screen_counts[page]) + paces[page]))
+    if paces and music_of_page[min(paces)] is not None:
+        lines.append("staffmusic %s" % music_of_page[min(paces)])
+    return "".join(line + "\n" for line in lines)
+
+
+def staff_roll_rows(packs, scripts):
+    paces, music_of_page = staff_roll_paces(scripts)
+    textures = []
+    screen_counts = {}
     for page in sorted(paces):
         screen_count = 0
         while path_exists(packs, STAFF_SCREEN_SOURCE % (page, screen_count + 1)):
@@ -617,10 +633,8 @@ def staff_roll_rows(packs, scripts):
             textures.append({"name": STAFF_SCREEN_TEXTURE % (page, screen_count), "source": STAFF_SCREEN_SOURCE % (page, screen_count), "width": STAFF_SCREEN_WIDTH, "height": STAFF_SCREEN_HEIGHT})
         if screen_count == 0:
             raise ValueError("staff roll page %d is started by a script but has no screens in the packs" % page)
-        lines.append("staffpage %d %d %d %d %d" % ((page, screen_count) + paces[page]))
-    if paces and music_of_page[min(paces)] is not None:
-        lines.append("staffmusic %s" % music_of_page[min(paces)])
-    return textures, "".join(line + "\n" for line in lines)
+        screen_counts[page] = screen_count
+    return textures, staff_roll_text(paces, music_of_page, screen_counts)
 
 
 def effect_list_row_of_kind(kind):

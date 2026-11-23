@@ -6,7 +6,10 @@ import bake_record
 import chapter_assets
 import ds_balloons
 import ds_pause
+import ds_people
 import ds_phone_book
+import ds_staff_roll
+import ds_text
 import ds_rom
 import ds_rooms
 import ds_set_text
@@ -77,6 +80,11 @@ def expand(set_description, rom_path, cartridge):
     sounds, section["sound_kinds"] = ds_sounds.sound_rows_of_scripts(cartridge.sdat, scripts, arm9)
     expanded["sounds"] = sounds
     expanded["scripts"] = section
+    paces, music_of_page = chapter_assets.staff_roll_paces(scripts)
+    try:
+        expanded["staff_roll_text"] = chapter_assets.staff_roll_text(paces, music_of_page, ds_staff_roll.screens_of_pages(arm9, cartridge.sprites, ds_textures.LANGUAGE_NUMBERS.get(section.get("language", "en"), 1)))
+    except (ds_staff_roll.StaffRollRefused, ds_sprites.SpriteRefused, ValueError) as error:
+        print("ds staff roll rows left out: %s" % error)
     return expanded, scripts, arm9, plate_entries, languages, system_line_texts
 
 
@@ -276,6 +284,17 @@ def bake_text_and_menus(art, set_description, scripts, arm9, cartridge, rom_path
     art["files"].update(phone_files)
     art["texture_paths"] = art["texture_paths"] + phone_paths
     art["texture_sizes"] = dict(art["texture_sizes"], **phone_sizes)
+    staff_paths, staff_sizes = ds_staff_roll.bake(arm9, cartridge.sprites, language, record)
+    art["texture_paths"] = art["texture_paths"] + staff_paths
+    art["texture_sizes"] = dict(art["texture_sizes"], **staff_sizes)
+    if "people" in pause:
+        try:
+            people_files, people_paths, people_sizes = ds_people.bake(pause["people"], rom_path, arm9, cartridge.textures, cartridge.sprites, language, set_description.get("scripts", {}).get("language", "en"), record, work_folder)
+            art["files"].update(people_files)
+            art["texture_paths"] = art["texture_paths"] + people_paths
+            art["texture_sizes"] = dict(art["texture_sizes"], **people_sizes)
+        except (ds_people.PeopleRefused, ds_sprites.SpriteRefused, ds_textures.TextureRefused, ds_text.DsTextError, ds_rom.RomRefused) as error:
+            print("ds people left out: %s" % error)
     set_description["script_balloons"], balloon_paths, balloon_sizes = ds_balloons.bake(set_description, scripts, arm9, cartridge, rom_path, record)
     art["texture_paths"] = art["texture_paths"] + balloon_paths
     art["texture_sizes"] = dict(art["texture_sizes"], **balloon_sizes)
