@@ -43,6 +43,7 @@ NAME_BAND_TEXTURE = 0x4e
 PHONE_BAND_TEXTURE = 0x4f
 SCREEN_SIZE = (256, 192)
 PORTRAIT_LEFT = 64
+FACE_CENTER_WHEN_NOT_GIVEN = (64, 64)
 PLACE_PICTURE_TOP = 12
 CELL_SIZE = (128, 96)
 CELL_ORIGIN = (64, 48)
@@ -169,8 +170,10 @@ def face_pixels(textures, portrait, language):
     return canvas
 
 
-def face_cutout(face):
-    return face[:CELL_SIZE[1], PORTRAIT_LEFT:PORTRAIT_LEFT + CELL_SIZE[0]]
+def face_cutout(face, center):
+    left = min(max(PORTRAIT_LEFT + center[0] - CELL_SIZE[0] // 2, 0), face.shape[1] - CELL_SIZE[0])
+    top = min(max(center[1] - CELL_SIZE[1] // 2, 0), face.shape[0] - CELL_SIZE[1])
+    return face[top:top + CELL_SIZE[1], left:left + CELL_SIZE[0]]
 
 
 def first_frame(sprites, arm9, resource, language):
@@ -290,7 +293,7 @@ def bake(people, rom_path, arm9, textures, sprites, language, language_code, rec
         source = textures.texture_bytes(portrait, language) + textures.texture_bytes(PORTRAIT_GROUND_TEXTURE, language)
         stored(face, record.key_for(code, {"face": portrait}, source), lambda portrait=portrait: rgba_gtex(face_pixels(textures, portrait, language)))
         lines.append("face %d %s" % (person_ids[name], face))
-        cells.append((face, portrait))
+        cells.append((face, (portrait, tuple(people.get("ds_face_centers", {}).get(name, FACE_CENTER_WHEN_NOT_GIVEN)))))
     if SISSEL < len(tables["person_names"]) and tables["person_names"][SISSEL] in person_ids and tables["person_names"][SISSEL_AS_A_SOUL] in person_ids:
         sissel = person_ids[tables["person_names"][SISSEL]]
         if SISSEL_SHOWS_HIS_SOUL_FROM_LEVEL in tables["person_levels"][SISSEL]:
@@ -313,8 +316,8 @@ def bake(people, rom_path, arm9, textures, sprites, language, language_code, rec
         top = index // THUMB_COLUMNS * CELL_SIZE[1]
         if resources is None:
             cell = frame_pixels(sprites, arm9, language)
-        elif isinstance(resources, int):
-            cell = face_cutout(face_pixels(textures, resources, language))
+        elif isinstance(resources, tuple):
+            cell = face_cutout(face_pixels(textures, resources[0], language), resources[1])
         else:
             cell = cell_pixels(sprites, arm9, resources, language)
         sheet[top:top + CELL_SIZE[1], left:left + CELL_SIZE[0]] = cell

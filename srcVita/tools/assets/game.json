@@ -553,6 +553,188 @@
       "band_points": 28,
       "text_points": 21,
       "phone_word": "Phone",
+      "ds_face_centers": {
+        "linne": [
+          56,
+          78
+        ],
+        "linne_g": [
+          48,
+          88
+        ],
+        "cicel": [
+          56,
+          64
+        ],
+        "cicel_cat": [
+          62,
+          84
+        ],
+        "cicel_trash": [
+          62,
+          84
+        ],
+        "cicel_evil": [
+          48,
+          66
+        ],
+        "cicel_soul": [
+          60,
+          96
+        ],
+        "kuneri": [
+          40,
+          64
+        ],
+        "kuneri_s": [
+          40,
+          64
+        ],
+        "killer_jo": [
+          44,
+          50
+        ],
+        "sith": [
+          56,
+          72
+        ],
+        "sanbou": [
+          56,
+          40
+        ],
+        "killer_po": [
+          44,
+          50
+        ],
+        "ribbon": [
+          62,
+          88
+        ],
+        "missile": [
+          56,
+          96
+        ],
+        "missile_o": [
+          56,
+          96
+        ],
+        "cubanelle": [
+          52,
+          46
+        ],
+        "jawed": [
+          56,
+          50
+        ],
+        "jawed_k": [
+          56,
+          46
+        ],
+        "keikan_A": [
+          48,
+          58
+        ],
+        "keikan_B": [
+          48,
+          58
+        ],
+        "keiji_G": [
+          56,
+          56
+        ],
+        "keiji_B": [
+          56,
+          60
+        ],
+        "doctor": [
+          88,
+          62
+        ],
+        "kalon": [
+          44,
+          56
+        ],
+        "waitress": [
+          56,
+          84
+        ],
+        "kanri": [
+          60,
+          92
+        ],
+        "yukai_M": [
+          36,
+          96
+        ],
+        "yukai_W": [
+          64,
+          68
+        ],
+        "barten": [
+          68,
+          50
+        ],
+        "enma": [
+          72,
+          78
+        ],
+        "eimin": [
+          58,
+          92
+        ],
+        "daijin": [
+          64,
+          60
+        ],
+        "keibi_A": [
+          64,
+          62
+        ],
+        "keibi_B": [
+          40,
+          74
+        ],
+        "kanshu": [
+          40,
+          40
+        ],
+        "keibi_C": [
+          52,
+          60
+        ],
+        "Rock": [
+          52,
+          104
+        ],
+        "shujin_B": [
+          84,
+          62
+        ],
+        "leaflet": [
+          76,
+          78
+        ],
+        "cock": [
+          62,
+          88
+        ],
+        "erai": [
+          56,
+          56
+        ],
+        "eihei": [
+          84,
+          76
+        ],
+        "crew": [
+          48,
+          72
+        ],
+        "mother": [
+          48,
+          44
+        ]
+      },
       "names": [
         "linne",
         "linne_g",

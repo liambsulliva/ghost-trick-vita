@@ -78,6 +78,15 @@ class PictureTests(unittest.TestCase):
         self.assertEqual(tuple(canvas[0, 0]), (255, 0, 0, 255))
         self.assertEqual(tuple(canvas[1, 1]), (0, 0, 0, 255))
 
+    def test_a_thumbnail_is_cut_around_the_face_and_stays_inside_the_picture(self):
+        face = np.zeros((192, 256, 4), dtype=np.uint8)
+        face[80, 64 + 70] = 255
+        cut = ds_people.face_cutout(face, (70, 80))
+        self.assertEqual(cut.shape, (96, 128, 4))
+        self.assertEqual(tuple(cut[48, 64]), (255, 255, 255, 255))
+        self.assertEqual(ds_people.face_cutout(face, (64, 10)).shape, (96, 128, 4))
+        self.assertEqual(tuple(ds_people.face_cutout(face, (64, 300))[80 - 96, 70]), (255, 255, 255, 255))
+
     def test_a_stretch_repeats_rows_and_columns(self):
         image = np.arange(2 * 2 * 4, dtype=np.uint8).reshape(2, 2, 4)
         wide = ds_people.stretched(image, 4, 6)

@@ -26,7 +26,7 @@
 #define PAN_STEPS 40
 #define LOAD_ROUNDS 4
 #define TEXTURE_BUCKETS_ON_DISK 64u
-#define SKIP_MISSING_FILES_VARIABLE "PAUSE_RENDER_SKIPS_MISSING_FILES"
+#define DS_SET_VARIABLE "PAUSE_RENDER_DS_SET"
 
 static const char *const tables[] = { "pause/cat.txt", "pause/cat_track.txt", "pause/labels.txt", "pause/widgets.txt", "pause/people.txt", "pause/clock.txt" };
 static const char *const fixed_textures[] = { "pause_backdrop", "pause_spotlight", "pause_labels", "pause_widgets", "hud_sheet", "pause_people_thumbs", "pause_people_spot", "pause_clock", "title_logo", "hud_button_art" };
@@ -84,7 +84,7 @@ static void add_disk_file_stored_at(const char *assets_folder, const char *store
 
     snprintf(disk_path, sizeof(disk_path), "%s/%s", assets_folder, stored_path);
     snprintf(fake_path, sizeof(fake_path), "%s/%s", SET, relative_path);
-    add_file_as(disk_path, fake_path, getenv(SKIP_MISSING_FILES_VARIABLE) == NULL);
+    add_file_as(disk_path, fake_path, getenv(DS_SET_VARIABLE) == NULL);
     if (language_code != NULL) {
         snprintf(disk_path, sizeof(disk_path), "%s/%s/%s/%s", assets_folder, ASSET_LANGUAGE_FOLDER, language_code, stored_path);
         snprintf(fake_path, sizeof(fake_path), "%s/%s/%s/%s", SET, ASSET_LANGUAGE_FOLDER, language_code, relative_path);
@@ -374,6 +374,7 @@ int main(int argc, char **argv)
     run_log_open("render.log");
     fake_renderer_reset();
     fake_reader_reset();
+    texture_cache_use_sharp_art(getenv(DS_SET_VARIABLE) != NULL);
     for (index = 0; index < sizeof(tables) / sizeof(tables[0]); index++) {
         add_disk_file(argv[1], tables[index]);
     }
