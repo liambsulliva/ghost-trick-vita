@@ -6,9 +6,10 @@ import ds_rom
 import ds_sprites
 import ds_text
 import frame_layout
+import hud_art
 import pause_art
 
-CODE_FILES = ["ds_pause.py", "ds_text.py", "ds_textures.py", "ds_sprites.py", "pause_art.py", "frame_layout.py", "asset_writers.py"]
+CODE_FILES = ["ds_pause.py", "ds_text.py", "ds_textures.py", "ds_sprites.py", "pause_art.py", "hud_art.py", "frame_layout.py", "asset_writers.py"]
 TEXTURE_FOLDER = "textures"
 INK_COLOR = 3
 INK_ALPHAS = np.array([0, 102, 178, 255], dtype=np.uint8)
@@ -24,6 +25,8 @@ CODE_OF_CHARACTER = ds_text.CODE_OF_CHARACTER
 BUTTON_CORNER = 8
 BUTTON_MIDDLE = 8
 BUTTON_SCALE = 2
+BOOK_SCALE = 2
+GLYPH_LETTER_COLOR = "#ffffff"
 TITLE_BUTTONS = [("title_button", "resting"), ("title_button_selected", "selected"), ("title_button_pressed", "pressed"), ("title_icon", "resting"), ("title_icon_selected", "selected"), ("title_icon_pressed", "pressed")]
 FLAME_HEIGHT = 48
 FLAME_NUMBER_MIDDLE = 0.7
@@ -116,6 +119,11 @@ def pixelated(pixels):
     return np.ascontiguousarray(large[:height, :width])
 
 
+def glyph_pixels(work_folder, arguments):
+    cell = hud_art.GLYPH_CELL
+    return pause_art.magick_rgba(work_folder, hud_art.scaled(cell), hud_art.scaled(cell), arguments + ["-filter", "Box", "-resize", "%dx%d!" % (cell, cell)], cell, cell)
+
+
 def texture_pixels(pack, index, language):
     width, height, rgba = pack.texture(index, language)
     return np.frombuffer(rgba, dtype=np.uint8).reshape(height, width, 4)
@@ -205,6 +213,15 @@ def widget_cells(font, pack, language, work_folder, widgets, art):
             cells.append(("flame", "%d %d" % (number, lit), flame_pixels(font, flame, number, lit)))
     cells.append(("cell", "arrow_down", pixelated(pause_art.arrow_down_pixels(work_folder))))
     cells.append(("cell", "trash", pixelated(pause_art.trash_pixels(work_folder))))
+    if "book" in art:
+        cells.append(("cell", "book", enlarged(ink_box(texture_pixels(pack, art["book"], language)), BOOK_SCALE)))
+    for kind in hud_art.FACE_ORDER:
+        cells.append(("wglyph", kind, pixelated(glyph_pixels(work_folder, hud_art.face_arguments(kind, 0)))))
+    for letter in hud_art.LETTER_ORDER:
+        plate = pixelated(glyph_pixels(work_folder, hud_art.disc_plate(hud_art.scaled(hud_art.GLYPH_CELL) // 2, hud_art.scaled(hud_art.GLYPH_CELL) // 2)))
+        word = text_pixels(font, letter, GLYPH_LETTER_COLOR, TEXT_SCALE)
+        pasted_over(plate, word, (plate.shape[1] - word.shape[1]) // 2, (plate.shape[0] - word.shape[0]) // 2)
+        cells.append(("wglyph", letter.lower(), plate))
     return cells, refused
 
 

@@ -795,13 +795,6 @@ void pause_people_draw_place(int place, float x, float y, float width, float hei
     }
 }
 
-void pause_people_draw_first_person(float x, float y, float width, float height)
-{
-    if (order_count > 0) {
-        draw_thumb(art_for(PAUSE_PEOPLE_TAB_PEOPLE, order[0]), x, y, width, height);
-    }
-}
-
 static void draw_whole_texture(const char *name, float x, float y)
 {
     const struct cached_texture *texture;

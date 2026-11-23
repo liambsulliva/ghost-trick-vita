@@ -148,7 +148,7 @@ class SheetTests(unittest.TestCase):
         pause = game_pause()
         font = font_with_a_bar_for_every_letter()
         pack = FakePack(solid(64, 40))
-        with mock.patch.multiple(ds_pause, LINE_TOP=0, LINE_ROWS=4), mock.patch.object(pause_art, "slice_pixels", lambda folder, width, height, *rest: solid(width, height)), mock.patch.object(pause_art, "arrow_down_pixels", lambda folder: solid(*pause_art.ARROW_DOWN_CELL)), mock.patch.object(pause_art, "trash_pixels", lambda folder: solid(*pause_art.TRASH_CELL)):
+        with mock.patch.multiple(ds_pause, LINE_TOP=0, LINE_ROWS=4), mock.patch.object(pause_art, "slice_pixels", lambda folder, width, height, *rest: solid(width, height)), mock.patch.object(pause_art, "arrow_down_pixels", lambda folder: solid(*pause_art.ARROW_DOWN_CELL)), mock.patch.object(pause_art, "trash_pixels", lambda folder: solid(*pause_art.TRASH_CELL)), mock.patch.object(ds_pause, "glyph_pixels", lambda folder, arguments: solid(ds_pause.hud_art.GLYPH_CELL, ds_pause.hud_art.GLYPH_CELL)):
             return pause, ds_pause.widget_cells(font, pack, 1, None, pause["widgets"], pause["ds_art"])
 
     def test_the_ds_sheet_has_every_cell_the_remastered_sheet_has(self):
@@ -163,6 +163,9 @@ class SheetTests(unittest.TestCase):
                 self.assertIn("flame %d %d" % (number, lit), keys)
         self.assertIn("cell arrow_down", keys)
         self.assertIn("cell trash", keys)
+        self.assertIn("cell book", keys)
+        for kind in ("cross", "circle", "square", "triangle", "l", "r"):
+            self.assertIn("wglyph " + kind, keys)
         widgets = pause["widgets"]
         for style in ("row", "header", "bar"):
             for key in widgets[style]:

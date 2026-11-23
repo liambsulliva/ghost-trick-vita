@@ -26,6 +26,15 @@ static void test_glyphs_keep_their_own_width_and_old_square_lines_still_read(voi
     CHECK(pause_glyph_width("missing", 40.0f) == 0.0f);
 }
 
+static void test_a_set_may_keep_its_glyphs_on_the_widget_sheet(void)
+{
+    static const char ds_table[] = "wglyph circle 8 16 40 40\n";
+
+    CHECK_INT(pause_widgets_read_text(ds_table, (unsigned int)strlen(ds_table)), 1);
+    CHECK(pause_glyph_width("circle", 20.0f) == 20.0f);
+    CHECK(pause_glyph_width("cross", 20.0f) == 0.0f);
+}
+
 static void test_text_wider_than_its_room_shrinks_to_fit_and_shorter_text_keeps_its_size(void)
 {
     CHECK_INT(pause_widgets_read_text(table, (unsigned int)strlen(table)), 6);
@@ -109,6 +118,7 @@ int main(void)
     test_a_preview_part_given_in_pixels_is_dropped();
     test_a_part_that_leaves_its_texture_draws_nothing();
     test_glyphs_keep_their_own_width_and_old_square_lines_still_read();
+    test_a_set_may_keep_its_glyphs_on_the_widget_sheet();
     test_text_wider_than_its_room_shrinks_to_fit_and_shorter_text_keeps_its_size();
     test_two_line_text_shrinks_to_the_bar_height_and_the_tighter_room_wins();
     return test_finish("unit/pause_widgets");

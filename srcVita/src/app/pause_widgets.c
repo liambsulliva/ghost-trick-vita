@@ -51,6 +51,7 @@ struct widget {
 
 static struct widget widgets[PAUSE_WIDGETS_MOST];
 static int widget_count;
+static int glyphs_are_on_the_widget_sheet;
 static char preview_plate[ASSET_NAME_MAX];
 static float preview_part[4];
 
@@ -91,6 +92,7 @@ int pause_widgets_read_text(const char *text, unsigned int text_size)
     int corner;
 
     widget_count = 0;
+    glyphs_are_on_the_widget_sheet = 0;
     preview_plate[0] = '\0';
     offset = 0;
     while (offset < text_size) {
@@ -103,6 +105,10 @@ int pause_widgets_read_text(const char *text, unsigned int text_size)
         } else if (sscanf(line, "flame %d %d %f %f %f %f", &number, &lit, &x, &y, &width, &height) == 6) {
             snprintf(key, sizeof(key), "flame.%d.%d", number, lit);
             add_widget(key, x, y, width, height, 0.0f);
+        } else if (sscanf(line, "wglyph %47s %f %f %f %f", name, &x, &y, &width, &height) == 5) {
+            snprintf(key, sizeof(key), "glyph.%s", name);
+            add_widget(key, x, y, width, height, 0.0f);
+            glyphs_are_on_the_widget_sheet = 1;
         } else if (sscanf(line, "glyph %47s %f %f %f %f", name, &x, &y, &width, &height) == 5) {
             snprintf(key, sizeof(key), "glyph.%s", name);
             add_widget(key, x, y, width, height, 0.0f);
@@ -332,6 +338,11 @@ void pause_draw_flame(int number, int lit, float centre_x, float centre_y, float
     }
 }
 
+static const char *glyph_sheet(void)
+{
+    return glyphs_are_on_the_widget_sheet ? PAUSE_WIDGET_SHEET : PAUSE_GLYPH_SHEET;
+}
+
 void pause_draw_glyph(const char *kind, float centre_x, float centre_y, float size, float alpha)
 {
     char key[PAUSE_WIDGET_KEY_MAX + 8];
@@ -340,7 +351,7 @@ void pause_draw_glyph(const char *kind, float centre_x, float centre_y, float si
     snprintf(key, sizeof(key), "glyph.%s", kind);
     widget = find(key);
     if (widget != NULL) {
-        pause_draw_from(PAUSE_GLYPH_SHEET, widget->x, widget->y, widget->width, widget->height, whole(centre_x - size / 2.0f), whole(centre_y - size / 2.0f), size, size, alpha);
+        pause_draw_from(glyph_sheet(), widget->x, widget->y, widget->width, widget->height, whole(centre_x - size / 2.0f), whole(centre_y - size / 2.0f), size, size, alpha);
     }
 }
 
@@ -366,7 +377,7 @@ float pause_draw_glyph_from_left(const char *kind, float left, float centre_y, f
         return 0.0f;
     }
     width = pause_glyph_width(kind, height);
-    pause_draw_from(PAUSE_GLYPH_SHEET, widget->x, widget->y, widget->width, widget->height, whole(left), whole(centre_y - height / 2.0f), whole(width), height, alpha);
+    pause_draw_from(glyph_sheet(), widget->x, widget->y, widget->width, widget->height, whole(left), whole(centre_y - height / 2.0f), whole(width), height, alpha);
     return width;
 }
 

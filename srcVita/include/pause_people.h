@@ -32,7 +32,6 @@ void pause_people_read_ahead(void);
 void pause_people_draw_place(int place, float x, float y, float width, float height, int is_framed);
 #define PAUSE_PEOPLE_THUMB_SHEET "pause_people_thumbs"
 
-void pause_people_draw_first_person(float x, float y, float width, float height);
 void pause_people_draw(float x_offset);
 void pause_people_draw_bar(float x_offset);
 void pause_people_draw_dialog(float x_offset);

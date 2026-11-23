@@ -301,7 +301,8 @@
         "selected": 193,
         "pressed": 194
       },
-      "flame": 31
+      "flame": 31,
+      "book": 91
     },
     "label_font": "natives/android/gui/font/outlinefont/fot-newcinemaastd-d.oft.1",
     "labels": [
