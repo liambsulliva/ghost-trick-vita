@@ -1,6 +1,6 @@
 Release art
 
-icon0.png and startup.png are drawn by make_release_art.sh from twemoji-1f525.svg, the fire emoji (U+1F525) from Twemoji, https://github.com/jdecked/twemoji. Twemoji's graphics are licensed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/, and the SVG is kept here unchanged.
+icon0.png, bg.png and startup.png are drawn by make_release_art.sh from twemoji-1f525.svg, the fire emoji (U+1F525) from Twemoji, https://github.com/jdecked/twemoji. Twemoji's graphics are licensed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/, and the SVG is kept here unchanged.
 
 Changes made for this package: the outer flame is recoloured from #F4900C to #2E8BE6, the core from #FFCC4D to #9FD4FF, and the shapes are left as they are. The banner's text is set in DejaVu Sans Bold and DejaVu Sans, which ImageMagick renders into the PNG; the subtitle has a hairline outline in its own colour to give it a semibold weight.
 

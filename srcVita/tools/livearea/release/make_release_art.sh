@@ -1,11 +1,13 @@
 #!/bin/sh
-# Draws the release package's LiveArea icon and banner from the Twemoji fire emoji (U+1F525),
-# kept unchanged as twemoji-1f525.svg and credited in NOTICE. The outer flame is recoloured blue
-# and the core a paler blue; the shapes are the emoji's own. Both images sit on a near-black
-# backdrop. The icon is the flame alone; the banner puts a smaller flame on the left, the title on
-# one line on the right, and a small line of sentence-case text under it. The banner is drawn at
-# four times its size and shrunk, so its text has smooth edges. The subtitle is DejaVu Sans with a
-# hairline outline in its own colour, standing in for a semibold face, since none is installed.
+# Draws the release package's LiveArea art from the Twemoji fire emoji (U+1F525), kept unchanged as
+# twemoji-1f525.svg and credited in NOTICE. The outer flame is recoloured blue and the core a paler
+# blue; the shapes are the emoji's own. Everything sits on a near-black backdrop.
+#   icon0.png: the flame alone, with clear padding for the Vita's round bubble.
+#   startup.png: the banner, with a smaller flame on the left, the title on one line on the right and
+#     a small line of sentence-case text under it. It is drawn at four times its size and shrunk, so
+#     its text has smooth edges. The subtitle is DejaVu Sans with a hairline outline in its own colour,
+#     standing in for a semibold face, since none is installed.
+#   bg.png: a large flame on the backdrop, with no text, since the gate already shows the title.
 # ImageMagick draws the SVG's path data itself, so no SVG renderer is needed. Run it again after
 # changing the colours and commit the PNGs it writes.
 set -eu
@@ -30,14 +32,21 @@ magick -size 144x144 xc:none \
     -fill "$core" -draw "scale 4,4 path '$core_path'" \
     -resize 112x112 "$work/fire.png"
 
-magick -size 128x128 "xc:$backdrop" "$work/fire.png" -geometry +8+8 -composite \
+# The icon: the flame at 84 pixels, centred on the 128 pixel backdrop, so the bubble leaves it room.
+magick -size 128x128 "xc:$backdrop" \( "$work/fire.png" -resize 84x84 \) -geometry +22+22 -composite \
     -colors 256 -define png:exclude-chunks=date,time "PNG8:$folder/icon0.png"
 
-# The banner at four times its size: the flame at 352 pixels, the title at 88 points and the
-# subtitle at 40 points, with the subtitle's outline and tracking scaled to match. Shrinking it
-# to 280 by 158 with a box filter gives the final pixels.
-magick -size 1120x632 "xc:$backdrop" \( "$folder/icon0.png" -resize 352x352 \) -geometry +72+140 -composite \
+# The banner's flame: 308 pixels on a 352 pixel square, drawn at four times the banner's size.
+magick -size 352x352 "xc:$backdrop" \( "$work/fire.png" -resize 308x308 \) -geometry +22+22 -composite "$work/logo352.png"
+
+magick -size 1120x632 "xc:$backdrop" "$work/logo352.png" -geometry +72+140 -composite \
     -font "$font" -fill "$letters" -pointsize 88 -annotate +472+312 'Ghost Trick' \
     -font "$subfont" -fill "$vita" -stroke "$vita" -strokewidth 1.4 -kerning 2.5 -pointsize 40 -annotate +472+388 'For PlayStation Vita' -stroke none \
-    -filter Box -resize 280x158 \
+    "$work/banner4x.png"
+
+magick "$work/banner4x.png" -filter Box -resize 280x158 \
     -colors 256 -define png:exclude-chunks=date,time "PNG8:$folder/startup.png"
+
+# The background: the flame, large, in the middle of the 840 by 500 backdrop.
+magick -size 840x500 "xc:$backdrop" \( "$work/fire.png" -resize 300x300 \) -geometry +270+100 -composite \
+    -colors 256 -define png:exclude-chunks=date,time "PNG8:$folder/bg.png"

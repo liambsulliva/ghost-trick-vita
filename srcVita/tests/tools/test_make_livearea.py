@@ -10,7 +10,7 @@ SRC_VITA = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 SCRIPT = os.path.join(SRC_VITA, "tools", "make_livearea.py")
 RELEASE_ART = os.path.join(SRC_VITA, "tools", "livearea", "release")
 NAMES = ("icon0.png", "livearea/contents/bg.png", "livearea/contents/startup.png")
-SIZES = {"icon0.png": (128, 128), "livearea/contents/startup.png": (280, 158)}
+SIZES = {"icon0.png": (128, 128), "livearea/contents/bg.png": (840, 500), "livearea/contents/startup.png": (280, 158)}
 
 
 def digests(folder):
