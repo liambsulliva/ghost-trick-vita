@@ -502,6 +502,9 @@ struct script_soul {
     int question_answer_is_pending;
     enum script_question_answer question_answer;
     int dead_talks_begun_by_a_reach;
+    int heard_object;
+    int heard_from_object;
+    int heard_as_ghost;
     int route_dead_talks_when_step_began;
     int dead_core_holds_the_tip;
     struct script_timed_event phone_event;
@@ -787,7 +790,6 @@ void script_soul_set_touch(struct script_machine *machine, int is_down, float x,
 void script_soul_drag_camera(struct script_machine *machine, float delta_x, float delta_y);
 void script_soul_note_ghost(struct script_machine *machine);
 void script_soul_note_question_answer(struct script_machine *machine, int is_yes);
-void script_soul_open_question(struct script_machine *machine, enum script_question_kind kind);
 int script_soul_step_question(struct script_machine *machine);
 void script_soul_note_pill(struct script_machine *machine, enum script_pill_id id);
 void script_soul_note_tap(struct script_machine *machine, int tap_group);

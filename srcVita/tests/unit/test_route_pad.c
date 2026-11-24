@@ -361,6 +361,23 @@ static void test_reaching_the_other_ghosts_core_starts_a_core_talk_and_the_soul_
     CHECK(!machine.soul.question_is_open);
 }
 
+static void test_reaching_the_other_ghosts_core_again_after_its_talk_moves_the_soul_onto_it(void)
+{
+    int tick;
+
+    test_reaching_the_other_ghosts_core_starts_a_core_talk_and_the_soul_stays();
+    script_soul_run_command(&machine, "DeadTalk", "Finish");
+    CHECK(!machine.soul.dead_talk_is_on);
+    for (tick = 0; tick < TICKS_FOR_A_MOVE && machine.soul.active_object != 1; tick++) {
+        script_soul_set_held(&machine, 1.0f, 0.0f);
+        play_ticks_by_hand(1);
+    }
+    script_soul_set_held(&machine, 0.0f, 0.0f);
+    CHECK_INT(machine.soul.active_object, 1);
+    CHECK(!machine.soul.dead_talk_is_on);
+    CHECK(!machine.soul.drag_is_a_reach);
+}
+
 static void test_reaching_a_corpse_starts_its_time_leap_and_the_soul_stays(void)
 {
     int slot;
@@ -739,6 +756,7 @@ int main(void)
     test_a_dead_talk_from_a_dead_core_talks_to_the_dead();
     test_reaching_a_dead_talk_core_starts_its_talk_after_the_lightning_and_the_soul_stays();
     test_reaching_the_other_ghosts_core_starts_a_core_talk_and_the_soul_stays();
+    test_reaching_the_other_ghosts_core_again_after_its_talk_moves_the_soul_onto_it();
     test_reaching_a_corpse_starts_its_time_leap_and_the_soul_stays();
     test_a_scene_waiting_on_the_dead_core_starts_the_dead_talk_when_the_corpse_is_reached();
     test_a_living_core_no_ghost_holds_is_a_plain_move();

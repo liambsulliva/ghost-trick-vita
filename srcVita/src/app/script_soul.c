@@ -174,9 +174,17 @@ static int the_scene_holds_a_core_talk(const struct script_machine *machine)
     return script_machine_handles(machine, "SYSTEM", "CORETALK");
 }
 
+static int the_soul_has_heard_this_core_from_here(const struct script_machine *machine, int object_index)
+{
+    const struct script_soul *soul;
+
+    soul = &machine->soul;
+    return soul->heard_object == object_index && soul->heard_from_object == soul->active_object && soul->heard_as_ghost == (int)soul->active_ghost;
+}
+
 static int core_starts_a_talk_when_reached(const struct script_machine *machine, int object_index)
 {
-    return core_is_a_dead_talk_gimmick(machine, object_index) || (object_holds_the_other_ghost(machine, object_index) && the_scene_holds_a_core_talk(machine));
+    return core_is_a_dead_talk_gimmick(machine, object_index) || (object_holds_the_other_ghost(machine, object_index) && the_scene_holds_a_core_talk(machine) && !the_soul_has_heard_this_core_from_here(machine, object_index));
 }
 
 static int core_leaps_when_reached(const struct script_machine *machine, int object_index)
@@ -203,6 +211,7 @@ static void arrive_at_core(struct script_machine *machine, int object_index, int
     soul->active_object = object_index;
     soul->active_slot = slot;
     soul->reached_object = NO_CORE;
+    soul->heard_object = NO_CORE;
     soul->corpse_object = NO_CORE;
     machine->active_core_name = machine->objects[object_index].name;
     if (soul->is_on) {
@@ -484,6 +493,11 @@ static void finish_the_reach(struct script_machine *machine)
         script_machine_send(machine, "*", "SYSTEM", "SV_DEADCORE");
     }
     if (!core_leaps_when_reached(machine, object_index)) {
+        if (!core_is_a_dead_talk_gimmick(machine, object_index)) {
+            soul->heard_object = object_index;
+            soul->heard_from_object = soul->active_object;
+            soul->heard_as_ghost = (int)soul->active_ghost;
+        }
         start_dead_talk(machine, object_index, 1);
         return;
     }
@@ -1909,21 +1923,6 @@ static void retry_after_the_game_over(struct script_machine *machine)
     retry_the_fate_attempt(machine, "game_over_retry");
 }
 
-static int the_rollback_is_offered(const struct script_machine *machine)
-{
-    return script_pills_is_up(machine, SCRIPT_PILL_HOURGLASS) && !machine->pause_bit && machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->talk_is_open && !machine->choice.is_open && !game_over_waits_for_a_retry(machine);
-}
-
-static int take_rollback(struct script_machine *machine)
-{
-    if (!the_rollback_is_offered(machine)) {
-        return 0;
-    }
-    script_pills_press(machine, SCRIPT_PILL_HOURGLASS, 0);
-    script_soul_open_question(machine, SCRIPT_QUESTION_ROLLBACK);
-    return 1;
-}
-
 struct question_rule {
     const char *name;
     int marked_option;
@@ -1933,7 +1932,7 @@ static const struct question_rule question_rules[SCRIPT_QUESTION_KIND_COUNT] = {
     [SCRIPT_QUESTION_ROLLBACK] = { "rollback", SCRIPT_QUESTION_OPTION_NO }
 };
 
-void script_soul_open_question(struct script_machine *machine, enum script_question_kind kind)
+static void open_question(struct script_machine *machine, enum script_question_kind kind)
 {
     struct script_soul *soul;
 
@@ -1946,6 +1945,21 @@ void script_soul_open_question(struct script_machine *machine, enum script_quest
     if (machine->outputs->marked != NULL) {
         machine->outputs->marked("question_opened", question_rules[kind].name);
     }
+}
+
+static int the_rollback_is_offered(const struct script_machine *machine)
+{
+    return script_pills_is_up(machine, SCRIPT_PILL_HOURGLASS) && !machine->pause_bit && machine->talk.phase == SCRIPT_TALK_CLOSED && !machine->talk_is_open && !machine->choice.is_open && !game_over_waits_for_a_retry(machine);
+}
+
+static int take_rollback(struct script_machine *machine)
+{
+    if (!the_rollback_is_offered(machine)) {
+        return 0;
+    }
+    script_pills_press(machine, SCRIPT_PILL_HOURGLASS, 0);
+    open_question(machine, SCRIPT_QUESTION_ROLLBACK);
+    return 1;
 }
 
 static void act_on_the_answer(struct script_machine *machine, enum script_question_kind kind, int is_yes)
@@ -3582,6 +3596,7 @@ void script_soul_reset(struct script_machine *machine)
     machine->soul.route_acted_step = -1;
     machine->soul.active_object = NO_CORE;
     machine->soul.reached_object = NO_CORE;
+    machine->soul.heard_object = NO_CORE;
     machine->soul.corpse_object = NO_CORE;
     machine->soul.sparks_object = NO_CORE;
     machine->soul.route_aimed_node = NO_CORE;

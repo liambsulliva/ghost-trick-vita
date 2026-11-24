@@ -604,6 +604,13 @@ static void open_title_warning(void)
     pause_dialog_open(&title_dialog, 1);
 }
 
+static void leave_for_the_title(int was_saved)
+{
+    title_is_wanted = 1;
+    run_log_write("pause return_to_title saved=%d", was_saved);
+    begin_hiding();
+}
+
 static void step_title(unsigned int pressed)
 {
     int chosen;
@@ -613,9 +620,7 @@ static void step_title(unsigned int pressed)
         return;
     }
     if (chosen == 0 && (!title_asks_to_save || pause_save_now())) {
-        title_is_wanted = 1;
-        run_log_write("pause return_to_title saved=%d", title_asks_to_save);
-        begin_hiding();
+        leave_for_the_title(title_asks_to_save);
     } else if (title_asks_to_save && chosen != PAUSE_DIALOG_CANCEL) {
         open_title_warning();
     }
@@ -631,9 +636,7 @@ static void step_save(unsigned int pressed)
     } else if (result == PAUSE_SAVE_RESUMES) {
         begin_hiding();
     } else if (result == PAUSE_SAVE_GOES_TO_TITLE) {
-        title_is_wanted = 1;
-        run_log_write("pause return_to_title saved=1");
-        begin_hiding();
+        leave_for_the_title(1);
     }
 }
 

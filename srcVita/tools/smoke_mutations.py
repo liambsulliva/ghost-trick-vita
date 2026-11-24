@@ -39,7 +39,7 @@ SOURCE_MUTATIONS = [
     ("START does not open the pause menu", "src/app/viewer_app.c", "((input->pressed & INPUT_START) || start_is_tapped)", "(start_is_tapped)", ["pause_and_resume"]),
     ("a tap on the pause button does nothing", "src/app/viewer_app.c", "return lands && script_player_is_active() && script_ui_view_start_button_is_at(input->touch_x, input->touch_y);", "return lands && !script_player_is_active() && script_ui_view_start_button_is_at(input->touch_x, input->touch_y);", ["touch_pause_button"]),
     ("Save writes the wrong slot", "src/app/game_save.c", "file_write_whole(game_save_path(slot), (const unsigned char *)text, size)", "file_write_whole(game_save_path(GAME_SAVE_AUTO), (const unsigned char *)text, size)", ["pause_save_then_continue"]),
-    ("the pause menu's Title never leaves the game", "src/app/pause_menu.c", "        title_is_wanted = 1;", "        title_is_wanted = 0;", ["pause_to_title"]),
+    ("the pause menu's Title never leaves the game", "src/app/pause_menu.c", "    title_is_wanted = 1;", "    title_is_wanted = 0;", ["pause_to_title"]),
     ("a chapter picked in the pause menu does not play", "src/app/pause_chapters.c", "            return PAUSE_CHAPTERS_PLAYS;", "            return PAUSE_CHAPTERS_STAYS;", ["pause_chapter_replay", "title_chapter_select"]),
     ("L and R do not turn the Record's tabs", "src/app/pause_people.c", "    if (pressed & INPUT_L) {", "    if (pressed & 0) {", ["record_people"]),
     ("New Game starts over a save without asking", "src/app/title_menu.c", '            ask(JOB_NEW_GAME, "row.new_game_ask", NULL);', "            leave_with(TITLE_REQUEST_NEW_GAME, 0);", ["title_new_game_over_save"]),

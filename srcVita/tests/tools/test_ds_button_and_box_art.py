@@ -7,6 +7,7 @@ SRC_VITA = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 GAME_DESCRIPTION = os.path.join(SRC_VITA, "tools", "assets", "game.json")
 DS_ROM = os.path.join(os.path.dirname(SRC_VITA), "extracted", "ds_rom", "game.nds")
 TALK_BOXES = ("talk_box_top", "talk_box_bottom")
+CHOICE_MARKS = (196, 197)
 
 
 def description():
@@ -21,8 +22,12 @@ def ds_entry(name):
 class DsButtonAndBoxArtTests(unittest.TestCase):
     def test_every_ds_choice_panel_wears_the_title_buttons_resting_and_selected_art(self):
         buttons = description()["pause"]["ds_art"]["title_buttons"]
-        textures = sorted(part["texture"] for part in ds_entry("ui_choice_buttons")["parts"])
+        textures = sorted(part["texture"] for part in ds_entry("ui_choice_buttons")["parts"] if part["texture"] not in CHOICE_MARKS)
         self.assertEqual(textures, sorted([buttons["resting"], buttons["selected"]]))
+
+    def test_every_ds_choice_panel_has_the_cartridge_check_and_circle(self):
+        textures = [part["texture"] for part in ds_entry("ui_choice_buttons")["parts"]]
+        self.assertEqual(sorted(texture for texture in textures if texture in CHOICE_MARKS), sorted(CHOICE_MARKS))
 
     @unittest.skipUnless(os.path.exists(DS_ROM), "needs the DS ROM")
     def test_the_ds_talk_corner_allowance_is_the_rounding_of_the_cartridge_box_art(self):
