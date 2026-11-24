@@ -1,46 +1,40 @@
 #!/bin/sh
-# Draws the release package's LiveArea icon and banner from shapes written here, not from any
-# game image. The flame is a pear-shaped body, wide at the bottom and narrowing to a rounded
-# top, with two small wisps on its crown and a pale orb set low in its middle. It is filled with
-# a gradient and a soft glow, on charcoal. The banner puts the flame on the left, the title on one
-# line on the right and VITA under it. Run it again after changing the drawing and commit the PNGs
-# it writes.
+# Draws the release package's LiveArea icon and banner from the Twemoji fire emoji (U+1F525),
+# kept unchanged as twemoji-1f525.svg and credited in NOTICE. The outer flame is recoloured blue
+# and the core a paler blue; the shapes are the emoji's own. Both images sit on a near-black
+# backdrop. The icon is the flame alone; the banner puts a smaller flame on the left, the title on
+# one line on the right, and a small line of sentence-case text under it. The subtitle is DejaVu Sans
+# with a hairline outline in its own colour, standing in for a semibold face, since none is installed.
+# ImageMagick draws the SVG's path data itself, so no SVG renderer is needed. Run it again after
+# changing the colours and commit the PNGs it writes.
 set -eu
 folder=$(cd "$(dirname "$0")" && pwd)
-charcoal='#36454F'
+source="$folder/twemoji-1f525.svg"
+backdrop='#0E0E0E'
 letters='#EBF0FA'
-teal='#40DCBF'
-orb='#D6DBF5'
+vita='#2C89E3'
+outer='#2E8BE6'
+core='#9FD4FF'
 font=DejaVu-Sans-Bold
+subfont=DejaVu-Sans
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-# The body and its two wisps as a white mask on black.
-magick -size 128x128 xc:black -fill white \
-    -draw 'path "M 64,16 C 72,16 76,24 76,32 C 80,44 88,52 96,68 C 102,80 100,104 90,112 C 82,118 72,120 64,120 C 56,120 46,118 38,112 C 28,104 26,80 32,68 C 40,52 48,44 52,32 C 52,24 56,16 64,16 Z"' \
-    -draw 'circle 56,22 62,22' \
-    -draw 'circle 74,21 82,21' \
-    -blur 0x0.5 "$work/mask.png"
+outer_path=$(sed -n 's/.*fill="#F4900C" d="\([^"]*\)".*/\1/p' "$source")
+core_path=$(sed -n 's/.*fill="#FFCC4D" d="\([^"]*\)".*/\1/p' "$source")
 
-# The gradient runs from near-white at the crown to pale blue at the base, cut out by the mask.
-magick -size 128x128 'gradient:#FFFFFF-#8FD3F4' "$work/mask.png" \
-    -alpha off -compose CopyOpacity -composite "$work/flame.png"
+# The emoji's 36-unit artboard drawn at 4 pixels a unit, then scaled to 112 pixels.
+magick -size 144x144 xc:none \
+    -fill "$outer" -draw "scale 4,4 path '$outer_path'" \
+    -fill "$core" -draw "scale 4,4 path '$core_path'" \
+    -resize 112x112 "$work/fire.png"
 
-# The orb: a soft pale disc with a white heart, set low in the body.
-magick -size 128x128 xc:none -fill "$orb" -draw 'circle 64,82 64,98' -blur 0x2 "$work/orb_outer.png"
-magick -size 128x128 xc:none -fill "#FFFFFF" -draw 'circle 64,82 64,90' -blur 0x1.5 "$work/orb_heart.png"
-
-# A soft glow around the flame.
-magick "$work/flame.png" -channel A -evaluate multiply 0.40 +channel -blur 0x6 "$work/glow.png"
-
-magick -size 128x128 "xc:$charcoal" \
-    "$work/glow.png" -composite "$work/flame.png" -composite \
-    "$work/orb_outer.png" -composite "$work/orb_heart.png" -composite \
+magick -size 128x128 "xc:$backdrop" "$work/fire.png" -geometry +8+8 -composite \
     -colors 256 -define png:exclude-chunks=date,time "PNG8:$folder/icon0.png"
 
-magick "$folder/icon0.png" -resize 112x112 "$work/icon112.png"
+magick "$folder/icon0.png" -resize 88x88 "$work/icon88.png"
 
-magick -size 280x158 "xc:$charcoal" "$work/icon112.png" -geometry +14+23 -composite \
-    -font "$font" -fill "$letters" -pointsize 19 -annotate +142+72 'Ghost Trick' \
-    -fill "$teal" -pointsize 16 -annotate +142+100 'VITA' \
+magick -size 280x158 "xc:$backdrop" "$work/icon88.png" -geometry +18+35 -composite \
+    -font "$font" -fill "$letters" -pointsize 22 -annotate +118+78 'Ghost Trick' \
+    -font "$subfont" -fill "$vita" -stroke "$vita" -strokewidth 0.35 -kerning 1.5 -pointsize 10 -annotate +118+97 'For PlayStation Vita' -stroke none -kerning 0 \
     -colors 256 -define png:exclude-chunks=date,time "PNG8:$folder/startup.png"

@@ -23,7 +23,7 @@ def build(folder, *extra):
 
 
 class MakeLiveAreaTest(unittest.TestCase):
-    def test_the_monogram_icon_and_banner_are_the_original_release_art_at_the_right_sizes(self):
+    def test_the_monogram_icon_and_banner_are_the_release_art_at_the_right_sizes(self):
         with tempfile.TemporaryDirectory() as plain:
             build(plain, "--monogram")
             for name, size in SIZES.items():

@@ -178,8 +178,8 @@ def read_file(path):
 
 
 def write_monogram_images(output_folder):
-    # The icon and banner are the original release art (see tools/livearea/release/make_release_art.sh),
-    # so no game art reaches a package built without the game's files. The background stays a monogram.
+    # The icon and banner are the release art in tools/livearea/release/ (its NOTICE has the credit),
+    # which holds no game art, so a package built without the game's files gets them. The background stays a monogram.
     write_file(os.path.join(output_folder, "icon0.png"), read_file(os.path.join(RELEASE_ART_FOLDER, "icon0.png")))
     write_file(os.path.join(output_folder, "livearea/contents/bg.png"), make_image(840, 500, 40))
     write_file(os.path.join(output_folder, "livearea/contents/startup.png"), read_file(os.path.join(RELEASE_ART_FOLDER, "startup.png")))
