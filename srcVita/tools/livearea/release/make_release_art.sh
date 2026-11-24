@@ -3,8 +3,9 @@
 # kept unchanged as twemoji-1f525.svg and credited in NOTICE. The outer flame is recoloured blue
 # and the core a paler blue; the shapes are the emoji's own. Both images sit on a near-black
 # backdrop. The icon is the flame alone; the banner puts a smaller flame on the left, the title on
-# one line on the right, and a small line of sentence-case text under it. The subtitle is DejaVu Sans
-# with a hairline outline in its own colour, standing in for a semibold face, since none is installed.
+# one line on the right, and a small line of sentence-case text under it. The banner is drawn at
+# four times its size and shrunk, so its text has smooth edges. The subtitle is DejaVu Sans with a
+# hairline outline in its own colour, standing in for a semibold face, since none is installed.
 # ImageMagick draws the SVG's path data itself, so no SVG renderer is needed. Run it again after
 # changing the colours and commit the PNGs it writes.
 set -eu
@@ -32,9 +33,11 @@ magick -size 144x144 xc:none \
 magick -size 128x128 "xc:$backdrop" "$work/fire.png" -geometry +8+8 -composite \
     -colors 256 -define png:exclude-chunks=date,time "PNG8:$folder/icon0.png"
 
-magick "$folder/icon0.png" -resize 88x88 "$work/icon88.png"
-
-magick -size 280x158 "xc:$backdrop" "$work/icon88.png" -geometry +18+35 -composite \
-    -font "$font" -fill "$letters" -pointsize 22 -annotate +118+78 'Ghost Trick' \
-    -font "$subfont" -fill "$vita" -stroke "$vita" -strokewidth 0.35 -kerning 1.5 -pointsize 10 -annotate +118+97 'For PlayStation Vita' -stroke none -kerning 0 \
+# The banner at four times its size: the flame at 352 pixels, the title at 88 points and the
+# subtitle at 40 points, with the subtitle's outline and tracking scaled to match. Shrinking it
+# to 280 by 158 with a box filter gives the final pixels.
+magick -size 1120x632 "xc:$backdrop" \( "$folder/icon0.png" -resize 352x352 \) -geometry +72+140 -composite \
+    -font "$font" -fill "$letters" -pointsize 88 -annotate +472+312 'Ghost Trick' \
+    -font "$subfont" -fill "$vita" -stroke "$vita" -strokewidth 1.4 -kerning 2.5 -pointsize 40 -annotate +472+388 'For PlayStation Vita' -stroke none \
+    -filter Box -resize 280x158 \
     -colors 256 -define png:exclude-chunks=date,time "PNG8:$folder/startup.png"
