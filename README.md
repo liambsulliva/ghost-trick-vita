@@ -131,7 +131,8 @@ The port follows the DS game's own code wherever it can. The changes below are d
 1. **Bug fixes**, from reports and from the [known issues](srcVita/README.md#known-issues).
 2. **The last script ops.** Every op the whole-game replay reaches now runs. Five of them keep their state and draw nothing yet: the ending's second-screen picture (0x08, 0x09, 0xc5, 0xd4), a guard's palette change (0x9a, 0xaf) and the listening range of a balloon (0x48). The checkpoint (0xfd) goes back to its scene and does not resume mid-scene. The root causes list [what is traced of them so far](srcVita/docs/root_causes.md#still-open).
 3. **The rest of the settings.** Resolution, and the ghost world's background color for Sissel and, once unlocked, Missile.
-4. **Upload to VitaDB.**
+4. **A classic 4:3 screen.** An Options setting that shows the original's 4:3 picture instead of filling the Vita's widescreen. Requested by [u/Annual-Difference123 on Reddit](https://www.reddit.com/r/VitaPiracy/s/xt3d4fMaHi).
+5. **Upload to VitaDB.**
 
 ## Working on the port
 
