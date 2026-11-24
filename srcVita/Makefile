@@ -97,7 +97,7 @@ build/param.sfo: Makefile
 	@mkdir -p build
 	vita-mksfoex -d ATTRIBUTE2=12 -s TITLE_ID=$(TITLE_ID) -s APP_VER=$(APP_VER) -s VERSION=$(APP_VER) "$(TITLE)" $@
 
-$(LIVEAREA_SOURCE)/icon0.png: tools/make_livearea.py
+$(LIVEAREA_SOURCE)/icon0.png: tools/make_livearea.py $(wildcard tools/livearea/release/*.png)
 	python3 -I tools/make_livearea.py $(LIVEAREA_SOURCE) $(if $(filter monogram,$(LIVEAREA_STYLE)),--monogram,)
 
 release:

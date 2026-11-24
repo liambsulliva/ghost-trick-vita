@@ -141,7 +141,7 @@ python3 -I tools/rom_audit.py
 
 ### LiveArea art
 
-The package's LiveArea icon, background and startup image are built while the package is built. With the remaster's extracted files in place they come from the remaster's title logo; with only your DS cartridge dump at `extracted/ds_rom/game.nds` they come from the cartridge's own title logo over DS mode's red; with neither they are a plain monogram. To bundle the remaster's logo into your own package:
+The package's LiveArea icon, background and startup image are built while the package is built. With the remaster's extracted files in place they come from the remaster's title logo; with only your DS cartridge dump at `extracted/ds_rom/game.nds` they come from the cartridge's own title logo over DS mode's red; with neither, the icon and startup image are the original release art in `tools/livearea/release/` (the GT mark on charcoal, and a banner with the mark and the title) and the background is a plain monogram. To bundle the remaster's logo into your own package:
 
 1. Run the setup script in [the top-level README](../README.md#set-everything-up-with-one-command), which puts the remaster's files in `extracted/remaster_apk`.
 2. Build the converter's texture tool, which the logo needs to decode the game's texture:
@@ -158,7 +158,7 @@ The package's LiveArea icon, background and startup image are built while the pa
 
 4. Install `srcVita/build/ghosttrick.vpk` on the Vita with VitaShell. The Vita reads LiveArea art only when a package is installed, so replacing `eboot.bin` alone does not change it.
 
-A package with the logo contains game art, so keep it for your own Vita. The package published on GitHub is built with `make -C srcVita release`, which always uses the monogram, as if no game files were present.
+A package with the logo contains game art, so keep it for your own Vita. The package published on GitHub is built with `make -C srcVita release`, which always uses that release art, as if no game files were present.
 
 ### Publish a release
 

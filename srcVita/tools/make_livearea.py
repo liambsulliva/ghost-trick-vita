@@ -16,6 +16,7 @@ DS_LOGO_NAME = "title_logo"
 DS_BACKDROP_NAME = "pause_backdrop"
 LOGO_PACK_PATH = "natives/android/charfiles/3d/06_id/11_title/title_up_iml4.tex.691230823.en"
 FIELD_COLOR = "#0c1523"
+RELEASE_ART_FOLDER = os.path.join(TOOLS_FOLDER, "livearea", "release")
 LOGO_LAYOUTS = (
     ("icon0.png", 128, 128, 120, 120),
     ("livearea/contents/bg.png", 840, 500, 600, 300),
@@ -171,10 +172,17 @@ def write_ds_logo_images(output_folder, rom_path):
             subprocess.run(ds_compose_command(logo_path, logo[:2], backdrop_path, backdrop[:2], layout, output_path), check=True)
 
 
-def write_procedural_images(output_folder):
-    write_file(os.path.join(output_folder, "icon0.png"), make_image(128, 128, 10))
+def read_file(path):
+    with open(path, "rb") as source:
+        return source.read()
+
+
+def write_monogram_images(output_folder):
+    # The icon and banner are the original release art (see tools/livearea/release/make_release_art.sh),
+    # so no game art reaches a package built without the game's files. The background stays a monogram.
+    write_file(os.path.join(output_folder, "icon0.png"), read_file(os.path.join(RELEASE_ART_FOLDER, "icon0.png")))
     write_file(os.path.join(output_folder, "livearea/contents/bg.png"), make_image(840, 500, 40))
-    write_file(os.path.join(output_folder, "livearea/contents/startup.png"), make_image(280, 158, 12))
+    write_file(os.path.join(output_folder, "livearea/contents/startup.png"), read_file(os.path.join(RELEASE_ART_FOLDER, "startup.png")))
 
 
 def main():
@@ -186,7 +194,7 @@ def main():
     parser.add_argument("--monogram", action="store_true", help="use the monogram even when the extracted assets are present, as release packages do")
     arguments = parser.parse_args()
     if arguments.monogram:
-        write_procedural_images(arguments.output_folder)
+        write_monogram_images(arguments.output_folder)
         return 0
     if assets_available(arguments.assets_folder, arguments.texture_tool):
         write_logo_images(arguments.output_folder, arguments.assets_folder, arguments.texture_tool)
@@ -194,8 +202,8 @@ def main():
         print("make_livearea: no remaster assets, using the DS cartridge's title logo", file=sys.stderr)
         write_ds_logo_images(arguments.output_folder, arguments.ds_rom)
     else:
-        print("make_livearea: game assets or texture_tool missing, using procedural images", file=sys.stderr)
-        write_procedural_images(arguments.output_folder)
+        print("make_livearea: game assets or texture_tool missing, using the monogram images", file=sys.stderr)
+        write_monogram_images(arguments.output_folder)
     return 0
 
 
