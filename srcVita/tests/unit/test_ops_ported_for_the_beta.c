@@ -420,8 +420,76 @@ static void test_a_playing_movie_is_skipped_once_and_its_time_jump_comes_at_once
     CHECK_INT(movies_skipped, 1);
 }
 
+#define OP_MOVIE 0xec
+#define OP_MOVIE_END 0xed
+#define OP_SOUND 0x10b
+#define OP_STOP_SOUNDS 0x10e
+#define MOVIE_TICKS 400
+#define CUE_SOUND_KIND 21
+
+static int cue_sounds_played;
+
+static int movie_of_class_started(unsigned int class_id)
+{
+    (void)class_id;
+    return MOVIE_TICKS;
+}
+
+static void sound_played(int kind)
+{
+    if (kind == CUE_SOUND_KIND) {
+        cue_sounds_played = cue_sounds_played + 1;
+    }
+}
+
+static void test_skipping_a_movie_passes_the_waits_and_sounds_its_script_times_to_it(void)
+{
+    static const unsigned int movie_with_cues[] = { OP_MOVIE, 0xbcc2, 0x7070, OP_WAIT, 48, OP_SOUND, CUE_SOUND_KIND, EVERY_NAME_OFFSET, OP_WAIT, 214, OP_STOP_SOUNDS, 10, EVERY_NAME_OFFSET, OP_SOUND, CUE_SOUND_KIND, EVERY_NAME_OFFSET, OP_MOVIE_END, OP_SOUND, CUE_SOUND_KIND, EVERY_NAME_OFFSET };
+    static struct script_outputs movie_outputs;
+    unsigned int words[32];
+    unsigned int count;
+    unsigned int index;
+    unsigned int code_size;
+
+    movie_outputs.movie_of_class_started = movie_of_class_started;
+    movie_outputs.sound_played = sound_played;
+    movie_outputs.movie_skipped = movie_skipped;
+    count = 0;
+    for (index = 0; index < sizeof(movie_with_cues) / sizeof(movie_with_cues[0]); index++) {
+        words[count++] = movie_with_cues[index];
+    }
+    words[count++] = OP_WAIT;
+    words[count++] = A_LONG_WAIT;
+    words[count++] = OP_END;
+    memset(scene, 0, sizeof(scene));
+    memcpy(scene, "1LMG", 4);
+    code_size = count * 2;
+    put_u16(&scene[0x08], code_size);
+    put_u16(&scene[0x0c], sizeof(strings) - 1);
+    for (index = 0; index < count; index++) {
+        put_u16(&scene[SCRIPT_FILE_HEADER_SIZE + 2 * index], words[index]);
+    }
+    memcpy(&scene[SCRIPT_FILE_HEADER_SIZE + code_size], strings, sizeof(strings) - 1);
+    cue_sounds_played = 0;
+    script_machine_init(&machine, &movie_outputs, SCRIPT_TIMING_DS, NULL);
+    CHECK(script_machine_add_source(&machine, "a", scene, SCRIPT_FILE_HEADER_SIZE + code_size + sizeof(strings) - 1, NULL));
+    CHECK(script_machine_start(&machine, "a"));
+    script_machine_tick(&machine);
+    script_machine_tick(&machine);
+    CHECK(machine.movie_ticks_left > 0);
+    CHECK_INT(cue_sounds_played, 0);
+    CHECK(machine.runner.wait_ticks > 0 && machine.runner.wait_ticks <= 48);
+    CHECK(script_machine_skip_movie(&machine));
+    script_machine_tick(&machine);
+    script_machine_tick(&machine);
+    CHECK_INT(cue_sounds_played, 1);
+    CHECK(machine.runner.wait_ticks > 214);
+    CHECK(machine.skipped_movie_vm == NULL);
+}
+
 int main(void)
 {
+    test_skipping_a_movie_passes_the_waits_and_sounds_its_script_times_to_it();
     test_no_op_of_the_twenty_logs_as_not_ported();
     test_the_saved_camera_comes_back_as_a_cut();
     test_a_camera_home_takes_the_view_close_from_the_saved_camera();

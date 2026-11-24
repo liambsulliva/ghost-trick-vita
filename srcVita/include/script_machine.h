@@ -651,6 +651,8 @@ struct script_machine {
     int note_was_added;
     int time_jump_movie_ticks;
     int movie_ticks_left;
+    struct script_vm *movie_vm;
+    struct script_vm *skipped_movie_vm;
     struct script_staff_roll staff_roll;
     int mode_byte_under_the_staff_roll;
     int ending_mode_is_on;

@@ -1676,6 +1676,7 @@ static void start_the_time_jump(struct script_machine *machine)
 {
     if (machine->outputs->movie_started != NULL && machine->time_jump_movie_ticks > 0) {
         machine->movie_ticks_left = machine->auto_press == SCRIPT_AUTO_FAST ? 0 : machine->time_jump_movie_ticks;
+        machine->movie_vm = NULL;
         machine->outputs->movie_started(TIME_JUMP_MOVIE);
     }
     schedule_native_event(machine, &machine->soul.time_jump_event, "timeleap", "jump", machine->time_jump_movie_ticks > 0 ? machine->time_jump_movie_ticks : TIME_JUMP_AFTER_TICKS);

@@ -1407,6 +1407,8 @@ static enum script_step_result run_control_op(struct script_machine *machine, st
         }
         if (machine->auto_press != SCRIPT_AUTO_FAST && machine->outputs->movie_of_class_started != NULL) {
             machine->movie_ticks_left = machine->outputs->movie_of_class_started(script_machine_u32(words, 0));
+            machine->movie_vm = machine->movie_ticks_left > 0 ? vm : NULL;
+            machine->skipped_movie_vm = NULL;
             if (machine->movie_ticks_left > 0 && machine->outputs->sound_played != NULL) {
                 machine->outputs->sound_played(MOVIE_SOUND_KIND);
             }
@@ -1614,6 +1616,16 @@ static enum script_step_result run_op(struct script_machine *machine, struct scr
     }
 }
 
+static int op_is_timed_to_the_movie(unsigned int op)
+{
+    return op == 0x2f || op == 0x10b || op == 0x10c || op == 0x10d;
+}
+
+static int op_rides_along_with_the_movie(unsigned int op)
+{
+    return op == 0x10e || op == 0x108 || op == 0x109 || op == 0x10a;
+}
+
 static int step_vm(struct script_machine *machine, struct script_vm *vm)
 {
     unsigned int words[SCRIPT_OPERAND_MAX];
@@ -1643,6 +1655,15 @@ static int step_vm(struct script_machine *machine, struct script_vm *vm)
         return 0;
     }
     remember_fetch(machine, vm, op, words, length);
+    if (vm == machine->skipped_movie_vm) {
+        if (op_is_timed_to_the_movie(op)) {
+            vm->pc = vm->pc + length;
+            return 1;
+        }
+        if (!op_rides_along_with_the_movie(op)) {
+            machine->skipped_movie_vm = NULL;
+        }
+    }
     switch (run_op(machine, vm, op, words)) {
     case SCRIPT_STEP_NEXT:
         vm->pc = vm->pc + length;
@@ -1775,6 +1796,8 @@ static void tear_down_script(struct script_machine *machine)
     memset(machine->anchored_effects, 0, sizeof(machine->anchored_effects));
     memset(machine->lights, 0, sizeof(machine->lights));
     machine->has_runner = 0;
+    machine->movie_vm = NULL;
+    machine->skipped_movie_vm = NULL;
     machine->object_count = 0;
     memset(machine->free_units, 0, sizeof(machine->free_units));
     machine->actor_count = 0;
@@ -1916,6 +1939,9 @@ static void run_native_steps_before_tasks(struct script_machine *machine)
     }
     if (machine->movie_ticks_left > 0) {
         machine->movie_ticks_left = machine->movie_ticks_left - 1;
+        if (machine->movie_ticks_left == 0) {
+            machine->movie_vm = NULL;
+        }
     }
     script_talk_close_when_due(machine);
     step_staff_roll(machine);
@@ -2005,6 +2031,11 @@ int script_machine_skip_movie(struct script_machine *machine)
         return 0;
     }
     machine->movie_ticks_left = 0;
+    machine->skipped_movie_vm = machine->movie_vm;
+    if (machine->movie_vm != NULL) {
+        machine->movie_vm->wait_ticks = 0;
+        machine->movie_vm = NULL;
+    }
     script_soul_movie_was_skipped(machine);
     if (machine->outputs->movie_skipped != NULL) {
         machine->outputs->movie_skipped();

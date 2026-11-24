@@ -2376,6 +2376,14 @@ The class: a slot marked absent with "not found" stayed that way because nothing
 
 Guard: `tests/tools/test_ds_staff_roll.py` and `tests/tools/test_ds_people.py` check the table reads, the tile decode with both flips, the refusals, the staff rows and the face cutout; `test_ds_texture_slots.py` already forces `ds_textures` and the absent list to agree. `tests/golden/pause_render.c` finds textures in their buckets again (it had looked in the flat folder since the buckets came in, so it drew neither set) and draws a DS set when `PAUSE_RENDER_DS_SET` is set.
 
+### 304. START stopped a movie's picture but not the script timed to it
+
+Liam's report from the Vita: in Chapter 18's "4 minutes before death" cutscene, START left the next scene standing still with the movie's sounds still playing. The port's own skip (`script_machine_skip_movie`, not a native feature) zeroed `movie_ticks_left` and stopped the picture, but a movie's script does more than wait on op 0xed: `f_car_movie_play` in st15_demo010 and st15_demo040 runs op 0xec, then four waits (op 0x2f: 48, 19, 70 and 214 ticks) with sound cues between them (ops 0x10b and 0x10c), and only then op 0xed. So the script sat out 351 ticks of waits over the next scene and fired every cue. The same shape is in st04 (game000, 001, 003, 010, 100, 101, demo000), st13 (game001, 020, 021) and both st15 scenes; the other movies run 0xec and 0xed back to back.
+
+Fixed where every movie passes: op 0xec remembers the block that started the movie (`movie_vm`), and a skip hands it to `skipped_movie_vm` and clears its wait. `step_vm` then passes over that block's waits and sound starts (`op_is_timed_to_the_movie`: 0x2f, 0x10b, 0x10c, 0x10d), still runs its sound stops and music ops (`op_rides_along_with_the_movie`: 0x10e, 0x108, 0x109, 0x10a), and goes back to normal at the first other op, which is 0xed where there is one. A new scene, the movie's own end and the time-jump movie forget the block.
+
+Guard: `test_skipping_a_movie_passes_the_waits_and_sounds_its_script_times_to_it` in `tests/unit/test_ops_ported_for_the_beta.c` plays a movie with waits and cues, skips it, and checks the cues between 0xec and 0xed stay silent, the script is past 0xed two ticks later, and the first sound after 0xed plays.
+
 ## Still open
 
 - The title screen lacks the DS bottom screen's red wireframe junkyard and Sissel's glowing pose, which are DS art in `cpac_2d.bin` that no set bakes yet; the remastered set uses the remaster's title art, and the DS set draws none. The boot logos (pLogo) that `GOTO TITLE` passes through are not shown, and the title plays no music.
