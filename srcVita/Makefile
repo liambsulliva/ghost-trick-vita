@@ -40,7 +40,7 @@ OBJS := $(patsubst src/%.c,$(OBJECT_FOLDER)/%.o,$(SRCS))
 
 LIVEAREA_FOLDER := build/sce_sys
 RELEASE ?= 0
-LIVEAREA_ASSETS_PRESENT := $(and $(wildcard ../extracted/remaster_apk/GTPD_ANDROID_Release.list),$(wildcard build/tools/texture_tool))
+LIVEAREA_ASSETS_PRESENT := $(wildcard ../extracted/remaster_apk/GTPD_ANDROID_Release.list)
 LIVEAREA_DS_PRESENT := $(wildcard ../extracted/ds_rom/game.nds)
 LIVEAREA_STYLE := $(if $(filter 1,$(RELEASE)),monogram,$(if $(LIVEAREA_ASSETS_PRESENT),logo,$(if $(LIVEAREA_DS_PRESENT),ds_logo,monogram)))
 LIVEAREA_SOURCE := build/livearea_$(LIVEAREA_STYLE)
@@ -97,8 +97,12 @@ build/param.sfo: Makefile
 	@mkdir -p build
 	vita-mksfoex -d ATTRIBUTE2=12 -s TITLE_ID=$(TITLE_ID) -s APP_VER=$(APP_VER) -s VERSION=$(APP_VER) "$(TITLE)" $@
 
-$(LIVEAREA_SOURCE)/icon0.png: tools/make_livearea.py $(wildcard tools/livearea/release/*.png)
+$(LIVEAREA_SOURCE)/icon0.png: tools/make_livearea.py $(wildcard tools/livearea/release/*.png) $(if $(filter logo,$(LIVEAREA_STYLE)),build/tools/texture_tool)
 	python3 -I tools/make_livearea.py $(LIVEAREA_SOURCE) $(if $(filter monogram,$(LIVEAREA_STYLE)),--monogram,)
+
+# The logo needs the converter's texture tool; build it when the package build finds it missing.
+build/tools/texture_tool:
+	$(MAKE) -C tools/assets all
 
 release:
 	$(MAKE) RELEASE=1 build/$(TARGET).vpk
