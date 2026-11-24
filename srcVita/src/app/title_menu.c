@@ -63,7 +63,6 @@ struct title_place {
 
 static const char *const item_names[TITLE_MENU_ITEM_COUNT] = { "chapters", "continue", "erase", "language", "record", "new_game", "options" };
 static const char *const label_keys[TITLE_MENU_ITEM_COUNT] = { "title.chapter_select", "title.continue", NULL, "title.language", NULL, "title.new_game", "title.options" };
-static const int enters_game[TITLE_MENU_ITEM_COUNT] = { 1, 1, 0, 0, 0, 1, 0 };
 static const char *const bar_keys[TITLE_MENU_ITEM_COUNT] = { "bar.title_chapters", "bar.title_continue", "bar.title_erase", "bar.title_language", "bar.title_record", "bar.title_new_game", "bar.title_options" };
 
 static title_save_check_function save_exists;
@@ -102,11 +101,6 @@ static void sound(int kind)
     if (play_sound != NULL) {
         play_sound(kind);
     }
-}
-
-int title_menu_item_enters_game(int item)
-{
-    return item >= 0 && item < TITLE_MENU_ITEM_COUNT && enters_game[item];
 }
 
 int title_menu_is_ready(void)

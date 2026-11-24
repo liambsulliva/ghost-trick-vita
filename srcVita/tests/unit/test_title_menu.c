@@ -478,13 +478,6 @@ static void test_the_start_sound_plays_only_when_a_press_leaves_for_the_game(voi
     int step;
     int left_menu;
 
-    CHECK(title_menu_item_enters_game(TITLE_ITEM_CONTINUE));
-    CHECK(title_menu_item_enters_game(TITLE_ITEM_NEW_GAME));
-    CHECK(title_menu_item_enters_game(TITLE_ITEM_CHAPTERS));
-    CHECK(!title_menu_item_enters_game(TITLE_ITEM_OPTIONS));
-    CHECK(!title_menu_item_enters_game(TITLE_ITEM_LANGUAGE));
-    CHECK(!title_menu_item_enters_game(TITLE_ITEM_ERASE));
-    CHECK(!title_menu_item_enters_game(TITLE_ITEM_RECORD));
     for (with_save = 0; with_save < 2; with_save++) {
         for (item = 0; item < TITLE_MENU_ITEM_COUNT; item++) {
             start_with_art(with_save);
@@ -502,7 +495,7 @@ static void test_the_start_sound_plays_only_when_a_press_leaves_for_the_game(voi
                 press(0);
                 left_menu = left_menu || title_menu_phase() == TITLE_PHASE_HOLDING;
             }
-            if (!title_menu_item_enters_game(item)) {
+            if (item != TITLE_ITEM_CONTINUE && item != TITLE_ITEM_NEW_GAME && item != TITLE_ITEM_CHAPTERS) {
                 CHECK(!left_menu);
             }
         }
