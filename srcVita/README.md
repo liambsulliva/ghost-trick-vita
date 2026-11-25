@@ -165,7 +165,7 @@ A package with the logo contains game art, so keep it for your own Vita. The pac
 Releases are built and published by `.github/workflows/release.yml`. To cut one:
 
 1. Set `APP_VER` in `Makefile` to the new version as `MM.mm`, so `01.01` for v1.1.0. A beta such as v1.0.0-beta shares its `APP_VER` with v1.0.0.
-2. Add a `case` branch for the tag to the release notes step in `.github/workflows/release.yml`, with one short `- **Name:** text` line per change. The workflow adds the install and debug bullets around them.
+2. Add a `case` branch for the tag to the release notes step in `.github/workflows/release.yml`, with one short `- **Name:** text` line per change. Those lines become the release's body.
 3. Commit, then tag and push the tag:
 
    ```bash
@@ -176,7 +176,7 @@ Releases are built and published by `.github/workflows/release.yml`. To cut one:
    git push origin v1.1.0
    ```
 
-The workflow builds in the `vitasdk/vitasdk` container. It refuses a tag whose major and minor numbers do not match `APP_VER`, or one with no bullets in the release notes step, runs `tools/rom_audit.py`, installs vitaGL, vitaShaRK, SceShaccCgExt, libmathneon and taihen with `vdpm`, runs `make -C srcVita release`, and publishes a full GitHub release named by its tag alone, such as `v1.1.0-beta`, with the install and debug bullets, the tag's own bullets, and `ghosttrick-<tag>.vpk`, its debug build and SHA-256 attached. Every tag is published as a full release, a hyphen or not. Running the workflow by hand with an existing tag rebuilds and republishes that tag with the bullets its own commit holds.
+The workflow builds in the `vitasdk/vitasdk` container. It refuses a tag whose major and minor numbers do not match `APP_VER`, or one with no bullets in the release notes step, runs `tools/rom_audit.py`, installs vitaGL, vitaShaRK, SceShaccCgExt, libmathneon and taihen with `vdpm`, runs `make -C srcVita release`, and publishes a full GitHub release named by its tag alone, such as `v1.1.0-beta`, with the tag's own bullets as its body, and `ghosttrick-<tag>.vpk`, `ghosttrick-<tag>-debug.vpk` and its SHA-256 attached. Every tag is published as a full release, a hyphen or not. Running the workflow by hand with an existing tag rebuilds and republishes that tag with the bullets its own commit holds.
 
 ## Make the assets
 

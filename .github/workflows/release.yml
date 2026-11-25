@@ -71,11 +71,7 @@ jobs:
             exit 1
           fi
           mkdir -p dist
-          {
-            echo "- **Install:** Install \`ghosttrick-$TAG.vpk\` with VitaShell. It holds only the app, so it needs the game's art, sound, text and scripts converted from your own copies, as the [README](https://github.com/${{ github.repository }}#run-it-on-a-vita) explains. After updating, run the setup script again and copy both sets across again."
-            printf '%s\n' "$changes"
-            echo "- **Debug build:** \`ghosttrick-$TAG-debug.vpk\` is the same version with the run log and the developer options. Install it only to capture a log for a bug report."
-          } > dist/release-notes.md
+          printf '%s\n' "$changes" > dist/release-notes.md
 
       - name: Audit the tree for game data
         run: python3 tools/rom_audit.py
