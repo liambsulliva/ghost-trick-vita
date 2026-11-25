@@ -1,6 +1,6 @@
 # Ghost Trick Vita
 
-<img src="docs/banner.png" alt="Ghost Trick Vita banner" width="100%">
+<img src="srcVita/tools/livearea/release/readme-banner.png" alt="Ghost Trick Vita banner" width="100%">
 
 A PS Vita port of Ghost Trick that runs the original DS game logic with a single-screen interface, drawn with either the 2023 remaster's art or the DS cartridge's own.
 

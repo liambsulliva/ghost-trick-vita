@@ -8,6 +8,8 @@
 #     its text has smooth edges. The subtitle is DejaVu Sans with a hairline outline in its own colour,
 #     standing in for a semibold face, since none is installed.
 #   bg.png: a large flame on the backdrop, with no text, since the gate already shows the title.
+#   readme-banner.png: the banner's layout at eight times its size, for the README. Its flame is drawn from
+#     the SVG paths at that size, so its edges stay sharp.
 # ImageMagick draws the SVG's path data itself, so no SVG renderer is needed. Run it again after
 # changing the colours and commit the PNGs it writes.
 set -eu
@@ -50,3 +52,12 @@ magick "$work/banner4x.png" -filter Box -resize 280x158 \
 # The background: the flame, large, in the middle of the 840 by 500 backdrop.
 magick -size 840x500 "xc:$backdrop" \( "$work/fire.png" -resize 300x300 \) -geometry +270+100 -composite \
     -colors 256 -define png:exclude-chunks=date,time "PNG8:$folder/bg.png"
+
+# The README banner: the banner's layout at eight times its size. The flame is the SVG paths drawn at
+# that size, not the 112 pixel file above, so it is not scaled up from a smaller picture.
+magick -size 2240x1264 "xc:$backdrop" \
+    -fill "$outer" -draw "translate 188,324 scale 17.1111,17.1111 path '$outer_path'" \
+    -fill "$core" -draw "translate 188,324 scale 17.1111,17.1111 path '$core_path'" \
+    -font "$font" -fill "$letters" -pointsize 176 -annotate +944+624 'Ghost Trick' \
+    -font "$subfont" -fill "$vita" -stroke "$vita" -strokewidth 2.8 -kerning 5 -pointsize 80 -annotate +944+776 'For PlayStation Vita' -stroke none \
+    -colors 256 -define png:exclude-chunks=date,time "PNG8:$folder/readme-banner.png"
