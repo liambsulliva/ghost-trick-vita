@@ -53,6 +53,30 @@ jobs:
             exit 1
           fi
 
+      - name: Write the release notes
+        run: |
+          case "$TAG" in
+            v0.9.1-beta)
+              changes='- **LiveArea art:** The home-screen icon, background and startup banner are original now: a blue fire from Twemoji on near-black, with no game art. A package you build with the game'"'"'s files keeps the remaster logo.'
+              ;;
+            *)
+              echo "Add the $TAG bullets to the case in this step before tagging $TAG."
+              exit 1
+              ;;
+          esac
+          bad=$(printf '%s\n' "$changes" | grep -vE '^- \*\*[^*]+:\*\* .+' || true)
+          if [ -n "$bad" ]; then
+            echo "The $TAG bullets must be '- **Name:** text' lines. These do not match:"
+            echo "$bad"
+            exit 1
+          fi
+          mkdir -p dist
+          {
+            echo "- **Install:** Install \`ghosttrick-$TAG.vpk\` with VitaShell. It holds only the app, so it needs the game's art, sound, text and scripts converted from your own copies, as the [README](https://github.com/${{ github.repository }}#run-it-on-a-vita) explains. After updating, run the setup script again and copy both sets across again."
+            printf '%s\n' "$changes"
+            echo "- **Debug build:** \`ghosttrick-$TAG-debug.vpk\` is the same version with the run log and the developer options. Install it only to capture a log for a bug report."
+          } > dist/release-notes.md
+
       - name: Audit the tree for game data
         run: python3 tools/rom_audit.py
 
@@ -96,13 +120,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
-          name: Ghost Trick Vita ${{ env.TAG }}
-          generate_release_notes: true
-          prerelease: ${{ contains(env.TAG, '-') }}
+          name: ${{ env.TAG }}
+          prerelease: false
           fail_on_unmatched_files: true
           files: |
             dist/ghosttrick-${{ env.TAG }}.vpk
             dist/ghosttrick-${{ env.TAG }}-debug.vpk
             dist/ghosttrick-${{ env.TAG }}.sha256
-          body: |
-            Install `ghosttrick-${{ env.TAG }}.vpk` with VitaShell. The package holds only the app: it needs the game's art, sound, text and scripts converted from your own copies of the game, as the [README](https://github.com/${{ github.repository }}#run-it-on-a-vita) explains. After updating, run the setup script again and copy both sets across again. `ghosttrick-${{ env.TAG }}-debug.vpk` is the same version with the run log and the developer options; install it only to capture a log for a bug report.
+          body_path: dist/release-notes.md
